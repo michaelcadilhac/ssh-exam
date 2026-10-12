@@ -1,0 +1,259 @@
+# Native class-server installation
+
+This directory independently installs the compiled account gate, root mTLS agent, independent
+watchdog/reconciliation timer, collector and root tools. Target: Debian 12/13, Linux systemd/
+cgroup v2, OpenSSH privilege separation and bubblewrap. **Privileged installation remains
+untested on a real class host. Leave readiness flags false until the manual suite passes.**
+
+## Prerequisites and recovery
+
+Keep a separate root recovery SSH session throughout changes. Back up passwd, group, shells,
+SSH configurations and affected PAM files. Never change the administrator shell/group or close
+recovery access to test student denial. Use disposable course accounts first. Install Go 1.27.2,
+bubblewrap, systemd, OpenSSH, Python 3, procps and ripgrep. cgroup v2 needs cpu/memory/pids/freezer.
+
+Provide a private independent gateway-host-to-agent TCP 9443 route, source-firewalled to the
+gateway host, via administrator-owned network/VPN/tunnel if needed. Student SSH is not the
+control route. Never expose an unauthenticated root service or use student passwords for it.
+Provision server DNS/IP SAN certificate, client CA and exam-gateway clientAuth certificate
+Common Name. Root owns config/keys 0600 in directory 0700. Test renewal before expiry.
+
+## Build/install
+
+From this directory:
+
+    go test -race ./...
+    sudo ./scripts/install
+
+Installs root:root 0755 binaries: /usr/local/sbin/exam-agent and examctl,
+ /usr/local/libexec/exam-login and /usr/local/bin/exam-info. Root-private config/state:
+ /etc/exam-agent (0600 files) and /var/lib/exam-agent (0700).
+Units install under /etc/systemd/system. The script does not auto-edit SSH/PAM, enable
+incomplete services or enroll real accounts.
+
+Edit /etc/exam-agent/agent.json for control route, trust, state, rootfs, templates, work base
+and approved account mapping. Original shells support /bin/bash, /bin/zsh and /bin/sh.
+The example account mapping is illustrative; root approval must resolve actual identities.
+
+Build a reviewed toolchain root at /srv/exam-workspace/rootfs, for example using debootstrap
+with the institution's package mirror, then install Bash/Zsh, coreutils, editors/compiler and
+ncurses-term. Include /usr/local/bin/exam-info. It must contain no host homes/secrets/control
+sockets, privileged hooks or future materials. Test chosen tools/TERM inside the actual sandbox.
+Do not copy the live host root. Version the rootfs and template installation inputs.
+
+Pre-create the bind mount destinations before mounting the rootfs read-only:
+
+    sudo install -d -m 0755 /srv/exam-workspace/rootfs/home/student /srv/exam-workspace/rootfs/work /srv/exam-workspace/rootfs/materials
+
+Use the configured exam directory instead of /work if customized. Native readiness rejects
+missing home/materials mount points; bubblewrap cannot create them inside the read-only tree.
+Include /usr/bin/setpriv from util-linux in the rootfs. The root launcher creates private
+mount, PID, network, IPC, UTS and cgroup namespaces, then the root-controlled setpriv drops
+to the real account UID/GID, clears supplementary groups and all capability sets, and sets
+no_new_privs before starting the shell. Preserve real UID ownership; a single-user namespace
+mapping of the privileged launcher would make student-owned /work inaccessible.
+The root service keeps NoNewPrivileges enabled and explicitly retains only SETUID, SETGID
+and SETPCAP as ambient setup capabilities across exec. These must never reach student code;
+verify real/effective/saved/filesystem UIDs, zero CapInh/Prm/Eff/Bnd/Amb and NoNewPrivs=1 in
+an actual gated terminal during installation qualification.
+
+    sudo install -d -m 0700 /var/lib/exam-agent/templates
+    sudo cp -a examples/sample-exam /var/lib/exam-agent/templates/sample-exam
+    sudo chown -R root:root /var/lib/exam-agent/templates
+
+Templates contain work/ starters and materials/ read-only questions. Work initializes once at
+activation; every later pane shares it. No /etc/profile changes or information hooks are needed.
+
+## Account policy, SSH and PAM
+
+Review config/sshd-exam.example.conf and config/pam/README.md. Match Group exam-managed applies
+ForceCommand exam-dispatch, PermitUserRC=no, no forwarding/agent/X11/tunnels and MaxSessions 8.
+Configure an external SFTP subsystem globally. Verify ForceCommand on every SSH listener and
+subsystem. Outside attempts, the gate dispatches SSH_ORIGINAL_COMMAND through the recorded shell.
+The compiled actual account shell runs before personal startup; EXAM_ID labels are not credentials.
+
+Review each PAM stack. Skip pam_systemd only for managed SSH sessions so terminating ordinary
+user sessions does not kill the retained transport. Deny course accounts' alternate local,
+su/runuser, cron/at, display-manager and user-service routes; disable lingering and chsh.
+Reject privileged groups/sudo/system cron tasks. Course forwarding/local jobs/user services
+remain deliberately disabled during enrollment even outside exams. Ordinary SSH/commands and
+supported external SFTP return only after the original deadline AND verified protection/termination.
+
+Root approves existing accounts explicitly:
+
+    sudo ./scripts/enroll-accounts student01 student02
+
+Original UID/GID/home/shell mapping saves atomically before usermod sets the gate. Privileged
+accounts/groups are rejected. CSV imports never create accounts or change hosts/paths/shells.
+Restart the agent for registry changes only while drained.
+
+    sudo sshd -t
+    sudo sshd -T -C user=student01,host=class.example.edu,addr=JUMP_HOST_IP
+    sudo systemctl reload ssh
+    sudo ./scripts/verify
+
+Use a disposable account to test ordinary login, external SFTP, exec zsh/profile variants,
+~/.ssh/rc, remote commands, internal-sftp, all forwarding/listeners, old connections/new
+channels, cron/at/user services, concurrent admission, pre-existing writers and one-use
+cross-transport replay. Binding depends on a root sshd [priv] ancestor and PID start time;
+unsupported process layouts deny admission. Compilation alone does not validate these guards.
+
+## Containment and deadline
+
+Prepare closes ordinary admission. Activation kills conflicting sessions and unregistered UID
+processes while preserving the verified gateway transport, requiring validated PAM placement.
+Independent PTYs run in root-controlled systemd scopes under exam.slice. bubblewrap isolates
+network/PID/mount/IPC/UTS, separate toolchain root, proc/dev/tmp, writable /work and read-only
+/materials. HOME contains read-only copies of approved shell/editor startup preferences,
+excluding host sockets; home changes do not persist. Per-pane loopback is independent.
+
+The gateway receives no root SSH credential or arbitrary-command agent operation.
+Agent root privileges are needed for namespace/PTY/UID setup, cgroups, killing writers and
+safe collection. ProtectSystem/ReadWritePaths constrain writes; PrivateUsers and
+ProtectControlGroups are intentionally absent because they break required operations.
+
+    sudo systemctl enable --now exam-deadline-watchdog.service exam-agent.service exam-reconcile.timer
+    sudo examctl health
+    sudo journalctl -u exam-agent -u exam-deadline-watchdog
+
+The independent watchdog freezes lease loss and finalizes at canonical UTC deadline with a
+same-boot monotonic guard. Review locks never pause time. Generation-bound continuation is
+expiring/single-use; lease renewal cannot unlock it. Reconciliation catches missed work after
+downtime. Reboot ends prior workloads, retains files and preserves exclusion. Total power/root
+failure is not an availability guarantee.
+
+## Collection, export and recovery
+
+Host work: /srv/exam-workspace/work/<opaque-attempt>/work, shown as the trusted agent
+`exam_directory` setting (default /work). Provision that directory in the read-only rootfs. Only saved files are
+collected. Students do not submit, upload or archive anything. The optional Finish exam button and
+independent deadline watchdog use the same collector. Ordinary access remains blocked until
+all scopes and their background descendants freeze and cgroup.events confirms it. The UID
+process scan refuses uncontained writers; verified SSH/gate entry stubs are the only exceptions.
+New directory access is revoked through a verified descriptor before collection. Existing
+write descriptors are made safe by the writer barrier, not by directory permissions alone.
+os.Root/O_NOFOLLOW/inode checks reject escapes, mounts, hardlinks and regular-file limit failures.
+Symlinks/special entries are omitted with manifest records. Limits: 10,000 entries, depth 32,
+32 MiB per file, 64 MiB logical total including sparse files. Never silently truncate or execute.
+
+A private staging directory is flushed and renamed as one complete archive/manifest/checksum
+bundle under
+/var/lib/exam-agent/submissions/<attempt>/. Manifests contain identity, template/settings,
+fixed timestamps, completion reason, file hashes and omissions/outages. Archive checksum stays
+outside the archive. The external manifest includes the archive checksum plus actual
+completion, collection and protection timestamps; the effective expiration end remains the
+original deadline. The mTLS submission-manifest operation returns this actual file inventory.
+A crash after bundle publication but before state persistence adopts the verified bundle,
+without reading or replacing live work. Damaged/incomplete bundles fail closed and require
+root recovery; do not remove a secured bundle to force recollection. Grade in a separate sandbox, never by executing/unpacking in the app.
+Access returns only after the original deadline has elapsed AND protection and workload termination are verified. Early completion keeps the account held. mTLS export is
+independent of SSH; export pending differs from collection failure, which retains exclusion.
+
+    sudo examctl inspect-attempt ATTEMPT_UUID
+    sudo examctl finalize-attempt ATTEMPT_UUID
+    sudo exam-agent -config /etc/exam-agent/agent.json -reconcile
+
+For full disks add protected capacity before retrying. Restore watchdog before agent access.
+For changed keys/expired certificates install verified replacements and test/reconcile.
+Keep failed archives/workload/account excluded; retry export without recollecting mutable work.
+Root break-glass requires independently protected saved files, killed writers, verified archive
+and audited disposition before restoring recorded access. No remote force-unlock exists.
+
+No automatic local submission deletion is configured. Retain local copies until verified export
+and separate institutional retention permit removal. Monitoring is gateway-side. Back up state,
+original mappings and archives consistently; editor buffers/SSH objects cannot be restored.
+
+## Rollback
+
+Collect/recover every guarded attempt and wait for its original deadline/access release first:
+
+    sudo ./scripts/uninstall
+
+It refuses unfinished/failed collection, early-completed held accounts, and missing administrator state, restores recorded shells/removes managed membership
+and disables services while keeping archives/state. Restore backed-up SSH/PAM, remove the gate
+from /etc/shells after no accounts use it, run sshd -t, reload SSH and test ordinary disposable
+login/SFTP. Review any disabled job policy before restoring it. Keep root recovery until verified.
+
+Collection errors persist in root-private state and audit records and emit journal messages.
+The gateway queues instructor alerts on reconciliation; while it is unavailable, configure
+institutional journal monitoring for independent class-server failure notifications.
+The watchdog continues collection and retries without any browser or gateway connection.
+
+The watchdog runs a read-only deadline cutoff independently of the archival/state flock.
+Long compression or a stuck control request cannot postpone another attempt's freeze.
+It reads the last atomically committed state, freezes expired cgroups and lets serialized
+reconciliation collect them. One freeze error does not skip other due attempts.
+
+## Original-interval account isolation
+
+Attempt completion and access restriction are separate: root state.json records HELD,
+RELEASED or OVERRIDDEN plus original deadline and hold/release timestamps. A 10:00 start,
+10:40 finish and 11:30 deadline produces a protected submission at 10:40 while ordinary
+SSH/commands/SFTP/SCP remain blocked until at least 11:30. No finished attempt can resume.
+A locked unfinished attempt still uses instructor authorization and its original deadline.
+The account gate checks every channel; stale practice/registration capabilities fail closed.
+
+Activation closes ordinary admission, terminates old login/user-service sessions, scans all
+four process UIDs and confirms no uncontained process survives, then durably commits the
+hold/deadline in ACTIVATING before initializing material. Interrupted initialization needs
+recovery. The static account shell and SSH ForceCommand run the gate before user startup.
+Do not exempt localhost, variables, existing transports, remote commands or subsystems.
+
+Install scripts/check-isolation as /usr/local/sbin/exam-check-isolation (scripts/install does
+this). scripts/verify and native Ready execute it. It checks effective SSH settings in two
+address contexts, gate shell/groups, AcceptEnv/RC/forwarding, alternate PAM denial, lingering,
+queued cron/at work, system cron and loaded services running as managed accounts. This can
+require removing queued jobs before exams. Keep a separate administrator session. Test every
+actual listener/Match branch, system timer/job, enabled filesystem service and root code that
+can switch to student UIDs; the automatic checker alone cannot certify arbitrary root code.
+The four new readiness flags default false; existing signoffs must be repeated after upgrade.
+
+Per-UID restrictions do not affect unrelated accounts. Missing/corrupt initialized state,
+collection failure, damaged protected bundles or unconfirmed termination retain the hold.
+The watchdog, CLI and local socket reconcile expired completed holds against the verified
+protected bundle. Forward clock changes cannot release before same-boot elapsed time.
+Submission deletion is rejected while a hold remains. Back up initialized, state.json,
+config/UID mapping, manifests/archives and audit together; never replace state with an empty
+map to regain access. Old completed records migrate conservatively to HELD until verified.
+
+A deliberately separate root-only emergency operation releases an already protected,
+terminated account before its deadline:
+
+    sudo examctl -reason 'Emergency course account recovery approved by administrator' override-access ATTEMPT_UUID
+
+The audit records UID/effective UID, sudo user, reason, original deadline and timestamp before
+release; audit failure prevents release. This operation is absent from gateway HTTPS and
+student socket APIs. It never resets time, overwrites work or permits exam continuation.
+Unsecured attempts must be recovered/collected first. Inspect audit.ndjson after use.
+Rollback refuses HELD accounts even when COMPLETED; reconcile release after the deadline or
+perform this explicit safe override before uninstalling. Restore recorded shells and service
+policies only after all outstanding holds have ended. Keep archives and their separate retention.
+
+Adversarial tests run with `go test -race ./...`: real unprivileged disposable OpenSSH checks
+remote commands/shell/SFTP/SCP, a retained ControlMaster connection and forged variables against
+the peer-verified Unix account gate. The harness uses ForceCommand, not a replacement system
+account; production pre-startup/PAM/cgroup/scheduler isolation requires the disposable managed-
+account deployment matrix. Tests also cover original-interval holds, recovery, missing state,
+protected-copy corruption, other UIDs and durable override failure.
+# Trusted administrator functional testing
+
+For the explicitly authorized, single-account test on `csc-sys`, follow
+[the installation and rollback plan](../docs/full-exam-test.md). The separate
+listener or explicitly installed root-owned gate command preserves ordinary administrator access. This mode reports
+`production_ready=false`, labels submissions, and cannot qualify student isolation.
+
+
+Root may additionally opt into `functional_host_access=true` for that single trusted
+identity. It runs authorized panes as normal host user services in exam.slice, with the
+real NSS home/shell, host-installed Emacs and other tools, supplementary groups, network
+and existing account privileges. Only /work is collected; materials remain read-only.
+Whole-service cgroups are tracked for closure, lock and collection. Never enable this for
+production students. Configuration rejects this flag without the functional account, and
+readiness verifies the configured home/shell against NSS. The root agent retains its
+NoNewPrivileges=yes setting; these separate trusted user services retain ordinary privileges.
+
+Every LOCKED pause now ends recorded workload scopes/services. Gateway closes both student
+SSH connections. One generation-bound authorization permits a fresh SSH transport attach
+and continuation; old transport identity or consumption without fresh attach is rejected.
+Watchdog lease expiry applies the same policy. Saved files remain at the original deadline;
+unsaved editor state is lost. The privileged control connection stays independent.

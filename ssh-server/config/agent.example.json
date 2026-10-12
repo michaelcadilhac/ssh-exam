@@ -1,0 +1,22 @@
+{
+  "state": "/var/lib/exam-agent",
+  "work": "/srv/exam-workspace/work",
+  "rootfs": "/srv/exam-workspace/rootfs",
+  "templates": "/var/lib/exam-agent/templates",
+  "accounts": {
+    "student01": {
+      "uid": 10001,
+      "gid": 10001,
+      "shell": "/bin/bash",
+      "home": "/home/student01"
+    }
+  },
+  "listen": "10.0.0.2:9443",
+  "cert": "/etc/exam-agent/agent.crt",
+  "key": "/etc/exam-agent/agent.key",
+  "ca": "/etc/exam-agent/gateway-ca.crt",
+  "client_name": "exam-gateway",
+  "socket": "/run/exam-agent/gate.sock",
+  "guard_report": "/etc/exam-agent/guards.json",
+  "exam_directory": "/work"
+}

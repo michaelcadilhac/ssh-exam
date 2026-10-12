@@ -1,0 +1,19 @@
+[Unit]
+Description=Independent persistent exam deadline and execution-lease watchdog
+After=local-fs.target
+Before=sshd.service ssh.service exam-agent.service
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/sbin/exam-agent -config /etc/exam-agent/agent.json -watchdog
+Restart=always
+RestartSec=1
+StateDirectory=exam-agent
+UMask=0077
+ProtectSystem=strict
+ReadWritePaths=/var/lib/exam-agent /srv/exam-workspace/work /sys/fs/cgroup
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+[Install]
+WantedBy=multi-user.target

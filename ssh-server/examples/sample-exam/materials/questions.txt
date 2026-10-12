@@ -1,0 +1,4 @@
+Development practice exam, template version 1.
+Write a C program that reads integers until EOF and prints their sum.
+Compile using cc -Wall -Wextra main.c -o solution. Save all work in /work.
+This sample contains no hidden solution or grading hooks.

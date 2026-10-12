@@ -1,0 +1,4 @@
+username,require_webcam
+student01,true
+student02,false
+student03,inherit

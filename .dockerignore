@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+var
+.env
+deploy/secrets/*
+!deploy/secrets/README.md
+deploy/config
+deploy/trust
+ssh-server/bin
+*.key
+*.pem

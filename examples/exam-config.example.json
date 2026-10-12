@@ -1,0 +1,12 @@
+{
+  "mode": "production",
+  "origin": "https://exam.example.edu",
+  "data": "/data",
+  "port": 3000,
+  "jump": {"host": "sshjump.depaul.edu", "port": 22, "pins": ["REPLACE_WITH_VERIFIED_SHA256_HEX_HOST_KEY"]},
+  "class": {"host": "csc-sys.cdm.depaul.edu", "port": 22, "pins": ["REPLACE_WITH_VERIFIED_SHA256_HEX_HOST_KEY"]},
+  "agent": {"url": "https://class-agent.internal:9443", "ca": "/run/trust/agent-ca.crt", "cert": "/run/trust/gateway.crt", "key": "/run/secrets/agent_key"},
+  "smtp": {"host": "smtp.example.edu", "port": 587, "secure": false, "user": "exam-alerts", "passwordFile": "/run/secrets/smtp_password", "from": "exam-alerts@example.edu", "to": ["instructor@example.edu"]},
+  "maintenance": true,
+  "readinessFile": "/run/config/readiness.json"
+}

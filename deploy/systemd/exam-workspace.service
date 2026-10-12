@@ -1,0 +1,15 @@
+[Unit]
+Description=SSH Exam Workspace Docker Compose deployment
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/exam-workspace
+ExecStart=/usr/bin/docker compose --project-name exam-workspace up -d --no-build --wait --wait-timeout 120
+ExecStop=/usr/bin/docker compose --project-name exam-workspace stop --timeout 45
+TimeoutStartSec=180
+TimeoutStopSec=90
+[Install]
+WantedBy=multi-user.target

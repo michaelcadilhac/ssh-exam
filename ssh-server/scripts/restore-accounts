@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+import os,json,pwd,subprocess,pathlib
+if os.geteuid()!=0:raise SystemExit('Root required')
+c=json.loads(pathlib.Path('/etc/exam-agent/agent.json').read_text());state=json.loads(pathlib.Path(c['state'],'state.json').read_text()) if pathlib.Path(c['state'],'state.json').exists() else {'attempts':{}}
+if not pathlib.Path(c['state'],'state.json').exists() and pathlib.Path(c['state'],'initialized').exists():raise SystemExit('State missing: restore administrator state before rollback')
+if any(not (a['state']=='CANCELLED_BEFORE_START' and not a.get('start')) and (a['state']!='COMPLETED' or a.get('access_state') not in ['RELEASED','OVERRIDDEN']) for a in state['attempts'].values()):raise SystemExit('Outstanding account hold: wait for original deadline and secured collection/release, or use audited root override before rollback')
+for name,a in c['accounts'].items():
+ account=pwd.getpwnam(name)
+ if account.pw_uid!=a['uid']:raise SystemExit('UID changed; root investigation required')
+ if account.pw_shell=='/usr/local/libexec/exam-login':subprocess.run(['usermod','-s',a['shell'],name],check=True)
+ subprocess.run(['gpasswd','-d',name,'exam-managed'],check=True)
+ print('Restored',name,'to',a['shell'])

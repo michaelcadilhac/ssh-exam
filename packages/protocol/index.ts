@@ -1,0 +1,111 @@
+import { z } from "zod";
+export const username = z
+  .string()
+  .regex(/^[a-z][a-z0-9_-]{0,31}$/)
+  .refine(
+    (v) =>
+      ![
+        "root",
+        "daemon",
+        "bin",
+        "sys",
+        "sync",
+        "games",
+        "man",
+        "lp",
+        "mail",
+        "news",
+        "uucp",
+        "proxy",
+        "www-data",
+        "backup",
+        "nobody",
+        "systemd-network",
+      ].includes(v),
+    "Privileged/service account forbidden",
+  );
+export const examSchema = z
+  .object({
+    id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    name: z.string().min(1).max(120),
+    earliest: z.number().int(),
+    latest: z.number().int(),
+    duration: z.number().int().min(60).max(21600).default(5400),
+    webcam: z.boolean().default(true),
+    terminals: z.number().int().min(1).max(4).default(4),
+    template: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  })
+  .refine((e) => e.latest > e.earliest, "Invalid start window");
+export type Exam = z.infer<typeof examSchema>;
+export type AccessState = "UNKNOWN" | "HELD" | "RELEASED" | "OVERRIDDEN";
+export type State =
+  | "PREPARING"
+  | "ACTIVE"
+  | "LOCKED"
+  | "FINALIZING"
+  | "COMPLETED"
+  | "COLLECTION_FAILED"
+  | "CANCELLED_BEFORE_START";
+export const readySchema = z.object({
+  fullscreen: z.literal(true),
+  focus: z.literal(true),
+  visible: z.literal(true),
+  keyboard: z.literal(true),
+  screen: z.literal(true),
+  webcam: z.boolean(),
+});
+export { readinessMessage } from "./readiness.js";
+export const messageSchema = z.discriminatedUnion("type", [
+  z.object({ v: z.literal(1), type: z.literal("preflight-contact") }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("heartbeat"),
+    ready: readySchema,
+  }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("incident"),
+    reason: z.string().min(1).max(300),
+  }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("open"),
+    pane: z.string().uuid(),
+  }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("input"),
+    pane: z.string().uuid(),
+    data: z.string().max(16384),
+    generation: z.number().int(),
+  }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("resize"),
+    pane: z.string().uuid(),
+    cols: z.number().int().min(2).max(500),
+    rows: z.number().int().min(2).max(200),
+  }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("close"),
+    pane: z.string().uuid(),
+  }),
+]);
+export const authMessage = z.discriminatedUnion("type", [
+  z.object({
+    v: z.literal(1),
+    type: z.literal("start"),
+    exam: z.string().max(64),
+    username,
+  }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("answers"),
+    round: z.string().uuid(),
+    answers: z.array(z.string().max(4096)).max(16),
+  }),
+  z.object({ v: z.literal(1), type: z.literal("cancel") }),
+]);
+export const ended = (s: State) =>
+  ["COMPLETED", "COLLECTION_FAILED", "CANCELLED_BEFORE_START"].includes(s);

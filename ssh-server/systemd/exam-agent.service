@@ -1,0 +1,29 @@
+[Unit]
+Description=Exam class-server mTLS control agent and local account gate
+After=network-online.target exam-deadline-watchdog.service
+Wants=network-online.target exam-deadline-watchdog.service
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/sbin/exam-agent -config /etc/exam-agent/agent.json
+Restart=always
+RestartSec=2
+RuntimeDirectory=exam-agent
+RuntimeDirectoryMode=0755
+StateDirectory=exam-agent
+StateDirectoryMode=0700
+UMask=0077
+ProtectSystem=strict
+ReadWritePaths=/var/lib/exam-agent /srv/exam-workspace/work /run/exam-agent /sys/fs/cgroup
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
+# Setup-only capabilities retained across exec. The root-controlled setpriv
+# clears all capability sets and supplementary groups before the student shell.
+AmbientCapabilities=CAP_SETUID CAP_SETGID CAP_SETPCAP
+# Retain namespace/cgroup/UID/PTY privileges required by bwrap, systemd-run and collection.
+# No PrivateUsers or ProtectControlGroups: those would break the declared enforcement path.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+TimeoutStopSec=30
+[Install]
+WantedBy=multi-user.target

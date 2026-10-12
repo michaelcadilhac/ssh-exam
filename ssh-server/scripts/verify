@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+[ "$(id -u)" = 0 ]
+sshd -t
+/usr/local/sbin/exam-check-isolation /etc/exam-agent/agent.json
+systemctl is-active exam-agent.service exam-deadline-watchdog.service
+stat -c '%U %a %n' /etc/exam-agent/agent.json /usr/local/libexec/exam-login /var/lib/exam-agent
+/usr/local/sbin/examctl health
+printf '%s\n' 'Render each managed account: sshd -T -C user=student01,host=class.example.edu,addr=127.0.0.1' 'Run the manual server-guard matrix; health flags alone do not establish security.'

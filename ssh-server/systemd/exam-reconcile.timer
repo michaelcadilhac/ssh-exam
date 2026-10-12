@@ -1,0 +1,9 @@
+[Unit]
+Description=Catch up exam reconciliation after downtime
+[Timer]
+OnBootSec=5s
+OnCalendar=*-*-* *:*:00
+Persistent=true
+Unit=exam-reconcile.service
+[Install]
+WantedBy=timers.target

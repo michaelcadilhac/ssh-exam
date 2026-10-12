@@ -1,0 +1,51 @@
+{
+  "label": "DISPOSABLE FIXTURE LOAD; NO PRODUCTION CAPACITY OR GUARD CLAIM",
+  "date": "2026-10-09T21:53:06.394Z",
+  "hardware": {
+    "cpu": "13th Gen Intel(R) Core(TM) i7-1365U",
+    "logicalCPUs": 12,
+    "memoryBytes": 33275744256,
+    "kernel": "7.2.8-arch1-2"
+  },
+  "target": {
+    "students": 100,
+    "panesPerStudent": 4,
+    "streamsPerStudent": 2,
+    "captureSeconds": 5,
+    "durationSeconds": 10,
+    "jpegBytes": 208906,
+    "width": 800,
+    "height": 450
+  },
+  "measured": {
+    "elapsedSeconds": 14.381684654,
+    "requests": 990,
+    "latencyMs": {
+      "p50": 19.602092000000084,
+      "p95": 45.327015999999276,
+      "p99": 69.10578499999974
+    },
+    "ssh": {
+      "jump": 100,
+      "class": 100,
+      "panes": 400
+    },
+    "uploads": 590,
+    "frameCount": 590,
+    "outputBytes": 34400,
+    "privateStorageBytes": 150371310,
+    "states": [
+      {
+        "state": "ACTIVE",
+        "count": 100
+      }
+    ],
+    "errors": [],
+    "errorCount": 0
+  },
+  "limitations": [
+    "Simulated privileged control path and browser condition reports",
+    "Small synthetic 800x450 JPEG, not readability/camera evidence",
+    "No real editors, namespace/cgroup workloads, SMTP or reverse proxy"
+  ]
+}

@@ -1,0 +1,206 @@
+import { expect, it, vi } from "vitest";
+import { Writable } from "node:stream";
+import { mkdtempSync, rmSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import WebSocket from "ws";
+import { createApp } from "../../apps/server/src/app.js";
+import { Connection } from "../../apps/server/src/ssh.js";
+import { LoginPassword } from "../../apps/server/src/login-password.js";
+import { hosts } from "../fixtures/hosts.js";
+async function setup(options: Parameters<typeof hosts>[0] = {}) {
+  const h = await hosts(options);
+  const dir = mkdtempSync(tmpdir() + "/login-security-");
+  let logs = "";
+  const config: any = {
+    mode: "development",
+    loginOnly: true,
+    origin: "http://127.0.0.1",
+    data: dir,
+    port: 0,
+    jump: h.jump,
+    class: h.class,
+    agent: {
+      url: "https://127.0.0.1:1",
+      ca: "/missing",
+      cert: "/missing",
+      key: "/missing",
+    },
+    maintenance: false,
+  };
+  const { app, store } = await createApp(config, {
+    logStream: new Writable({
+      write(chunk, _encoding, done) {
+        logs += chunk.toString();
+        done();
+      },
+    }),
+  });
+  const origin = await app.listen({ host: "127.0.0.1", port: 0 });
+  config.origin = origin;
+  const started = await app.inject({
+    method: "POST",
+    url: "/api/auth/start",
+    headers: { origin },
+    payload: {},
+  });
+  const cookie = String(started.headers["set-cookie"]).split(";")[0];
+  const ws = new WebSocket(
+    origin.replace("http:", "ws:") + "/api/auth/dialogue",
+    { headers: { origin, cookie } },
+  );
+  const messages: any[] = [];
+  ws.on("message", (data) => messages.push(JSON.parse(data.toString())));
+  await new Promise<void>((resolve, reject) => {
+    ws.once("open", resolve);
+    ws.once("error", reject);
+  });
+  return {
+    h,
+    dir,
+    app,
+    store,
+    origin,
+    cookie,
+    ws,
+    messages,
+    logs: () => logs,
+    close: async () => {
+      ws.terminate();
+      await app.close();
+      await h.close();
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+async function until(fn: () => boolean) {
+  await vi.waitFor(() => expect(fn()).toBe(true), {
+    timeout: 5000,
+    interval: 10,
+  });
+}
+function start(ws: WebSocket) {
+  ws.send(
+    JSON.stringify({
+      v: 1,
+      type: "start",
+      exam: "unused",
+      username: "student",
+    }),
+  );
+}
+function answer(ws: WebSocket, challenge: any, password: string) {
+  ws.send(
+    JSON.stringify({
+      v: 1,
+      type: "answers",
+      round: challenge.round,
+      answers: [password],
+    }),
+  );
+}
+function checkStored(dir: string, password: string) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const file = join(dir, entry.name);
+    if (entry.isDirectory()) checkStored(file, password);
+    else expect(readFileSync(file).includes(Buffer.from(password))).toBe(false);
+  }
+}
+it.each([false, true])(
+  "keeps HTTP/WS logs, audit, persistence and public errors secret-free (rejected=%s)",
+  async (rejected) => {
+    const password = "synthetic-" + randomUUID();
+    const t = await setup({ password, rejectClass: rejected, mfaDelayMs: 10 });
+    try {
+      start(t.ws);
+      await until(() => t.messages.some((m) => m.prompts?.length));
+      const challenge = t.messages.find((m) => m.prompts?.length);
+      expect(challenge.prompts).toEqual([
+        { prompt: "Shared SSH password", echo: false },
+      ]);
+      answer(t.ws, challenge, password);
+      await until(() =>
+        t.messages.some(
+          (m) => m.type === (rejected ? "error" : "authenticated"),
+        ),
+      );
+      expect(t.messages.filter((m) => m.prompts?.length)).toHaveLength(1);
+      expect(t.h.authCalls).toEqual({ jump: 1, class: 1 });
+      expect(JSON.stringify(t.messages)).not.toContain(password);
+      expect(t.logs()).not.toContain(password);
+      expect(t.logs()).toContain("request completed");
+      const tables = t.store.db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+        .all() as { name: string }[];
+      for (const { name } of tables)
+        expect(
+          JSON.stringify(
+            t.store.db
+              .prepare('SELECT * FROM "' + name.replaceAll('"', '""') + '"')
+              .all(),
+          ),
+        ).not.toContain(password);
+      checkStored(t.dir, password);
+      if (rejected)
+        expect(t.messages.find((m) => m.type === "error").error).toMatch(
+          /^SSH sign-in failed\./,
+        );
+      else {
+        const complete = await t.app.inject({
+          method: "POST",
+          url: "/api/auth/complete",
+          headers: { origin: t.origin, cookie: t.cookie },
+          payload: {},
+        });
+        expect(complete.statusCode).toBe(200);
+        expect(t.store.db.prepare("SELECT * FROM attempts").all()).toHaveLength(
+          0,
+        );
+      }
+    } finally {
+      await t.close();
+    }
+  },
+);
+it.each(["disconnect", "cancel", "shutdown"])(
+  "clears in-memory credentials on browser %s during phone approval",
+  async (reason) => {
+    const t = await setup({ mfaDelayMs: 5000 });
+    let c: Connection | undefined;
+    const originalConnect = Connection.prototype.connect;
+    const spy = vi
+      .spyOn(Connection.prototype, "connect")
+      .mockImplementation(function (this: Connection, ...args) {
+        c = this;
+        return originalConnect.apply(this, args);
+      });
+    try {
+      start(t.ws);
+      await until(() => t.messages.some((m) => m.prompts?.length));
+      answer(
+        t.ws,
+        t.messages.find((m) => m.prompts?.length),
+        "shared-password",
+      );
+      await until(() => t.messages.some((m) => m.instruction?.includes("42")));
+      const auth = (c as any).authentication;
+      const scope = auth.password as LoginPassword;
+      const buffer = (scope as any).value as Buffer;
+      expect(buffer.toString()).toBe("shared-password");
+      if (reason === "shutdown") await t.app.close();
+      else if (reason === "disconnect") t.ws.terminate();
+      else t.ws.send(JSON.stringify({ v: 1, type: "cancel" }));
+      await until(() => !(c as any).authentication);
+      expect([...buffer].every((b) => b === 0)).toBe(true);
+      expect(scope.available).toBe(false);
+      expect(auth.dialogue).toBeUndefined();
+      expect(t.h.authCalls.class).toBe(0);
+      expect((c!.jump as any).config.authHandler).toBeUndefined();
+      expect(t.logs()).not.toContain("shared-password");
+    } finally {
+      spy.mockRestore();
+      await t.close();
+    }
+  },
+);

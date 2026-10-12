@@ -1,0 +1,17 @@
+{
+  "sshdGate": false,
+  "pamRoutes": false,
+  "scheduledJobs": false,
+  "preexistingSessions": false,
+  "rootfsIsolation": false,
+  "transportBinding": false,
+  "clockSync": false,
+  "storage": false,
+  "collection": false,
+  "browserMatrix": false,
+  "institutionalSSH": false,
+  "intervalAccessHold": false,
+  "allSessionChannels": false,
+  "alternateServices": false,
+  "schedulerIsolation": false
+}

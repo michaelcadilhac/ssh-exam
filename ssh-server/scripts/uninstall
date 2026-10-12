@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+[ "$(id -u)" = 0 ]
+"$(dirname "$0")/restore-accounts"
+systemctl disable --now exam-agent.service exam-deadline-watchdog.service exam-reconcile.timer
+printf '%s\n' 'Account shells restored; services disabled. Restore backed-up SSH/PAM configuration, run sshd -t, reload SSH, and test ordinary disposable login. Submissions and original mapping are retained.'

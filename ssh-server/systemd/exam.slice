@@ -1,0 +1,6 @@
+[Unit]
+Description=Root-managed student exam workloads, outside agent/watchdog containment
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes

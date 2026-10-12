@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""Fail-closed machine checks; enabled-service adversarial signoff is also mandatory."""
+import grp,json,os,pathlib,pwd,re,stat,subprocess,sys
+
+def trusted_gate():
+ try:
+  gate=pathlib.Path('/usr/local/libexec/exam-login').lstat()
+  return stat.S_ISREG(gate.st_mode) and gate.st_uid==0 and not gate.st_mode & 0o022
+ except OSError: return False
+
+def check(config):
+ errors=[]
+ def require(ok,message):
+  if not ok: errors.append(message)
+ def run(args): return subprocess.run(args,capture_output=True,text=True,timeout=15)
+ require(trusted_gate(),'Static login gate must be root-owned, regular and not student-writable')
+ units=run(['/usr/bin/systemctl','list-units','--type=service','--all','--no-legend','--plain'])
+ require(units.returncode==0,'Cannot inspect system service writers')
+ unit_names=[line.split()[0] for line in units.stdout.splitlines() if line.split()]
+ declared=run(['/usr/bin/systemctl','list-unit-files','--type=service','--no-legend','--no-pager'])
+ require(declared.returncode==0,'Cannot inspect declared timer/service writers')
+ unit_names=sorted(set(unit_names+[line.split()[0] for line in declared.stdout.splitlines() if line.split()]))
+ service_users=set()
+ if unit_names:
+  properties=run(['/usr/bin/systemctl','show','--property=User','--value',*unit_names])
+  require(properties.returncode==0,'Cannot inspect loaded service identities')
+  service_users=set(properties.stdout.splitlines())
+ for name,a in config['accounts'].items():
+  user=pwd.getpwnam(name)
+  groups={grp.getgrgid(g).gr_name for g in os.getgrouplist(name,user.pw_gid)}
+  require(user.pw_uid==a['uid'] and user.pw_shell=='/usr/local/libexec/exam-login',f'{name}: UID/static login gate mismatch')
+  require('exam-managed' in groups and not groups & {'root','sudo','wheel','docker','lxd','adm','libvirt','disk'},f'{name}: unsafe groups')
+  if pathlib.Path('/usr/bin/sudo').exists():
+   rights=run(['/usr/bin/sudo','-n','-l','-U',name])
+   require(rights.returncode==1,f'{name}: sudo privileges present or absence cannot be verified')
+  # Operators must also test every actual listener/address and Match branch.
+  for addr in ['127.0.0.1','192.0.2.10']:
+   result=run(['/usr/sbin/sshd','-T','-C',f'user={name},host=class.example.edu,addr={addr}'])
+   require(result.returncode==0,f'{name}: sshd effective configuration unavailable')
+   settings={line.split(' ',1)[0]:line.split(' ',1)[1] for line in result.stdout.splitlines() if ' ' in line}
+   for key,value in {'forcecommand':'exam-dispatch','permituserrc':'no','permituserenvironment':'no','disableforwarding':'yes','usepam':'yes'}.items():
+    require(settings.get(key)==value,f'{name}/{addr}: {key} must be {value}')
+   require(all(v in ['LANG','LC_*'] or re.fullmatch(r'LC_[A-Z_]+',v) for v in settings.get('acceptenv','').split()),f'{name}: unsafe AcceptEnv')
+   require('internal-sftp' not in settings.get('subsystem',''),f'{name}: external SFTP through ForceCommand gate required')
+  require(not pathlib.Path('/var/lib/systemd/linger',name).exists(),f'{name}: lingering enabled')
+  if pathlib.Path('/usr/bin/crontab').exists():
+   jobs=run(['/usr/bin/crontab','-u',name,'-l'])
+   require(jobs.returncode in [0,1],f'{name}: cannot inspect jobs')
+   require(not any(s.strip() and not s.lstrip().startswith('#') for s in jobs.stdout.splitlines()),f'{name}: remove pre-existing crontab')
+  # System cron bypasses user spool inspection. Never allow a scheduled UID writer.
+  system_jobs=[pathlib.Path('/etc/crontab')]
+  if pathlib.Path('/etc/cron.d').exists(): system_jobs+=list(pathlib.Path('/etc/cron.d').iterdir())
+  for job in system_jobs:
+   if job.is_file():
+    for line in job.read_text().splitlines():
+     fields=line.split()
+     if fields and not line.lstrip().startswith('#'):
+      scheduled_user=fields[1] if fields[0].startswith('@') and len(fields)>1 else fields[5] if len(fields)>5 else ''
+      require(scheduled_user not in [name,str(a['uid'])],f'{name}: system cron writer in {job}')
+  require(name not in service_users and str(a['uid']) not in service_users,f'{name}: a loaded system service runs as managed account')
+  for spool in ['/var/spool/cron/atjobs','/var/spool/at']:
+   path=pathlib.Path(spool)
+   if path.exists(): require(not any(p.stat().st_uid==a['uid'] for p in path.iterdir()),f'{name}: remove pending at jobs')
+ for service in ['login','su','su-l','runuser','runuser-l','cron','atd']:
+  p=pathlib.Path('/etc/pam.d',service)
+  if p.exists():
+   lines=[s.strip() for s in p.read_text().splitlines() if s.strip() and not s.lstrip().startswith('#')]
+   require(bool(lines) and re.fullmatch(r'account\s+requisite\s+pam_succeed_if.so\s+user\s+notingroup\s+exam-managed',lines[0]) is not None,f'{service}: first PAM rule must deny exam-managed accounts')
+ p=pathlib.Path('/etc/pam.d/chsh')
+ require(p.exists() and any(re.fullmatch(r'auth\s+requisite\s+pam_succeed_if.so\s+user\s+notingroup\s+exam-managed',s.strip()) for s in p.read_text().splitlines()),'chsh: deny gate-shell changes')
+ return errors
+
+if __name__=='__main__':
+ try:
+  if os.geteuid()!=0: raise RuntimeError('Root checks required')
+  config=json.loads(sys.stdin.read() if len(sys.argv)>1 and sys.argv[1]=='-' else pathlib.Path(sys.argv[1] if len(sys.argv)>1 else '/etc/exam-agent/agent.json').read_text())
+  errors=check(config)
+ except Exception as e: errors=[str(e)]
+ if errors: print('\n'.join(errors),file=sys.stderr);sys.exit(1)
+ print('Machine isolation checks passed; enabled-service signoff remains required.')

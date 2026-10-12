@@ -1,0 +1,15 @@
+node_modules/
+dist/
+var/
+.env
+*.key
+*.pem
+playwright-report/
+test-results/
+ssh-server/bin/
+__pycache__/
+*.pyc
+deploy/config/
+deploy/trust/
+deploy/secrets/*
+!deploy/secrets/README.md

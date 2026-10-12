@@ -1,0 +1,13 @@
+[Unit]
+Description=Reconcile expired exams and incomplete protected collections
+After=local-fs.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/exam-agent -config /etc/exam-agent/agent.json -reconcile
+User=root
+UMask=0077
+ProtectSystem=strict
+ReadWritePaths=/var/lib/exam-agent /srv/exam-workspace/work /sys/fs/cgroup
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes

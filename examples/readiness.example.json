@@ -1,0 +1,11 @@
+{
+  "institutionalSSH": false,
+  "browserMatrix": false,
+  "serverGuards": false,
+  "protectedCollection": false,
+  "alerts": false,
+  "operator": "REPLACE_AFTER_ACTUAL_TESTS",
+  "testedAt": "",
+  "report": "docs/compatibility.md",
+  "intervalAccessHold": false
+}
