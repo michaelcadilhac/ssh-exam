@@ -26,7 +26,12 @@ Client CA/certificate go in deploy/trust; private key/SMTP password in deploy/se
     curl -fsS http://127.0.0.1:3000/health/live
     curl -fsS http://127.0.0.1:3000/health/ready
 
-Production fails closed without signoffs, HTTPS/mTLS/pins and SMTP configuration.
+Production exam starts fail closed without signoffs, HTTPS/mTLS/pins and SMTP configuration.
+Initial production installation may boot with `maintenance: true` while signoffs and
+notifications are pending: the operator dashboard remains available, liveness passes,
+readiness returns 503, and new student authentication/preflight/activation is blocked.
+Removing maintenance without the complete production report and notifications fails startup.
+Maintenance does not authorize privileged functional-test mode in production.
 Bootstrap an administrator with your own interactive password. The source CLI supports EXAM_DATA
 for initialization before signoff; ensure SQLite ownership is 10001 afterward, never ship a
 default. Source commands: npm ci; EXAM_DATA=var/production npm run bootstrap-admin.
@@ -72,6 +77,28 @@ does not consistently back up SQLite WAL and files.
 (default 600000). Connected preparation sends contact independently of fullscreen/capture
 readiness; these signals never authorize or renew timed-exam execution. Expiry cleanup
 also covers reservations whose SSH connection was lost during a gateway restart.
+
+## cadilhac.name installation
+
+On `marco`, `/opt/ssh-exam` links to `/home/micha/src/ssh-exam`. The `ssh-exam.service`
+unit reads `/etc/ssh-exam/ssh-exam.env` and uses the tracked `docker-compose.yml` symlink.
+Set `EXAM_HOST_PORT=3001` in that environment file (and the checkout's ignored `.env`
+for manual Compose commands); TagMix retains localhost port 3000. Install
+`deploy/nginx/ssh-exam.cadilhac.name.conf` in `/etc/nginx/servers.d/`, removing the old
+domain-only redirect blocks from nginx.conf after taking a backup. The existing
+cadilhac.name certificate covers this hostname. Validate nginx before reloading.
+
+    cd ~/src/ssh-exam
+    git pull --ff-only
+    sudo docker compose --project-name ssh-exam --file docker-compose.yml build
+    sudo systemctl restart ssh-exam
+
+Private configuration, readiness, trust certificates, client key and database stay out of
+Git. Preserve `/data` and the original attempt/deadline state when updating. To enable exams,
+configure a persistent verified class-agent route and instructor notifications, verify the
+production class-server guards, complete the readiness report, then remove maintenance
+during a drained restart. Keep sandbox in the exam configuration; its normal isolation and
+protected collection requirements still apply, with automatic continuation authorization.
 
 Original-interval isolation upgrade: install/rebuild the native agent and root machine checker,
 apply the static managed-account shell and every SSH listener/channel/PAM/scheduler policy,

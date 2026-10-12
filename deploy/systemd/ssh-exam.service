@@ -1,0 +1,19 @@
+[Unit]
+Description=SSH Exam webserver (Docker Compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ssh-exam
+EnvironmentFile=/etc/ssh-exam/ssh-exam.env
+ExecStart=/usr/bin/docker compose --project-name ssh-exam --file docker-compose.yml up --detach --no-build --wait --wait-timeout 120
+ExecStop=/usr/bin/docker compose --project-name ssh-exam --file docker-compose.yml stop --timeout 45
+TimeoutStartSec=180
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

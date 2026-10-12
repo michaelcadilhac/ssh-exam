@@ -39,6 +39,29 @@ const schema = z.object({
   readinessFile: z.string().optional(),
 });
 export type Config = z.infer<typeof schema>;
+export function productionReadinessIssues(c: Config): string[] {
+  if (c.mode !== "production") return [];
+  const issues: string[] = [];
+  if (!c.smtp) issues.push("Notifications are not configured");
+  if (!c.readinessFile)
+    return [...issues, "Readiness signoff is not configured"];
+  let report: any;
+  try {
+    report = JSON.parse(readFileSync(c.readinessFile, "utf8"));
+  } catch {
+    return [...issues, "Readiness signoff is unavailable"];
+  }
+  for (const k of [
+    "institutionalSSH",
+    "browserMatrix",
+    "serverGuards",
+    "protectedCollection",
+    "intervalAccessHold",
+    "alerts",
+  ])
+    if (report[k] !== true) issues.push(`Production signoff missing: ${k}`);
+  return issues;
+}
 export function loadConfig(
   path = process.env.EXAM_CONFIG || "config.json",
 ): Config {
@@ -58,20 +81,8 @@ export function loadConfig(
       )
     )
       throw Error("Fixture hosts forbidden in production");
-    if (!c.smtp || !c.readinessFile)
-      throw Error(
-        "Production requires tested notifications and readiness signoff",
-      );
-    const report = JSON.parse(readFileSync(c.readinessFile, "utf8"));
-    for (const k of [
-      "institutionalSSH",
-      "browserMatrix",
-      "serverGuards",
-      "protectedCollection",
-      "intervalAccessHold",
-      "alerts",
-    ])
-      if (report[k] !== true) throw Error(`Production signoff missing: ${k}`);
+    const issues = productionReadinessIssues(c);
+    if (issues.length && !c.maintenance) throw Error(issues.join("; "));
   }
   return c;
 }

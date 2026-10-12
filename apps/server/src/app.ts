@@ -26,7 +26,10 @@ import {
   authMessage,
   username as usernameSchema,
 } from "../../../packages/protocol/index.js";
-import type { Config } from "../../../packages/config/index.js";
+import {
+  productionReadinessIssues,
+  type Config,
+} from "../../../packages/config/index.js";
 import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
 import { Connection } from "./ssh.js";
@@ -269,6 +272,7 @@ export async function createApp(
   });
   app.get("/health/live", async () => ({ ok: true }));
   app.get("/api/login-test", async () => ({
+    maintenance: config.maintenance,
     loginOnly: !!config.loginOnly,
     functionalTest: !!config.functionalTest,
     ...(config.loginOnly
@@ -276,6 +280,19 @@ export async function createApp(
       : {}),
   }));
   app.get("/health/ready", async (_req, reply) => {
+    const issues = productionReadinessIssues(config);
+    if (config.maintenance || issues.length) {
+      reply.code(503);
+      return {
+        ready: false,
+        maintenance: config.maintenance,
+        mode: config.mode,
+        productionReady: false,
+        reason: config.maintenance
+          ? "Exam starts paused for maintenance"
+          : issues.join("; "),
+      };
+    }
     if (config.loginOnly)
       return {
         ready: true,
@@ -447,6 +464,10 @@ export async function createApp(
     };
   });
   app.post("/api/student/preflight", async (req) => {
+    if (config.maintenance)
+      throw Error("Exam starts are paused for maintenance.");
+    if (productionReadinessIssues(config).length)
+      throw Error("Production exam setup is awaiting operator verification.");
     const s = principal(req, "student");
     const conn = connections.get(`${s.exam}:${s.username}`);
     if (!conn?.alive) throw Error("Authenticate SSH first");
@@ -583,6 +604,8 @@ export async function createApp(
     )
       throw Error("Enrollment removed; this attempt cannot begin");
     if (config.maintenance) throw Error("Maintenance prevents new starts");
+    if (productionReadinessIssues(config).length)
+      throw Error("Production exam setup is awaiting operator verification.");
     const settings = JSON.parse(a.settings);
     if (
       !isSandbox(a.exam) &&
@@ -1357,6 +1380,17 @@ export async function createApp(
             return;
           }
           if (p.connection) throw Error("Authentication already in progress");
+          if (
+            config.maintenance &&
+            !store.db
+              .prepare(
+                "SELECT 1 FROM attempts WHERE exam=? AND username=? AND start IS NOT NULL AND state IN ('ACTIVE','LOCKED')",
+              )
+              .get(m.exam, m.username)
+          )
+            throw signInError(
+              "Exam starts are paused for maintenance. Instructor sign-in remains available.",
+            );
           const key = m.exam + ":" + m.username;
           const previous = authAttempts.get(key);
           if (!isSandbox(m.exam) && previous && now() - previous.at < 60000) {

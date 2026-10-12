@@ -9,7 +9,7 @@ services:
       EXAM_CONFIG: /run/config/config.json
       NODE_ENV: production
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${EXAM_HOST_PORT:-3000}:3000"
     volumes:
       - ./var/production:/data
       - ./deploy/config:/run/config:ro

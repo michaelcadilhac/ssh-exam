@@ -175,6 +175,12 @@ function App() {
             </a>
           </nav>
           <main>
+            {loginTest?.maintenance && (
+              <p className="notice" role="status">
+                Exam starts are paused for maintenance. Instructor sign-in
+                remains available.
+              </p>
+            )}
             {loginTest?.functionalTest && (
               <p className="notice">
                 Administrator test · ordinary server access retained.
