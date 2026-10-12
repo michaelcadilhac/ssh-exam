@@ -144,6 +144,11 @@ function App() {
               Administrator test · ordinary server access retained.
             </p>
           )}
+          {loginTest?.maintenance && (
+            <p className="notice" role="status">
+              Exam starts are paused for maintenance.
+            </p>
+          )}
           <Admin onError={setError} />
         </>
       ) : reservation ? (
