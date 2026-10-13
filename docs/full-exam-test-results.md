@@ -1,6 +1,8 @@
 # Real-server functional test results
 
-> Installation/history record: the subsequent SSH command and callback redesign is a local source change only; this document does not establish that those servers have been upgraded. Use ssh-server/README.md for the current transport and migration procedure.
+> Historical test results. The SSH-command/callback upgrade is now installed;
+> see [the deployment record](ssh-command-deployment.md) for its actual SSH/callback
+> checks. These earlier results do not qualify the new architecture for production.
 
 2026-10-11, csc-sys.cdm.depaul.edu, Ubuntu 24.04.4, trusted administrator mcadilha.
 

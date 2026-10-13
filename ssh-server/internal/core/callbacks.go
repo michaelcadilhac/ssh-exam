@@ -192,7 +192,7 @@ func (e *Engine) DeliverCallbacks() error {
 	var exports []*Attempt
 	if err = e.WithState(func() error {
 		for id, a := range e.state.Attempts {
-			if a.Protected && !e.state.Exports[id] {
+			if a.Protected && !e.state.Exports[id] && e.state.ExportPauses[id] == "" {
 				v := *a
 				exports = append(exports, &v)
 			}

@@ -291,12 +291,23 @@ sudo examctl retry ATTEMPT_UUID --reason 'Storage issue corrected; retry protect
 sudo examctl cancel ATTEMPT_UUID --reason 'Abandoned preparation; never started'
 sudo examctl manifest ATTEMPT_UUID
 sudo examctl export ATTEMPT_UUID > submission.tar.gz
+sudo examctl export-status ATTEMPT_UUID
+sudo examctl pause-export ATTEMPT_UUID --reason 'Historical test archive retained locally during migration'
+sudo examctl resume-export ATTEMPT_UUID --reason 'Matching attempt imported; resume protected-copy transfer'
 sudo examctl reconcile
 sudo examctl agent status
 sudo examctl agent stop
 sudo examctl agent start
 sudo examctl agent restart
 ```
+
+Archive delivery can be paused explicitly by a local administrator for historical
+test attempts absent from a fresh webserver database. This verifies the protected
+copy, records an audit reason, and survives restart. `export-status` distinguishes
+local protection, verified webserver transfer, and the pause reason. Pausing never
+acknowledges a transfer, changes a deadline/access hold, or deletes the original.
+Status callbacks continue; new attempts transfer automatically. `resume-export`
+retries the existing protected copy after repairing the destination's records.
 
 `--active` means started and unfinished, including locked/finalizing/collection-failed.
 The full list also shows preparations, completed submissions and their independent access holds.

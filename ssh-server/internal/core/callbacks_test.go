@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -77,11 +78,35 @@ func TestDeadlineCollectionDurableCallbacksWithoutGateway(t *testing.T) {
 		t.Fatal("failed callback acknowledged")
 	}
 	os.WriteFile(filepath.Join(source, "answer.txt"), []byte("later work"), 0600)
+	paused := true
+	if _, err := e.ExportDelivery(finalID, &paused, "Historical test archive retained on class server"); err != nil {
+		t.Fatal(err)
+	}
+	audit, err := os.ReadFile(filepath.Join(e.Config.State, "audit.ndjson"))
+	if err != nil || !strings.Contains(string(audit), "pause-archive-export") || !strings.Contains(string(audit), "Historical test archive retained on class server") {
+		t.Fatal("archive pause was not audited", err)
+	}
 	restarted, _ := New(e.Config)
 	restarted.terminate = func(*Attempt) error { return nil }
 	mu.Lock()
 	available = true
 	mu.Unlock()
+	if err := restarted.DeliverCallbacks(); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	if archives != 0 || len(events) == 0 {
+		t.Fatal("paused archive should retain status callbacks without uploading")
+	}
+	mu.Unlock()
+	status, err := restarted.ExportDelivery(finalID, nil, "")
+	if err != nil || status.(map[string]any)["webserver_transfer_verified"] != false || status.(map[string]any)["export_paused_reason"] == "" {
+		t.Fatal("restart lost explicit pause or falsely acknowledged a transfer", status, err)
+	}
+	paused = false
+	if _, err := restarted.ExportDelivery(finalID, &paused, "Resume export after importing matching historical attempt"); err != nil {
+		t.Fatal(err)
+	}
 	if err := restarted.DeliverCallbacks(); err != nil {
 		t.Fatal(err)
 	}
@@ -103,5 +128,32 @@ func TestDeadlineCollectionDurableCallbacksWithoutGateway(t *testing.T) {
 		if event.Attempt != nil && (event.Attempt.Transport != "" || event.Attempt.Lease != 0) {
 			t.Fatal("callback leaked admission state")
 		}
+	}
+}
+
+func TestExportPauseRequiresVerifiedCopyAndAudit(t *testing.T) {
+	e, _, _ := finalFixture(t, "ACTIVE", Millis()+60000)
+	paused := true
+	if _, err := e.ExportDelivery(finalID, &paused, "Retain historical class-server archive"); err == nil {
+		t.Fatal("unprotected archive pause accepted")
+	}
+	if _, err := e.Call("finalize-attempt", Request{ID: finalID, Reason: "student finish"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ExportDelivery(finalID, &paused, ""); err == nil {
+		t.Fatal("pause without audit reason accepted")
+	}
+	if err := os.Remove(filepath.Join(e.Config.State, "audit.ndjson")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(e.Config.State, "audit.ndjson"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.ExportDelivery(finalID, &paused, "Retain historical class-server archive"); err == nil {
+		t.Fatal("pause despite audit failure accepted")
+	}
+	status, err := e.ExportDelivery(finalID, nil, "")
+	if err != nil || status.(map[string]any)["export_paused_reason"] != "" {
+		t.Fatal("failed audit changed delivery state", status, err)
 	}
 }

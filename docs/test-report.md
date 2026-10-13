@@ -20,9 +20,9 @@ Validation on the local machine only:
 - 8 installation-checker tests pass. Both nginx templates validate locally with temporary
   certificates, writable temporary paths and unprivileged test ports.
 
-No deployment, system-service installation, course-account change, or test on marco or the
-real class server was performed for this redesign. The installed real-server profiles still
-need the documented signature-key/configuration/binary migration and production signoff.
+These automated checks preceded deployment. The subsequent authorized deployment on
+marco and csc-sys, actual SSH/callback checks, historical archive migration and preserved
+qualification limits are recorded in [ssh-command-deployment.md](ssh-command-deployment.md).
 Global agent stop/start actions were checked as service command plans, without stopping
 local host services. See ssh-server/README.md for administrator commands and migration.
 

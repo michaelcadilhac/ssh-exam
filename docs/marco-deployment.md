@@ -1,6 +1,8 @@
 # ssh-exam.cadilhac.name deployment
 
-> Installation/history record: the subsequent SSH command and callback redesign is a local source change only; this document does not establish that those servers have been upgraded. Use ssh-server/README.md for the current transport and migration procedure.
+> Initial installation/history record. The subsequent SSH command and callback
+> architecture is now deployed on both hosts; see [the upgrade record](ssh-command-deployment.md)
+> for current transport, backups, verification and qualification status.
 
 Installed on 2026-10-12 on `marco` (Arch Linux), following TagMix's conventions:
 

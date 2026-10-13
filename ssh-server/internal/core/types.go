@@ -101,6 +101,7 @@ type State struct {
 	Events        []CallbackEvent       `json:"events,omitempty"`
 	Reported      map[string]string     `json:"reported,omitempty"`
 	Exports       map[string]bool       `json:"exports,omitempty"`
+	ExportPauses  map[string]string     `json:"export_pauses,omitempty"`
 }
 type Engine struct {
 	Config    Config

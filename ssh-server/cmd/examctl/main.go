@@ -51,7 +51,7 @@ func main() {
 	exam := flags.String("exam", "", "filter list by exam ID")
 	asJSON := flags.Bool("json", false, "machine-readable list")
 	flags.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: sudo examctl [flags] list|info|start|pause|stop|finish|cancel|retry|manifest|export|delete|override-access|health|accounts|reconcile|agent [ATTEMPT or ACTION]\nagent ACTION: start, stop, restart, status (deadline watchdog stays running)")
+		fmt.Fprintln(os.Stderr, "Usage: sudo examctl [flags] list|info|start|pause|stop|finish|cancel|retry|manifest|export|export-status|pause-export|resume-export|delete|override-access|health|accounts|reconcile|agent [ATTEMPT or ACTION]\nagent ACTION: start, stop, restart, status (deadline watchdog stays running)")
 		flags.PrintDefaults()
 	}
 	flags.Parse(ordered(os.Args[1:]))
@@ -124,6 +124,11 @@ func main() {
 		result = map[string]bool{"ok": err == nil}
 	case "override-access":
 		result, err = e.OverrideAccess(id, *reason)
+	case "export-status":
+		result, err = e.ExportDelivery(id, nil, "")
+	case "pause-export", "resume-export":
+		paused := op == "pause-export"
+		result, err = e.ExportDelivery(id, &paused, *reason)
 	case "export":
 		var value any
 		value, err = e.Call("submission-status", core.Request{ID: id})
