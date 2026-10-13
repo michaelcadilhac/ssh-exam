@@ -1,7 +1,6 @@
 import ssh2 from "ssh2";
 import type { Client as SSHClient, ClientChannel, ConnectConfig } from "ssh2";
 const { Client } = ssh2;
-import { randomUUID } from "node:crypto";
 import type { Config } from "../../../packages/config/index.js";
 import type { Agent } from "./agent.js";
 import { LoginPassword, isPasswordPrompt } from "./login-password.js";
@@ -29,7 +28,13 @@ export class Connection {
     cancelled: boolean;
   };
   private cancelAuthentication?: () => void;
-  async connect(dialogue: Dialogue, options: { timeoutMs?: number } = {}) {
+  async connect(
+    dialogue: Dialogue,
+    options: {
+      timeoutMs?: number;
+      continuation?: { id: string; generation: number; expires: number };
+    } = {},
+  ) {
     if (this.authentication || this.alive)
       throw Error("SSH connection already in use");
     const attempt = {
@@ -295,19 +300,66 @@ export class Connection {
           throw Error("Login-only testing requires development mode");
         return;
       }
-      const admission = await this.agent.call("issue-registration", {
-        username: this.username,
+      const result = await this.command("register", {
+        continuation: options.continuation,
       });
-      const channel = await this.exec();
-      const result = await this.handshake(channel, admission.token);
-      channel.end();
       this.transport = result.transport;
+      this.agent.bind?.(this);
     } catch {
       this.close();
       throw Error("SSH authentication or connection failed");
     } finally {
       release();
     }
+  }
+  async command(op: string, body: any = {}): Promise<any> {
+    if (!this.alive) throw Error("SSH transports unavailable");
+    const envelope = this.agent.sign(op, this.username, this.transport, body);
+    return new Promise((resolve, reject) => {
+      this.class.exec("exam-control", (error, channel) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        let input = Buffer.alloc(0),
+          settled = false;
+        const finish = (error?: Error, value?: any) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          channel.close();
+          error ? reject(error) : resolve(value);
+        };
+        const timer = setTimeout(
+          () =>
+            finish(Error("SSH agent command timed out; await status callback")),
+          120000,
+        );
+        channel.on("error", (e: Error) => finish(e));
+        channel.on("close", () =>
+          finish(Error("SSH command ended without acknowledgment")),
+        );
+        channel.on("data", (chunk: Buffer) => {
+          input = Buffer.concat([input, chunk]);
+          if (input.length > 4 * 1024 * 1024) {
+            finish(Error("Oversized agent response"));
+            return;
+          }
+          const end = input.indexOf(10);
+          if (end < 0) return;
+          try {
+            const response = JSON.parse(input.subarray(0, end).toString());
+            finish(
+              response.error ? Error(response.error) : undefined,
+              response.result,
+            );
+          } catch {
+            finish(Error("Invalid agent command response"));
+          }
+        });
+        channel.write(JSON.stringify(envelope) + "\n");
+      });
+    });
   }
   private exec() {
     return new Promise<ClientChannel>((resolve, reject) =>
@@ -374,7 +426,7 @@ export class Connection {
     if (this.config.loginOnly)
       throw Error("Terminals are unavailable during login-only testing");
     if (!this.alive) throw Error("SSH transports unavailable");
-    const admission = await this.agent.call("issue-channel-admission", {
+    const admission = await this.command("issue-channel-admission", {
       id: attempt,
       pane,
       transport: this.transport,
@@ -391,6 +443,7 @@ export class Connection {
     const authenticating = !!this.authentication;
     this.cancelAuthentication?.();
     this.alive = false;
+    this.agent.unbind?.(this);
     for (const c of this.panes.values()) c.close();
     this.panes.clear();
     if (authenticating) {

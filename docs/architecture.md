@@ -2,11 +2,11 @@
 
 One Fastify instance owns live ssh2 objects; SQLite/WAL stores authoritative metadata and private
 files hold media/archives. Local storage is required. No competing replicas or stateless workers.
-Versioned migrations 001 and 002 are idempotently applied; 002 adds protected-copy and actual
+Versioned migrations 001 through 006 are idempotently applied; 002 adds protected-copy and actual
 completion/collection/protection timestamps without changing existing attempts. Settings snapshot at preparation; later roster edits do
 not change an attempt's duration/webcam/deadline.
 
-Begin persists its opaque operation/attempt ID before mTLS activation. The class agent commits
+Begin persists its opaque operation/attempt ID before signed SSH activation. The class agent commits
 canonical millisecond UTC start/deadline before allowing material-bearing shells. Lost replies
 reconcile the same ID and lock the original deadline. A renewable execution lease lasts at most
 15 seconds and requires current page status plus accepted required images. Lease recovery alone
@@ -83,3 +83,16 @@ The local watchdog releases held completed accounts only against verified protec
 and terminated workloads after both clock boundaries. The gateway keeps an inspected shadow
 for its dashboard and never infers release from completion or local time. The root-only CLI's
 safe audited override is not a gateway operation. Missing initialized state fails closed.
+
+
+The independent control API is removed. Non-PTY `exam-control` channels carry exact-byte
+Ed25519-signed JSON frames over student SSH. The root socket verifies UID/sshd ancestry,
+configured audience, account, expiry, transport and a persistent nonce. Pane capabilities
+remain random one-use tokens. Instructor grants stay at the gateway until fresh SSH sign-in.
+The independent root watchdog persists collection/status events alongside state, then retries
+signed outbound HTTPS callbacks. It never polls for commands. Callback event IDs/digests and
+per-attempt sequence checkpoints survive webserver restart; stale events cannot reopen a run.
+Archive upload receipts bind attempt/checksum, and publication refuses conflicting copies.
+Root originals stay on csc-sys. The webserver's timer updates pending UI and detects stale
+client contact; it does not issue disconnected collection requests. Administrator stop/recovery
+is local through examctl, with the shared gate service separate from deadline supervision.

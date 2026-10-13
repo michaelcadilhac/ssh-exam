@@ -1,7 +1,9 @@
 import ssh2 from "ssh2";
 const { Server, utils } = ssh2;
-import { generateKeyPairSync, randomUUID } from "node:crypto";
+import { generateKeyPairSync, randomUUID, sign, verify } from "node:crypto";
 import net from "node:net";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { hash, secret } from "../../apps/server/src/db.js";
 export async function hosts(
   options: {
@@ -15,6 +17,25 @@ export async function hosts(
   } = {},
 ) {
   const password = options.password ?? "shared-password";
+  const signing = generateKeyPairSync("ed25519", {
+    privateKeyEncoding: { format: "pem", type: "pkcs8" },
+    publicKeyEncoding: { format: "pem", type: "spki" },
+  });
+  const callback = generateKeyPairSync("ed25519", {
+    privateKeyEncoding: { format: "pem", type: "pkcs8" },
+    publicKeyEncoding: { format: "pem", type: "spki" },
+  });
+  const dir = mkdtempSync(tmpdir() + "/exam-ssh-keys-");
+  writeFileSync(dir + "/gateway.key", signing.privateKey, { mode: 0o600 });
+  writeFileSync(dir + "/agent.pub", callback.publicKey);
+  const agentConfig = {
+    id: "class",
+    signingKey: dir + "/gateway.key",
+    callbackPublicKey: dir + "/agent.pub",
+  };
+  const control = {
+    command: undefined as undefined | ((op: string, body: any) => Promise<any>),
+  };
   const key = () =>
     generateKeyPairSync("rsa", {
       modulusLength: 2048,
@@ -78,6 +99,55 @@ export async function hosts(
         session.on("pty", (accept) => accept?.());
         session.on("window-change", (accept) => accept?.());
         session.on("exec", (accept, reject, info) => {
+          if (info.command === "exam-control") {
+            const stream = accept();
+            if (!stream) return;
+            let input = "";
+            stream.on("data", (chunk: Buffer) => {
+              input += chunk.toString();
+              if (input.length > 65536) {
+                stream.end();
+                return;
+              }
+              if (!input.includes("\n")) return;
+              const frame = JSON.parse(input.trim());
+              input = "";
+              const payload = Buffer.from(frame.payload, "base64");
+              const cmd = JSON.parse(payload.toString());
+              void (async () => {
+                if (
+                  !verify(
+                    null,
+                    payload,
+                    signing.publicKey,
+                    Buffer.from(frame.signature, "base64"),
+                  ) ||
+                  cmd.audience !== "class" ||
+                  cmd.expires <= Date.now()
+                )
+                  throw Error("Invalid signed fixture command");
+                if (cmd.op !== "register" && cmd.transport !== transportID)
+                  throw Error("Transport mismatch");
+                const result =
+                  cmd.op === "register"
+                    ? {
+                        transport: transportID,
+                        uid: 10001,
+                        ...(control.command
+                          ? await control.command("register", {
+                              ...cmd.body,
+                              transport: transportID,
+                            })
+                          : {}),
+                      }
+                    : await (control.command || agent.call)(cmd.op, cmd.body);
+                stream.end(JSON.stringify({ result }) + "\n");
+              })().catch((error) =>
+                stream.end(JSON.stringify({ error: error.message }) + "\n"),
+              );
+            });
+            return;
+          }
           if (info.command !== "exam-gateway") {
             reject?.();
             return;
@@ -252,6 +322,23 @@ export async function hosts(
     jumpServer.listen(0, "127.0.0.1", resolve),
   );
   const agent = {
+    sign: (op: string, username: string, transport: string, body: any) => {
+      const payload = Buffer.from(
+        JSON.stringify({
+          audience: "class",
+          nonce: randomUUID(),
+          expires: Date.now() + 30000,
+          op,
+          username,
+          transport,
+          body,
+        }),
+      );
+      return {
+        payload: payload.toString("base64"),
+        signature: sign(null, payload, signing.privateKey).toString("base64"),
+      };
+    },
     call: async (op: string, r: any = {}) => {
       const purpose =
         op === "issue-registration" ? "register" : r.purpose || "exam";
@@ -273,9 +360,13 @@ export async function hosts(
     counts,
     authCalls,
     agent,
+    agentConfig,
+    control,
+    callbackKey: callback.privateKey,
     caps,
     attempts,
     close: async () => {
+      rmSync(dir, { recursive: true, force: true });
       for (const timer of timers) clearTimeout(timer);
       for (const c of clients) c.end();
       await Promise.all([

@@ -22,10 +22,9 @@ async function setup(options: Parameters<typeof hosts>[0] = {}) {
     jump: h.jump,
     class: h.class,
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   };

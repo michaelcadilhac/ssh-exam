@@ -31,4 +31,4 @@ if [ ! -f /etc/exam-agent/guards.json ]; then install -m 0600 config/guards.exam
 groupadd -f exam-managed
 if ! grep -qxF '/usr/local/libexec/exam-login' /etc/shells; then echo /usr/local/libexec/exam-login >> /etc/shells; fi
 systemctl daemon-reload
-printf '%s\n' 'Binaries installed. Configure mTLS, rootfs, allowlist, SSH/PAM and verify before enabling services or enrolling accounts.'
+printf '%s\n' 'Binaries installed. Configure gateway signatures, HTTPS callbacks, rootfs, allowlist, SSH/PAM and verify before enabling services or enrolling accounts.'

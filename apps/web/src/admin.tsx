@@ -365,18 +365,6 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                           Authorize resume
                         </button>
                       )}
-                      {["ACTIVE", "LOCKED", "COLLECTION_FAILED"].includes(
-                        a.state,
-                      ) && (
-                        <button
-                          className="danger"
-                          onClick={() =>
-                            setSelected({ ...a, confirmEnd: true })
-                          }
-                        >
-                          End & collect
-                        </button>
-                      )}
                       {a.export_status === "ready" && (
                         <a
                           className="button"
@@ -779,8 +767,8 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
         >
           <p>
             This removes enrollment only. Saved submissions, monitoring and
-            attempt history are kept. An exam that has already started
-            continues; use End & collect to end it.
+            attempt history are kept. An exam that has already started continues
+            to its original deadline. A server administrator can end it locally.
           </p>
           <div className="actions">
             <button onClick={() => setRemoving(null)}>Cancel</button>
@@ -822,22 +810,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           >
             Close review
           </button>
-          {selected.confirmEnd ? (
-            <>
-              <p>End this attempt and protect saved files now?</p>
-              <button
-                className="danger"
-                onClick={() =>
-                  action(async () => {
-                    await api(`/admin/attempts/${selected.id}/end`, {});
-                    setSelected(null);
-                  })
-                }
-              >
-                Confirm termination & collection
-              </button>
-            </>
-          ) : (
+          {
             <>
               {selected.state === "CANCELLED_BEFORE_START" ? (
                 <p>
@@ -913,14 +886,14 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
               {selected.state === "COMPLETED" &&
                 selected.export_status !== "deleted" && (
                   <details>
-                    <summary>Delete submission</summary>
+                    <summary>Delete web copy</summary>
                     <button
                       className="danger"
                       onClick={() =>
                         action(async () => {
                           if (
                             !window.confirm(
-                              "Permanently delete the protected submission and gateway archive? Monitoring is kept.",
+                              "Delete the web download copy? The protected class-server original and monitoring are kept.",
                             )
                           )
                             return;
@@ -933,7 +906,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                         })
                       }
                     >
-                      Delete submission permanently (keeps monitoring)
+                      Delete web copy
                     </button>
                   </details>
                 )}
@@ -1025,7 +998,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                 </details>
               )}
             </>
-          )}
+          }
         </Modal>
       )}
     </div>

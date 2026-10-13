@@ -77,7 +77,7 @@ export async function createApp(
     },
   });
   const store = new Store(config.data),
-    agent = new Agent(config.agent),
+    agent = new Agent(config.agent, store),
     monitoring = new Monitoring(store),
     life = new Lifecycle(store, agent, monitoring);
   const authAttempts = new Map<string, { at: number; count: number }>();
@@ -102,11 +102,6 @@ export async function createApp(
       grant.expires <= now()
     ) {
       const expires = Math.min(a.deadline, now() + 300000);
-      await agent.call("authorize-continuation", {
-        id,
-        generation: a.generation,
-        expires,
-      });
       store.db
         .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
         .run(id, a.generation, expires);
@@ -245,6 +240,7 @@ export async function createApp(
           !["/api/admin/login", "/api/admin/logout"].includes(req.url)))
     )
       throw Error("Exam operations are unavailable during login-only testing.");
+    if (req.url.startsWith("/api/agent/")) return; // Each callback verifies the pinned agent signature.
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
       if (req.headers.origin !== config.origin)
         throw Object.assign(Error("Origin rejected"), { statusCode: 403 });
@@ -270,6 +266,122 @@ export async function createApp(
           : err.message,
     });
   });
+  app.addContentTypeParser(
+    "application/vnd.ssh-exam-event",
+    { parseAs: "buffer" },
+    (_req, body, done) => done(null, body),
+  );
+  app.addContentTypeParser(
+    "application/gzip",
+    { parseAs: "buffer" },
+    (_req, body, done) => done(null, body),
+  );
+  app.post(
+    "/api/agent/events",
+    { config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload))
+        throw Error("Raw signed callback required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      const event = JSON.parse(payload.toString());
+      if (
+        event.agent !== config.agent.id ||
+        !Number.isSafeInteger(event.sequence) ||
+        event.sequence < 1
+      )
+        throw Error("Callback scope rejected");
+      const digest = hash(payload);
+      store.db.transaction(() => {
+        const prior = store.db
+          .prepare(
+            "SELECT digest FROM agent_events WHERE agent=? AND sequence=?",
+          )
+          .get(event.agent, event.sequence) as any;
+        if (prior) {
+          if (prior.digest !== digest)
+            throw Error("Conflicting callback replay");
+          return;
+        }
+        if (event.health) {
+          if (
+            typeof event.health.ready !== "boolean" ||
+            !event.accounts ||
+            Object.values(event.accounts).some(
+              (uid: any) => !Number.isSafeInteger(uid) || uid < 1000,
+            )
+          )
+            throw Error("Invalid agent registry");
+          store.db
+            .prepare(
+              "INSERT INTO agent_snapshot VALUES(?,?,?) ON CONFLICT(agent) DO UPDATE SET sequence=excluded.sequence,payload=excluded.payload WHERE excluded.sequence>agent_snapshot.sequence",
+            )
+            .run(event.agent, event.sequence, JSON.stringify(event));
+        }
+        if (event.attempt) {
+          const remote = event.attempt;
+          const a = store.db
+            .prepare("SELECT id FROM attempts WHERE id=?")
+            .get(remote.id);
+          const prior = store.db
+            .prepare(
+              "SELECT sequence FROM agent_attempt_sequence WHERE attempt=?",
+            )
+            .get(remote.id) as any;
+          if (a && (!prior || event.sequence > prior.sequence)) {
+            life.acceptRemote(remote, event.manifest);
+            store.db
+              .prepare(
+                "INSERT INTO agent_attempt_sequence VALUES(?,?) ON CONFLICT(attempt) DO UPDATE SET sequence=excluded.sequence",
+              )
+              .run(remote.id, event.sequence);
+          } else if (!a)
+            store.audit("class-agent", "unknown-attempt-status", remote.id);
+        }
+        store.db
+          .prepare("INSERT INTO agent_events VALUES(?,?,?)")
+          .run(event.agent, event.sequence, digest);
+      })();
+      return { ok: true };
+    },
+  );
+  const transferReceipt = (req: any) => {
+    const encoded = String(req.headers["x-exam-receipt"] || "");
+    if (encoded.length > 2048) throw Error("Invalid transfer receipt");
+    const payload = Buffer.from(encoded, "base64");
+    agent.verifyCallback(
+      payload,
+      String(req.headers["x-exam-signature"] || ""),
+    );
+    const receipt = JSON.parse(payload.toString());
+    if (receipt.agent !== config.agent.id || receipt.attempt !== req.params.id)
+      throw Error("Transfer scope rejected");
+    const attempt = store.attempt(receipt.attempt);
+    if (!attempt.protected || attempt.checksum !== receipt.checksum)
+      throw Error("Protected transfer is not authorized");
+    return receipt;
+  };
+  app.post(
+    "/api/agent/submissions/:id",
+    {
+      bodyLimit: 128 * 1024 * 1024,
+      config: { rateLimit: false },
+      preParsing: async (req, _reply, payload) => {
+        transferReceipt(req);
+        return payload;
+      },
+    },
+    async (req: any) => {
+      // Authenticate the small signed receipt before accepting a large archive body.
+      const receipt = transferReceipt(req);
+      if (!Buffer.isBuffer(req.body)) throw Error("Raw archive required");
+      life.receiveArchive(receipt.attempt, receipt.checksum, req.body);
+      return { ok: true };
+    },
+  );
   app.get("/health/live", async () => ({ ok: true }));
   app.get("/api/login-test", async () => ({
     maintenance: config.maintenance,
@@ -308,9 +420,12 @@ export async function createApp(
         (config.mode !== "production" ||
           (!h.functional_test &&
             h.production_ready !== false &&
-            ["interval-access-hold", "all-session-channel-gate"].every((cap) =>
-              h.capabilities?.includes(cap),
-            )));
+            [
+              "interval-access-hold",
+              "all-session-channel-gate",
+              "signed-ssh-control",
+              "durable-status-callbacks",
+            ].every((cap) => h.capabilities?.includes(cap))));
       if (!ready) reply.code(503);
       return {
         ready,
@@ -325,7 +440,7 @@ export async function createApp(
       reply.code(503);
       return {
         ready: false,
-        reason: "Independent class-agent control path unavailable",
+        reason: "Class agent configuration has not been reported",
       };
     }
   });
@@ -482,7 +597,7 @@ export async function createApp(
       .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
       .get(s.exam, s.username) as any;
     if (!enrollment) throw Error("Enrollment unavailable");
-    const h = await agent.call("health");
+    const h = await conn.command("health");
     if (!h.ready) throw Error("Class server guards not ready");
     if (
       h.functional_test &&
@@ -493,9 +608,12 @@ export async function createApp(
       );
     if (
       config.mode === "production" &&
-      !["interval-access-hold", "all-session-channel-gate"].every((cap) =>
-        h.capabilities?.includes(cap),
-      )
+      ![
+        "interval-access-hold",
+        "all-session-channel-gate",
+        "signed-ssh-control",
+        "durable-status-callbacks",
+      ].every((cap) => h.capabilities?.includes(cap))
     )
       throw Error(
         "Class server lacks original-deadline account isolation; update and verify the agent before running exams.",
@@ -623,6 +741,13 @@ export async function createApp(
       for (const c of conn.panes.values()) c.close();
       conn.panes.clear();
       const result = await agent.call("activate-attempt", { id: a.id });
+      if (result.state !== "ACTIVE") {
+        const manifest = result.protected
+          ? await conn.command("submission-manifest", { id: a.id })
+          : undefined;
+        life.acceptRemote(result, manifest, a.id);
+        return { attempt: store.attempt(a.id), serverNow: now() };
+      }
       life.syncAccess(a.id, result);
       store.db
         .prepare(
@@ -730,7 +855,7 @@ export async function createApp(
       throw Error(
         "Authenticate the same SSH account after instructor approval",
       );
-    await agent.call("attach-transport", {
+    await conn.command("attach-transport", {
       id: a.id,
       username: a.username,
       transport: conn.transport,
@@ -1072,11 +1197,6 @@ export async function createApp(
     if (a.state !== "LOCKED" || !a.deadline || a.deadline <= now())
       throw Error("Attempt cannot continue");
     const expires = Math.min(a.deadline, now() + 300000);
-    await agent.call("authorize-continuation", {
-      id: a.id,
-      generation: a.generation,
-      expires,
-    });
     store.db
       .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
       .run(a.id, a.generation, expires);
@@ -1088,12 +1208,6 @@ export async function createApp(
       String(a.generation),
     );
     return { expires };
-  });
-  app.post("/api/admin/attempts/:id/end", async (req: any) => {
-    const s = principal(req, "admin");
-    await life.finish(req.params.id, "instructor termination");
-    store.audit(s.username, "end-attempt", req.params.id);
-    return store.attempt(req.params.id);
   });
   app.post("/api/admin/attempts/:id/delete-monitoring", async (req: any) => {
     const s = principal(req, "admin");
@@ -1159,14 +1273,12 @@ export async function createApp(
       throw Error(
         "Completed attempt and explicit deletion confirmation required",
       );
-    await agent.call("delete-submission", { id: a.id });
+    // The protected class-server original is retained; administrators delete it locally with examctl.
     rmSync(`${store.dir}/submissions/${a.id}.tar.gz`, { force: true });
     rmSync(`${store.dir}/submissions/${a.id}.manifest.json`, { force: true });
     store.db.transaction(() => {
       store.db
-        .prepare(
-          "UPDATE attempts SET export_status='deleted',protected=0 WHERE id=?",
-        )
+        .prepare("UPDATE attempts SET export_status='deleted' WHERE id=?")
         .run(a.id);
       store.audit(s.username, "delete-submission", a.id);
     })();
@@ -1404,7 +1516,7 @@ export async function createApp(
               )
               .get(m.exam, m.username) as Attempt | undefined;
             if (latest) {
-              await life.reconcile(latest.id);
+              await life.reconcile(latest.id).catch(() => {});
               await autoAuthorizeSandbox(latest.id, true);
             }
           }
@@ -1470,11 +1582,34 @@ export async function createApp(
               host + ": " + detail,
             );
           };
-          await p.connection.connect(dialogue);
+          const held = store.db
+            .prepare(
+              "SELECT * FROM attempts WHERE username=? AND state='LOCKED' ORDER BY rowid DESC LIMIT 1",
+            )
+            .get(m.username) as Attempt | undefined;
+          const grant =
+            held &&
+            (store.db
+              .prepare(
+                "SELECT * FROM continuations WHERE attempt=? AND consumed=0 AND expires>?",
+              )
+              .get(held.id, now()) as any);
+          await p.connection.connect(dialogue, {
+            continuation: grant
+              ? {
+                  id: held!.id,
+                  generation: grant.generation,
+                  expires: grant.expires,
+                }
+              : undefined,
+          });
           if (!config.loginOnly && isSandbox(m.exam)) {
-            const accounts = await agent.call("resolve-course-accounts", {
-              usernames: [m.username],
-            });
+            const accounts = await p.connection.command(
+              "resolve-course-accounts",
+              {
+                usernames: [m.username],
+              },
+            );
             const uid = accounts[m.username];
             if (!Number.isSafeInteger(uid) || uid < 1000)
               throw Error("Account not approved by the class server");

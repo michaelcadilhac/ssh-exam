@@ -45,8 +45,9 @@ or link-opening addons. CSP permits inline styles for WinBox positioning, no inl
 A root-approved UID/original-shell registry and compiled login gate precede personal profiles.
 ForceCommand, PermitUserRC=no, forwarding policy and reviewed PAM/job restrictions address
 alternate routes. Hashed one-use capabilities bind UID, attempt, pane, purpose and root sshd
-PID/start/boot identity. The root control API requires TLS 1.3, trusted client certificate and
-configured client Common Name. No arbitrary command operation is exposed to the gateway.
+PID/start/boot identity. The root command gate requires a pinned gateway Ed25519 signature, account/transport scope,
+short expiry and a persisted one-use nonce; signed outbound HTTPS callbacks use a separate
+pinned agent public key. There is no TCP control API or command polling. No arbitrary command operation is exposed to the gateway.
 
 Work uses root-controlled systemd scopes and bubblewrap with isolated filesystems, network,
 proc/dev/tmp and copied read-only shell preferences, excluding host home sockets. The watchdog,

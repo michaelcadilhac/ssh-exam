@@ -1,86 +1,94 @@
-import https from "node:https";
 import { readFileSync } from "node:fs";
+import { randomUUID, sign, verify } from "node:crypto";
 import type { Config } from "../../../packages/config/index.js";
+import type { Store } from "./db.js";
+export interface AgentSession {
+  username: string;
+  alive: boolean;
+  command(op: string, body?: any): Promise<any>;
+}
+// Commands have no network route of their own: only an authenticated student SSH session.
 export class Agent {
-  private transport: https.Agent | undefined;
-  constructor(private config: Config["agent"]) {}
-  private connection() {
-    return (this.transport ??= new https.Agent({
-      keepAlive: true,
-      maxSockets: 16,
-      maxFreeSockets: 8,
-      ca: readFileSync(this.config.ca),
-      cert: readFileSync(this.config.cert),
-      key: readFileSync(this.config.key),
-      rejectUnauthorized: true,
-      minVersion: "TLSv1.3",
-    }));
+  private sessions = new Map<string, AgentSession>();
+  constructor(
+    private config: Config["agent"],
+    private store?: Store,
+  ) {}
+  bind(session: AgentSession) {
+    this.sessions.set(session.username, session);
   }
-  async call<T = any>(op: string, body: object = {}): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const req = https.request(
-        new URL(`/v1/${op}`, this.config.url),
-        {
-          method: "POST",
-          agent: this.connection(),
-          timeout: 10000,
-          headers: { "Content-Type": "application/json" },
-        },
-        (res) => {
-          const chunks: Buffer[] = [];
-          let size = 0;
-          res.on("data", (d) => {
-            size += d.length;
-            if (size > 4 * 1024 * 1024)
-              req.destroy(Error("Oversized agent response"));
-            else chunks.push(d);
-          });
-          res.on("end", () => {
-            try {
-              const data = JSON.parse(Buffer.concat(chunks).toString());
-              if (res.statusCode !== 200)
-                reject(Error(data.error || "Agent rejected operation"));
-              else resolve(data);
-            } catch (e) {
-              reject(e);
-            }
-          });
-        },
-      );
-      req.on("error", reject);
-      req.on("timeout", () =>
-        req.destroy(Error("Agent request timed out; reconcile operation")),
-      );
-      req.end(JSON.stringify(body));
-    });
+  unbind(session: AgentSession) {
+    if (this.sessions.get(session.username) === session)
+      this.sessions.delete(session.username);
   }
-  async archive(id: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const req = https.request(
-        new URL(`/v1/export/${id}`, this.config.url),
-        { agent: this.connection(), timeout: 120000 },
-        (res) => {
-          const chunks: Buffer[] = [];
-          let size = 0;
-          res.on("data", (d) => {
-            size += d.length;
-            if (size > 128 * 1024 * 1024)
-              req.destroy(Error("Archive exceeds transfer cap"));
-            else chunks.push(d);
-          });
-          res.on("end", () =>
-            res.statusCode === 200
-              ? resolve(Buffer.concat(chunks))
-              : reject(Error("Archive export unavailable")),
-          );
-        },
-      );
-      req.on("timeout", () => req.destroy(Error("Archive transfer timeout")));
-      req.on("error", reject);
-      req.end();
-    });
+  connected(username: string) {
+    return !!this.sessions.get(username)?.alive;
+  }
+  sign(op: string, username: string, transport: string, body: object) {
+    const payload = Buffer.from(
+      JSON.stringify({
+        audience: this.config.id,
+        nonce: randomUUID(),
+        expires: Date.now() + 30000,
+        op,
+        username,
+        transport,
+        body,
+      }),
+    );
+    return {
+      payload: payload.toString("base64"),
+      signature: sign(
+        null,
+        payload,
+        readFileSync(this.config.signingKey),
+      ).toString("base64"),
+    };
+  }
+  verifyCallback(payload: Buffer, signature: string) {
+    if (
+      !signature ||
+      signature.length > 128 ||
+      !verify(
+        null,
+        payload,
+        readFileSync(this.config.callbackPublicKey),
+        Buffer.from(signature, "base64"),
+      )
+    )
+      throw Object.assign(Error("Agent signature rejected"), {
+        statusCode: 403,
+      });
+  }
+  async call<T = any>(op: string, body: any = {}): Promise<T> {
+    const attempt =
+      body.id &&
+      (this.store?.db
+        .prepare("SELECT username FROM attempts WHERE id=?")
+        .get(body.id) as any);
+    const username = body.username || attempt?.username;
+    const session = username ? this.sessions.get(username) : undefined;
+    if (session?.alive) return session.command(op, body);
+    if (op === "health" || op === "resolve-course-accounts") {
+      const row = this.store?.db
+        .prepare("SELECT payload FROM agent_snapshot WHERE agent=?")
+        .get(this.config.id) as any;
+      if (!row) throw Error("Class agent has not reported its configuration");
+      const snapshot = JSON.parse(row.payload);
+      if (op === "health") return snapshot.health;
+      const result: Record<string, number> = {};
+      for (const name of body.usernames || []) {
+        if (!Number.isSafeInteger(snapshot.accounts?.[name]))
+          throw Error("Account not approved by class server: " + name);
+        result[name] = snapshot.accounts[name];
+      }
+      return result as T;
+    }
+    throw Error(
+      "Reconnect student SSH before this operation; deadlines are enforced locally",
+    );
   }
   close() {
-    this.transport?.destroy();
+    this.sessions.clear();
   }
 }

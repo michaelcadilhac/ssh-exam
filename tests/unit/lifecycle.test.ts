@@ -27,7 +27,7 @@ it("announces pause and disconnects before waiting for the class agent", async (
       calls.push("disconnect");
     };
     await life.lock("a", "focus lost");
-    expect(calls).toEqual(["disconnect", "agent"]);
+    expect(calls).toEqual(["agent", "disconnect"]);
     expect(s.attempt("a").deadline).toBe(9999999999999);
     expect(
       s.db
@@ -65,11 +65,11 @@ it("reconciles a lost activation acknowledgment into a lock with the original de
       },
     };
     const l = new Lifecycle(s, agent as any, new Monitoring(s));
-    await l.tick();
+    await l.reconcile("a");
     expect(s.attempt("a").state).toBe("LOCKED");
     expect(s.attempt("a").deadline).toBe(5400010);
     expect(s.attempt("a").generation).toBe(1);
-    expect(calls).toContain("lock-attempt");
+    expect(calls).toEqual(["inspect-attempt"]);
   } finally {
     s.close();
     rmSync(dir, { recursive: true, force: true });
@@ -243,6 +243,45 @@ it("never retries a cancellation when activation committed remotely", async () =
     expect(s.attempt("a").state).toBe("LOCKED");
     expect(s.attempt("a").deadline).toBe(deadline);
     expect(s.db.prepare("SELECT * FROM tombstones").all()).toHaveLength(0);
+  } finally {
+    s.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+it("delayed pause callbacks do not close an already resumed or newly authorized transport", () => {
+  const dir = mkdtempSync(tmpdir() + "/stale-pause-");
+  const s = new Store(dir);
+  try {
+    s.db.exec(
+      "INSERT INTO exams VALUES('e','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,generation) VALUES('a','e','alice',1001,'ACTIVE','{}',1,9999999999999,2); INSERT INTO continuations VALUES('a',2,9999999999999,1)",
+    );
+    const life = new Lifecycle(s, {} as any, new Monitoring(s));
+    let pauses = 0;
+    life.onPaused = () => pauses++;
+    life.acceptRemote(
+      { state: "LOCKED", start: 1, deadline: 9999999999999, generation: 2 },
+      undefined,
+      "a",
+    );
+    expect(s.attempt("a").state).toBe("ACTIVE");
+    expect(pauses).toBe(0);
+    s.db.exec(
+      "UPDATE attempts SET state='LOCKED'; UPDATE continuations SET consumed=0",
+    );
+    life.acceptRemote(
+      { state: "LOCKED", start: 1, deadline: 9999999999999, generation: 2 },
+      undefined,
+      "a",
+    );
+    expect(pauses).toBe(0);
+    life.acceptRemote(
+      { state: "LOCKED", start: 1, deadline: 9999999999999, generation: 3 },
+      undefined,
+      "a",
+    );
+    expect(pauses).toBe(1);
+    expect(s.attempt("a").generation).toBe(3);
   } finally {
     s.close();
     rmSync(dir, { recursive: true, force: true });

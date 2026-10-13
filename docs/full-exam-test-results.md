@@ -1,5 +1,7 @@
 # Real-server functional test results
 
+> Installation/history record: the subsequent SSH command and callback redesign is a local source change only; this document does not establish that those servers have been upgraded. Use ssh-server/README.md for the current transport and migration procedure.
+
 2026-10-11, csc-sys.cdm.depaul.edu, Ubuntu 24.04.4, trusted administrator mcadilha.
 
 The root agent, watchdog, reconciliation timer and test SSH service were installed and

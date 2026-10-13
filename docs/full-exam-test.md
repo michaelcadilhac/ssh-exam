@@ -1,5 +1,7 @@
 # Full exam functional test on csc-sys
 
+> Installation/history record: the subsequent SSH command and callback redesign is a local source change only; this document does not establish that those servers have been upgraded. Use ssh-server/README.md for the current transport and migration procedure.
+
 Prepared for mcadilha on Ubuntu 24.04.4 x86-64, 2026-10-11.
 This is an explicitly requested trusted-administrator functional test. mcadilha has
 NOPASSWD: ALL and is directory-managed. It cannot qualify production student isolation.

@@ -28,7 +28,21 @@ if (
 const h = await hosts(),
   remote = new Map<string, any>(),
   originalCall = Agent.prototype.call;
-Agent.prototype.call = async function (op: string, b: any = {}): Promise<any> {
+const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
+  if (op === "register") {
+    if (b.continuation) {
+      const a = remote.get(b.continuation.id);
+      if (!a || a.state === "COMPLETED") throw Error("Attempt cannot resume");
+      if (a.state === "ACTIVE") {
+        a.state = "LOCKED";
+        a.generation++;
+      }
+      if (a.generation !== b.continuation.generation)
+        throw Error("Stale continuation");
+      a.authorization = b.continuation.expires;
+    }
+    return {};
+  }
   if (op.startsWith("issue-")) return h.agent.call(op, b);
   if (op === "health") return { ready: true, fixture: true };
   if (op === "prepare-attempt") {
@@ -50,6 +64,7 @@ Agent.prototype.call = async function (op: string, b: any = {}): Promise<any> {
   }
   return a;
 };
+h.control.command = fixtureCall;
 const dir = mkdtempSync(tmpdir() + "/exam-load-"),
   origin = "http://127.0.0.1:3200";
 const { app, store } = await createApp({
@@ -59,15 +74,17 @@ const { app, store } = await createApp({
   port: 3200,
   jump: h.jump,
   class: h.class,
-  agent: {
-    url: "https://127.0.0.1:1",
-    ca: "/missing",
-    cert: "/missing",
-    key: "/missing",
-  },
+  agent: h.agentConfig,
   maintenance: false,
 });
 app.log.level = "silent";
+store.db
+  .prepare("INSERT INTO agent_snapshot VALUES(?,?,?)")
+  .run(
+    "class",
+    1,
+    JSON.stringify({ health: { ready: true, fixture: true }, accounts: {} }),
+  );
 const exam = {
   id: "load",
   name: "Disposable load fixture",

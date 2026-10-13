@@ -1,3 +1,34 @@
+# Current local SSH-command/callback validation (2026-10-12)
+
+The separate class-agent control API is removed. Commands run on authenticated student SSH
+channels with pinned gateway signatures; authoritative deadline collection and access holds
+remain local; signed status and archive callbacks have durable retries and deduplication.
+Instructor stop UI/API is removed and local examctl controls replace it.
+
+Validation on the local machine only:
+
+- TypeScript typecheck and production build pass.
+- 88 application unit/integration tests pass, including SSH password cleanup/MFA, callback
+  signatures, duplicate/conflicting/stale events, original intervals, protected transfer,
+  restart recovery, connection requirements and independent instructor approval.
+- 12 browser tests pass: sandbox repeated runs/recovery, preflight and terminal input,
+  window controls, roster operations, sign-out, recovery order and retained MFA messages.
+- Native Go race suite passes, including new command ownership/transport/replay checks,
+  continuation delivered at registration, early-finish original access hold, local admin
+  controls, durable TLS callback outage/restart recovery and no idle HTTP requests. Existing
+  writer/hostile filesystem/collection recovery and local OpenSSH denial tests also pass.
+- 8 installation-checker tests pass. Both nginx templates validate locally with temporary
+  certificates, writable temporary paths and unprivileged test ports.
+
+No deployment, system-service installation, course-account change, or test on marco or the
+real class server was performed for this redesign. The installed real-server profiles still
+need the documented signature-key/configuration/binary migration and production signoff.
+Global agent stop/start actions were checked as service command plans, without stopping
+local host services. See ssh-server/README.md for administrator commands and migration.
+
+The following sections record earlier implementation/deployment tests and their historical
+transport; they do not establish that the new architecture is installed on those hosts.
+
 # Implementation test report
 
 Run date: 2026-10-10. All SSH accounts/hosts used here were disposable local fixtures.

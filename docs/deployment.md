@@ -1,7 +1,7 @@
 # Application-host deployment
 
 Prerequisites: Linux, Docker Engine, Compose v2 supporting --wait/--wait-timeout, nginx/systemd,
-TLS certificates, private agent route and SMTP. Native components install separately.
+TLS certificates, Ed25519 command/callback keys and SMTP. Native components install separately.
 Node baseline is 26.11.1-bookworm-slim with exact manifest digest in Dockerfile. Upgrade
 tag/digest/dependencies together after testing, outside active exams.
 
@@ -18,7 +18,7 @@ before restarting the gateway; restarting discards authenticated SSH connections
 Replace all placeholders, including verified SHA256-hex pins over decoded SSH public-key blobs,
 trust paths, hostname/origin, notifications and actual signoffs. Obtain keys through trusted
 institutional administration; ssh-keyscan alone is not verification. Keep maintenance true.
-Client CA/certificate go in deploy/trust; private key/SMTP password in deploy/secrets, UID/GID
+The pinned agent callback public key goes in deploy/trust; gateway signing key/SMTP password go in deploy/secrets, UID/GID
 10001 mode 0400 with protected parents. Configuration/trust must be container-readable.
 
     docker compose build
@@ -26,7 +26,7 @@ Client CA/certificate go in deploy/trust; private key/SMTP password in deploy/se
     curl -fsS http://127.0.0.1:3000/health/live
     curl -fsS http://127.0.0.1:3000/health/ready
 
-Production exam starts fail closed without signoffs, HTTPS/mTLS/pins and SMTP configuration.
+Production exam starts fail closed without signoffs, HTTPS/signatures/pins and SMTP configuration.
 Initial production installation may boot with `maintenance: true` while signoffs and
 notifications are pending: the operator dashboard remains available, liveness passes,
 readiness returns 503, and new student authentication/preflight/activation is blocked.
@@ -55,7 +55,7 @@ if needed; follow institutional certificate renewal and test it before expiry.
 
 The oneshot unit manages Compose; container restart policy monitors the process. Run exactly
 one gateway instance. No production Vite server or systemd inside Docker. Restrict outbound
-connections to configured jump SSH, independent agent mTLS, SMTP and DNS/time facilities.
+connections to configured jump SSH, SMTP and DNS/time facilities.
 No runtime CDN access. Liveness is not proof of server guards/notifications.
 
 After manual validation, set maintenance false during a drained configuration restart.
@@ -110,3 +110,18 @@ Do not deploy/roll back enforcement changes during outstanding holds. Existing s
 migrate conservatively to HELD; reconcile old protected bundles before releasing accounts.
 Backup original deadlines, access states, initialized marker, UID mapping, audits and protected
 bundles together. Stopping an agent must keep the static gate installed and fail closed.
+
+
+The native class agent connects outbound to this HTTPS origin to post signed status events
+and verified archives. No route from this host to a separate class-agent endpoint is needed.
+Configure `agent.id`, `agent.signingKey`, `agent.callbackPublicKey`; the matching class
+configuration uses `agent_id`, `gateway_public_key`, `callback_url`, `callback_key`.
+Private `gateway-signing.key` is mounted as `gateway_signing_key`; only the class callback
+public key is mounted at `/run/trust/agent-callback.pub`. Dedicated nginx archive callbacks
+allow 128 MiB, while student uploads keep their 12 MiB cap. Remove old control tunnel/API
+credentials after draining and verifying the new route. Existing marco/csc-sys installations
+are not migrated by these local source changes; see the native migration procedure.
+
+Readiness signoff additionally requires `sshCommandTransport` and `statusCallbacks` after
+actual command/callback and recovery checks. Both default false; this local test run does not
+qualify or update the already installed production/class-server profiles.

@@ -92,6 +92,9 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .click();
   await studentSignIn(page, "sandbox", "student04");
   await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await expect(
+    page.getByRole("button", { name: "1. Share entire display" }),
+  ).toBeVisible();
   const repeat = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(repeat.id).not.toBe(initial.id);
@@ -930,6 +933,9 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
     .getByRole("dialog")
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
+  await expect(
+    page.getByRole("button", { name: "Start SSH sign-in" }),
+  ).toBeVisible();
   await studentSignIn(page, "expiry", "student02");
   await page.getByRole("button", { name: "Open preflight & practice" }).click();
   await expect(

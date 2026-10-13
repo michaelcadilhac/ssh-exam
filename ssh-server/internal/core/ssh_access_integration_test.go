@@ -89,7 +89,7 @@ func TestRealOpenSSHOrdinaryRoutesAndRetainedTransport(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	control := filepath.Join(dir, "master")
-	args := []string{"-p", fmt.Sprint(port), "-i", filepath.Join(dir, "client"), "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=" + filepath.Join(dir, "known_hosts"), "-o", "BatchMode=yes", "-o", "ConnectTimeout=3"}
+	args := []string{"-F", "/dev/null", "-p", fmt.Sprint(port), "-i", filepath.Join(dir, "client"), "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=" + filepath.Join(dir, "known_hosts"), "-o", "BatchMode=yes", "-o", "ConnectTimeout=3"}
 	target := current.Username + "@127.0.0.1"
 	run := func(extra ...string) ([]byte, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)

@@ -11,12 +11,11 @@
       "home": "/home/student01"
     }
   },
-  "listen": "10.0.0.2:9443",
-  "cert": "/etc/exam-agent/agent.crt",
-  "key": "/etc/exam-agent/agent.key",
-  "ca": "/etc/exam-agent/gateway-ca.crt",
-  "client_name": "exam-gateway",
   "socket": "/run/exam-agent/gate.sock",
   "guard_report": "/etc/exam-agent/guards.json",
-  "exam_directory": "/work"
+  "exam_directory": "/work",
+  "agent_id": "class",
+  "gateway_public_key": "/etc/exam-agent/gateway-signing.pub",
+  "callback_url": "https://exam.example.edu",
+  "callback_key": "/etc/exam-agent/callback.key"
 }

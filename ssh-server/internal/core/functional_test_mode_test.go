@@ -1,7 +1,9 @@
 package core
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,6 +38,14 @@ func TestFunctionalModeIsSingleAccountExplicitAndNeverProductionReady(t *testing
 }
 func TestFunctionalConfigurationRejectsImplicitOrMultipleAccountExceptions(t *testing.T) {
 	c := Config{State: "/state", Work: "/work", Rootfs: "/rootfs", Accounts: map[string]Account{"admin": {UID: 1001, GID: 1001, Shell: "/bin/bash", Home: "/home/admin"}}, FunctionalTestAccount: "admin", FunctionalTestUntil: Millis() + 60000}
+	tempEngine, _ := New(Config{State: t.TempDir()})
+	key := commandKeys(t, tempEngine)
+	c.AgentID = "class"
+	c.GatewayPublicKey = tempEngine.Config.GatewayPublicKey
+	c.CallbackURL = "https://exam.example.edu"
+	c.CallbackKey = filepath.Join(t.TempDir(), "agent.key")
+	b, _ := x509.MarshalPKCS8PrivateKey(key)
+	os.WriteFile(c.CallbackKey, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0600)
 	path := filepath.Join(t.TempDir(), "config.json")
 	save := func() { b, _ := json.Marshal(c); os.WriteFile(path, b, 0600) }
 	save()

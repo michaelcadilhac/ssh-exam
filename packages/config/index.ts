@@ -16,10 +16,9 @@ const schema = z.object({
     pins: z.array(z.string().regex(/^[a-f0-9]{64}$/)).min(1),
   }),
   agent: z.object({
-    url: z.string().url(),
-    ca: z.string(),
-    cert: z.string(),
-    key: z.string(),
+    id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    signingKey: z.string(),
+    callbackPublicKey: z.string(),
   }),
   smtp: z
     .object({
@@ -56,6 +55,8 @@ export function productionReadinessIssues(c: Config): string[] {
     "browserMatrix",
     "serverGuards",
     "protectedCollection",
+    "sshCommandTransport",
+    "statusCallbacks",
     "intervalAccessHold",
     "alerts",
   ])
@@ -73,8 +74,8 @@ export function loadConfig(
   if (c.functionalTest && c.mode !== "development")
     throw Error("Privileged functional testing requires development mode");
   if (c.mode === "production") {
-    if (!c.origin.startsWith("https://") || !c.agent.url.startsWith("https://"))
-      throw Error("Production requires HTTPS and mTLS");
+    if (!c.origin.startsWith("https://"))
+      throw Error("Production requires HTTPS");
     if (
       [c.jump.host, c.class.host].some((h) =>
         ["localhost", "127.0.0.1", "mock-jump", "mock-class"].includes(h),

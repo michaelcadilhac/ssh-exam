@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,11 +33,11 @@ type Config struct {
 	Rootfs                string             `json:"rootfs"`
 	Templates             string             `json:"templates"`
 	Accounts              map[string]Account `json:"accounts"`
-	Listen                string             `json:"listen"`
-	Cert                  string             `json:"cert"`
-	Key                   string             `json:"key"`
-	CA                    string             `json:"ca"`
-	ClientName            string             `json:"client_name"`
+	AgentID               string             `json:"agent_id"`
+	GatewayPublicKey      string             `json:"gateway_public_key"`
+	CallbackURL           string             `json:"callback_url"`
+	CallbackKey           string             `json:"callback_key"`
+	CallbackCA            string             `json:"callback_ca,omitempty"`
 	Socket                string             `json:"socket"`
 	GuardReport           string             `json:"guard_report"`
 }
@@ -95,6 +96,11 @@ type State struct {
 	Attempts      map[string]*Attempt   `json:"attempts"`
 	Caps          map[string]Capability `json:"capabilities"`
 	Registrations map[string]string     `json:"registrations"`
+	Commands      map[string]int64      `json:"commands,omitempty"`
+	Sequence      int64                 `json:"sequence,omitempty"`
+	Events        []CallbackEvent       `json:"events,omitempty"`
+	Reported      map[string]string     `json:"reported,omitempty"`
+	Exports       map[string]bool       `json:"exports,omitempty"`
 }
 type Engine struct {
 	Config    Config
@@ -127,6 +133,23 @@ func LoadConfig(p string) (Config, error) {
 	if e != nil {
 		return c, e
 	}
+	if !identifier.MatchString(c.AgentID) || c.GatewayPublicKey == "" || c.CallbackKey == "" {
+		return c, errors.New("configure agent_id, gateway_public_key and callback_key; the old control API is unsupported")
+	}
+	u, err := url.Parse(c.CallbackURL)
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return c, errors.New("callback_url must be a fixed HTTPS origin")
+	}
+	if _, err = publicKey(c.GatewayPublicKey); err != nil {
+		return c, err
+	}
+	key, err := privateKey(c.CallbackKey)
+	if err != nil {
+		return c, err
+	}
+	for i := range key {
+		key[i] = 0
+	}
 	if len(c.Accounts) == 0 || !filepath.IsAbs(c.State) || !filepath.IsAbs(c.Work) || !filepath.IsAbs(c.Rootfs) {
 		return c, errors.New("absolute paths and locally approved accounts required")
 	}
@@ -149,6 +172,14 @@ func LoadConfig(p string) (Config, error) {
 		for _, reserved := range []string{"/proc", "/dev", "/sys", "/tmp", "/home", "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64"} {
 			if p == reserved || strings.HasPrefix(p, reserved+"/") {
 				return c, errors.New("exam_directory overlaps a reserved sandbox path")
+			}
+		}
+	}
+	if os.Geteuid() == 0 {
+		for _, p := range []string{c.GatewayPublicKey, c.CallbackKey} {
+			info, err := os.Stat(p)
+			if err != nil || !filepath.IsAbs(p) || !info.Mode().IsRegular() || info.Sys().(*syscall.Stat_t).Uid != 0 || info.Mode().Perm()&0022 != 0 || (p == c.CallbackKey && info.Mode().Perm()&0077 != 0) {
+				return c, errors.New("signature keys must be root-owned, protected regular files at absolute paths")
 			}
 		}
 	}
@@ -195,7 +226,7 @@ func (e *Engine) WithState(fn func() error) error {
 		return err
 	}
 	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
-	e.state = State{map[string]*Attempt{}, map[string]Capability{}, map[string]string{}}
+	e.state = State{Attempts: map[string]*Attempt{}, Caps: map[string]Capability{}, Registrations: map[string]string{}}
 	b, err := os.ReadFile(filepath.Join(e.Config.State, "state.json"))
 	if err == nil {
 		if err = json.Unmarshal(b, &e.state); err != nil {
@@ -224,6 +255,9 @@ func (e *Engine) WithState(fn func() error) error {
 	return err
 }
 func (e *Engine) save() error {
+	if err := e.queueChanges(); err != nil {
+		return err
+	}
 	marker, err := os.OpenFile(filepath.Join(e.Config.State, "initialized"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err == nil {
 		_, err = marker.WriteString("Do not remove state: original access intervals survive restarts.\n")

@@ -331,7 +331,7 @@ func (e *Engine) finalize(a *Attempt, reason string) error {
 		return nil
 	}
 	if reason == "" {
-		reason = "instructor termination"
+		reason = "administrator termination"
 	}
 	previous := a.State
 	if a.Deadline > 0 && expired(a) {

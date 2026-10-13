@@ -70,6 +70,10 @@ export class Store {
         this.db.pragma("foreign_keys = ON");
       }
     }
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=6").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/006.sql", "utf8")),
+      )();
   }
   audit(actor: string, action: string, target: string, detail = "") {
     this.db

@@ -4,8 +4,7 @@ Bootstrap a local administrator interactively and visit /admin. Select an exam t
 manage its visible roster. Add an existing course-server username with an optional webcam
 override, or expand Import multiple students for CSV preview/confirmation. Remove requires
 confirmation and removes enrollment only; attempt history and submissions are retained.
-Removal blocks future Begin requests but does not end an already running exam. Use End &
-collect for that action. Escape cancels removal and closes review dialogs. Sign out is in
+Removal blocks future Begin requests but does not end an already running exam. A server administrator can end an attempt locally with `examctl stop`; the dashboard has no stop action. Escape cancels removal and closes review dialogs. Sign out is in
 the dashboard header.
 
  Configure ID/name/start window,
@@ -32,7 +31,7 @@ Client reports are evidence, never automated misconduct scores.
 Authorize only current locked incidents before deadline. Grants last five minutes or until
 deadline and are single-use; students must restore current required conditions and Continue.
 Replacement page/lost SSH needs approval; reauthentication stops capture before passwords.
-Approval never grants time. End & collect requires confirmation.
+Approval never grants time and is delivered during fresh SSH authentication, without a separate remote request.
 
 Enable desktop alerts with a user gesture; desktop/sound require the open dashboard.
 Test actual SMTP receipt before production. Durable outbox uses capped retries and records
@@ -42,8 +41,8 @@ and collection failure require different recovery actions.
 
 Downloads require instructor auth/audit. Bulk downloads wrap protected archives without
 unpacking programs; grade elsewhere. Ended monitoring deletion needs confirmation and keeps
-submissions; monitoring also expires after 60 days. Submission deletion is a separately named
-explicit operation, disabled from automatic retention by default. Minimal attempt metadata/
+submissions; monitoring also expires after 60 days. Deletion of the web download copy is a separately named
+explicit operation; the protected original is removed only by local root examctl, disabled from automatic retention by default. Minimal attempt metadata/
 checksums and deletion ledger remain. Maintain consistent private backups and current tombstones.
 
 Submissions are automatic. Students do not upload or run submission commands. The optional
@@ -58,6 +57,5 @@ Submission secured and account access are separate dashboard statuses. An early 
 not release ordinary server access until the original deadline and verified protection/cleanup.
 Finished attempts cannot resume even with an instructor continuation grant. The dashboard
 shows the last class-server access-state check and any release-recovery failure. An outage
-may leave that display stale; native state remains authoritative. Do not delete a submission
-while an interval hold exists. Root emergency overrides are deliberately outside the dashboard,
+may leave that display stale; native state remains authoritative. Do not delete the protected class-server original while an interval hold exists. Root emergency overrides are deliberately outside the dashboard,
 require already secured work and an audited reason, and do not reopen attempts.

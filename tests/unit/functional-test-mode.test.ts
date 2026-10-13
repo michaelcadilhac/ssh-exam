@@ -14,10 +14,9 @@ it("boots production maintenance without false signoffs, serves operators and re
     jump: { host: "jump.example.edu", pins: ["a".repeat(64)] },
     class: { host: "class.example.edu", pins: ["b".repeat(64)] },
     agent: {
-      url: "https://agent.example.edu",
-      ca: "unused",
-      cert: "unused",
-      key: "unused",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
   };
   try {
@@ -66,10 +65,9 @@ it("privileged functional tests require development mode at both config and app 
     jump: { host: "jump.example.edu", pins: ["a".repeat(64)] },
     class: { host: "class.example.edu", pins: ["b".repeat(64)] },
     agent: {
-      url: "https://agent.example.edu",
-      ca: "unused",
-      cert: "unused",
-      key: "unused",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
   };
   try {

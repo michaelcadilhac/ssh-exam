@@ -15,7 +15,7 @@ services:
       - ./deploy/config:/run/config:ro
       - ./deploy/trust:/run/trust:ro
     secrets:
-      - agent_key
+      - gateway_signing_key
       - smtp_password
     read_only: true
     tmpfs:
@@ -43,7 +43,7 @@ services:
       driver: json-file
       options: { max-size: 10m, max-file: "5" }
 secrets:
-  agent_key:
-    file: ./deploy/secrets/agent-client.key
+  gateway_signing_key:
+    file: ./deploy/secrets/gateway-signing.key
   smtp_password:
     file: ./deploy/secrets/smtp-password

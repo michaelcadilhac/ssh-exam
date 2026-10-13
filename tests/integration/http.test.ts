@@ -12,10 +12,9 @@ it("enforces role, ownership, CSRF, media protection and origin without revealin
     jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
     class: { host: "localhost", port: 2223, pins: ["0".repeat(64)] },
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   });
@@ -102,10 +101,9 @@ it("confirms imports idempotently, preserves omitted fields and rejects stale pr
     jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
     class: { host: "localhost", port: 2223, pins: ["0".repeat(64)] },
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   });
@@ -190,10 +188,9 @@ it("adds and removes approved enrollments without changing attempts or allowing 
     jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
     class: { host: "localhost", port: 2223, pins: ["0".repeat(64)] },
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   });
@@ -312,10 +309,9 @@ it("student sign-out revokes the session and locks execution without changing th
     jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
     class: { host: "localhost", port: 2223, pins: ["0".repeat(64)] },
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   });
@@ -373,10 +369,9 @@ it("continuation failures explain recovery conditions, instructor approval and e
     jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
     class: { host: "localhost", port: 2223, pins: ["0".repeat(64)] },
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   });
@@ -457,10 +452,9 @@ it("expires an abandoned preparation even when no SSH connection survived a gate
     jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
     class: { host: "localhost", port: 2223, pins: ["0".repeat(64)] },
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
     preflightIdleMs: 1000,
@@ -516,10 +510,9 @@ it("login-only mode rejects production and blocks exam operations while exposing
     jump: { host: "sshjump.depaul.edu", port: 22, pins: ["0".repeat(64)] },
     class: { host: "csc-sys.cdm.depaul.edu", port: 22, pins: ["1".repeat(64)] },
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   };
@@ -575,10 +568,9 @@ it("completes login-only WebSocket challenges without enrollment or exam-agent a
     jump: h.jump,
     class: h.class,
     agent: {
-      url: "https://127.0.0.1:1",
-      ca: "/missing",
-      cert: "/missing",
-      key: "/missing",
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
     },
     maintenance: false,
   };

@@ -4,13 +4,26 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import argon2 from "argon2";
 import { hosts } from "../fixtures/hosts.js";
-import { Agent } from "../../apps/server/src/agent.js";
+import { sign } from "node:crypto";
 import { hash } from "../../apps/server/src/db.js";
 const h = await hosts();
 const attempts = new Map<string, any>();
 const archive = Buffer.from("TEST-FIXTURE-ARCHIVE");
-let failedSandboxExport: string | undefined;
-Agent.prototype.call = async function (op: string, b: any = {}): Promise<any> {
+const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
+  if (op === "register") {
+    if (b.continuation) {
+      const a = attempts.get(b.continuation.id);
+      if (!a || a.state === "COMPLETED") throw Error("Attempt cannot resume");
+      if (a.state === "ACTIVE") {
+        a.state = "LOCKED";
+        a.generation++;
+      }
+      if (a.generation !== b.continuation.generation)
+        throw Error("Stale continuation");
+      a.authorization = b.continuation.expires;
+    }
+    return {};
+  }
   if (op.startsWith("issue-")) return h.agent.call(op, b);
   if (op === "health") return { ready: true, fixture: true };
   if (op === "resolve-course-accounts") {
@@ -88,13 +101,6 @@ Agent.prototype.call = async function (op: string, b: any = {}): Promise<any> {
   }
   return a;
 };
-Agent.prototype.archive = async (id: string) => {
-  if (attempts.get(id)?.exam === "sandbox" && !failedSandboxExport) {
-    failedSandboxExport = id;
-    throw Error("Transient sandbox export failure");
-  }
-  return archive;
-};
 const { app, store } = await createApp({
   mode: "development",
   origin: "http://localhost:3100",
@@ -102,15 +108,82 @@ const { app, store } = await createApp({
   port: 3100,
   jump: h.jump,
   class: h.class,
-  agent: {
-    url: "https://127.0.0.1:1",
-    ca: "/missing",
-    cert: "/missing",
-    key: "/missing",
-  },
+  agent: h.agentConfig,
   maintenance: false,
   preflightIdleMs: 5000,
 });
+h.control.command = fixtureCall;
+store.db
+  .prepare("INSERT INTO agent_snapshot VALUES(?,?,?)")
+  .run(
+    "class",
+    1,
+    JSON.stringify({
+      health: { ready: true, fixture: true },
+      accounts: {
+        student01: 10001,
+        student02: 10002,
+        student03: 10003,
+        student04: 10004,
+      },
+    }),
+  );
+let sequence = 1;
+const postStatus = async (a: any) => {
+  const manifest = a.protected
+    ? await fixtureCall("submission-manifest", { id: a.id })
+    : undefined;
+  const payload = Buffer.from(
+    JSON.stringify({
+      agent: "class",
+      sequence: ++sequence,
+      at: Date.now(),
+      attempt: { ...a },
+      manifest,
+    }),
+  );
+  const headers = {
+    "content-type": "application/vnd.ssh-exam-event",
+    "x-exam-signature": sign(null, payload, h.callbackKey).toString("base64"),
+  };
+  await app.inject({
+    method: "POST",
+    url: "/api/agent/events",
+    headers,
+    payload,
+  });
+  if (a.protected) {
+    const receipt = Buffer.from(
+      JSON.stringify({ agent: "class", attempt: a.id, checksum: a.checksum }),
+    );
+    await app.inject({
+      method: "POST",
+      url: "/api/agent/submissions/" + a.id,
+      headers: {
+        "content-type": "application/gzip",
+        "x-exam-receipt": receipt.toString("base64"),
+        "x-exam-signature": sign(null, receipt, h.callbackKey).toString(
+          "base64",
+        ),
+      },
+      payload: archive,
+    });
+  }
+};
+h.control.command = async (op, b) => {
+  const result = await fixtureCall(op, b);
+  if (op === "finalize-attempt") setTimeout(() => void postStatus(result), 50);
+  return result;
+};
+const watchdog = setInterval(() => {
+  for (const a of attempts.values())
+    if (a.start && a.deadline <= Date.now() && a.state !== "COMPLETED")
+      void fixtureCall("finalize-attempt", {
+        id: a.id,
+        reason: "expiration",
+      }).then(postStatus);
+}, 100);
+app.addHook("onClose", async () => clearInterval(watchdog));
 store.db
   .prepare("INSERT INTO admins VALUES(?,?,?)")
   .run("fixture", "instructor", await argon2.hash("fixture-password"));

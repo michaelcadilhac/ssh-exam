@@ -18,7 +18,6 @@ export class Lifecycle {
   onEnd = (_attempt: Attempt) => {};
   onSecured = (_attempt: Attempt) => {};
   onPaused = (_attempt: Attempt) => {};
-  private inspected = new Map<string, number>();
   constructor(
     public store: Store,
     public agent: Agent,
@@ -85,13 +84,13 @@ export class Lifecycle {
     });
     transaction();
     this.store.audit("gateway", "reauthentication-required", id);
+    const locking = this.agent.call("lock-attempt", {
+      id,
+      reason,
+      generation: this.store.attempt(id).generation,
+    });
     this.onPaused(this.store.attempt(id));
-    await this.agent
-      .call("lock-attempt", {
-        id,
-        reason,
-        generation: this.store.attempt(id).generation,
-      })
+    await locking
       .then((remote) => {
         if (remote?.generation > this.store.attempt(id).generation) {
           this.store.db
@@ -111,49 +110,162 @@ export class Lifecycle {
   }
   async reconcile(id: string) {
     const remote = await this.agent.call("inspect-attempt", { id });
-    this.syncAccess(id, remote);
+    let manifest;
+    if (remote.protected)
+      manifest = await this.agent.call("submission-manifest", { id });
+    this.acceptRemote(remote, manifest, id);
+    return remote;
+  }
+  // Only authenticated SSH responses or pinned agent signatures reach this method.
+  acceptRemote(remote: any, manifest?: any, id = remote.id) {
     const a = this.store.attempt(id);
+    if (
+      remote.id &&
+      (remote.id !== id ||
+        remote.exam !== a.exam ||
+        remote.username !== a.username ||
+        remote.uid !== a.uid)
+    )
+      throw Error("Agent attempt identity mismatch");
+    if (
+      a.start &&
+      remote.start &&
+      (a.start !== remote.start || a.deadline !== remote.deadline)
+    )
+      throw Error("Original exam interval cannot change");
+    // Command responses may already have advanced state before older queued callbacks arrive.
+    if (
+      (a.state === "COMPLETED" && remote.state !== "COMPLETED") ||
+      (a.start && !remote.start)
+    )
+      return;
+    if (
+      !["RELEASED", "OVERRIDDEN"].includes(a.access_state) ||
+      ["RELEASED", "OVERRIDDEN"].includes(remote.access_state)
+    )
+      this.syncAccess(id, remote);
     if (remote.start && a.start === null) {
       this.store.db
         .prepare(
-          "UPDATE attempts SET start=?,deadline=?,work_path=?,state='ACTIVE' WHERE id=?",
+          "UPDATE attempts SET start=?,deadline=?,work_path=? WHERE id=?",
         )
         .run(remote.start, remote.deadline, remote.work_path, id);
-      await this.lock(id, "Activation acknowledgment lost");
+      // A recovered start has consumed time; it is never a fresh preparation.
+      if (["ACTIVE", "ACTIVATING"].includes(remote.state)) {
+        this.store.db
+          .prepare(
+            "UPDATE attempts SET state='LOCKED',reason='Activation acknowledgment lost',generation=generation+1 WHERE id=?",
+          )
+          .run(id);
+        this.onPaused(this.store.attempt(id));
+      }
     }
     if (
       remote.state === "CANCELLED_BEFORE_START" &&
       !remote.start &&
-      a.start === null
+      !a.start
     ) {
       this.store.db
         .prepare(
-          "UPDATE attempts SET state='CANCELLED_BEFORE_START',ended=COALESCE(ended,?),reason=COALESCE(?,reason) WHERE id=?",
+          "UPDATE attempts SET state='CANCELLED_BEFORE_START',ended=COALESCE(ended,?) WHERE id=?",
         )
-        .run(
-          now(),
-          remote.reason || "Preparation cancelled before activation",
-          id,
-        );
-      this.monitoring.delete(id, "preflight-cancelled");
+        .run(now(), id);
+      this.monitoring.delete(id, "unstarted-preparation");
     }
-    if (remote.state === "LOCKED" && a.state === "ACTIVE")
-      await this.lock(id, "Local execution lease expired");
+    const consumed = this.store.db
+      .prepare(
+        "SELECT 1 FROM continuations WHERE attempt=? AND generation=? AND consumed=1",
+      )
+      .get(id, a.generation);
     if (
       remote.state === "LOCKED" &&
-      remote.generation > this.store.attempt(id).generation
+      (remote.generation || 0) >= a.generation &&
+      !(
+        a.state === "ACTIVE" &&
+        (remote.generation || 0) === a.generation &&
+        consumed
+      ) &&
+      !["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state)
     ) {
       this.store.db
-        .prepare("UPDATE attempts SET generation=? WHERE id=?")
-        .run(remote.generation, id);
-      this.store.db
-        .prepare("DELETE FROM continuations WHERE attempt=?")
-        .run(id);
-      this.store.audit("gateway", "remote-generation-reconciled", id);
+        .prepare(
+          "UPDATE attempts SET state='LOCKED',generation=MAX(generation,?),reason=? WHERE id=?",
+        )
+        .run(
+          remote.generation || 0,
+          remote.reason || "Execution lease expired",
+          id,
+        );
+      if ((remote.generation || 0) > a.generation)
+        this.store.db
+          .prepare("DELETE FROM continuations WHERE attempt=?")
+          .run(id);
+      if (a.state !== "LOCKED" || (remote.generation || 0) > a.generation)
+        this.onPaused(this.store.attempt(id));
     }
-    if (["COMPLETED", "COLLECTION_FAILED", "FINALIZING"].includes(remote.state))
-      await this.finish(id, remote.reason || "expiration");
-    return remote;
+    if (
+      ["FINALIZING", "COLLECTION_FAILED", "COMPLETED"].includes(remote.state)
+    ) {
+      if (remote.access_error && !manifest && remote.protected) {
+        if (!a.protected)
+          this.store.db
+            .prepare(
+              "UPDATE attempts SET state='COLLECTION_FAILED',reason='Protected artifact verification requires recovery' WHERE id=?",
+            )
+            .run(id);
+        this.onEnd(this.store.attempt(id));
+        return;
+      }
+      if (remote.protected && manifest) {
+        const identity = manifest?.attempt;
+        if (
+          !identity ||
+          identity.id !== id ||
+          identity.exam !== a.exam ||
+          identity.username !== a.username ||
+          identity.uid !== a.uid ||
+          identity.start !== this.store.attempt(id).start ||
+          identity.deadline !== this.store.attempt(id).deadline ||
+          !/^[a-f0-9]{64}$/.test(remote.checksum || "") ||
+          manifest.checksum !== remote.checksum
+        )
+          throw Error("Protected manifest verification failed");
+        if (a.checksum && a.checksum !== remote.checksum)
+          throw Error("Secured submission cannot be replaced");
+        this.store.db
+          .prepare(
+            "UPDATE attempts SET protected=1,checksum=?,export_status=COALESCE(export_status,'pending'),completed_at=?,collected_at=?,secured_at=? WHERE id=?",
+          )
+          .run(
+            remote.checksum,
+            remote.completed_at || null,
+            manifest.collected || null,
+            manifest.secured || null,
+            id,
+          );
+        this.publish(
+          `${this.store.dir}/submissions/${id}.manifest.json`,
+          Buffer.from(JSON.stringify(manifest, null, 2)),
+        );
+        this.onSecured(this.store.attempt(id));
+        if (manifest.omissions?.length)
+          this.alert(
+            "Submission entries omitted",
+            `Attempt ${id}: review the protected manifest.`,
+          );
+      } else if (remote.state === "COMPLETED")
+        throw Error("Completion requires verified protected collection");
+      if (a.state === "COMPLETED" && remote.state !== "COMPLETED") return;
+      this.store.db
+        .prepare("UPDATE attempts SET state=?,ended=?,reason=? WHERE id=?")
+        .run(remote.state, remote.ended || null, remote.reason || null, id);
+      if (remote.state === "COLLECTION_FAILED")
+        this.alert(
+          "Collection requires recovery",
+          `Attempt ${id}: ${remote.errors?.join("; ") || "collection failed"}. Account remains blocked.`,
+        );
+      this.onEnd(this.store.attempt(id));
+    }
   }
   syncAccess(id: string, remote: any) {
     if (
@@ -244,119 +356,51 @@ export class Lifecycle {
     return this.busy.has(id);
   }
   async finish(id: string, reason: string) {
-    if (
-      !this.store.attempt(id).start ||
-      this.store.attempt(id).state === "CANCELLED_BEFORE_START"
-    )
+    const a = this.store.attempt(id);
+    if (!a.start || a.state === "CANCELLED_BEFORE_START")
       throw Error(
         "The exam has not started; there is no submission to collect.",
       );
+    if (["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state))
+      return;
+    if (a.state !== "ACTIVE" || this.agent.connected?.(a.username) === false)
+      throw Error(
+        "Finish requires an active SSH connection. Saved files will still be collected at the original deadline.",
+      );
     if (this.busy.has(id)) return;
     this.busy.add(id);
+    this.store.db
+      .prepare("UPDATE attempts SET state='FINALIZING',reason=? WHERE id=?")
+      .run(reason, id);
+    this.onEnd(this.store.attempt(id));
     try {
-      let a = this.store.attempt(id);
-      if (
-        a.state === "COMPLETED" &&
-        ["ready", "deleted"].includes(a.export_status || "")
-      )
-        return;
-      if (!["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state))
-        this.store.db
-          .prepare(
-            "UPDATE attempts SET state='FINALIZING',reason=?,ended=COALESCE(ended,?) WHERE id=?",
-          )
-          .run(reason, reason === "expiration" ? a.deadline : now(), id);
-      this.onEnd(this.store.attempt(id));
-      let result;
-      try {
-        result = await this.agent.call(
-          a.state === "COMPLETED" ? "submission-status" : "finalize-attempt",
-          { id, reason },
-        );
-      } catch (error) {
-        result = await this.agent
-          .call("submission-status", { id })
-          .catch(() => {
-            throw error;
-          });
-      }
-      this.syncAccess(id, result);
-      if (!result.protected || !/^[a-f0-9]{64}$/.test(result.checksum || ""))
-        throw Error("Protected collection not confirmed");
-      const manifest = await this.agent.call("submission-manifest", { id });
-      const identity = manifest.attempt;
-      if (
-        manifest.checksum !== result.checksum ||
-        !identity ||
-        identity.id !== id ||
-        identity.exam !== a.exam ||
-        identity.username !== a.username ||
-        identity.uid !== a.uid ||
-        identity.start !== a.start ||
-        identity.deadline !== a.deadline
-      )
-        throw Error("Protected manifest verification failed");
-      if (a.checksum && a.checksum !== result.checksum)
-        throw Error("Secured submission cannot be replaced");
-      this.store.db
-        .prepare(
-          "UPDATE attempts SET state=?,protected=1,checksum=?,export_status='pending',ended=?,reason=?,completed_at=?,collected_at=?,secured_at=? WHERE id=?",
-        )
-        .run(
-          result.state === "COMPLETED" ? "COMPLETED" : "COLLECTION_FAILED",
-          result.checksum,
-          result.ended,
-          result.reason,
-          result.completed_at || null,
-          manifest.collected || null,
-          manifest.secured || null,
-          id,
-        );
-      this.onSecured(this.store.attempt(id));
-      if (result.state !== "COMPLETED")
-        this.alert(
-          "Workload cleanup requires recovery",
-          `Submission ${id} is secured; student workload termination is not confirmed.`,
-        );
-      if (manifest.omissions?.length)
-        this.alert(
-          "Submission entries omitted",
-          `Attempt ${id}: review the protected manifest for ${manifest.omissions.length} omitted entries.`,
-        );
-      try {
-        const bytes = await this.agent.archive(id);
-        if (hash(bytes) !== result.checksum)
-          throw Error("Submission transfer checksum mismatch");
-        const archive = `${this.store.dir}/submissions/${id}.tar.gz`;
-        this.publish(archive, bytes);
-        this.publish(
-          `${this.store.dir}/submissions/${id}.manifest.json`,
-          Buffer.from(JSON.stringify(manifest, null, 2)),
-        );
-        this.store.db
-          .prepare("UPDATE attempts SET export_status='ready' WHERE id=?")
-          .run(id);
-      } catch {
-        this.alert(
-          "Submission export pending",
-          `Protected copy exists for ${id}; verified transfer will retry from that copy.`,
-        );
-      }
-    } catch (e) {
-      const a = this.store.attempt(id);
-      if (a.state !== "COMPLETED")
-        this.store.db
-          .prepare(
-            "UPDATE attempts SET state='COLLECTION_FAILED',ended=COALESCE(ended,?) WHERE id=?",
-          )
-          .run(now(), id);
+      const remote = await this.agent.call("finalize-attempt", { id, reason });
+      const manifest = remote.protected
+        ? await this.agent.call("submission-manifest", { id })
+        : undefined;
+      this.acceptRemote(remote, manifest, id);
+    } catch {
+      if (this.store.attempt(id).protected) return;
+      // A lost acknowledgment is pending, not proof that collection failed. The local
+      // watchdog and durable callback recover it even when this SSH connection ends.
       this.alert(
-        "Collection requires recovery",
-        `Attempt ${id}: protected collection not confirmed. Account remains blocked.`,
+        "Collection acknowledgment pending",
+        `Attempt ${id}: awaiting class-server status. The original deadline remains enforced locally.`,
       );
     } finally {
       this.busy.delete(id);
     }
+  }
+  receiveArchive(id: string, checksum: string, bytes: Buffer) {
+    const a = this.store.attempt(id);
+    if (!a.protected || a.checksum !== checksum || hash(bytes) !== checksum)
+      throw Error("Submission transfer verification failed");
+    if (a.export_status === "deleted") return;
+    this.publish(`${this.store.dir}/submissions/${id}.tar.gz`, bytes);
+    this.store.db
+      .prepare("UPDATE attempts SET export_status='ready' WHERE id=?")
+      .run(id);
+    this.onEnd(this.store.attempt(id));
   }
   private publish(file: string, bytes: Buffer) {
     const syncDirectory = () => {
@@ -390,36 +434,38 @@ export class Lifecycle {
   }
   async tick() {
     const rows = this.store.db
-      .prepare(
-        "SELECT * FROM attempts WHERE state IN ('PREPARING','ACTIVE','LOCKED','FINALIZING','COLLECTION_FAILED') OR (state='COMPLETED' AND (export_status NOT IN ('ready','deleted') OR access_state NOT IN ('RELEASED','OVERRIDDEN')))",
-      )
+      .prepare("SELECT * FROM attempts WHERE state IN ('ACTIVE','LOCKED')")
       .all() as Attempt[];
     for (const a of rows) {
-      if (
-        a.state === "COMPLETED" &&
-        now() - (this.inspected.get(a.id) || 0) > 10000
-      ) {
-        this.inspected.set(a.id, now());
-        await this.reconcile(a.id).catch(() => {});
-      }
-      if (
-        (a.deadline && now() >= a.deadline) ||
-        ["FINALIZING", "COLLECTION_FAILED", "COMPLETED"].includes(a.state)
-      ) {
-        await this.finish(
-          a.id,
-          a.deadline && now() >= a.deadline
-            ? "expiration"
-            : a.reason || "expiration",
-        );
-        continue;
-      }
-      if (now() - (this.inspected.get(a.id) || 0) > 10000) {
-        this.inspected.set(a.id, now());
-        await this.reconcile(a.id).catch(() => {});
-      }
-      if (a.state === "ACTIVE" && now() - (a.last_contact || 0) > 15000)
+      if (a.deadline && now() >= a.deadline) {
+        this.store.db
+          .prepare(
+            "UPDATE attempts SET state='FINALIZING',reason='expiration' WHERE id=?",
+          )
+          .run(a.id);
+        this.onEnd(this.store.attempt(a.id));
+      } else if (a.state === "ACTIVE" && now() - (a.last_contact || 0) > 15000)
         await this.lock(a.id, "Client contact exceeded 15 seconds");
     }
+    for (const a of this.store.db
+      .prepare(
+        "SELECT * FROM attempts WHERE protected=1 AND export_status='pending' AND secured_at<?",
+      )
+      .all(now() - 60000) as Attempt[]) {
+      if (
+        !this.store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE action='export-pending-alert' AND target=?",
+          )
+          .get(a.id)
+      ) {
+        this.alert(
+          "Submission export pending",
+          `Protected copy exists for ${a.id}; signed transfer will retry from that copy.`,
+        );
+        this.store.audit("gateway", "export-pending-alert", a.id);
+      }
+    }
+    // There is no disconnected command polling. The agent reports authoritative results.
   }
 }

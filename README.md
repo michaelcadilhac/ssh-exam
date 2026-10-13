@@ -1,7 +1,7 @@
 # SSH Exam Workspace
 
 A self-hosted programming-exam workspace: React/xterm/WinBox frontend, Fastify/SQLite SSH
-gateway, and separate native Linux class-server gate, control agent and deadline watchdog.
+gateway, and separate native Linux class-server gate, SSH command agent and deadline watchdog.
 The original acceptance specification is preserved in [SPEC.md](SPEC.md).
 
 **Production starts are gated and unverified.** Automated fixture checks pass, but actual
@@ -31,7 +31,7 @@ Open http://localhost:3000, exam sample, account student01. The disposable share
 shared-password; enter it once for both hosts. The fixture shows number 42 in
 a zero-prompt round. Production ships no default administrator or student password.
 
-The demo creates private disposable mTLS certificates, host-key pins and configuration in
+The demo creates disposable command/callback signature keys, host-key pins and configuration in
 ignored var/demo and seeds one disposable enrollment. Terminal commands are simulated:
 help, pwd, save TEXT, cat, exit. They do **not** execute a host shell or provide real editors
 or containment. Install native components on a disposable server to test that behavior.
@@ -70,7 +70,7 @@ Follow [deployment](docs/deployment.md) and the independent
 [class-server guide](ssh-server/README.md). Copy examples/exam-config.example.json to
 deploy/config/config.json, configure trust/secrets and actual readiness reports. Host-key
 placeholders are deliberately invalid. Keep maintenance true until admission checks pass.
-Production startup requires HTTPS, pinned keys, mTLS, SMTP and completed signoffs;
+Production startup requires HTTPS, pinned host keys, command/callback signatures, SMTP and completed signoffs;
 missing requirements fail startup. /health/ready checks agent guards; /health/live checks
 only the gateway process.
 
@@ -117,3 +117,10 @@ original deadline and verified collection/termination. Finished attempts never r
 [server isolation and emergency recovery](ssh-server/README.md#original-interval-account-isolation).
 Production upgrades require the new isolation checker, native agent capability and four server
 signoffs plus gateway intervalAccessHold signoff; existing fixture flags are insufficient.
+
+
+Commands to the class agent now travel only through authenticated student SSH, with
+root-verified gateway signatures. Deadlines and collection stay local. The agent posts
+signed status updates and verified archives to the webserver; no inbound control API or
+command polling exists. Instructors authorize recovery but cannot stop exams from the
+web dashboard. Local administrators use `examctl`; see [native administration](ssh-server/README.md#local-examctl-administration).

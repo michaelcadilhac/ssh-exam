@@ -2,6 +2,16 @@
 set -eu
 [ "$(id -u)" = 0 ]
 sshd -t
+python3 - <<'VERIFY_KEYS'
+import json, os, stat
+c=json.load(open('/etc/exam-agent/agent.json'))
+assert not any(k in c for k in ('listen','cert','key','ca','client_name')), 'Remove obsolete API configuration'
+for key in ('gateway_public_key','callback_key'):
+    p=c[key]; s=os.stat(p)
+    assert os.path.isabs(p) and stat.S_ISREG(s.st_mode) and s.st_uid==0 and s.st_mode&0o022==0, 'Unprotected signature key'
+    if key=='callback_key': assert s.st_mode&0o077==0, 'Private callback key exposed'
+assert c['callback_url'].startswith('https://'), 'HTTPS callback required'
+VERIFY_KEYS
 /usr/local/sbin/exam-check-isolation /etc/exam-agent/agent.json
 systemctl is-active exam-agent.service exam-deadline-watchdog.service
 stat -c '%U %a %n' /etc/exam-agent/agent.json /usr/local/libexec/exam-login /var/lib/exam-agent

@@ -19,8 +19,9 @@ import (
 )
 
 type LocalRequest struct {
-	Token    string `json:"token"`
-	Ordinary bool   `json:"ordinary"`
+	Token    string       `json:"token"`
+	Ordinary bool         `json:"ordinary"`
+	Command  *SignedFrame `json:"command,omitempty"`
 }
 
 func transportIdentity(pid int, uid int) (string, error) { // Bind capabilities to a live, root-owned sshd transport ancestor, including boot and PID start time.
@@ -97,7 +98,7 @@ func (e *Engine) local(c *net.UnixConn) {
 	if err != nil {
 		return
 	}
-	buf := make([]byte, 8192)
+	buf := make([]byte, 65536)
 	oob := make([]byte, syscall.CmsgSpace(4))
 	n, on, _, _, err := c.ReadMsgUnix(buf, oob)
 	if err != nil {
@@ -118,6 +119,20 @@ func (e *Engine) local(c *net.UnixConn) {
 	}
 	if name == "" {
 		json.NewEncoder(c).Encode(map[string]string{"error": "account not locally approved"})
+		return
+	}
+	if r.Command != nil {
+		identity, err := transportIdentity(int(cred.Pid), account.UID)
+		if err != nil {
+			json.NewEncoder(c).Encode(map[string]string{"error": "SSH ancestry rejected"})
+			return
+		}
+		result, err := e.Command(*r.Command, name, identity)
+		if err != nil {
+			json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
+		} else {
+			json.NewEncoder(c).Encode(map[string]any{"result": result})
+		}
 		return
 	}
 	var launch *exec.Cmd
@@ -153,14 +168,6 @@ func (e *Engine) local(c *net.UnixConn) {
 		delete(e.state.Caps, Hash([]byte(r.Token)))
 		if !ok || cap.Expires < Millis() || cap.Username != name {
 			return errors.New("invalid or expired one-use admission")
-		}
-		if cap.Purpose == "register" {
-			if err := e.registrationAllowed(account.UID); err != nil {
-				return err
-			}
-			e.state.Registrations[identity] = name
-			result = map[string]any{"transport": identity}
-			return nil
 		}
 		if cap.Transport != identity {
 			return errors.New("capability transport mismatch")
@@ -319,6 +326,26 @@ func Gate(socket string) error {
 			command = os.Getenv("SSH_ORIGINAL_COMMAND")
 		}
 	}
+	if command == "exam-control" {
+		frameLine, err := bufio.NewReaderSize(os.Stdin, 65536).ReadSlice('\n')
+		if err != nil {
+			return errors.New("bounded command frame required")
+		}
+		var frame SignedFrame
+		if json.Unmarshal(frameLine, &frame) != nil {
+			return errors.New("invalid signed command")
+		}
+		b, _ := json.Marshal(LocalRequest{Command: &frame})
+		if _, err = conn.Write(b); err != nil {
+			return err
+		}
+		result, err := bufio.NewReader(conn).ReadBytes('\n')
+		if err != nil {
+			return err
+		}
+		_, err = os.Stdout.Write(result)
+		return err
+	}
 	gateway := command == "exam-gateway"
 	if !gateway {
 		b, _ := json.Marshal(LocalRequest{Ordinary: true})
@@ -380,9 +407,6 @@ func Gate(socket string) error {
 		return errors.New("admission denied")
 	}
 	fmt.Printf("EXAM-READY %s", result)
-	if response["transport"] != nil {
-		return nil
-	}
 	// Only the inner PTY handles editing/signals. Otherwise Ctrl-C kills this
 	// outer gate and canonical buffering prevents interactive editor input.
 	restore, err := rawTerminal(0)

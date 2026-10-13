@@ -24,10 +24,11 @@ describe("attempt-scoped shared SSH password", () => {
       "student",
       { jump: h.jump, class: h.class } as any,
       {
-        call: async (...args: any[]) => {
+        ...h.agent,
+        sign: (...args: Parameters<typeof h.agent.sign>) => {
           cleared(c);
           zero(original!);
-          return (h.agent.call as any)(...args);
+          return h.agent.sign(...args);
         },
       } as any,
     );

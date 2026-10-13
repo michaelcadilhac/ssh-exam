@@ -1,5 +1,7 @@
 # ssh-exam.cadilhac.name deployment
 
+> Installation/history record: the subsequent SSH command and callback redesign is a local source change only; this document does not establish that those servers have been upgraded. Use ssh-server/README.md for the current transport and migration procedure.
+
 Installed on 2026-10-12 on `marco` (Arch Linux), following TagMix's conventions:
 
 - Checkout: `/home/micha/src/ssh-exam`, public HTTPS Git remote.

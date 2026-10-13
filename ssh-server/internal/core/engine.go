@@ -17,18 +17,19 @@ import (
 )
 
 type Request struct {
-	ID         string   `json:"id"`
-	Exam       string   `json:"exam"`
-	Username   string   `json:"username"`
-	UID        int      `json:"uid"`
-	Settings   Settings `json:"settings"`
-	Transport  string   `json:"transport"`
-	Pane       string   `json:"pane"`
-	Purpose    string   `json:"purpose"`
-	Reason     string   `json:"reason"`
-	Generation int      `json:"generation"`
-	Expires    int64    `json:"expires"`
-	Usernames  []string `json:"usernames"`
+	Continuation *Request `json:"continuation,omitempty"`
+	ID           string   `json:"id"`
+	Exam         string   `json:"exam"`
+	Username     string   `json:"username"`
+	UID          int      `json:"uid"`
+	Settings     Settings `json:"settings"`
+	Transport    string   `json:"transport"`
+	Pane         string   `json:"pane"`
+	Purpose      string   `json:"purpose"`
+	Reason       string   `json:"reason"`
+	Generation   int      `json:"generation"`
+	Expires      int64    `json:"expires"`
+	Usernames    []string `json:"usernames"`
 }
 
 func (e *Engine) productionReady() (bool, []string) {
@@ -96,7 +97,7 @@ func (e *Engine) productionReady() (bool, []string) {
 	var report map[string]bool
 	b, _ := os.ReadFile(e.Config.GuardReport)
 	json.Unmarshal(b, &report)
-	for _, k := range []string{"sshdGate", "pamRoutes", "scheduledJobs", "preexistingSessions", "rootfsIsolation", "transportBinding", "clockSync", "storage", "collection", "browserMatrix", "institutionalSSH", "intervalAccessHold", "allSessionChannels", "alternateServices", "schedulerIsolation"} {
+	for _, k := range []string{"sshdGate", "pamRoutes", "scheduledJobs", "preexistingSessions", "rootfsIsolation", "transportBinding", "clockSync", "storage", "collection", "browserMatrix", "institutionalSSH", "sshCommandTransport", "statusCallbacks", "intervalAccessHold", "allSessionChannels", "alternateServices", "schedulerIsolation"} {
 		if !report[k] {
 			missing = append(missing, "unverified guard: "+k)
 		}
@@ -114,14 +115,19 @@ func boot() string {
 }
 func (e *Engine) Call(op string, r Request) (any, error) {
 	var result any
-	err := e.WithState(func() error {
+	err := e.WithState(func() error { var err error; result, err = e.callLocked(op, r); return err })
+	return result, err
+}
+func (e *Engine) callLocked(op string, r Request) (any, error) {
+	var result any
+	err := func() error {
 		if op == "health" {
 			ready, missing := e.Ready()
 			productionReady := ready
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "missing": missing, "capabilities": []string{"peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "missing": missing, "capabilities": []string{"signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -137,17 +143,6 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 				out[n] = a.UID
 			}
 			result = out
-			return nil
-		}
-		if op == "issue-registration" {
-			account, ok := e.Config.Accounts[r.Username]
-			if !ok {
-				return errors.New("account not approved")
-			}
-			if err := e.registrationAllowed(account.UID); err != nil {
-				return err
-			}
-			result = e.issue(Capability{Username: r.Username, Purpose: "register", Expires: Millis() + 30000})
 			return nil
 		}
 		if !attemptID.MatchString(r.ID) {
@@ -275,6 +270,9 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 			if a.State == "ACTIVE" {
 				a.State = "LOCKED"
 				a.Generation++
+				if r.Generation > a.Generation {
+					a.Generation = r.Generation
+				}
 				a.Reason = r.Reason
 				a.Authorization = 0
 				e.Audit(op, a.ID)
@@ -349,7 +347,7 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 			return errors.New("unsupported operation")
 		}
 		return err
-	})
+	}()
 	return result, err
 }
 func (e *Engine) issue(c Capability) any {
@@ -615,7 +613,27 @@ func (e *Engine) Watch() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	running := make(chan struct{}, 1)
+	delivery := make(chan struct{}, 1)
+	nextDelivery := time.Time{}
+	backoff := time.Second
 	for range ticker.C {
+		if !time.Now().Before(nextDelivery) {
+			select {
+			case delivery <- struct{}{}:
+				go func() {
+					defer func() { <-delivery }()
+					if err := e.DeliverCallbacks(); err != nil {
+						log.Printf("agent callback delivery pending: %v", err)
+					}
+				}()
+				// Delivery is attempted only for pending data; no idle HTTP request is made.
+				nextDelivery = time.Now().Add(backoff)
+				if backoff < 30*time.Second {
+					backoff *= 2
+				}
+			default:
+			}
+		}
 		if err := e.Cutoff(); err != nil {
 			log.Printf("independent deadline cutoff failed: %v", err)
 		}

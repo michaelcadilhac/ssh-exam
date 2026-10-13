@@ -1,6 +1,6 @@
 # Native class-server installation
 
-This directory independently installs the compiled account gate, root mTLS agent, independent
+This directory independently installs the compiled account gate, root SSH command agent, independent
 watchdog/reconciliation timer, collector and root tools. Target: Debian 12/13, Linux systemd/
 cgroup v2, OpenSSH privilege separation and bubblewrap. **Privileged installation remains
 untested on a real class host. Leave readiness flags false until the manual suite passes.**
@@ -12,11 +12,22 @@ SSH configurations and affected PAM files. Never change the administrator shell/
 recovery access to test student denial. Use disposable course accounts first. Install Go 1.27.2,
 bubblewrap, systemd, OpenSSH, Python 3, procps and ripgrep. cgroup v2 needs cpu/memory/pids/freezer.
 
-Provide a private independent gateway-host-to-agent TCP 9443 route, source-firewalled to the
-gateway host, via administrator-owned network/VPN/tunnel if needed. Student SSH is not the
-control route. Never expose an unauthenticated root service or use student passwords for it.
-Provision server DNS/IP SAN certificate, client CA and exam-gateway clientAuth certificate
-Common Name. Root owns config/keys 0600 in directory 0700. Test renewal before expiry.
+There is no inbound agent TCP service, independent tunnel, or command polling. Commands
+arrive over the student's authenticated SSH connection (`exam-control`, non-PTY, bounded
+signed stdin frame). Root checks the gateway Ed25519 signature, audience, account, expiry,
+durable nonce, peer UID and root sshd ancestry. Keep the gate before all personal startup.
+
+The agent needs outbound HTTPS to the gateway for signed status and archive callbacks.
+Generate two separate Ed25519 key pairs with `openssl genpkey -algorithm Ed25519`: gateway
+command signing and class-agent callback signing. Export each public key using `openssl
+pkey -pubout`; exchange only public keys through administrator-controlled provisioning.
+For an institutional outbound proxy, configure HTTPS_PROXY/NO_PROXY in an administrator-owned
+service environment; TLS still verifies the fixed gateway origin and redirects are refused.
+Install gateway-signing.pub and callback.key under /etc/exam-agent; the callback private key
+stays on the class host and the gateway private key stays on the web host. Set agent_id,
+gateway_public_key, callback_url (fixed HTTPS origin), callback_key and optional callback_ca.
+Root owns config/private keys 0600 in directory 0700. Never log or pass private keys or
+student credentials as command-line arguments. Verify the matching web configuration.
 
 ## Build/install
 
@@ -31,7 +42,7 @@ Installs root:root 0755 binaries: /usr/local/sbin/exam-agent and examctl,
 Units install under /etc/systemd/system. The script does not auto-edit SSH/PAM, enable
 incomplete services or enroll real accounts.
 
-Edit /etc/exam-agent/agent.json for control route, trust, state, rootfs, templates, work base
+Edit /etc/exam-agent/agent.json for signature trust, callback origin, state, rootfs, templates, work base
 and approved account mapping. Original shells support /bin/bash, /bin/zsh and /bin/sh.
 The example account mapping is illustrative; root approval must resolve actual identities.
 
@@ -142,19 +153,20 @@ bundle under
 fixed timestamps, completion reason, file hashes and omissions/outages. Archive checksum stays
 outside the archive. The external manifest includes the archive checksum plus actual
 completion, collection and protection timestamps; the effective expiration end remains the
-original deadline. The mTLS submission-manifest operation returns this actual file inventory.
+original deadline. Signed status callbacks and `examctl manifest` provide this actual file inventory.
 A crash after bundle publication but before state persistence adopts the verified bundle,
 without reading or replacing live work. Damaged/incomplete bundles fail closed and require
 root recovery; do not remove a secured bundle to force recollection. Grade in a separate sandbox, never by executing/unpacking in the app.
-Access returns only after the original deadline has elapsed AND protection and workload termination are verified. Early completion keeps the account held. mTLS export is
-independent of SSH; export pending differs from collection failure, which retains exclusion.
+Access returns only after the original deadline has elapsed AND protection and workload termination are verified. Early completion keeps the account held. Outbound HTTPS export is
+independent of student SSH; export pending differs from collection failure, which retains exclusion.
 
-    sudo examctl inspect-attempt ATTEMPT_UUID
-    sudo examctl finalize-attempt ATTEMPT_UUID
+    sudo examctl info ATTEMPT_UUID
+sudo examctl info --exam sandbox
+    sudo examctl retry ATTEMPT_UUID --reason "Retry collection after fixing storage"
     sudo exam-agent -config /etc/exam-agent/agent.json -reconcile
 
 For full disks add protected capacity before retrying. Restore watchdog before agent access.
-For changed keys/expired certificates install verified replacements and test/reconcile.
+For changed keys/expired HTTPS certificates or rotated signature keys install verified replacements and test/reconcile.
 Keep failed archives/workload/account excluded; retry export without recollecting mutable work.
 Root break-glass requires independently protected saved files, killed writers, verified archive
 and audited disposition before restoring recorded access. No remote force-unlock exists.
@@ -256,4 +268,54 @@ Every LOCKED pause now ends recorded workload scopes/services. Gateway closes bo
 SSH connections. One generation-bound authorization permits a fresh SSH transport attach
 and continuation; old transport identity or consumption without fresh attach is rejected.
 Watchdog lease expiry applies the same policy. Saved files remain at the original deadline;
-unsaved editor state is lost. The privileged control connection stays independent.
+unsaved editor state is lost. The local deadline watchdog stays independent.
+
+
+## Local examctl administration
+
+All commands require root. The shared gate, watchdog and CLI use one durable state and flock;
+no separate HTTP API is installed. Use attempt UUIDs to address an individual student's run.
+
+```sh
+sudo examctl list
+sudo examctl list --active
+sudo examctl list --active --exam sandbox
+sudo examctl list --json
+sudo examctl info ATTEMPT_UUID
+sudo examctl health
+sudo examctl accounts
+sudo examctl start ATTEMPT_UUID --reason 'Operator activates prepared attempt'
+sudo examctl pause ATTEMPT_UUID --reason 'Operator requests fresh monitored login'
+sudo examctl stop ATTEMPT_UUID --reason 'Operator ends this attempt locally'
+sudo examctl retry ATTEMPT_UUID --reason 'Storage issue corrected; retry protection'
+sudo examctl cancel ATTEMPT_UUID --reason 'Abandoned preparation; never started'
+sudo examctl manifest ATTEMPT_UUID
+sudo examctl export ATTEMPT_UUID > submission.tar.gz
+sudo examctl reconcile
+sudo examctl agent status
+sudo examctl agent stop
+sudo examctl agent start
+sudo examctl agent restart
+```
+
+`--active` means started and unfinished, including locked/finalizing/collection-failed.
+The full list also shows preparations, completed submissions and their independent access holds.
+`start` activates an already prepared attempt; it never creates an enrollment or resets time.
+`stop`/`finish` collect the selected attempt now, retain the original hold, and never stop
+other students or the shared daemon. Mutations require an administrator reason recorded in
+root-private audit state. `delete` removes the protected original only after completion and
+access release; archives have no automatic 60-day monitoring retention.
+
+`agent stop` stops only the SSH command gate. The independent deadline watchdog and persistent
+reconciliation timer keep running. Start/restart ensure those services are running before the
+gate. Never kill the watchdog or erase state to end an exam. Gateway outage: collection and
+account exclusion continue; status/archive callbacks remain durable and retry without idle
+HTTP polling. Agent stop/restart closes interactive workloads through existing supervision
+and execution leases; saved files persist and original deadlines do not change.
+
+Before upgrading, drain attempts, back up state/work/archives/account mappings, install both
+new gate and agent binaries, configure the two signature identities and outbound HTTPS,
+update web configuration and verify signed callbacks plus fresh SSH commands. The old
+listen/cert/key/ca/client_name configuration and inbound 9443 listener are removed. Close the
+old firewall/tunnel only after confirming the new route. Roll back binaries/config together
+with original state/deadlines; never restore a stale state over a later secured submission.

@@ -889,11 +889,7 @@ export function Workspace({
           className="danger"
           hidden={attempt.state === "PREPARING"}
           onClick={() => setDialog({ kind: "finish" })}
-          disabled={
-            attempt.state === "PREPARING" ||
-            ended ||
-            attempt.state === "FINALIZING"
-          }
+          disabled={attempt.state !== "ACTIVE" || !connected || ended}
         >
           Finish exam
         </button>
@@ -1023,12 +1019,7 @@ export function Workspace({
               <b>
                 {remaining(attempt.deadline, clock)} remaining · clock continues
               </b>
-              <button
-                className="danger"
-                onClick={() => setDialog({ kind: "finish" })}
-              >
-                Finish exam
-              </button>
+
               {locked && (
                 <>
                   {!sandbox && (

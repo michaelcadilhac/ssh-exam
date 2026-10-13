@@ -1,4 +1,5 @@
 import { loadConfig } from "../packages/config/index.js";
+import { Store } from "../apps/server/src/db.js";
 import { Agent } from "../apps/server/src/agent.js";
 import { statSync, statfsSync } from "node:fs";
 const config = loadConfig();
@@ -18,12 +19,12 @@ check(
 );
 check("SMTP configured", !!config.smtp);
 for (const [name, p] of Object.entries(config.agent).filter(([n]) =>
-  ["ca", "cert", "key"].includes(n),
+  ["signingKey", "callbackPublicKey"].includes(n),
 )) {
   const st = statSync(p);
   check(
-    `mTLS ${name}`,
-    st.isFile() && (name !== "key" || (st.mode & 0o077) === 0),
+    `Agent signature ${name}`,
+    st.isFile() && (name !== "signingKey" || (st.mode & 0o077) === 0),
     p,
   );
 }
@@ -34,17 +35,26 @@ check(
   "minimum 1 GiB; size for enrollment and retention",
 );
 try {
-  const health = await new Agent(config.agent).call("health");
+  const store = new Store(config.data);
+  const health = await new Agent(config.agent, store).call("health");
+  store.close();
   check(
     "Class agent guards and capabilities",
     health.ready &&
-      ["interval-access-hold", "all-session-channel-gate"].every((cap) =>
-        health.capabilities?.includes(cap),
-      ),
+      [
+        "interval-access-hold",
+        "all-session-channel-gate",
+        "signed-ssh-control",
+        "durable-status-callbacks",
+      ].every((cap) => health.capabilities?.includes(cap)),
     JSON.stringify(health.missing || health.warning || ""),
   );
 } catch {
-  check("Independent agent control route", false);
+  check(
+    "Authenticated agent configuration callback",
+    false,
+    "Start the class agent; it reports configuration through HTTPS. No inbound agent route exists.",
+  );
 }
 check(
   "Production signoff",

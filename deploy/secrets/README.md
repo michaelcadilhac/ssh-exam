@@ -1,6 +1,6 @@
-Keep secret files out of Git and images. Create `agent-client.key` and `smtp-password` here,
-owned by UID/GID 10001, mode 0400. Parent directories must restrict host access. Compose file
-secrets are read-only mounts, not encryption. Mount agent CA and client certificate in
-`deploy/trust/`, configuration and the actual signed readiness report in `deploy/config/`.
-No student passwords are ever configuration. Rotate mTLS certificates before expiry, using
-an operator-approved client CA and `exam-gateway` client certificate Common Name.
+Keep secrets out of Git and images. Create `gateway-signing.key` and `smtp-password` here,
+owned by UID/GID 10001, mode 0400, with protected parent directories. Compose mounts the
+command signing key as `gateway_signing_key`. Mount the class agent callback public key in
+`deploy/trust/agent-callback.pub`, configuration/readiness in `deploy/config/`. The matching
+gateway public key goes on the class server; its callback private key stays there. Generate
+separate Ed25519 identities. No student passwords or root SSH credentials are configuration.

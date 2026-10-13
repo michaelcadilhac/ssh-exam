@@ -1,5 +1,5 @@
 [Unit]
-Description=Exam class-server mTLS control agent and local account gate
+Description=Exam class-server SSH command gate and outbound status callbacks
 After=network-online.target exam-deadline-watchdog.service
 Wants=network-online.target exam-deadline-watchdog.service
 [Service]

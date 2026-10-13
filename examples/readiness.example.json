@@ -7,5 +7,7 @@
   "operator": "REPLACE_AFTER_ACTUAL_TESTS",
   "testedAt": "",
   "report": "docs/compatibility.md",
-  "intervalAccessHold": false
+  "intervalAccessHold": false,
+  "sshCommandTransport": false,
+  "statusCallbacks": false
 }
