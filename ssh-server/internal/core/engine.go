@@ -214,6 +214,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if err != nil {
 				return err
 			}
+			manifest.Attempt = publicAttempt(manifest.Attempt)
 			result = manifest
 		case "inspect-attempt", "reconcile-operation", "submission-status":
 			result = a

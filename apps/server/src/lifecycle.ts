@@ -13,6 +13,30 @@ import path from "node:path";
 import { Store, now, hash, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
 import { Monitoring } from "./monitoring.js";
+// Collection metadata is immutable; connection bookkeeping is not part of the
+// submission. SSH replies and callbacks must compare the same public snapshot.
+function manifestSnapshot(manifest: any) {
+  const snapshot = { ...manifest, attempt: { ...manifest.attempt } };
+  for (const key of [
+    "transport",
+    "resume_transport",
+    "authorization",
+    "lease",
+    "units",
+  ])
+    delete snapshot.attempt[key];
+  const ordered = (value: any): any =>
+    Array.isArray(value)
+      ? value.map(ordered)
+      : value !== null && typeof value === "object"
+        ? Object.fromEntries(
+            Object.keys(value)
+              .sort()
+              .map((key) => [key, ordered(value[key])]),
+          )
+        : value;
+  return JSON.stringify(ordered(snapshot), null, 2);
+}
 export class Lifecycle {
   private busy = new Set<string>();
   onEnd = (_attempt: Attempt) => {};
@@ -232,6 +256,13 @@ export class Lifecycle {
           throw Error("Protected manifest verification failed");
         if (a.checksum && a.checksum !== remote.checksum)
           throw Error("Secured submission cannot be replaced");
+        this.publish(
+          `${this.store.dir}/submissions/${id}.manifest.json`,
+          Buffer.from(manifestSnapshot(manifest)),
+          (existing) =>
+            manifestSnapshot(JSON.parse(existing.toString())) ===
+            manifestSnapshot(manifest),
+        );
         this.store.db
           .prepare(
             "UPDATE attempts SET protected=1,checksum=?,export_status=COALESCE(export_status,'pending'),completed_at=?,collected_at=?,secured_at=? WHERE id=?",
@@ -243,10 +274,7 @@ export class Lifecycle {
             manifest.secured || null,
             id,
           );
-        this.publish(
-          `${this.store.dir}/submissions/${id}.manifest.json`,
-          Buffer.from(JSON.stringify(manifest, null, 2)),
-        );
+
         this.onSecured(this.store.attempt(id));
         if (manifest.omissions?.length)
           this.alert(
@@ -402,7 +430,12 @@ export class Lifecycle {
       .run(id);
     this.onEnd(this.store.attempt(id));
   }
-  private publish(file: string, bytes: Buffer) {
+  private publish(
+    file: string,
+    bytes: Buffer,
+    equivalent: (existing: Buffer) => boolean = (existing) =>
+      hash(existing) === hash(bytes),
+  ) {
     const syncDirectory = () => {
       const directory = openSync(path.dirname(file), "r");
       try {
@@ -411,10 +444,13 @@ export class Lifecycle {
         closeSync(directory);
       }
     };
-    if (existsSync(file)) {
-      if (hash(readFileSync(file)) !== hash(bytes))
+    const verifyExisting = () => {
+      if (!equivalent(readFileSync(file)))
         throw Error("Existing submission artifact cannot be replaced");
       syncDirectory();
+    };
+    if (existsSync(file)) {
+      verifyExisting();
       return;
     }
     const temporary = `${file}.${randomUUID()}.tmp`;
@@ -426,8 +462,13 @@ export class Lifecycle {
       } finally {
         closeSync(fd);
       }
-      linkSync(temporary, file);
-      syncDirectory();
+      try {
+        linkSync(temporary, file);
+        syncDirectory();
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        verifyExisting();
+      }
     } finally {
       if (existsSync(temporary)) unlinkSync(temporary);
     }

@@ -276,3 +276,70 @@ it("finished and disconnected attempts cannot finish or reopen; release is only 
     t.close();
   }
 });
+it.each(["SSH", "callback"])(
+  "reconciles %s legacy manifests after restart without replacing saved artifacts",
+  async (format) => {
+    const t = setup();
+    try {
+      t.collect();
+      const raw = {
+        ...t.manifest(),
+        attempt: {
+          ...t.manifest().attempt,
+          transport: "original-transport",
+          resume_transport: "resume-transport",
+          lease: 99,
+          authorization: 88,
+          units: ["exam-workload.service"],
+        },
+      };
+      const callback = {
+        ...raw,
+        attempt: {
+          ...raw.attempt,
+          transport: "",
+          resume_transport: "",
+          lease: 0,
+          authorization: 0,
+          units: null,
+        },
+      };
+      const file = t.dir + "/submissions/a.manifest.json";
+      const legacy = format === "SSH" ? raw : callback;
+      // Existing deployments have both formats, with varying JSON key order/spacing.
+      writeFileSync(
+        file,
+        JSON.stringify(Object.fromEntries(Object.entries(legacy).reverse())),
+      );
+      const before = readFileSync(file);
+      t.life().acceptRemote(t.remote, format === "SSH" ? callback : raw);
+      t.life().receiveArchive("a", t.remote.checksum, t.archive);
+      Object.assign(t.manifest().attempt, raw.attempt);
+      t.restart();
+      await expect(t.life().reconcile("a")).resolves.toMatchObject({
+        state: "COMPLETED",
+      });
+      expect(readFileSync(file)).toEqual(before);
+      expect(readFileSync(t.dir + "/submissions/a.tar.gz")).toEqual(t.archive);
+      expect(() =>
+        t
+          .life()
+          .acceptRemote(t.remote, {
+            ...callback,
+            files: [{ path: "changed.txt", size: 5, sha256: hash("other") }],
+          }),
+      ).toThrow("cannot be replaced");
+      expect(() =>
+        t
+          .life()
+          .acceptRemote(t.remote, {
+            ...callback,
+            collected: callback.collected + 1,
+          }),
+      ).toThrow("cannot be replaced");
+      expect(readFileSync(file)).toEqual(before);
+    } finally {
+      t.close();
+    }
+  },
+);

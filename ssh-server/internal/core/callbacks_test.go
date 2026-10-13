@@ -157,3 +157,43 @@ func TestExportPauseRequiresVerifiedCopyAndAudit(t *testing.T) {
 		t.Fatal("failed audit changed delivery state", status, err)
 	}
 }
+
+func TestSSHManifestMatchesCallbackViewAndPreservesProtectedMetadata(t *testing.T) {
+	e, c, _ := finalFixture(t, "ACTIVE", Millis()+5400000)
+	if err := e.WithState(func() error {
+		a := e.state.Attempts[finalID]
+		a.Transport = "original-transport"
+		a.ResumeTransport = "previous-transport"
+		a.Units = []string{"exam-workload.scope"}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Call("finalize-attempt", Request{ID: finalID, Reason: "student finish"}); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(c.State, "submissions", finalID, "manifest.json")
+	before, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := ReadProtected(filepath.Dir(file), inspectFinal(t, e))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := *raw
+	expected.Attempt = publicAttempt(raw.Attempt)
+	view, err := e.Call("submission-manifest", Request{ID: finalID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := json.Marshal(expected)
+	got, _ := json.Marshal(view)
+	if string(want) != string(got) {
+		t.Fatal("SSH manifest differs from callback public view")
+	}
+	after, err := os.ReadFile(file)
+	if err != nil || string(before) != string(after) {
+		t.Fatal("protected metadata changed")
+	}
+}

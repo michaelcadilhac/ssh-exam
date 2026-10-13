@@ -70,3 +70,15 @@ outage leaves receipts/transfers in durable local state; restoring HTTPS allows 
 protected copies. Do not erase nonce/event state or reset a deadline as a rollback shortcut.
 Unknown historical attempts are audited by callback ingestion; their originals remain available
 through `examctl export` even when a fresh gateway database lacks their metadata.
+
+## Reconciliation reports an existing submission conflict
+
+SSH manifest replies and signed status callbacks use the same public collection snapshot.
+The gateway compares manifest content with deterministic object-key ordering and excludes
+only transient transport/resume, authorization, lease and terminal-unit bookkeeping.
+Legacy manifests containing those fields remain readable and are never rewritten merely
+to reconcile. Archive publication still requires identical bytes and the recorded checksum.
+Changed identity, interval, saved-file inventory, collection timestamps or checksum remains
+a conflict and must fail closed. Never delete an existing protected artifact to make login
+or a repeat sandbox attempt succeed. The 2026-10-13 manifest reconciliation fix covers both
+legacy reply formats and restart recovery while preserving the existing archive/manifest.
