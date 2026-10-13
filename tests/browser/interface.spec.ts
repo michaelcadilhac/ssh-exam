@@ -136,6 +136,7 @@ test("student notice and authentication are accessible and self-hosted", async (
     page.getByText("No audio or raw keystrokes.", { exact: false }),
   ).toBeVisible();
   await expect(page.getByLabel("Enrolled username")).toBeVisible();
+  await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue("");
   await expect(page.locator(".intro, .landing footer")).toHaveCount(0);
   await expect(
     page.getByText("ONE WORKSPACE. YOUR CLASS SERVER.", { exact: true }),
@@ -157,6 +158,7 @@ test("instructor can add, remove and import students, cancel removal with Escape
     "sample",
   );
   await page.getByLabel("Selected exam", { exact: true }).selectOption("");
+  await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue("");
   await page.getByLabel("Exam ID", { exact: true }).fill("admin-created");
   await page.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(

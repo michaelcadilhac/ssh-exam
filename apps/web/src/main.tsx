@@ -16,7 +16,7 @@ function App() {
     [challenge, setChallenge] = useState<AuthChallenge | null>(null),
     [responding, setResponding] = useState(false),
     [authSocket, setAuthSocket] = useState<WebSocket | null>(null),
-    [examId, setExamId] = useState("sample"),
+    [examId, setExamId] = useState(""),
     [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [info, setInfo] = useState<any>(null),

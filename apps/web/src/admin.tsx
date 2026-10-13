@@ -95,7 +95,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
     ),
     [sound, setSound] = useState(false),
     [form, setForm] = useState<any>({
-      id: "sample",
+      id: "",
       name: "Programming exam",
       earliest: Date.now() - 60000,
       latest: Date.now() + 7 * 86400000,
