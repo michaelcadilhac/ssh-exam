@@ -14,6 +14,7 @@ services:
       - ./var/production:/data
       - ./deploy/config:/run/config:ro
       - ./deploy/trust:/run/trust:ro
+      - ./deploy/mail:/run/mail:ro
     secrets:
       - gateway_signing_key
       - smtp_password

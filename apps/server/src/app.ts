@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import argon2 from "argon2";
-import nodemailer from "nodemailer";
+import { mailTransport } from "./mail.js";
 import { z } from "zod";
 import {
   examSchema,
@@ -1932,20 +1932,6 @@ export async function createApp(
     mailBusy = true;
     try {
       const smtp = config.smtp;
-      const transport = nodemailer.createTransport({
-        host: smtp.host,
-        port: smtp.port,
-        secure: smtp.secure,
-        requireTLS: !smtp.secure,
-        auth: smtp.user
-          ? {
-              user: smtp.user,
-              pass: smtp.passwordFile
-                ? readFileSync(smtp.passwordFile, "utf8").trim()
-                : "",
-            }
-          : undefined,
-      });
       const rows = store.db
         .prepare(
           "SELECT * FROM outbox WHERE status='pending' AND next<=? LIMIT 10",
@@ -1953,12 +1939,17 @@ export async function createApp(
         .all(now()) as any[];
       for (const r of rows)
         try {
-          await transport.sendMail({
-            from: smtp.from,
-            to: smtp.to,
-            subject: r.subject,
-            text: r.body + "\n" + config.origin + "/admin",
-          });
+          const transport = mailTransport(smtp);
+          try {
+            await transport.sendMail({
+              from: smtp.from,
+              to: smtp.to,
+              subject: r.subject,
+              text: r.body + "\n" + config.origin + "/admin",
+            });
+          } finally {
+            transport.close();
+          }
           store.db
             .prepare("UPDATE outbox SET status='sent' WHERE id=?")
             .run(r.id);

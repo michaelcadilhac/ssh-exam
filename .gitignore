@@ -11,5 +11,6 @@ __pycache__/
 *.pyc
 deploy/config/
 deploy/trust/
+deploy/mail/
 deploy/secrets/*
 !deploy/secrets/README.md

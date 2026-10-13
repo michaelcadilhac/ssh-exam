@@ -21,15 +21,22 @@ const schema = z.object({
     callbackPublicKey: z.string(),
   }),
   smtp: z
-    .object({
-      host: z.string(),
-      port: z.number().int(),
-      secure: z.boolean(),
-      user: z.string().optional(),
-      passwordFile: z.string().optional(),
-      from: z.string().email(),
-      to: z.array(z.string().email()).min(1),
-    })
+    .union([
+      z.object({
+        host: z.string(),
+        port: z.number().int(),
+        secure: z.boolean(),
+        user: z.string().optional(),
+        passwordFile: z.string().optional(),
+        from: z.string().email(),
+        to: z.array(z.string().email()).min(1),
+      }),
+      z.object({
+        socket: z.string().regex(/^\/[^\0]+$/),
+        from: z.string().email(),
+        to: z.array(z.string().email()).min(1),
+      }),
+    ])
     .optional(),
   maintenance: z.boolean().default(false),
   loginOnly: z.boolean().optional(),

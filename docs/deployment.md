@@ -5,6 +5,26 @@ TLS certificates, Ed25519 command/callback keys and SMTP. Native components inst
 Node baseline is 26.11.1-bookworm-slim with exact manifest digest in Dockerfile. Upgrade
 tag/digest/dependencies together after testing, outside active exams.
 
+SMTP settings and recipients are administrator-configurable in `deploy/config/config.json`.
+For network SMTP use `host`, `port`, `secure`, optional `user`/`passwordFile`, `from` and
+`to` (an address list). Network SMTP always requires verified TLS. When the webserver
+and OpenSMTPD share a host, an optional private Unix socket avoids a network relay and
+requires no SMTP password:
+
+```json
+{"smtp":{"socket":"/run/mail/smtp.sock","from":"exam@example.edu","to":["instructor@example.edu"]}}
+```
+
+The Compose mount `deploy/mail:/run/mail:ro` must contain only this local endpoint.
+On marco, create `deploy/mail` owned by UID/GID 10001 mode 0700, install
+`deploy/systemd/ssh-exam-mail.socket` and `.service`, and enable the socket. It exposes
+the protected endpoint through systemd-socket-proxyd to the existing `/run/smtpd.sock`;
+it opens no TCP listener and follows the mail daemon across restarts. Socket mode 0600
+limits callers to the application UID. The TCP transport remains encrypted; the Unix
+transport uses local IPC and does not request TLS or authentication. Both transports
+have bounded connection/greeting/idle timeouts. Delivery rejection remains in the durable
+outbox with retry/backoff; SMTP acceptance does not prove final recipient delivery.
+
 For a host installation, use Node 26.x and reinstall with `npm ci` when upgrading from
 Node 24. Native SQLite binaries are specific to the Node major version. Build and test
 before restarting the gateway; restarting discards authenticated SSH connections.

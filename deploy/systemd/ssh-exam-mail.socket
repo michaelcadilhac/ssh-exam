@@ -1,0 +1,12 @@
+[Unit]
+Description=Private local SMTP endpoint for SSH Exam
+
+[Socket]
+ListenStream=/opt/ssh-exam/deploy/mail/smtp.sock
+SocketUser=10001
+SocketGroup=10001
+SocketMode=0600
+DirectoryMode=0700
+
+[Install]
+WantedBy=sockets.target
