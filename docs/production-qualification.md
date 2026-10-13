@@ -154,3 +154,25 @@ avoids those extra changes. Notification delivery and persistent retry remain ve
 
 New course identities require explicit root approval/enrollment before ordinary exams; the
 web roster does not grant host privileges. Sandbox remains available to mcadilha immediately.
+
+Activation completed at 00:59 Chicago time. Public `/health/ready` returns HTTP 200 with
+`ready: true`, `maintenance: false`, `mode: production`, `functionalTest: false` and
+`productionReady: true`. The gateway activation backup is
+`/var/backups/ssh-exam/20261013T055955Z-activation`; the implementation release is `93fdea2`.
+All 21 strict Linux assertions passed again with the updated native binaries.
+
+A real administrator sandbox smoke attempt `ca7a4d0b-d574-4344-8153-66daed4bbb69` used the
+existing gateway signing key through mcadilha's real SSH connection, without changing trust.
+It started with exactly 300 seconds, accepted terminal typing, read the real home preferences,
+and preserved a concurrent ordinary SSH/sudo check. Early finish produced a protected archive,
+terminated the tracked terminal and released sandbox for repeat. Its original deadline was
+preserved. Verified transfer to the gateway succeeded, and an authorized instructor download
+matched SHA-256 `9b480ece7497d3797b608eea6fcb795ecc3884153f86338cdcf4c95ca6ddde01`;
+student download access was denied. The archive remains in test history, and the student API
+reports sandbox ready for a new attempt. mcadilha's sandbox enrollment is present.
+
+The main class server retains all 21 historical records/12 protected archives plus this one
+clearly audited sandbox check. The temporary private environment is stopped. SSH, the native
+agent/deadline services, OpenSMTPD and the webserver remain running. No passwords, signing keys
+or administrator accounts were replaced. Future student enrollment activates the same installed
+managed-account policy and must pass its account-specific checks before exam admission.

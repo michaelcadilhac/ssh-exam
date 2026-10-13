@@ -144,8 +144,8 @@ configuration uses `agent_id`, `gateway_public_key`, `callback_url`, `callback_k
 Private `gateway-signing.key` is mounted as `gateway_signing_key`; only the class callback
 public key is mounted at `/run/trust/agent-callback.pub`. Dedicated nginx archive callbacks
 allow 128 MiB, while student uploads keep their 12 MiB cap. Remove old control tunnel/API
-credentials after draining and verifying the new route. Existing marco/csc-sys installations
-are not migrated by these local source changes; see the native migration procedure.
+credentials after draining and verifying the new route. See the native migration procedure and
+[installed production activation record](production-qualification.md) for marco/csc-sys.
 
 Readiness signoff additionally requires `sshCommandTransport` and `statusCallbacks` after
 actual command/callback and recovery checks. Both default false. See
