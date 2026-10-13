@@ -4,11 +4,11 @@ After=smtpd.service
 Requires=smtpd.service
 
 [Service]
-ExecStart=/usr/lib/systemd/systemd-socket-proxyd /run/smtpd.sock
-User=nobody
-Group=65534
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd 127.0.0.1:2526
+User=10001
+Group=10001
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-RestrictAddressFamilies=AF_UNIX
+RestrictAddressFamilies=AF_UNIX AF_INET

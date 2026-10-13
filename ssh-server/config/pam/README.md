@@ -7,7 +7,8 @@ is built statically (CGO_ENABLED=0), and SSH must not accept arbitrary environme
 1. In /etc/pam.d/sshd's session stack, skip pam_systemd for exam-managed accounts so
    loginctl terminate-user does not kill the retained gateway transport. Place this
    immediately before the single `session optional pam_systemd.so` invocation, including
-   inside common-session if that is where it occurs:
+   inside common-session if that is where it occurs. The machine checker follows the
+   SSH session includes and rejects an unguarded pam_systemd invocation:
 
    session [success=1 default=ignore] pam_succeed_if.so user ingroup exam-managed
    session optional pam_systemd.so

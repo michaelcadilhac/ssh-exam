@@ -242,6 +242,8 @@ The student sees remaining time and warnings at ten, five, and one minute. The c
 
 Locks, page reloads, lost network access, reauthentication, and instructor review **never pause or extend the clock**. Do not provide an ordinary extension button. Accommodated durations are set before starting and snapshotted into the attempt.
 
+Before terminating pre-existing logind sessions, move only root-installed entry stubs and the registered SSH transport monitor into a separate administrator-controlled scope and verify that the move completed. Match executable inodes as well as paths. Kill all other account processes before material release. Missing logind users are harmless; an unreadable user inventory fails closed. The installation checker must distinguish an explicit sudo denial from command failure and inspect service templates and the effective SSH PAM session stack. Query the synchronized kernel clock without changing it, including in containers sharing the host clock.
+
 The class agent enforces expiration locally even if the browser, application, reverse proxy, SMTP, or callback network is unavailable. Use a persisted absolute deadline plus a monotonic elapsed-time guard during a boot; do not let a backward wall-clock adjustment grant extra time. Reconcile unfinished attempts on service and machine restart before reopening access.
 
 ### 7.3 Events requiring a lock
@@ -430,6 +432,8 @@ Implement all three channels:
 Send interruption alerts with username, exam, reason, time remaining at generation, and a link to the incident requiring normal administrator authentication. Never embed screenshots, passwords, one-use continuation credentials, or a link that performs an action on GET.
 
 Coalesce correlated triggers into one incident. Send a follow-up when the student requests review, without allowing message flooding. Also alert on collection failure, recording-storage failure, class-agent loss, and submission-export failure. During widespread outages, group email summaries while retaining individual incident records.
+
+SMTP recipients are administrator-configurable as an address list. Host-local OpenSMTPD may use a private Unix socket owned by the application UID, forwarded to a dedicated loopback SMTP listener; its administrative enqueue socket is not a raw SMTP endpoint. Verify actual recipient delivery and durable retry across an application restart.
 
 SMTP configuration may be unavailable during development, but production readiness must prominently warn until notifications are configured and tested. Email does not guarantee an immediate instructor response. Student instructions must say the clock continues while review is pending.
 

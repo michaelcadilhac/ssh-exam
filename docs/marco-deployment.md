@@ -2,7 +2,8 @@
 
 > Initial installation/history record. The subsequent SSH command and callback
 > architecture is now deployed on both hosts; see [the upgrade record](ssh-command-deployment.md)
-> for current transport, backups, verification and qualification status.
+> for transport and migration history, and [qualification](production-qualification.md)
+> for current SMTP delivery, isolation evidence and remaining installation restrictions.
 
 Installed on 2026-10-12 on `marco` (Arch Linux), following TagMix's conventions:
 

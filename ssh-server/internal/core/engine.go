@@ -62,8 +62,7 @@ func (e *Engine) productionReady() (bool, []string) {
 	if syscall.Statfs(e.Config.State, &disk) != nil || disk.Bavail*uint64(disk.Bsize) < 1024*1024*1024 {
 		missing = append(missing, "at least 1 GiB free protected storage required")
 	}
-	out, err := exec.Command("/usr/bin/timedatectl", "show", "--property=NTPSynchronized", "--value").Output()
-	if err != nil || strings.TrimSpace(string(out)) != "yes" {
+	if !clockSynchronized() {
 		missing = append(missing, "clock synchronization not verified")
 	}
 	passwd, _ := os.ReadFile("/etc/passwd")
@@ -421,9 +420,6 @@ func (e *Engine) quiesceOrdinary(a *Attempt) error { // Administrator's PAM/job 
 		e.Audit("trusted-functional-test-retains-ordinary-access", a.ID)
 		return nil
 	}
-	if err := exec.Command("/usr/bin/loginctl", "terminate-user", a.Username).Run(); err != nil {
-		return fmt.Errorf("terminate existing login/user-service sessions: %w", err)
-	}
 	// Preserve only SSH transport/session ancestors identified at registration. The verified guard suite must
 	// demonstrate that configured PAM does not place the gateway transport in the killed user slice.
 	pids, err := uidProcesses(a.UID)
@@ -432,8 +428,31 @@ func (e *Engine) quiesceOrdinary(a *Attempt) error { // Administrator's PAM/job 
 	}
 	trusted := func(pid int) bool {
 		identity, err := transportIdentity(pid, a.UID)
-		exe, _ := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
-		return err == nil && identity == a.Transport && (exe == "/usr/sbin/sshd" || exe == "/usr/lib/openssh/sshd-session" || exe == "/usr/sbin/sshd-session")
+		return err == nil && identity == a.Transport && trustedEntryExecutable(pid)
+	}
+	var entries []int
+	seen := map[int]bool{}
+	for _, pid := range pids {
+		if trusted(pid) {
+			_, monitor, err := transportInfo(pid, a.UID)
+			if err != nil {
+				return err
+			}
+			for _, entry := range []int{pid, monitor} {
+				if !seen[entry] {
+					entries = append(entries, entry)
+					seen[entry] = true
+				}
+			}
+		}
+	}
+	if len(entries) > 0 {
+		if err := protectEntryScope(entries, "exam-entry-"+a.ID+"-"+Token()[:12]+".scope"); err != nil {
+			return err
+		}
+	}
+	if err := terminateLoggedInUser(a.UID); err != nil {
+		return fmt.Errorf("terminate existing login/user-service sessions: %w", err)
 	}
 	for _, pid := range pids {
 		if trusted(pid) {
@@ -467,7 +486,6 @@ func (e *Engine) quiesceOrdinary(a *Attempt) error { // Administrator's PAM/job 
 		time.Sleep(20 * time.Millisecond)
 	}
 	return errors.New("uncontained pre-existing process remains; activation denied")
-	return nil
 }
 func (e *Engine) freeze(a *Attempt, frozen bool) error {
 	value := "0"

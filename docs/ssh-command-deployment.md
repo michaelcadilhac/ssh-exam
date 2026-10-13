@@ -1,5 +1,8 @@
 # SSH-command architecture deployment
 
+> Historical migration record. Later fixes, SMTP delivery and strict Linux isolation testing
+> are recorded in [production qualification](production-qualification.md).
+
 Upgraded `marco` and `csc-sys` on 2026-10-12 (Chicago; 2026-10-13 UTC).
 The architecture release is `7633669`; the subsequent migration fix adds audited
 local archive-export controls for historical test submissions.

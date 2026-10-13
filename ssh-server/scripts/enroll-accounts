@@ -8,9 +8,9 @@ for name in sys.argv[1:]:
  a=pwd.getpwnam(name);groups={grp.getgrgid(g).gr_name for g in os.getgrouplist(name,a.pw_gid)}
  if a.pw_uid<1000 or a.pw_uid in seen or groups & {'root','sudo','wheel','docker','lxd','adm','libvirt','disk'}:raise SystemExit('Privileged or duplicate account rejected')
  if pathlib.Path('/usr/bin/sudo').exists():
-  rights=subprocess.run(['/usr/bin/sudo','-n','-l','-U',name],capture_output=True,text=True,timeout=15)
-  if rights.returncode==0:raise SystemExit('Sudo-authorized account rejected; use an unprivileged student identity and separate administrator recovery access')
-  if rights.returncode!=1:raise SystemExit('Could not verify absence of sudo permissions')
+  rights=subprocess.run(['/usr/bin/sudo','-n','-l','-U',name],capture_output=True,text=True,timeout=15,env={**os.environ,'LC_ALL':'C'})
+  denied=re.compile(r'User '+re.escape(name)+r' is not allowed to run sudo on [^\n]+\.')
+  if rights.returncode not in [0,1] or not any(denied.fullmatch(line.strip()) for line in (rights.stdout+'\n'+rights.stderr).splitlines()):raise SystemExit('Sudo-authorized account or unverifiable permissions rejected; use an unprivileged identity with separate administrator recovery access')
  seen.add(a.pw_uid)
  if name in c['accounts'] and a.pw_shell=='/usr/local/libexec/exam-login':continue
  if a.pw_shell not in ['/bin/bash','/bin/zsh','/bin/sh']:raise SystemExit('Unsupported original shell')

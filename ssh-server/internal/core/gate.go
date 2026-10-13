@@ -25,24 +25,28 @@ type LocalRequest struct {
 }
 
 func transportIdentity(pid int, uid int) (string, error) { // Bind capabilities to a live, root-owned sshd transport ancestor, including boot and PID start time.
+	identity, _, err := transportInfo(pid, uid)
+	return identity, err
+}
+func transportInfo(pid int, uid int) (string, int, error) {
 	current := pid
 	found := ""
 	for n := 0; n < 32 && current > 1; n++ {
 		b, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", current))
 		if err != nil {
-			return "", err
+			return "", 0, err
 		}
 		end := strings.LastIndex(string(b), ")")
 		if end < 0 {
-			return "", errors.New("invalid process stat")
+			return "", 0, errors.New("invalid process stat")
 		}
 		fields := strings.Fields(string(b)[end+1:])
 		if len(fields) < 20 {
-			return "", errors.New("short process stat")
+			return "", 0, errors.New("short process stat")
 		}
 		status, err := os.Stat(fmt.Sprintf("/proc/%d", current))
 		if err != nil {
-			return "", err
+			return "", 0, err
 		}
 		procUID := status.Sys().(*syscall.Stat_t).Uid
 		exe, _ := os.Readlink(fmt.Sprintf("/proc/%d/exe", current))
@@ -54,9 +58,9 @@ func transportIdentity(pid int, uid int) (string, error) { // Bind capabilities 
 		current, _ = strconv.Atoi(fields[1])
 	}
 	if found == "" {
-		return "", errors.New("no verified root-owned SSH transport ancestor; local entry denied")
+		return "", 0, errors.New("no verified root-owned SSH transport ancestor; local entry denied")
 	}
-	return Hash([]byte(found)), nil
+	return Hash([]byte(found)), current, nil
 }
 func peer(c *net.UnixConn) (*syscall.Ucred, error) {
 	var result *syscall.Ucred

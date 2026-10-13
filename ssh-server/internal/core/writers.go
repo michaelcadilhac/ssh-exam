@@ -95,7 +95,7 @@ func (e *Engine) verifyWriters(a *Attempt) error {
 		if contained {
 			continue
 		}
-		exe, err := os.Readlink(filepath.Join(base, "exe"))
+		_, err = os.Readlink(filepath.Join(base, "exe"))
 		if os.IsNotExist(err) {
 			continue
 		}
@@ -104,7 +104,7 @@ func (e *Engine) verifyWriters(a *Attempt) error {
 		}
 		// Root-owned gate/SSH entry stubs bridge PTYs, not the working tree. They cannot invoke
 		// an ordinary shell while Busy denies this UID. No arbitrary executable is exempted.
-		if exe == "/usr/sbin/sshd" || exe == "/usr/lib/openssh/sshd-session" || exe == "/usr/sbin/sshd-session" || exe == "/usr/local/libexec/exam-login" {
+		if trustedEntryExecutable(pid) {
 			identity, err := transportIdentity(pid, a.UID)
 			if err == nil && (identity == a.Transport || e.state.Registrations[identity] == a.Username) {
 				continue

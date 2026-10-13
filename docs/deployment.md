@@ -16,10 +16,15 @@ requires no SMTP password:
 ```
 
 The Compose mount `deploy/mail:/run/mail:ro` must contain only this local endpoint.
-On marco, create `deploy/mail` owned by UID/GID 10001 mode 0700, install
+On marco, register a dedicated locked, nologin `ssh-exam` service account with
+UID/GID 10001 if those IDs are unused. Create `deploy/mail` owned by UID/GID 10001 mode 0700, install
 `deploy/systemd/ssh-exam-mail.socket` and `.service`, and enable the socket. It exposes
-the protected endpoint through systemd-socket-proxyd to the existing `/run/smtpd.sock`;
-it opens no TCP listener and follows the mail daemon across restarts. Socket mode 0600
+the protected endpoint through systemd-socket-proxyd to OpenSMTPD's dedicated loopback
+listener at `127.0.0.1:2526`, with the existing DKIM filter and outgoing tag. Configure
+`listen on 127.0.0.1 port 2526 filter "dkimsign" tag DKIM_OUT` on marco. OpenSMTPD's
+default `/run/smtpd.sock` uses an enqueue handshake rather than a raw SMTP stream and
+must not be used as this proxy target. The loopback listener follows the mail daemon
+across restarts. Socket mode 0600
 limits callers to the application UID. The TCP transport remains encrypted; the Unix
 transport uses local IPC and does not request TLS or authentication. Both transports
 have bounded connection/greeting/idle timeouts. Delivery rejection remains in the durable
@@ -115,7 +120,7 @@ cadilhac.name certificate covers this hostname. Validate nginx before reloading.
 
 Private configuration, readiness, trust certificates, client key and database stay out of
 Git. Preserve `/data` and the original attempt/deadline state when updating. To enable exams,
-configure a persistent verified class-agent route and instructor notifications, verify the
+verify signed commands through student SSH, outbound agent callbacks and instructor notifications, verify the
 production class-server guards, complete the readiness report, then remove maintenance
 during a drained restart. Keep sandbox in the exam configuration; its normal isolation and
 protected collection requirements still apply, with automatic continuation authorization.
@@ -143,5 +148,6 @@ credentials after draining and verifying the new route. Existing marco/csc-sys i
 are not migrated by these local source changes; see the native migration procedure.
 
 Readiness signoff additionally requires `sshCommandTransport` and `statusCallbacks` after
-actual command/callback and recovery checks. Both default false; this local test run does not
-qualify or update the already installed production/class-server profiles.
+actual command/callback and recovery checks. Both default false. See
+[the installed qualification record](production-qualification.md) for evidence and remaining
+installation restrictions; disposable-guest isolation does not alter host account policy.
