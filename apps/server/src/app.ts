@@ -689,6 +689,7 @@ export async function createApp(
       settings,
       work_path: prepared.work_path || "/work",
       functionalTest: !!h.functional_test,
+      administratorSandbox: !!prepared.administrator_sandbox,
       notice:
         "Preflight images retained with this attempt if started; abandoned preflight images are deleted.",
     };
@@ -983,6 +984,7 @@ export async function createApp(
       throw Error("Exam not found");
     const accounts = await agent.call("resolve-course-accounts", {
       usernames: [b.username],
+      exam: req.params.exam,
     });
     const uid = accounts[b.username];
     if (!Number.isSafeInteger(uid) || uid < 1000)
@@ -1032,6 +1034,7 @@ export async function createApp(
     const rows = await parseRosterAsync(b.text, b.mode);
     const accounts = await agent.call("resolve-course-accounts", {
       usernames: rows.map((r) => r.username),
+      exam: req.params.exam,
     });
     const existing = new Map(
       (
@@ -1608,6 +1611,7 @@ export async function createApp(
               "resolve-course-accounts",
               {
                 usernames: [m.username],
+                exam: m.exam,
               },
             );
             const uid = accounts[m.username];

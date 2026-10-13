@@ -38,9 +38,25 @@ def check(config):
     # managed accounts cannot linger and activation terminates their manager.
     require(name=='user@.service' and user in ['%i','%I'],'Unresolved service template writer '+name)
    else: service_users.add(user)
+ # Tailscale embeds SFTP and can bypass an account shell. Preserve administrator
+ # access, but require its current policy to exclude every managed course account.
+ tail_rules=[]
+ if pathlib.Path('/usr/bin/tailscale').exists():
+  prefs=run(['/usr/bin/tailscale','debug','prefs'])
+  require(prefs.returncode==0,'Cannot inspect Tailscale SSH setting')
+  if prefs.returncode==0 and json.loads(prefs.stdout).get('RunSSH'):
+   policy=run(['/usr/bin/tailscale','debug','netmap'])
+   require(policy.returncode==0,'Cannot inspect Tailscale SSH account policy')
+   if policy.returncode==0:
+    tail_rules=(json.loads(policy.stdout).get('SSHPolicy') or {}).get('rules',[])
  for name,a in config['accounts'].items():
   user=pwd.getpwnam(name)
   groups={grp.getgrgid(g).gr_name for g in os.getgrouplist(name,user.pw_gid)}
+  if a.get('sandbox_only'):
+   require(user.pw_uid==a['uid'] and user.pw_shell==a['shell'] and user.pw_dir==a['home'],f'{name}: sandbox administrator NSS mismatch')
+   require('exam-managed' not in groups,f'{name}: sandbox administrator must not be exam-managed')
+   continue
+  require(not any(name in rule.get('sshUsers',{}) or '*' in rule.get('sshUsers',{}) for rule in tail_rules if not rule.get('action',{}).get('reject')),f'{name}: Tailscale SSH must exclude managed accounts')
   require(user.pw_uid==a['uid'] and user.pw_shell=='/usr/local/libexec/exam-login',f'{name}: UID/static login gate mismatch')
   require('exam-managed' in groups and not groups & {'root','sudo','wheel','docker','lxd','adm','libvirt','disk'},f'{name}: unsafe groups')
   if pathlib.Path('/usr/bin/sudo').exists():

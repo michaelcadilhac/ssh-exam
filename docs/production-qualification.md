@@ -1,4 +1,9 @@
-# Installed qualification: 2026-10-12 (Chicago)
+# Installed qualification and production activation
+
+> The 2026-10-12 qualification below is historical. On 2026-10-13 the real host
+> managed-account SSH/PAM policy was installed, with mcadilha explicitly approved
+> only for administrator sandbox. The global functional-test mode was removed.
+> Production activation and current checks are recorded at the end of this document.
 
 This records tests performed on `marco` and in a private Linux guest on `csc-sys`,
 following the owner's authorization to use mcadilha without sudo for isolation tests.
@@ -115,3 +120,37 @@ replace original deadlines with a stale backup. Notification configuration and O
 also have root-private `*-alerts` / `*-smtp` backups. Restore the dedicated listener and
 socket units together; do not change unrelated mail listeners. The qualification guest can
 be stopped independently without affecting the real account or deployed deadline services.
+
+## Production activation: 2026-10-13
+
+The installed native agent now uses normal production mode. mcadilha's root registry entry
+has `sandbox_only: true`, with its existing UID/GID, home and `/bin/bash` shell. Its sudo
+rights, existing sessions and administrator Tailscale access are preserved. It remains
+outside `exam-managed`. The reserved sandbox still lasts five minutes, has no validity
+window, permits repeat attempts and automatically authorizes reconnection. Its host-session
+workloads and archives are explicitly labeled administrator sandbox. Ordinary student exams
+cannot use this administrator identity or its host-session exception.
+
+The actual host policy installs `/etc/ssh/sshd_config.d/60-exam.conf`, conditional managed-user
+PAM session/environment rules, alternate-service account denials and shell-change protection.
+Existing external SFTP, LDAP SSH keys and administrator behavior remain intact. Machine checks
+pass on the real host. The effective Tailscale SSH policy permits only `mcadilha`, `micha`
+and root entries, and is checked for managed identities/wildcards before preparation.
+Native readiness resolves accounts through NSS rather than assuming local `/etc/passwd`.
+No additional student identity was added to the real server.
+
+Backups: `/var/backups/ssh-exam/20261013T054543Z-production` contains the prior binaries,
+configuration, state and SHA-256 manifest; `/var/backups/ssh-exam/20261013T054543Z-account-policy`
+contains the prior SSH/PAM files. Preserve current deadlines/state/archives on rollback.
+Remove policy only after all student holds are released; never remove gates during an exam.
+Restore compatible binaries/configuration together. Restoring the old global administrator
+test profile requires putting the production gateway back into maintenance.
+
+The updated code passes 91 application tests, 15 machine-checker tests, the native Go race
+suite, typecheck/build and all 12 browser tests. The stricter Linux adversarial matrix is
+repeated in the already-qualified private environment. An optional additional live-host
+account/trust mutation was rejected by automatic approval review; the private environment
+avoids those extra changes. Notification delivery and persistent retry remain verified.
+
+New course identities require explicit root approval/enrollment before ordinary exams; the
+web roster does not grant host privileges. Sandbox remains available to mcadilha immediately.

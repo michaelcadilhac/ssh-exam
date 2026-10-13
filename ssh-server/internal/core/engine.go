@@ -65,18 +65,21 @@ func (e *Engine) productionReady() (bool, []string) {
 	if !clockSynchronized() {
 		missing = append(missing, "clock synchronization not verified")
 	}
-	passwd, _ := os.ReadFile("/etc/passwd")
 	for name, account := range e.Config.Accounts {
-		found := false
-		for _, line := range strings.Split(string(passwd), "\n") {
-			fields := strings.Split(line, ":")
-			if len(fields) == 7 && fields[0] == name {
-				uid, _ := strconv.Atoi(fields[2])
-				found = uid == account.UID && fields[6] == "/usr/local/libexec/exam-login"
-			}
+		output, err := exec.Command("/usr/bin/getent", "passwd", name).Output()
+		fields := strings.Split(strings.TrimSpace(string(output)), ":")
+		valid := err == nil && len(fields) == 7
+		if valid {
+			uid, parseErr := strconv.Atoi(fields[2])
+			valid = parseErr == nil && uid == account.UID
 		}
-		if !found {
-			missing = append(missing, "account UID/login shell differs from root registry: "+name)
+		if valid && account.SandboxOnly {
+			valid = fields[5] == account.Home && fields[6] == account.Shell
+		} else if valid {
+			valid = fields[6] == "/usr/local/libexec/exam-login"
+		}
+		if !valid {
+			missing = append(missing, "account UID/login policy differs from root registry: "+name)
 		}
 	}
 	checker := "/usr/local/sbin/exam-check-isolation"
@@ -126,7 +129,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "missing": missing, "capabilities": []string{"signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -138,6 +141,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				a, ok := e.Config.Accounts[n]
 				if !ok {
 					return fmt.Errorf("account not locally approved: %s", n)
+				}
+				if a.SandboxOnly && r.Exam != SandboxExamID {
+					return errors.New("administrator account is approved only for sandbox")
 				}
 				out[n] = a.UID
 			}
@@ -166,6 +172,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if !ok || account.UID != r.UID || e.state.Registrations[r.Transport] != r.Username {
 				return errors.New("identity/transport not approved")
 			}
+			if account.SandboxOnly && r.Exam != SandboxExamID {
+				return errors.New("administrator account is approved only for sandbox")
+			}
 			if e.Busy(account.UID) != nil {
 				return errors.New("account already reserved")
 			}
@@ -175,6 +184,10 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			a := &Attempt{ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
 			if sandboxAttempt(a) {
 				a.Settings.Duration = SandboxDurationSeconds
+			}
+			a.AdministratorSandbox = account.SandboxOnly && sandboxAttempt(a)
+			if a.AdministratorSandbox {
+				e.Audit("administrator-sandbox-preparation", a.ID)
 			}
 			a.FunctionalTest = e.functionalAccount(a)
 			if a.FunctionalTest {
@@ -416,8 +429,8 @@ func copyTemplate(source, dest string) error {
 	})
 }
 func (e *Engine) quiesceOrdinary(a *Attempt) error { // Administrator's PAM/job policy must already close all alternate entry routes.
-	if e.functionalAccount(a) {
-		e.Audit("trusted-functional-test-retains-ordinary-access", a.ID)
+	if e.trustedAdministratorAttempt(a) {
+		e.Audit("trusted-administrator-retains-ordinary-access", a.ID)
 		return nil
 	}
 	// Preserve only SSH transport/session ancestors identified at registration. The verified guard suite must
@@ -672,7 +685,7 @@ func expired(a *Attempt) bool {
 }
 
 func (e *Engine) prepareHome(a *Attempt) error {
-	if e.Config.FunctionalHostAccess && e.functionalAccount(a) {
+	if e.hostAccess(a) {
 		return nil // Authorized trusted test uses the real host home and NSS.
 	}
 	dest := filepath.Join(e.Config.State, "homes", a.ID)

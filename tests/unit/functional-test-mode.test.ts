@@ -85,3 +85,96 @@ it("privileged functional tests require development mode at both config and app 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+it("production accepts a qualified administrator sandbox and keeps ordinary roster access restricted", async () => {
+  const dir = mkdtempSync(tmpdir() + "/exam-production-sandbox-");
+  const readiness = dir + "/readiness.json";
+  writeFileSync(
+    readiness,
+    JSON.stringify(
+      Object.fromEntries(
+        [
+          "institutionalSSH",
+          "browserMatrix",
+          "serverGuards",
+          "protectedCollection",
+          "sshCommandTransport",
+          "statusCallbacks",
+          "intervalAccessHold",
+          "alerts",
+        ].map((k) => [k, true]),
+      ),
+    ),
+  );
+  const config: any = {
+    mode: "production",
+    origin: "https://exam.example.edu",
+    data: dir + "/data",
+    maintenance: false,
+    readinessFile: readiness,
+    smtp: {
+      socket: dir + "/unused.sock",
+      from: "exam@example.edu",
+      to: ["instructor@example.edu"],
+    },
+    jump: { host: "jump.example.edu", pins: ["a".repeat(64)] },
+    class: { host: "class.example.edu", pins: ["b".repeat(64)] },
+    agent: {
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
+    },
+  };
+  const { app, store } = await createApp(config);
+  const { Agent } = await import("../../apps/server/src/agent.js");
+  const agent = new Agent(config.agent, store);
+  try {
+    const health = {
+      ready: true,
+      production_ready: true,
+      functional_test: false,
+      administrator_sandbox_accounts: ["admin"],
+      capabilities: [
+        "interval-access-hold",
+        "all-session-channel-gate",
+        "signed-ssh-control",
+        "durable-status-callbacks",
+      ],
+    };
+    store.db
+      .prepare("INSERT INTO agent_snapshot VALUES(?,?,?)")
+      .run(
+        "class",
+        1,
+        JSON.stringify({ health, accounts: { admin: 1001, student: 1002 } }),
+      );
+    expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(200);
+    expect(
+      await agent.call("resolve-course-accounts", {
+        usernames: ["admin"],
+        exam: "sandbox",
+      }),
+    ).toEqual({ admin: 1001 });
+    await expect(
+      agent.call("resolve-course-accounts", {
+        usernames: ["admin"],
+        exam: "midterm",
+      }),
+    ).rejects.toThrow(/only for sandbox/);
+    expect(
+      await agent.call("resolve-course-accounts", {
+        usernames: ["student"],
+        exam: "midterm",
+      }),
+    ).toEqual({ student: 1002 });
+    store.db.prepare("UPDATE agent_snapshot SET payload=?").run(
+      JSON.stringify({
+        health: { ...health, functional_test: true },
+        accounts: { admin: 1001 },
+      }),
+    );
+    expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(503);
+  } finally {
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

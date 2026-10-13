@@ -18,10 +18,11 @@ import (
 )
 
 type Account struct {
-	UID   int    `json:"uid"`
-	GID   int    `json:"gid"`
-	Shell string `json:"shell"`
-	Home  string `json:"home"`
+	SandboxOnly bool   `json:"sandbox_only,omitempty"`
+	UID         int    `json:"uid"`
+	GID         int    `json:"gid"`
+	Shell       string `json:"shell"`
+	Home        string `json:"home"`
 }
 type Config struct {
 	FunctionalHostAccess  bool               `json:"functional_host_access,omitempty"`
@@ -52,37 +53,38 @@ type Settings struct {
 	Latest    int64  `json:"latest"`
 }
 type Attempt struct {
-	FunctionalTest   bool     `json:"functional_test,omitempty"`
-	ID               string   `json:"id"`
-	Exam             string   `json:"exam"`
-	Username         string   `json:"username"`
-	UID              int      `json:"uid"`
-	Settings         Settings `json:"settings"`
-	State            string   `json:"state"`
-	Start            int64    `json:"start"`
-	Deadline         int64    `json:"deadline"`
-	Ended            int64    `json:"ended"`
-	CompletedAt      int64    `json:"completed_at"`
-	CollectedAt      int64    `json:"collected_at"`
-	SecuredAt        int64    `json:"secured_at"`
-	Lease            int64    `json:"lease"`
-	WorkPath         string   `json:"work_path"`
-	Transport        string   `json:"transport"`
-	ResumeTransport  string   `json:"resume_transport,omitempty"`
-	Generation       int      `json:"generation"`
-	Authorization    int64    `json:"authorization"`
-	Reason           string   `json:"reason"`
-	Checksum         string   `json:"checksum"`
-	Units            []string `json:"units"`
-	Errors           []string `json:"errors"`
-	Boot             string   `json:"boot"`
-	UptimeDeadline   float64  `json:"uptime_deadline"`
-	Protected        bool     `json:"protected"`
-	AccessState      string   `json:"access_state"`
-	AccessHeldAt     int64    `json:"access_held_at"`
-	AccessReleasedAt int64    `json:"access_released_at"`
-	AccessOverride   string   `json:"access_override,omitempty"`
-	AccessError      string   `json:"access_error,omitempty"`
+	AdministratorSandbox bool     `json:"administrator_sandbox,omitempty"`
+	FunctionalTest       bool     `json:"functional_test,omitempty"`
+	ID                   string   `json:"id"`
+	Exam                 string   `json:"exam"`
+	Username             string   `json:"username"`
+	UID                  int      `json:"uid"`
+	Settings             Settings `json:"settings"`
+	State                string   `json:"state"`
+	Start                int64    `json:"start"`
+	Deadline             int64    `json:"deadline"`
+	Ended                int64    `json:"ended"`
+	CompletedAt          int64    `json:"completed_at"`
+	CollectedAt          int64    `json:"collected_at"`
+	SecuredAt            int64    `json:"secured_at"`
+	Lease                int64    `json:"lease"`
+	WorkPath             string   `json:"work_path"`
+	Transport            string   `json:"transport"`
+	ResumeTransport      string   `json:"resume_transport,omitempty"`
+	Generation           int      `json:"generation"`
+	Authorization        int64    `json:"authorization"`
+	Reason               string   `json:"reason"`
+	Checksum             string   `json:"checksum"`
+	Units                []string `json:"units"`
+	Errors               []string `json:"errors"`
+	Boot                 string   `json:"boot"`
+	UptimeDeadline       float64  `json:"uptime_deadline"`
+	Protected            bool     `json:"protected"`
+	AccessState          string   `json:"access_state"`
+	AccessHeldAt         int64    `json:"access_held_at"`
+	AccessReleasedAt     int64    `json:"access_released_at"`
+	AccessOverride       string   `json:"access_override,omitempty"`
+	AccessError          string   `json:"access_error,omitempty"`
 }
 type Capability struct {
 	Username  string `json:"username"`

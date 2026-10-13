@@ -78,6 +78,13 @@ export class Agent {
       if (op === "health") return snapshot.health;
       const result: Record<string, number> = {};
       for (const name of body.usernames || []) {
+        if (
+          snapshot.health?.administrator_sandbox_accounts?.includes(name) &&
+          body.exam !== "sandbox"
+        )
+          throw Error(
+            "Administrator account is approved only for sandbox: " + name,
+          );
         if (!Number.isSafeInteger(snapshot.accounts?.[name]))
           throw Error("Account not approved by class server: " + name);
         result[name] = snapshot.accounts[name];

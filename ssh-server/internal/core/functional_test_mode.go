@@ -20,7 +20,7 @@ func (e *Engine) recordedUnitAllowed(a *Attempt, unit string) bool {
 	if strings.ContainsAny(unit, "/\\") || !strings.HasPrefix(unit, "exam-") {
 		return false
 	}
-	return strings.HasSuffix(unit, ".scope") || (a.FunctionalTest && e.functionalAccount(a) && strings.HasSuffix(unit, ".service"))
+	return strings.HasSuffix(unit, ".scope") || (((a.FunctionalTest && e.functionalAccount(a)) || e.administratorSandbox(a)) && strings.HasSuffix(unit, ".service"))
 }
 func (e *Engine) Ready() (bool, []string) {
 	if e.Config.FunctionalTestAccount == "" {

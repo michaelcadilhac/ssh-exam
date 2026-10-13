@@ -330,3 +330,29 @@ update web configuration and verify signed callbacks plus fresh SSH commands. Th
 listen/cert/key/ca/client_name configuration and inbound 9443 listener are removed. Close the
 old firewall/tunnel only after confirming the new route. Roll back binaries/config together
 with original state/deadlines; never restore a stale state over a later secured submission.
+
+## Production administrator sandbox
+
+An administrator can retain normal host access while the same agent enforces real student
+exams. Set `sandbox_only: true` on that identity's root-owned account entry; keep its
+original NSS home/shell and **do not** put it in `exam-managed`. It may be enrolled only
+in the reserved `sandbox` exam. The server and cached signed roster registry both reject
+ordinary-exam use. Its tracked host terminals preserve its home and administrator rights;
+only their recorded workloads are stopped/collected. Attempts/manifests record
+`administrator_sandbox: true`; the UI labels this explicit exception. Other account entries
+use the strict student policy, including UID cleanup and original-deadline holds.
+
+Remove the global `functional_test_account`, `functional_test_until` and
+`functional_host_access` fields when transitioning to production. Do not remove or
+rewrite old attempt/submission state. After draining, install the account policy with
+`sudo scripts/install-account-policy --administrator ADMIN --apply` on the reviewed
+Ubuntu/Debian PAM layout. The installer backs up changed files, validates SSH and verifies
+that the administrator has no ForceCommand before reloading; it does not enroll students.
+Run without `--apply` to inspect the proposed changes. Its conditional PAM rules preserve
+non-managed users' session and environment behavior. Enroll actual course identities later
+with the root account-approval procedure and repeat the machine checks before admissions.
+
+Tailscale SSH embeds an SFTP server and is not covered solely by OpenSSH ForceCommand.
+The machine checker inspects its current SSH policy and refuses any rule covering a managed
+student identity or a wildcard. Administrator-only Tailscale access can stay enabled.
+See [the upstream implementation](https://github.com/tailscale/tailscale/blob/main/ssh/tailssh/incubator.go).

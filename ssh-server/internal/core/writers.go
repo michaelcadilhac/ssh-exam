@@ -39,9 +39,9 @@ func (e *Engine) quiesceWriters(a *Attempt) error {
 	return f.Chmod(0500)
 }
 func (e *Engine) verifyWriters(a *Attempt) error {
-	if e.functionalAccount(a) {
+	if e.trustedAdministratorAttempt(a) {
 		return nil
-	} // Explicit root-configured trusted test; never production-qualified.
+	} // Explicit trusted administrator sandbox; other exam UIDs require isolation.
 	entries, err := os.ReadDir("/proc")
 	if err != nil {
 		return err

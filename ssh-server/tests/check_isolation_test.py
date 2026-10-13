@@ -9,14 +9,14 @@ class Checks(unittest.TestCase):
   def path(*parts):
    text=str(pathlib.Path(*parts));return root/text.lstrip('/') if text.startswith('/') else pathlib.Path(text)
   self.path=path;self.settings='forcecommand exam-dispatch\npermituserrc no\npermituserenvironment no\ndisableforwarding yes\nusepam yes\nacceptenv LANG LC_*\nsubsystem sftp /usr/lib/openssh/sftp-server\n'
-  self.cron='';self.service_user='';self.contexts=[];self.sudo_output='';self.declared='example.service loaded active running Example\n';self.template_user=''
+  self.cron='';self.service_user='';self.contexts=[];self.sudo_output='';self.declared='example.service loaded active running Example\n';self.template_user='';self.tail_users={}
   self.config={'accounts':{'student':{'uid':10001}}}
   for name in ['login','su','su-l','runuser','runuser-l','cron','atd']:
    p=path('/etc/pam.d',name);p.parent.mkdir(parents=True,exist_ok=True);p.write_text('account requisite pam_succeed_if.so user notingroup exam-managed\n')
   path('/etc/pam.d/sshd').write_text('session required pam_permit.so\n')
   path('/etc/pam.d/chsh').write_text('auth requisite pam_succeed_if.so user notingroup exam-managed\n')
   p=path('/usr/bin/crontab');p.parent.mkdir(parents=True);p.touch()
-  user=types.SimpleNamespace(pw_uid=10001,pw_gid=10001,pw_shell='/usr/local/libexec/exam-login')
+  user=types.SimpleNamespace(pw_uid=10001,pw_gid=10001,pw_shell='/usr/local/libexec/exam-login',pw_dir='/home/student')
   original=pathlib.Path
   # Path is scoped to the checker module; other libraries keep their filesystem.
   isolation.pathlib=types.SimpleNamespace(Path=path)
@@ -25,7 +25,8 @@ class Checks(unittest.TestCase):
   for p in patches:p.start();self.addCleanup(p.stop)
  def run_command(self,args,**kw):
   output=''
-  if args[0].endswith('sshd'):self.contexts.append(args[-1]);output=self.settings
+  if args[0].endswith('tailscale'):output='{"RunSSH":true}' if args[-1]=='prefs' else isolation.json.dumps({'SSHPolicy':{'rules':[{'action':{'accept':True},'sshUsers':self.tail_users}]}})
+  elif args[0].endswith('sshd'):self.contexts.append(args[-1]);output=self.settings
   elif args[0].endswith('crontab'):output=self.cron
   elif args[0].endswith('sudo'):output=self.sudo_output
   elif 'list-unit-files' in args:output=self.declared
@@ -35,6 +36,13 @@ class Checks(unittest.TestCase):
   return types.SimpleNamespace(returncode=0,stdout=output,stderr='')
  def test_safe_policy_checks_both_address_contexts(self):
   self.assertEqual(isolation.check(self.config),[]);self.assertEqual(len(self.contexts),2)
+ def test_explicit_sandbox_administrator_preserves_ordinary_shell_without_student_enrollment(self):
+  self.config['accounts']['student'].update(sandbox_only=True,shell='/bin/bash',home='/home/student')
+  user=types.SimpleNamespace(pw_uid=10001,pw_gid=10001,pw_shell='/bin/bash',pw_dir='/home/student')
+  with mock.patch.object(isolation.pwd,'getpwnam',return_value=user),mock.patch.object(isolation.grp,'getgrgid',return_value=types.SimpleNamespace(gr_name='sudo')):
+   self.assertEqual(isolation.check(self.config),[])
+  with mock.patch.object(isolation.pwd,'getpwnam',return_value=user):
+   self.assertTrue(any('must not be exam-managed' in e for e in isolation.check(self.config)))
  def test_missing_channel_gate_and_unsafe_environment_fail(self):
   self.settings=self.settings.replace('forcecommand exam-dispatch','forcecommand none').replace('acceptenv LANG LC_*','acceptenv *')
   errors=isolation.check(self.config);self.assertTrue(any('forcecommand' in e for e in errors));self.assertTrue(any('AcceptEnv' in e for e in errors))
@@ -54,6 +62,11 @@ class Checks(unittest.TestCase):
  def test_unknown_dynamic_service_template_fails_closed(self):
   self.declared='writer@.service disabled -\n';self.template_user='%i'
   self.assertTrue(any('Unresolved service template' in e for e in isolation.check(self.config)))
+ def test_tailscale_admin_policy_is_preserved_and_managed_accounts_are_excluded(self):
+  self.path('/usr/bin/tailscale').touch();self.tail_users={'admin':'admin','root':''}
+  self.assertEqual(isolation.check(self.config),[])
+  for users in [{'student':'student'},{'*':'='}]:
+   self.tail_users=users;self.assertTrue(any('Tailscale SSH' in e for e in isolation.check(self.config)))
  def test_pending_user_scheduler_writer_fails(self):
   self.cron='* * * * * echo changed > /work/answer\n';self.assertTrue(any('crontab' in e for e in isolation.check(self.config)))
  def test_system_cron_writer_fails(self):

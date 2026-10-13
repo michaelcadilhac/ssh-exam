@@ -225,7 +225,7 @@ func (e *Engine) local(c *net.UnixConn) {
 		// Keep host file ownership and process UID aligned. The root-controlled
 		// setpriv runs before user code and irrevocably drops all capabilities.
 		args = append(args, "--", "/usr/bin/setpriv", "--reuid", strconv.Itoa(account.UID), "--regid", strconv.Itoa(account.GID), "--clear-groups", "--inh-caps=-all", "--ambient-caps=-all", "--bounding-set=-all", "--no-new-privs", "--", "/usr/bin/env", "--chdir="+a.WorkPath, account.Shell, "-l")
-		if e.Config.FunctionalHostAccess && e.functionalAccount(a) {
+		if e.hostAccess(a) {
 			// Explicit trusted-administrator exception: the system manager starts
 			// a normal host account session, independently of agent sandboxing.
 			// Still track its entire cgroup for terminal closure and collection.

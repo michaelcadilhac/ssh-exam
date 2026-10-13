@@ -803,9 +803,12 @@ export function Workspace({
         <div>
           <strong>{settings.name}</strong>
           <small className="toolbar-status">
-            {functionalTest && (
+            {(functionalTest || reservation.administratorSandbox) && (
               <span className="status warn">
-                Administrator test · ordinary access retained
+                {reservation.administratorSandbox
+                  ? "Administrator sandbox"
+                  : "Administrator test"}{" "}
+                · ordinary access retained
               </span>
             )}
             <span

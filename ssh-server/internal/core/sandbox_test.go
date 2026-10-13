@@ -28,3 +28,32 @@ func TestSandboxFailureNeverUnlocksUnsecuredWork(t *testing.T) {
 		t.Fatal("sandbox exception escaped reserved ID")
 	}
 }
+
+func TestAdministratorSandboxExceptionIsScopedAndDoesNotReplaceStudentIsolation(t *testing.T) {
+	e, _, _ := finalFixture(t, "ACTIVE", Millis()+300000)
+	e.Config.Accounts = map[string]Account{"student": {UID: 1001, SandboxOnly: true}}
+	a := &Attempt{Username: "student", UID: 1001, Exam: SandboxExamID, AdministratorSandbox: true}
+	if !e.administratorSandbox(a) || !e.hostAccess(a) || !e.recordedUnitAllowed(a, "exam-test.service") {
+		t.Fatal("approved administrator sandbox rejected")
+	}
+	for _, bad := range []*Attempt{
+		{Username: "student", UID: 1001, Exam: "midterm", AdministratorSandbox: true},
+		{Username: "student", UID: 1002, Exam: SandboxExamID, AdministratorSandbox: true},
+		{Username: "other", UID: 1001, Exam: SandboxExamID, AdministratorSandbox: true},
+		{Username: "student", UID: 1001, Exam: SandboxExamID},
+	} {
+		if e.administratorSandbox(bad) || e.hostAccess(bad) || e.recordedUnitAllowed(bad, "exam-test.service") {
+			t.Fatal("administrator exception escaped reserved identity/exam")
+		}
+	}
+	if _, err := e.Call("resolve-course-accounts", Request{Usernames: []string{"student"}, Exam: "midterm"}); err == nil {
+		t.Fatal("sandbox administrator enrolled in ordinary exam")
+	}
+	if _, err := e.Call("resolve-course-accounts", Request{Usernames: []string{"student"}, Exam: SandboxExamID}); err != nil {
+		t.Fatal(err)
+	}
+	e.Config.Accounts["student"] = Account{UID: 1001}
+	if e.administratorSandbox(a) {
+		t.Fatal("ordinary course account acquired administrator exception")
+	}
+}
