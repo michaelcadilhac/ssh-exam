@@ -371,7 +371,9 @@ Request fullscreen on the root containing the toolbar, taskbar, windows, dialogs
 
 Monitor `fullscreenchange`, top-level window focus/blur, and document visibility. Arm interruption detection only after the explicit start/continue handshake, not during setup permission dialogs. Do not create a general-purpose grace period that allows leaving the exam after it is active.
 
-Feature-detect and request Keyboard Lock, including Escape. Test short Escape for terminal editors, the browser's deliberate escape gesture, control/meta combinations, non-US layouts, Dvorak, compose input, and input methods where applicable. Permission refusal or missing essential capabilities blocks starting with a clear diagnostic. Do not request Pointer Lock: students need a normal mouse pointer. [R1]
+Before student SSH sign-in, feature-detect a secure context, enabled fullscreen, screen capture and Keyboard Lock. Honor recognized embedding/permissions-policy restrictions and already-denied permissions where queryable. Show a clear compatibility message and disable student sign-in, reconnection and preflight entry when requirements are unavailable; recheck in the action handler before opening any authentication request or SSH relay. Keep instructor sign-in available. Do not request fullscreen, capture or keyboard permissions merely to load the login page. Browser branding alone is not a capability check.
+
+Request Keyboard Lock, including Escape, through the explicit preflight gesture. Test short Escape for terminal editors, the browser's deliberate escape gesture, control/meta combinations, non-US layouts, Dvorak, compose input, and input methods where applicable. Permissions which cannot be queried beforehand still require a successful real preflight grant before Begin. Permission refusal or missing essential capabilities blocks starting with a clear diagnostic. Do not request Pointer Lock: students need a normal mouse pointer. [R1]
 
 ### 9.2 Application-local clipboard
 

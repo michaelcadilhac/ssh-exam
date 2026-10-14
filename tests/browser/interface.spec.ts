@@ -133,6 +133,71 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
 });
+for (const missing of [
+  "keyboard lock",
+  "fullscreen",
+  "screen sharing",
+  "embedding policy",
+  "denied permission",
+]) {
+  test(`unsupported browser blocks student authentication: ${missing}`, async ({
+    page,
+  }) => {
+    await page.addInitScript((missing) => {
+      if (missing === "keyboard lock")
+        Object.defineProperty(navigator, "keyboard", { value: undefined });
+      if (missing === "fullscreen")
+        Object.defineProperty(document, "fullscreenEnabled", { value: false });
+      if (missing === "screen sharing")
+        Object.defineProperty(navigator.mediaDevices, "getDisplayMedia", {
+          value: undefined,
+        });
+      if (missing === "embedding policy")
+        Object.defineProperty(document, "featurePolicy", {
+          value: {
+            features: () => ["display-capture"],
+            allowsFeature: () => false,
+          },
+        });
+      if (missing === "denied permission")
+        Object.defineProperty(navigator, "permissions", {
+          value: { query: async () => ({ state: "denied" }) },
+        });
+    }, missing);
+    let authenticationRequests = 0;
+    page.on("request", (req) => {
+      if (new URL(req.url()).pathname === "/api/auth/start")
+        authenticationRequests++;
+    });
+    await page.goto("/");
+    await expect(page.getByRole("alert")).toContainText(
+      "This browser cannot run an exam",
+    );
+    await expect(
+      page.getByRole("button", { name: "Start SSH sign-in" }),
+    ).toBeDisabled();
+    await expect(page.getByLabel("Exam ID", { exact: true })).toBeDisabled();
+    await expect(page.getByLabel("Enrolled username")).toBeDisabled();
+    // Disabling a button is insufficient: force form submission and verify the
+    // handler refuses authentication as well.
+    await page.locator("form").dispatchEvent("submit");
+    await expect(page.locator(".error")).toContainText(
+      "This browser cannot run an exam",
+    );
+    expect(authenticationRequests).toBe(0);
+    await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+    await page.getByRole("button", { name: "Dismiss", exact: true }).click();
+    await page.getByRole("link", { name: "Instructor sign-in" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Instructor sign-in" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Username", { exact: true })).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "Sign in", exact: true }),
+    ).toBeEnabled();
+  });
+}
+
 test("student notice and authentication are accessible and self-hosted", async ({
   page,
 }) => {

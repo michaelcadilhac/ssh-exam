@@ -9,6 +9,7 @@ import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { TerminalMenu } from "./terminal-menu.js";
 import { readinessMessage } from "../../../packages/protocol/readiness.js";
 import { browserSSH } from "./browser-ssh.js";
+import { examBrowserIssue } from "./browser-support.js";
 import "@xterm/xterm/css/xterm.css";
 import "winbox/dist/css/winbox.min.css";
 type Pane = {
@@ -677,14 +678,8 @@ export function Workspace({
     return () => observer.disconnect();
   }, []);
   const fullscreen = async () => {
-    if (
-      !/Chrome|Chromium/.test(navigator.userAgent) ||
-      !navigator.mediaDevices?.getDisplayMedia ||
-      !(navigator as any).keyboard?.lock
-    )
-      throw Error(
-        "A desktop Chrome/Chromium browser with screen capture and Keyboard Lock is required.",
-      );
+    const issue = examBrowserIssue();
+    if (issue) throw Error(issue);
     await root.current!.requestFullscreen();
     setFullscreen(true);
   };

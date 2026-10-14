@@ -11,6 +11,7 @@ import {
 } from "./auth-challenge.js";
 import "./style.css";
 import { browserSSH } from "./browser-ssh.js";
+import { checkExamBrowser, examBrowserIssue } from "./browser-support.js";
 function App() {
   const [user, setUser] = useState<any>(null),
     [error, setError] = useState(""),
@@ -23,7 +24,11 @@ function App() {
     [info, setInfo] = useState<any>(null),
     [reservation, setReservation] = useState<any>(null),
     [answers, setAnswers] = useState<string[]>([]),
-    [loginTest, setLoginTest] = useState<any>(null);
+    [loginTest, setLoginTest] = useState<any>(null),
+    [browserCheck, setBrowserCheck] = useState(() => ({
+      checking: true,
+      issue: examBrowserIssue(),
+    }));
   const answersRef = useRef<string[]>([]);
   const authFormRef = useRef<HTMLFormElement>(null);
   const replaceAnswers = (next: string[]) => {
@@ -62,6 +67,27 @@ function App() {
       setError((e as Error).message);
     }
   };
+  useEffect(() => {
+    if (admin) return;
+    let mounted = true;
+    const refresh = () => {
+      void checkExamBrowser().then((issue) => {
+        if (mounted) setBrowserCheck({ checking: false, issue });
+      });
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => {
+      mounted = false;
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  const requireExamBrowser = async () => {
+    const issue = await checkExamBrowser();
+    setBrowserCheck({ checking: false, issue });
+    if (issue) throw Error(issue);
+  };
+  const browserBlocked = browserCheck.checking || !!browserCheck.issue;
   const logout = async () => {
     await api("/logout", {});
     browserSSH.close();
@@ -76,6 +102,7 @@ function App() {
     setPassword("");
   };
   const login = async () => {
+    await requireExamBrowser();
     setChallenge(null);
     clearAuthAnswers();
     setResponding(false);
@@ -204,6 +231,11 @@ function App() {
               </p>
             )}
             <section className="card sign-in">
+              {!admin && browserCheck.issue && (
+                <p className="warn" role="alert">
+                  {browserCheck.issue}
+                </p>
+              )}
               {user && info ? (
                 info.loginOnly ? (
                   <>
@@ -287,8 +319,10 @@ function App() {
                         {!info.sshConnected ? (
                           <>
                             <button
+                              disabled={browserBlocked}
                               onClick={() =>
                                 action(async () => {
+                                  await requireExamBrowser();
                                   await api(
                                     `/student/attempts/${info.attempt.id}/reauth`,
                                     {},
@@ -304,8 +338,10 @@ function App() {
                         ) : (
                           <>
                             <button
+                              disabled={browserBlocked}
                               onClick={() =>
                                 action(async () => {
+                                  await requireExamBrowser();
                                   const r = await api(
                                     `/student/attempts/${info.attempt.id}/claim`,
                                     {},
@@ -342,12 +378,14 @@ function App() {
                         ) : (
                           <button
                             className="primary"
+                            disabled={browserBlocked}
                             onClick={() =>
-                              action(async () =>
+                              action(async () => {
+                                await requireExamBrowser();
                                 setReservation(
                                   await api("/student/preflight", {}),
-                                ),
-                              )
+                                );
+                              })
                             }
                           >
                             Open preflight & practice
@@ -512,6 +550,7 @@ function App() {
                       Exam ID
                       <input
                         required
+                        disabled={browserBlocked}
                         value={examId}
                         onChange={(e) => setExamId(e.target.value)}
                       />
@@ -523,6 +562,7 @@ function App() {
                       : "Enrolled username"}
                     <input
                       required
+                      disabled={browserBlocked}
                       autoComplete="username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
@@ -534,7 +574,10 @@ function App() {
                     reused for both servers, then discarded. Phone MFA is
                     unchanged.
                   </p>
-                  <button className="primary" disabled={!!authSocket}>
+                  <button
+                    className="primary"
+                    disabled={!!authSocket || browserBlocked}
+                  >
                     Start SSH sign-in
                   </button>
                 </form>
