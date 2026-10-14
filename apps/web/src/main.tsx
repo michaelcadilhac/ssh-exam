@@ -183,9 +183,10 @@ function App() {
         <div className="landing">
           <nav>
             <strong>SSH exams</strong>
-            {user?.role === "student" && (
-              <button onClick={() => action(logout)}>Sign out</button>
-            )}
+            {user?.role === "student" &&
+              !["ACTIVE", "LOCKED"].includes(info?.attempt?.state) && (
+                <button onClick={() => action(logout)}>Sign out</button>
+              )}
             <a href={admin ? "/" : "/admin"}>
               {admin ? "Student sign-in" : "Instructor sign-in"}
             </a>

@@ -353,7 +353,9 @@ Required controls:
 
 Use familiar labels rather than requiring knowledge of tiling window managers. The first terminal starts as a floating window; creating another should produce a visible, usable window without hiding the timer or making the original window inaccessible. Constrain windows to the workspace. Provide minimum usable dimensions and adjustable terminal font size.
 
-A toolbar outside the window manager's stacking area shows the clock, connection/capture status, terminal actions, and Finish exam when the attempt is active and SSH is available. A lock overlay must cover even maximized windows and cannot be dismissed through z-index manipulation by the application's own controls.
+A toolbar outside the window manager's stacking area shows the clock, connection status, terminal actions, and Finish exam when the attempt is active and SSH is available. During preflight, capture readiness is shown by the setup steps themselves; do not duplicate it as "Screen off" or "Camera off" in the toolbar. The exam directory belongs in the start/finish explanation, not as an unexplained toolbar path. Administrator sandbox policy details belong in instructor/operator information. A lock overlay must cover even maximized windows and cannot be dismissed through z-index manipulation by the application's own controls.
+
+Before Begin, practice terminals are for trying tools, not starting exam work. The practice file must be owned by the student with read/write permission despite the agent's private umask. Opening another pane must preserve saved practice edits and must refuse links or special files rather than writing through student-controlled entries.
 
 Layout actions preserve the xterm instance, SSH channel, working directory, and running process. A minimized terminal remains connected and its output is recorded. Bound scrollback and stream buffers to prevent unlimited memory growth.
 
@@ -703,7 +705,7 @@ Display the configured collected directory as `EXAM_DIR` and in the toolbar. The
 
 ### 15.2 Finish and expiration
 
-**Finish exam** is optional. Its confirmation must state that finishing is irreversible; confirming immediately revokes terminal input/access and triggers collection. Doing nothing triggers the same procedure at the authoritative class-server deadline, normally 90 minutes after Begin or the configured individual duration. Closed/disconnected/locked browsers and an unavailable webapp do not postpone collection. The independent privileged watchdog and persistent reconciliation service enforce this locally.
+**Finish exam** is optional and is the single active-exam exit action. Its confirmation must state that finishing is irreversible and signs the student out; confirming immediately revokes terminal input/access and triggers collection, then clears the browser login after the class server confirms completion. Do not offer a competing Sign out button that only pauses the active exam. Pending or failed collection remains visible instead of being hidden by automatic sign-out. Before Begin, Sign out simply cancels preflight; reconnecting a paused unfinished attempt remains a separate recovery action. Doing nothing triggers the same procedure at the authoritative class-server deadline, normally 90 minutes after Begin or the configured individual duration. Closed/disconnected/locked browsers and an unavailable webapp do not postpone collection. The independent privileged watchdog and persistent reconciliation service enforce this locally.
 
 **Finish exam**, deadline expiration, and local administrator termination use the same idempotent finalization workflow, with different recorded reasons:
 
@@ -1170,9 +1172,11 @@ production; normal production terminals retain the isolated rootfs and irreversi
 drop. The root agent itself retains NoNewPrivileges=yes. Generated production NSS and
 preference files must remain student-readable despite the agent private umask.
 
-Student dialog wording must consistently describe automatic collection: signing out or closing
-panes does not prevent deadline collection; Finish exam triggers it immediately and irreversibly.
-Use concise start/finish/sign-out confirmations, without suggesting a manual submission step.
+Student dialog wording must consistently describe automatic collection: closing panes or leaving
+the browser does not prevent deadline collection; the single Finish exam action triggers it
+immediately and irreversibly, then signs out after confirmed completion. Sign out is offered
+before Begin, not as a competing active-exam exit. Use concise start/finish/preflight sign-out
+confirmations, without suggesting a manual submission step.
 Terminal context menus contain actions only, with no clipboard-scope footer. On student receipts,
 keep the secured/pending/failed outcome visible and put checksum, attempt ID and transfer details
 in a collapsed Submission details section. Instructor recovery details remain available.

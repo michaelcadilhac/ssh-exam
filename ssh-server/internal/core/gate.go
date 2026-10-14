@@ -224,10 +224,10 @@ func (e *Engine) local(c *net.UnixConn) {
 		id = a.ID
 		work := filepath.Join(e.Config.Work, a.ID, "work")
 		if practice {
-			work = filepath.Join(e.Config.State, "practice", a.ID)
-			os.MkdirAll(work, 0700)
-			os.Chown(work, account.UID, account.GID)
-			os.WriteFile(filepath.Join(work, "PRACTICE.txt"), []byte("Practice editor shortcuts and save files here. No exam questions are present.\n"), 0644)
+			work, err = e.preparePractice(a, account)
+			if err != nil {
+				return err
+			}
 		}
 		args := []string{"--scope", "--quiet", "--unit=" + strings.TrimSuffix(unit, ".scope"), "--slice=exam.slice", "--property=Delegate=no", "--property=MemoryMax=1G", "--property=TasksMax=128", "--property=CPUQuota=100%", "--", "/usr/bin/bwrap", "--unshare-ipc", "--unshare-pid", "--unshare-net", "--unshare-uts", "--unshare-cgroup", "--cap-drop", "ALL", "--cap-add", "CAP_SETUID", "--cap-add", "CAP_SETGID", "--cap-add", "CAP_SETPCAP", "--ro-bind", e.Config.Rootfs, "/", "--bind", work, a.WorkPath, "--tmpfs", "/tmp", "--proc", "/proc", "--dev", "/dev", "--dir", "/home/student", "--ro-bind", filepath.Join(e.Config.State, "homes", a.ID), "/home/student", "--ro-bind", filepath.Join(e.Config.State, "homes", a.ID, ".exam-passwd"), "/etc/passwd", "--ro-bind", filepath.Join(e.Config.State, "homes", a.ID, ".exam-group"), "/etc/group", "--chdir", "/", "--clearenv", "--setenv", "HOME", "/home/student", "--setenv", "USER", name, "--setenv", "LOGNAME", name, "--setenv", "TERM", "xterm-256color", "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin", "--setenv", "EXAM_DIR", a.WorkPath, "--setenv", "EXAM_ID", a.Exam, "--setenv", "EXAM_ATTEMPT_ID", a.ID, "--setenv", "EXAM_PANE_ID", cap.Pane, "--setenv", "EXAM_DEADLINE", time.UnixMilli(a.Deadline).UTC().Format(time.RFC3339)}
 		if !practice {

@@ -52,11 +52,20 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
   const resumed = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(resumed.deadline).toBe(initial.deadline);
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Sign out", exact: true })
-    .click();
+  // An invalidated browser session may still recover; the toolbar no longer
+  // offers a separate sign-out action during an active exam.
+  const session = await (await page.request.get("/api/session")).json();
+  expect(
+    (
+      await page.request.post("/api/logout", {
+        headers: {
+          "X-CSRF-Token": session.csrf,
+          Origin: "http://localhost:3100",
+        },
+        data: {},
+      })
+    ).ok(),
+  ).toBe(true);
   await studentSignIn(page, "sandbox", "student04", "Restore page");
   await page.getByRole("button", { name: "Restore page", exact: true }).click();
   await page
@@ -84,14 +93,17 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Submission secured", exact: true }),
+    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
   ).toBeVisible();
-  await page
-    .locator(".lock-overlay")
-    .getByRole("button", { name: "Sign out", exact: true })
-    .click();
+  expect((await page.request.get("/api/session")).status()).toBe(401);
   await studentSignIn(page, "sandbox", "student04");
   await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await expect(page.locator(".empty-workspace")).toContainText(
+    "try your tools before the exam",
+  );
+  await expect(page.locator(".exam-toolbar")).not.toContainText(
+    /ordinary access|Screen|Camera|\/work/,
+  );
   await expect(
     page.getByRole("button", { name: "1. Share entire display" }),
   ).toBeVisible();
@@ -682,7 +694,10 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   await expect(page.getByRole("alert")).toContainText(
     "Instructor authorization required",
   );
-  const admin = await request.newContext({ baseURL: "http://localhost:3100" });
+  const admin = await request.newContext({
+    baseURL: "http://localhost:3100",
+    extraHTTPHeaders: { Origin: "http://localhost:3100" },
+  });
   try {
     const login = await admin.post("/api/admin/login", {
       headers: { origin: "http://localhost:3100" },
@@ -747,12 +762,9 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
     await expect(
       page.locator(".collection-notice, .workspace-message"),
     ).toHaveCount(0);
-    await page.getByRole("button", { name: "Sign out", exact: true }).click();
-    await expect(page.getByRole("dialog")).toContainText(
-      "collected automatically at the deadline, even while signed out",
-    );
-    await expect(page.getByRole("dialog")).not.toContainText("does not submit");
-    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("button", { name: "Sign out", exact: true }),
+    ).toHaveCount(0);
     await page
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
@@ -775,18 +787,14 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Submission secured", exact: true }),
+      page.getByRole("heading", { name: "Connect to your exam", exact: true }),
     ).toBeVisible();
     await page.evaluate(() => (window as any).__lateTerminalResize());
     await page.waitForTimeout(200);
     await expect(
       page.getByRole("dialog", { name: "Terminal error" }),
     ).toHaveCount(0);
-    await expect(
-      page.getByText(
-        /Finishing does not restore ordinary server access before the original deadline/,
-      ),
-    ).toBeVisible();
+    expect((await page.request.get("/api/session")).status()).toBe(401);
     const submission = await admin.get(
       `/api/admin/attempts/${attempt.id}/submission`,
     );
@@ -797,16 +805,12 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
         await page.request.get(`/api/admin/attempts/${attempt.id}/submission`)
       ).status(),
     ).toBe(401);
-    await page
-      .locator(".lock-overlay")
-      .getByRole("button", { name: "Sign out", exact: true })
-      .click();
   } finally {
     await admin.dispose();
   }
 });
 
-test("sign-out during an active attempt warns, can be cancelled, and returns to sign-in", async ({
+test("one Finish exam action confirms, secures work and signs out; cancellation keeps the exam active", async ({
   page,
 }) => {
   await simulatedMedia(page);
@@ -823,22 +827,57 @@ test("sign-out during an active attempt warns, can be cancelled, and returns to 
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("The clock continues");
+  const attempt = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Finish exam", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Finishing is irreversible and signs you out",
+  );
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  expect(
+    (
+      await (
+        await page.request.get(`/api/student/attempts/${attempt.id}/status`)
+      ).json()
+    ).attempt.state,
+  ).toBe("ACTIVE");
+  await page.getByRole("button", { name: "Finish exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Sign out", exact: true })
+    .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Connect to your exam" }),
   ).toBeVisible();
   await expect(page.locator(".winbox")).toHaveCount(0);
   expect((await page.request.get("/api/session")).status()).toBe(401);
+  const admin = await request.newContext({ baseURL: "http://localhost:3100" });
+  try {
+    const login = await admin.post("/api/admin/login", {
+      headers: { origin: "http://localhost:3100" },
+      data: { username: "instructor", password: "fixture-password" },
+    });
+    expect(login.ok()).toBe(true);
+    await expect
+      .poll(async () =>
+        (
+          await admin.get(`/api/admin/attempts/${attempt.id}/submission`)
+        ).status(),
+      )
+      .toBe(200);
+    const list = await (await admin.get("/api/admin/attempts")).json();
+    const completed = list.attempts.find((a: any) => a.id === attempt.id);
+    expect(completed.state).toBe("COMPLETED");
+    expect(completed.protected).toBe(1);
+  } finally {
+    await admin.dispose();
+  }
 });
 
 test("completed and locked exam sign-in failures describe the attempt instead of SSH configuration", async ({
@@ -853,8 +892,8 @@ test("completed and locked exam sign-in failures describe the attempt instead of
   );
   await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
   await page.getByRole("button", { name: "Dismiss", exact: true }).click();
-  await page.getByLabel("Exam ID", { exact: true }).fill("logout");
-  await page.getByLabel("Enrolled username").fill("student03");
+  await page.getByLabel("Exam ID", { exact: true }).fill("locked");
+  await page.getByLabel("Enrolled username").fill("student05");
   await page.getByRole("button", { name: "Start SSH sign-in" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Ask your instructor to authorize continuation",

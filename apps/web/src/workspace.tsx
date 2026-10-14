@@ -80,7 +80,8 @@ export function Workspace({
       text: string;
     } | null>(null),
     [authenticationGap, setAuthenticationGap] = useState(false),
-    [recoveryExpired, setRecoveryExpired] = useState(false);
+    [recoveryExpired, setRecoveryExpired] = useState(false),
+    [signOutAfterFinish, setSignOutAfterFinish] = useState(false);
   const settings = reservation.settings;
   const sandbox = isSandbox(settings.id);
   const id = reservation.id;
@@ -396,6 +397,16 @@ export function Workspace({
       onError((e as Error).message);
     }
   };
+  useEffect(() => {
+    if (
+      signOutAfterFinish &&
+      attempt.state === "COMPLETED" &&
+      attempt.protected
+    ) {
+      setSignOutAfterFinish(false);
+      void action(onSignOut);
+    }
+  }, [signOutAfterFinish, attempt.state, attempt.protected]);
   useEffect(() => {
     capture.current = new Capture(id, page, incident);
     for (const pane of reservation.panes || []) addPane(pane);
@@ -818,13 +829,8 @@ export function Workspace({
         <div>
           <strong>{settings.name}</strong>
           <small className="toolbar-status">
-            {(functionalTest || reservation.administratorSandbox) && (
-              <span className="status warn">
-                {reservation.administratorSandbox
-                  ? "Administrator sandbox"
-                  : "Administrator test"}{" "}
-                · ordinary access retained
-              </span>
+            {functionalTest && (
+              <span className="status warn">Administrator test</span>
             )}
             <span
               className={
@@ -839,15 +845,12 @@ export function Workspace({
                     ? "Connection unavailable · retrying"
                     : "Reconnecting · input blocked"}
             </span>
-            <span className="status">
-              Screen {screen ? "on" : "off"}
-              {settings.webcam ? ` · Camera ${camera ? "on" : "off"}` : ""}
-            </span>
-            <span
-              title={`Saved files in ${directory} are collected automatically when time expires or you finish the exam. Unsaved editor buffers are not included.`}
-            >
-              <code>{directory}</code>
-            </span>
+            {attempt.start && (
+              <span className="status">
+                Screen {screen ? "on" : "off"}
+                {settings.webcam ? ` · Camera ${camera ? "on" : "off"}` : ""}
+              </span>
+            )}
           </small>
         </div>
         <div className="time" hidden={!attempt.start}>
@@ -903,15 +906,19 @@ export function Workspace({
             </div>
           </div>
         </details>
-        <button
-          className="danger"
-          hidden={attempt.state === "PREPARING"}
-          onClick={() => setDialog({ kind: "finish" })}
-          disabled={attempt.state !== "ACTIVE" || !connected || ended}
-        >
-          Finish exam
-        </button>
-        <button onClick={() => setDialog({ kind: "signout" })}>Sign out</button>
+        {attempt.state === "PREPARING" ? (
+          <button onClick={() => setDialog({ kind: "signout" })}>
+            Sign out
+          </button>
+        ) : (
+          <button
+            className="danger"
+            onClick={() => setDialog({ kind: "finish" })}
+            disabled={attempt.state !== "ACTIVE" || !connected || ended}
+          >
+            Finish exam
+          </button>
+        )}
       </header>
       {attempt.state === "PREPARING" && (
         <div className="preflight" inert={covered}>
@@ -987,9 +994,9 @@ export function Workspace({
         {count === 0 && !ended && (
           <div className="empty-workspace">
             <p>
-              Open a{" "}
-              {attempt.state === "PREPARING" ? "practice terminal" : "terminal"}{" "}
-              to start working.
+              {attempt.state === "PREPARING"
+                ? "Open a practice terminal to try your tools before the exam."
+                : "Open a terminal to start working."}
             </p>
           </div>
         )}
@@ -1177,9 +1184,6 @@ export function Workspace({
                       {recoveryFeedback.text}
                     </p>
                   )}
-                  <button onClick={() => setDialog({ kind: "signout" })}>
-                    Sign out
-                  </button>
                   <button
                     className="primary"
                     disabled={!!restoring}
@@ -1253,13 +1257,15 @@ export function Workspace({
                     ? "Your saved files are protected. The instructor must review workload cleanup or transfer status."
                     : "Your attempt has ended. Automatic collection is pending or failed. Your instructor has been alerted; no submission action is required from you."}
             </p>
-            {attempt.start && !functionalTest && (
-              <p>
-                Finishing does not restore ordinary server access before the
-                original deadline, {chicago(attempt.deadline)}, and secured
-                collection. This attempt cannot be reopened.
-              </p>
-            )}
+            {attempt.start &&
+              !functionalTest &&
+              !reservation.administratorSandbox && (
+                <p>
+                  Finishing does not restore ordinary server access before the
+                  original deadline, {chicago(attempt.deadline)}, and secured
+                  collection. This attempt cannot be reopened.
+                </p>
+              )}
             <button onClick={() => action(onSignOut)}>Sign out</button>
             {attempt.state !== "CANCELLED_BEFORE_START" && (
               <details>
@@ -1299,11 +1305,8 @@ export function Workspace({
         >
           {dialog.kind === "signout" && (
             <p>
-              {["ACTIVE", "LOCKED"].includes(attempt.state)
-                ? sandbox
-                  ? "Signing out disconnects your terminals. You can sign back in without approval; the original clock continues and saved files are collected automatically at the deadline."
-                  : "Signing out disconnects your terminals and requires instructor approval to return. The clock continues. Saved files are still collected automatically at the deadline, even while signed out."
-                : "Your SSH terminals will disconnect. You can sign in again when you are ready."}
+              Your exam has not started. Your practice terminals will
+              disconnect. You can sign in again when you are ready.
             </p>
           )}
           {dialog.kind === "close" && (
@@ -1318,6 +1321,7 @@ export function Workspace({
           {dialog.kind === "begin" && (
             <p>
               {!functionalTest &&
+                !reservation.administratorSandbox &&
                 "Starting closes other server sessions and processes; save their work first. "}
               You have {settings.duration / 60} minutes; the clock never pauses.
               Saved files in {directory} are collected automatically when time
@@ -1327,11 +1331,12 @@ export function Workspace({
           )}
           {dialog.kind === "finish" && (
             <p>
-              Finishing is irreversible. Save your files first: this ends
-              terminal access and automatically collects saved files in{" "}
-              {directory}. Unsaved editor buffers are not included. You can also
-              let time expire for automatic collection.
+              Finishing is irreversible and signs you out. Save your files
+              first: this ends terminal access and automatically collects saved
+              files in {directory}. Unsaved editor buffers are not included. You
+              can also let time expire for automatic collection.
               {!functionalTest &&
+                !reservation.administratorSandbox &&
                 " Ordinary server access stays blocked until the original deadline and secured collection."}
             </p>
           )}
@@ -1378,6 +1383,7 @@ export function Workspace({
                       armed.current = false;
                       capture.current?.stop();
                       clipboard.current = "";
+                      setSignOutAfterFinish(true);
                     }
                     if (d.kind === "close") {
                       send({ type: "close", pane: d.pane });

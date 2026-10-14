@@ -282,5 +282,28 @@ for (const [id, webcam] of [
           : 10001,
     );
 }
+// A separate locked account exercises continuation rejection without depending
+// on the old active-exam Sign out button.
+store.db
+  .prepare("INSERT INTO exams VALUES(?,?)")
+  .run("locked", JSON.stringify({ ...exam, id: "locked" }));
+store.db
+  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
+  .run("locked", "student05", null, null, null, 10005);
+store.db
+  .prepare(
+    "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,access_state) VALUES(?,?,?,?,?,?,?,?,?)",
+  )
+  .run(
+    "55555555-5555-4555-8555-555555555555",
+    "locked",
+    "student05",
+    10005,
+    "LOCKED",
+    JSON.stringify({ ...exam, id: "locked" }),
+    Date.now(),
+    Date.now() + 5400000,
+    "HELD",
+  );
 await app.listen({ host: "127.0.0.1", port: 3100 });
 process.on("SIGTERM", () => void app.close().then(() => h.close()));
