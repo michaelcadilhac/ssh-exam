@@ -53,6 +53,7 @@ type Settings struct {
 	Latest    int64  `json:"latest"`
 }
 type Attempt struct {
+	BrowserSSH           bool     `json:"browser_ssh,omitempty"`
 	AdministratorSandbox bool     `json:"administrator_sandbox,omitempty"`
 	FunctionalTest       bool     `json:"functional_test,omitempty"`
 	ID                   string   `json:"id"`
@@ -95,19 +96,21 @@ type Capability struct {
 	Expires   int64  `json:"expires"`
 }
 type State struct {
-	Attempts      map[string]*Attempt   `json:"attempts"`
-	Caps          map[string]Capability `json:"capabilities"`
-	Registrations map[string]string     `json:"registrations"`
-	Commands      map[string]int64      `json:"commands,omitempty"`
-	Sequence      int64                 `json:"sequence,omitempty"`
-	Events        []CallbackEvent       `json:"events,omitempty"`
-	Reported      map[string]string     `json:"reported,omitempty"`
-	Exports       map[string]bool       `json:"exports,omitempty"`
-	ExportPauses  map[string]string     `json:"export_pauses,omitempty"`
+	Attempts         map[string]*Attempt   `json:"attempts"`
+	Caps             map[string]Capability `json:"capabilities"`
+	Registrations    map[string]string     `json:"registrations"`
+	Commands         map[string]int64      `json:"commands,omitempty"`
+	Sequence         int64                 `json:"sequence,omitempty"`
+	Events           []CallbackEvent       `json:"events,omitempty"`
+	Reported         map[string]string     `json:"reported,omitempty"`
+	Exports          map[string]bool       `json:"exports,omitempty"`
+	ExportPauses     map[string]string     `json:"export_pauses,omitempty"`
+	RecordingOffsets map[string]int64      `json:"recording_offsets,omitempty"`
 }
 type Engine struct {
 	Config    Config
 	mu        sync.Mutex
+	monitorMu sync.Mutex
 	state     State
 	quiesce   func(*Attempt) error
 	terminate func(*Attempt) error

@@ -5,6 +5,11 @@ import {
   rmSync,
   appendFileSync,
   existsSync,
+  openSync,
+  closeSync,
+  fsyncSync,
+  readSync,
+  statSync,
 } from "node:fs";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -139,6 +144,69 @@ export class Monitoring {
         mode: 0o600,
       },
     );
+  }
+  receiveRecording(a: string, pane: string, offset: number, bytes: Buffer) {
+    if (
+      this.store.db.prepare("SELECT 1 FROM tombstones WHERE attempt=?").get(a)
+    )
+      return;
+    if (bytes.length > 256 * 1024 || !bytes.length || bytes.at(-1) !== 10)
+      throw Error("Invalid recording batch");
+    for (const line of bytes.toString().trimEnd().split("\n")) {
+      const e = JSON.parse(line);
+      if (
+        e.source !== "class-agent" ||
+        !Number.isSafeInteger(e.at) ||
+        !["open", "output", "resize", "close"].includes(e.event)
+      )
+        throw Error("Invalid trusted recording event");
+    }
+    const dir = `${this.store.dir}/monitoring/${a}`;
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const path = `${dir}/${pane}.ndjson`;
+    const size = existsSync(path) ? statSync(path).size : 0;
+    if (offset > size) throw Error("Recording offset gap");
+    const overlap = Math.min(size - offset, bytes.length);
+    if (overlap) {
+      const old = Buffer.alloc(overlap),
+        fd = openSync(path, "r");
+      try {
+        if (
+          readSync(fd, old, 0, overlap, offset) !== overlap ||
+          !old.equals(bytes.subarray(0, overlap))
+        )
+          throw Error("Conflicting recording retry");
+      } finally {
+        closeSync(fd);
+      }
+    }
+    if (overlap < bytes.length) {
+      if (size + bytes.length - overlap > 64 * 1024 * 1024)
+        throw Error("Recording limit exceeded");
+      appendFileSync(path, bytes.subarray(overlap), { mode: 0o600 });
+      const fd = openSync(path, "r");
+      try {
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      for (const directory of [dir, `${this.store.dir}/monitoring`]) {
+        const fd = openSync(directory, "r");
+        try {
+          fsyncSync(fd);
+        } finally {
+          closeSync(fd);
+        }
+      }
+    }
+    if (
+      !this.store.db
+        .prepare("SELECT 1 FROM recordings WHERE attempt=? AND pane=?")
+        .get(a, pane)
+    )
+      this.store.db
+        .prepare("INSERT INTO recordings VALUES(?,?,?,?)")
+        .run(randomUUID(), a, pane, now());
   }
   delete(id: string, actor: string) {
     this.store.db.transaction(() => {

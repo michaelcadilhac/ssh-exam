@@ -18,6 +18,11 @@ check(
   config.jump.pins.length > 0 && config.class.pins.length > 0,
 );
 check("SMTP configured", !!config.smtp);
+check(
+  "Browser SSH relay configured",
+  !!config.browserSSH,
+  config.browserSSH?.relay || "Legacy development/rollback transport",
+);
 for (const [name, p] of Object.entries(config.agent).filter(([n]) =>
   ["signingKey", "callbackPublicKey"].includes(n),
 )) {

@@ -10,6 +10,7 @@ import {
   type AuthChallenge,
 } from "./auth-challenge.js";
 import "./style.css";
+import { browserSSH } from "./browser-ssh.js";
 function App() {
   const [user, setUser] = useState<any>(null),
     [error, setError] = useState(""),
@@ -63,6 +64,7 @@ function App() {
   };
   const logout = async () => {
     await api("/logout", {});
+    browserSSH.close();
     authSocket?.close();
     setCsrf("");
     setReservation(null);
@@ -79,11 +81,19 @@ function App() {
     setResponding(false);
     await api("/auth/start", {});
     const s = socket("/auth/dialogue");
+    browserSSH.begin(s, (m) => {
+      setChallenge((current) => updateAuthChallenge(current, m));
+      if (m.type === "challenge") {
+        setResponding(false);
+        replaceAnswers(m.prompts.map(() => ""));
+      }
+    });
     setAuthSocket(s);
     s.onopen = () =>
       s.send(JSON.stringify({ v: 1, type: "start", exam: examId, username }));
     s.onmessage = (e) => {
       const m = JSON.parse(e.data);
+      if (browserSSH.handle(m)) return;
       if (m.type === "challenge" || m.type === "notice") {
         setChallenge((current) => updateAuthChallenge(current, m));
       }
@@ -94,7 +104,7 @@ function App() {
       if (m.type === "authenticated") {
         setChallenge(null);
         clearAuthAnswers();
-        s.close();
+        if (!browserSSH.active) s.close();
         setAuthSocket(null);
         void action(async () => {
           await api("/auth/complete", {});
@@ -102,6 +112,7 @@ function App() {
         });
       }
       if (m.type === "error") {
+        browserSSH.close();
         clearAuthAnswers();
         setError(m.error);
         setChallenge(null);
@@ -392,14 +403,19 @@ function App() {
                     if (!challenge.prompts.length || responding) return;
                     setResponding(true);
                     try {
-                      authSocket?.send(
-                        JSON.stringify({
-                          v: 1,
-                          type: "answers",
-                          round: challenge.round,
-                          answers: answersRef.current,
-                        }),
-                      );
+                      if (browserSSH.usingBrowser)
+                        browserSSH.answers(challenge.round, [
+                          ...answersRef.current,
+                        ]);
+                      else
+                        authSocket?.send(
+                          JSON.stringify({
+                            v: 1,
+                            type: "answers",
+                            round: challenge.round,
+                            answers: answersRef.current,
+                          }),
+                        );
                     } finally {
                       clearAuthAnswers();
                     }
@@ -512,8 +528,9 @@ function App() {
                     />
                   </label>
                   <p className="login-note">
-                    Enter your SSH password once. It is held in memory for this
-                    login, reused for both servers, then discarded. Phone MFA is
+                    Enter your SSH password once. It is held temporarily in
+                    {loginTest?.browserSSH ? " browser" : " server"} memory,
+                    reused for both servers, then discarded. Phone MFA is
                     unchanged.
                   </p>
                   <button className="primary" disabled={!!authSocket}>

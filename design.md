@@ -84,48 +84,85 @@ Distinguish these guarantees in documentation:
 
 ```text
 Student Chrome/Chromium
-  ├─ Fullscreen workspace and floating xterm.js terminals
-  ├─ Screen + optional webcam capture
-  └─ HTTPS / authenticated WebSocket
-                     │
-Host nginx: TLS termination and reverse proxy
-                     │
-Docker: web application
-  ├─ Student and instructor HTTP APIs
-  ├─ Authentication and persistent attempt state
-  ├─ Per-student SSH connection manager
-  ├─ Monitoring ingestion, recordings, notifications
-  ├─ SQLite metadata + private persistent file storage
-  └─ Gateway-signed commands over authenticated student SSH channels
-                     │
-           Retained SSH connection to jump host
-           Password + number-matching 2FA, once
-                     │
-           Forwarded TCP stream to class server
-                     │
-           Retained SSH connection to class server
-           Shared password reused for pinned class server
-             ├─ SSH session channel → terminal 1
-             ├─ SSH session channel → terminal 2
-             └─ SSH session channel → terminal 3, etc.
+  ├─ Fullscreen workspace, floating xterm terminals, screen/webcam capture
+  ├─ Dedicated Web Worker: Go/WASM SSH client, two retained SSH transports
+  │    └─ WSS csc-sys relay → institutional proxy → sshjump (password + MFA)
+  │         └─ SSH-forwarded class connection → controlled terminal channels
+  └─ HTTPS/authenticated WebSockets to marco: authorization, status, images
 
-Class server: native, administrator-installed components
-  ├─ Controlled session entry point and access guard
-  ├─ Privileged, narrowly scoped exam agent
-  ├─ Attempt process containment and local deadline enforcement
-  ├─ Per-attempt working directory and read-only exam materials
-  └─ Protected local submission archive + signed outbound status/archive callbacks
+marco web application (Docker behind nginx)
+  ├─ Student/instructor APIs, persistent attempt metadata and notifications
+  ├─ Gateway-signed command and pane authorization carried by browser SSH
+  ├─ Verifies class-agent signed account/transport/nonce/result receipts
+  └─ Private images, verified class recordings and submission downloads
+
+csc-sys native, administrator-installed components
+  ├─ HTTPS WebSocket relay: fixed sshjump destination, signed one-use tickets
+  ├─ Pre-startup account/channel gate and privileged local Unix-socket agent
+  ├─ Independent deadline/access-hold enforcement and protected collection
+  ├─ Root-owned PTY output/resize/lifecycle recordings (no raw keystrokes)
+  └─ Signed outbound status, recording batches and verified archive callbacks
 ```
 
 SSH supports multiple channels within one authenticated connection. Channel creation, pseudo-terminal allocation, resizing, and shell startup do not require new user authentication. The jump-host transport carries the class-server transport; retain both. [R2]
 
-Use one backend application instance initially. It owns live SSH connections in memory. Persist all authoritative attempt metadata; never pretend that SSH connection objects survive process restart. Do not use a stateless/serverless deployment or multiple independent workers that compete for the same attempt. Future scaling is out of scope unless ownership and routing are explicitly implemented.
+Use one backend application instance initially. The browser Web Worker owns both live SSH connections; the backend owns authorization and clearable control-session references, not student credentials or SSH transports. Persist all authoritative attempt metadata; SSH objects do not survive browser/worker restart. A gateway restart loses control ownership and requires fresh SSH authentication under the existing recovery policy. Do not use a stateless/serverless deployment or multiple independent workers that compete for the same attempt. Future scaling is out of scope unless ownership and routing are explicitly implemented.
 
 The class agent exposes **no TCP control listener**, independent control tunnel, or command queue to poll. The gateway sends bounded Ed25519-signed commands on non-PTY `exam-control` channels of the authenticated student SSH connection. The compiled account gate runs before student startup files and forwards each frame to the local root Unix socket. Root verifies the signature against its administrator-installed gateway public key, configured agent audience, account, short expiry, durable one-use nonce, kernel peer UID, and root sshd transport ancestry. Mutable attempt operations additionally require ownership and the currently registered transport. The gateway never receives root SSH credentials or retains student passwords for commands.
 
 The agent persists the original start/deadline and access hold, and its independent local watchdog cuts off writers and collects work without any browser, gateway, or network. Agent-originated HTTPS POST callbacks report configuration/account registry on agent startup and subsequent attempt status changes, manifests, errors and access releases. Callbacks use a separate pinned Ed25519 agent identity; they never carry commands in responses. Events have durable sequence IDs, immutable payloads, replay/conflict checks and retries after outages/restarts. There is no idle command polling or heartbeat request. Lease renewals still travel through live student SSH.
 
 After local protection, the agent also pushes the verified archive to the authenticated webserver callback endpoint for instructor downloads. Archive signatures bind agent, attempt and checksum; the webserver checks the receipt and complete-byte checksum before durable publication. Transfer retries read only the existing protected copy. The class-server original remains authoritative and has separate retention. The web dashboard can delete its download copy; deletion of the class-server original is a local root `examctl` operation.
+
+### 4.1 Browser SSH and fixed relay
+
+Run both SSH protocols in the browser's dedicated Go/WebAssembly worker using
+`golang.org/x/crypto/ssh`; keep cryptography off the UI thread. The ordinary
+web page reaches SSH through `wss://csc-sys.cdm.depaul.edu/ssh-exam/relay`, not
+raw TCP. Self-host the WASM and matching runtime with the application. Build them
+reproducibly from pinned Go/dependency versions in the Docker build.
+
+The unprivileged, hardened relay listens on loopback behind csc-sys HTTPS nginx.
+It accepts only the exact webserver Origin and a gateway-signed, 30-second,
+single-use ticket in the first WebSocket frame. Replay state survives relay
+restart. The destination is fixed to sshjump on port 22; browsers cannot select
+another destination. On this deployment use its verified internal address
+through the existing institutional CONNECT proxy. The browser checks both
+configured SSH pins before credentials, authenticates the jump host with phone
+MFA, then authenticates the class host over SSH forwarding using the same password.
+The relay handles encrypted bytes only and never receives plaintext credentials,
+terminal output, or agent-control access. Disconnection closes its upstream.
+
+The backend sends signed commands and pane grants to the worker over an
+authenticated control WebSocket. The worker executes them on the retained student
+SSH connection. Root signs acknowledgments with the pinned class-agent identity,
+binding command nonce, actual account, kernel-derived transport, result/error and
+expiry. Pane receipts additionally bind the one-use admission token hash,
+attempt and pane. The backend must verify these receipts before authenticating
+a web session, accepting a result or acknowledging a terminal. A typed username,
+browser claim, unsigned result or arbitrary successful SSH endpoint is insufficient.
+
+Terminal input/output flows directly between browser and csc-sys relay; marco
+is not in the interactive data path. Opening channels remains backend-authorized.
+Buffer bounded early input until admission completes, preserving order. A lost
+control socket may rebind with the authenticated session and private in-memory
+control token within the existing 15-second grace. Re-deliver pending requests
+with the same IDs; cache replies so recovery does not repeat a signed operation.
+A page/worker/SSH restart clears credentials and requires fresh SSH authentication;
+locked active attempts still require the established continuation authorization.
+Finished attempts never reopen. The agent's original deadline and access hold
+remain authoritative regardless of browser or webserver availability.
+
+Root records each exam PTY's output, resize and lifecycle events before forwarding
+output. Recording failure stops the pane and locks the attempt. Store records
+privately on csc-sys and push signed, bounded, offset-based batches to marco;
+retries must verify overlapping bytes rather than append duplicates. Persist
+acknowledged offsets across restarts. Retain local and gateway monitoring records
+for 60 days, honoring dashboard deletion tombstones; keep submissions separate.
+Preserve screen/webcam monitoring and the existing frontend recovery rules.
+
+A legacy backend SSH client remains only for development fixtures and documented
+rollback compatibility; production deployment enables `browserSSH` explicitly.
 
 ## 5. Candidate libraries and implementation baseline
 
@@ -138,7 +175,7 @@ Prefer these components, subject to current API and compatibility verification. 
 | Floating windows | `winbox` / WinBox.js | Moving, resizing, maximizing, restoring, minimizing; customize controls and taskbar [R4] |
 | Backend | Node.js 26.x, TypeScript, Fastify | HTTP APIs, validation, authentication, static frontend serving [R5] |
 | WebSockets | `ws`, directly or via the supported Fastify integration | Terminal and control transport; validate every message |
-| SSH | `ssh2` | Keyboard-interactive authentication, connection hopping, retained shell channels [R6] |
+| SSH | `golang.org/x/crypto/ssh` compiled to browser WASM | Keyboard-interactive MFA, pinned two-hop transports, retained shell channels; `ssh2` only in development/rollback |
 | Validation | Zod or Fastify JSON Schema | Explicit request/response and configuration schemas |
 | Database | SQLite through `better-sqlite3` | Transactions, migrations, WAL on local persistent storage [R7] |
 | CSV | `csv-parse`, `csv-stringify` | Streaming import, proper quoting, export, BOM handling [R8] |
@@ -169,14 +206,14 @@ Authentication UI requirements:
 - Honor each prompt's echo flag. Never assume that the second factor is a six-digit OTP.
 - When the protocol asks for zero responses, display its instruction and complete that protocol round correctly; do not invent a user input prompt.
 - Handle approval delays, denial, timeout, cancellation, and repeated challenge rounds without retry storms.
-- Collect the shared SSH password once per login sequence. Explain temporary backend-memory reuse only for the configured, host-key-verified jump and class hosts; preserve phone MFA and handle other prompts explicitly. Clear credentials after both hosts authenticate or upon failure, cancellation, browser disconnection during login or timeout. Never retain credentials for reconnection or retry rejected passwords.
+- Collect the shared SSH password once per login sequence. Explain temporary browser-worker-memory reuse only for the configured, host-key-verified jump and class hosts; preserve phone MFA and handle other prompts explicitly. Clear credentials after both hosts authenticate or upon failure, cancellation, browser disconnection during login or timeout. Never retain credentials for reconnection or retry rejected passwords.
 - Apply bounded attempts and rate limits, with understandable error messages.
 
-Keyboard-interactive authentication is a multi-round protocol with instructions and an array of prompts; `ssh2` exposes the relevant callback interface. [R6], [R12]
+Keyboard-interactive authentication is a multi-round protocol with instructions and an array of prompts; the Go SSH client's callback preserves these rounds and echo flags. [R12]
 
 Validate **both** SSH host keys against administrator-provisioned pins/known-host data. An unknown or changed key blocks connection and generates an administrative diagnostic. No automatic acceptance or trust-on-first-use for students. Do not turn on legacy cryptography automatically when a connection fails.
 
-Passwords, challenge answers, and authentication instructions must not enter screenshots, terminal recordings, request logs, tracing, database rows, disk queues, URLs, or error reports. Complete SSH authentication before beginning capture. Hold necessary credentials only for the authentication operation, clear references afterward, and never keep them to authenticate newly opened terminals. Document the limits of guaranteed memory erasure in managed runtimes.
+Passwords, challenge answers, and authentication instructions must not enter screenshots, terminal recordings, request logs, tracing, database rows, disk queues, URLs, or error reports. Complete SSH authentication before beginning capture. Hold necessary credentials only in the browser worker for the authentication operation. Clear the DOM/password application references immediately after posting answers to that worker. Zero mutable Go byte buffers where practical; remove credential and dialogue references after both hosts authenticate or on failure/cancellation/disconnection/timeout. Authentication callbacks may retain only a cleared holder, never password values. Terminating a worker and clearing JavaScript/Go references is best-effort memory cleanup, not guaranteed erasure of immutable strings or runtime/transport copies. Never keep credentials for new terminals or reconnection.
 
 ### 6.2 Preflight, before questions or timing
 
@@ -384,7 +421,7 @@ Capture continues while locked when possible, and stops at end/expiration. Accep
 
 ### 10.3 Terminal recordings
 
-Record each terminal's output bytes, resize events, lifecycle events, and monotonic timing on the gateway. Record decoded display output faithfully, including escape sequences in a replay-safe format. Also keep raw bytes where necessary for faithful reconstruction with explicit size limits.
+Record each terminal's output bytes, resize events, lifecycle events, and monotonic timing at the root-owned class-server PTY bridge. Push signed batches to the gateway for instructor replay. Record decoded display output faithfully, including escape sequences in a replay-safe format. Also keep raw bytes where necessary for faithful reconstruction with explicit size limits.
 
 Do not store raw keystrokes or authentication input. Echoed commands naturally appear in terminal output; password prompts without echo must not become keylogs. Recordings start only when the trusted setup hands off to the exam shell, not during SSH authentication or secret channel admission.
 
@@ -995,7 +1032,7 @@ Automate what is practical and provide a signed-off manual matrix for browser/OS
 
 ### 22.1 Authentication and multiplexing
 
-- A mock jump host requests password, displays a two-digit number-matching instruction including a zero-prompt round, and waits for approval; a mock class host requests the same shared password, supplied by the backend without a second browser password entry.
+- A mock jump host requests password, displays a two-digit number-matching instruction including a zero-prompt round, and waits for approval; a mock class host requests the same shared password, supplied by the browser worker without a second password entry.
 - Exactly one initial authentication sequence per host occurs. Creating four terminals does not ask for credentials, trigger 2FA, or create another class-server transport.
 - A host-key mismatch on either hop prevents login.
 - Authentication failures, cancellations, timeouts, and instruction text containing HTML are handled safely.

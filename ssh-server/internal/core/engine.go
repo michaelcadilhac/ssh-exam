@@ -17,6 +17,7 @@ import (
 )
 
 type Request struct {
+	BrowserSSH   bool     `json:"browser_ssh,omitempty"`
 	Continuation *Request `json:"continuation,omitempty"`
 	ID           string   `json:"id"`
 	Exam         string   `json:"exam"`
@@ -129,7 +130,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"browser-ssh-receipts", "agent-terminal-recording", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -159,7 +160,14 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 					return errors.New("preparation ownership mismatch")
 				}
 				if a.State == "PREPARING" {
+					if a.Transport != r.Transport {
+						if err := e.terminateWriters(a); err != nil {
+							return err
+						}
+						a.Units = nil
+					}
 					a.Transport = r.Transport
+					a.BrowserSSH = r.BrowserSSH
 				}
 				result = a
 				return nil
@@ -181,7 +189,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if !identifier.MatchString(r.Exam) || !identifier.MatchString(r.Settings.Template) || r.Settings.Duration < 60 || r.Settings.Duration > 21600 || r.Settings.Terminals < 1 || r.Settings.Terminals > 4 {
 				return errors.New("invalid exam settings")
 			}
-			a := &Attempt{ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
+			a := &Attempt{BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
 			if sandboxAttempt(a) {
 				a.Settings.Duration = SandboxDurationSeconds
 			}
@@ -273,6 +281,25 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("terminal limit")
 			}
 			result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + 15000})
+		case "close-pane":
+			if !attemptID.MatchString(r.Pane) {
+				return errors.New("invalid pane identity")
+			}
+			closed := *a
+			closed.Units = nil
+			remaining := []string{}
+			for _, unit := range a.Units {
+				if unit == "exam-"+a.ID+"-"+r.Pane+".scope" || unit == "exam-"+a.ID+"-"+r.Pane+".service" {
+					closed.Units = append(closed.Units, unit)
+				} else {
+					remaining = append(remaining, unit)
+				}
+			}
+			if err := e.terminateWriters(&closed); err != nil {
+				return err
+			}
+			a.Units = remaining
+			result = map[string]bool{"closed": true}
 		case "lock-attempt":
 			if a.State == "LOCKED" && r.Generation > a.Generation {
 				a.Generation = r.Generation
@@ -354,6 +381,11 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("cannot cancel started attempt")
 			}
 			a.State = "CANCELLED_BEFORE_START"
+			if err := e.terminateWriters(a); err != nil {
+				a.Errors = appendError(a.Errors, err.Error())
+				return err
+			}
+			a.Units = nil
 			e.Audit(op, a.ID)
 			result = a
 		default:
@@ -556,6 +588,17 @@ func (e *Engine) freeze(a *Attempt, frozen bool) error {
 }
 func (e *Engine) Tick() error {
 	return e.WithState(func() error {
+		// Cancellation must close practice shells even when their browser/old
+		// entry process disappeared. No started attempt is cancelled here.
+		for _, a := range e.state.Attempts {
+			if a.Start == 0 && a.State == "CANCELLED_BEFORE_START" && len(a.Units) > 0 {
+				if err := e.terminateWriters(a); err != nil {
+					a.Errors = appendError(a.Errors, err.Error())
+				} else {
+					a.Units = nil
+				}
+			}
+		}
 		// Revoke/freeze ALL expired workloads before spending time compressing any archive.
 		for _, a := range e.state.Attempts {
 			if a.Start > 0 && a.State != "COMPLETED" && a.State != "CANCELLED_BEFORE_START" && expired(a) {

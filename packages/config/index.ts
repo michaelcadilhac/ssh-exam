@@ -15,6 +15,12 @@ const schema = z.object({
     port: z.number().int().default(22),
     pins: z.array(z.string().regex(/^[a-f0-9]{64}$/)).min(1),
   }),
+  browserSSH: z
+    .object({
+      relay: z.string().url(),
+      audience: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    })
+    .optional(),
   agent: z.object({
     id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
     signingKey: z.string(),
@@ -81,6 +87,8 @@ export function loadConfig(
   if (c.functionalTest && c.mode !== "development")
     throw Error("Privileged functional testing requires development mode");
   if (c.mode === "production") {
+    if (c.browserSSH && !c.browserSSH.relay.startsWith("wss://"))
+      throw Error("Browser SSH requires a secure relay");
     if (!c.origin.startsWith("https://"))
       throw Error("Production requires HTTPS");
     if (

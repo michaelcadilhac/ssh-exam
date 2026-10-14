@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx apps/server/src/main.ts",
-    "build": "vite build --config apps/web/vite.config.ts && tsc -p tsconfig.server.json",
+    "build": "node scripts/build-browser-ssh.cjs && vite build --config apps/web/vite.config.ts && tsc -p tsconfig.server.json",
     "start": "node dist/apps/server/src/main.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

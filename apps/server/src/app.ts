@@ -33,6 +33,7 @@ import {
 import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
 import { Connection } from "./ssh.js";
+import { BrowserConnection } from "./browser-ssh.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { Lifecycle } from "./lifecycle.js";
@@ -230,7 +231,7 @@ export async function createApp(
       .header("X-Content-Type-Options", "nosniff")
       .header(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+        `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' ${config.browserSSH ? new URL(config.browserSSH.relay).origin : ""}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`,
       );
     if (
       config.loginOnly &&
@@ -348,6 +349,37 @@ export async function createApp(
       return { ok: true };
     },
   );
+  app.post(
+    "/api/agent/recordings",
+    { bodyLimit: 512 * 1024, config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload))
+        throw Error("Raw recording callback required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      const b = z
+        .object({
+          agent: z.literal(config.agent.id),
+          attempt: z.string().uuid(),
+          pane: z.string().uuid(),
+          offset: z.number().int().min(0),
+          data: z.string().max(512 * 1024),
+        })
+        .parse(JSON.parse(payload.toString()));
+      const a = store.attempt(b.attempt);
+      if (!a.start) throw Error("Recording before exam start rejected");
+      monitoring.receiveRecording(
+        b.attempt,
+        b.pane,
+        b.offset,
+        Buffer.from(b.data, "base64"),
+      );
+      return { ok: true };
+    },
+  );
   const transferReceipt = (req: any) => {
     const encoded = String(req.headers["x-exam-receipt"] || "");
     if (encoded.length > 2048) throw Error("Invalid transfer receipt");
@@ -387,6 +419,7 @@ export async function createApp(
     maintenance: config.maintenance,
     loginOnly: !!config.loginOnly,
     functionalTest: !!config.functionalTest,
+    browserSSH: !!config.browserSSH,
     ...(config.loginOnly
       ? { jump: config.jump.host, class: config.class.host }
       : {}),
@@ -598,6 +631,18 @@ export async function createApp(
       .get(s.exam, s.username) as any;
     if (!enrollment) throw Error("Enrollment unavailable");
     const h = await conn.command("health");
+    if (
+      config.browserSSH &&
+      ![
+        "browser-ssh-receipts",
+        "agent-terminal-recording",
+        "signed-pane-close",
+      ].every((cap) => h.capabilities?.includes(cap)) &&
+      !h.fixture
+    )
+      throw Error(
+        "Class server lacks trusted browser SSH monitoring; update the agent first.",
+      );
     if (!h.ready) throw Error("Class server guards not ready");
     if (
       h.functional_test &&
@@ -679,6 +724,7 @@ export async function createApp(
       uid: enrollment.uid,
       settings,
       transport: conn.transport,
+      browser_ssh: conn instanceof BrowserConnection,
     });
     store.db
       .prepare("UPDATE attempts SET work_path=?,functional_test=? WHERE id=?")
@@ -699,7 +745,7 @@ export async function createApp(
     page(req, a);
     if (a.state !== "PREPARING") throw Error("Practice only before starting");
     const conn = connections.get(`${a.exam}:${a.username}`)!;
-    for (const c of conn.panes.values()) c.close();
+    for (const c of conn.panes.values()) await c.close();
     const pane = randomUUID();
     const c = await conn.open(a.id, pane, "practice");
     c.on("data", () => {});
@@ -739,7 +785,7 @@ export async function createApp(
       throw Error("Preparation is changing; check status before starting.");
     busy.add(a.id);
     try {
-      for (const c of conn.panes.values()) c.close();
+      for (const c of conn.panes.values()) await c.close();
       conn.panes.clear();
       const result = await agent.call("activate-attempt", { id: a.id });
       if (result.state !== "ACTIVE") {
@@ -1342,7 +1388,10 @@ export async function createApp(
     );
     return { queued: true };
   });
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 32768 });
+  const wss = new WebSocketServer({
+    noServer: true,
+    maxPayload: 8 * 1024 * 1024,
+  });
   app.server.on("upgrade", (req, socket, head) => {
     if (req.headers.origin !== config.origin) {
       socket.destroy();
@@ -1358,6 +1407,7 @@ export async function createApp(
         "/api/auth/dialogue",
         "/api/student/session",
         "/api/admin/events",
+        "/api/browser/ssh",
       ].includes(pathname)
     ) {
       socket.destroy();
@@ -1418,6 +1468,34 @@ export async function createApp(
       ws.on("close", () => clearInterval(timer));
       return;
     }
+    if (pathname === "/api/browser/ssh") {
+      const conn = connections.get(`${session.exam}:${session.username}`);
+      if (!(conn instanceof BrowserConnection) || !conn.alive) {
+        ws.close(1008);
+        return;
+      }
+      let bound = false;
+      ws.on("message", (data) => {
+        try {
+          const m = JSON.parse(data.toString());
+          if (!bound) {
+            if (
+              m.type !== "browser-bind" ||
+              m.controlToken !== conn.controlToken
+            )
+              throw Error("Invalid browser SSH binding");
+            conn.attach(ws);
+            bound = true;
+            send(ws, { type: "browser-bound" });
+            return;
+          }
+          if (!conn.receive(m)) throw Error("Invalid browser SSH message");
+        } catch {
+          ws.close(1008);
+        }
+      });
+      return;
+    }
     if (pathname === "/api/auth/dialogue") {
       const p = pending.get(hash(cookies.dialogue || ""));
       if (!p || p.connection) {
@@ -1467,6 +1545,10 @@ export async function createApp(
         let m: ReturnType<typeof authMessage.parse> | undefined;
         let handedOff = false;
         try {
+          if (p.connection instanceof BrowserConnection) {
+            const rawMessage = JSON.parse(data.toString());
+            if (p.connection.receive(rawMessage)) return;
+          }
           let parsed = JSON.parse(data.toString());
           try {
             m = authMessage.parse(parsed);
@@ -1577,7 +1659,9 @@ export async function createApp(
           }
           p.username = m.username;
           p.exam = m.exam;
-          p.connection = new Connection(m.username, config, agent);
+          p.connection = config.browserSSH
+            ? new BrowserConnection(m.username, m.exam, config, agent, ws)
+            : new Connection(m.username, config, agent);
           p.connection.onDiagnostic = (host, detail) => {
             store.audit("gateway", "ssh-diagnostic", host, detail);
             life.alert(
@@ -1645,7 +1729,11 @@ export async function createApp(
           waiting.reject(Error("Authentication cancelled"));
           waiting = null;
         }
-        if (!p.done) p.connection?.close();
+        if (
+          !p.done &&
+          !(p.connection instanceof BrowserConnection && p.connection.alive)
+        )
+          p.connection?.close();
       });
       return;
     }
@@ -1789,7 +1877,8 @@ export async function createApp(
               m.pane,
               practice ? "practice" : "exam",
             );
-            if (!practice) monitoring.record(a.id, m.pane, { event: "open" });
+            if (!practice && !(conn instanceof BrowserConnection))
+              monitoring.record(a.id, m.pane, { event: "open" });
             c.on("data", (bytes: Buffer) => {
               const current = store.attempt(a!.id);
               const used = (recordingBytes.get(a!.id) || 0) + bytes.length;
@@ -1840,7 +1929,7 @@ export async function createApp(
             }
             if (m.type === "resize") {
               c.setWindow(m.rows, m.cols, 0, 0);
-              if (a.state === "ACTIVE")
+              if (a.state === "ACTIVE" && !(conn instanceof BrowserConnection))
                 monitoring.record(a.id, m.pane, {
                   event: "resize",
                   cols: m.cols,
@@ -1848,8 +1937,8 @@ export async function createApp(
                 });
             }
             if (m.type === "close") {
-              c.close();
-              if (a.state === "ACTIVE")
+              await c.close();
+              if (a.state === "ACTIVE" && !(conn instanceof BrowserConnection))
                 monitoring.record(a.id, m.pane, { event: "close" });
             }
           }

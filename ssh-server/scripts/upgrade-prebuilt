@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Upgrade a verified native bundle only after started attempts have drained."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import datetime
+import re
+import time
+import fcntl
+from contextlib import contextmanager
+
+
+def run(*args):
+    subprocess.run(args, check=True)
+
+
+@contextmanager
+def drained_agent(state_path):
+    # Hold the same state lock as the agent while stopping command admission.
+    # A student start cannot commit between the drain check and service stop.
+    with open(state_path.parent / "lock", "a+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        state = json.loads(state_path.read_text())
+        if any(a["state"] in ["ACTIVE", "LOCKED", "ACTIVATING", "FINALIZING", "COLLECTION_FAILED"] for a in state.get("attempts", {}).values()):
+            raise SystemExit("Drain started or unresolved attempts before native upgrade")
+        run("systemctl", "stop", "exam-agent")
+    # The independent watchdog remains active. Restore command admission even
+    # if validation/cleanup fails before binaries are replaced.
+    try:
+        yield
+    finally:
+        run("systemctl", "start", "exam-agent")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("bundle", type=Path)
+    args = parser.parse_args()
+    if os.geteuid() != 0:
+        raise SystemExit("Root installation required")
+    names = ["exam-agent", "exam-login", "examctl", "exam-info"]
+    expected = {}
+    for line in (args.bundle / "SHA256SUMS").read_text().splitlines():
+        digest, name = line.split()
+        if name not in names or len(digest) != 64:
+            raise SystemExit("Unexpected checksum entry")
+        expected[name] = digest
+    if set(expected) != set(names):
+        raise SystemExit("Incomplete native bundle")
+    for name in names:
+        if hashlib.sha256((args.bundle / name).read_bytes()).hexdigest() != expected[name]:
+            raise SystemExit("Native checksum mismatch")
+    config_path = Path("/etc/exam-agent/agent.json")
+    config = json.loads(config_path.read_text())
+    state_path = Path(config["state"]) / "state.json"
+    with drained_agent(state_path):
+        state = json.loads(state_path.read_text())
+        for a in state.get("attempts", {}).values():
+            if a.get("start", 0) and a["state"] not in ["COMPLETED", "CANCELLED_BEFORE_START"]:
+                raise SystemExit("Drain started attempts before native upgrade")
+        # Preflight has no questions/deadline. Cancel it, never a started attempt.
+        for a in state.get("attempts", {}).values():
+            if a["state"] == "PREPARING":
+                run("/usr/local/sbin/examctl", "-reason", "Unstarted preflight cancelled for browser SSH deployment", "cancel", a["id"])
+        state = json.loads(state_path.read_text())
+        for a in state.get("attempts", {}).values():
+            for unit in a.get("units") or []:
+                if not re.fullmatch(r"exam-[0-9a-f-]{36}-[0-9a-f-]{36}\.(scope|service)", unit):
+                    raise SystemExit("Unexpected workload unit; administrator inspection required")
+                cgroup = Path("/sys/fs/cgroup/exam.slice") / unit
+                if a["state"] == "CANCELLED_BEFORE_START" and not a.get("start") and cgroup.exists():
+                    # Old cancellation left an orphaned practice unit. Only this
+                    # recorded unit is stopped; ordinary account sessions remain.
+                    subprocess.run(["systemctl", "kill", "--signal=KILL", unit])
+                    subprocess.run(["systemctl", "stop", unit])
+                    for _ in range(30):
+                        if not cgroup.exists():
+                            break
+                        time.sleep(0.1)
+                if cgroup.exists():
+                    raise SystemExit("Drain all tracked workload cgroups before native upgrade")
+        stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        backup = Path(tempfile.mkdtemp(prefix=stamp + "-browser-ssh-", dir="/var/backups/ssh-exam"))
+        targets = {
+            "exam-agent": Path("/usr/local/sbin/exam-agent"),
+            "exam-login": Path("/usr/local/libexec/exam-login"),
+            "examctl": Path("/usr/local/sbin/examctl"),
+            "exam-info": Path("/usr/local/bin/exam-info"),
+        }
+        for name, target in targets.items():
+            shutil.copy2(target, backup / name)
+        shutil.copy2(config_path, backup / "agent.json")
+        shutil.copy2(state_path, backup / "state-snapshot-for-inspection-only.json")
+        # State snapshots are never restored over newer deadlines/submissions.
+        try:
+            for name, target in targets.items():
+                temporary = target.with_name(target.name + ".browser-upgrade")
+                shutil.copyfile(args.bundle / name, temporary)
+                temporary.chmod(0o755)
+                os.replace(temporary, target)
+            run("systemctl", "restart", "exam-agent")
+            run("systemctl", "restart", "exam-deadline-watchdog")
+            run("systemctl", "is-active", "--quiet", "exam-agent", "exam-deadline-watchdog")
+        except BaseException:
+            for name, target in targets.items():
+                shutil.copy2(backup / name, target)
+            run("systemctl", "restart", "exam-agent", "exam-deadline-watchdog")
+            raise
+        print("Native browser-SSH upgrade installed. Backup:", backup)
+
+
+
+if __name__ == "__main__":
+    main()

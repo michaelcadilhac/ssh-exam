@@ -5,6 +5,12 @@ watchdog/reconciliation timer, collector and root tools. Target: Debian 12/13, L
 cgroup v2, OpenSSH privilege separation and bubblewrap. **Privileged installation remains
 untested on a real class host. Leave readiness flags false until the manual suite passes.**
 
+The separately installed [browser SSH relay](relay/README.md) supplies a fixed,
+ticket-authenticated WebSocket path to sshjump through csc-sys's existing HTTPS
+endpoint. Production terminals use the browser SSH worker; authorization and
+signed receipts pass through the webserver. It is independent of the exam agent and its installation
+does not restart SSH or exam enforcement services.
+
 ## Prerequisites and recovery
 
 Keep a separate root recovery SSH session throughout changes. Back up passwd, group, shells,

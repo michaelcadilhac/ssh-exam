@@ -154,7 +154,7 @@ func (e *Engine) Command(frame SignedFrame, username, transport string) (any, er
 			if err != nil || a.Username != username {
 				return errors.New("attempt owner mismatch")
 			}
-		case "activate-attempt", "issue-channel-admission", "lock-attempt", "renew-execution-lease", "consume-continuation", "finalize-attempt":
+		case "activate-attempt", "issue-channel-admission", "close-pane", "lock-attempt", "renew-execution-lease", "consume-continuation", "finalize-attempt":
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username || a.Transport != transport {
 				return errors.New("attempt SSH transport mismatch")

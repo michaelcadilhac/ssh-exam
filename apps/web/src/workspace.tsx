@@ -8,6 +8,7 @@ import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { TerminalMenu } from "./terminal-menu.js";
 import { readinessMessage } from "../../../packages/protocol/readiness.js";
+import { browserSSH } from "./browser-ssh.js";
 import "@xterm/xterm/css/xterm.css";
 import "winbox/dist/css/winbox.min.css";
 type Pane = {
@@ -112,6 +113,7 @@ export function Workspace({
     for (const pane of panes.current.values()) pane.box.dom.inert = covered;
   }, [covered, count]);
   const send = (data: any) => {
+    if (browserSSH.terminal(data)) return;
     if (ws.current?.readyState === WebSocket.OPEN)
       ws.current.send(JSON.stringify({ v: 1, ...data }));
   };
@@ -489,6 +491,18 @@ export function Workspace({
       };
     };
     connect();
+    const unsubscribe = browserSSH.subscribe((m) => {
+      if (m.type === "output") {
+        const p = panes.current.get(m.pane);
+        if (p && interaction())
+          p.term.write(Uint8Array.from(atob(m.data), (c) => c.charCodeAt(0)));
+      }
+      if (m.type === "closed") remove(m.pane);
+      if (m.type === "loss") {
+        updateAuthenticationGap(true);
+        setMessage("SSH disconnected. Sign in again to reconnect.");
+      }
+    });
     const heartbeat = setInterval(() => {
       const r = conditions();
       setScreen(r.screen);
@@ -613,6 +627,7 @@ export function Workspace({
     };
     window.addEventListener("pagehide", leave);
     return () => {
+      unsubscribe();
       mounted = false;
       clearInterval(heartbeat);
       clearInterval(timer);

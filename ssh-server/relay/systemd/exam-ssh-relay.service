@@ -1,0 +1,36 @@
+[Unit]
+Description=Exam browser WebSocket relay to the fixed SSH jump host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=exam-ssh-relay
+StateDirectoryMode=0700
+ExecStartPre=/usr/local/libexec/exam-ssh-relay -config /etc/exam-relay/config.json -check
+ExecStart=/usr/local/libexec/exam-ssh-relay -config /etc/exam-relay/config.json
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+UMask=0077
+TasksMax=256
+MemoryMax=256M
+LimitNOFILE=1024
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

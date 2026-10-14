@@ -3,6 +3,7 @@ package core
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -132,10 +133,20 @@ func (e *Engine) local(c *net.UnixConn) {
 			return
 		}
 		result, err := e.Command(*r.Command, name, identity)
-		if err != nil {
-			json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
+		// Legacy fields remain for a drained rolling upgrade. Browser callers must
+		// verify the signed receipt rather than trusting these outer fields.
+		var cmd Command
+		payload, _ := base64.StdEncoding.DecodeString(r.Command.Payload)
+		json.Unmarshal(payload, &cmd)
+		proof, proofErr := e.SSHReceipt("ssh-command-receipt", cmd.Nonce, name, identity, result, err)
+		if proofErr != nil && e.Config.CallbackKey != "" {
+			json.NewEncoder(c).Encode(map[string]string{"error": "SSH receipt unavailable"})
+		} else if cmd.Body.BrowserSSH {
+			json.NewEncoder(c).Encode(map[string]any{"proof": proof})
+		} else if err != nil {
+			json.NewEncoder(c).Encode(map[string]any{"error": err.Error(), "proof": proof})
 		} else {
-			json.NewEncoder(c).Encode(map[string]any{"result": result})
+			json.NewEncoder(c).Encode(map[string]any{"result": result, "proof": proof})
 		}
 		return
 	}
@@ -240,7 +251,14 @@ func (e *Engine) local(c *net.UnixConn) {
 		// Preserve only UID/GID-drop setup capabilities across exec under the
 		// agent's NoNewPrivileges. setpriv clears them before student code.
 		launch.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true, Ctty: 0, AmbientCaps: []uintptr{6, 7, 8}} // SETGID, SETUID, SETPCAP
-		result = map[string]any{"directory": a.WorkPath, "deadline": a.Deadline, "attempt": a.ID}
+		result = map[string]any{"directory": a.WorkPath, "deadline": a.Deadline, "attempt": a.ID, "pane": cap.Pane, "transport": identity}
+		if e.Config.CallbackKey != "" {
+			proof, err := e.SSHReceipt("ssh-pane-receipt", Hash([]byte(r.Token)), name, identity, result, nil)
+			if err != nil {
+				return err
+			}
+			result["proof"] = proof
+		}
 		a.Units = append(a.Units, unit)
 		if err = e.save(); err != nil {
 			return err
@@ -260,7 +278,17 @@ func (e *Engine) local(c *net.UnixConn) {
 		}
 		// Forward startup diagnostics as well as the eventual shell. A failed
 		// sandbox may exit before its scope becomes active.
-		bridgePTY(original, master, done)
+		if practice || !a.BrowserSSH {
+			bridgePTY(original, master, done)
+		} else {
+			if err := e.bridgeRecordedPTY(original, master, done, a.ID, cap.Pane, unit); err != nil {
+				master.Close()
+				syscall.Kill(-launch.Process.Pid, syscall.SIGKILL)
+				launch.Wait()
+				launch = nil
+				return err
+			}
+		}
 		var activeScope bool
 		for i := 0; i < 50; i++ {
 			if exec.Command("/usr/bin/systemctl", "is-active", "--quiet", unit).Run() == nil {

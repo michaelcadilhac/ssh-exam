@@ -1,5 +1,11 @@
 import { it, expect } from "vitest";
-import { mkdtempSync, rmSync, existsSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  existsSync,
+  writeFileSync,
+  readFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { Store } from "../../apps/server/src/db.js";
@@ -56,6 +62,44 @@ it("validates images, rejects conflicting duplicates, and deletes monitoring wit
     expect(existsSync(`${s.dir}/monitoring/attempt`)).toBe(false);
     expect(existsSync(`${s.dir}/submissions/attempt.tar.gz`)).toBe(true);
     await expect(m.frame(a, frame, "page")).rejects.toThrow("deleted");
+  } finally {
+    s.close();
+    rmSync(s.dir, { recursive: true, force: true });
+  }
+});
+it("receives trusted terminal batches idempotently, rejects conflicts, and honors monitoring tombstones", () => {
+  const s = new Store(mkdtempSync(tmpdir() + "/exam-record-batch-")),
+    m = new Monitoring(s);
+  try {
+    s.db.exec(
+      `INSERT INTO exams VALUES('e','{}');INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES('a','e','student',1001,'ACTIVE','{}')`,
+    );
+    const first = Buffer.from(
+      JSON.stringify({ source: "class-agent", at: Date.now(), event: "open" }) +
+        "\n",
+    );
+    const next = Buffer.from(
+      JSON.stringify({
+        source: "class-agent",
+        at: Date.now(),
+        event: "output",
+        data: Buffer.from("root-recorded").toString("base64"),
+      }) + "\n",
+    );
+    m.receiveRecording("a", "pane", 0, first);
+    m.receiveRecording("a", "pane", 0, first);
+    m.receiveRecording("a", "pane", first.length, next);
+    expect(readFileSync(`${s.dir}/monitoring/a/pane.ndjson`)).toEqual(
+      Buffer.concat([first, next]),
+    );
+    expect(s.db.prepare("SELECT * FROM recordings").all()).toHaveLength(1);
+    expect(() => m.receiveRecording("a", "pane", 0, next)).toThrow(
+      "Conflicting",
+    );
+    expect(() => m.receiveRecording("a", "pane", 999999, next)).toThrow("gap");
+    m.delete("a", "instructor");
+    m.receiveRecording("a", "pane", 0, first);
+    expect(existsSync(`${s.dir}/monitoring/a/pane.ndjson`)).toBe(false);
   } finally {
     s.close();
     rmSync(s.dir, { recursive: true, force: true });

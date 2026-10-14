@@ -1,0 +1,9 @@
+{
+  "listen": "127.0.0.1:9082",
+  "origin": "https://ssh-exam.cadilhac.name",
+  "audience": "exam-ssh-relay-class",
+  "public_key": "/etc/exam-relay/gateway.pub",
+  "dial_target": "10.192.202.6:22",
+  "proxy": "http://proxy.is.depaul.edu:3128",
+  "replay_directory": "/var/lib/exam-ssh-relay"
+}

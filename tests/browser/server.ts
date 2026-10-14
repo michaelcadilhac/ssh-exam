@@ -5,8 +5,54 @@ import { tmpdir } from "node:os";
 import argon2 from "argon2";
 import { hosts } from "../fixtures/hosts.js";
 import { sign } from "node:crypto";
+import { verify } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { WebSocketServer } from "ws";
+import net from "node:net";
 import { hash } from "../../apps/server/src/db.js";
 const h = await hosts();
+const browserMode = process.env.EXAM_BROWSER_SSH === "1";
+if (browserMode) {
+  const relay = new WebSocketServer({ port: 3101, host: "127.0.0.1" });
+  relay.on("connection", (ws, req) => {
+    if (req.headers.origin !== "http://localhost:3100") {
+      ws.close(1008);
+      return;
+    }
+    ws.once("message", (data) => {
+      const f = JSON.parse(data.toString()),
+        b = Buffer.from(f.payload, "base64"),
+        t = JSON.parse(b.toString());
+      if (
+        t.audience !== "fixture-relay" ||
+        t.expires <= Date.now() ||
+        !verify(
+          null,
+          b,
+          readFileSync(h.agentConfig.signingKey),
+          Buffer.from(f.signature, "base64"),
+        )
+      ) {
+        ws.close(1008);
+        return;
+      }
+      const upstream = net.connect(h.jump.port, h.jump.host, () =>
+        ws.send('{"ready":true}'),
+      );
+      ws.on("message", (bytes, binary) => {
+        if (!binary) {
+          ws.close(1008);
+          return;
+        }
+        upstream.write(bytes as Buffer);
+      });
+      upstream.on("data", (bytes) => ws.send(bytes, { binary: true }));
+      upstream.on("error", () => ws.close());
+      ws.on("close", () => upstream.destroy());
+      upstream.on("close", () => ws.close());
+    });
+  });
+}
 const attempts = new Map<string, any>();
 const archive = Buffer.from("TEST-FIXTURE-ARCHIVE");
 const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
@@ -25,6 +71,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     return {};
   }
   if (op.startsWith("issue-")) return h.agent.call(op, b);
+  if (op === "close-pane") return { closed: true };
   if (op === "health") return { ready: true, fixture: true };
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
@@ -109,25 +156,28 @@ const { app, store } = await createApp({
   jump: h.jump,
   class: h.class,
   agent: h.agentConfig,
+  ...(browserMode
+    ? {
+        browserSSH: { relay: "ws://localhost:3101", audience: "fixture-relay" },
+      }
+    : {}),
   maintenance: false,
   preflightIdleMs: 5000,
 });
 h.control.command = fixtureCall;
-store.db
-  .prepare("INSERT INTO agent_snapshot VALUES(?,?,?)")
-  .run(
-    "class",
-    1,
-    JSON.stringify({
-      health: { ready: true, fixture: true },
-      accounts: {
-        student01: 10001,
-        student02: 10002,
-        student03: 10003,
-        student04: 10004,
-      },
-    }),
-  );
+store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
+  "class",
+  1,
+  JSON.stringify({
+    health: { ready: true, fixture: true },
+    accounts: {
+      student01: 10001,
+      student02: 10002,
+      student03: 10003,
+      student04: 10004,
+    },
+  }),
+);
 let sequence = 1;
 const postStatus = async (a: any) => {
   const manifest = a.protected

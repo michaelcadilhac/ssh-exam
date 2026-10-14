@@ -54,6 +54,25 @@ export async function hosts(
   let attempts = new Map<string, any>();
   const classServer = new Server({ hostKeys: [classKey] }, (client) => {
     const transportID = randomUUID();
+    let authenticatedUsername = "";
+    const receipt = (kind: string, nonce: string, result: any) => {
+      const payload = Buffer.from(
+        JSON.stringify({
+          agent: "class",
+          type: kind,
+          nonce,
+          username: authenticatedUsername,
+          transport: transportID,
+          expires: Date.now() + 120000,
+          result,
+          error: "",
+        }),
+      );
+      return {
+        payload: payload.toString("base64"),
+        signature: sign(null, payload, callback.privateKey).toString("base64"),
+      };
+    };
     clients.push(client);
     client.on("error", () => {});
     client.on("authentication", (ctx) => {
@@ -77,6 +96,7 @@ export async function hosts(
               !options.rejectClass
             ) {
               counts.class++;
+              authenticatedUsername = ctx.username;
               ctx.accept();
             } else ctx.reject(["keyboard-interactive", "password"]);
           },
@@ -90,6 +110,7 @@ export async function hosts(
         !options.rejectClass
       ) {
         counts.class++;
+        authenticatedUsername = ctx.username;
         ctx.accept();
       } else ctx.reject(["keyboard-interactive", "password"]);
     });
@@ -141,7 +162,12 @@ export async function hosts(
                           : {}),
                       }
                     : await (control.command || agent.call)(cmd.op, cmd.body);
-                stream.end(JSON.stringify({ result }) + "\n");
+                stream.end(
+                  JSON.stringify({
+                    result,
+                    proof: receipt("ssh-command-receipt", cmd.nonce, result),
+                  }) + "\n",
+                );
               })().catch((error) =>
                 stream.end(JSON.stringify({ error: error.message }) + "\n"),
               );
@@ -210,7 +236,23 @@ export async function hosts(
                   );
                 else {
                   counts.panes++;
-                  stream.write("EXAM-READY {}\r\n");
+                  const result = {
+                    attempt: cap.id,
+                    pane: cap.pane,
+                    transport: transportID,
+                  };
+                  stream.write(
+                    "EXAM-READY " +
+                      JSON.stringify({
+                        ...result,
+                        proof: receipt(
+                          "ssh-pane-receipt",
+                          hash(Buffer.from(token)),
+                          result,
+                        ),
+                      }) +
+                      "\r\n",
+                  );
                   stream.write(
                     "\r\nDISPOSABLE DEVELOPMENT FIXTURE — simulated shell, not server containment\r\n",
                   );

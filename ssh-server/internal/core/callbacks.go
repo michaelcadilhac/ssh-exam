@@ -230,5 +230,8 @@ func (e *Engine) DeliverCallbacks() error {
 			return err
 		}
 	}
+	if err := e.deliverRecordings(client, key); err != nil {
+		failures = append(failures, err)
+	}
 	return errors.Join(failures...)
 }

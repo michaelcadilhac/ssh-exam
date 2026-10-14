@@ -533,6 +533,7 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   page.on("pageerror", (error) => console.error(error.message));
   await simulatedMedia(page);
   await page.goto("/");
+  await page.getByLabel("Exam ID", { exact: true }).fill("sample");
   await page.getByLabel("Enrolled username").fill("student01");
   await page.getByRole("button", { name: "Start SSH sign-in" }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
@@ -844,6 +845,7 @@ test("completed and locked exam sign-in failures describe the attempt instead of
   page,
 }) => {
   await page.goto("/");
+  await page.getByLabel("Exam ID", { exact: true }).fill("sample");
   await page.getByLabel("Enrolled username").fill("student01");
   await page.getByRole("button", { name: "Start SSH sign-in" }).click();
   await expect(page.getByRole("alert")).toContainText(
@@ -1025,6 +1027,7 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
     });
   });
   await page.goto("/");
+  await page.getByLabel("Exam ID", { exact: true }).fill("sample");
   await page.getByLabel("Enrolled username").fill("student01");
   await page.getByRole("button", { name: "Start SSH sign-in" }).click();
   const banner = page.getByLabel("Host authentication messages");
