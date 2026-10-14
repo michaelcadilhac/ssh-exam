@@ -1,8 +1,9 @@
 # csc-sys browser SSH relay installation
 
-Installed on 2026-10-13 Chicago time (2026-10-14 UTC). This is the network
-preparation for browser SSH. **The production web application has not yet been
-switched: its SSH connections and current terminals still run through marco.**
+Installed on 2026-10-13 Chicago time (2026-10-14 UTC). This document records the
+initial relay preparation. The browser SSH client has since been activated;
+see [the application rollout](browser-ssh-deployment.md) for the current
+deployment, verification and rollback instructions.
 
 The new endpoint is `wss://csc-sys.cdm.depaul.edu/ssh-exam/relay`, served by the
 existing HTTPS certificate and nginx virtual host. The dedicated
@@ -49,7 +50,6 @@ Verification completed:
 - Public wrong-origin and invalid-ticket connections were rejected.
 
 Source, protocol, installation and rollback details are in
-[`ssh-server/relay/README.md`](../ssh-server/relay/README.md). Activating the
-browser client still requires the application integration and qualification
-described there and in design section 4.1. No browser MFA or browser password
-cleanup test is claimed by this infrastructure deployment.
+[`ssh-server/relay/README.md`](../ssh-server/relay/README.md). The checks above
+qualified the relay infrastructure only; application and browser verification
+are recorded separately in [the application rollout](browser-ssh-deployment.md).
