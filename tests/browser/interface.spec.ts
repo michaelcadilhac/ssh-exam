@@ -32,6 +32,9 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
   await page
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
+  await expect(
+    page.getByRole("heading", { name: "Connect to your exam" }),
+  ).toBeVisible();
   await studentSignIn(page, "sandbox", "student04", "Restore page");
   await page.getByRole("button", { name: "Restore page", exact: true }).click();
   await page
@@ -133,16 +136,21 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
 });
-for (const missing of [
+for (const [index, missing] of [
   "keyboard lock",
   "fullscreen",
   "screen sharing",
   "embedding policy",
   "denied permission",
-]) {
+].entries()) {
   test(`unsupported browser blocks student authentication: ${missing}`, async ({
     page,
   }) => {
+    // These independent browser clients share one fixture server. Keep their
+    // anonymous traffic out of the student's existing per-IP rate-limit budget.
+    await page.setExtraHTTPHeaders({
+      "X-Forwarded-For": `198.51.100.${index + 1}`,
+    });
     await page.addInitScript((missing) => {
       if (missing === "keyboard lock")
         Object.defineProperty(navigator, "keyboard", { value: undefined });
@@ -785,6 +793,11 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
     await page
       .getByRole("button", { name: "Reconnect SSH", exact: true })
       .click();
+    // Wait for reauthentication to revoke the old browser session before the
+    // helper navigates, otherwise navigation can cancel that in-flight request.
+    await expect(
+      page.getByRole("heading", { name: "Connect to your exam" }),
+    ).toBeVisible();
     await studentSignIn(
       page,
       "sample",

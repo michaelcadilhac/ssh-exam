@@ -4,9 +4,37 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Browser compatibility update, 2026-10-14
+
+Web source `44d7500` adds compatibility checks before student SSH authentication.
+Missing fullscreen, screen sharing or keyboard lock, recognized embedding-policy
+restrictions, insecure contexts and queryable denied permissions disable student
+sign-in and preflight/reconnection controls. The form handler rechecks before any
+authentication request, including forced submissions. Instructor sign-in remains
+available. Loading the page does not request fullscreen or capture permissions;
+actual permission grants remain part of preflight.
+
+Verification covers 102 application tests and 17 browser scenarios, including
+five incompatible/denied environments and a forced-submit guard. Independent
+compatibility test clients use distinct fixture IPs so their extra visits do not
+consume the existing student's anonymous rate-limit budget; production limits
+are unchanged. Live Chromium checks confirmed supported sign-in is enabled,
+missing keyboard lock disables student login before any authentication request,
+instructor sign-in remains available, and production readiness is healthy.
+
+- Current image: `ssh-exam-workspace:browser-check-44d7500`, also tagged `:1.0.0`.
+- Image ID: `sha256:e6e956a2cb900e7a5fe5edef32b3fad0769d0b5e43cf6e8f24141e065fa5a12b`.
+- Previous image retained as `ssh-exam-workspace:pre-browser-check`.
+- Web configuration/consistent metadata backup:
+  `/var/backups/ssh-exam/20261014T160125Z-browser-check-6ek06er0`.
+
+The native agent, exam state, account policy, signing keys and host pins were not
+changed by this web-only update. Browser tests also wait for the reconnection
+response before navigating, so the test does not cancel session revocation.
+
 ## Preflight and exit update, 2026-10-14
 
-Current application/native source is `fc54019`. Preflight now describes trying
+Application/native source for this update is `fc54019`. Preflight now describes trying
 tools rather than starting work. Its toolbar omits administrator access-policy
 details, the unexplained directory path and duplicate capture readiness. The
 single active-exam exit is Finish exam: confirmation collects work and signs out
@@ -17,8 +45,8 @@ Practice files are now student-owned/readable/writable despite the root agent's
 private umask. Additional panes preserve edits, older root-owned files are repaired
 without replacing contents, and symlinks/hardlinks/special entries are rejected.
 
-- Current image: `ssh-exam-workspace:lean-fc54019`, also tagged `:1.0.0`.
-- Current image ID: `sha256:4284a38b0675006d29b39d6a3243f468837952917f94ad41b3ffdcbe2ef6e1e6`.
+- Image: `ssh-exam-workspace:lean-fc54019`.
+- Image ID: `sha256:4284a38b0675006d29b39d6a3243f468837952917f94ad41b3ffdcbe2ef6e1e6`.
 - Previous browser-SSH image retained as `ssh-exam-workspace:pre-lean-preflight`.
 - Web configuration/consistent metadata backup:
   `/var/backups/ssh-exam/20261014T154303Z-preflight-web-064pmq6m`.
