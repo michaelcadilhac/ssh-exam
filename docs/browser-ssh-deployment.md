@@ -4,6 +4,44 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Preflight and exit update, 2026-10-14
+
+Current application/native source is `fc54019`. Preflight now describes trying
+tools rather than starting work. Its toolbar omits administrator access-policy
+details, the unexplained directory path and duplicate capture readiness. The
+single active-exam exit is Finish exam: confirmation collects work and signs out
+after protected completion. Preflight retains Sign out; pending/failed collection
+stays visible. Administrator sandbox confirmations reflect its actual exception.
+
+Practice files are now student-owned/readable/writable despite the root agent's
+private umask. Additional panes preserve edits, older root-owned files are repaired
+without replacing contents, and symlinks/hardlinks/special entries are rejected.
+
+- Current image: `ssh-exam-workspace:lean-fc54019`, also tagged `:1.0.0`.
+- Current image ID: `sha256:4284a38b0675006d29b39d6a3243f468837952917f94ad41b3ffdcbe2ef6e1e6`.
+- Previous browser-SSH image retained as `ssh-exam-workspace:pre-lean-preflight`.
+- Web configuration/consistent metadata backup:
+  `/var/backups/ssh-exam/20261014T154303Z-preflight-web-064pmq6m`.
+- Native binary/config inspection backup:
+  `/var/backups/ssh-exam/20261014T154052Z-browser-ssh-3b45_3o8`.
+
+All 95 application tests, 12 browser scenarios, type checking/build and the native
+agent race suite passed. Practice ownership/private-umask, preservation and unsafe
+entry tests also ran successfully as root on csc-sys, including repair of an actual
+root-owned fixture file. No timed attempt was interrupted; the guarded installer
+cancelled an unfinished sandbox preflight before replacing the agent. Reload and
+open a fresh preflight after this update. Existing administrator access, sandbox,
+browser SSH, notifications and production readiness remain enabled.
+
+The current native checksums are:
+
+```text
+715b9dd82e9a39171f808548d781680d349a0a6db89e835f107e78116931e030  exam-agent
+a94f50cf3a7b99ec466bf66efe6e83b4f90262fd58d938bbf691798bfbbf3117  exam-login
+22b76858def2a62dfd5df5ce899597267021f03f8c33a9448ed553372fbf3390  examctl
+203c7f47c10362acdfdf0b93f12e1a7c85fd5b59dca623d64bd0db1583c9a3a8  exam-info
+```
+
 ## Running architecture
 
 SSH runs in the browser's dedicated Go/WASM worker. Its encrypted byte transport
@@ -26,7 +64,7 @@ webserver availability.
 The sandbox exam remains available, and mcadilha retains its administrator
 shell and sudo access under the existing administrator sandbox exception.
 
-## Installed releases and backups
+## Initial browser SSH release and backups
 
 Marco checkout is `/home/micha/src/ssh-exam`, linked from `/opt/ssh-exam`.
 The existing systemd unit, nginx virtual host and port 3001 remain in use.
@@ -35,11 +73,11 @@ no Go installation is needed on marco.
 
 - Candidate image: `ssh-exam-workspace:browser-6233337`.
 - Running service tag: `ssh-exam-workspace:1.0.0`.
-- Image ID: `sha256:2f45b16d2307622531ae491a1929b5ec138458fd2495073662f5c5c3c1af002f`.
+- Initial image ID: `sha256:2f45b16d2307622531ae491a1929b5ec138458fd2495073662f5c5c3c1af002f`.
 - Prior image retained as `ssh-exam-workspace:pre-browser-ssh`.
 - Private config and consistent SQLite inspection backup:
   `/var/backups/ssh-exam/20261014T044930Z-browser-web-47ytvbix`.
-- Latest native binary/config inspection backup on csc-sys:
+- Initial rollout native binary/config inspection backup on csc-sys:
   `/var/backups/ssh-exam/20261014T043304Z-browser-ssh-7s_epme4`.
 
 Only `browserSSH` was added to the private production configuration:
@@ -55,7 +93,7 @@ Existing host pins, signing keys, notification settings, readiness signoff and
 student/account policies were preserved. Private configuration and database
 snapshots are not committed to Git.
 
-The final installed native checksums are:
+The initial browser SSH release native checksums were:
 
 ```text
 4bc704c8da137a9b3aab248fe462ca1c27a12102ec4bc6e0a4076bcee2dbee8b  exam-agent
