@@ -4,6 +4,19 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Unsupported-browser view update, 2026-10-15
+
+Web source `0ca6ada` omits the student form and its supporting login notices when
+browser requirements are unavailable, retaining the compatibility message and
+instructor sign-in link. The form also stays absent while compatibility checks
+are pending. Build/type checking and seven focused browser scenarios passed.
+
+- Current image: `ssh-exam-workspace:hidden-form-0ca6ada`, also tagged `:1.0.0`.
+- Image ID: `sha256:a941a0fd41ae6acae6165bd4234be6deeda38c09e925a28c204523dd4f606a74`.
+- Previous image: `ssh-exam-workspace:pre-hidden-form`.
+- Web configuration/consistent metadata backup:
+  `/var/backups/ssh-exam/20261015T164733Z-hidden-form-eohpeiog`.
+
 ## Browser compatibility update, 2026-10-14
 
 Web source `44d7500` adds compatibility checks before student SSH authentication.
@@ -22,7 +35,7 @@ are unchanged. Live Chromium checks confirmed supported sign-in is enabled,
 missing keyboard lock disables student login before any authentication request,
 instructor sign-in remains available, and production readiness is healthy.
 
-- Current image: `ssh-exam-workspace:browser-check-44d7500`, also tagged `:1.0.0`.
+- Image at this update: `ssh-exam-workspace:browser-check-44d7500`.
 - Image ID: `sha256:e6e956a2cb900e7a5fe5edef32b3fad0769d0b5e43cf6e8f24141e065fa5a12b`.
 - Previous image retained as `ssh-exam-workspace:pre-browser-check`.
 - Web configuration/consistent metadata backup:
