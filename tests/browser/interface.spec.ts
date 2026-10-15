@@ -183,18 +183,12 @@ for (const [index, missing] of [
     );
     await expect(
       page.getByRole("button", { name: "Start SSH sign-in" }),
-    ).toBeDisabled();
-    await expect(page.getByLabel("Exam ID", { exact: true })).toBeDisabled();
-    await expect(page.getByLabel("Enrolled username")).toBeDisabled();
-    // Disabling a button is insufficient: force form submission and verify the
-    // handler refuses authentication as well.
-    await page.locator("form").dispatchEvent("submit");
-    await expect(page.locator(".error")).toContainText(
-      "This browser cannot run an exam",
-    );
+    ).toHaveCount(0);
+    await expect(page.getByLabel("Exam ID", { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel("Enrolled username")).toHaveCount(0);
+    await expect(page.locator(".sign-in form, .sign-in input")).toHaveCount(0);
     expect(authenticationRequests).toBe(0);
     await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
-    await page.getByRole("button", { name: "Dismiss", exact: true }).click();
     await page.getByRole("link", { name: "Instructor sign-in" }).click();
     await expect(
       page.getByRole("heading", { name: "Instructor sign-in" }),

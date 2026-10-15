@@ -433,7 +433,7 @@ function App() {
                   </label>
                   <button className="primary">Sign in</button>
                 </form>
-              ) : challenge ? (
+              ) : browserBlocked ? null : challenge ? (
                 <form
                   key="ssh-challenge"
                   ref={authFormRef}
@@ -582,7 +582,7 @@ function App() {
                   </button>
                 </form>
               )}
-              {!admin && !user && (
+              {!admin && !user && !browserBlocked && (
                 <p className="login-note">
                   {loginTest?.loginOnly
                     ? "Login test only; no exam or recording starts."
