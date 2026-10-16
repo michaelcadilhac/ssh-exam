@@ -20,6 +20,9 @@ func main() {
 		log.Fatal(err)
 	}
 	if *once {
+		if err = e.RefreshExpiredTiming(); err != nil {
+			log.Print(err)
+		}
 		if err = e.Tick(); err != nil {
 			log.Fatal(err)
 		}

@@ -1,6 +1,6 @@
 # Recovery runbook
 
-Never reset deadlines or remove account gates to resolve outages.
+Never edit deadline state or remove account gates to resolve outages. Grant extra time only through the audited instructor Reset clock operation.
 
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.
@@ -82,3 +82,29 @@ Changed identity, interval, saved-file inventory, collection timestamps or check
 a conflict and must fail closed. Never delete an existing protected artifact to make login
 or a repeat sandbox attempt succeed. The 2026-10-13 manifest reconciliation fix covers both
 legacy reply formats and restart recovery while preserving the existing archive/manifest.
+
+
+Timing verification recovery: root `examctl info ATTEMPT_UUID` includes original/current
+deadlines, reset history/revision, `timing_pending_since`, and verified deadline/revision.
+At expiry, failed HTTPS/signature/nonce validation leaves writers frozen and collection pending;
+the independent watchdog retries at 30-second intervals. Restore the configured fixed HTTPS
+origin, pinned signing trust and gateway metadata. Do not remove pending reset rows or rewrite
+deadlines to force collection. A pending reset and its requested timestamp survive webserver
+restart; root confirmation and saved collection permission survive agent restart. A reset may
+extend an unfinished lock, but does not supply continuation approval or revive a submission.
+A shorter effective clock never releases ordinary access before the immutable original deadline.
+
+Upgrade the root agent and gateway together after draining active exams; new preflight and
+clock-reset operations reject agents without `clock-reset`/`deadline-timing-check` capabilities.
+Rollback must preserve migration 007 and clock reset/verification fields. Do not run an old
+collector against attempts with pending or confirmed clock resets. Keep the independent
+watchdog/gate enabled and preserve protected archives throughout recovery.
+
+
+Focus grace: migration 008 records the first server-received focus loss. While an active
+page stays visible/fullscreen with healthy capture and SSH, heartbeats/leases continue for
+up to 20 seconds and the student sees a countdown. Returning before expiry clears it without
+reauthentication; repeated blur reports and late returns cannot extend it. Expiry uses the
+normal lock/disconnect/review flow, and continuation clears the old focus-loss timestamp.
+Network loss still has its separate 15-second bound. A gateway restart still locks active
+attempts; restoring the process is not a fresh focus grace period.

@@ -52,3 +52,9 @@ the account remains restricted until your original deadline and secured collecti
 out, closing the browser or leaving the classroom does not change this. A finished attempt
 cannot be reopened; an unfinished locked attempt requires instructor approval and keeps the
 same deadline.
+
+
+If the exam window loses focus while staying fullscreen and visible, a warning counts down
+20 seconds. Return to the exam before it reaches zero to continue without reconnecting.
+Monitoring and the exam clock continue. Staying away longer pauses the exam and requires
+normal reconnection/authorization. Leaving fullscreen or hiding the page still pauses it immediately.

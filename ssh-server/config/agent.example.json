@@ -1,4 +1,5 @@
 {
+  "terminal_recording_limit_mib": 2048,
   "state": "/var/lib/exam-agent",
   "work": "/srv/exam-workspace/work",
   "rootfs": "/srv/exam-workspace/rootfs",

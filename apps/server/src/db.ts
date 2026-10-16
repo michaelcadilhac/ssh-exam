@@ -15,10 +15,14 @@ export interface Attempt {
   settings: string;
   start: number | null;
   deadline: number | null;
+  original_deadline: number | null;
+  clock_revision: number;
+  clock_resets: string;
   ended: number | null;
   generation: number;
   page_hash: string | null;
   last_contact: number | null;
+  focus_lost_at: number | null;
   reason: string | null;
   work_path: string | null;
   export_status: string | null;
@@ -73,6 +77,14 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=6").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/006.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=7").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/007.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=8").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/008.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

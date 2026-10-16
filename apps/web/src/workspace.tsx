@@ -7,6 +7,11 @@ import { Capture } from "./capture.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { TerminalMenu } from "./terminal-menu.js";
+import {
+  FOCUS_GRACE_MS,
+  FOCUS_GRACE_REASON,
+  focusGraceSeconds,
+} from "../../../packages/protocol/focus-grace.js";
 import { readinessMessage } from "../../../packages/protocol/readiness.js";
 import { browserSSH } from "./browser-ssh.js";
 import { examBrowserIssue } from "./browser-support.js";
@@ -54,8 +59,10 @@ export function Workspace({
     lastAck = useRef(Date.now()),
     reconnectTimer = useRef<any>(null);
   const serverClock = useRef({ now: Date.now(), at: performance.now() });
+  const focusLostAt = useRef<number | null>(null);
   const warnings = useRef(new Set<number>());
   const [attempt, setAttempt] = useState(attemptRef.current),
+    [focusSeconds, setFocusSeconds] = useState<number | null>(null),
     [connected, setConnected] = useState(false),
     [locked, setLocked] = useState(false),
     [screen, setScreen] = useState(false),
@@ -83,6 +90,15 @@ export function Workspace({
     [authenticationGap, setAuthenticationGap] = useState(false),
     [recoveryExpired, setRecoveryExpired] = useState(false),
     [signOutAfterFinish, setSignOutAfterFinish] = useState(false);
+  useEffect(() => {
+    if (!attempt.clock_revision) return;
+    warnings.current.clear();
+    const left =
+      (attempt.deadline || Infinity) -
+      (serverClock.current.now + performance.now() - serverClock.current.at);
+    for (const seconds of [600, 300, 60])
+      if (left <= seconds * 1000) warnings.current.add(seconds);
+  }, [attempt.clock_revision]);
   const settings = reservation.settings;
   const sandbox = isSandbox(settings.id);
   const id = reservation.id;
@@ -97,6 +113,7 @@ export function Workspace({
     attempt.state === "PREPARING" && (authenticationGap || recoveryExpired);
   const covered =
     !!dialog ||
+    focusSeconds !== null ||
     locked ||
     preflightRecovery ||
     ended ||
@@ -127,8 +144,13 @@ export function Workspace({
     screen: !!capture.current?.healthy("screen"),
     webcam: !!capture.current?.healthy("webcam"),
   });
+  const clearFocusWarning = () => {
+    focusLostAt.current = null;
+    setFocusSeconds(null);
+  };
   const incident = (reason: string) => {
     if (!armed.current) return;
+    clearFocusWarning();
     localLocked.current = true;
     armed.current = false;
     setLocked(true);
@@ -136,8 +158,30 @@ export function Workspace({
     send({ type: "incident", reason });
     void capture.current?.sample("screen");
   };
+  const focusChanged = (focused: boolean) => {
+    if (!armed.current || attemptRef.current.state !== "ACTIVE") {
+      clearFocusWarning();
+      return;
+    }
+    const lost = focusLostAt.current;
+    if (lost !== null && performance.now() - lost >= FOCUS_GRACE_MS) {
+      incident(FOCUS_GRACE_REASON);
+      return;
+    }
+    if (focused) {
+      if (lost !== null) {
+        clearFocusWarning();
+        send({ type: "focus", focused: true });
+      }
+    } else if (lost === null) {
+      focusLostAt.current = performance.now();
+      setFocusSeconds(20);
+      send({ type: "focus", focused: false });
+    }
+  };
   const interaction = () =>
     !localLocked.current &&
+    focusLostAt.current === null &&
     ws.current?.readyState === WebSocket.OPEN &&
     ["ACTIVE", "PREPARING"].includes(attemptRef.current.state);
   const addPane = (paneId: string) => {
@@ -522,15 +566,15 @@ export function Workspace({
       if (
         armed.current &&
         (!r.fullscreen ||
-          !r.focus ||
           !r.visible ||
           !r.screen ||
           (settings.webcam && !r.webcam))
       )
-        incident("Required focus/fullscreen/capture condition lost");
+        incident("Required fullscreen/capture condition lost");
+      focusChanged(r.focus);
       if (attemptRef.current.state === "PREPARING")
         send({ type: "preflight-contact" });
-      else if (r.fullscreen && r.focus && r.visible && r.keyboard && r.screen)
+      else if (r.fullscreen && r.visible && r.keyboard && r.screen)
         send({ type: "heartbeat", ready: r });
       if (armed.current && Date.now() - lastAck.current > 15000)
         incident("Network recovery grace expired");
@@ -545,6 +589,18 @@ export function Workspace({
       }
     }, 2000);
     const timer = setInterval(() => {
+      if (focusLostAt.current !== null) {
+        if (!armed.current || attemptRef.current.state !== "ACTIVE")
+          clearFocusWarning();
+        else {
+          const left = focusGraceSeconds(
+            focusLostAt.current,
+            performance.now(),
+          );
+          setFocusSeconds(left);
+          if (left === 0) incident(FOCUS_GRACE_REASON);
+        }
+      }
       setClock(
         serverClock.current.now + performance.now() - serverClock.current.at,
       );
@@ -614,7 +670,10 @@ export function Workspace({
         })
         .catch(() => {});
     }, 2000);
-    const blur = () => incident("Browser focus lost"),
+    const blur = () => focusChanged(false),
+      focus = () => {
+        if (document.hasFocus()) focusChanged(true);
+      },
       full = () => {
         setFullscreen(document.fullscreenElement === root.current);
         if (!document.fullscreenElement) {
@@ -627,6 +686,7 @@ export function Workspace({
         if (document.hidden) incident("Document became hidden");
       };
     window.addEventListener("blur", blur);
+    window.addEventListener("focus", focus);
     document.addEventListener("fullscreenchange", full);
     document.addEventListener("visibilitychange", visibility);
     const closeTools = (event: PointerEvent) => {
@@ -655,6 +715,7 @@ export function Workspace({
         p.term.dispose();
       }
       window.removeEventListener("blur", blur);
+      window.removeEventListener("focus", focus);
       document.removeEventListener("fullscreenchange", full);
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pagehide", leave);
@@ -915,6 +976,12 @@ export function Workspace({
           </button>
         )}
       </header>
+      {focusSeconds !== null && attempt.state === "ACTIVE" && !locked && (
+        <div className="focus-warning" role="alert" aria-live="polite">
+          <span aria-hidden="true">⚠</span>
+          <strong>Return to the exam · {focusSeconds}s before lock</strong>
+        </div>
+      )}
       {attempt.state === "PREPARING" && (
         <div className="preflight" inert={covered}>
           <button
@@ -1223,10 +1290,15 @@ export function Workspace({
       {attempt.state === "FINALIZING" && (
         <div className="lock-overlay">
           <div className="card">
-            <h1>Protecting your submission</h1>
+            <h1>
+              {attempt.reason?.includes("timing verification")
+                ? "Collection pending"
+                : "Protecting your submission"}
+            </h1>
             <p>
-              Terminal access has ended. Saved files are being collected; wait
-              for confirmation.
+              {attempt.reason?.includes("timing verification")
+                ? "Work is frozen while exam timing is verified. Your instructor can see this status."
+                : "Terminal access has ended. Saved files are being collected; wait for confirmation."}
             </p>
           </div>
         </div>
@@ -1256,9 +1328,14 @@ export function Workspace({
               !functionalTest &&
               !reservation.administratorSandbox && (
                 <p>
-                  Finishing does not restore ordinary server access before the
-                  original deadline, {chicago(attempt.deadline)}, and secured
-                  collection. This attempt cannot be reopened.
+                  Ordinary server access remains blocked until{" "}
+                  {chicago(
+                    Math.max(
+                      attempt.original_deadline || 0,
+                      attempt.deadline || 0,
+                    ),
+                  )}{" "}
+                  and secured collection. This attempt cannot be reopened.
                 </p>
               )}
             <button onClick={() => action(onSignOut)}>Sign out</button>
@@ -1332,7 +1409,7 @@ export function Workspace({
               can also let time expire for automatic collection.
               {!functionalTest &&
                 !reservation.administratorSandbox &&
-                " Ordinary server access stays blocked until the original deadline and secured collection."}
+                " Ordinary server access stays blocked until the original and current deadlines have elapsed and collection is secured."}
             </p>
           )}
           {dialog.kind === "error" && <p>{dialog.message}</p>}

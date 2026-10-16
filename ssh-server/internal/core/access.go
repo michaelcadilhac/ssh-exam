@@ -25,7 +25,9 @@ func accessHeld(a *Attempt) bool {
 
 // Never release just because a wall clock jumps forward on the original boot.
 func restrictionElapsed(a *Attempt) bool {
-	return a.Deadline > 0 && Millis() >= a.Deadline && (a.Boot != boot() || a.UptimeDeadline <= 0 || uptime() >= a.UptimeDeadline)
+	deadline := max(a.Deadline, a.OriginalDeadline)
+	monotonic := max(a.UptimeDeadline, a.OriginalUptimeDeadline)
+	return deadline > 0 && Millis() >= deadline && (a.Boot != boot() || monotonic <= 0 || uptime() >= monotonic)
 }
 func (e *Engine) verifyRelease(a *Attempt) error {
 	if a.State != "COMPLETED" || !a.Protected {
@@ -104,7 +106,11 @@ func (e *Engine) overrideSecuredAccess(id, reason string) (any, error) {
 		if err = e.verifyRelease(a); err != nil {
 			return err
 		}
-		event, err := json.Marshal(map[string]any{"at": Millis(), "action": "emergency-access-override", "attempt": id, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER"), "reason": reason, "original_deadline": a.Deadline})
+		original := a.OriginalDeadline
+		if original == 0 {
+			original = a.Deadline
+		}
+		event, err := json.Marshal(map[string]any{"at": Millis(), "action": "emergency-access-override", "attempt": id, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER"), "reason": reason, "original_deadline": original, "current_deadline": a.Deadline})
 		if err != nil {
 			return err
 		}

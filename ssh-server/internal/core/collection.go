@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"syscall"
 )
@@ -290,7 +291,7 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 	if err = json.Unmarshal(b, &m); err != nil {
 		return nil, err
 	}
-	if m.Attempt == nil || m.Attempt.ID != a.ID || m.Attempt.Exam != a.Exam || m.Attempt.Username != a.Username || m.Attempt.UID != a.UID || m.Attempt.Deadline != a.Deadline || m.Attempt.Start != a.Start || m.Attempt.Settings != a.Settings {
+	if m.Attempt == nil || m.Attempt.ID != a.ID || m.Attempt.Exam != a.Exam || m.Attempt.Username != a.Username || m.Attempt.UID != a.UID || m.Attempt.Deadline != a.Deadline || m.Attempt.Start != a.Start || m.Attempt.Settings != a.Settings || m.Attempt.OriginalDeadline != a.OriginalDeadline || m.Attempt.ClockRevision != a.ClockRevision || !reflect.DeepEqual(m.Attempt.ClockResets, a.ClockResets) {
 		return nil, errors.New("protected manifest identity mismatch")
 	}
 	sidecar, err := read("archive.sha256")
@@ -327,6 +328,10 @@ func appendError(errors []string, message string) []string {
 }
 
 func (e *Engine) finalize(a *Attempt, reason string) error {
+	if expired(a) && e.timingRequired(a) {
+		return errors.New("collection pending: deadline timing verification required")
+	}
+
 	if a.State == "COMPLETED" {
 		return nil
 	}

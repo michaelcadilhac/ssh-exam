@@ -60,8 +60,9 @@ export const messageSchema = z.discriminatedUnion("type", [
   z.object({
     v: z.literal(1),
     type: z.literal("heartbeat"),
-    ready: readySchema,
+    ready: readySchema.extend({ focus: z.boolean() }),
   }),
+  z.object({ v: z.literal(1), type: z.literal("focus"), focused: z.boolean() }),
   z.object({
     v: z.literal(1),
     type: z.literal("incident"),

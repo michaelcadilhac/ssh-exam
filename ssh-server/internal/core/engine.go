@@ -17,20 +17,26 @@ import (
 )
 
 type Request struct {
-	BrowserSSH   bool     `json:"browser_ssh,omitempty"`
-	Continuation *Request `json:"continuation,omitempty"`
-	ID           string   `json:"id"`
-	Exam         string   `json:"exam"`
-	Username     string   `json:"username"`
-	UID          int      `json:"uid"`
-	Settings     Settings `json:"settings"`
-	Transport    string   `json:"transport"`
-	Pane         string   `json:"pane"`
-	Purpose      string   `json:"purpose"`
-	Reason       string   `json:"reason"`
-	Generation   int      `json:"generation"`
-	Expires      int64    `json:"expires"`
-	Usernames    []string `json:"usernames"`
+	ResetID          string   `json:"reset_id,omitempty"`
+	Actor            string   `json:"actor,omitempty"`
+	RequestedAt      int64    `json:"requested_at,omitempty"`
+	RemainingSeconds int64    `json:"remaining_seconds,omitempty"`
+	ClockRevision    int      `json:"clock_revision,omitempty"`
+	Deadline         int64    `json:"deadline,omitempty"`
+	BrowserSSH       bool     `json:"browser_ssh,omitempty"`
+	Continuation     *Request `json:"continuation,omitempty"`
+	ID               string   `json:"id"`
+	Exam             string   `json:"exam"`
+	Username         string   `json:"username"`
+	UID              int      `json:"uid"`
+	Settings         Settings `json:"settings"`
+	Transport        string   `json:"transport"`
+	Pane             string   `json:"pane"`
+	Purpose          string   `json:"purpose"`
+	Reason           string   `json:"reason"`
+	Generation       int      `json:"generation"`
+	Expires          int64    `json:"expires"`
+	Usernames        []string `json:"usernames"`
 }
 
 func (e *Engine) productionReady() (bool, []string) {
@@ -130,7 +136,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"browser-ssh-receipts", "agent-terminal-recording", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -319,6 +325,11 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			}
 			if a.State == "LOCKED" {
 				err = e.disconnectPausedWorkload(a)
+			}
+			result = a
+		case "reset-clock":
+			if err := e.resetClock(a, r, false); err != nil {
+				return err
 			}
 			result = a
 		case "renew-execution-lease":
@@ -602,6 +613,12 @@ func (e *Engine) Tick() error {
 		// Revoke/freeze ALL expired workloads before spending time compressing any archive.
 		for _, a := range e.state.Attempts {
 			if a.Start > 0 && a.State != "COMPLETED" && a.State != "CANCELLED_BEFORE_START" && expired(a) {
+				if e.timingRequired(a) {
+					if err := e.quiesce(a); err != nil {
+						a.Errors = appendError(a.Errors, err.Error())
+					}
+					continue
+				}
 				if a.Boot != boot() {
 					a.Units = []string{}
 				}
@@ -633,6 +650,30 @@ func (e *Engine) Tick() error {
 				a.Errors = append(a.Errors, "Infrastructure outage: server reboot; prior workload ended")
 			}
 			isExpired := expired(a)
+			if isExpired && e.timingRequired(a) {
+				// HTTP runs separately. An in-flight healthy check must not
+				// block unrelated leases or generate false outage alerts.
+				if a.TimingPendingSince == 0 && (a.State != "ACTIVE" || (a.Lease > Millis() && a.Boot == boot())) {
+					continue
+				}
+				if a.State == "ACTIVE" {
+					a.State = "LOCKED"
+					a.Generation++
+					a.Authorization = 0
+					a.ResumeTransport = ""
+					a.Lease = 0
+				}
+				a.Reason = "Collection pending: deadline timing verification unavailable"
+				if a.TimingPendingSince == 0 {
+					a.TimingPendingSince = Millis()
+				}
+				if len(a.Units) > 0 {
+					if err := e.disconnectPausedWorkload(a); err != nil {
+						a.Errors = appendError(a.Errors, err.Error())
+					}
+				}
+				continue
+			}
 			if isExpired || a.State == "FINALIZING" || a.State == "COLLECTION_FAILED" {
 				if err := e.finalize(a, "expiration"); err != nil {
 					e.Audit("collection-failed", a.ID)
@@ -662,6 +703,12 @@ func (e *Engine) Tick() error {
 // freezes; it never thaws, admits sessions, changes metadata or publishes submissions.
 // This prevents compression/transfer requests from delaying another attempt's deadline.
 func (e *Engine) Cutoff() error {
+	guard, err := e.timingLock(syscall.LOCK_SH)
+	if err != nil {
+		return err
+	}
+	defer guard.Close()
+
 	b, err := os.ReadFile(filepath.Join(e.Config.State, "state.json"))
 	if os.IsNotExist(err) {
 		return nil
@@ -688,10 +735,21 @@ func (e *Engine) Watch() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	running := make(chan struct{}, 1)
+	timing := make(chan struct{}, 1)
 	delivery := make(chan struct{}, 1)
 	nextDelivery := time.Time{}
 	backoff := time.Second
 	for range ticker.C {
+		select {
+		case timing <- struct{}{}:
+			go func() {
+				defer func() { <-timing }()
+				if err := e.RefreshExpiredTiming(); err != nil {
+					log.Printf("deadline timing verification pending: %v", err)
+				}
+			}()
+		default:
+		}
 		if !time.Now().Before(nextDelivery) {
 			select {
 			case delivery <- struct{}{}:
@@ -795,7 +853,9 @@ func commitStart(a *Attempt, at int64, elapsed float64, bootID string) {
 	a.AccessState = "HELD"
 	a.AccessHeldAt = at
 	a.Deadline = at + a.Settings.Duration*1000
+	a.OriginalDeadline = a.Deadline
 	a.Lease = at + 15000
 	a.Boot = bootID
 	a.UptimeDeadline = elapsed + float64(a.Settings.Duration)
+	a.OriginalUptimeDeadline = a.UptimeDeadline
 }

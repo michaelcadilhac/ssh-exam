@@ -1,4 +1,5 @@
 {
+  "terminalRecordingLimitMiB": 2048,
   "mode": "production",
   "origin": "https://exam.example.edu",
   "data": "/data",

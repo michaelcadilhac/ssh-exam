@@ -18,7 +18,7 @@ SSH configurations and affected PAM files. Never change the administrator shell/
 recovery access to test student denial. Use disposable course accounts first. Install Go 1.27.2,
 bubblewrap, systemd, OpenSSH, Python 3, procps and ripgrep. cgroup v2 needs cpu/memory/pids/freezer.
 
-There is no inbound agent TCP service, independent tunnel, or command polling. Commands
+There is no inbound agent TCP service, independent tunnel, or general command polling. Deadline timing checks are the scoped outbound exception. Commands
 arrive over the student's authenticated SSH connection (`exam-control`, non-PTY, bounded
 signed stdin frame). Root checks the gateway Ed25519 signature, audience, account, expiry,
 durable nonce, peer UID and root sshd ancestry. Keep the gate before all personal startup.
@@ -159,7 +159,7 @@ bundle under
 fixed timestamps, completion reason, file hashes and omissions/outages. Archive checksum stays
 outside the archive. The external manifest includes the archive checksum plus actual
 completion, collection and protection timestamps; the effective expiration end remains the
-original deadline. Signed status callbacks and `examctl manifest` provide this actual file inventory.
+confirmed current deadline, with the immutable original and reset history preserved. Signed status callbacks and `examctl manifest` provide this actual file inventory.
 A crash after bundle publication but before state persistence adopts the verified bundle,
 without reading or replacing live work. Damaged/incomplete bundles fail closed and require
 root recovery; do not remove a secured bundle to force recollection. Grade in a separate sandbox, never by executing/unpacking in the app.
@@ -195,7 +195,7 @@ login/SFTP. Review any disabled job policy before restoring it. Keep root recove
 Collection errors persist in root-private state and audit records and emit journal messages.
 The gateway queues instructor alerts on reconciliation; while it is unavailable, configure
 institutional journal monitoring for independent class-server failure notifications.
-The watchdog continues collection and retries without any browser or gateway connection.
+The watchdog cuts off writers without any browser or gateway connection. Expiration collection waits for signed timing verification; unavailable verification leaves work frozen and retries until the gateway recovers.
 
 The watchdog runs a read-only deadline cutoff independently of the archival/state flock.
 Long compression or a stuck control request cannot postpone another attempt's freeze.
@@ -362,3 +362,31 @@ Tailscale SSH embeds an SFTP server and is not covered solely by OpenSSH ForceCo
 The machine checker inspects its current SSH policy and refuses any rule covering a managed
 student identity or a wildcard. Administrator-only Tailscale access can stay enabled.
 See [the upstream implementation](https://github.com/tailscale/tailscale/blob/main/ssh/tailssh/incubator.go).
+
+
+## Recording limits and instructor clock resets
+
+Set `terminal_recording_limit_mib` in root agent configuration and
+`terminalRecordingLimitMiB` in gateway configuration to the same positive integer (MiB).
+Both default to **2048**; permitted range is 1–1,048,576. Restart the services after changing
+configuration. This is a shared per-attempt persisted NDJSON budget, including Base64 and
+metadata across every pane. It excludes images and submissions, whose limits/retention are
+unchanged. Capacity-plan protected storage for concurrent students and 60 days of monitoring.
+
+Root state preserves `original_deadline`, current `deadline`, `clock_revision`, and immutable
+`clock_resets` history. Instructor resets arrive on signed student SSH control channels while
+connected. At the locally committed deadline, writers freeze independently of HTTP; the agent
+then makes a signed HTTPS POST to `/api/agent/timing` before collection. A signed nonce-bound
+reply delivers an outstanding reset or authorizes collection at that exact deadline/revision.
+There is no general command polling or new inbound listener. Failed timing checks use a
+5-second timeout, retry at 30-second intervals and leave collection explicitly pending and
+access held; they do not package possibly superseded work. Original and current deadlines
+must both elapse before ordinary access release. Shortened clocks retain the original hold.
+
+Install updated agent/gateway as a coordinated upgrade after active exams drain. Verify
+`examctl health` advertises `clock-reset` and `deadline-timing-check`, fixed outbound HTTPS and
+both signing identities work, and test a disconnected reset/outage/recovery before signoff.
+`examctl info ATTEMPT_UUID` shows timing verification and reset history. Restore gateway
+availability/trust for pending timing decisions; never discard state or use an older collector
+to bypass them. Already persisted collection permission permits restart recovery even if the
+webserver subsequently disappears. Successful early Finish still collects immediately.

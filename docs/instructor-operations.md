@@ -47,7 +47,7 @@ checksums and deletion ledger remain. Maintain consistent private backups and cu
 
 Submissions are automatic. Students do not upload or run submission commands. The optional
 Finish exam action is irreversible; otherwise the class-server deadline watchdog collects
-saved files even with a disconnected browser or gateway. Review original deadline, actual
+saved files with a disconnected browser; an unavailable gateway timing check freezes work and defers packaging until verification succeeds. Review original deadline, actual
 completion/collection/protection timestamps, reason, checksum and the file manifest.
 “Collection pending/failed” is not a successful submission. A secured protected copy with
 transfer pending remains recoverable; downloads appear only after verified transfer.
@@ -59,3 +59,23 @@ Finished attempts cannot resume even with an instructor continuation grant. The 
 shows the last class-server access-state check and any release-recovery failure. An outage
 may leave that display stale; native state remains authoritative. Do not delete the protected class-server original while an interval hold exists. Root emergency overrides are deliberately outside the dashboard,
 require already secured work and an audited reason, and do not reopen attempts.
+
+
+The roster and attempt list show **Working** only while that attempt has live SSH, an open
+browser connection and recent contact. Clocks tick every second; status refreshes every five
+seconds. **Reset clock** lets you set 1–360 minutes remaining, prefilled with the exam default.
+Applying counts from that moment and keeps an active student's terminals connected. It does
+not add minutes or begin a new attempt. Locked students still need authorized reconnection.
+
+A disconnected reset stays visibly pending until the agent confirms it, at reconnection or
+its outbound check before deadline collection. The requested absolute deadline survives retries
+and restarts. If timing verification is unavailable, the agent freezes work at its last
+confirmed deadline and defers collection. Restore webserver HTTPS/signature trust to recover;
+do not interpret pending as secured. Resets must be requested before the current deadline;
+finished submissions never reopen. Shorter clocks do not shorten original account restrictions.
+
+
+Focus loss alone allows 20 seconds to return, with a visible student countdown. Short losses
+clear automatically without a review lock; sustained losses create the normal incident and
+SSH disconnection. Monitoring and the exam clock continue during grace. This does not extend
+network recovery or delay fullscreen/hidden-page/capture incidents.

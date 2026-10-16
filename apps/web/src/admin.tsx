@@ -10,7 +10,7 @@ function accountAccess(a: any) {
     return "Ordinary access released by administrator override";
   if (a.access_state === "RELEASED") return "Ordinary access released";
   if (a.start)
-    return `Ordinary access blocked until at least ${chicago(a.deadline)} and secured collection`;
+    return `Ordinary access blocked until at least ${chicago(Math.max(a.original_deadline || 0, a.deadline || 0))} and secured collection`;
   return "Account access restriction not started";
 }
 function Replay({ id, pane }: { id: string; pane: string }) {
@@ -79,11 +79,15 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
     [roster, setRoster] = useState<any[]>([]),
     [studentUsername, setStudentUsername] = useState(""),
     [studentWebcam, setStudentWebcam] = useState("inherit"),
+    [resetting, setResetting] = useState<any>(null),
+    [resetMinutes, setResetMinutes] = useState(90),
+    [resetBusy, setResetBusy] = useState(false),
     [removing, setRemoving] = useState<string | null>(null),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState(""),
     [offset, setOffset] = useState(0),
     [stale, setStale] = useState(false),
+    [clock, setClock] = useState(Date.now()),
     [notice, setNotice] = useState(""),
     [media, setMedia] = useState<any>(null),
     [selected, setSelected] = useState<any>(null),
@@ -104,6 +108,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
       terminals: 4,
       template: "sample-exam",
     });
+  const serverOffset = useRef(0);
   const seen = useRef(new Set<string>());
   const initialized = useRef(false);
   const currentExam = useRef(exam);
@@ -125,7 +130,14 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
       setExam(e[0].id);
       setForm(e[0]);
     }
+    serverOffset.current = d.serverNow - Date.now();
+    setClock(d.serverNow);
     setData(d);
+    if (currentExam.current) {
+      const selectedExam = currentExam.current;
+      const rows = await api(`/admin/exams/${selectedExam}/roster`);
+      if (currentExam.current === selectedExam) setRoster(rows);
+    }
     setStale(false);
     for (const i of d.incidents) {
       if (!seen.current.has(i.id) && seen.current.size) {
@@ -156,6 +168,13 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
     }
   };
   useEffect(() => {
+    const timer = setInterval(
+      () => setClock(Date.now() + serverOffset.current),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
     void refresh().catch(() => setStale(true));
     const timer = setInterval(
       () => void refresh().catch(() => setStale(true)),
@@ -177,6 +196,23 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
       current = false;
     };
   }, [exam, preview]);
+  const openClockReset = (a: any) => {
+    setResetting({ ...a, requestID: crypto.randomUUID() });
+    setResetMinutes(
+      (exams.find((e: any) => e.id === a.exam)?.duration ||
+        JSON.parse(a.settings).duration) / 60,
+    );
+  };
+  const resetButton = (a: any) =>
+    a && ["ACTIVE", "LOCKED"].includes(a.state) && a.deadline > clock ? (
+      <button
+        disabled={!!a.pendingClockReset}
+        aria-label={`Reset clock for ${a.username}`}
+        onClick={() => openClockReset(a)}
+      >
+        Reset clock
+      </button>
+    ) : null;
   return (
     <div className="admin">
       <header>
@@ -287,7 +323,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           </select>
         </div>
         <div className="table-scroll">
-          <table>
+          <table aria-label="Exam attempts">
             <thead>
               <tr>
                 <th>Student / exam</th>
@@ -315,7 +351,11 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                             : "badge"
                         }
                       >
-                        {a.state}
+                        {a.working
+                          ? "Working"
+                          : a.state === "ACTIVE"
+                            ? "Disconnected"
+                            : a.state}
                       </span>
                       <small>{a.reason}</small>
                       {["ACTIVE", "LOCKED"].includes(a.state) && (
@@ -329,7 +369,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                         <small>
                           Last contact:{" "}
                           {a.last_contact
-                            ? Math.floor((Date.now() - a.last_contact) / 1000) +
+                            ? Math.floor((clock - a.last_contact) / 1000) +
                               "s ago"
                             : "—"}
                         </small>
@@ -337,11 +377,23 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                     </td>
                     <td>
                       {chicago(a.deadline)}
+                      {a.pendingClockReset && (
+                        <small className="warn">
+                          Reset pending ·{" "}
+                          {remaining(
+                            a.pendingClockReset.requested_at +
+                              a.pendingClockReset.remaining_seconds * 1000,
+                            clock,
+                          )}{" "}
+                          requested
+                        </small>
+                      )}
                       {["ACTIVE", "LOCKED"].includes(a.state) && (
-                        <small>{remaining(a.deadline)}</small>
+                        <small>{remaining(a.deadline, clock)}</small>
                       )}
                     </td>
                     <td>
+                      {resetButton(a)}
                       <button
                         onClick={() =>
                           action(async () => {
@@ -608,6 +660,8 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                 <tr>
                   <th>Student</th>
                   <th>Webcam</th>
+                  <th>Status</th>
+                  <th>Time remaining</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -629,6 +683,27 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                       {r.webcam === null && <small>Exam default</small>}
                     </td>
                     <td>
+                      {r.attempt
+                        ? r.attempt.working
+                          ? "Working"
+                          : r.attempt.state === "ACTIVE"
+                            ? "Disconnected"
+                            : r.attempt.state === "PREPARING"
+                              ? "Preflight"
+                              : r.attempt.state
+                        : "Not started"}
+                    </td>
+                    <td>
+                      {r.attempt &&
+                      ["ACTIVE", "LOCKED"].includes(r.attempt.state)
+                        ? remaining(r.attempt.deadline, clock)
+                        : "—"}
+                    </td>
+                    <td>
+                      {resetButton(r.attempt)}
+                      {r.attempt?.pendingClockReset && (
+                        <small>Clock reset pending</small>
+                      )}
                       <button
                         className="danger"
                         aria-label={`Remove ${r.username} from exam`}
@@ -760,6 +835,71 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           ))}
         </details>
       </section>
+      {resetting && (
+        <Modal
+          title={`Reset clock · ${resetting.username}`}
+          onClose={() => {
+            if (!resetBusy) setResetting(null);
+          }}
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setResetBusy(true);
+              try {
+                const result = await api(
+                  `/admin/attempts/${resetting.id}/reset-clock`,
+                  {
+                    minutes: resetMinutes,
+                    revision: resetting.clock_revision || 0,
+                    requestID: resetting.requestID,
+                  },
+                );
+                setNotice(
+                  result.confirmed
+                    ? "Clock updated."
+                    : "Clock reset pending agent confirmation.",
+                );
+                setResetting(null);
+                await refresh();
+              } catch (error) {
+                onError((error as Error).message);
+              } finally {
+                setResetBusy(false);
+              }
+            }}
+          >
+            <label>
+              Minutes remaining
+              <input
+                type="number"
+                min="1"
+                max="360"
+                step="1"
+                required
+                value={resetMinutes}
+                onChange={(e) => setResetMinutes(Number(e.target.value))}
+              />
+            </label>
+            <p>
+              Counted from when you apply this reset. The student stays signed
+              in. A disconnected agent confirms the change before collection.
+            </p>
+            <div className="actions">
+              <button
+                type="button"
+                disabled={resetBusy}
+                onClick={() => setResetting(null)}
+              >
+                Cancel
+              </button>
+              <button className="primary" disabled={resetBusy}>
+                {resetBusy ? "Applying…" : "Apply reset"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
       {removing && (
         <Modal
           title={`Remove ${removing} from this exam?`}
@@ -768,7 +908,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           <p>
             This removes enrollment only. Saved submissions, monitoring and
             attempt history are kept. An exam that has already started continues
-            to its original deadline. A server administrator can end it locally.
+            to its current deadline. A server administrator can end it locally.
           </p>
           <div className="actions">
             <button onClick={() => setRemoving(null)}>Cancel</button>
@@ -819,7 +959,10 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                 </p>
               ) : (
                 <>
-                  <p>Original deadline: {chicago(selected.deadline)}</p>
+                  <p>
+                    Original deadline:{" "}
+                    {chicago(selected.original_deadline || selected.deadline)}
+                  </p>
                   <p>
                     {accountAccess(selected)}. Finishing never reopens exam
                     access.

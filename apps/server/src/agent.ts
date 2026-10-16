@@ -45,6 +45,17 @@ export class Agent {
       ).toString("base64"),
     };
   }
+  signTiming(body: object) {
+    const payload = Buffer.from(JSON.stringify(body));
+    return {
+      payload: payload.toString("base64"),
+      signature: sign(
+        null,
+        payload,
+        readFileSync(this.config.signingKey),
+      ).toString("base64"),
+    };
+  }
   verifyCallback(payload: Buffer, signature: string) {
     if (
       !signature ||

@@ -315,3 +315,22 @@ rejected old-transport attach/continuation, attached a fresh SSH session under t
 verified saved work and original deadline, and checksum-verified the resulting submission.
 
 Real attempt `bc2cabcd-337e-49cb-b0bb-139574a32f40` · SHA-256 `7ca70574a983294402cbcbff7f07e339b6b57c82acb54b3ed6dd99d6fc97c02c`.
+
+
+## Recording budgets and instructor clock control — 2026-10-15
+
+- Web/API regression suite: **111 tests passed**; TypeScript check and production build passed.
+- Browser-based SSH suite: **18 browser tests passed**, including two separate instructor/student browsers proving live presence, a ticking countdown, the exam-default reset value, Escape cancellation, preserved attempt/start/generation and continued terminal input after a reset. The same new scenario also passed with the legacy fixture transport.
+- Native class-agent suite passed with Go's race detector. New coverage includes persistent/shared recording budgets and independent-pane concurrency; live and concurrent resets; immutable original access holds; restart/idempotency/stale receipts; signed HTTPS timing checks; disconnected extensions; unavailable verification freezing and deferring collection; subsequent collection; and a slow timing request not delaying other execution leases.
+- Deadline timing uses a separate bounded worker path; cutoff and lease reconciliation never wait on HTTP. No idle timing HTTP polling is added.
+- Source/configuration examples and design/operator/recovery documentation are updated. Defaults are 2048 MiB per attempt at both ends; no 64 MiB terminal recorder/receiver ceiling remains.
+- Verification used local SSH, TLS and browser fixtures. These changes have not been installed on marco or csc-sys; deployment requires the coordinated agent/gateway upgrade described in the recovery guide.
+
+
+## Focus grace — 2026-10-15
+
+- Focus loss alone starts a visible 20-second amber warning/countdown. Returning in time clears it without changing the exam clock, attempt, SSH connections or continuation generation. Terminal input is blocked while unfocused; monitoring and lease renewal continue.
+- Migration 008 stores the first server-received loss timestamp. Repeated blur/heartbeats do not restart it; a late return cannot evade expiry. The server timer enforces the lock independently of client incidents. Normal continuation clears the previous interval.
+- Fullscreen exit, a hidden page, capture failures and the separate 15-second network bound retain their existing behavior. Begin/Continue still require focus.
+- **117 web/API tests passed**, including six new unit cases; **21 browser-based SSH tests passed**, including real-time countdown/recovery, a focus loss longer than 15 seconds, repeated blur, server expiry with the client incident suppressed, and immediate fullscreen/visibility locks during grace.
+- TypeScript check and production build passed. The warning was visually inspected at a desktop viewport; existing user screenshots were preserved. Verification used simulated focus/media with local SSH fixtures, not a physical dual-monitor qualification. Changes remain local and have not been deployed.

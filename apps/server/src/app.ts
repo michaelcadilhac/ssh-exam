@@ -36,6 +36,8 @@ import { Connection } from "./ssh.js";
 import { BrowserConnection } from "./browser-ssh.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
+import { ClockControl } from "./clock-control.js";
+import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { parseRosterAsync, exportRoster } from "./roster.js";
 import { isSandbox, sandboxExam } from "../../../packages/protocol/sandbox.js";
@@ -79,8 +81,9 @@ export async function createApp(
   });
   const store = new Store(config.data),
     agent = new Agent(config.agent, store),
-    monitoring = new Monitoring(store),
+    monitoring = new Monitoring(store, config.terminalRecordingLimitMiB),
     life = new Lifecycle(store, agent, monitoring);
+  const clocks = new ClockControl(store, agent, life);
   const authAttempts = new Map<string, { at: number; count: number }>();
   store.db
     .prepare("INSERT OR IGNORE INTO exams VALUES(?,?)")
@@ -127,6 +130,7 @@ export async function createApp(
     const ws = sockets.get(a.id);
     if (ws) send(ws, { type: "state", attempt: a, serverNow: now() });
   };
+  life.onClockChanged = life.onEnd;
   // Do not deliver PTY hangup/signals before the agent has secured its frozen file view.
   life.onSecured = (a) => {
     attemptConnections.get(a.id)?.close();
@@ -152,7 +156,6 @@ export async function createApp(
   };
   const busy = new Set<string>();
   const leases = new Set<string>();
-  const recordingBytes = new Map<string, number>();
   const principal = (req: any, role?: string) => {
     const token = req.cookies.session;
     const s = token
@@ -276,6 +279,54 @@ export async function createApp(
     "application/gzip",
     { parseAs: "buffer" },
     (_req, body, done) => done(null, body),
+  );
+  app.post(
+    "/api/agent/timing",
+    { config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload))
+        throw Error("Raw signed timing request required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      const request = z
+        .object({
+          agent: z.literal(config.agent.id),
+          nonce: z.string().regex(/^[a-f0-9]{64}$/),
+          at: z.number().int(),
+          attempt: z
+            .object({
+              id: z.string().uuid(),
+              deadline: z.number().int(),
+              clock_revision: z.number().int().optional(),
+            })
+            .passthrough(),
+        })
+        .parse(JSON.parse(payload.toString()));
+      if (Math.abs(now() - request.at) > 30000)
+        throw Error("Stale timing request");
+      life.acceptRemote(request.attempt);
+      const a = store.attempt(request.attempt.id);
+      if (
+        a.deadline !== request.attempt.deadline ||
+        a.clock_revision !== (request.attempt.clock_revision || 0)
+      )
+        throw Error("Timing snapshot mismatch");
+      const reset = clocks.pending(a.id);
+      return agent.signTiming({
+        type: "deadline-timing",
+        audience: config.agent.id,
+        id: a.id,
+        nonce: request.nonce,
+        expires: now() + 30000,
+        deadline: a.deadline,
+        clock_revision: a.clock_revision,
+        collect: !reset && !!a.deadline && now() >= a.deadline,
+        ...(reset ? { reset } : {}),
+      });
+    },
   );
   app.post(
     "/api/agent/events",
@@ -458,6 +509,8 @@ export async function createApp(
               "all-session-channel-gate",
               "signed-ssh-control",
               "durable-status-callbacks",
+              "clock-reset",
+              "deadline-timing-check",
             ].every((cap) => h.capabilities?.includes(cap))));
       if (!ready) reply.code(503);
       return {
@@ -658,6 +711,8 @@ export async function createApp(
         "all-session-channel-gate",
         "signed-ssh-control",
         "durable-status-callbacks",
+        "clock-reset",
+        "deadline-timing-check",
       ].every((cap) => h.capabilities?.includes(cap))
     )
       throw Error(
@@ -798,9 +853,16 @@ export async function createApp(
       life.syncAccess(a.id, result);
       store.db
         .prepare(
-          "UPDATE attempts SET state='ACTIVE',start=?,deadline=?,work_path=?,last_contact=? WHERE id=? AND state='PREPARING'",
+          "UPDATE attempts SET state='ACTIVE',start=?,deadline=?,original_deadline=?,work_path=?,last_contact=? WHERE id=? AND state='PREPARING'",
         )
-        .run(result.start, result.deadline, result.work_path, now(), a.id);
+        .run(
+          result.start,
+          result.deadline,
+          result.original_deadline || result.deadline,
+          result.work_path,
+          now(),
+          a.id,
+        );
       return { attempt: store.attempt(a.id), serverNow: now() };
     } catch (e) {
       await life.reconcile(a.id).catch(() => {});
@@ -909,6 +971,7 @@ export async function createApp(
       generation: a.generation,
     });
     attemptConnections.set(a.id, conn);
+    await clocks.deliver(a.id);
     const pageSecret = secret();
     sockets.get(a.id)?.close(1008, "Authorized replacement page");
     sockets.delete(a.id);
@@ -981,7 +1044,9 @@ export async function createApp(
         .run(a.id);
       store.transition(a.id, ["LOCKED"], "ACTIVE");
       store.db
-        .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
+        .prepare(
+          "UPDATE attempts SET focus_lost_at=NULL,last_contact=? WHERE id=?",
+        )
         .run(now(), a.id);
     })();
     return { attempt: store.attempt(a.id), serverNow: now() };
@@ -1010,11 +1075,33 @@ export async function createApp(
     store.audit(s.username, "configure-exam", e.id);
     return e;
   });
+  const describeAttempt = (a: any) => {
+    const conn = attemptConnections.get(a.id);
+    const connected =
+      !!conn?.alive &&
+      sockets.get(a.id)?.readyState === WebSocket.OPEN &&
+      now() - (a.last_contact || 0) <= 15000;
+    return {
+      ...a,
+      pendingClockReset: clocks.pending(a.id),
+      connected,
+      working: a.state === "ACTIVE" && connected && a.deadline > now(),
+      terminalCount: conn?.alive ? conn.panes.size : 0,
+    };
+  };
   app.get("/api/admin/exams/:exam/roster", async (req: any) => {
     principal(req, "admin");
     return store.db
       .prepare("SELECT * FROM enrollments WHERE exam=? ORDER BY username")
-      .all(req.params.exam);
+      .all(req.params.exam)
+      .map((row: any) => {
+        const a = store.db
+          .prepare(
+            "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY state IN ('ACTIVE','LOCKED','PREPARING') DESC,rowid DESC LIMIT 1",
+          )
+          .get(req.params.exam, row.username);
+        return { ...row, attempt: a ? describeAttempt(a) : null };
+      });
   });
   app.post("/api/admin/exams/:exam/roster/add", async (req: any) => {
     const s = principal(req, "admin");
@@ -1209,7 +1296,7 @@ export async function createApp(
       serverNow: now(),
       attempts: store.db
         .prepare(
-          "SELECT * FROM attempts WHERE username LIKE ? AND (?='' OR state=?) AND (?='' OR json_extract(settings,'$.webcam')=?) ORDER BY rowid DESC LIMIT 100 OFFSET ?",
+          "SELECT * FROM attempts WHERE username LIKE ? AND (?='' OR state=?) AND (?='' OR json_extract(settings,'$.webcam')=?) ORDER BY state='ACTIVE' DESC,state='LOCKED' DESC,rowid DESC LIMIT 100 OFFSET ?",
         )
         .all(
           `%${String(q).slice(0, 32)}%`,
@@ -1220,9 +1307,7 @@ export async function createApp(
           Math.max(0, Number(offset) || 0),
         )
         .map((a: any) => ({
-          ...a,
-          terminalCount:
-            connections.get(a.exam + ":" + a.username)?.panes.size || 0,
+          ...describeAttempt(a),
           latestFrames: store.db
             .prepare(
               "SELECT source,id,received,captured FROM frames WHERE attempt=? AND id IN (SELECT id FROM frames WHERE attempt=? GROUP BY source HAVING received=MAX(received))",
@@ -1238,6 +1323,31 @@ export async function createApp(
         )
         .all(),
     };
+  });
+  app.post("/api/admin/attempts/:id/reset-clock", async (req: any) => {
+    const s = principal(req, "admin");
+    const body = z
+      .object({
+        minutes: z.number().int().min(1).max(360),
+        revision: z.number().int().min(0),
+        requestID: z.string().uuid(),
+      })
+      .parse(req.body);
+    const health = await agent.call("health");
+    if (
+      !health.fixture &&
+      !["clock-reset", "deadline-timing-check"].every((cap) =>
+        health.capabilities?.includes(cap),
+      )
+    )
+      throw Error("Update the class-server agent before resetting clocks");
+    return clocks.reset(
+      req.params.id,
+      body.minutes,
+      s.username,
+      body.revision,
+      body.requestID,
+    );
   });
   app.post("/api/admin/attempts/:id/authorize", async (req: any) => {
     const s = principal(req, "admin");
@@ -1803,6 +1913,16 @@ export async function createApp(
             });
             return;
           }
+          if (m.type === "focus") {
+            await reportFocus(life, a.id, m.focused);
+            send(ws, {
+              type: "state",
+              attempt: store.attempt(a.id),
+              serverNow: now(),
+              authenticationGap: authenticationGap(a.id),
+            });
+            return;
+          }
           if (m.type === "preflight-contact") {
             if (a.state === "PREPARING" && conn?.alive)
               store.db
@@ -1817,6 +1937,8 @@ export async function createApp(
             return;
           }
           if (m.type === "heartbeat") {
+            await reportFocus(life, a.id, m.ready.focus);
+            a = store.attempt(a.id);
             if (a.state === "PREPARING")
               store.db
                 .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
@@ -1835,6 +1957,16 @@ export async function createApp(
                 if (!leases.has(a.id)) {
                   leases.add(a.id);
                   try {
+                    const reset = clocks.pending(a.id);
+                    if (reset) {
+                      try {
+                        life.acceptRemote(
+                          await agent.call("reset-clock", reset),
+                        );
+                      } catch {
+                        /* Remains queued for authenticated timing recovery. */
+                      }
+                    }
                     await agent.call("renew-execution-lease", { id: a.id });
                   } catch {
                     await life.lock(a.id, "Class-agent lease renewal failed");
@@ -1881,13 +2013,6 @@ export async function createApp(
               monitoring.record(a.id, m.pane, { event: "open" });
             c.on("data", (bytes: Buffer) => {
               const current = store.attempt(a!.id);
-              const used = (recordingBytes.get(a!.id) || 0) + bytes.length;
-              recordingBytes.set(a!.id, used);
-              if (used > 64 * 1024 * 1024) {
-                void life.lock(a!.id, "Terminal recording size limit reached");
-                c.pause();
-                return;
-              }
               try {
                 if (!practice)
                   monitoring.record(a!.id, m.pane, {

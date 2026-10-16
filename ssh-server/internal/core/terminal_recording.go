@@ -18,6 +18,16 @@ import (
 	"time"
 )
 
+const defaultTerminalRecordingLimitMiB int64 = 2048
+
+func (e *Engine) terminalRecordingLimit() int64 {
+	limit := e.Config.TerminalRecordingLimitMiB
+	if limit == 0 {
+		limit = defaultTerminalRecordingLimitMiB
+	}
+	return limit * 1024 * 1024
+}
+
 type terminalRecorder struct {
 	e        *Engine
 	mu       sync.Mutex
@@ -63,6 +73,17 @@ func (r *terminalRecorder) record(v map[string]any) error {
 	defer r.mu.Unlock()
 	r.e.monitorMu.Lock()
 	defer r.e.monitorMu.Unlock()
+	// Every pane has its own agent process: a process-local mutex alone cannot
+	// enforce the shared quota. Keep this lock outside the delivered log tree.
+	lock, err := os.OpenFile(filepath.Join(r.e.Config.State, "monitoring", r.id+".lock"), os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW, 0600)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
+		return err
+	}
+	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
 	var total int64
 	entries, err := os.ReadDir(filepath.Dir(r.file.Name()))
 	if err != nil {
@@ -83,7 +104,7 @@ func (r *terminalRecorder) record(v map[string]any) error {
 		return err
 	}
 	line = append(line, '\n')
-	if total+int64(len(line)) > 64*1024*1024 {
+	if total+int64(len(line)) > r.e.terminalRecordingLimit() {
 		return errors.New("terminal recording limit reached")
 	}
 	if _, err = r.file.Write(line); err != nil {

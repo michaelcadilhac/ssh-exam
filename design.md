@@ -108,9 +108,9 @@ SSH supports multiple channels within one authenticated connection. Channel crea
 
 Use one backend application instance initially. The browser Web Worker owns both live SSH connections; the backend owns authorization and clearable control-session references, not student credentials or SSH transports. Persist all authoritative attempt metadata; SSH objects do not survive browser/worker restart. A gateway restart loses control ownership and requires fresh SSH authentication under the existing recovery policy. Do not use a stateless/serverless deployment or multiple independent workers that compete for the same attempt. Future scaling is out of scope unless ownership and routing are explicitly implemented.
 
-The class agent exposes **no TCP control listener**, independent control tunnel, or command queue to poll. The gateway sends bounded Ed25519-signed commands on non-PTY `exam-control` channels of the authenticated student SSH connection. The compiled account gate runs before student startup files and forwards each frame to the local root Unix socket. Root verifies the signature against its administrator-installed gateway public key, configured agent audience, account, short expiry, durable one-use nonce, kernel peer UID, and root sshd transport ancestry. Mutable attempt operations additionally require ownership and the currently registered transport. The gateway never receives root SSH credentials or retains student passwords for commands.
+The class agent exposes **no TCP control listener**, independent control tunnel, or general-purpose command queue to poll. Instructor clock resets are the narrowly scoped outbound timing-check exception described below. The gateway sends bounded Ed25519-signed commands on non-PTY `exam-control` channels of the authenticated student SSH connection. The compiled account gate runs before student startup files and forwards each frame to the local root Unix socket. Root verifies the signature against its administrator-installed gateway public key, configured agent audience, account, short expiry, durable one-use nonce, kernel peer UID, and root sshd transport ancestry. Mutable attempt operations additionally require ownership and the currently registered transport. The gateway never receives root SSH credentials or retains student passwords for commands.
 
-The agent persists the original start/deadline and access hold, and its independent local watchdog cuts off writers and collects work without any browser, gateway, or network. Agent-originated HTTPS POST callbacks report configuration/account registry on agent startup and subsequent attempt status changes, manifests, errors and access releases. Callbacks use a separate pinned Ed25519 agent identity; they never carry commands in responses. Events have durable sequence IDs, immutable payloads, replay/conflict checks and retries after outages/restarts. There is no idle command polling or heartbeat request. Lease renewals still travel through live student SSH.
+The agent persists the original start/deadline, the current collection deadline, versioned instructor clock-reset history, and the access hold. Its independent local watchdog cuts off writers without any browser or gateway. Before expiration collection, it obtains a signed timing decision from the webserver to discover disconnected resets. If that check is unavailable, work stays frozen and collection is explicitly pending until verification succeeds; this intentionally replaces unconditional collection during a webserver outage. Agent-originated HTTPS POST callbacks report configuration/account registry on agent startup and subsequent attempt status changes, manifests, errors and access releases. Callbacks use a separate pinned Ed25519 agent identity; they never carry commands in responses. Events have durable sequence IDs, immutable payloads, replay/conflict checks and retries after outages/restarts. There is no idle command polling or agent heartbeat request. At a locally committed deadline, the agent makes an authenticated outbound `/api/agent/timing` request and retries unsuccessful timing verification at 30-second intervals. Lease renewals and immediate clock-reset commands still travel through live student SSH.
 
 After local protection, the agent also pushes the verified archive to the authenticated webserver callback endpoint for instructor downloads. Archive signatures bind agent, attempt and checksum; the webserver checks the receipt and complete-byte checksum before durable publication. Transfer retries read only the existing protected copy. The class-server original remains authoritative and has separate retention. The web dashboard can delete its download copy; deletion of the class-server original is a local root `examctl` operation.
 
@@ -150,8 +150,7 @@ control token within the existing 15-second grace. Re-deliver pending requests
 with the same IDs; cache replies so recovery does not repeat a signed operation.
 A page/worker/SSH restart clears credentials and requires fresh SSH authentication;
 locked active attempts still require the established continuation authorization.
-Finished attempts never reopen. The agent's original deadline and access hold
-remain authoritative regardless of browser or webserver availability.
+Finished attempts never reopen. The agent's committed deadlines and access hold remain authoritative regardless of browser availability. Webserver unavailability never permits continued writing beyond the last committed deadline; it defers collection while timing is unverified.
 
 Root records each exam PTY's output, resize and lifecycle events before forwarding
 output. Recording failure stops the pane and locks the attempt. Store records
@@ -275,9 +274,17 @@ Enforce one reserved or access-held attempt per class-server UID, including acro
 
 ### 7.2 Timer semantics
 
+Keep `original_deadline` immutable and `deadline` as the currently committed collection/input cutoff, initially equal. Persist `clock_revision` and an append-only reset history containing request ID, instructor, requested/applied timestamps, old/new deadline and remaining seconds. Normal interruptions, reconnection and roster edits never reset time; the explicit instructor operation is the only exception. A reset sets an absolute new deadline to the webserver's request timestamp plus the entered minutes, rather than adding a fresh duration again on delayed delivery or retry.
+
+An instructor may enter 1–360 minutes remaining for an active or locked, unfinished attempt before its current deadline. Prefill the box with the exam default (including five minutes for sandbox). Persist the reset intent before sending it through student SSH. A connected authorized session applies it immediately and stays connected; locked attempts stay locked. Show pending intent separately until a signed agent acknowledgment or status confirms the new revision. Never reset a secured/finalizing submission or replace its archive. Compare revisions, serialize with cutoff, reject conflicting concurrent resets, and make identical request retries idempotent. Apply queued changes before admitting an authorized reconnected workload.
+
+For disconnected attempts, the agent's outbound timing check sends its signed public attempt snapshot and a fresh nonce over the fixed HTTPS callback origin. The webserver responds with a gateway-signed, 30-second decision bound to agent, attempt, nonce, current deadline and revision: either the exact pending reset, or authorization to collect at the verified deadline. Apply a reset to durable root state before acknowledging it; a delayed reset retains its original request-time deadline. If that new deadline has already elapsed, verify that revision too before collection. Stale snapshots, altered histories, replayed/nonmatching nonces and signatures cannot change timing or authorize collection. Once verified, persist the collection authorization so a subsequent outage/restart cannot undo it.
+
+Cut off writers at the last locally committed deadline even if timing verification fails. Defer packaging, keep access held, report **Collection pending: deadline timing verification unavailable**, alert when the webserver can receive status, and retry verification without holding the state lock during HTTP. Do not label this as secured submission. An extended locked attempt still needs the established fresh-SSH/instructor continuation policy; a reset alone does not authorize recovery. Maintain independent cutoff for other students while HTTP or archival work runs. Ordinary access requires both the original and current deadlines to have elapsed, protected collection and workload termination; shortening a clock cannot shorten the original restriction.
+
 The student sees remaining time and warnings at ten, five, and one minute. The clock is always visible and is based on the canonical server deadline, not a decrementing browser counter.
 
-Locks, page reloads, lost network access, reauthentication, and instructor review **never pause or extend the clock**. Do not provide an ordinary extension button. Accommodated durations are set before starting and snapshotted into the attempt.
+Locks, page reloads, lost network access, reauthentication, and instructor review **never pause or extend the clock**. Only the explicit audited instructor Reset clock action may change remaining time. Accommodated durations are otherwise set before starting and snapshotted into the attempt.
 
 Before terminating pre-existing logind sessions, move only root-installed entry stubs and the registered SSH transport monitor into a separate administrator-controlled scope and verify that the move completed. Match executable inodes as well as paths. Kill all other account processes before material release. Missing logind users are harmless; an unreadable user inventory fails closed. The installation checker must distinguish an explicit sudo denial from command failure and inspect service templates and the effective SSH PAM session stack. Query the synchronized kernel clock without changing it, including in containers sharing the host clock.
 
@@ -288,7 +295,7 @@ The class agent enforces expiration locally even if the browser, application, re
 During an active attempt, any of these causes local blocking immediately when observed and a server lock as soon as the signal arrives:
 
 - The workspace exits browser fullscreen.
-- The browser window loses focus or the document becomes hidden.
+- The browser window remains unfocused for 20 continuous seconds. Focus loss alone starts the grace countdown below. A hidden document still locks immediately.
 - The required screen-share track ends, the shared surface changes to an unacceptable type, or screen-capture permission is lost.
 - A required webcam track ends or sustained capture failure prevents new frames.
 - Required images/status reports are absent beyond the permitted liveness threshold.
@@ -308,7 +315,7 @@ On a lock:
 - Record the trigger, timestamps, state, and capture availability. Request an incident image where possible, without claiming it depicts the newly focused app.
 - Group correlated events into one incident while retaining their individual event records.
 
-The class agent should use a short renewable execution lease in addition to the fixed deadline. Renew it only when the gateway is itself receiving timely client status and required uploads. If the lease expires, lock locally, terminate the recorded workloads and require a fresh SSH transport; a live gateway process must not keep renewing a stale student's lease indefinitely. A recovered lease alone must not unlock an instructor-review lock.
+The class agent should use a short renewable execution lease in addition to the currently committed deadline. Renew it only when the gateway is itself receiving timely client status and required uploads. If the lease expires, lock locally, terminate the recorded workloads and require a fresh SSH transport; a live gateway process must not keep renewing a stale student's lease indefinitely. A recovered lease alone must not unlock an instructor-review lock.
 
 ### 7.4 Limited automatic network recovery
 
@@ -316,7 +323,7 @@ Allow an active exam to resume automatically after WebSocket/network recovery fo
 
 - The original page and its in-memory instance identity remain alive.
 - The same authenticated SSH transports remain alive.
-- There is no intervening fullscreen/focus/visibility/capture violation.
+- There is no intervening fullscreen/visibility/capture violation or expired focus grace period.
 - Required capture continues into a bounded memory queue.
 - The server still permits the limited recovery and no explicit lock has occurred.
 - The deadline has not expired.
@@ -369,7 +376,7 @@ Supply pointer-accessible controls and usable keyboard navigation. Do not redefi
 
 Request fullscreen on the root containing the toolbar, taskbar, windows, dialogs, and webcam/status widgets. Maximizing a terminal must never call the browser Fullscreen API.
 
-Monitor `fullscreenchange`, top-level window focus/blur, and document visibility. Arm interruption detection only after the explicit start/continue handshake, not during setup permission dialogs. Do not create a general-purpose grace period that allows leaving the exam after it is active.
+Monitor `fullscreenchange`, top-level window focus/blur, and document visibility. Arm interruption detection only after the explicit start/continue handshake, not during setup permission dialogs. Allow only the focus-loss grace period: show a prominent warning with seconds remaining for 20 continuous seconds, clearing it immediately on return. Keep capture, heartbeats and execution-lease renewal running while the page remains visible/fullscreen and other conditions stay healthy. Block terminal interaction while unfocused, retain the authenticated connections, and resume normally on focus return before expiry. Repeated blur events do not restart the timer. Enforce expiry independently on the webserver from its first received loss report, including when the client stops sending incidents; a late focus report cannot clear an expired interval. Require focus for Begin/Continue. Fullscreen exit, hidden documents, required capture failure and the existing network grace keep their own immediate/bounded rules and are not extended to 20 seconds. This is client-reported browser focus, not monitor attestation.
 
 Before student SSH sign-in, feature-detect a secure context, enabled fullscreen, screen capture and Keyboard Lock. Honor recognized embedding/permissions-policy restrictions and already-denied permissions where queryable. When requirements are unavailable, show the compatibility message and instructor sign-in link, and omit the student sign-in form entirely rather than displaying disabled fields. Block reconnection and preflight entry as well; recheck in the action handler before opening any authentication request or SSH relay. Keep instructor sign-in available. Do not request fullscreen, capture or keyboard permissions merely to load the login page. Browser branding alone is not a capability check.
 
@@ -427,6 +434,8 @@ Capture continues while locked when possible, and stops at end/expiration. Accep
 
 Record each terminal's output bytes, resize events, lifecycle events, and monotonic timing at the root-owned class-server PTY bridge. Push signed batches to the gateway for instructor replay. Record decoded display output faithfully, including escape sequences in a replay-safe format. Also keep raw bytes where necessary for faithful reconstruction with explicit size limits.
 
+Default terminal recording storage is **2 GiB per attempt**, shared across all terminal panes, including closed panes, and configurable through webserver `terminalRecordingLimitMiB` and root agent `terminal_recording_limit_mib` (MiB; 1–1,048,576; omitted means 2048). Configure the same value at both ends. Count actual persisted Base64/NDJSON bytes and event metadata, exclude images/submissions, and preserve accounting through process/service restarts. Serialize class-server writers across processes so simultaneous panes cannot bypass the cap. Gateway signed-batch retries count only new bytes, never duplicate deliveries. No hidden 64 MiB receive or legacy transport ceiling may remain. Keep fail-closed handling for real quota/storage failures and plan protected disk capacity for concurrent students plus 60-day retention; the larger cap does not guarantee arbitrary unbounded output.
+
 Do not store raw keystrokes or authentication input. Echoed commands naturally appear in terminal output; password prompts without echo must not become keylogs. Recordings start only when the trusted setup hands off to the exam shell, not during SSH authentication or secret channel admission.
 
 Provide instructor replay with terminal selection and timestamp navigation, synchronized to incident and image timestamps. Treat output as untrusted: render through a hardened terminal component, never inject it as HTML or execute URLs/escape-sequence side effects.
@@ -442,6 +451,8 @@ Keep submission archives and minimal grading/attempt metadata under their separa
 ## 11. Instructor dashboard, alerts, and recovery
 
 Provide a separate authenticated instructor interface. Bootstrap the initial administrator through a CLI command that prompts securely for a password; do not ship default credentials. Store only a suitable password hash. Use distinct authorization rules for student and administrator endpoints.
+
+The selected exam roster and attempt list show current working status from the matching attempt's SSH connection, open browser control socket and fresh client contact, not merely persisted `ACTIVE`. Distinguish working, disconnected, preflight, locked and ended students. Poll status every five seconds and render the current server-synchronized remaining clock every second. Count terminals only for their owning attempt, including repeated sandbox runs. Place Reset clock beside eligible students; its dialog supports Escape/cancel, defaults to the exam duration, and distinguishes pending from confirmed changes.
 
 ### 11.1 Exam management
 
@@ -679,7 +690,7 @@ cleanup-expired-monitoring-copies, where applicable
 
 Only the gateway's authenticated control identity may perform remote mutations; local student helpers receive only their narrowly scoped operations. Recheck account/attempt ownership server-side. Enforce idempotency and authorization per operation.
 
-Run an independent local watchdog, restarted by systemd, that locks on expired execution leases and finalizes at deadlines. A read-only cutoff pass must freeze expired workloads independently of any archival/state lock, so one long collection cannot delay another deadline; one failed freeze must not skip other due attempts. A separate periodic reconciliation unit/timer must catch missed deadlines, unfinished collections, and agent restarts. No finite system can guarantee execution through a total machine/power failure: after recovery, preserve the already saved files, prevent renewed student access, collect them, and mark the outage in the manifest/audit record.
+Run an independent local watchdog, restarted by systemd, that locks on expired execution leases and freezes at deadlines, then finalizes after authenticated timing verification. A read-only cutoff pass must freeze expired workloads independently of any archival/state lock, so one long collection cannot delay another deadline; one failed freeze must not skip other due attempts. A separate periodic reconciliation unit/timer must catch missed deadlines, unfinished collections, and agent restarts. No finite system can guarantee execution through a total machine/power failure: after recovery, preserve the already saved files, prevent renewed student access, collect them, and mark the outage in the manifest/audit record.
 
 On agent/control failure, fail closed for exam access while preserving the local deadline and work. Provide a root-only status and recovery CLI with an audit trail and a carefully documented break-glass procedure. Agent restart must not blindly clear every active-account restriction.
 
@@ -707,17 +718,17 @@ Display the configured collected directory as `EXAM_DIR` and in the toolbar. The
 
 ### 15.2 Finish and expiration
 
-**Finish exam** is optional and is the single active-exam exit action. Its confirmation must state that finishing is irreversible and signs the student out; confirming immediately revokes terminal input/access and triggers collection, then clears the browser login after the class server confirms completion. Do not offer a competing Sign out button that only pauses the active exam. Pending or failed collection remains visible instead of being hidden by automatic sign-out. Before Begin, Sign out simply cancels preflight; reconnecting a paused unfinished attempt remains a separate recovery action. Doing nothing triggers the same procedure at the authoritative class-server deadline, normally 90 minutes after Begin or the configured individual duration. Closed/disconnected/locked browsers and an unavailable webapp do not postpone collection. The independent privileged watchdog and persistent reconciliation service enforce this locally.
+**Finish exam** is optional and is the single active-exam exit action. Its confirmation must state that finishing is irreversible and signs the student out; confirming immediately revokes terminal input/access and triggers collection, then clears the browser login after the class server confirms completion. Do not offer a competing Sign out button that only pauses the active exam. Pending or failed collection remains visible instead of being hidden by automatic sign-out. Before Begin, Sign out simply cancels preflight; reconnecting a paused unfinished attempt remains a separate recovery action. Doing nothing triggers the same procedure at the authoritative class-server deadline, normally 90 minutes after Begin or the configured individual duration. Closed/disconnected/locked browsers do not postpone cutoff. If the webserver timing check is unavailable, freeze at the last confirmed deadline and defer collection until the agent can verify pending resets. The independent privileged watchdog and persistent reconciliation service enforce cutoff and recovery locally.
 
 **Finish exam**, deadline expiration, and local administrator termination use the same idempotent finalization workflow, with different recorded reasons:
 
 1. Atomically mark the attempt no longer interactive and revoke all input/new-channel/resume authorization.
 2. Keep ordinary account access blocked.
 3. Freeze all recorded nondelegated workload cgroups, including background jobs and descendants with open writable descriptors, and verify kernel freeze state. Check the student UID for uncontained writers; refuse collection and retain account exclusion if any exist. Revoke new directory access through the verified directory descriptor. Establish a stable saved-file view; terminal-shell closure or chmod alone is insufficient.
-4. Capture a protected copy or filesystem snapshot under a root-controlled directory that the student cannot read/change through the exam environment.
+4. For expiration, verify timing through the signed outbound check before packaging. Apply any pending reset and use its current deadline; if verification is unavailable, keep writers frozen and report collection pending. Once timing is verified, capture a protected copy or filesystem snapshot under a root-controlled directory that the student cannot read/change through the exam environment.
 5. Terminate the attempt workload safely. Do not send a signal sequence that permits additional post-deadline saving before the protected view is established.
 6. Build and verify an archive of that protected view, with a manifest.
-7. Mark the protected local copy ready independently of access restriction. Keep the account held until the original deadline has elapsed AND protected-copy verification and workload termination succeed. Early collection never shortens the account restriction.
+7. Mark the protected local copy ready independently of access restriction. Keep the account held until both the original and current deadlines have elapsed AND protected-copy verification and workload termination succeed. Early collection never shortens the account restriction.
 8. Push the protected archive and signed receipt to private application storage through outbound HTTPS, verify its checksum, and expose it to the instructor.
 9. Give the student a receipt/status, not an editable archive location. Stop monitoring and close transports as appropriate.
 
@@ -742,7 +753,7 @@ A privileged process may control the snapshot, but copying/archiving student dat
 
 ### 15.4 Manifest and export
 
-The manifest must include exam/template version, attempt ID, verified username/UID, effective duration and monitoring settings, source directory label, original start/deadline, effective end, actual writer-quiescence/completion (`completed_at`), collection (`collected`) and verified protection (`secured`) timestamps, completion reason, collection errors/omissions, regular-file inventory and hashes, and relevant infrastructure-outage information. At expiration, the effective end remains the original deadline; delayed recovery timestamps must record when collection actually happened.
+The manifest must include clock revision/reset history and both original/current deadlines, as well as exam/template version, attempt ID, verified username/UID, effective duration and monitoring settings, source directory label, original start/deadline, effective end, actual writer-quiescence/completion (`completed_at`), collection (`collected`) and verified protection (`secured`) timestamps, completion reason, collection errors/omissions, regular-file inventory and hashes, and relevant infrastructure-outage information. At expiration, the effective end is the confirmed current collection deadline; preserve the immutable original deadline and all instructor timing changes; delayed recovery timestamps must record when collection actually happened.
 
 The **archive checksum is computed after the archive is complete** and stored beside it, in application metadata, and in the receipt. Do not try to put an archive's own checksum inside itself. A manifest inside the archive can contain per-file hashes; the external manifest may additionally reference the completed archive checksum.
 
@@ -1236,7 +1247,7 @@ entry. The original clock and ordinary account restriction survive every step.
 
 `examctl agent start|stop|restart|status` manages only the shared SSH gate service. Start/restart also ensure the independent watchdog and reconciliation timer are running. Stop leaves both running and closes student gate access; it is not a way to cancel deadlines. Do not reset state, kill the watchdog, change account shells or restore access as an exam stop mechanism.
 
-Student Finish requires an active retained SSH transport. A disconnected or locked student must complete authorized fresh SSH recovery before finishing early, or simply let the original deadline collect work. Instructors cannot stop attempts from the web dashboard. Local deadline cutoff runs every second, with lock-free freeze checks so HTTP deliveries or collection compression cannot delay another attempt's cutoff. A powered-off class server cannot execute collection at that instant; persistent reconciliation runs on return and access stays denied in the meantime.
+Student Finish requires an active retained SSH transport. A disconnected or locked student must complete authorized fresh SSH recovery before finishing early, or let the currently committed deadline freeze work and collect after authenticated timing verification. Instructors cannot stop attempts from the web dashboard. Local deadline cutoff runs every second, with a separate brief timing barrier and independent freeze checks so HTTP deliveries or collection compression cannot delay another attempt's cutoff. A powered-off class server cannot execute collection at that instant; persistent reconciliation runs on return and access stays denied in the meantime.
 
 Migration removes the old `listen/cert/key/ca/client_name` agent API settings and gateway `agent.url/ca/cert/key`. Configure `agent_id`, `gateway_public_key`, `callback_url`, `callback_key` (optional private `callback_ca`) on csc-sys, and matching gateway `agent.id/signingKey/callbackPublicKey`. Remove the old inbound 9443 firewall/tunnel after draining and verifying the new SSH command route. Preserve state/work/protected archives and original account recovery records. Dashboard readiness comes from signed registry/configuration callbacks; preflight rechecks current guards over the student's live SSH. No cached report substitutes for live preflight admission checks.
 
@@ -1245,3 +1256,8 @@ health advertises `signed-ssh-control` and `durable-status-callbacks`; gateway p
 these alongside interval access and all-channel admission. Verify key ownership, signature
 exchange, callback delivery/recovery and archive limits before marking those deployment
 checks complete. Local simulated browser tests alone do not qualify privileged isolation.
+
+
+### Clock reset and recording-limit regression requirements
+
+Cover active resets without losing SSH/panes, live dashboard countdown and presence, default-filled/cancelable reset dialogs, disconnected requests and webserver/agent restart persistence, concurrent resets and stale completion callbacks, original deadline access holds after shortened clocks, extension races with cutoff, signed timing request/response scope/replay/signature failures, freeze/defer during webserver outages, subsequent verified collection, and no idle timing polling. Exercise persistent shared recording quotas across panes/restarts, data beyond the old 64 MiB boundary, signed batch retry accounting and image exclusion. These policies supersede earlier prose that treated every collection deadline as immutable or promised packaging while timing verification is unavailable.

@@ -43,7 +43,7 @@ Create an instructor with your own password interactively:
     EXAM_CONFIG=var/demo/config.json npm run bootstrap-admin
 
 Visit /admin to configure exams, validate/preview/confirm CSV, review incidents, authorize
-continuation, view recordings and download submissions. CSV never creates Unix accounts.
+continuation, set individual remaining clocks without disconnecting active students, view recordings and download submissions. Rosters show live working status and countdowns. CSV never creates Unix accounts.
 The demo course-account registry includes student01, student02 and student03. Only student01
 is initially enrolled; add the others with the instructor Add student control. All three use
 the same disposable shared SSH password above.
@@ -124,3 +124,9 @@ root-verified gateway signatures. Deadlines and collection stay local. The agent
 signed status updates and verified archives to the webserver; no inbound control API or
 command polling exists. Instructors authorize recovery but cannot stop exams from the
 web dashboard. Local administrators use `examctl`; see [native administration](ssh-server/README.md#local-examctl-administration).
+
+
+Terminal recording storage defaults to **2 GiB per attempt**, configurable in MiB using
+`terminalRecordingLimitMiB` (webserver) and `terminal_recording_limit_mib` (class agent).
+Keep the values aligned. See the [class-server guide](ssh-server/README.md) for storage
+planning and the signed pre-collection timing check used for disconnected instructor resets.

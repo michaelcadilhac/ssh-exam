@@ -17,8 +17,8 @@ import (
 	"testing"
 )
 
-func TestDeadlineCollectionDurableCallbacksWithoutGateway(t *testing.T) {
-	e, _, source := finalFixture(t, "LOCKED", Millis()-1000)
+func TestEarlyCollectionDurableCallbacksWithoutGateway(t *testing.T) {
+	e, _, source := finalFixture(t, "ACTIVE", Millis()+5400000)
 	pub, key, _ := ed25519.GenerateKey(rand.Reader)
 	b, _ := x509.MarshalPKCS8PrivateKey(key)
 	keyPath := filepath.Join(t.TempDir(), "agent.key")
@@ -67,7 +67,7 @@ func TestDeadlineCollectionDurableCallbacksWithoutGateway(t *testing.T) {
 	e.Config.CallbackURL = server.URL
 	e.Config.CallbackCA = ca
 	e.Config.CallbackKey = keyPath
-	if err := e.Tick(); err != nil {
+	if _, err := e.Call("finalize-attempt", Request{ID: finalID, Reason: "student finish"}); err != nil {
 		t.Fatal(err)
 	}
 	a := inspectFinal(t, e)

@@ -1,3 +1,8 @@
+import {
+  FOCUS_GRACE_MS,
+  FOCUS_GRACE_REASON,
+} from "../../../packages/protocol/focus-grace.js";
+import { isDeepStrictEqual } from "node:util";
 import { randomUUID } from "node:crypto";
 import {
   openSync,
@@ -42,6 +47,7 @@ export class Lifecycle {
   onEnd = (_attempt: Attempt) => {};
   onSecured = (_attempt: Attempt) => {};
   onPaused = (_attempt: Attempt) => {};
+  onClockChanged = (_attempt: Attempt) => {};
   constructor(
     public store: Store,
     public agent: Agent,
@@ -151,12 +157,95 @@ export class Lifecycle {
         remote.uid !== a.uid)
     )
       throw Error("Agent attempt identity mismatch");
-    if (
-      a.start &&
-      remote.start &&
-      (a.start !== remote.start || a.deadline !== remote.deadline)
-    )
-      throw Error("Original exam interval cannot change");
+    const currentRevision = a.clock_revision || 0;
+    const revision = remote.clock_revision || 0;
+    if (!Number.isSafeInteger(revision) || revision < 0)
+      throw Error("Invalid clock revision");
+    if (revision < currentRevision) return; // A queued pre-reset status cannot end the new interval.
+    if (a.start && remote.start) {
+      if (a.start !== remote.start)
+        throw Error("Original exam interval cannot change");
+      const original = a.original_deadline || a.deadline;
+      if (!original) throw Error("Original deadline missing");
+      if ((remote.original_deadline || remote.deadline) !== original)
+        throw Error("Original exam interval cannot change");
+      if (revision === currentRevision && a.deadline !== remote.deadline)
+        throw Error("Deadline changed without an instructor clock reset");
+      if (revision > currentRevision) {
+        if (a.protected || a.state === "COMPLETED")
+          throw Error("Secured clock cannot change");
+        const resets = remote.clock_resets;
+        if (!Array.isArray(resets) || resets.length !== revision)
+          throw Error("Clock reset history required");
+        let deadline = original;
+        for (let i = 0; i < resets.length; i++) {
+          const reset = resets[i];
+          if (
+            reset.revision !== i + 1 ||
+            reset.previous_deadline !== deadline ||
+            typeof reset.actor !== "string" ||
+            !reset.actor ||
+            !Number.isSafeInteger(reset.applied_at) ||
+            reset.applied_at < a.start ||
+            !Number.isSafeInteger(reset.requested_at) ||
+            reset.requested_at < a.start ||
+            reset.requested_at >= reset.previous_deadline ||
+            reset.requested_at > reset.applied_at + 1000 ||
+            !Number.isSafeInteger(reset.remaining_seconds) ||
+            reset.remaining_seconds < 60 ||
+            reset.remaining_seconds > 21600 ||
+            reset.remaining_seconds % 60 !== 0 ||
+            reset.deadline !==
+              reset.requested_at + reset.remaining_seconds * 1000
+          )
+            throw Error("Invalid clock reset history");
+          deadline = reset.deadline;
+        }
+        const prior = JSON.parse(a.clock_resets || "[]");
+        if (
+          !isDeepStrictEqual(resets.slice(0, currentRevision), prior) ||
+          deadline !== remote.deadline
+        )
+          throw Error("Conflicting clock reset history");
+        this.store.db
+          .prepare(
+            "UPDATE attempts SET original_deadline=?,deadline=?,clock_revision=?,clock_resets=? WHERE id=?",
+          )
+          .run(original, deadline, revision, JSON.stringify(resets), id);
+        this.store.audit(
+          "class-agent",
+          "clock-reset-confirmed",
+          id,
+          JSON.stringify(resets.slice(currentRevision)),
+        );
+        for (const reset of resets)
+          this.store.db
+            .prepare(
+              "UPDATE clock_reset_requests SET status='applied' WHERE id=? AND attempt=?",
+            )
+            .run(reset.id, id);
+        if (
+          a.state === "FINALIZING" &&
+          [
+            "expiration",
+            "Collection pending: deadline timing verification unavailable",
+          ].includes(a.reason || "") &&
+          !a.protected &&
+          !a.ended &&
+          deadline > now()
+        ) {
+          this.store.db
+            .prepare(
+              "UPDATE attempts SET state='LOCKED',reason='Clock reset confirmed; reconnect with authorization',generation=MAX(generation,?) WHERE id=?",
+            )
+            .run(remote.generation || 0, id);
+          this.store.db
+            .prepare("DELETE FROM continuations WHERE attempt=?")
+            .run(id);
+        }
+        this.onClockChanged(this.store.attempt(id));
+      }
+    }
     // Command responses may already have advanced state before older queued callbacks arrive.
     if (
       (a.state === "COMPLETED" && remote.state !== "COMPLETED") ||
@@ -171,9 +260,17 @@ export class Lifecycle {
     if (remote.start && a.start === null) {
       this.store.db
         .prepare(
-          "UPDATE attempts SET start=?,deadline=?,work_path=? WHERE id=?",
+          "UPDATE attempts SET start=?,deadline=?,original_deadline=?,clock_revision=?,clock_resets=?,work_path=? WHERE id=?",
         )
-        .run(remote.start, remote.deadline, remote.work_path, id);
+        .run(
+          remote.start,
+          remote.deadline,
+          remote.original_deadline || remote.deadline,
+          revision,
+          JSON.stringify(remote.clock_resets || []),
+          remote.work_path,
+          id,
+        );
       // A recovered start has consumed time; it is never a fresh preparation.
       if (["ACTIVE", "ACTIVATING"].includes(remote.state)) {
         this.store.db
@@ -195,6 +292,28 @@ export class Lifecycle {
         )
         .run(now(), id);
       this.monitoring.delete(id, "unstarted-preparation");
+    }
+    if (remote.timing_pending_since && !remote.protected) {
+      this.store.db
+        .prepare(
+          "UPDATE attempts SET state='FINALIZING',reason='Collection pending: deadline timing verification unavailable' WHERE id=?",
+        )
+        .run(id);
+      if (
+        !this.store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE action='timing-pending-alert' AND target=?",
+          )
+          .get(id)
+      ) {
+        this.alert(
+          "Collection timing requires recovery",
+          `Attempt ${id}: work is frozen; collection awaits authenticated timing verification.`,
+        );
+        this.store.audit("class-agent", "timing-pending-alert", id);
+      }
+      this.onEnd(this.store.attempt(id));
+      return;
     }
     const consumed = this.store.db
       .prepare(
@@ -250,6 +369,11 @@ export class Lifecycle {
           identity.uid !== a.uid ||
           identity.start !== this.store.attempt(id).start ||
           identity.deadline !== this.store.attempt(id).deadline ||
+          (identity.original_deadline || identity.deadline) !==
+            (this.store.attempt(id).original_deadline ||
+              this.store.attempt(id).deadline) ||
+          (identity.clock_revision || 0) !==
+            this.store.attempt(id).clock_revision ||
           !/^[a-f0-9]{64}$/.test(remote.checksum || "") ||
           manifest.checksum !== remote.checksum
         )
@@ -384,6 +508,16 @@ export class Lifecycle {
     return this.busy.has(id);
   }
   async finish(id: string, reason: string) {
+    if (
+      this.store.db
+        .prepare(
+          "SELECT 1 FROM clock_reset_requests WHERE attempt=? AND status='pending'",
+        )
+        .get(id)
+    )
+      throw Error(
+        "Clock reset is awaiting agent confirmation; try finishing again shortly",
+      );
     const a = this.store.attempt(id);
     if (!a.start || a.state === "CANCELLED_BEFORE_START")
       throw Error(
@@ -485,7 +619,13 @@ export class Lifecycle {
           )
           .run(a.id);
         this.onEnd(this.store.attempt(a.id));
-      } else if (a.state === "ACTIVE" && now() - (a.last_contact || 0) > 15000)
+      } else if (
+        a.state === "ACTIVE" &&
+        a.focus_lost_at !== null &&
+        now() - a.focus_lost_at >= FOCUS_GRACE_MS
+      )
+        await this.lock(a.id, FOCUS_GRACE_REASON);
+      else if (a.state === "ACTIVE" && now() - (a.last_contact || 0) > 15000)
         await this.lock(a.id, "Client contact exceeded 15 seconds");
     }
     for (const a of this.store.db

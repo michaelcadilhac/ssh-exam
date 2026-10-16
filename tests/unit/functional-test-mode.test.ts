@@ -138,6 +138,8 @@ it("production accepts a qualified administrator sandbox and keeps ordinary rost
         "all-session-channel-gate",
         "signed-ssh-control",
         "durable-status-callbacks",
+        "clock-reset",
+        "deadline-timing-check",
       ],
     };
     store.db

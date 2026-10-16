@@ -10,6 +10,7 @@ import {
   fsyncSync,
   readSync,
   statSync,
+  readdirSync,
 } from "node:fs";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -27,7 +28,16 @@ export class Monitoring {
       this.inflight--;
     }
   }
-  constructor(private store: Store) {
+  constructor(
+    private store: Store,
+    private terminalRecordingLimitMiB = 2048,
+  ) {
+    if (
+      !Number.isSafeInteger(terminalRecordingLimitMiB) ||
+      terminalRecordingLimitMiB < 1 ||
+      terminalRecordingLimitMiB > 1048576
+    )
+      throw Error("Invalid terminal recording limit");
     for (const d of ["monitoring", "submissions"])
       mkdirSync(`${store.dir}/${d}`, { recursive: true, mode: 0o700 });
   }
@@ -124,6 +134,13 @@ export class Monitoring {
     }
     return { id, hash: digest };
   }
+  private checkRecordingBudget(dir: string, extra: number) {
+    const total = readdirSync(dir)
+      .filter((name) => name.endsWith(".ndjson"))
+      .reduce((sum, name) => sum + statSync(`${dir}/${name}`).size, 0);
+    if (total + extra > this.terminalRecordingLimitMiB * 1024 * 1024)
+      throw Error("Terminal recording size limit reached");
+  }
   record(a: string, pane: string, event: object) {
     const dir = `${this.store.dir}/monitoring/${a}`;
     mkdirSync(dir, { recursive: true, mode: 0o700 });
@@ -132,19 +149,17 @@ export class Monitoring {
       this.store.db
         .prepare("INSERT OR IGNORE INTO recordings VALUES(?,?,?,?)")
         .run(randomUUID(), a, pane, now());
-    appendFileSync(
-      path,
+    const line =
       JSON.stringify({
         at: now(),
         monotonic_ms: performance.now(),
         gateway_instance: this.instance,
         ...event,
-      }) + "\n",
-      {
-        mode: 0o600,
-      },
-    );
+      }) + "\n";
+    this.checkRecordingBudget(dir, Buffer.byteLength(line));
+    appendFileSync(path, line, { mode: 0o600 });
   }
+
   receiveRecording(a: string, pane: string, offset: number, bytes: Buffer) {
     if (
       this.store.db.prepare("SELECT 1 FROM tombstones WHERE attempt=?").get(a)
@@ -181,8 +196,7 @@ export class Monitoring {
       }
     }
     if (overlap < bytes.length) {
-      if (size + bytes.length - overlap > 64 * 1024 * 1024)
-        throw Error("Recording limit exceeded");
+      this.checkRecordingBudget(dir, bytes.length - overlap);
       appendFileSync(path, bytes.subarray(overlap), { mode: 0o600 });
       const fd = openSync(path, "r");
       try {

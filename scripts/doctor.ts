@@ -51,6 +51,8 @@ try {
         "all-session-channel-gate",
         "signed-ssh-control",
         "durable-status-callbacks",
+        "clock-reset",
+        "deadline-timing-check",
       ].every((cap) => health.capabilities?.includes(cap)),
     JSON.stringify(health.missing || health.warning || ""),
   );

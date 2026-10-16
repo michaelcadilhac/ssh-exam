@@ -5,6 +5,8 @@ import {
   existsSync,
   writeFileSync,
   readFileSync,
+  truncateSync,
+  statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
@@ -100,6 +102,49 @@ it("receives trusted terminal batches idempotently, rejects conflicts, and honor
     m.delete("a", "instructor");
     m.receiveRecording("a", "pane", 0, first);
     expect(existsSync(`${s.dir}/monitoring/a/pane.ndjson`)).toBe(false);
+  } finally {
+    s.close();
+    rmSync(s.dir, { recursive: true, force: true });
+  }
+});
+
+it("uses a larger default and enforces a persistent shared recording budget without counting images", () => {
+  const s = new Store(mkdtempSync(tmpdir() + "/exam-record-quota-"));
+  try {
+    s.db.exec(
+      `INSERT INTO exams VALUES('e','{}');INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES('a','e','student',1001,'ACTIVE','{}')`,
+    );
+    const defaults = new Monitoring(s);
+    defaults.record("a", "pane1", { event: "open" });
+    const dir = `${s.dir}/monitoring/a`;
+    truncateSync(`${dir}/pane1.ndjson`, 64 * 1024 * 1024);
+    expect(() =>
+      defaults.record("a", "pane1", { event: "output", data: "bW9yZQ==" }),
+    ).not.toThrow();
+    truncateSync(`${dir}/pane1.ndjson`, 1024 * 1024 - 50);
+    writeFileSync(`${dir}/image.jpg`, "");
+    truncateSync(`${dir}/image.jpg`, 2 * 1024 * 1024);
+    const limited = new Monitoring(s, 1);
+    const batch = Buffer.from(
+      JSON.stringify({ source: "class-agent", at: Date.now(), event: "open" }) +
+        "\n",
+    );
+    // The receiving cap includes other panes, not just the file being appended.
+    expect(() => limited.receiveRecording("a", "pane2", 0, batch)).toThrow(
+      "size limit",
+    );
+    expect(() => limited.record("a", "pane2", { event: "open" })).toThrow(
+      "size limit",
+    );
+    truncateSync(`${dir}/pane1.ndjson`, 100);
+    limited.receiveRecording("a", "pane2", 0, batch);
+    // Retries at the boundary consume no extra quota.
+    truncateSync(`${dir}/pane1.ndjson`, 1024 * 1024 - batch.length);
+    new Monitoring(s, 1).receiveRecording("a", "pane2", 0, batch);
+    expect(statSync(`${dir}/pane2.ndjson`).size).toBe(batch.length);
+    expect(() => limited.record("a", "pane3", { event: "open" })).toThrow(
+      "size limit",
+    );
   } finally {
     s.close();
     rmSync(s.dir, { recursive: true, force: true });

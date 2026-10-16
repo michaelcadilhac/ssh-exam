@@ -120,7 +120,10 @@ func main() {
 	case "accounts":
 		result = c.Accounts
 	case "reconcile":
-		err = e.Tick()
+		err = e.RefreshExpiredTiming()
+		if tickErr := e.Tick(); err == nil {
+			err = tickErr
+		}
 		result = map[string]bool{"ok": err == nil}
 	case "override-access":
 		result, err = e.OverrideAccess(id, *reason)

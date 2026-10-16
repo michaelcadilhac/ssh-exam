@@ -10,6 +10,8 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -64,7 +66,7 @@ func TestRootTerminalRecordingBeforeOutputAndFailClosed(t *testing.T) {
 	if info.Mode().Perm() != 0600 {
 		t.Fatal("recording not private")
 	}
-	if err := r.file.Truncate(64 * 1024 * 1024); err != nil {
+	if err := r.file.Truncate(e.terminalRecordingLimit()); err != nil {
 		t.Fatal(err)
 	}
 	size := output.Len()
@@ -91,4 +93,82 @@ func TestCancelledPreflightRemovesStalePracticeUnits(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func TestRecordingDefaultAllowsMoreThanOldLimit(t *testing.T) {
+	e := &Engine{Config: Config{State: t.TempDir()}}
+	if e.terminalRecordingLimit() != 2*1024*1024*1024 {
+		t.Fatal("wrong default")
+	}
+	r, err := e.newRecorder(finalID, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.file.Close()
+	// Sparse files exercise the old boundary without allocating a huge recording.
+	if err := r.file.Truncate(900 * 1024 * 1024); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.record(map[string]any{"event": "output", "data": "bW9yZQ=="}); err != nil {
+		t.Fatal("normal output hit old limit", err)
+	}
+}
+func TestRecordingConfiguredBudgetSurvivesPanesAndRestart(t *testing.T) {
+	c := Config{State: t.TempDir(), TerminalRecordingLimitMiB: 1}
+	first := &Engine{Config: c}
+	r, err := first.newRecorder(finalID, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.file.Close()
+	if err := r.file.Truncate(1024 * 1024); err != nil {
+		t.Fatal(err)
+	}
+	restarted := &Engine{Config: c}
+	if _, err := restarted.newRecorder(finalID, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"); err == nil {
+		t.Fatal("another pane bypassed persisted shared budget")
+	}
+	// Another attempt has its own quota.
+	other, err := restarted.newRecorder("cccccccc-cccc-cccc-cccc-cccccccccccc", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other.file.Close()
+}
+
+func TestIndependentPaneProcessesCannotRacePastSharedRecordingBudget(t *testing.T) {
+	c := Config{State: t.TempDir(), TerminalRecordingLimitMiB: 1}
+	one, two := &Engine{Config: c}, &Engine{Config: c}
+	first, err := one.newRecorder(finalID, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.file.Close()
+	second, err := two.newRecorder(finalID, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.file.Close()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	results := make(chan error, 2)
+	for _, r := range []*terminalRecorder{first, second} {
+		go func(r *terminalRecorder) {
+			defer wg.Done()
+			results <- r.record(map[string]any{"event": "output", "data": strings.Repeat("a", 600*1024)})
+		}(r)
+	}
+	wg.Wait()
+	close(results)
+	accepted := 0
+	for err := range results {
+		if err == nil {
+			accepted++
+		}
+	}
+	a, _ := first.file.Stat()
+	b, _ := second.file.Stat()
+	if accepted != 1 || a.Size()+b.Size() > 1024*1024 {
+		t.Fatal("cross-process quota race")
+	}
 }

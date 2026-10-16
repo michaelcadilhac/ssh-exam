@@ -25,22 +25,23 @@ type Account struct {
 	Home        string `json:"home"`
 }
 type Config struct {
-	FunctionalHostAccess  bool               `json:"functional_host_access,omitempty"`
-	FunctionalTestAccount string             `json:"functional_test_account,omitempty"`
-	FunctionalTestUntil   int64              `json:"functional_test_until,omitempty"`
-	ExamDirectory         string             `json:"exam_directory"`
-	State                 string             `json:"state"`
-	Work                  string             `json:"work"`
-	Rootfs                string             `json:"rootfs"`
-	Templates             string             `json:"templates"`
-	Accounts              map[string]Account `json:"accounts"`
-	AgentID               string             `json:"agent_id"`
-	GatewayPublicKey      string             `json:"gateway_public_key"`
-	CallbackURL           string             `json:"callback_url"`
-	CallbackKey           string             `json:"callback_key"`
-	CallbackCA            string             `json:"callback_ca,omitempty"`
-	Socket                string             `json:"socket"`
-	GuardReport           string             `json:"guard_report"`
+	TerminalRecordingLimitMiB int64              `json:"terminal_recording_limit_mib,omitempty"`
+	FunctionalHostAccess      bool               `json:"functional_host_access,omitempty"`
+	FunctionalTestAccount     string             `json:"functional_test_account,omitempty"`
+	FunctionalTestUntil       int64              `json:"functional_test_until,omitempty"`
+	ExamDirectory             string             `json:"exam_directory"`
+	State                     string             `json:"state"`
+	Work                      string             `json:"work"`
+	Rootfs                    string             `json:"rootfs"`
+	Templates                 string             `json:"templates"`
+	Accounts                  map[string]Account `json:"accounts"`
+	AgentID                   string             `json:"agent_id"`
+	GatewayPublicKey          string             `json:"gateway_public_key"`
+	CallbackURL               string             `json:"callback_url"`
+	CallbackKey               string             `json:"callback_key"`
+	CallbackCA                string             `json:"callback_ca,omitempty"`
+	Socket                    string             `json:"socket"`
+	GuardReport               string             `json:"guard_report"`
 }
 type Settings struct {
 	Name      string `json:"name"`
@@ -52,40 +53,59 @@ type Settings struct {
 	Earliest  int64  `json:"earliest"`
 	Latest    int64  `json:"latest"`
 }
+type ClockReset struct {
+	ID               string `json:"id"`
+	Actor            string `json:"actor"`
+	RequestedAt      int64  `json:"requested_at"`
+	AppliedAt        int64  `json:"applied_at"`
+	PreviousDeadline int64  `json:"previous_deadline"`
+	Deadline         int64  `json:"deadline"`
+	RemainingSeconds int64  `json:"remaining_seconds"`
+	Revision         int    `json:"revision"`
+}
 type Attempt struct {
-	BrowserSSH           bool     `json:"browser_ssh,omitempty"`
-	AdministratorSandbox bool     `json:"administrator_sandbox,omitempty"`
-	FunctionalTest       bool     `json:"functional_test,omitempty"`
-	ID                   string   `json:"id"`
-	Exam                 string   `json:"exam"`
-	Username             string   `json:"username"`
-	UID                  int      `json:"uid"`
-	Settings             Settings `json:"settings"`
-	State                string   `json:"state"`
-	Start                int64    `json:"start"`
-	Deadline             int64    `json:"deadline"`
-	Ended                int64    `json:"ended"`
-	CompletedAt          int64    `json:"completed_at"`
-	CollectedAt          int64    `json:"collected_at"`
-	SecuredAt            int64    `json:"secured_at"`
-	Lease                int64    `json:"lease"`
-	WorkPath             string   `json:"work_path"`
-	Transport            string   `json:"transport"`
-	ResumeTransport      string   `json:"resume_transport,omitempty"`
-	Generation           int      `json:"generation"`
-	Authorization        int64    `json:"authorization"`
-	Reason               string   `json:"reason"`
-	Checksum             string   `json:"checksum"`
-	Units                []string `json:"units"`
-	Errors               []string `json:"errors"`
-	Boot                 string   `json:"boot"`
-	UptimeDeadline       float64  `json:"uptime_deadline"`
-	Protected            bool     `json:"protected"`
-	AccessState          string   `json:"access_state"`
-	AccessHeldAt         int64    `json:"access_held_at"`
-	AccessReleasedAt     int64    `json:"access_released_at"`
-	AccessOverride       string   `json:"access_override,omitempty"`
-	AccessError          string   `json:"access_error,omitempty"`
+	TimingPendingSince     int64        `json:"timing_pending_since,omitempty"`
+	TimingNextCheck        int64        `json:"timing_next_check,omitempty"`
+	TimingVerifiedAt       int64        `json:"timing_verified_at,omitempty"`
+	TimingVerifiedDeadline int64        `json:"timing_verified_deadline,omitempty"`
+	TimingVerifiedRevision int          `json:"timing_verified_revision,omitempty"`
+	OriginalDeadline       int64        `json:"original_deadline,omitempty"`
+	OriginalUptimeDeadline float64      `json:"original_uptime_deadline,omitempty"`
+	ClockRevision          int          `json:"clock_revision,omitempty"`
+	ClockResets            []ClockReset `json:"clock_resets,omitempty"`
+	BrowserSSH             bool         `json:"browser_ssh,omitempty"`
+	AdministratorSandbox   bool         `json:"administrator_sandbox,omitempty"`
+	FunctionalTest         bool         `json:"functional_test,omitempty"`
+	ID                     string       `json:"id"`
+	Exam                   string       `json:"exam"`
+	Username               string       `json:"username"`
+	UID                    int          `json:"uid"`
+	Settings               Settings     `json:"settings"`
+	State                  string       `json:"state"`
+	Start                  int64        `json:"start"`
+	Deadline               int64        `json:"deadline"`
+	Ended                  int64        `json:"ended"`
+	CompletedAt            int64        `json:"completed_at"`
+	CollectedAt            int64        `json:"collected_at"`
+	SecuredAt              int64        `json:"secured_at"`
+	Lease                  int64        `json:"lease"`
+	WorkPath               string       `json:"work_path"`
+	Transport              string       `json:"transport"`
+	ResumeTransport        string       `json:"resume_transport,omitempty"`
+	Generation             int          `json:"generation"`
+	Authorization          int64        `json:"authorization"`
+	Reason                 string       `json:"reason"`
+	Checksum               string       `json:"checksum"`
+	Units                  []string     `json:"units"`
+	Errors                 []string     `json:"errors"`
+	Boot                   string       `json:"boot"`
+	UptimeDeadline         float64      `json:"uptime_deadline"`
+	Protected              bool         `json:"protected"`
+	AccessState            string       `json:"access_state"`
+	AccessHeldAt           int64        `json:"access_held_at"`
+	AccessReleasedAt       int64        `json:"access_released_at"`
+	AccessOverride         string       `json:"access_override,omitempty"`
+	AccessError            string       `json:"access_error,omitempty"`
 }
 type Capability struct {
 	Username  string `json:"username"`
@@ -141,6 +161,9 @@ func LoadConfig(p string) (Config, error) {
 	}
 	if !identifier.MatchString(c.AgentID) || c.GatewayPublicKey == "" || c.CallbackKey == "" {
 		return c, errors.New("configure agent_id, gateway_public_key and callback_key; the old control API is unsupported")
+	}
+	if c.TerminalRecordingLimitMiB < 0 || c.TerminalRecordingLimitMiB > 1048576 {
+		return c, errors.New("terminal_recording_limit_mib must be 1..1048576, or omitted for 2048 MiB")
 	}
 	u, err := url.Parse(c.CallbackURL)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {

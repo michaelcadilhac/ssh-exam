@@ -1255,3 +1255,270 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
     page.getByLabel("Host authentication messages"),
   ).not.toContainText("Additional class-host notice");
 });
+
+test("instructor sees a working student and live clock, resets time without disconnecting terminals", async ({
+  page,
+  browser,
+}) => {
+  const instructorBrowser = await browser.browserType().launch({
+    headless: true,
+    executablePath: process.env.CHROMIUM || "/usr/bin/chromium",
+    args: ["--no-sandbox"],
+  });
+  const context = await instructorBrowser.newContext({
+    baseURL: "http://localhost:3100",
+  });
+  const instructor = await context.newPage();
+  try {
+    await instructor.goto("/admin");
+    await instructor.getByLabel("Username", { exact: true }).fill("instructor");
+    await instructor
+      .getByLabel("Password", { exact: true })
+      .fill("fixture-password");
+    await instructor
+      .getByRole("button", { name: "Sign in", exact: true })
+      .click();
+    await instructor
+      .getByLabel("Selected exam", { exact: true })
+      .selectOption("sandbox");
+    await simulatedMedia(page);
+    await studentSignIn(page, "sandbox", "student06");
+    await page
+      .getByRole("button", { name: "Open preflight & practice" })
+      .click();
+    await page.getByRole("button", { name: "1. Share entire display" }).click();
+    await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
+    await page
+      .getByRole("button", { name: "3. Lock keyboard", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Begin exam", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "New terminal", exact: true }),
+    ).toBeVisible();
+    const original = (
+      await (await page.request.get("/api/student/exam")).json()
+    ).attempt;
+    const roster = instructor.getByRole("table", { name: "Exam roster" });
+    const row = roster.getByRole("row").filter({ hasText: "student06" });
+    await expect(row).toContainText("Working", { timeout: 10000 });
+    await expect(row).toContainText(/4:\d{2}|5:00/);
+    await row
+      .getByRole("button", { name: "Reset clock for student06" })
+      .click();
+    await expect(instructor.getByLabel("Minutes remaining")).toHaveValue("5");
+    await instructor.keyboard.press("Escape");
+    await expect(instructor.getByRole("dialog")).toHaveCount(0);
+    await row
+      .getByRole("button", { name: "Reset clock for student06" })
+      .click();
+    await instructor.getByLabel("Minutes remaining").fill("2");
+    await instructor
+      .getByRole("button", { name: "Apply reset", exact: true })
+      .click();
+    await expect(instructor.getByRole("dialog")).toHaveCount(0);
+    await expect
+      .poll(
+        async () =>
+          (await (await page.request.get("/api/student/exam")).json()).attempt
+            .clock_revision,
+      )
+      .toBe(1);
+    const updated = (await (await page.request.get("/api/student/exam")).json())
+      .attempt;
+    expect(updated.id).toBe(original.id);
+    expect(updated.start).toBe(original.start);
+    expect(updated.original_deadline).toBe(original.deadline);
+    expect(updated.generation).toBe(original.generation);
+    expect(updated.state).toBe("ACTIVE");
+    expect(updated.deadline - Date.now()).toBeGreaterThan(110000);
+    expect(updated.deadline - Date.now()).toBeLessThanOrEqual(120000);
+    await expect(row).toContainText(/1:\d{2}|2:00/);
+    const clockText = await row.locator("td").nth(3).innerText();
+    await expect
+      .poll(() => row.locator("td").nth(3).innerText())
+      .not.toBe(clockText);
+    const terminal = page.locator(".winbox").first();
+    await terminal.locator(".xterm-helper-textarea").focus();
+    await page.keyboard.type("echo still-connected");
+    await page.keyboard.press("Enter");
+    await expect(terminal.locator(".xterm-rows")).toContainText(
+      "still-connected",
+    );
+    await expect(
+      page.getByRole("heading", { name: "Exam paused" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Finish exam", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Finish exam", exact: true })
+      .click();
+    await expect(row).toContainText("COMPLETED", { timeout: 10000 });
+    const attempts = instructor.getByRole("table", { name: "Exam attempts" });
+    await expect(
+      attempts.getByRole("row").filter({ hasText: "student06" }),
+    ).not.toContainText("Working");
+  } finally {
+    await instructorBrowser.close();
+  }
+});
+
+async function startFocusGraceExam(
+  page: import("@playwright/test").Page,
+  username: string,
+) {
+  await simulatedMedia(page);
+  await page.addInitScript(() => {
+    (window as any).__examFocus = true;
+    Object.defineProperty(document, "hasFocus", {
+      value: () => (window as any).__examFocus,
+      configurable: true,
+    });
+    // The server must enforce the timeout even if the client's incident is lost.
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (typeof data === "string") {
+        const m = JSON.parse(data);
+        if (
+          m.type === "incident" &&
+          m.reason === "Browser focus did not return within 20 seconds"
+        )
+          return;
+      }
+      return send.call(this, data);
+    };
+  });
+  await studentSignIn(page, "sandbox", username);
+  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
+  await page
+    .getByRole("button", { name: "3. Lock keyboard", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "New terminal", exact: true }),
+  ).toBeVisible();
+}
+async function setExamFocus(
+  page: import("@playwright/test").Page,
+  focused: boolean,
+) {
+  await page.evaluate((value) => {
+    (window as any).__examFocus = value;
+    window.dispatchEvent(new Event(value ? "focus" : "blur"));
+  }, focused);
+}
+test("focus grace counts down, survives 15 seconds, clears on return, and expires once after 20 seconds", async ({
+  page,
+}) => {
+  test.setTimeout(65000);
+  await startFocusGraceExam(page, "student08");
+  const initial = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  const warning = page
+    .getByRole("alert")
+    .filter({ hasText: "Return to the exam" });
+  await setExamFocus(page, false);
+  await expect(warning).toContainText("20s before lock");
+  await page.waitForTimeout(2200);
+  await expect(warning).toContainText(/1[67]s before lock/);
+  await page.screenshot({ path: "/tmp/ssh-exam-focus-warning.png" });
+  await setExamFocus(page, true);
+  await expect(warning).toHaveCount(0);
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/student/exam")).json()).attempt
+          .focus_lost_at,
+    )
+    .toBeNull();
+  const returned = await (await page.request.get("/api/student/exam")).json();
+  expect(returned.attempt.state).toBe("ACTIVE");
+  expect(returned.attempt.deadline).toBe(initial.deadline);
+  expect(returned.sshConnected).toBe(true);
+  const terminal = page.locator(".winbox").first();
+  await terminal.locator(".xterm-helper-textarea").focus();
+  await page.keyboard.type("echo focus-returned");
+  await page.keyboard.press("Enter");
+  await expect(terminal.locator(".xterm-rows")).toContainText("focus-returned");
+  await setExamFocus(page, false);
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/student/exam")).json()).attempt
+          .focus_lost_at,
+    )
+    .not.toBeNull();
+  const lost = (await (await page.request.get("/api/student/exam")).json())
+    .attempt.focus_lost_at;
+  await page.waitForTimeout(10000);
+  await setExamFocus(page, false);
+  await page.waitForTimeout(6200);
+  const stillActive = await (
+    await page.request.get("/api/student/exam")
+  ).json();
+  expect(stillActive.attempt.state).toBe("ACTIVE");
+  expect(stillActive.sshConnected).toBe(true);
+  expect(stillActive.attempt.focus_lost_at).toBe(lost);
+  await expect(warning).toContainText(/[34]s before lock/);
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/student/exam")).json()).attempt
+          .state,
+      { timeout: 7000 },
+    )
+    .toBe("LOCKED");
+  await expect(
+    page.getByRole("heading", { name: "Exam paused" }),
+  ).toBeVisible();
+  const locked = await (await page.request.get("/api/student/exam")).json();
+  expect(locked.attempt.reason).toBe(
+    "Browser focus did not return within 20 seconds",
+  );
+  expect(locked.attempt.deadline).toBe(initial.deadline);
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/student/exam")).json())
+          .sshConnected,
+    )
+    .toBe(false);
+  await expect(warning).toHaveCount(0);
+});
+for (const [violation, username] of [
+  ["fullscreen", "student07"],
+  ["visibility", "student09"],
+]) {
+  test(`focus grace does not delay ${violation} lock`, async ({ page }) => {
+    await startFocusGraceExam(page, username);
+    await setExamFocus(page, false);
+    await expect(page.getByRole("alert")).toContainText("Return to the exam");
+    if (violation === "fullscreen")
+      await page.evaluate(() => document.exitFullscreen());
+    else
+      await page.evaluate(() => {
+        Object.defineProperty(document, "hidden", {
+          get: () => true,
+          configurable: true,
+        });
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+    await expect(
+      page.getByRole("heading", { name: "Exam paused" }),
+    ).toBeVisible({ timeout: 3000 });
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Return to the exam" }),
+    ).toHaveCount(0);
+  });
+}

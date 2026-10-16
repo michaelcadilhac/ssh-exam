@@ -79,6 +79,10 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       student02: 10002,
       student03: 10003,
       student04: 10004,
+      student06: 10006,
+      student07: 10007,
+      student08: 10008,
+      student09: 10009,
     };
     if (b.usernames.some((u: string) => !users[u]))
       throw Error("Unknown fixture account");
@@ -110,9 +114,37 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       a.state = "ACTIVE";
       a.start = Date.now();
       a.deadline = a.start + a.settings.duration * 1000;
+      a.original_deadline = a.deadline;
+      a.clock_revision = 0;
+      a.clock_resets = [];
       a.work_path = "/work";
       h.attempts.set(a.id, a);
       break;
+    case "reset-clock": {
+      if (a.clock_resets?.some((r: any) => r.id === b.reset_id)) break;
+      if (
+        a.state !== "ACTIVE" ||
+        a.deadline <= Date.now() ||
+        (a.clock_revision || 0) !== b.clock_revision
+      )
+        throw Error("Clock reset rejected");
+      const previous = a.deadline;
+      a.original_deadline ||= previous;
+      a.deadline = b.requested_at + b.remaining_seconds * 1000;
+      a.clock_revision = (a.clock_revision || 0) + 1;
+      a.clock_resets ||= [];
+      a.clock_resets.push({
+        id: b.reset_id,
+        actor: b.actor,
+        requested_at: b.requested_at,
+        applied_at: Date.now(),
+        previous_deadline: previous,
+        deadline: a.deadline,
+        remaining_seconds: b.remaining_seconds,
+        revision: a.clock_revision,
+      });
+      break;
+    }
     case "lock-attempt":
       if (a.state === "ACTIVE") {
         a.state = "LOCKED";
@@ -175,6 +207,10 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       student02: 10002,
       student03: 10003,
       student04: 10004,
+      student06: 10006,
+      student07: 10007,
+      student08: 10008,
+      student09: 10009,
     },
   }),
 );
