@@ -4,6 +4,50 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Workspace transition update, 2026-10-16
+
+Deployed web source `bb24c17` (including `2619de5`) to marco on October 16
+(21:21 UTC). Logout keeps its source screen/confirmation until acknowledgment;
+instructor logout returns directly to `/admin` sign-in without a document reload.
+Preflight and page restoration retain the summary and disable repeated actions
+while pending. Fresh workspace connections say Connecting rather than Reconnecting.
+A restored locked attempt mounts with its pause overlay already in place.
+Continuation stays covered until acknowledged, and stale status replies cannot
+restore an earlier page/state; fresh authoritative locks still apply.
+
+Explicit Finish keeps a single collection view through HTTP completion, early
+secured callbacks and sign-out. Old active replies cannot expose the workspace or
+re-arm monitoring after Finish. Unconfirmed finish/sign-out failures remain
+retryable in place; collection failure displays recovery rather than success.
+Starting also retains its confirmation until acknowledgment, then opens the first
+terminal after the dialog has actually unmounted.
+
+- Current image: `ssh-exam-workspace:transitions-bb24c17`, also tagged `:1.0.0`.
+- Image ID: `sha256:b01d201ec247aa5df73834d913abc9de77603dd9a3ca33bc4a0100959ca9bdf5`.
+- Previous image retained as `ssh-exam-workspace:pre-transitions-bb24c17`.
+- Consistent metadata and private configuration/trust/secrets backup:
+  `/var/backups/ssh-exam/20261016T212155Z-transitions-web-ec1yw9f9` on marco.
+
+No pending/active attempt was present at cutover. This is web-only: native agent,
+relay, SSH policy, schema 8 and private configuration are unchanged. Fingerprint
+comparisons verified administrator accounts, exams, enrollments, complete attempt
+records and configuration were preserved. No submission archives exist on marco;
+protected copies remain on csc-sys. The container is healthy; readiness reports
+production-ready, notifications enabled and maintenance disabled.
+
+Validation passed 126 application tests, all 35 browser SSH scenarios, six targeted
+transition scenarios on the legacy fixture transport, type checking and production
+build. Three old UI regressions reproduced on the previous frontend. Six scenarios
+against the deployed bundle also passed with browser-local API/WebSocket fixtures:
+no real account/session, SSH authentication, phone MFA, recording or exam was created.
+The tests observe DOM commits across held responses, failures, retries, late polls,
+early completion events and delayed sign-out. Existing screenshots, including the
+user's modified login image, were preserved.
+
+For web rollback, drain attempts and retag the retained prior image. No native or
+schema rollback is needed; preserve all current metadata and protected submissions.
+Never restore an inspection database over newer attempt state.
+
 ## Session transition update, 2026-10-16
 
 Deployed web source `3c12fd4` to marco on October 16 (19:06 UTC).
@@ -15,7 +59,7 @@ committed together. Sent answers clear immediately; successful completion is not
 posted twice when retrying exam-data loading. Sign-out retains SSH control long
 enough for the existing agent cleanup to finish.
 
-- Current image: `ssh-exam-workspace:session-3c12fd4`, also tagged `:1.0.0`.
+- Image at this update: `ssh-exam-workspace:session-3c12fd4`, then tagged `:1.0.0`.
 - Image ID: `sha256:b44e95b2ae271b157c35c45f57c4db1830f3042d57f1fa578b4b0d82436b934d`.
 - Previous image retained as `ssh-exam-workspace:pre-session-3c12fd4`.
 - Consistent metadata and private configuration/trust/secrets backup:

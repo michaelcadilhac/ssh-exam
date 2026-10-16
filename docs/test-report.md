@@ -452,3 +452,39 @@ The deployed bundle passed delayed-session and delayed-handoff browser checks wi
 local response fixtures and no real credentials/MFA/exam. Both transitional views
 were visually inspected. Deployment/readiness/backups are recorded in
 [the deployment log](browser-ssh-deployment.md).
+
+
+## Workspace transitions — 2026-10-16
+
+Audited logout, opening preflight, paused page restoration/continuation and Finish.
+The source page or confirmation now stays visible through pending requests and
+repeated actions are blocked. Instructor logout goes directly to instructor sign-in
+in place. A locked workspace is covered from its first render, including before its
+WebSocket bind acknowledgment. A fresh connection is labelled Connecting.
+
+Collection stays visible through Finish acknowledgment, early secured callbacks and
+sign-out, without an active-workspace or secured-receipt interlude. Unconfirmed finish
+and failed logout are retryable in place; failed collection shows recovery, never
+success. After confirmed Finish, late active snapshots cannot re-arm monitoring.
+Status replies started before begin/continue/finish are ignored afterward; lower
+clock/generation data and older snapshots cannot undo acknowledged transitions.
+Fresh authoritative locks/timing changes still apply. Replaced or unmounted workspace
+sockets cannot alter the new view. The first terminal is opened after the retained
+start confirmation closes, preserving its floating window, focus and input behavior.
+
+Six added browser scenarios hold requests and observe DOM commits across normal,
+failed, retry and reordered responses. They cover administrator logout at the home
+URL; delayed preflight/bind; pending preflight sign-out including Escape; immediate
+pause coverage, failed continuation and late locked replies; delayed finish/secured
+callbacks/logout retry; and unconfirmed finish followed by collection failure.
+A heartbeat assertion verifies no false monitoring incident after Finish. Three
+reported transitions failed with the previous frontend and pass with the fix.
+
+Validation passed: **126 application tests**, **35 browser SSH scenarios**, **six
+legacy transition scenarios**, type checking and production build. All **six checks
+against the deployed bundle** passed using browser-local API/WebSocket fixtures;
+these did not create real sessions, SSH logins, MFA requests, recordings or exams.
+The existing suite still covers real fixture SSH, terminal input/first-window
+behavior, pause/reauthentication, clock controls, fullscreen and focus policy.
+Existing screenshots and the user's modified login image were preserved. Deployment
+and recovery details are in [the deployment log](browser-ssh-deployment.md).
