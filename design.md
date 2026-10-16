@@ -198,6 +198,8 @@ Authenticate the student through the two-hop SSH flow. A typed username is not a
 
 Authentication UI requirements:
 
+- On page load, resolve the session and public login configuration before rendering a sign-in form or authenticated interface. A student identity and its exam details become visible together. Only a confirmed unauthenticated response may select sign-in; network/service failures retain a neutral loading/retry view.
+- Keep the SSH authentication panel and host messages visible while completing the web session and loading exam details. Discard sent answers immediately; do not show the initial login form or a partial authenticated page between these steps. A failed handoff remains retryable in place without re-sending a completed authentication exchange.
 - Display which host is authenticating, using configured trusted names.
 - Support password authentication and multi-round keyboard-interactive authentication.
 - Render server banners, prompt text, and keyboard-interactive instructions as **plain text**.

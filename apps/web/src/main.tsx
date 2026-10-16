@@ -13,7 +13,16 @@ import "./style.css";
 import { browserSSH } from "./browser-ssh.js";
 import { checkExamBrowser, examBrowserIssue } from "./browser-support.js";
 function App() {
-  const [user, setUser] = useState<any>(null),
+  const [{ user, info }, setSession] = useState<any>({
+      user: null,
+      info: null,
+    }),
+    [initialization, setInitialization] = useState<
+      "loading" | "ready" | "failed"
+    >("loading"),
+    [authPhase, setAuthPhase] = useState<
+      "idle" | "connecting" | "completing" | "failed"
+    >("idle"),
     [error, setError] = useState(""),
     [challenge, setChallenge] = useState<AuthChallenge | null>(null),
     [responding, setResponding] = useState(false),
@@ -21,7 +30,6 @@ function App() {
     [examId, setExamId] = useState(""),
     [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
-    [info, setInfo] = useState<any>(null),
     [reservation, setReservation] = useState<any>(null),
     [answers, setAnswers] = useState<string[]>([]),
     [loginTest, setLoginTest] = useState<any>(null),
@@ -43,21 +51,44 @@ function App() {
     });
   };
   const admin = location.pathname.startsWith("/admin");
-  const load = async () => {
-    const session = await api("/session");
-    setCsrf(session.csrf);
-    setUser(session);
-    if (session.role === "student") {
-      setExamId(session.exam);
-      setUsername(session.username);
-      setInfo(await api("/student/exam"));
+  const completionAccepted = useRef(false);
+  const authAttempt = useRef(0);
+  const readSession = async () => {
+    const user = await api("/session");
+    const info = user.role === "student" ? await api("/student/exam") : null;
+    return { user, info };
+  };
+  const applySession = (next: Awaited<ReturnType<typeof readSession>>) => {
+    setCsrf(next.user?.csrf || "");
+    if (next.user?.role === "student") {
+      setExamId(next.user.exam);
+      setUsername(next.user.username);
+    }
+    // Commit identity and its destination data together, never a partial page.
+    setSession(next);
+  };
+  const load = async () => applySession(await readSession());
+  const initialize = async () => {
+    setInitialization("loading");
+    setError("");
+    try {
+      const [next, settings] = await Promise.all([
+        readSession().catch((e) => {
+          if (e.status === 401) return { user: null, info: null };
+          throw e;
+        }),
+        api("/login-test"),
+      ]);
+      applySession(next);
+      setLoginTest(settings);
+      setInitialization("ready");
+    } catch (e) {
+      setError((e as Error).message);
+      setInitialization("failed");
     }
   };
   useEffect(() => {
-    void load().catch(() => {});
-    void api("/login-test")
-      .then(setLoginTest)
-      .catch(() => {});
+    void initialize();
   }, []);
   const action = async (fn: () => Promise<any>) => {
     setError("");
@@ -89,26 +120,55 @@ function App() {
   };
   const browserBlocked = browserCheck.checking || !!browserCheck.issue;
   const logout = async () => {
+    // The retained control socket must finish SSH cleanup before invalidation.
     await api("/logout", {});
+    ++authAttempt.current;
     browserSSH.close();
     authSocket?.close();
     setCsrf("");
     setReservation(null);
-    setUser(null);
-    setInfo(null);
+    setSession({ user: null, info: null });
     setChallenge(null);
     setAuthSocket(null);
     clearAuthAnswers();
     setPassword("");
+    setAuthPhase("idle");
+  };
+  const finishLogin = async () => {
+    setAuthPhase("completing");
+    setError("");
+    try {
+      if (!completionAccepted.current) {
+        await api("/auth/complete", {});
+        completionAccepted.current = true;
+      }
+      await load();
+      setChallenge(null);
+      setAuthPhase("idle");
+    } catch (e) {
+      setError((e as Error).message);
+      setAuthPhase("failed");
+    }
   };
   const login = async () => {
     await requireExamBrowser();
+    const attempt = ++authAttempt.current;
+    completionAccepted.current = false;
+    setAuthPhase("connecting");
     setChallenge(null);
     clearAuthAnswers();
     setResponding(false);
-    await api("/auth/start", {});
+    try {
+      await api("/auth/start", {});
+    } catch (e) {
+      setAuthPhase("idle");
+      throw e;
+    }
+    if (attempt !== authAttempt.current) return;
+    let handedOff = false;
     const s = socket("/auth/dialogue");
     browserSSH.begin(s, (m) => {
+      if (attempt !== authAttempt.current || handedOff) return;
       setChallenge((current) => updateAuthChallenge(current, m));
       if (m.type === "challenge") {
         setResponding(false);
@@ -119,8 +179,10 @@ function App() {
     s.onopen = () =>
       s.send(JSON.stringify({ v: 1, type: "start", exam: examId, username }));
     s.onmessage = (e) => {
+      if (attempt !== authAttempt.current) return;
       const m = JSON.parse(e.data);
       if (browserSSH.handle(m)) return;
+      if (handedOff) return;
       if (m.type === "challenge" || m.type === "notice") {
         setChallenge((current) => updateAuthChallenge(current, m));
       }
@@ -129,35 +191,37 @@ function App() {
         replaceAnswers(m.prompts.map(() => ""));
       }
       if (m.type === "authenticated") {
-        setChallenge(null);
+        handedOff = true;
         clearAuthAnswers();
         if (!browserSSH.active) s.close();
         setAuthSocket(null);
-        void action(async () => {
-          await api("/auth/complete", {});
-          await load();
-        });
+        void finishLogin();
       }
       if (m.type === "error") {
         browserSSH.close();
         clearAuthAnswers();
         setError(m.error);
+        setAuthPhase("idle");
         setChallenge(null);
         setAuthSocket(null);
         s.close();
       }
     };
     s.onclose = () => {
+      if (attempt !== authAttempt.current || handedOff) return;
+      setAuthPhase("idle");
       setAuthSocket(null);
       setChallenge(null);
       clearAuthAnswers();
     };
   };
   useEffect(() => {
-    if (!challenge) return;
+    if (authPhase !== "connecting") return;
     const escape = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
+      ++authAttempt.current;
+      setAuthPhase("idle");
       authSocket?.send(JSON.stringify({ v: 1, type: "cancel" }));
       authSocket?.close();
       setChallenge(null);
@@ -166,7 +230,7 @@ function App() {
     };
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
-  }, [challenge, authSocket]);
+  }, [challenge, authSocket, authPhase]);
   return (
     <>
       {error && (
@@ -175,7 +239,18 @@ function App() {
           <button onClick={() => setError("")}>Dismiss</button>
         </div>
       )}
-      {user?.role === "admin" ? (
+      {initialization !== "ready" ? (
+        <main
+          className="session-loading"
+          aria-busy={initialization === "loading"}
+        >
+          {initialization === "loading" ? (
+            <p role="status">Loading…</p>
+          ) : (
+            <button onClick={() => void initialize()}>Retry loading</button>
+          )}
+        </main>
+      ) : user?.role === "admin" ? (
         <>
           {loginTest?.functionalTest && (
             <p className="notice">
@@ -198,8 +273,7 @@ function App() {
           onSignOut={logout}
           onReauthenticate={(exam, name) => {
             setReservation(null);
-            setUser(null);
-            setInfo(null);
+            setSession({ user: null, info: null });
             setExamId(exam);
             setUsername(name);
             setCsrf("");
@@ -326,8 +400,7 @@ function App() {
                                     `/student/attempts/${info.attempt.id}/reauth`,
                                     {},
                                   );
-                                  setUser(null);
-                                  setInfo(null);
+                                  setSession({ user: null, info: null });
                                 })
                               }
                             >
@@ -432,13 +505,18 @@ function App() {
                   </label>
                   <button className="primary">Sign in</button>
                 </form>
-              ) : browserBlocked ? null : challenge ? (
+              ) : browserBlocked ? null : challenge || authPhase !== "idle" ? (
                 <form
                   key="ssh-challenge"
                   ref={authFormRef}
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (!challenge.prompts.length || responding) return;
+                    if (
+                      authPhase !== "connecting" ||
+                      !challenge?.prompts.length ||
+                      responding
+                    )
+                      return;
                     setResponding(true);
                     try {
                       if (browserSSH.usingBrowser)
@@ -459,14 +537,14 @@ function App() {
                     }
                   }}
                 >
-                  <small>{challenge.host}</small>
+                  {challenge && <small>{challenge.host}</small>}
                   <h2>SSH authentication</h2>
-                  {!!challenge.instructions?.length && (
+                  {!!challenge?.instructions?.length && (
                     <div
                       className="challenge"
                       aria-label="Host authentication messages"
                     >
-                      {challenge.instructions
+                      {challenge!.instructions
                         .flatMap(authMessageBlocks)
                         .map((block, i) =>
                           block.kind === "separator" ? (
@@ -479,8 +557,11 @@ function App() {
                         )}
                     </div>
                   )}
-                  {challenge.prompts.map((p: any, i: number) => (
-                    <label key={`${challenge.round}-${i}`}>
+                  {(authPhase === "connecting"
+                    ? challenge?.prompts || []
+                    : []
+                  ).map((p: any, i: number) => (
+                    <label key={`${challenge!.round}-${i}`}>
                       {p.prompt}
                       <input
                         type={p.echo ? "text" : "password"}
@@ -498,7 +579,13 @@ function App() {
                       />
                     </label>
                   ))}
-                  {challenge.prompts.length ? (
+                  {authPhase === "failed" ? (
+                    <button type="button" onClick={() => void finishLogin()}>
+                      Retry opening exam
+                    </button>
+                  ) : authPhase === "completing" ? (
+                    <p role="status">Opening your exam…</p>
+                  ) : challenge?.prompts.length ? (
                     <button className="primary" disabled={responding}>
                       {responding
                         ? "Waiting for host…"
@@ -506,24 +593,29 @@ function App() {
                     </button>
                   ) : (
                     <p>
-                      Waiting for this host. Complete phone approval if
-                      requested above…
+                      {challenge
+                        ? "Waiting for this host. Complete phone approval if requested above…"
+                        : "Connecting to SSH…"}
                     </p>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      authSocket?.send(
-                        JSON.stringify({ v: 1, type: "cancel" }),
-                      );
-                      authSocket?.close();
-                      clearAuthAnswers();
-                      setChallenge(null);
-                      setAuthSocket(null);
-                    }}
-                  >
-                    Cancel
-                  </button>
+                  {authPhase === "connecting" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        ++authAttempt.current;
+                        setAuthPhase("idle");
+                        authSocket?.send(
+                          JSON.stringify({ v: 1, type: "cancel" }),
+                        );
+                        authSocket?.close();
+                        clearAuthAnswers();
+                        setChallenge(null);
+                        setAuthSocket(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </form>
               ) : (
                 <form
@@ -581,7 +673,7 @@ function App() {
                   </button>
                 </form>
               )}
-              {!admin && !user && !browserBlocked && (
+              {!admin && !user && !browserBlocked && authPhase === "idle" && (
                 <p className="login-note">
                   {loginTest?.loginOnly
                     ? "Login test only; no exam or recording starts."

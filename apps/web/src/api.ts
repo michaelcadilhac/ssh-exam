@@ -13,7 +13,10 @@ export async function api(url: string, body?: any, page?: string) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const result = await res.json();
-  if (!res.ok) throw Error(result.error || "Request failed");
+  if (!res.ok)
+    throw Object.assign(Error(result.error || "Request failed"), {
+      status: res.status,
+    });
   return result;
 }
 export const socket = (url: string) =>

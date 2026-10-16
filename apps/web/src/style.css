@@ -105,6 +105,11 @@ h2 {
   padding: 28px;
   border-radius: 14px;
 }
+.session-loading {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+}
 .landing {
   max-width: 620px;
   margin: auto;
