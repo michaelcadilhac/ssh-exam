@@ -28,12 +28,12 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 		return err
 	}
 	defer guard.Close()
-	if !attemptID.MatchString(r.ResetID) || len(strings.TrimSpace(r.Actor)) == 0 || len(r.Actor) > 128 || r.RemainingSeconds < 60 || r.RemainingSeconds > 21600 || r.RemainingSeconds%60 != 0 {
+	if !attemptID.MatchString(r.ResetID) || len(strings.TrimSpace(r.Actor)) == 0 || len(r.Actor) > 128 || !validClockAdjustment(r) {
 		return errors.New("invalid clock reset")
 	}
 	for _, previous := range a.ClockResets {
 		if previous.ID == r.ResetID {
-			if previous.Actor != r.Actor || previous.RequestedAt != r.RequestedAt || previous.RemainingSeconds != r.RemainingSeconds || previous.Revision != r.ClockRevision+1 || previous.PreviousDeadline != r.Deadline {
+			if previous.Actor != r.Actor || previous.RequestedAt != r.RequestedAt || previous.RemainingSeconds != r.RemainingSeconds || previous.ExtendSeconds != r.ExtendSeconds || previous.Revision != r.ClockRevision+1 || previous.PreviousDeadline != r.Deadline {
 				return errors.New("conflicting clock reset retry")
 			}
 			return nil // Lost acknowledgments do not restart the clock again.
@@ -58,18 +58,29 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 		a.Boot = boot()
 	}
 	previous := a.Deadline
-	a.Deadline = r.RequestedAt + r.RemainingSeconds*1000
+	if r.ExtendSeconds > 0 {
+		a.Deadline = previous + r.ExtendSeconds*1000
+	} else {
+		a.Deadline = r.RequestedAt + r.RemainingSeconds*1000
+	}
 	a.UptimeDeadline = uptime() + float64(a.Deadline-now)/1000
 	a.TimingPendingSince = 0
 	a.TimingNextCheck = 0
 	a.TimingVerifiedAt = 0
 	a.TimingVerifiedDeadline = 0
 	a.ClockRevision++
-	a.ClockResets = append(a.ClockResets, ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, Revision: a.ClockRevision})
+	a.ClockResets = append(a.ClockResets, ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, ExtendSeconds: r.ExtendSeconds, Revision: a.ClockRevision})
 	// Persist before releasing the cutoff barrier, not just at the caller's final save.
 	if err := e.save(); err != nil {
 		return err
 	}
 	e.Audit("instructor-clock-reset", a.ID)
 	return nil
+}
+
+func validClockAdjustment(r Request) bool {
+	if r.ExtendSeconds != 0 {
+		return r.RemainingSeconds == 0 && r.ExtendSeconds >= 60 && r.ExtendSeconds <= 21600 && r.ExtendSeconds%60 == 0
+	}
+	return r.RemainingSeconds >= 60 && r.RemainingSeconds <= 21600 && r.RemainingSeconds%60 == 0
 }

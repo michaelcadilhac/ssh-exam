@@ -127,7 +127,7 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
           ).json()
         ).attempt.export_status,
     )
-    .toBe("ready");
+    .toBe("server-only");
   expect(
     (await (await page.request.get("/api/student/exam")).json()).sshConnected,
   ).toBe(true);
@@ -233,20 +233,25 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await page.getByLabel("Username", { exact: true }).fill("instructor");
   await page.getByLabel("Password", { exact: true }).fill("fixture-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue(
-    "sample",
+  await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(
+    "",
   );
-  await page.getByLabel("Selected exam", { exact: true }).selectOption("");
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await page.getByRole("button", { name: "New exam", exact: true }).click();
   await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue("");
   await page.getByLabel("Exam ID", { exact: true }).fill("admin-created");
   await page.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(
     "admin-created",
   );
+  await page.getByRole("button", { name: "Add student", exact: true }).click();
   await page.getByLabel("Student username", { exact: true }).fill("student02");
   await page.getByLabel("Webcam for this student").selectOption("false");
-  await page.getByRole("button", { name: "Add student", exact: true }).click();
-  const roster = page.getByRole("table", { name: "Exam roster" });
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Add student", exact: true })
+    .click();
+  const roster = page.getByRole("table", { name: "Students and attempts" });
   await expect(
     roster.getByRole("row").filter({ hasText: "student02" }),
   ).toContainText("Not required");
@@ -280,6 +285,57 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await page.getByRole("button", { name: "Confirm import" }).click();
   await expect(roster).toContainText("student01");
   await expect(roster).toContainText("student03");
+  await page
+    .getByRole("checkbox", { name: "Select student student01", exact: true })
+    .check();
+  await page
+    .getByRole("checkbox", { name: "Select student student03", exact: true })
+    .check();
+  await page
+    .getByLabel("Student action", { exact: true })
+    .selectOption("duration");
+  await page
+    .getByRole("button", { name: "Apply to 2 students", exact: true })
+    .click();
+  let settings = page.getByRole("dialog", {
+    name: "Set duration",
+    exact: true,
+  });
+  await settings.getByRole("checkbox", { name: /Use exam default/ }).uncheck();
+  await settings.getByLabel("Duration (minutes)", { exact: true }).fill("120");
+  await settings
+    .getByRole("button", { name: "Apply settings", exact: true })
+    .click();
+  await expect(settings).toHaveCount(0);
+  for (const name of ["student01", "student03"])
+    await expect(
+      roster.getByRole("rowgroup", { name, exact: true }),
+    ).toContainText("Future duration: 120 minutes");
+  await page
+    .getByRole("checkbox", { name: "Select student student01", exact: true })
+    .check();
+  await page
+    .getByRole("checkbox", { name: "Select student student03", exact: true })
+    .check();
+  await page
+    .getByLabel("Student action", { exact: true })
+    .selectOption("webcam");
+  await page
+    .getByRole("button", { name: "Apply to 2 students", exact: true })
+    .click();
+  settings = page.getByRole("dialog", {
+    name: "Set webcam requirement",
+    exact: true,
+  });
+  await settings.getByLabel("Webcam for future attempts").selectOption("false");
+  await settings
+    .getByRole("button", { name: "Apply settings", exact: true })
+    .click();
+  await expect(settings).toHaveCount(0);
+  await expect(
+    roster.getByRole("rowgroup", { name: "student03", exact: true }),
+  ).toContainText("Future: Not required");
+  await expect(page.getByRole("link", { name: /Download/ })).toHaveCount(0);
   await page.screenshot({
     path: "docs/screenshots/instructor-dashboard.png",
     fullPage: true,
@@ -287,6 +343,272 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Instructor sign-in" }),
+  ).toBeVisible();
+});
+
+test("exam selection scopes the grouped history and ignores late replies after switching", async ({
+  page,
+}) => {
+  await page.setExtraHTTPHeaders({ "X-Forwarded-For": "198.51.100.201" });
+  const unexpected: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/api/admin/attempts?")) unexpected.push(req.url());
+  });
+  let hold = false,
+    held = false,
+    release!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/admin/exams/sample/dashboard?*", async (route) => {
+    if (hold) {
+      held = true;
+      await waiting;
+    }
+    const start = Date.now() - 60000,
+      deadline = Date.now() + 300000;
+    await route.fulfill({
+      json: {
+        serverNow: Date.now(),
+        total: 1,
+        counts: { active: 1, locked: 0, collected: 1 },
+        incidents: [],
+        students: [
+          {
+            username: "history-only-user",
+            enrollment: { duration: null, webcam: null },
+            attempts: [
+              {
+                id: "11111111-1111-4111-8111-111111111111",
+                username: "history-only-user",
+                exam: "sample",
+                state: "ACTIVE",
+                working: true,
+                start,
+                deadline,
+                settings: JSON.stringify({ webcam: true }),
+                attempt_number: 2,
+              },
+              {
+                id: "22222222-2222-4222-8222-222222222222",
+                username: "history-only-user",
+                exam: "sample",
+                state: "COMPLETED",
+                start: start - 3600000,
+                deadline: start,
+                protected: 1,
+                settings: JSON.stringify({ webcam: false }),
+                attempt_number: 1,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+  await page.goto("/admin");
+  await page.getByLabel("Username", { exact: true }).fill("instructor");
+  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const selector = page.getByLabel("Selected exam", { exact: true });
+  await expect(selector).toHaveValue("");
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await selector.selectOption("sample");
+  const table = page.getByRole("table", { name: "Students and attempts" });
+  await expect(table.locator(".attempt-row")).toHaveCount(2);
+  await expect(
+    table.getByRole("rowgroup", { name: "history-only-user", exact: true }),
+  ).toContainText("Future:");
+  await page
+    .getByLabel("Filter attempts", { exact: true })
+    .selectOption("COMPLETED");
+  await expect(table.locator(".attempt-row")).toHaveCount(1);
+  await expect(table.locator(".attempt-row")).toContainText("Attempt 1");
+  await page.getByLabel("Filter attempts", { exact: true }).selectOption("");
+  let releaseReview!: () => void;
+  const waitReview = new Promise<void>((resolve) => {
+    releaseReview = resolve;
+  });
+  let reviewCalls = 0,
+    oldReviewSent = false;
+  await page.route(
+    "**/api/admin/attempts/11111111-1111-4111-8111-111111111111/recordings",
+    async (route) => {
+      const number = ++reviewCalls;
+      if (number === 1) await waitReview;
+      await route.fulfill({
+        json: {
+          frames: [],
+          terminals: [],
+          manifest: { label: number === 1 ? "stale-receipt" : "fresh-receipt" },
+        },
+      });
+      if (number === 1) oldReviewSent = true;
+    },
+  );
+  await table
+    .locator(".attempt-row")
+    .first()
+    .getByRole("button", { name: "Review", exact: true })
+    .click();
+  try {
+    await expect.poll(() => reviewCalls).toBe(1);
+    await page
+      .getByRole("button", { name: "Close review", exact: true })
+      .click();
+    await table
+      .locator(".attempt-row")
+      .first()
+      .getByRole("button", { name: "Review", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toContainText("fresh-receipt");
+    releaseReview();
+    await expect.poll(() => oldReviewSent).toBe(true);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    await expect(page.getByRole("dialog")).not.toContainText("stale-receipt");
+    await page
+      .getByRole("button", { name: "Close review", exact: true })
+      .click();
+  } finally {
+    releaseReview();
+  }
+  await page.screenshot({
+    path: test.info().outputPath("exam-dashboard.png"),
+    fullPage: true,
+  });
+  await selector.selectOption("camera");
+  await expect(table).not.toContainText("history-only-user");
+  hold = true;
+  await selector.selectOption("sample");
+  try {
+    await expect.poll(() => held).toBe(true);
+    await selector.selectOption("camera");
+    release();
+    await expect(table).not.toContainText("history-only-user");
+    await expect(selector).toHaveValue("camera");
+    await expect(page.getByRole("link", { name: /Download/ })).toHaveCount(0);
+    expect(unexpected).toEqual([]);
+  } finally {
+    release();
+  }
+});
+
+test("instructor creates an administrator with confirmation, cancellation and duplicate protection", async ({
+  page,
+}) => {
+  await page.setExtraHTTPHeaders({ "X-Forwarded-For": "198.51.100.202" });
+  await page.goto("/admin");
+  await page.getByLabel("Username", { exact: true }).fill("instructor");
+  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const add = page.getByRole("button", {
+    name: "Add administrator",
+    exact: true,
+  });
+  await add.click();
+  let dialog = page.getByRole("dialog", { name: "Add administrator" });
+  await dialog
+    .getByLabel("Administrator username", { exact: true })
+    .fill("cancelled-admin");
+  await dialog
+    .getByLabel("Password", { exact: true })
+    .fill("cancelled-password");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(add).toBeFocused();
+  await add.click();
+  dialog = page.getByRole("dialog", { name: "Add administrator" });
+  await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue("");
+  await expect(
+    dialog.getByLabel("Administrator username", { exact: true }),
+  ).toHaveValue("");
+  await dialog
+    .getByLabel("Administrator username", { exact: true })
+    .fill("helper-admin");
+  await dialog
+    .getByLabel("Password", { exact: true })
+    .fill("helper-admin-password");
+  await dialog
+    .getByLabel("Confirm password", { exact: true })
+    .fill("mismatched-password");
+  await dialog
+    .getByRole("button", { name: "Create administrator", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Passwords do not match",
+  );
+  await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue("");
+  await expect(
+    dialog.getByLabel("Confirm password", { exact: true }),
+  ).toHaveValue("");
+  await dialog
+    .getByLabel("Password", { exact: true })
+    .fill("helper-admin-password");
+  await dialog
+    .getByLabel("Confirm password", { exact: true })
+    .fill("helper-admin-password");
+  let release!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/admin/administrators", async (route) => {
+    await waiting;
+    await route.continue();
+  });
+  try {
+    await dialog
+      .getByRole("button", { name: "Create administrator", exact: true })
+      .click();
+    await expect(
+      dialog.getByRole("button", { name: "Creating…", exact: true }),
+    ).toBeDisabled();
+    await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue(
+      "",
+    );
+    await expect(
+      dialog.getByLabel("Confirm password", { exact: true }),
+    ).toHaveValue("");
+  } finally {
+    release();
+  }
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Administrator helper-admin created." }),
+  ).toBeVisible();
+  await page.unroute("**/api/admin/administrators");
+  await add.click();
+  await dialog
+    .getByLabel("Administrator username", { exact: true })
+    .fill("helper-admin");
+  await dialog
+    .getByLabel("Password", { exact: true })
+    .fill("different-admin-password");
+  await dialog
+    .getByLabel("Confirm password", { exact: true })
+    .fill("different-admin-password");
+  await dialog
+    .getByRole("button", { name: "Create administrator", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText("already exists");
+  await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue("");
+  await dialog.screenshot({
+    path: test.info().outputPath("add-administrator.png"),
+  });
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.getByLabel("Username", { exact: true }).fill("helper-admin");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("helper-admin-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(add).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Exams", exact: true }),
   ).toBeVisible();
 });
 
@@ -527,6 +849,80 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
   await expect(
     page.getByRole("button", { name: "Start SSH sign-in" }),
   ).toBeVisible();
+});
+
+test("preflight errors stay visible inside fullscreen and keyboard lock can be retried", async ({
+  page,
+}) => {
+  await simulatedMedia(page);
+  await studentSignIn(page, "sandbox", "student08");
+  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
+  await page.evaluate(() => {
+    (navigator as any).keyboard.lock = async () => {
+      throw new DOMException(
+        "lock() request could not be registered.",
+        "InvalidStateError",
+      );
+    };
+  });
+  const lock = page.getByRole("button", {
+    name: "3. Lock keyboard",
+    exact: true,
+  });
+  await lock.click();
+  const error = page.getByRole("dialog", { name: "Keyboard lock failed" });
+  await expect(error).toBeVisible();
+  await expect(error).toContainText("standalone desktop Chrome or Chromium");
+  await expect(error).toContainText("lock() request could not be registered.");
+  await error.screenshot({
+    path: test.info().outputPath("fullscreen-keyboard-error.png"),
+  });
+  expect(
+    await error.evaluate((el) => document.fullscreenElement?.contains(el)),
+  ).toBe(true);
+  await expect(lock).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    page.getByRole("button", { name: "Begin exam", exact: true }),
+  ).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(error).toHaveCount(0);
+  expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  await expect(lock).toBeFocused();
+  await page.evaluate(() => {
+    (navigator as any).keyboard.lock = async () => {};
+  });
+  await lock.click();
+  await expect(lock).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: "Begin exam", exact: true }),
+  ).toBeEnabled();
+
+  // Server failures after a confirmation use the same fullscreen error path.
+  await page.route("**/api/student/attempts/*/begin", (route) =>
+    route.fulfill({
+      status: 409,
+      json: { error: "Exam cannot start right now." },
+    }),
+  );
+  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click();
+  const startError = page.getByRole("dialog", { name: "Workspace error" });
+  await expect(startError).toBeVisible();
+  await expect(startError).toContainText("Exam cannot start right now.");
+  expect(
+    await startError.evaluate((el) => document.fullscreenElement?.contains(el)),
+  ).toBe(true);
+  await startError.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(startError).toHaveCount(0);
+  expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  expect(
+    (await (await page.request.get("/api/student/exam")).json()).attempt.start,
+  ).toBeNull();
 });
 
 async function simulatedMedia(page: import("@playwright/test").Page) {
@@ -870,13 +1266,12 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
     const submission = await admin.get(
       `/api/admin/attempts/${attempt.id}/submission`,
     );
-    expect(submission.status()).toBe(200);
-    expect((await submission.body()).toString()).toBe("TEST-FIXTURE-ARCHIVE");
+    expect(submission.status()).toBe(404);
     expect(
       (
         await page.request.get(`/api/admin/attempts/${attempt.id}/submission`)
       ).status(),
-    ).toBe(401);
+    ).toBe(404);
   } finally {
     await admin.dispose();
   }
@@ -942,7 +1337,7 @@ test("one Finish exam action confirms, secures work and signs out; cancellation 
           await admin.get(`/api/admin/attempts/${attempt.id}/submission`)
         ).status(),
       )
-      .toBe(200);
+      .toBe(404);
     const list = await (await admin.get("/api/admin/attempts")).json();
     const completed = list.attempts.find((a: any) => a.id === attempt.id);
     expect(completed.state).toBe("COMPLETED");
@@ -1260,6 +1655,7 @@ test("instructor sees a working student and live clock, resets time without disc
   page,
   browser,
 }) => {
+  test.setTimeout(60000);
   const instructorBrowser = await browser.browserType().launch({
     headless: true,
     executablePath: process.env.CHROMIUM || "/usr/bin/chromium",
@@ -1302,20 +1698,26 @@ test("instructor sees a working student and live clock, resets time without disc
     const original = (
       await (await page.request.get("/api/student/exam")).json()
     ).attempt;
-    const roster = instructor.getByRole("table", { name: "Exam roster" });
-    const row = roster.getByRole("row").filter({ hasText: "student06" });
+    const roster = instructor.getByRole("table", {
+      name: "Students and attempts",
+    });
+    const row = roster.getByRole("rowgroup", {
+      name: "student06",
+      exact: true,
+    });
     await expect(row).toContainText("Working", { timeout: 10000 });
     await expect(row).toContainText(/4:\d{2}|5:00/);
     await row
       .getByRole("button", { name: "Reset clock for student06" })
       .click();
-    await expect(instructor.getByLabel("Minutes remaining")).toHaveValue("5");
+    await expect(instructor.getByRole("dialog")).toContainText(
+      "reset to 5 minutes",
+    );
     await instructor.keyboard.press("Escape");
     await expect(instructor.getByRole("dialog")).toHaveCount(0);
     await row
       .getByRole("button", { name: "Reset clock for student06" })
       .click();
-    await instructor.getByLabel("Minutes remaining").fill("2");
     await instructor
       .getByRole("button", { name: "Apply reset", exact: true })
       .click();
@@ -1334,12 +1736,41 @@ test("instructor sees a working student and live clock, resets time without disc
     expect(updated.original_deadline).toBe(original.deadline);
     expect(updated.generation).toBe(original.generation);
     expect(updated.state).toBe("ACTIVE");
-    expect(updated.deadline - Date.now()).toBeGreaterThan(110000);
-    expect(updated.deadline - Date.now()).toBeLessThanOrEqual(120000);
-    await expect(row).toContainText(/1:\d{2}|2:00/);
-    const clockText = await row.locator("td").nth(3).innerText();
+    expect(updated.deadline - Date.now()).toBeGreaterThan(290000);
+    expect(updated.deadline - Date.now()).toBeLessThanOrEqual(300000);
+    await row
+      .getByRole("checkbox", {
+        name: `Select attempt ${updated.id}`,
+        exact: true,
+      })
+      .check();
+    await instructor
+      .getByLabel("Attempt action", { exact: true })
+      .selectOption("extend");
+    await instructor
+      .getByRole("button", { name: "Apply to 1 attempt", exact: true })
+      .click();
+    await instructor.getByLabel("Minutes to add", { exact: true }).fill("3");
+    await instructor
+      .getByRole("button", { name: "Apply extension", exact: true })
+      .click();
+    await expect(instructor.getByRole("dialog")).toHaveCount(0);
     await expect
-      .poll(() => row.locator("td").nth(3).innerText())
+      .poll(
+        async () =>
+          (await (await page.request.get("/api/student/exam")).json()).attempt
+            .clock_revision,
+      )
+      .toBe(2);
+    const extended = (
+      await (await page.request.get("/api/student/exam")).json()
+    ).attempt;
+    expect(extended.deadline).toBe(updated.deadline + 180000);
+    expect(extended.original_deadline).toBe(original.deadline);
+    await expect(row).toContainText(/7:\d{2}|8:00/);
+    const clockText = await row.locator("tr.attempt-row td").nth(4).innerText();
+    await expect
+      .poll(() => row.locator("tr.attempt-row td").nth(4).innerText())
       .not.toBe(clockText);
     const terminal = page.locator(".winbox").first();
     await terminal.locator(".xterm-helper-textarea").focus();
@@ -1359,7 +1790,9 @@ test("instructor sees a working student and live clock, resets time without disc
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
     await expect(row).toContainText("COMPLETED", { timeout: 10000 });
-    const attempts = instructor.getByRole("table", { name: "Exam attempts" });
+    const attempts = instructor.getByRole("table", {
+      name: "Students and attempts",
+    });
     await expect(
       attempts.getByRole("row").filter({ hasText: "student06" }),
     ).not.toContainText("Working");

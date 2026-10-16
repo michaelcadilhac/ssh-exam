@@ -38,7 +38,7 @@ export class Monitoring {
       terminalRecordingLimitMiB > 1048576
     )
       throw Error("Invalid terminal recording limit");
-    for (const d of ["monitoring", "submissions"])
+    for (const d of ["monitoring", "receipts", "submissions"])
       mkdirSync(`${store.dir}/${d}`, { recursive: true, mode: 0o700 });
   }
   private async accept(a: Attempt, input: any, page: string) {

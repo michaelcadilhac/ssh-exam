@@ -108,12 +108,11 @@ it("deadline UI waits for local collection callbacks without issuing disconnecte
     });
     t.collect();
     t.life().acceptRemote(t.remote, t.manifest());
-    t.life().receiveArchive("a", t.remote.checksum, t.archive);
     expect(t.store().attempt("a")).toMatchObject({
       state: "COMPLETED",
       protected: 1,
       reason: "expiration",
-      export_status: "ready",
+      export_status: "server-only",
       access_state: "HELD",
     });
   } finally {
@@ -141,7 +140,7 @@ it("early finish blocks input immediately and preserves the original deadline an
       deadline,
       protected: 1,
       access_state: "HELD",
-      export_status: "pending",
+      export_status: "server-only",
     });
     expect(stages.slice(0, 2)).toEqual(["input blocked", "SSH closed"]);
   } finally {
@@ -163,19 +162,20 @@ it("concurrent finish and deadline display events issue only one connected final
     t.close();
   }
 });
-it("failed transfers retry by callbacks after restart without recollection", async () => {
+it("archive reception is disabled; receipts recover after restart without recollection", async () => {
   const t = setup();
   try {
     await t.life().finish("a", "student finish");
     expect(() =>
-      t.life().receiveArchive("a", t.remote.checksum, Buffer.from("bad")),
-    ).toThrow("verification");
+      t.life().receiveArchive("a", t.remote.checksum, t.archive),
+    ).toThrow("transfers are disabled");
     expect(existsSync(t.dir + "/submissions/a.tar.gz")).toBe(false);
     t.restart();
+    await t.life().reconcile("a");
     await t.life().tick();
     expect(t.calls()).toBe(1);
-    t.life().receiveArchive("a", t.remote.checksum, t.archive);
-    expect(readFileSync(t.dir + "/submissions/a.tar.gz")).toEqual(t.archive);
+    expect(t.store().attempt("a").export_status).toBe("server-only");
+    expect(existsSync(t.dir + "/submissions/a.tar.gz")).toBe(false);
   } finally {
     t.close();
   }
@@ -241,14 +241,12 @@ it("duplicate receipts never replace a submission and monitoring cleanup leaves 
   try {
     t.collect();
     t.life().acceptRemote(t.remote, t.manifest());
-    t.life().receiveArchive("a", t.remote.checksum, t.archive);
     t.life().acceptRemote(t.remote, t.manifest());
-    t.life().receiveArchive("a", t.remote.checksum, t.archive);
     t.store()
       .db.prepare("UPDATE attempts SET ended=? WHERE id='a'")
       .run(Date.now() - 61 * 86400000);
     new Monitoring(t.store()).cleanup();
-    expect(readFileSync(t.dir + "/submissions/a.tar.gz")).toEqual(t.archive);
+    expect(existsSync(t.dir + "/submissions/a.tar.gz")).toBe(false);
   } finally {
     t.close();
   }
@@ -313,29 +311,24 @@ it.each(["SSH", "callback"])(
       );
       const before = readFileSync(file);
       t.life().acceptRemote(t.remote, format === "SSH" ? callback : raw);
-      t.life().receiveArchive("a", t.remote.checksum, t.archive);
       Object.assign(t.manifest().attempt, raw.attempt);
       t.restart();
       await expect(t.life().reconcile("a")).resolves.toMatchObject({
         state: "COMPLETED",
       });
       expect(readFileSync(file)).toEqual(before);
-      expect(readFileSync(t.dir + "/submissions/a.tar.gz")).toEqual(t.archive);
+      expect(existsSync(t.dir + "/submissions/a.tar.gz")).toBe(false);
       expect(() =>
-        t
-          .life()
-          .acceptRemote(t.remote, {
-            ...callback,
-            files: [{ path: "changed.txt", size: 5, sha256: hash("other") }],
-          }),
+        t.life().acceptRemote(t.remote, {
+          ...callback,
+          files: [{ path: "changed.txt", size: 5, sha256: hash("other") }],
+        }),
       ).toThrow("cannot be replaced");
       expect(() =>
-        t
-          .life()
-          .acceptRemote(t.remote, {
-            ...callback,
-            collected: callback.collected + 1,
-          }),
+        t.life().acceptRemote(t.remote, {
+          ...callback,
+          collected: callback.collected + 1,
+        }),
       ).toThrow("cannot be replaced");
       expect(readFileSync(file)).toEqual(before);
     } finally {

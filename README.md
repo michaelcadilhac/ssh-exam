@@ -43,7 +43,7 @@ Create an instructor with your own password interactively:
     EXAM_CONFIG=var/demo/config.json npm run bootstrap-admin
 
 Visit /admin to configure exams, validate/preview/confirm CSV, review incidents, authorize
-continuation, set individual remaining clocks without disconnecting active students, view recordings and download submissions. Rosters show live working status and countdowns. CSV never creates Unix accounts.
+continuation, reset/extend current clocks without disconnecting active students, and view recordings. Select an exam first; one table groups every attempt under its student. Individual/bulk future duration and webcam settings are separate from current clock actions. CSV never creates Unix accounts.
 The demo course-account registry includes student01, student02 and student03. Only student01
 is initially enrolled; add the others with the instructor Add student control. All three use
 the same disposable shared SSH password above.
@@ -106,8 +106,9 @@ editor buffers are not included.
 The privileged class-server watchdog collects even with no browser or gateway. It verifies
 all workload writers are frozen, blocks uncontained writers, revokes new directory access,
 and publishes a verified private archive/manifest/checksum bundle. Restart recovery adopts
-that bundle; transfers retry it without recollecting live files. Authorized instructors
-download only verified exports. Archives use separate retention from 60-day monitoring.
+that bundle without recollecting live files. Archives stay on the SSH server; authorized
+server administrators retrieve verified copies locally with examctl. Only signed collection
+metadata and monitoring reach the webserver. Archives use separate retention from 60-day monitoring.
 Actual privileged systemd/cgroup deployment remains subject to the required operator checks
 in [compatibility.md](docs/compatibility.md).
 

@@ -104,15 +104,19 @@ func TestEarlyCollectionDurableCallbacksWithoutGateway(t *testing.T) {
 		t.Fatal("restart lost explicit pause or falsely acknowledged a transfer", status, err)
 	}
 	paused = false
-	if _, err := restarted.ExportDelivery(finalID, &paused, "Resume export after importing matching historical attempt"); err != nil {
+	if _, err := restarted.ExportDelivery(finalID, &paused, "Resume export after importing matching historical attempt"); err == nil {
+		t.Fatal("disabled archive export was re-enabled")
+	}
+	// Even legacy unpaused state cannot cause an archive upload after upgrade.
+	if err := restarted.WithState(func() error { delete(restarted.state.ExportPauses, finalID); return nil }); err != nil {
 		t.Fatal(err)
 	}
 	if err := restarted.DeliverCallbacks(); err != nil {
 		t.Fatal(err)
 	}
 	mu.Lock()
-	if archives != 1 || len(events) == 0 {
-		t.Fatal("restart lost pending receipt or transfer")
+	if archives != 0 || len(events) == 0 {
+		t.Fatal("protected archives must remain on the SSH server")
 	}
 	before := calls
 	mu.Unlock()

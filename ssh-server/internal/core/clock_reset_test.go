@@ -144,3 +144,35 @@ func TestCutoffCannotFreezeUsingADeadlineSupersededByReset(t *testing.T) {
 		t.Fatal("cutoff froze the superseded interval")
 	}
 }
+
+func TestAdditiveExtensionIsExactIdempotentAndDurable(t *testing.T) {
+	e, c, _ := finalFixture(t, "ACTIVE", Millis()+600123)
+	before := inspectFinal(t, e)
+	r := resetRequest(before)
+	r.RemainingSeconds = 0
+	r.ExtendSeconds = 300
+	if _, err := e.Call("reset-clock", r); err != nil {
+		t.Fatal(err)
+	}
+	a := inspectFinal(t, e)
+	if a.Deadline != before.Deadline+300000 || a.Start != before.Start || a.Lease != before.Lease || a.OriginalDeadline != before.Deadline || a.Generation != before.Generation || a.State != "ACTIVE" {
+		t.Fatalf("extension changed interval/session: %+v", a)
+	}
+	restarted, _ := New(c)
+	if _, err := restarted.Call("reset-clock", r); err != nil {
+		t.Fatal(err)
+	}
+	a = inspectFinal(t, restarted)
+	if a.ClockRevision != 1 || a.Deadline != before.Deadline+300000 || a.ClockResets[0].ExtendSeconds != 300 {
+		t.Fatal("extension was repeated or lost")
+	}
+	r.ExtendSeconds = 360
+	if _, err := restarted.Call("reset-clock", r); err == nil {
+		t.Fatal("conflicting extension retry accepted")
+	}
+	r.ExtendSeconds = 300
+	r.RemainingSeconds = 60
+	if _, err := restarted.Call("reset-clock", r); err == nil {
+		t.Fatal("ambiguous reset and extension accepted")
+	}
+}

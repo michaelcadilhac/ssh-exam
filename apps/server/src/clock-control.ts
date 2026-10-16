@@ -28,20 +28,27 @@ export class ClockControl {
     actor: string,
     revision: number,
     requestID: string = randomUUID(),
+    deferDelivery = false,
+    extend = false,
   ) {
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 360)
       throw Error("Enter 1–360 minutes remaining");
     const request = this.store.db.transaction(() => {
       const a = this.store.attempt(id);
       const existing = this.store.db
-        .prepare("SELECT body FROM clock_reset_requests WHERE id=?")
+        .prepare("SELECT body,status FROM clock_reset_requests WHERE id=?")
         .get(requestID) as any;
       if (existing) {
+        if (existing.status === "closed")
+          throw Error(
+            "Clock change was not applied because the attempt finished",
+          );
         const body = JSON.parse(existing.body);
         if (
           body.id !== id ||
           body.actor !== actor ||
-          body.remaining_seconds !== minutes * 60 ||
+          body.remaining_seconds !== (extend ? 0 : minutes * 60) ||
+          (body.extend_seconds || 0) !== (extend ? minutes * 60 : 0) ||
           body.clock_revision !== revision
         )
           throw Error("Conflicting clock reset retry");
@@ -68,7 +75,8 @@ export class ClockControl {
         reset_id: requestID,
         actor,
         requested_at: now(),
-        remaining_seconds: minutes * 60,
+        remaining_seconds: extend ? 0 : minutes * 60,
+        ...(extend ? { extend_seconds: minutes * 60 } : {}),
         deadline: a.deadline,
         clock_revision: revision,
       };
@@ -88,6 +96,7 @@ export class ClockControl {
     // Delivery failure is explicitly pending. The root agent will obtain this
     // durable request during its outbound check before deadline collection.
     if (
+      !deferDelivery &&
       this.pending(id) &&
       ["ACTIVE", "LOCKED"].includes(this.store.attempt(id).state) &&
       this.agent.connected(this.store.attempt(id).username)

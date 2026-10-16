@@ -195,7 +195,6 @@ function App() {
             ...reservation,
             functionalTest: !!loginTest?.functionalTest,
           }}
-          onError={setError}
           onSignOut={logout}
           onReauthenticate={(exam, name) => {
             setReservation(null);

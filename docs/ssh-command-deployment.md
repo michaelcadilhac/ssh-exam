@@ -1,3 +1,5 @@
+> Historical deployment record. Current archive policy keeps submissions on the SSH server; automatic web transfer/resume-export described below has been retired. See [instructor operations](instructor-operations.md) and [recovery](recovery-runbook.md).
+
 # SSH-command architecture deployment
 
 > Historical migration record. Later fixes, SMTP delivery and strict Linux isolation testing

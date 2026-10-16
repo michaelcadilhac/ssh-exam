@@ -1,3 +1,5 @@
+> Historical specification snapshot. The current [design](design.md), including exam-first administration, separate future settings/current clock actions, and SSH-server-only submission storage, supersedes conflicting download/export/dashboard suggestions below.
+
 # SSH Exam Workspace
 ## Implementation specification for Codex
 

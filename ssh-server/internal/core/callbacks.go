@@ -189,47 +189,9 @@ func (e *Engine) DeliverCallbacks() error {
 			return err
 		}
 	}
-	var exports []*Attempt
-	if err = e.WithState(func() error {
-		for id, a := range e.state.Attempts {
-			if a.Protected && !e.state.Exports[id] && e.state.ExportPauses[id] == "" {
-				v := *a
-				exports = append(exports, &v)
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
+	// Protected archives remain on this server. Only signed status/manifest
+	// metadata and monitoring records are sent to the webserver.
 	var failures []error
-	for _, a := range exports {
-		m, err := ReadProtected(filepath.Join(e.Config.State, "submissions", a.ID), a)
-		if err != nil {
-			failures = append(failures, fmt.Errorf("archive %s: %w", a.ID, err))
-			continue
-		}
-		receipt, _ := json.Marshal(map[string]any{"agent": e.Config.AgentID, "attempt": a.ID, "checksum": m.Checksum})
-		f, err := os.Open(filepath.Join(e.Config.State, "submissions", a.ID, "submission.tar.gz"))
-		if err != nil {
-			failures = append(failures, fmt.Errorf("archive %s: %w", a.ID, err))
-			continue
-		}
-		err = e.postCallback(client, key, "/api/agent/submissions/"+a.ID, receipt, f, "application/gzip")
-		f.Close()
-		if err != nil {
-			failures = append(failures, fmt.Errorf("archive %s: %w", a.ID, err))
-			continue
-		}
-		if err = e.WithState(func() error {
-			if e.state.Exports == nil {
-				e.state.Exports = map[string]bool{}
-			}
-			e.state.Exports[a.ID] = true
-			return nil
-		}); err != nil {
-			return err
-		}
-	}
 	if err := e.deliverRecordings(client, key); err != nil {
 		failures = append(failures, err)
 	}

@@ -7,7 +7,7 @@ output. Client capture timestamps are claims; receipt times and hashes are separ
 Evidence cannot prove all monitors are shared or that a physical camera is used.
 
 Authentication happens before capture. Your shared SSH password is held temporarily in
-backend memory for one login and reused only for the two configured hosts after checking
+browser-worker memory for one login and reused only for the two configured hosts after checking
 each host key. It is discarded after authentication, failure, cancellation, disconnection
 or timeout, and never persisted. JavaScript memory cleanup is best-effort, not guaranteed
 erasure. An authorized authentication gap stops capture before
@@ -19,7 +19,9 @@ Only authenticated instructors can access monitoring; access is audited. Origina
 recordings and detailed incident payloads delete 60 days after attempt end. Hourly idempotent
 cleanup catches up after downtime. Earlier manual deletion needs confirmation. Durable tombstones
 survive restoration. Submission archives and minimal attempt/grade metadata have separate
-retention; no automatic submission deletion is configured.
+retention; no automatic submission deletion is configured. Submission archives stay on the
+SSH server. The webserver retains signed collection receipts/checksums and monitoring,
+and provides no submission download.
 
 Operators must retain the latest deletion ledger independently of old backups, expire monitoring
 backups within their retention date and merge tombstones before serving restored media.

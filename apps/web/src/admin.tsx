@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
-import { api, chicago, remaining, socket } from "./api.js";
-import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import { api, chicago, remaining } from "./api.js";
 import { Modal } from "./modal.js";
+import { CreateAdministrator } from "./create-administrator.js";
+import { ExamSettings } from "./exam-settings.js";
+import { StudentImport } from "./student-import.js";
+import { StudentActions, type StudentAction } from "./student-actions.js";
 function accountAccess(a: any) {
   if (a.functional_test)
     return "Administrator functional test; ordinary SSH remains available";
@@ -67,96 +70,114 @@ function Replay({ id, pane }: { id: string; pane: string }) {
 }
 export function Admin({ onError }: { onError: (s: string) => void }) {
   const [exams, setExams] = useState<any[]>([]),
-    [exam, setExam] = useState(""),
-    [data, setData] = useState<any>({
-      attempts: [],
-      incidents: [],
-      outbox: [],
-    }),
-    [csv, setCsv] = useState("username,require_webcam\n"),
-    [mode, setMode] = useState("csv"),
-    [preview, setPreview] = useState<any>(null),
-    [roster, setRoster] = useState<any[]>([]),
-    [studentUsername, setStudentUsername] = useState(""),
-    [studentWebcam, setStudentWebcam] = useState("inherit"),
-    [resetting, setResetting] = useState<any>(null),
-    [resetMinutes, setResetMinutes] = useState(90),
-    [resetBusy, setResetBusy] = useState(false),
-    [removing, setRemoving] = useState<string | null>(null),
+    [exam, setExam] = useState("");
+  const [data, setData] = useState<any>(null),
     [search, setSearch] = useState(""),
-    [filter, setFilter] = useState(""),
-    [offset, setOffset] = useState(0),
+    [filter, setFilter] = useState("");
+  const [offset, setOffset] = useState(0),
     [stale, setStale] = useState(false),
-    [clock, setClock] = useState(Date.now()),
-    [notice, setNotice] = useState(""),
+    [clock, setClock] = useState(Date.now());
+  const [notice, setNotice] = useState(""),
+    [creatingAdmin, setCreatingAdmin] = useState(false);
+  const [editingExam, setEditingExam] = useState<any>(null),
+    [addingStudent, setAddingStudent] = useState(false);
+  const [studentSelection, setStudentSelection] = useState(new Set<string>()),
+    [attemptSelection, setAttemptSelection] = useState(new Set<string>());
+  const [studentAction, setStudentAction] = useState("duration"),
+    [attemptAction, setAttemptAction] = useState("reset");
+  const [operation, setOperation] = useState<StudentAction | null>(null),
+    [removing, setRemoving] = useState<string | null>(null);
+  const [selected, setSelected] = useState<any>(null),
     [media, setMedia] = useState<any>(null),
-    [selected, setSelected] = useState<any>(null),
-    [pane, setPane] = useState(""),
-    [permission, setPermission] = useState(
-      typeof Notification === "undefined"
-        ? "unsupported"
-        : Notification.permission,
-    ),
-    [sound, setSound] = useState(false),
-    [form, setForm] = useState<any>({
-      id: "",
-      name: "Programming exam",
-      earliest: Date.now() - 60000,
-      latest: Date.now() + 7 * 86400000,
-      duration: 5400,
-      webcam: true,
-      terminals: 4,
-      template: "sample-exam",
-    });
-  const serverOffset = useRef(0);
-  const seen = useRef(new Set<string>());
-  const initialized = useRef(false);
-  const currentExam = useRef(exam);
-  currentExam.current = exam;
-  const reloadRoster = async () => {
-    const rows = await api(`/admin/exams/${exam}/roster`);
-    if (currentExam.current === exam) setRoster(rows);
-  };
+    [pane, setPane] = useState("");
+  const [sound, setSound] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  useEffect(() => {
+    if (studentSelection.size || attemptSelection.size) setBulkOpen(true);
+  }, [studentSelection.size, attemptSelection.size]);
+  const examRef = useRef(exam);
+  examRef.current = exam;
+  const seenLoaded = useRef(false);
+  const reviewVersion = useRef(0);
+  const requestVersion = useRef(0),
+    serverOffset = useRef(0),
+    seen = useRef(new Set<string>());
   const refresh = async () => {
-    const [e, d] = await Promise.all([
+    const id = examRef.current,
+      version = ++requestVersion.current;
+    const [list, result] = await Promise.all([
       api("/admin/exams"),
-      api(
-        `/admin/attempts?q=${encodeURIComponent(search)}&state=${["camera", "no-camera"].includes(filter) ? "" : filter}&webcam=${filter === "camera" ? "1" : filter === "no-camera" ? "0" : ""}&offset=${offset}`,
-      ),
+      id
+        ? api(
+            `/admin/exams/${id}/dashboard?q=${encodeURIComponent(search)}&offset=${offset}`,
+          )
+        : Promise.resolve(null),
     ]);
-    setExams(e);
-    if (!initialized.current && e.length) {
-      initialized.current = true;
-      setExam(e[0].id);
-      setForm(e[0]);
-    }
-    serverOffset.current = d.serverNow - Date.now();
-    setClock(d.serverNow);
-    setData(d);
-    if (currentExam.current) {
-      const selectedExam = currentExam.current;
-      const rows = await api(`/admin/exams/${selectedExam}/roster`);
-      if (currentExam.current === selectedExam) setRoster(rows);
-    }
+    if (version !== requestVersion.current || id !== examRef.current) return;
+    setExams(list);
+    setData(result);
     setStale(false);
-    for (const i of d.incidents) {
-      if (!seen.current.has(i.id) && seen.current.size) {
+    if (!result) return;
+    serverOffset.current = result.serverNow - Date.now();
+    setClock(result.serverNow);
+    for (const i of result.incidents) {
+      if (seenLoaded.current && !seen.current.has(i.id)) {
         if (
           typeof Notification !== "undefined" &&
           Notification.permission === "granted"
         )
           new Notification("Exam needs attention", {
-            body: `Attempt ${i.attempt}: instructor review requested`,
+            body: `${list.find((e: any) => e.id === id)?.name || id}: instructor review requested`,
           });
         if (sound) {
-          const context = new AudioContext();
-          const osc = context.createOscillator();
-          osc.connect(context.destination);
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          osc.connect(ctx.destination);
           osc.start();
-          osc.stop(context.currentTime + 0.2);
+          osc.stop(ctx.currentTime + 0.2);
+          osc.onended = () => void ctx.close();
         }
       }
       seen.current.add(i.id);
+    }
+    seenLoaded.current = true;
+  };
+  const chooseExam = (id: string) => {
+    ++requestVersion.current;
+    ++reviewVersion.current;
+    examRef.current = id;
+    setExam(id);
+    setData(null);
+    setSearch("");
+    setOffset(0);
+    setFilter("");
+    setNotice("");
+    setStudentSelection(new Set());
+    setAttemptSelection(new Set());
+    setSelected(null);
+    setMedia(null);
+    setOperation(null);
+    seen.current.clear();
+    seenLoaded.current = false;
+  };
+  const closeReview = () => {
+    ++reviewVersion.current;
+    setSelected(null);
+    setMedia(null);
+    setPane("");
+  };
+  const openReview = async (a: any) => {
+    const version = ++reviewVersion.current;
+    setSelected(a);
+    setPane("");
+    setMedia(null);
+    try {
+      const result = await api(`/admin/attempts/${a.id}/recordings`);
+      if (version === reviewVersion.current && examRef.current === a.exam)
+        setMedia(result);
+    } catch (error) {
+      if (version === reviewVersion.current && examRef.current === a.exam)
+        onError((error as Error).message);
     }
   };
   const action = async (fn: () => Promise<any>) => {
@@ -168,82 +189,114 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
     }
   };
   useEffect(() => {
+    let mounted = true;
+    const load = () =>
+      void refresh().catch(() => {
+        if (mounted) setStale(true);
+      });
+    load();
+    const timer = setInterval(load, 5000);
+    return () => {
+      mounted = false;
+      ++requestVersion.current;
+      clearInterval(timer);
+    };
+  }, [exam, search, offset, sound]);
+  useEffect(() => {
     const timer = setInterval(
       () => setClock(Date.now() + serverOffset.current),
       1000,
     );
     return () => clearInterval(timer);
   }, []);
-  useEffect(() => {
-    void refresh().catch(() => setStale(true));
-    const timer = setInterval(
-      () => void refresh().catch(() => setStale(true)),
-      5000,
-    );
-    return () => clearInterval(timer);
-  }, [search, filter, offset, sound]);
-  useEffect(() => {
-    let current = true;
-    if (exam)
-      api(`/admin/exams/${exam}/roster`)
-        .then((rows) => {
-          if (current) setRoster(rows);
-        })
-        .catch((e) => {
-          if (current) onError(e.message);
-        });
-    return () => {
-      current = false;
-    };
-  }, [exam, preview]);
-  const openClockReset = (a: any) => {
-    setResetting({ ...a, requestID: crypto.randomUUID() });
-    setResetMinutes(
-      (exams.find((e: any) => e.id === a.exam)?.duration ||
-        JSON.parse(a.settings).duration) / 60,
-    );
+  const current = exams.find((e) => e.id === exam);
+  const students = data?.students || [];
+  const eligible = (a: any) =>
+    ["ACTIVE", "LOCKED"].includes(a.state) &&
+    a.deadline > clock &&
+    !a.protected &&
+    !a.pendingClockReset;
+  const toggle = (
+    value: string,
+    selected: Set<string>,
+    setter: (s: Set<string>) => void,
+  ) => {
+    const next = new Set(selected);
+    next.has(value) ? next.delete(value) : next.add(value);
+    setter(next);
   };
-  const resetButton = (a: any) =>
-    a && ["ACTIVE", "LOCKED"].includes(a.state) && a.deadline > clock ? (
-      <button
-        disabled={!!a.pendingClockReset}
-        aria-label={`Reset clock for ${a.username}`}
-        onClick={() => openClockReset(a)}
-      >
-        Reset clock
-      </button>
-    ) : null;
+  const openOperation = (kind: string, targets: any[]) =>
+    setOperation({
+      kind: kind as StudentAction["kind"],
+      students: kind === "duration" || kind === "webcam" ? targets : [],
+      attempts:
+        kind === "reset" || kind === "extend"
+          ? targets.map((a) => ({
+              ...a,
+              allowance:
+                (students.find((s: any) => s.username === a.username)
+                  ?.enrollment?.duration ?? current?.duration) / 60,
+              requestID: crypto.randomUUID(),
+            }))
+          : [],
+    });
+  const status = (a: any) =>
+    a.working
+      ? "Working"
+      : a.state === "ACTIVE"
+        ? "Disconnected"
+        : a.state === "PREPARING"
+          ? "Preflight"
+          : a.state;
+  const visible = students
+    .map((s: any) => ({
+      ...s,
+      attempts: s.attempts.filter(
+        (a: any) =>
+          !filter ||
+          (filter === "camera"
+            ? JSON.parse(a.settings).webcam
+            : filter === "no-camera"
+              ? !JSON.parse(a.settings).webcam
+              : a.state === filter),
+      ),
+    }))
+    .filter((s: any) => !filter || s.attempts.length);
   return (
     <div className="admin">
       <header>
-        <div>
-          <h1>Exams</h1>
-        </div>
-        <span className={stale ? "status warn" : "status"}>
-          {stale ? "Data stale · connection lost" : "Live"}
-        </span>
-        <details
-          className="alert-settings"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.currentTarget.open = false;
-              e.currentTarget.querySelector("summary")?.focus();
-            }
-          }}
-        >
+        <h1>Exams</h1>
+        <label>
+          Selected exam
+          <select
+            aria-label="Selected exam"
+            value={exam}
+            onChange={(e) => chooseExam(e.target.value)}
+          >
+            <option value="">Select an exam</option>
+            {exams.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name === e.id ? e.name : `${e.name} · ${e.id}`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button onClick={() => setEditingExam({})}>New exam</button>
+        <details className="alert-settings">
           <summary>Alerts</summary>
           <div>
             <button
               onClick={() =>
                 action(async () => {
-                  setPermission(await Notification.requestPermission());
-                  new Notification("Exam alert test", {
-                    body: "Desktop notifications are enabled while this dashboard is open.",
-                  });
+                  if (typeof Notification === "undefined")
+                    throw Error(
+                      "Desktop notifications are unavailable in this browser",
+                    );
+                  await Notification.requestPermission();
                 })
               }
             >
-              Enable alerts ({permission})
+              Enable desktop alerts
             </button>
             <label>
               <input
@@ -260,6 +313,9 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
             </button>
           </div>
         </details>
+        <button onClick={() => setCreatingAdmin(true)}>
+          Add administrator
+        </button>
         <button
           onClick={() =>
             action(async () => {
@@ -271,634 +327,476 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           Sign out
         </button>
       </header>
-      <section className="metrics">
-        <div>
-          <b>{data.attempts.filter((a: any) => a.state === "ACTIVE").length}</b>
-          Active
-        </div>
-        <div>
-          <b>{data.attempts.filter((a: any) => a.state === "LOCKED").length}</b>
-          Need review
-        </div>
-        <div>
-          <b>
-            {data.attempts.filter((a: any) => a.state === "COMPLETED").length}
-          </b>
-          Collected
-        </div>
-        <div>
-          <b>{data.outbox.filter((a: any) => a.status === "failed").length}</b>
-          Email failures
-        </div>
-      </section>
-      <section className="card">
-        <div className="section-title">
-          <h2>Attempts</h2>
-          <input
-            placeholder="Search username"
-            aria-label="Search username"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setOffset(0);
-            }}
-          />
-          <select
-            aria-label="Filter attempts"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="">All states</option>
-            <option value="camera">Webcam required</option>
-            <option value="no-camera">Webcam not required</option>
-            {[
-              "ACTIVE",
-              "LOCKED",
-              "FINALIZING",
-              "COMPLETED",
-              "COLLECTION_FAILED",
-            ].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-        <div className="table-scroll">
-          <table aria-label="Exam attempts">
-            <thead>
-              <tr>
-                <th>Student / exam</th>
-                <th>Status</th>
-                <th>Monitoring</th>
-                <th>Deadline · Chicago</th>
-                <th>Submission / actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.attempts.map((a: any) => {
-                const settings = JSON.parse(a.settings);
-                return (
-                  <tr key={a.id}>
-                    <td>
-                      <strong>{a.username}</strong>
-                      <small>{a.exam}</small>
-                    </td>
-                    <td>
-                      <span
-                        className={
-                          a.state === "LOCKED" ||
-                          a.state === "COLLECTION_FAILED"
-                            ? "badge warn"
-                            : "badge"
-                        }
-                      >
-                        {a.working
-                          ? "Working"
-                          : a.state === "ACTIVE"
-                            ? "Disconnected"
-                            : a.state}
-                      </span>
-                      <small>{a.reason}</small>
-                      {["ACTIVE", "LOCKED"].includes(a.state) && (
-                        <small>{a.terminalCount || 0} terminals</small>
-                      )}
-                    </td>
-                    <td>
-                      {settings.webcam ? "Screen + webcam" : "Screen only"}
-                      <small>{accountAccess(a)}</small>
-                      {["ACTIVE", "LOCKED"].includes(a.state) && (
-                        <small>
-                          Last contact:{" "}
-                          {a.last_contact
-                            ? Math.floor((clock - a.last_contact) / 1000) +
-                              "s ago"
-                            : "—"}
-                        </small>
-                      )}
-                    </td>
-                    <td>
-                      {chicago(a.deadline)}
-                      {a.pendingClockReset && (
-                        <small className="warn">
-                          Reset pending ·{" "}
-                          {remaining(
-                            a.pendingClockReset.requested_at +
-                              a.pendingClockReset.remaining_seconds * 1000,
-                            clock,
-                          )}{" "}
-                          requested
-                        </small>
-                      )}
-                      {["ACTIVE", "LOCKED"].includes(a.state) && (
-                        <small>{remaining(a.deadline, clock)}</small>
-                      )}
-                    </td>
-                    <td>
-                      {resetButton(a)}
-                      <button
-                        onClick={() =>
-                          action(async () => {
-                            setSelected(a);
-                            setMedia(
-                              await api(`/admin/attempts/${a.id}/recordings`),
-                            );
-                          })
-                        }
-                      >
-                        Review
-                      </button>
-                      {a.state === "LOCKED" && (
-                        <button
-                          onClick={() =>
-                            action(() =>
-                              api(`/admin/attempts/${a.id}/authorize`, {}),
-                            )
-                          }
-                        >
-                          Authorize resume
-                        </button>
-                      )}
-                      {a.export_status === "ready" && (
-                        <a
-                          className="button"
-                          href={`/api/admin/attempts/${a.id}/submission`}
-                        >
-                          Download
-                        </a>
-                      )}
-                      <small>
-                        {a.protected
-                          ? `Submission secured · transfer ${a.export_status || "pending"}`
-                          : ["FINALIZING", "COLLECTION_FAILED"].includes(
-                                a.state,
-                              )
-                            ? "Collection pending / failed"
-                            : ""}
-                      </small>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {(offset > 0 || data.attempts.length >= 100) && (
-          <div>
-            <button
-              disabled={!offset}
-              onClick={() => setOffset(Math.max(0, offset - 100))}
-            >
-              Previous
+      {notice && <p role="status">{notice}</p>}
+      {!exam && <p>Select an exam to manage its students and attempts.</p>}
+      {exam && (
+        <>
+          <div className="section-title">
+            <h2>{current?.name || exam}</h2>
+            <span className={stale ? "status warn" : "status"}>
+              {stale ? "Data stale · connection lost" : "Live"}
+            </span>
+            <button onClick={() => setEditingExam(current)}>
+              Exam settings
             </button>
-            <button
-              disabled={data.attempts.length < 100}
-              onClick={() => setOffset(offset + 100)}
-            >
-              Next
-            </button>
+            <button onClick={() => setAddingStudent(true)}>Add student</button>
           </div>
-        )}
-      </section>
-      <div className="admin-columns">
-        <section className="card">
-          <h2>Exams & settings</h2>
-          <small>Changes apply to future attempts.</small>
-          <label htmlFor="selected-exam">Selected exam</label>
-          <select
-            id="selected-exam"
-            value={exam}
-            onChange={(e) => {
-              if (e.target.value === exam) return;
-              setExam(e.target.value);
-              setPreview(null);
-              setNotice("");
-              setRoster([]);
-              const found = exams.find((x) => x.id === e.target.value);
-              if (found) setForm(found);
-              else setForm({ ...form, id: "", name: "Programming exam" });
-            }}
-          >
-            <option value="">Create a new exam</option>
-            {exams.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-          <label>
-            Exam ID
-            <input
-              value={form.id}
-              onChange={(e) => setForm({ ...form, id: e.target.value })}
-            />
-          </label>
-          <label>
-            Name
-            <input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </label>
-          <label>
-            Template ID
-            <input
-              value={form.template}
-              onChange={(e) => setForm({ ...form, template: e.target.value })}
-            />
-          </label>
-          {!isSandbox(form.id) && (
+          {data && (
             <>
-              <label>
-                Earliest start
-                <input
-                  type="datetime-local"
-                  value={new Date(
-                    form.earliest -
-                      new Date(form.earliest).getTimezoneOffset() * 60000,
-                  )
-                    .toISOString()
-                    .slice(0, 16)}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      earliest: new Date(e.target.value).getTime(),
-                    })
-                  }
-                />
-              </label>
-              <label>
-                Latest start
-                <input
-                  type="datetime-local"
-                  value={new Date(
-                    form.latest -
-                      new Date(form.latest).getTimezoneOffset() * 60000,
-                  )
-                    .toISOString()
-                    .slice(0, 16)}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      latest: new Date(e.target.value).getTime(),
-                    })
-                  }
-                />
-              </label>
-              <small>
-                Start-window inputs use your device timezone; dashboard times
-                are America/Chicago.
-              </small>
+              <section className="metrics">
+                <div>
+                  <b>{data.counts.active}</b>Active
+                </div>
+                <div>
+                  <b>{data.counts.locked}</b>Need review
+                </div>
+                <div>
+                  <b>{data.counts.collected}</b>Collected
+                </div>
+              </section>
+              <section className="card">
+                <div className="section-title">
+                  <h2>Students & attempts</h2>
+                  <input
+                    aria-label="Search username"
+                    placeholder="Search username"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setOffset(0);
+                      setStudentSelection(new Set());
+                      setAttemptSelection(new Set());
+                    }}
+                  />
+                  <select
+                    aria-label="Filter attempts"
+                    value={filter}
+                    onChange={(e) => {
+                      setFilter(e.target.value);
+                      setStudentSelection(new Set());
+                      setAttemptSelection(new Set());
+                    }}
+                  >
+                    <option value="">All states</option>
+                    <option value="camera">Webcam required</option>
+                    <option value="no-camera">Webcam not required</option>
+                    {[
+                      "PREPARING",
+                      "ACTIVE",
+                      "LOCKED",
+                      "FINALIZING",
+                      "COMPLETED",
+                      "COLLECTION_FAILED",
+                      "CANCELLED_BEFORE_START",
+                    ].map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <details
+                  open={bulkOpen}
+                  onToggle={(e) => setBulkOpen(e.currentTarget.open)}
+                >
+                  <summary>
+                    Bulk actions
+                    {studentSelection.size || attemptSelection.size
+                      ? ` · ${studentSelection.size} students · ${attemptSelection.size} attempts`
+                      : ""}
+                  </summary>
+                  <div className="bulk-actions" aria-label="Bulk actions">
+                    <button
+                      onClick={() =>
+                        setStudentSelection(
+                          new Set(
+                            visible
+                              .filter((s: any) => s.enrollment)
+                              .map((s: any) => s.username),
+                          ),
+                        )
+                      }
+                    >
+                      Select students on this page
+                    </button>
+                    <button
+                      onClick={() =>
+                        setAttemptSelection(
+                          new Set(
+                            visible.flatMap((s: any) =>
+                              s.attempts.filter(eligible).map((a: any) => a.id),
+                            ),
+                          ),
+                        )
+                      }
+                    >
+                      Select current attempts
+                    </button>
+                    <button
+                      disabled={
+                        !studentSelection.size && !attemptSelection.size
+                      }
+                      onClick={() => {
+                        setStudentSelection(new Set());
+                        setAttemptSelection(new Set());
+                      }}
+                    >
+                      Clear selection
+                    </button>
+                    <label>
+                      Student action
+                      <select
+                        aria-label="Student action"
+                        value={studentAction}
+                        onChange={(e) => setStudentAction(e.target.value)}
+                      >
+                        <option value="duration">Set duration</option>
+                        <option value="webcam">Set webcam requirement</option>
+                      </select>
+                    </label>
+                    <button
+                      disabled={!studentSelection.size}
+                      onClick={() =>
+                        openOperation(
+                          studentAction,
+                          students.filter((s: any) =>
+                            studentSelection.has(s.username),
+                          ),
+                        )
+                      }
+                    >
+                      Apply to {studentSelection.size}{" "}
+                      {studentSelection.size === 1 ? "student" : "students"}
+                    </button>
+                    <label>
+                      Attempt action
+                      <select
+                        aria-label="Attempt action"
+                        value={attemptAction}
+                        onChange={(e) => setAttemptAction(e.target.value)}
+                      >
+                        <option value="reset">Reset clock</option>
+                        <option value="extend">Extend time</option>
+                      </select>
+                    </label>
+                    <button
+                      disabled={
+                        !attemptSelection.size || attemptSelection.size > 100
+                      }
+                      onClick={() =>
+                        openOperation(
+                          attemptAction,
+                          students.flatMap((s: any) =>
+                            s.attempts.filter((a: any) =>
+                              attemptSelection.has(a.id),
+                            ),
+                          ),
+                        )
+                      }
+                    >
+                      Apply to {attemptSelection.size}{" "}
+                      {attemptSelection.size === 1 ? "attempt" : "attempts"}
+                    </button>
+                  </div>
+                </details>
+                <div className="table-scroll">
+                  <table aria-label="Students and attempts">
+                    <thead>
+                      <tr>
+                        <th>Select</th>
+                        <th>Student / attempt</th>
+                        <th>Status</th>
+                        <th>Webcam</th>
+                        <th>Time remaining</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    {visible.map((s: any) => (
+                      <tbody key={s.username} aria-label={s.username}>
+                        <tr className="student-row">
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Select student ${s.username}`}
+                              disabled={!s.enrollment}
+                              checked={studentSelection.has(s.username)}
+                              onChange={() =>
+                                toggle(
+                                  s.username,
+                                  studentSelection,
+                                  setStudentSelection,
+                                )
+                              }
+                            />
+                          </td>
+                          <td>
+                            <strong>{s.username}</strong>
+                            {s.enrollment?.display_name && (
+                              <small>{s.enrollment.display_name}</small>
+                            )}
+                            <small>
+                              {s.enrollment
+                                ? `Future duration: ${(s.enrollment.duration ?? current?.duration) / 60} minutes${s.enrollment.duration === null ? " · exam default" : ""}`
+                                : "Not enrolled"}
+                            </small>
+                          </td>
+                          <td>
+                            {s.attempts.length
+                              ? `${s.attempts.length} attempts`
+                              : "Not started"}
+                          </td>
+                          <td>
+                            {s.enrollment && (
+                              <>
+                                <span>
+                                  Future:{" "}
+                                  {(
+                                    s.enrollment.webcam === null
+                                      ? current?.webcam
+                                      : !!s.enrollment.webcam
+                                  )
+                                    ? "Required"
+                                    : "Not required"}
+                                </span>
+                                {s.enrollment.webcam === null && (
+                                  <small>Exam default</small>
+                                )}
+                              </>
+                            )}
+                          </td>
+                          <td>—</td>
+                          <td>
+                            {s.enrollment && (
+                              <>
+                                <button
+                                  onClick={() => openOperation("duration", [s])}
+                                >
+                                  Set duration
+                                </button>
+                                <button
+                                  onClick={() => openOperation("webcam", [s])}
+                                >
+                                  Set webcam
+                                </button>
+                                <button
+                                  className="danger"
+                                  aria-label={`Remove ${s.username} from exam`}
+                                  onClick={() => setRemoving(s.username)}
+                                >
+                                  Remove
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                        {s.attempts.map((a: any, i: number) => (
+                          <tr key={a.id} className="attempt-row">
+                            <td>
+                              {["ACTIVE", "LOCKED"].includes(a.state) && (
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select attempt ${a.id}`}
+                                  disabled={!eligible(a)}
+                                  checked={attemptSelection.has(a.id)}
+                                  onChange={() =>
+                                    toggle(
+                                      a.id,
+                                      attemptSelection,
+                                      setAttemptSelection,
+                                    )
+                                  }
+                                />
+                              )}
+                            </td>
+                            <td>
+                              <span>Attempt {a.attempt_number}</span>
+                              <small>
+                                {a.start ? chicago(a.start) : "Preflight"}
+                              </small>
+                            </td>
+                            <td>
+                              <span
+                                className={
+                                  a.state === "LOCKED" ||
+                                  a.state === "COLLECTION_FAILED"
+                                    ? "badge warn"
+                                    : "badge"
+                                }
+                              >
+                                {status(a)}
+                              </span>
+                              {a.reason && <small>{a.reason}</small>}
+                              {a.protected && (
+                                <small>Submission secured on SSH server</small>
+                              )}
+                            </td>
+                            <td>
+                              {JSON.parse(a.settings).webcam
+                                ? "Required"
+                                : "Not required"}
+                              <small>For this attempt</small>
+                            </td>
+                            <td>
+                              {["ACTIVE", "LOCKED"].includes(a.state)
+                                ? remaining(a.deadline, clock)
+                                : "—"}
+                              {a.deadline && (
+                                <small>Deadline: {chicago(a.deadline)}</small>
+                              )}
+                              {a.pendingClockReset && (
+                                <small className="warn">
+                                  Clock change pending agent confirmation
+                                </small>
+                              )}
+                            </td>
+                            <td>
+                              {["ACTIVE", "LOCKED"].includes(a.state) && (
+                                <>
+                                  {" "}
+                                  <button
+                                    disabled={!eligible(a)}
+                                    aria-label={`Reset clock for ${s.username}`}
+                                    onClick={() => openOperation("reset", [a])}
+                                  >
+                                    Reset clock
+                                  </button>
+                                  <button
+                                    disabled={!eligible(a)}
+                                    aria-label={`Extend time for ${s.username}`}
+                                    onClick={() => openOperation("extend", [a])}
+                                  >
+                                    Extend time
+                                  </button>
+                                </>
+                              )}
+                              <button onClick={() => void openReview(a)}>
+                                Review
+                              </button>
+                              {a.state === "LOCKED" && (
+                                <button
+                                  onClick={() =>
+                                    action(() =>
+                                      api(
+                                        `/admin/attempts/${a.id}/authorize`,
+                                        {},
+                                      ),
+                                    )
+                                  }
+                                >
+                                  Authorize resume
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    ))}
+                  </table>
+                  {!visible.length && <p>No students match this view.</p>}
+                </div>
+                {(offset > 0 || data.total > 100) && (
+                  <div>
+                    <button
+                      disabled={!offset}
+                      onClick={() => {
+                        setOffset(Math.max(0, offset - 100));
+                        setStudentSelection(new Set());
+                        setAttemptSelection(new Set());
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span>
+                      {offset + 1}–{Math.min(offset + 100, data.total)} of{" "}
+                      {data.total} students
+                    </span>
+                    <button
+                      disabled={offset + 100 >= data.total}
+                      onClick={() => {
+                        setOffset(offset + 100);
+                        setStudentSelection(new Set());
+                        setAttemptSelection(new Set());
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </section>
+              <StudentImport
+                key={exam}
+                exam={exam}
+                onDone={async () => {
+                  setNotice(
+                    "Import completed. Future attempt settings updated.",
+                  );
+                  await refresh();
+                }}
+              />
+              {!!data.incidents.length && (
+                <section className="card">
+                  <details>
+                    <summary>Exam activity</summary>
+                    {data.incidents.map((i: any) => (
+                      <p key={i.id}>
+                        {chicago(i.opened)} · {i.attempt} ·{" "}
+                        {JSON.parse(i.events)
+                          .map((e: any) => e.reason)
+                          .join("; ")}
+                        {i.message && ` · Student: ${i.message}`}
+                      </p>
+                    ))}
+                  </details>
+                </section>
+              )}
             </>
           )}
-          {isSandbox(form.id) && (
-            <p>
-              Repeatable · 5 minutes · no start window · automatic recovery
-              approval
-            </p>
-          )}
-          <label>
-            Duration (minutes)
-            <input
-              type="number"
-              disabled={isSandbox(form.id)}
-              min="1"
-              max="360"
-              value={form.duration / 60}
-              onChange={(e) =>
-                setForm({ ...form, duration: Number(e.target.value) * 60 })
-              }
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={form.webcam}
-              onChange={(e) => setForm({ ...form, webcam: e.target.checked })}
-            />{" "}
-            Default webcam requirement
-          </label>
-          <label>
-            Terminal limit
-            <input
-              type="number"
-              min="1"
-              max="4"
-              value={form.terminals}
-              onChange={(e) =>
-                setForm({ ...form, terminals: Number(e.target.value) })
-              }
-            />
-          </label>
-          <button
-            className="primary"
-            onClick={() =>
-              action(async () => {
-                await api("/admin/exams", form);
-                setExam(form.id);
-              })
-            }
-          >
-            Save exam
-          </button>
-        </section>
-        <section className="card">
-          <h2>Students in this exam</h2>
-          <p>
-            {exam
-              ? exams.find((e) => e.id === exam)?.name || exam
-              : "Save or select an exam to manage its students."}
-          </p>
-          <form
-            className="add-student"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void action(async () => {
-                await api(`/admin/exams/${exam}/roster/add`, {
-                  username: studentUsername.trim(),
-                  webcam:
-                    studentWebcam === "inherit"
-                      ? null
-                      : studentWebcam === "true",
-                });
-                setNotice(`${studentUsername.trim()} added.`);
-                setStudentUsername("");
-                await reloadRoster();
-              });
-            }}
-          >
-            <label>
-              Student username
-              <input
-                required
-                pattern="[a-z][a-z0-9_-]{0,31}"
-                value={studentUsername}
-                onChange={(e) => setStudentUsername(e.target.value)}
-              />
-            </label>
-            <label>
-              Webcam for this student
-              <select
-                value={studentWebcam}
-                onChange={(e) => setStudentWebcam(e.target.value)}
-              >
-                <option value="inherit">Exam default</option>
-                <option value="true">Required</option>
-                <option value="false">Not required</option>
-              </select>
-            </label>
-            <button
-              className="primary"
-              disabled={!exam || !studentUsername.trim()}
-            >
-              Add student
-            </button>
-          </form>
-          <small>Use existing course-server accounts.</small>
-          {notice && <p role="status">{notice}</p>}
-          <div className="table-scroll roster-list">
-            <table aria-label="Exam roster">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Webcam</th>
-                  <th>Status</th>
-                  <th>Time remaining</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roster.map((r) => (
-                  <tr key={r.username}>
-                    <td>
-                      {r.username}
-                      {r.display_name && <small>{r.display_name}</small>}
-                    </td>
-                    <td>
-                      {(
-                        r.webcam === null
-                          ? exams.find((e) => e.id === exam)?.webcam
-                          : !!r.webcam
-                      )
-                        ? "Required"
-                        : "Not required"}
-                      {r.webcam === null && <small>Exam default</small>}
-                    </td>
-                    <td>
-                      {r.attempt
-                        ? r.attempt.working
-                          ? "Working"
-                          : r.attempt.state === "ACTIVE"
-                            ? "Disconnected"
-                            : r.attempt.state === "PREPARING"
-                              ? "Preflight"
-                              : r.attempt.state
-                        : "Not started"}
-                    </td>
-                    <td>
-                      {r.attempt &&
-                      ["ACTIVE", "LOCKED"].includes(r.attempt.state)
-                        ? remaining(r.attempt.deadline, clock)
-                        : "—"}
-                    </td>
-                    <td>
-                      {resetButton(r.attempt)}
-                      {r.attempt?.pendingClockReset && (
-                        <small>Clock reset pending</small>
-                      )}
-                      <button
-                        className="danger"
-                        aria-label={`Remove ${r.username} from exam`}
-                        onClick={() => setRemoving(r.username)}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!roster.length && <p>No students enrolled.</p>}
-          </div>
-          <a
-            className="button"
-            href={exam ? `/api/admin/exams/${exam}/submissions` : "#"}
-          >
-            Download exam submissions
-          </a>
-          <details className="bulk-import">
-            <summary>Import multiple students (CSV)</summary>
-            <p>
-              Import updates enrolled accounts; it never creates Unix accounts
-              or removes omitted students.
-            </p>
-            <select value={mode} onChange={(e) => setMode(e.target.value)}>
-              <option value="csv">CSV with headers</option>
-              <option value="lines">One username per line</option>
-            </select>
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f && f.size <= 10485760) void f.text().then(setCsv);
-                else onError("File exceeds 10 MiB");
-              }}
-            />
-            <textarea
-              className="csv"
-              value={csv}
-              onChange={(e) => setCsv(e.target.value)}
-              aria-label="Roster CSV"
-            />
-            <button
-              disabled={!exam}
-              onClick={() =>
-                action(async () =>
-                  setPreview(
-                    await api(`/admin/exams/${exam}/roster/import-preview`, {
-                      text: csv,
-                      mode,
-                    }),
-                  ),
-                )
-              }
-            >
-              Validate & preview
-            </button>
-            <a
-              className="button"
-              href={exam ? `/api/admin/exams/${exam}/roster/export` : "#"}
-            >
-              Export roster / template
-            </a>
-            {preview && (
-              <>
-                <p>
-                  {preview.total} validated rows. Current attempts are
-                  unchanged.
-                </p>
-                <div className="preview">
-                  {preview.rows.slice(0, 100).map((r: any) => (
-                    <p key={r.username}>
-                      {r.action}: {r.username}
-                      {r.activeAttempt ? " (current attempt unchanged)" : ""} ·
-                      webcam{" "}
-                      {r.webcam === undefined
-                        ? "unchanged"
-                        : r.webcam === null
-                          ? "inherit"
-                          : String(r.webcam)}{" "}
-                      ·{" "}
-                      {r.duration === undefined
-                        ? "duration unchanged"
-                        : r.duration === null
-                          ? "default duration"
-                          : r.duration / 60 + " minutes"}
-                    </p>
-                  ))}
-                </div>
-                <button
-                  className="primary"
-                  onClick={() =>
-                    action(async () => {
-                      await api(`/admin/exams/${exam}/roster/import-confirm`, {
-                        id: preview.id,
-                      });
-                      setPreview(null);
-                      setRoster(await api(`/admin/exams/${exam}/roster`));
-                      setNotice("Import completed.");
-                    })
-                  }
-                >
-                  Confirm import
-                </button>
-              </>
-            )}
-          </details>
-        </section>
-      </div>
-      <section className="card">
-        <details>
-          <summary>Activity & alert delivery</summary>
-          {data.incidents.slice(0, 20).map((i: any) => (
-            <p key={i.id}>
-              {chicago(i.opened)} · {i.attempt} ·{" "}
-              {JSON.parse(i.events)
-                .map((e: any) => e.reason)
-                .join("; ")}{" "}
-              {i.message && `· Student: ${i.message}`}
-            </p>
-          ))}
-          {data.outbox.map((r: any) => (
-            <small key={r.id}>
-              {r.subject} · {r.status} · tries {r.tries}
-            </small>
-          ))}
-        </details>
-      </section>
-      {resetting && (
-        <Modal
-          title={`Reset clock · ${resetting.username}`}
-          onClose={() => {
-            if (!resetBusy) setResetting(null);
+        </>
+      )}
+      {creatingAdmin && (
+        <CreateAdministrator
+          onClose={() => setCreatingAdmin(false)}
+          onCreated={(username) => {
+            setCreatingAdmin(false);
+            setNotice(`Administrator ${username} created.`);
           }}
-        >
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setResetBusy(true);
-              try {
-                const result = await api(
-                  `/admin/attempts/${resetting.id}/reset-clock`,
-                  {
-                    minutes: resetMinutes,
-                    revision: resetting.clock_revision || 0,
-                    requestID: resetting.requestID,
-                  },
-                );
-                setNotice(
-                  result.confirmed
-                    ? "Clock updated."
-                    : "Clock reset pending agent confirmation.",
-                );
-                setResetting(null);
-                await refresh();
-              } catch (error) {
-                onError((error as Error).message);
-              } finally {
-                setResetBusy(false);
-              }
-            }}
-          >
-            <label>
-              Minutes remaining
-              <input
-                type="number"
-                min="1"
-                max="360"
-                step="1"
-                required
-                value={resetMinutes}
-                onChange={(e) => setResetMinutes(Number(e.target.value))}
-              />
-            </label>
-            <p>
-              Counted from when you apply this reset. The student stays signed
-              in. A disconnected agent confirms the change before collection.
-            </p>
-            <div className="actions">
-              <button
-                type="button"
-                disabled={resetBusy}
-                onClick={() => setResetting(null)}
-              >
-                Cancel
-              </button>
-              <button className="primary" disabled={resetBusy}>
-                {resetBusy ? "Applying…" : "Apply reset"}
-              </button>
-            </div>
-          </form>
-        </Modal>
+        />
+      )}
+      {editingExam && (
+        <ExamSettings
+          initial={editingExam}
+          onClose={() => setEditingExam(null)}
+          onSaved={async (e) => {
+            setEditingExam(null);
+            chooseExam(e.id);
+            await refresh();
+          }}
+        />
+      )}
+      {addingStudent && current && (
+        <StudentImport
+          exam={exam}
+          adding
+          defaultWebcam={current.webcam}
+          defaultDuration={current.duration}
+          onClose={() => setAddingStudent(false)}
+          onDone={async () => {
+            setAddingStudent(false);
+            await refresh();
+          }}
+        />
+      )}
+      {operation && current && (
+        <StudentActions
+          exam={current}
+          operation={operation}
+          onClose={() => setOperation(null)}
+          onDone={async (text) => {
+            setNotice(text);
+            setStudentSelection(new Set());
+            setAttemptSelection(new Set());
+            setBulkOpen(false);
+            await refresh();
+          }}
+        />
       )}
       {removing && (
         <Modal
@@ -906,9 +804,8 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           onClose={() => setRemoving(null)}
         >
           <p>
-            This removes enrollment only. Saved submissions, monitoring and
-            attempt history are kept. An exam that has already started continues
-            to its current deadline. A server administrator can end it locally.
+            Enrollment is removed. Attempt history, monitoring and SSH-server
+            submissions are kept. An exam already in progress continues.
           </p>
           <div className="actions">
             <button onClick={() => setRemoving(null)}>Cancel</button>
@@ -920,9 +817,8 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                     username: removing,
                     confirm: true,
                   });
-                  setNotice(`${removing} removed.`);
                   setRemoving(null);
-                  await reloadRoster();
+                  await refresh();
                 })
               }
             >
@@ -936,16 +832,12 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           wide
           title={`${selected.username} · ${selected.state}`}
           onClose={() => {
-            setSelected(null);
-            setMedia(null);
-            setPane("");
+            closeReview();
           }}
         >
           <button
             onClick={() => {
-              setSelected(null);
-              setMedia(null);
-              setPane("");
+              closeReview();
             }}
           >
             Close review
@@ -979,7 +871,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                     {selected.protected
                       ? "Submission secured"
                       : "Protected submission not confirmed"}{" "}
-                    · Transfer: {selected.export_status || "pending"}
+                    · Retained on the SSH server
                   </p>
                   <details>
                     <summary>Collection details</summary>
@@ -1009,8 +901,7 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                       {selected.protected
                         ? "Verified on class server"
                         : "Not confirmed"}{" "}
-                      · transfer: {selected.export_status || "Not available"} ·
-                      source: {selected.work_path || "/work"}
+                      · source: {selected.work_path || "/work"}
                     </p>
                     {selected.checksum && (
                       <p>
@@ -1026,33 +917,6 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
                   <pre>{JSON.stringify(media.manifest, null, 2)}</pre>
                 </details>
               )}
-              {selected.state === "COMPLETED" &&
-                selected.export_status !== "deleted" && (
-                  <details>
-                    <summary>Delete web copy</summary>
-                    <button
-                      className="danger"
-                      onClick={() =>
-                        action(async () => {
-                          if (
-                            !window.confirm(
-                              "Delete the web download copy? The protected class-server original and monitoring are kept.",
-                            )
-                          )
-                            return;
-                          await api(
-                            `/admin/attempts/${selected.id}/delete-submission`,
-                            { confirm: true },
-                          );
-                          setSelected(null);
-                          setMedia(null);
-                        })
-                      }
-                    >
-                      Delete web copy
-                    </button>
-                  </details>
-                )}
               {media && (
                 <>
                   <div className="images">

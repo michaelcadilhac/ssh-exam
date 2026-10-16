@@ -1,5 +1,3 @@
-import tar from "tar-stream";
-import { pipeline } from "node:stream/promises";
 import type { Writable } from "node:stream";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
@@ -7,13 +5,7 @@ import rateLimit from "@fastify/rate-limit";
 import staticPlugin from "@fastify/static";
 import { WebSocketServer, WebSocket } from "ws";
 import { randomUUID } from "node:crypto";
-import {
-  readFileSync,
-  existsSync,
-  statSync,
-  createReadStream,
-  rmSync,
-} from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import argon2 from "argon2";
 import { mailTransport } from "./mail.js";
@@ -37,6 +29,7 @@ import { BrowserConnection } from "./browser-ssh.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { ClockControl } from "./clock-control.js";
+import { registerExamAdmin } from "./exam-admin.js";
 import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { parseRosterAsync, exportRoster } from "./roster.js";
@@ -244,6 +237,13 @@ export async function createApp(
           !["/api/admin/login", "/api/admin/logout"].includes(req.url)))
     )
       throw Error("Exam operations are unavailable during login-only testing.");
+    if (req.url.startsWith("/api/agent/submissions/"))
+      throw Object.assign(
+        Error(
+          "Archive transfers are disabled; submissions remain on the SSH server",
+        ),
+        { statusCode: 410 },
+      );
     if (req.url.startsWith("/api/agent/")) return; // Each callback verifies the pinned agent signature.
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
       if (req.headers.origin !== config.origin)
@@ -431,40 +431,6 @@ export async function createApp(
       return { ok: true };
     },
   );
-  const transferReceipt = (req: any) => {
-    const encoded = String(req.headers["x-exam-receipt"] || "");
-    if (encoded.length > 2048) throw Error("Invalid transfer receipt");
-    const payload = Buffer.from(encoded, "base64");
-    agent.verifyCallback(
-      payload,
-      String(req.headers["x-exam-signature"] || ""),
-    );
-    const receipt = JSON.parse(payload.toString());
-    if (receipt.agent !== config.agent.id || receipt.attempt !== req.params.id)
-      throw Error("Transfer scope rejected");
-    const attempt = store.attempt(receipt.attempt);
-    if (!attempt.protected || attempt.checksum !== receipt.checksum)
-      throw Error("Protected transfer is not authorized");
-    return receipt;
-  };
-  app.post(
-    "/api/agent/submissions/:id",
-    {
-      bodyLimit: 128 * 1024 * 1024,
-      config: { rateLimit: false },
-      preParsing: async (req, _reply, payload) => {
-        transferReceipt(req);
-        return payload;
-      },
-    },
-    async (req: any) => {
-      // Authenticate the small signed receipt before accepting a large archive body.
-      const receipt = transferReceipt(req);
-      if (!Buffer.isBuffer(req.body)) throw Error("Raw archive required");
-      life.receiveArchive(receipt.attempt, receipt.checksum, req.body);
-      return { ok: true };
-    },
-  );
   app.get("/health/live", async () => ({ ok: true }));
   app.get("/api/login-test", async () => ({
     maintenance: config.maintenance,
@@ -509,6 +475,7 @@ export async function createApp(
               "all-session-channel-gate",
               "signed-ssh-control",
               "durable-status-callbacks",
+              "server-only-submissions",
               "clock-reset",
               "deadline-timing-check",
             ].every((cap) => h.capabilities?.includes(cap))));
@@ -592,6 +559,57 @@ export async function createApp(
       b.password = "";
       store.audit(admin.username, "login", "admin");
       return setSession(reply, store.session("admin", admin.username, null));
+    },
+  );
+  app.post(
+    "/api/admin/administrators",
+    {
+      bodyLimit: 8192,
+      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    },
+    async (req, reply) => {
+      const actor = principal(req, "admin");
+      let credentials: { username: string; password: string } | undefined;
+      try {
+        const parsed = z
+          .object({
+            username: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+            password: z.string().min(12).max(1024),
+          })
+          .safeParse(req.body);
+        if (!parsed.success)
+          throw Error(
+            "Use a username of 1–64 letters, numbers, underscores or hyphens and a password of 12–1024 characters.",
+          );
+        credentials = parsed.data;
+        const digest = await argon2.hash(credentials.password, {
+          type: argon2.argon2id,
+          memoryCost: 65536,
+          timeCost: 3,
+          parallelism: 1,
+        });
+        credentials.password = "";
+        const username = credentials.username;
+        store.db.transaction(() => {
+          const inserted = store.db
+            .prepare(
+              "INSERT INTO admins(id,username,hash) VALUES(?,?,?) ON CONFLICT(username) DO NOTHING",
+            )
+            .run(randomUUID(), username, digest);
+          if (!inserted.changes)
+            throw Object.assign(
+              Error("An administrator with that username already exists."),
+              { statusCode: 409 },
+            );
+          store.audit(actor.username, "create-admin", username);
+        })();
+        reply.code(201);
+        return { username };
+      } finally {
+        if (credentials) credentials.password = "";
+        if (req.body && typeof req.body === "object")
+          (req.body as any).password = "";
+      }
     },
   );
   const logout = async (req: any, reply: any) => {
@@ -711,6 +729,7 @@ export async function createApp(
         "all-session-channel-gate",
         "signed-ssh-control",
         "durable-status-callbacks",
+        "server-only-submissions",
         "clock-reset",
         "deadline-timing-check",
       ].every((cap) => h.capabilities?.includes(cap))
@@ -1089,6 +1108,7 @@ export async function createApp(
       terminalCount: conn?.alive ? conn.panes.size : 0,
     };
   };
+  registerExamAdmin(app, store, agent, clocks, principal, describeAttempt);
   app.get("/api/admin/exams/:exam/roster", async (req: any) => {
     principal(req, "admin");
     return store.db
@@ -1109,12 +1129,22 @@ export async function createApp(
       .object({
         username: usernameSchema,
         webcam: z.boolean().nullable().default(null),
+        duration: z
+          .number()
+          .int()
+          .min(60)
+          .max(21600)
+          .multipleOf(60)
+          .nullable()
+          .default(null),
       })
       .parse(req.body);
     if (
       !store.db.prepare("SELECT 1 FROM exams WHERE id=?").get(req.params.exam)
     )
       throw Error("Exam not found");
+    if (isSandbox(req.params.exam) && b.duration !== null && b.duration !== 300)
+      throw Error("Sandbox attempts always start with five minutes");
     const accounts = await agent.call("resolve-course-accounts", {
       usernames: [b.username],
       exam: req.params.exam,
@@ -1135,7 +1165,7 @@ export async function createApp(
           req.params.exam,
           b.username,
           b.webcam === null ? null : Number(b.webcam),
-          null,
+          b.duration,
           null,
           uid,
         );
@@ -1165,6 +1195,14 @@ export async function createApp(
       })
       .parse(req.body);
     const rows = await parseRosterAsync(b.text, b.mode);
+    if (
+      isSandbox(req.params.exam) &&
+      rows.some(
+        (r) =>
+          r.duration !== undefined && r.duration !== null && r.duration !== 300,
+      )
+    )
+      throw Error("Sandbox attempts always start with five minutes");
     const accounts = await agent.call("resolve-course-accounts", {
       usernames: rows.map((r) => r.username),
       exam: req.params.exam,
@@ -1377,77 +1415,11 @@ export async function createApp(
     monitoring.delete(a.id, s.username);
     return { ok: true };
   });
-  app.get("/api/admin/attempts/:id/submission", async (req: any, reply) => {
-    const s = principal(req, "admin"),
-      a = store.attempt(req.params.id);
-    if (a.export_status !== "ready")
-      throw Error("Protected archive not yet exported");
-    store.audit(s.username, "download-submission", a.id);
-    return reply
-      .type("application/gzip")
-      .header("Content-Disposition", `attachment; filename="${a.id}.tar.gz"`)
-      .send(readFileSync(`${store.dir}/submissions/${a.id}.tar.gz`));
-  });
-  app.get("/api/admin/exams/:exam/submissions", async (req: any, reply) => {
-    const s = principal(req, "admin");
-    const rows = store.db
-      .prepare(
-        "SELECT id FROM attempts WHERE exam=? AND export_status='ready' ORDER BY username LIMIT 1000",
-      )
-      .all(req.params.exam) as any[];
-    if (!rows.length) throw Error("No exported archives");
-    const pack = tar.pack();
-    store.audit(
-      s.username,
-      "bulk-submission-download",
-      req.params.exam,
-      `${rows.length} archives`,
-    );
-    void (async () => {
-      try {
-        for (const row of rows) {
-          const file = `${store.dir}/submissions/${row.id}.tar.gz`;
-          const entry = pack.entry({
-            name: row.id + ".tar.gz",
-            size: statSync(file).size,
-            mode: 0o600,
-          });
-          await pipeline(createReadStream(file), entry);
-        }
-        pack.finalize();
-      } catch {
-        pack.destroy(Error("Bulk archive stream failed"));
-      }
-    })();
-    reply.raw.once("close", () => pack.destroy());
-    return reply
-      .type("application/x-tar")
-      .header("Content-Disposition", 'attachment; filename="submissions.tar"')
-      .send(pack);
-  });
-  app.post("/api/admin/attempts/:id/delete-submission", async (req: any) => {
-    const s = principal(req, "admin");
-    const a = store.attempt(req.params.id);
-    if (a.state !== "COMPLETED" || (req.body as any)?.confirm !== true)
-      throw Error(
-        "Completed attempt and explicit deletion confirmation required",
-      );
-    // The protected class-server original is retained; administrators delete it locally with examctl.
-    rmSync(`${store.dir}/submissions/${a.id}.tar.gz`, { force: true });
-    rmSync(`${store.dir}/submissions/${a.id}.manifest.json`, { force: true });
-    store.db.transaction(() => {
-      store.db
-        .prepare("UPDATE attempts SET export_status='deleted' WHERE id=?")
-        .run(a.id);
-      store.audit(s.username, "delete-submission", a.id);
-    })();
-    return { ok: true };
-  });
   app.get("/api/admin/attempts/:id/recordings", async (req: any) => {
     const s = principal(req, "admin");
     store.attempt(req.params.id);
     store.audit(s.username, "view-monitoring", req.params.id);
-    const manifestPath = `${store.dir}/submissions/${req.params.id}.manifest.json`;
+    const manifestPath = `${store.dir}/receipts/${req.params.id}.manifest.json`;
     return {
       manifest: existsSync(manifestPath)
         ? JSON.parse(readFileSync(manifestPath, "utf8"))

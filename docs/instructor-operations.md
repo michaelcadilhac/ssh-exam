@@ -1,81 +1,71 @@
 # Instructor operations
 
-Bootstrap a local administrator interactively and visit /admin. Select an exam to
-manage its visible roster. Add an existing course-server username with an optional webcam
-override, or expand Import multiple students for CSV preview/confirmation. Remove requires
-confirmation and removes enrollment only; attempt history and submissions are retained.
-Removal blocks future Begin requests but does not end an already running exam. A server administrator can end an attempt locally with `examctl stop`; the dashboard has no stop action. Escape cancels removal and closes review dialogs. Sign out is in
-the dashboard header.
+Bootstrap the initial administrator interactively and visit /admin. **Add administrator**
+creates additional accounts with the same permissions. Sign out is in the header.
 
- Configure ID/name/start window,
-duration/webcam default/terminal count and root-approved template ID. Private per-enrollment
-overrides snapshot before starts. Dashboard times are America/Chicago; UTC is persisted.
-Start-window inputs use your device timezone.
+First select an exam. The page shows only that exam's counts, students, attempt history,
+incidents and monitoring. **New exam** creates an exam; **Exam settings** changes the selected
+exam's name, start window, duration, default webcam setting, terminal limit and root-approved
+material template. Settings apply to future attempts. Dashboard times use America/Chicago;
+start-window inputs use your device timezone. Sandbox always starts with five minutes.
 
-Roster upload/paste supports CSV or selected one-username-per-line mode. Columns: username,
-require_webcam, display_name, duration_minutes. Webcam true/yes/1 or false/no/0 is case-insensitive;
-empty/inherit clears an override. Missing optional columns leave existing fields unchanged;
-explicit blanks clear them. Duration is whole minutes 1–360. Privileged/unapproved identities
-and invalid headers/values block confirmation. Limits: 10,000 students, 10 MiB.
+One table groups each student with every attempt beneath them, newest first. Enrollment
+settings are on the student row; attempt rows show their own fixed monitoring requirement,
+current status, countdown, collection protection and review controls. Removed enrollments
+retain history. Students without attempts remain visible. Search/pagination works by student,
+keeping each student's attempts together. **Working** requires that attempt's live SSH,
+open browser connection and fresh contact. Clocks tick each second; status refreshes every
+five seconds. Stale polling is marked. Attempt numbering stays stable through filters.
 
-Preview, then Confirm. Imports are transactional/idempotent add/update, never replacement;
-omitted students are kept. Current attempt settings/deadlines stay fixed. Exports neutralize
-formula-leading names. For individual/bulk webcam edits, paste just the chosen usernames and
-require_webcam column using the same preview/confirmation; omitted duration/name stays unchanged.
+**Set duration** selects an individual future allowance (1–360 whole minutes) or restores
+the exam default. **Set webcam** changes only future attempts, with required/not-required/
+exam-default choices. Prepared and active attempts retain their original settings.
+**Reset clock** sets a current countdown to the student's configured allowance, falling back
+to the exam default, counted from the request time. **Extend time** adds 1–360 whole minutes
+exactly to the current deadline. Both preserve an active student's connection and original
+access restriction. Expired/finalizing/secured attempts cannot be reset or extended.
 
-Live table supports search/pagination and explicit active/locked/finalizing/collection failure/
-completed/export states. Failed polling shows stale data. Review contains private images,
-capture/receipt times, incident/student message activity and terminal timestamp replay.
-Client reports are evidence, never automated misconduct scores.
+For bulk edits, select student checkboxes for future settings, or eligible attempt checkboxes
+for current clocks. Bulk controls expand when selecting; page-wide selection buttons are
+available. Confirmation identifies targets. Up to 100 clock changes are queued per request.
+Each attempt uses a persisted unique request ID and revision; retries do not add time twice.
+Results can be pending, confirmed or failed independently. Do not repeat a lost extension
+with a new request as compensation. Refresh/review its pending state first.
 
-Authorize only current locked incidents before deadline. Grants last five minutes or until
-deadline and are single-use; students must restore current required conditions and Continue.
-Replacement page/lost SSH needs approval; reauthentication stops capture before passwords.
-Approval never grants time and is delivered during fresh SSH authentication, without a separate remote request.
+A disconnected clock change stays pending until the agent confirms it at reconnection or
+its signed outbound check before deadline collection. Absolute reset deadlines and additive
+extensions survive delivery delays/restarts. Unavailable timing verification freezes work
+at the last committed deadline and defers packaging; restore HTTPS/signature trust to recover.
+A reset or extension does not authorize a locked student to resume or reopen finished work.
 
-Enable desktop alerts with a user gesture; desktop/sound require the open dashboard.
-Test actual SMTP receipt before production. Durable outbox uses capped retries and records
-delivery failures. Alerts have authenticated links, never images/one-click actions. Requests
-are rate-limited; correlated triggers group within incidents. Local protection, export pending
-and collection failure require different recovery actions.
+**Add student** enrolls a root-approved existing course account, with optional future duration
+and webcam overrides. Removing enrollment requires confirmation; it blocks future Begin but
+does not stop an already running exam or delete history, monitoring or protected submissions.
+Only a server administrator can stop a running exam using local `examctl stop`.
 
-Downloads require instructor auth/audit. Bulk downloads wrap protected archives without
-unpacking programs; grade elsewhere. Ended monitoring deletion needs confirmation and keeps
-submissions; monitoring also expires after 60 days. Deletion of the web download copy is a separately named
-explicit operation; the protected original is removed only by local root examctl, disabled from automatic retention by default. Minimal attempt metadata/
-checksums and deletion ledger remain. Maintain consistent private backups and current tombstones.
+CSV upload/paste supports headers `username`, `display_name`, `duration_minutes`,
+`require_webcam`, or one-username-per-line mode. Missing optional columns stay unchanged;
+blank/inherit duration/webcam restores the exam default. Webcam accepts true/yes/1 or
+false/no/0; duration is 1–360 whole minutes. Preview, then Confirm; imports are transactional,
+idempotent add/update, never replace omitted students, and never modify current clocks or
+attempt settings. Use webpage bulk clock actions separately. Invalid accounts/headers/rows
+block import. Limits: 10,000 students, 10 MiB. Roster CSV export is available.
 
-Submissions are automatic. Students do not upload or run submission commands. The optional
-Finish exam action is irreversible; otherwise the class-server deadline watchdog collects
-saved files with a disconnected browser; an unavailable gateway timing check freezes work and defers packaging until verification succeeds. Review original deadline, actual
-completion/collection/protection timestamps, reason, checksum and the file manifest.
-“Collection pending/failed” is not a successful submission. A secured protected copy with
-transfer pending remains recoverable; downloads appear only after verified transfer.
-Monitoring expires after 60 days; submission archives and receipts have separate retention.
+Review contains authenticated, audited images, terminal replay, incident messages, collection
+manifest, checksum and access recovery information. Client reports are evidence, not automated
+misconduct scores. **Authorize resume** grants the current lock a single fresh-SSH recovery
+before the deadline; sandbox grants the same authorization automatically. Students reauthenticate
+with capture stopped, restore conditions and continue. Approval does not grant time.
 
-Submission secured and account access are separate dashboard statuses. An early finish does
-not release ordinary server access until the original deadline and verified protection/cleanup.
-Finished attempts cannot resume even with an instructor continuation grant. The dashboard
-shows the last class-server access-state check and any release-recovery failure. An outage
-may leave that display stale; native state remains authoritative. Do not delete the protected class-server original while an interval hold exists. Root emergency overrides are deliberately outside the dashboard,
-require already secured work and an audited reason, and do not reopen attempts.
+Submissions are automatic: saved files are collected at expiration or irreversible Finish exam.
+Archives remain in root-private storage on the SSH server. The webserver receives signed
+completion/manifest metadata and monitoring; there are no submission download or web archive
+deletion controls. Authorized server administrators use `examctl manifest` and `examctl export`
+locally. Collection pending/failed differs from verified protection. Pending status delivery
+never recollects work. A protected early finish does not release ordinary account access before
+both original/current deadlines and verified workload cleanup. Root emergency overrides remain
+outside the dashboard. Monitoring expires after 60 days; archives/receipts have separate retention.
 
-
-The roster and attempt list show **Working** only while that attempt has live SSH, an open
-browser connection and recent contact. Clocks tick every second; status refreshes every five
-seconds. **Reset clock** lets you set 1–360 minutes remaining, prefilled with the exam default.
-Applying counts from that moment and keeps an active student's terminals connected. It does
-not add minutes or begin a new attempt. Locked students still need authorized reconnection.
-
-A disconnected reset stays visibly pending until the agent confirms it, at reconnection or
-its outbound check before deadline collection. The requested absolute deadline survives retries
-and restarts. If timing verification is unavailable, the agent freezes work at its last
-confirmed deadline and defers collection. Restore webserver HTTPS/signature trust to recover;
-do not interpret pending as secured. Resets must be requested before the current deadline;
-finished submissions never reopen. Shorter clocks do not shorten original account restrictions.
-
-
-Focus loss alone allows 20 seconds to return, with a visible student countdown. Short losses
-clear automatically without a review lock; sustained losses create the normal incident and
-SSH disconnection. Monitoring and the exam clock continue during grace. This does not extend
-network recovery or delay fullscreen/hidden-page/capture incidents.
+Enable optional desktop/sound alerts while the dashboard is open. Test actual SMTP receipt
+before production. Signed callback failures and the durable email outbox retain recoverability.
+Alert links require normal authentication and never expose images or perform an action on GET.

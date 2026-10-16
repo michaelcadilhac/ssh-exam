@@ -414,7 +414,7 @@ h2 {
 }
 .metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 16px;
   margin: 30px 0;
 }
@@ -852,3 +852,12 @@ summary {
 .focus-warning > span {
   font-size: 26px;
 }
+
+.admin > header { flex-wrap: wrap; }
+.admin > header > label { min-width: 12rem; margin: 0; }
+.bulk-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .65rem; margin: 1rem 0; }
+.bulk-actions label { margin: 0; }
+.student-row { background: #1b2b40; }
+.student-row td { border-top: 2px solid #425671; }
+.attempt-row td:nth-child(2) { padding-left: 2rem; }
+.selection-list { max-height: 12rem; overflow: auto; }

@@ -6,6 +6,7 @@ src=pathlib.Path(a.data).resolve();dest=pathlib.Path(a.destination).resolve()
 if dest.exists() or src==dest or src in dest.parents: raise SystemExit('Destination must be new and outside data')
 dest.mkdir(mode=0o700,parents=True)
 with sqlite3.connect(src/'metadata.sqlite') as original,sqlite3.connect(dest/'metadata.sqlite') as output:original.backup(output)
-for name in ('submissions','monitoring'):shutil.copytree(src/name,dest/name)
+for name in ('receipts','monitoring','submissions'):
+ if (src/name).exists():shutil.copytree(src/name,dest/name)
 os.chmod(dest/'metadata.sqlite',0o600)
 print('Backup complete. Keep latest deletion tombstones separately; expire monitoring backups within 60 days.')

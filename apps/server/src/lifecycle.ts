@@ -192,11 +192,19 @@ export class Lifecycle {
             reset.requested_at >= reset.previous_deadline ||
             reset.requested_at > reset.applied_at + 1000 ||
             !Number.isSafeInteger(reset.remaining_seconds) ||
-            reset.remaining_seconds < 60 ||
-            reset.remaining_seconds > 21600 ||
-            reset.remaining_seconds % 60 !== 0 ||
-            reset.deadline !==
-              reset.requested_at + reset.remaining_seconds * 1000
+            (reset.extend_seconds
+              ? !Number.isSafeInteger(reset.extend_seconds) ||
+                reset.extend_seconds < 60 ||
+                reset.extend_seconds > 21600 ||
+                reset.extend_seconds % 60 !== 0 ||
+                reset.remaining_seconds !== 0 ||
+                reset.deadline !==
+                  reset.previous_deadline + reset.extend_seconds * 1000
+              : reset.remaining_seconds < 60 ||
+                reset.remaining_seconds > 21600 ||
+                reset.remaining_seconds % 60 !== 0 ||
+                reset.deadline !==
+                  reset.requested_at + reset.remaining_seconds * 1000)
           )
             throw Error("Invalid clock reset history");
           deadline = reset.deadline;
@@ -380,8 +388,15 @@ export class Lifecycle {
           throw Error("Protected manifest verification failed");
         if (a.checksum && a.checksum !== remote.checksum)
           throw Error("Secured submission cannot be replaced");
+        const legacy = `${this.store.dir}/submissions/${id}.manifest.json`;
+        if (
+          existsSync(legacy) &&
+          manifestSnapshot(JSON.parse(readFileSync(legacy, "utf8"))) !==
+            manifestSnapshot(manifest)
+        )
+          throw Error("Existing collection receipt cannot be replaced");
         this.publish(
-          `${this.store.dir}/submissions/${id}.manifest.json`,
+          `${this.store.dir}/receipts/${id}.manifest.json`,
           Buffer.from(manifestSnapshot(manifest)),
           (existing) =>
             manifestSnapshot(JSON.parse(existing.toString())) ===
@@ -389,7 +404,7 @@ export class Lifecycle {
         );
         this.store.db
           .prepare(
-            "UPDATE attempts SET protected=1,checksum=?,export_status=COALESCE(export_status,'pending'),completed_at=?,collected_at=?,secured_at=? WHERE id=?",
+            "UPDATE attempts SET protected=1,checksum=?,export_status='server-only',completed_at=?,collected_at=?,secured_at=? WHERE id=?",
           )
           .run(
             remote.checksum,
@@ -399,6 +414,23 @@ export class Lifecycle {
             id,
           );
 
+        const cancelled = this.store.db
+          .prepare(
+            "UPDATE clock_reset_requests SET status='closed' WHERE attempt=? AND status='pending'",
+          )
+          .run(id);
+        if (cancelled.changes) {
+          this.store.audit(
+            "class-agent",
+            "clock-change-not-applied",
+            id,
+            "Attempt finalized before pending clock change was applied",
+          );
+          this.alert(
+            "Clock change not applied",
+            `Attempt ${id} was finalized; pending clock changes cannot reopen it.`,
+          );
+        }
         this.onSecured(this.store.attempt(id));
         if (manifest.omissions?.length)
           this.alert(
@@ -553,16 +585,10 @@ export class Lifecycle {
       this.busy.delete(id);
     }
   }
-  receiveArchive(id: string, checksum: string, bytes: Buffer) {
-    const a = this.store.attempt(id);
-    if (!a.protected || a.checksum !== checksum || hash(bytes) !== checksum)
-      throw Error("Submission transfer verification failed");
-    if (a.export_status === "deleted") return;
-    this.publish(`${this.store.dir}/submissions/${id}.tar.gz`, bytes);
-    this.store.db
-      .prepare("UPDATE attempts SET export_status='ready' WHERE id=?")
-      .run(id);
-    this.onEnd(this.store.attempt(id));
+  receiveArchive(_id: string, _checksum: string, _bytes: Buffer): never {
+    throw Error(
+      "Submissions are retained on the SSH server; archive transfers are disabled",
+    );
   }
   private publish(
     file: string,
@@ -627,25 +653,6 @@ export class Lifecycle {
         await this.lock(a.id, FOCUS_GRACE_REASON);
       else if (a.state === "ACTIVE" && now() - (a.last_contact || 0) > 15000)
         await this.lock(a.id, "Client contact exceeded 15 seconds");
-    }
-    for (const a of this.store.db
-      .prepare(
-        "SELECT * FROM attempts WHERE protected=1 AND export_status='pending' AND secured_at<?",
-      )
-      .all(now() - 60000) as Attempt[]) {
-      if (
-        !this.store.db
-          .prepare(
-            "SELECT 1 FROM audit WHERE action='export-pending-alert' AND target=?",
-          )
-          .get(a.id)
-      ) {
-        this.alert(
-          "Submission export pending",
-          `Protected copy exists for ${a.id}; signed transfer will retry from that copy.`,
-        );
-        this.store.audit("gateway", "export-pending-alert", a.id);
-      }
     }
     // There is no disconnected command polling. The agent reports authoritative results.
   }

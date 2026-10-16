@@ -1,6 +1,6 @@
 # Recovery runbook
 
-Never edit deadline state or remove account gates to resolve outages. Grant extra time only through the audited instructor Reset clock operation.
+Never edit deadline state or remove account gates to resolve outages. Grant extra time only through audited instructor Reset clock or Extend time actions.
 
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.
@@ -16,8 +16,9 @@ Never edit deadline state or remove account gates to resolve outages. Grant extr
   cannot guarantee uninterrupted collection availability.
 - Full disk/collection failure: keep exclusion, add protected capacity, inspect errors and retry.
   Do not chmod live work as a substitute for stable protection or silently accept omissions.
-- Export failure: protected local copies permit ordinary access only after the original deadline and verified termination; downloads wait for checksum-
-  verified export. Retry transfer, never recollect changed work.
+- Status-delivery failure: inspect the protected class-server archive with `examctl manifest`.
+  Retry signed callbacks; archive bytes remain on csc-sys. Ordinary access still requires
+  both original/current deadlines and verified protection/termination.
 - Changed host key/expired certificate: obtain trusted replacements, update pins/trust and test.
   Never autoaccept a key to make login succeed.
 - SMTP failure: inspect durable outbox and dashboard. Email does not guarantee prompt instructor
@@ -35,7 +36,7 @@ A bundle published just before a crash is verified and adopted even if state.jso
 FINALIZING or protected=false. Never delete or overwrite a protected bundle to retry. Inspect
 `examctl manifest ATTEMPT` and the checksum. Incomplete/corrupt bundles retain exclusion; preserve
 them for root review and recover the original artifact from backup where possible. Failed
-transfers retry the protected archive, and the gateway preserves conflicting local artifacts
+status callbacks retry immutable metadata, and the gateway preserves conflicting receipts
 rather than replacing them. Actual collection times may follow the unchanged deadline after
 an infrastructure outage. Submission retention remains separate from monitoring expiry.
 
@@ -66,8 +67,8 @@ keys and a fixed outbound HTTPS callback origin. No 9443 listener remains. Keep 
 watchdog and reconciliation timer active during gate service maintenance. Use `examctl list
 --active`, `info ATTEMPT`, `retry ATTEMPT --reason ...`, and `stop ATTEMPT --reason ...` to control
 one attempt. `examctl agent stop` does not stop the watchdog or cancel deadlines. Webserver
-outage leaves receipts/transfers in durable local state; restoring HTTPS allows retries from
-protected copies. Do not erase nonce/event state or reset a deadline as a rollback shortcut.
+outage leaves receipts in durable local state; restoring HTTPS allows metadata retries.
+Protected archives remain on the SSH server. Do not erase nonce/event state or reset a deadline as a rollback shortcut.
 Unknown historical attempts are audited by callback ingestion; their originals remain available
 through `examctl export` even when a fresh gateway database lacks their metadata.
 
@@ -108,3 +109,16 @@ reauthentication; repeated blur reports and late returns cannot extend it. Expir
 normal lock/disconnect/review flow, and continuation clears the old focus-loss timestamp.
 Network loss still has its separate 15-second bound. A gateway restart still locks active
 attempts; restoring the process is not a fresh focus grace period.
+
+
+Exam-first dashboard upgrade: install the native agent and webserver together after draining
+attempts. Preserve queued timing changes and immutable original deadlines. Native
+`server-only-submissions` is required for production preflight; `clock-extend` enables exact
+additive changes. Bulk actions may partially fail; inspect each result and retry with the
+same request IDs. Never manually add the minutes again to compensate for a lost response.
+Changing future duration/webcam settings does not alter prepared or active attempt snapshots.
+Web archive uploads return 410; download/delete routes are absent. Old local web archive
+copies are inaccessible through the application but need deliberate operator retirement
+after matching the root-protected copy/checksum and retention requirements. Keep backup
+receipts (`receipts/`) and current deletion ledgers. Never delete class-server originals or
+reset gates/deadlines to resolve an application upgrade.

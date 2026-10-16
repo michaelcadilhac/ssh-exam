@@ -27,12 +27,10 @@ type Pane = {
 };
 export function Workspace({
   reservation,
-  onError,
   onSignOut,
   onReauthenticate,
 }: {
   reservation: any;
-  onError: (s: string) => void;
   onSignOut: () => Promise<void>;
   onReauthenticate: (exam: string, username: string) => void;
 }) {
@@ -435,11 +433,11 @@ export function Workspace({
         );
     }
   };
-  const action = async (fn: () => Promise<any>) => {
+  const action = async (fn: () => Promise<any>, title = "Workspace error") => {
     try {
       await fn();
     } catch (e) {
-      onError((e as Error).message);
+      setDialog({ kind: "error", title, message: (e as Error).message });
     }
   };
   useEffect(() => {
@@ -747,7 +745,16 @@ export function Workspace({
   const lockKeyboard = async () => {
     if (document.fullscreenElement !== root.current)
       throw Error("Enter fullscreen before locking the keyboard.");
-    await (navigator as any).keyboard.lock();
+    keyboard.current = false;
+    setKeys(false);
+    try {
+      await (navigator as any).keyboard.lock();
+    } catch (error) {
+      throw Error(
+        "Keyboard lock could not be enabled. Try again and approve any browser permission prompt. If it still fails, open this page in a standalone desktop Chrome or Chromium window. " +
+          `Browser message: ${(error as Error).message}`,
+      );
+    }
     keyboard.current = true;
     setKeys(true);
   };
@@ -1022,7 +1029,7 @@ export function Workspace({
             {settings.webcam ? 3 : 2}. Enter fullscreen
           </button>
           <button
-            onClick={() => action(lockKeyboard)}
+            onClick={() => action(lockKeyboard, "Keyboard lock failed")}
             aria-pressed={keys}
             disabled={!isFullscreen || keys}
           >
@@ -1321,7 +1328,7 @@ export function Workspace({
                 : attempt.state === "CANCELLED_BEFORE_START"
                   ? "Your exam has not started and no exam time was consumed. Sign out and sign in again to retry preflight."
                   : attempt.protected
-                    ? "Your saved files are protected. The instructor must review workload cleanup or transfer status."
+                    ? "Your saved files are protected. The instructor must review workload cleanup."
                     : "Your attempt has ended. Automatic collection is pending or failed. Your instructor has been alerted; no submission action is required from you."}
             </p>
             {attempt.start &&
@@ -1348,11 +1355,7 @@ export function Workspace({
                 <p>
                   Checksum <code>{attempt.checksum || "Pending"}</code>
                 </p>
-                <p>
-                  {attempt.export_status === "ready"
-                    ? "Export verified"
-                    : "Transfer pending; the protected copy is retained."}
-                </p>
+                <p>Submission retained on the class server.</p>
               </details>
             )}
           </div>
@@ -1372,7 +1375,7 @@ export function Workspace({
                     ? "Rename terminal"
                     : dialog.kind === "signout"
                       ? "Sign out of the workspace?"
-                      : "Terminal error"
+                      : dialog.title || "Terminal error"
           }
         >
           {dialog.kind === "signout" && (

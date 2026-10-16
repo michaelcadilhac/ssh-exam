@@ -17,6 +17,7 @@ import (
 )
 
 type Request struct {
+	ExtendSeconds    int64    `json:"extend_seconds,omitempty"`
 	ResetID          string   `json:"reset_id,omitempty"`
 	Actor            string   `json:"actor,omitempty"`
 	RequestedAt      int64    `json:"requested_at,omitempty"`
@@ -136,7 +137,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {

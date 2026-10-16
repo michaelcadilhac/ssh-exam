@@ -54,6 +54,7 @@ type Settings struct {
 	Latest    int64  `json:"latest"`
 }
 type ClockReset struct {
+	ExtendSeconds    int64  `json:"extend_seconds,omitempty"`
 	ID               string `json:"id"`
 	Actor            string `json:"actor"`
 	RequestedAt      int64  `json:"requested_at"`

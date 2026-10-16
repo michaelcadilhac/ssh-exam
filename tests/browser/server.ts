@@ -130,7 +130,9 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         throw Error("Clock reset rejected");
       const previous = a.deadline;
       a.original_deadline ||= previous;
-      a.deadline = b.requested_at + b.remaining_seconds * 1000;
+      a.deadline = b.extend_seconds
+        ? previous + b.extend_seconds * 1000
+        : b.requested_at + b.remaining_seconds * 1000;
       a.clock_revision = (a.clock_revision || 0) + 1;
       a.clock_resets ||= [];
       a.clock_resets.push({
@@ -141,6 +143,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         previous_deadline: previous,
         deadline: a.deadline,
         remaining_seconds: b.remaining_seconds,
+        ...(b.extend_seconds ? { extend_seconds: b.extend_seconds } : {}),
         revision: a.clock_revision,
       });
       break;
@@ -238,23 +241,6 @@ const postStatus = async (a: any) => {
     headers,
     payload,
   });
-  if (a.protected) {
-    const receipt = Buffer.from(
-      JSON.stringify({ agent: "class", attempt: a.id, checksum: a.checksum }),
-    );
-    await app.inject({
-      method: "POST",
-      url: "/api/agent/submissions/" + a.id,
-      headers: {
-        "content-type": "application/gzip",
-        "x-exam-receipt": receipt.toString("base64"),
-        "x-exam-signature": sign(null, receipt, h.callbackKey).toString(
-          "base64",
-        ),
-      },
-      payload: archive,
-    });
-  }
 };
 h.control.command = async (op, b) => {
   const result = await fixtureCall(op, b);

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { generateKeyPairSync, sign } from "node:crypto";
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createApp } from "../../apps/server/src/app.js";
 import { Agent } from "../../apps/server/src/agent.js";
@@ -121,7 +121,7 @@ async function setup() {
     },
   };
 }
-it("accepts signed deadline completion without a browser and verified outbound archive transfer", async () => {
+it("accepts signed deadline completion without a browser while refusing archive transfers", async () => {
   const t = await setup();
   try {
     expect((await t.post(1)).statusCode).toBe(200);
@@ -129,11 +129,11 @@ it("accepts signed deadline completion without a browser and verified outbound a
       state: "COMPLETED",
       protected: 1,
       access_state: "HELD",
-      export_status: "pending",
+      export_status: "server-only",
     });
-    expect((await t.upload(Buffer.from("changed"))).statusCode).toBe(400);
-    expect((await t.upload()).statusCode).toBe(200);
-    expect(readFileSync(t.dir + "/submissions/a.tar.gz")).toEqual(t.archive);
+    expect((await t.upload(Buffer.from("changed"))).statusCode).toBe(410);
+    expect((await t.upload()).statusCode).toBe(410);
+    expect(existsSync(t.dir + "/submissions/a.tar.gz")).toBe(false);
     const admin = t.current().store.session("admin", "instructor", null);
     expect(
       (
@@ -141,8 +141,8 @@ it("accepts signed deadline completion without a browser and verified outbound a
           url: "/api/admin/attempts/a/submission",
           headers: { cookie: "session=" + admin.token },
         })
-      ).rawPayload,
-    ).toEqual(t.archive);
+      ).statusCode,
+    ).toBe(404);
   } finally {
     await t.close();
   }
@@ -157,15 +157,13 @@ it("rejects unsigned, tampered and wrongly scoped callbacks without a cookie byp
       payload: Buffer.from("{}"),
     });
     expect(response.statusCode).toBe(403);
-    const archiveResponse = await t
-      .current()
-      .app.inject({
-        method: "POST",
-        url: "/api/agent/submissions/a",
-        headers: { "content-type": "application/gzip" },
-        payload: Buffer.from("unauthenticated archive"),
-      });
-    expect(archiveResponse.statusCode).toBe(403);
+    const archiveResponse = await t.current().app.inject({
+      method: "POST",
+      url: "/api/agent/submissions/a",
+      headers: { "content-type": "application/gzip" },
+      payload: Buffer.from("unauthenticated archive"),
+    });
+    expect(archiveResponse.statusCode).toBe(410);
     expect((await t.post(1, { agent: "other" })).statusCode).toBe(400);
     expect(
       (await t.post(1, { attempt: { ...t.remote, username: "other" } }))
@@ -191,9 +189,9 @@ it("deduplicates receipts across restarts, rejects conflicts and ignores stale t
       ).statusCode,
     ).toBe(200);
     expect(t.current().store.attempt("a").state).toBe("COMPLETED");
-    expect((await t.upload()).statusCode).toBe(200);
+    expect((await t.upload()).statusCode).toBe(410);
     await t.restart();
-    expect((await t.upload()).statusCode).toBe(200);
+    expect((await t.upload()).statusCode).toBe(410);
   } finally {
     await t.close();
   }

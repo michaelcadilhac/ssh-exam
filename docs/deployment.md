@@ -61,10 +61,15 @@ Bootstrap an administrator with your own interactive password. The source CLI su
 for initialization before signoff; ensure SQLite ownership is 10001 afterward, never ship a
 default. Source commands: npm ci; EXAM_DATA=var/production npm run bootstrap-admin.
 The built container also contains dist/scripts/bootstrap-admin.js for interactive Compose run.
+After the first login, use **Add administrator** in the instructor dashboard to create
+additional accounts. Each has the same administrator permissions. Choose a unique
+username and confirm a password of 12–1024 characters. Creation is audited; an
+existing account is never overwritten. The CLI remains available for initial
+bootstrap and operator recovery through creation of a separate account.
 
 Install deploy/nginx/exam-workspace.conf.example inside nginx's http context; replace hostname
 and certificate paths. It supplies HTTP redirect/TLS, WebSocket upgrade, explicit forwarding
-headers, 12 MiB body cap, 75-second live timeout and longer authenticated download timeout.
+headers, 12 MiB body cap, 75-second live timeout and bounded authenticated monitoring responses.
 Logs omit bodies/cookies/query strings; private directories are never nginx aliases.
 CSP is app-provided, with inline styles only for WinBox and no inline/eval scripts. Microphone
 and system clipboard permissions are disabled. Add a narrowly scoped HTTP-01 ACME exception
@@ -85,7 +90,7 @@ No runtime CDN access. Liveness is not proof of server guards/notifications.
 
 After manual validation, set maintenance false during a drained configuration restart.
 Restarting loses SSH and locks active attempts, so drain before upgrades. Set maintenance true,
-wait for attempts to finish/protect/export, back up offline, build a version-tagged image,
+wait for attempts to finish/protect, back up offline, build a version-tagged image,
 test, deploy --no-build and verify readiness. Roll back the prior tag with preserved compatible
 data/migration version. Never down -v. Keep certificate/trust rollback copies.
 
@@ -151,3 +156,15 @@ Readiness signoff additionally requires `sshCommandTransport` and `statusCallbac
 actual command/callback and recovery checks. Both default false. See
 [the installed qualification record](production-qualification.md) for evidence and remaining
 installation restrictions; disposable-guest isolation does not alter host account policy.
+
+
+Exam-dashboard/storage upgrade: drain active/preflight attempts and install the matching
+native agent and webserver together. Native health must advertise `server-only-submissions`;
+additive clock operations also require `clock-extend`. No new keys or network listener are
+needed. Preserve original/current deadlines, revision history, request IDs, callbacks and
+protected class-server bundles. The webserver rejects former archive uploads with 410 and
+has no submission download/deletion routes. Historical web copies are not automatically
+removed: verify the corresponding authoritative root-protected archive/checksum on csc-sys,
+then retire obsolete web copies and their backups under the operator retention policy.
+Do not restore an older transfer-enabled agent to implement a UI rollback. Keep watchdogs,
+current schema/state, pending timing changes and account holds intact.

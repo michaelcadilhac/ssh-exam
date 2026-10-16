@@ -67,6 +67,9 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 // An explicit local operator decision can retain a historical submission only on
 // the class server. This is never recorded as a successful webserver transfer.
 func (e *Engine) ExportDelivery(id string, paused *bool, reason string) (any, error) {
+	if paused != nil && !*paused {
+		return nil, errors.New("archive exports are disabled; submissions remain on this SSH server")
+	}
 	var result any
 	err := e.WithState(func() error {
 		a, err := e.Find(id)
@@ -109,7 +112,7 @@ func (e *Engine) ExportDelivery(id string, paused *bool, reason string) (any, er
 				delete(e.state.ExportPauses, id)
 			}
 		}
-		result = map[string]any{"attempt": id, "protected": true, "webserver_transfer_verified": e.state.Exports[id], "export_paused_reason": e.state.ExportPauses[id]}
+		result = map[string]any{"attempt": id, "protected": true, "storage": "ssh-server", "webserver_transfer_verified": false, "historical_webserver_transfer_verified": e.state.Exports[id], "export_paused_reason": e.state.ExportPauses[id]}
 		return nil
 	})
 	return result, err

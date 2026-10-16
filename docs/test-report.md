@@ -334,3 +334,88 @@ Real attempt `bc2cabcd-337e-49cb-b0bb-139574a32f40` · SHA-256 `7ca70574a9832944
 - Fullscreen exit, a hidden page, capture failures and the separate 15-second network bound retain their existing behavior. Begin/Continue still require focus.
 - **117 web/API tests passed**, including six new unit cases; **21 browser-based SSH tests passed**, including real-time countdown/recovery, a focus loss longer than 15 seconds, repeated blur, server expiry with the client incident suppressed, and immediate fullscreen/visibility locks during grace.
 - TypeScript check and production build passed. The warning was visually inspected at a desktop viewport; existing user screenshots were preserved. Verification used simulated focus/media with local SSH fixtures, not a physical dual-monitor qualification. The subsequent production deployment and live checks are recorded in [the deployment log](browser-ssh-deployment.md).
+
+
+## Fullscreen workspace errors — 2026-10-15
+
+Workspace action failures now use a dismissible dialog inside the fullscreen
+workspace instead of the outer application banner. Keyboard Lock rejection
+leaves readiness false, retains the browser diagnostic and explains retrying or
+using standalone desktop Chrome/Chromium. Recovery continues to show its inline
+feedback. The shared path also covers failed start/finish and capture actions.
+
+The reported `lock() request could not be registered.` rejection was reproduced
+against the previous build: the error appeared outside the fullscreen subtree.
+The regression test now verifies immediate fullscreen visibility, blocked Begin,
+Escape dismissal/focus restoration without exiting fullscreen, successful retry,
+and a server-side Begin failure displayed in the same fullscreen error dialog.
+The dialog screenshot was visually inspected. All 117 application tests and four
+focused browser-SSH scenarios passed, including normal webcam preflight, active
+fullscreen recovery and Finish exam. Type checking and production build passed.
+Existing screenshots were preserved. These changes are local and not deployed;
+tests simulate the embedded browser's rejection rather than granting capabilities
+the host browser does not provide.
+
+
+## Administrator creation — 2026-10-15
+
+The instructor dashboard now has **Add administrator**, with a focused modal for
+username, password and confirmation. Password fields clear immediately on submission
+or mismatch and are discarded on cancellation. In-flight requests disable duplicate
+submission and cancellation; server failures remain visible in the dialog. Success
+identifies the created username. The new account has the same administrator permissions.
+
+`POST /api/admin/administrators` requires an administrator session, same-origin request
+and CSRF token, limits request size/rate, validates bounded inputs, hashes with Argon2id
+and atomically audits actor/target. Duplicate/concurrent requests return 409 and never
+replace an existing account. Neither plaintext passwords nor hashes enter the response,
+audit or request logs; request credential references are cleared after processing.
+No schema migration is required. Initial CLI bootstrap remains available.
+
+Type checking and production build passed. All **120 application tests passed**, including
+role/CSRF/origin rejection, input validation, secret-free storage/logging, sign-in and
+concurrent duplicate creation. Three focused browser-SSH scenarios passed: administrator
+creation/cancellation/mismatch/duplicate/sign-in, existing instructor enrollment controls,
+and the pending fullscreen-error regression. A held network request verified empty password
+fields and disabled submission while waiting. The dialog was visually inspected; existing
+screenshots were preserved. Changes are local and not deployed.
+
+
+## Exam-first administration and SSH-server-only submissions — 2026-10-16
+
+Implemented the approved design: no automatic exam selection or exam data before selection;
+one table groups every attempt beneath its student, including removed enrollments and students
+without attempts. All counts/activity/monitoring stay scoped to the chosen exam. Student-level
+pagination preserves complete groups and filtering preserves attempt numbers. Late dashboard
+and monitoring replies cannot replace a newer exam/dialog. Bulk controls are expandable and
+selection distinguishes future student settings from current attempt clocks.
+
+Individual/bulk duration and webcam overrides change future attempts only. CSV retains
+username/display_name/duration_minutes/require_webcam, with transactional preview/confirmation
+and exam-default inheritance; it cannot run clock actions. Reset uses each student's allowance
+or exam default; Extend time adds exact whole minutes to the committed deadline. Durable
+per-attempt IDs/revisions preserve retry safety, pending/offline delivery and partial failures.
+Original access holds, locked-state continuation and authenticated terminal connections remain
+intact. A verified finish closes unapplied clock intents; retries never report those as applied.
+Sandbox still starts with five minutes and preserves its existing repeat/recovery policy.
+
+The native agent no longer uploads archives. Signed completion manifests/status and monitoring
+continue; archives remain protected on the SSH server for local examctl retrieval. Legacy
+archive uploads reject before parsing with 410; web download/delete routes are absent. Immutable
+web receipts use receipts/, with backup support and comparison against legacy manifests. Existing
+web archives/state are preserved for deliberate operator retirement after class-server checksum
+verification; no production data was deleted. Automatic resume-export is rejected. Removed the
+unused tar-stream download dependencies. Production preflight requires server-only-submissions;
+additive changes require clock-extend. Coordinate both hosts' deployment after draining attempts.
+
+Validation: **126 application tests passed**, **24 browser-SSH scenarios passed**, type checking
+and production build passed, and the full native **Go race suite passed**. New coverage includes
+exam isolation/grouped history, current/removed/no-attempt students, stale dashboard/review replies,
+transactional future settings without snapshot changes, bulk partial outcomes, request conflicts,
+exact live/offline extensions and restart, immutable original holds, finish-vs-clock races,
+no archive reception/download/upload, signed receipt recovery and retained protected copies.
+Two real browser instances verified reset/extension without losing terminal input. Browser tests
+use local SSH/media fixtures, not a new institutional-host isolation qualification. Independent
+admin-test clients use distinct fixture IPs to respect the unchanged five-login/minute limit.
+The grouped interface was visually inspected; existing screenshots, including the user's modified
+login image, were restored exactly after tests. Documentation is updated. No deployment occurred.

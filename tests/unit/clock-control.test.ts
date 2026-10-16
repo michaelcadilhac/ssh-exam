@@ -45,7 +45,9 @@ function setup(connected = true) {
         const previous = remote.deadline;
         remote = {
           ...remote,
-          deadline: body.requested_at + body.remaining_seconds * 1000,
+          deadline: body.extend_seconds
+            ? previous + body.extend_seconds * 1000
+            : body.requested_at + body.remaining_seconds * 1000,
           clock_revision: remote.clock_revision + 1,
           clock_resets: [
             ...remote.clock_resets,
@@ -55,8 +57,13 @@ function setup(connected = true) {
               requested_at: body.requested_at,
               applied_at: Date.now(),
               previous_deadline: previous,
-              deadline: body.requested_at + body.remaining_seconds * 1000,
+              deadline: body.extend_seconds
+                ? previous + body.extend_seconds * 1000
+                : body.requested_at + body.remaining_seconds * 1000,
               remaining_seconds: body.remaining_seconds,
+              ...(body.extend_seconds
+                ? { extend_seconds: body.extend_seconds }
+                : {}),
               revision: remote.clock_revision + 1,
             },
           ],
@@ -171,3 +178,42 @@ it.each(["COMPLETED", "FINALIZING", "COLLECTION_FAILED", "PREPARING"])(
     );
   },
 );
+
+it("adds exact minutes to the existing deadline and retries once without losing original hold", async () => {
+  const f = setup();
+  const before = f.store.attempt("a");
+  const id = randomUUID();
+  const r = await f.clocks.reset("a", 7, "instructor", 0, id, false, true);
+  expect(r.confirmed).toBe(true);
+  expect(f.store.attempt("a").deadline).toBe(before.deadline! + 420000);
+  expect(f.store.attempt("a").original_deadline).toBe(before.deadline);
+  await f.clocks.reset("a", 7, "instructor", 0, id, false, true);
+  expect(f.store.attempt("a").clock_revision).toBe(1);
+});
+
+it("a verified early finish closes a pending reset and never reports a retry as applied", async () => {
+  const f = setup(false),
+    requestID = randomUUID();
+  await f.clocks.reset("a", 7, "instructor", 0, requestID);
+  const remote = {
+    ...f.remote(),
+    state: "COMPLETED",
+    protected: true,
+    checksum: "a".repeat(64),
+    ended: Date.now(),
+    completed_at: Date.now(),
+  };
+  f.life.acceptRemote(remote, {
+    attempt: remote,
+    checksum: remote.checksum,
+    collected: Date.now(),
+    secured: Date.now(),
+    files: [],
+    omissions: [],
+  });
+  expect(f.clocks.pending("a")).toBeNull();
+  expect(f.store.attempt("a").state).toBe("COMPLETED");
+  await expect(
+    f.clocks.reset("a", 7, "instructor", 0, requestID),
+  ).rejects.toThrow("attempt finished");
+});

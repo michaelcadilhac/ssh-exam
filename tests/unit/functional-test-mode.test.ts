@@ -138,6 +138,7 @@ it("production accepts a qualified administrator sandbox and keeps ordinary rost
         "all-session-channel-gate",
         "signed-ssh-control",
         "durable-status-callbacks",
+        "server-only-submissions",
         "clock-reset",
         "deadline-timing-check",
       ],

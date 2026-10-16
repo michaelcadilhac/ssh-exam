@@ -163,8 +163,8 @@ confirmed current deadline, with the immutable original and reset history preser
 A crash after bundle publication but before state persistence adopts the verified bundle,
 without reading or replacing live work. Damaged/incomplete bundles fail closed and require
 root recovery; do not remove a secured bundle to force recollection. Grade in a separate sandbox, never by executing/unpacking in the app.
-Access returns only after the original deadline has elapsed AND protection and workload termination are verified. Early completion keeps the account held. Outbound HTTPS export is
-independent of student SSH; export pending differs from collection failure, which retains exclusion.
+Access returns only after the original deadline has elapsed AND protection and workload termination are verified. Early completion keeps the account held. Archives stay on the SSH server. Signed status/manifest callbacks are independent of
+student SSH; receipt delivery pending differs from collection failure, which retains exclusion.
 
     sudo examctl info ATTEMPT_UUID
 sudo examctl info --exam sandbox
@@ -173,12 +173,11 @@ sudo examctl info --exam sandbox
 
 For full disks add protected capacity before retrying. Restore watchdog before agent access.
 For changed keys/expired HTTPS certificates or rotated signature keys install verified replacements and test/reconcile.
-Keep failed archives/workload/account excluded; retry export without recollecting mutable work.
+Keep failed archives/workload/account excluded; retry signed status delivery without recollecting mutable work.
 Root break-glass requires independently protected saved files, killed writers, verified archive
 and audited disposition before restoring recorded access. No remote force-unlock exists.
 
-No automatic local submission deletion is configured. Retain local copies until verified export
-and separate institutional retention permit removal. Monitoring is gateway-side. Back up state,
+No automatic local submission deletion is configured. Retain local copies until the separate institutional retention policy permits removal. Monitoring is gateway-side. Back up state,
 original mappings and archives consistently; editor buffers/SSH objects cannot be restored.
 
 ## Rollback
@@ -299,7 +298,6 @@ sudo examctl manifest ATTEMPT_UUID
 sudo examctl export ATTEMPT_UUID > submission.tar.gz
 sudo examctl export-status ATTEMPT_UUID
 sudo examctl pause-export ATTEMPT_UUID --reason 'Historical test archive retained locally during migration'
-sudo examctl resume-export ATTEMPT_UUID --reason 'Matching attempt imported; resume protected-copy transfer'
 sudo examctl reconcile
 sudo examctl agent status
 sudo examctl agent stop
@@ -307,13 +305,10 @@ sudo examctl agent start
 sudo examctl agent restart
 ```
 
-Archive delivery can be paused explicitly by a local administrator for historical
-test attempts absent from a fresh webserver database. This verifies the protected
-copy, records an audit reason, and survives restart. `export-status` distinguishes
-local protection, verified webserver transfer, and the pause reason. Pausing never
-acknowledges a transfer, changes a deadline/access hold, or deletes the original.
-Status callbacks continue; new attempts transfer automatically. `resume-export`
-retries the existing protected copy after repairing the destination's records.
+Submission archives never upload to the webserver. `examctl export` retrieves a verified
+protected copy locally; `export-status` reports SSH-server storage and any historical transfer
+record. Legacy pause metadata remains readable. `resume-export` rejects attempts to re-enable
+automatic transfers. Signed completion/status and monitoring callbacks continue independently.
 
 `--active` means started and unfinished, including locked/finalizing/collection-failed.
 The full list also shows preparations, completed submissions and their independent access holds.

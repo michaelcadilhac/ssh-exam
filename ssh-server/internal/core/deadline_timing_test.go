@@ -210,3 +210,34 @@ func TestSlowTimingCheckDoesNotDelayOtherExecutionLeases(t *testing.T) {
 		t.Fatal("outbound timing check delayed lease enforcement")
 	}
 }
+
+func TestDisconnectedAdditiveExtensionBeforeCollectionSurvivesRestart(t *testing.T) {
+	e, _, _ := finalFixture(t, "LOCKED", Millis()-1000)
+	original := inspectFinal(t, e).Deadline
+	timingServer(t, e, func(a *Attempt, nonce string) (timingReply, int) {
+		reply := timingDecision(a, nonce)
+		r := resetRequest(a)
+		r.RequestedAt = a.Deadline - 1000
+		r.RemainingSeconds = 0
+		r.ExtendSeconds = 120
+		reply.Reset = &r
+		reply.Collect = false
+		return reply, 200
+	})
+	e.RefreshExpiredTiming()
+	if err := e.Tick(); err != nil {
+		t.Fatal(err)
+	}
+	a := inspectFinal(t, e)
+	if a.Deadline != original+120000 || a.ClockRevision != 1 || a.State != "LOCKED" || a.Protected || a.OriginalDeadline != original {
+		t.Fatalf("offline additive extension failed: %+v", a)
+	}
+	restarted, err := New(e.Config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a = inspectFinal(t, restarted)
+	if a.Deadline != original+120000 || a.ClockResets[0].ExtendSeconds != 120 {
+		t.Fatal("restart lost exact extension")
+	}
+}
