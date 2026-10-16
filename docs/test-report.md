@@ -422,3 +422,33 @@ admin-test clients use distinct fixture IPs to respect the unchanged five-login/
 The grouped interface was visually inspected; existing screenshots, including the user's modified
 login image, were restored exactly after tests. The subsequent coordinated deployment to marco
 and csc-sys and live readiness/storage checks are recorded in [the deployment log](browser-ssh-deployment.md).
+
+
+## Stable session transitions — 2026-10-16
+
+Initial page rendering now waits for the session, student exam details and public
+login configuration before showing sign-in or authenticated content. Only a 401
+selects anonymous sign-in; service failures retain an explicit retry view. Identity
+and exam details commit together. The SSH panel and host messages remain visible
+through completion/data loading, with sent credentials cleared and input removed.
+Retrying failed exam loading does not repeat successful session completion. A
+cancelled connection cannot later replace a newer login; sign-out invalidates the
+old login callbacks only after its SSH cleanup request has completed.
+
+Five new browser scenarios gate responses instead of relying on a short sleep and
+observe every DOM commit to catch transient forms: administrator restoration at
+both URLs; a student session/service failure and retry; anonymous startup with
+late login-only configuration; and an SSH handoff with delayed completion, failed
+exam loading, in-place retry and sign-out. The two reported regressions reproduced
+on the previous frontend. The new SSH scenario uses a separate fixture account so
+focus-lock history cannot change its expected destination.
+
+Validation: **126 application tests**, **29 browser SSH tests**, and **five legacy
+transport transition tests** passed; type checking and production build passed.
+The full browser suite also verifies retained terminal input, sign-out, webcam,
+preflight retries, fullscreen errors, MFA, finish, live clock actions and focus
+policy. Existing screenshots and the user's modified login image were preserved.
+The deployed bundle passed delayed-session and delayed-handoff browser checks with
+local response fixtures and no real credentials/MFA/exam. Both transitional views
+were visually inspected. Deployment/readiness/backups are recorded in
+[the deployment log](browser-ssh-deployment.md).

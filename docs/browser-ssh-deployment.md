@@ -4,6 +4,48 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Session transition update, 2026-10-16
+
+Deployed web source `3c12fd4` to marco on October 16 (19:06 UTC).
+The app resolves session identity, student exam details and public login
+configuration before choosing a page. A confirmed 401 selects sign-in; other
+startup failures offer retry without rendering an anonymous form. SSH completion
+keeps its authentication panel visible until the session and exam details can be
+committed together. Sent answers clear immediately; successful completion is not
+posted twice when retrying exam-data loading. Sign-out retains SSH control long
+enough for the existing agent cleanup to finish.
+
+- Current image: `ssh-exam-workspace:session-3c12fd4`, also tagged `:1.0.0`.
+- Image ID: `sha256:b44e95b2ae271b157c35c45f57c4db1830f3042d57f1fa578b4b0d82436b934d`.
+- Previous image retained as `ssh-exam-workspace:pre-session-3c12fd4`.
+- Consistent metadata and private configuration/trust/secrets backup:
+  `/var/backups/ssh-exam/20261016T190657Z-session-web-sa1v5ji3` on marco.
+
+No pending or active exam was present at cutover. This is a web-only change:
+native binaries/configuration, relay, SSH access rules, schema 8 and submission
+storage are unchanged. Fingerprints verified that administrator accounts, exams,
+enrollments, complete attempt records and private web configuration were preserved.
+No submission archive bytes exist on marco. The new container is healthy; readiness
+reports production-ready, notifications enabled and maintenance disabled.
+
+Validation passed type checking, production build, 126 application tests, all
+29 browser SSH scenarios and five transition scenarios using the legacy fixture
+transport. Delayed-response tests observe DOM commits to catch even brief form
+flashes. Both original failures were reproduced with the previous frontend.
+The new SSH test has its own fixture account, separate from focus-lock scenarios.
+Existing screenshots, including the user's modified login image, were preserved.
+
+Fresh Chromium checks against the deployed bundle exercised delayed administrator
+session restoration and SSH-to-session handoff using browser-local response fixtures;
+neither rendered an intermediate sign-in form or produced a browser error. They
+created no real account/session, supplied no SSH credentials, requested no phone MFA
+and started no exam. Both transitional layouts were visually inspected. Actual SSH,
+MFA, terminal, recovery, finish and clock behavior is covered by the local fixtures.
+
+A web rollback to the retained previous image does not require a native downgrade
+or database restore. Drain attempts first and preserve current metadata; the earlier
+coordinated-protocol and protected-submission rollback constraints still apply.
+
 ## Exam administration and server-only submissions update, 2026-10-16
 
 Deployed application and native source `dd9819b` to marco and csc-sys on
@@ -21,7 +63,7 @@ Archives remain on csc-sys; signed manifests/status and monitoring still return 
 the webserver. The former archive upload endpoint returns 410 before reading its
 body, and the web download route is absent (404).
 
-- Current image: `ssh-exam-workspace:admin-dd9819b`, also tagged `:1.0.0`.
+- Image at this update: `ssh-exam-workspace:admin-dd9819b`, then tagged `:1.0.0`.
 - Image ID: `sha256:f5dbe56d6018aeb049776044356a16a0f92e8dd74af6b7244c066703a7687c9a`.
 - Previous image retained as `ssh-exam-workspace:pre-admin-dd9819b`.
 - Consistent metadata and private configuration/trust/secrets backup:

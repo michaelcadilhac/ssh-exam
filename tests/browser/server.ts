@@ -83,6 +83,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       student07: 10007,
       student08: 10008,
       student09: 10009,
+      student10: 10010,
     };
     if (b.usernames.some((u: string) => !users[u]))
       throw Error("Unknown fixture account");
@@ -214,6 +215,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       student07: 10007,
       student08: 10008,
       student09: 10009,
+      student10: 10010,
     },
   }),
 );

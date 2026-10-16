@@ -193,7 +193,7 @@ test("SSH completion retains its dialog through delayed session/exam loading and
     ).toHaveCount(0);
     await expect(page.getByLabel("Enrolled username")).toHaveCount(0);
     await expect(
-      page.getByText("Signed in as student09", { exact: true }),
+      page.getByText("Signed in as student10", { exact: true }),
     ).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).__signInFrames)).toEqual(
       [],
@@ -202,7 +202,7 @@ test("SSH completion retains its dialog through delayed session/exam loading and
   try {
     await page.goto("/");
     await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
-    await page.getByLabel("Enrolled username").fill("student09");
+    await page.getByLabel("Enrolled username").fill("student10");
     await page.getByRole("button", { name: "Start SSH sign-in" }).click();
     await page.getByLabel("Shared SSH password").fill("shared-password");
     await page.evaluate(() => {
