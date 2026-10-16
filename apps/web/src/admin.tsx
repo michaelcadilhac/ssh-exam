@@ -68,7 +68,14 @@ function Replay({ id, pane }: { id: string; pane: string }) {
     </>
   );
 }
-export function Admin({ onError }: { onError: (s: string) => void }) {
+export function Admin({
+  onError,
+  onSignOut,
+}: {
+  onError: (s: string) => void;
+  onSignOut: () => Promise<void>;
+}) {
+  const [signingOut, setSigningOut] = useState(false);
   const [exams, setExams] = useState<any[]>([]),
     [exam, setExam] = useState("");
   const [data, setData] = useState<any>(null),
@@ -317,14 +324,19 @@ export function Admin({ onError }: { onError: (s: string) => void }) {
           Add administrator
         </button>
         <button
+          disabled={signingOut}
           onClick={() =>
             action(async () => {
-              await api("/admin/logout", {});
-              location.reload();
+              setSigningOut(true);
+              try {
+                await onSignOut();
+              } finally {
+                setSigningOut(false);
+              }
             })
           }
         >
-          Sign out
+          {signingOut ? "Signing out…" : "Sign out"}
         </button>
       </header>
       {notice && <p role="status">{notice}</p>}

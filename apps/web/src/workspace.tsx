@@ -53,7 +53,7 @@ export function Workspace({
     capture = useRef<Capture | null>(null),
     armed = useRef(false),
     keyboard = useRef(false),
-    localLocked = useRef(false),
+    localLocked = useRef(attemptRef.current.state === "LOCKED"),
     lastAck = useRef(Date.now()),
     reconnectTimer = useRef<any>(null);
   const serverClock = useRef({ now: Date.now(), at: performance.now() });
@@ -62,7 +62,8 @@ export function Workspace({
   const [attempt, setAttempt] = useState(attemptRef.current),
     [focusSeconds, setFocusSeconds] = useState<number | null>(null),
     [connected, setConnected] = useState(false),
-    [locked, setLocked] = useState(false),
+    [hasConnected, setHasConnected] = useState(false),
+    [locked, setLocked] = useState(attemptRef.current.state === "LOCKED"),
     [screen, setScreen] = useState(false),
     [camera, setCamera] = useState(false),
     [keys, setKeys] = useState(false),
@@ -72,6 +73,9 @@ export function Workspace({
     [clock, setClock] = useState(Date.now()),
     [message, setMessage] = useState(""),
     [dialog, setDialog] = useState<any>(null),
+    [dialogBusy, setDialogBusy] = useState(false),
+    [finishing, setFinishing] = useState(false),
+    [finishError, setFinishError] = useState(""),
     [review, setReview] = useState(""),
     [terminalMenu, setTerminalMenu] = useState<{
       pane: string;
@@ -97,6 +101,46 @@ export function Workspace({
     for (const seconds of [600, 300, 60])
       if (left <= seconds * 1000) warnings.current.add(seconds);
   }, [attempt.clock_revision]);
+  const snapshotEpoch = useRef(0);
+  const lastServerSnapshot = useRef<number | null>(null);
+  const acceptSnapshot = (
+    next: any,
+    serverNow?: number,
+    epoch = snapshotEpoch.current,
+  ) => {
+    const current = attemptRef.current;
+    if (
+      next.id !== current.id ||
+      epoch !== snapshotEpoch.current ||
+      (next.generation || 0) < (current.generation || 0) ||
+      (next.clock_revision || 0) < (current.clock_revision || 0) ||
+      (serverNow &&
+        lastServerSnapshot.current !== null &&
+        serverNow < lastServerSnapshot.current &&
+        (next.generation || 0) <= (current.generation || 0) &&
+        (next.clock_revision || 0) <= (current.clock_revision || 0) &&
+        !(next.protected && !current.protected)) ||
+      (current.state === "COMPLETED" && next.state !== "COMPLETED") ||
+      (["COMPLETED", "COLLECTION_FAILED", "CANCELLED_BEFORE_START"].includes(
+        current.state,
+      ) &&
+        ["PREPARING", "ACTIVE", "LOCKED"].includes(next.state)) ||
+      (["ACTIVE", "LOCKED"].includes(current.state) &&
+        next.state === "PREPARING")
+    )
+      return false;
+    attemptRef.current = next;
+    setAttempt(next);
+    if (serverNow) {
+      lastServerSnapshot.current = serverNow;
+      setServerOffset(serverNow - Date.now());
+      serverClock.current = { now: serverNow, at: performance.now() };
+    }
+    return true;
+  };
+  const protecting =
+    attempt.state === "FINALIZING" ||
+    (finishing && attempt.state !== "COLLECTION_FAILED");
   const settings = reservation.settings;
   const sandbox = isSandbox(settings.id);
   const id = reservation.id;
@@ -115,7 +159,7 @@ export function Workspace({
     locked ||
     preflightRecovery ||
     ended ||
-    attempt.state === "FINALIZING" ||
+    protecting ||
     (!connected && attempt.state === "ACTIVE");
   const dialogRef = useRef(dialog);
   dialogRef.current = dialog;
@@ -440,6 +484,35 @@ export function Workspace({
       setDialog({ kind: "error", title, message: (e as Error).message });
     }
   };
+  const finishSignOut = async () => {
+    setFinishError("");
+    try {
+      await onSignOut();
+    } catch (e) {
+      setFinishError(
+        `Your submission is secured, but sign-out failed: ${(e as Error).message}`,
+      );
+    }
+  };
+  const finishExam = async () => {
+    setFinishing(true);
+    setFinishError("");
+    ++snapshotEpoch.current;
+    armed.current = false;
+    capture.current?.stop();
+    clipboard.current = "";
+    const pending = { ...attemptRef.current, state: "FINALIZING" };
+    attemptRef.current = pending;
+    setAttempt(pending);
+    try {
+      const result = await api(`/student/attempts/${id}/finish`, {}, page);
+      ++snapshotEpoch.current;
+      acceptSnapshot(result.attempt, result.serverNow);
+    } catch (e) {
+      setFinishError(`Finish could not be confirmed: ${(e as Error).message}`);
+    }
+    setSignOutAfterFinish(true);
+  };
   useEffect(() => {
     if (
       signOutAfterFinish &&
@@ -447,7 +520,7 @@ export function Workspace({
       attempt.protected
     ) {
       setSignOutAfterFinish(false);
-      void action(onSignOut);
+      void finishSignOut();
     }
   }, [signOutAfterFinish, attempt.state, attempt.protected]);
   useEffect(() => {
@@ -480,17 +553,16 @@ export function Workspace({
         send({ type: "bind", attempt: id, page });
       };
       s.onmessage = (e) => {
+        if (!mounted || ws.current !== s) return;
         const m = JSON.parse(e.data);
         if (m.type === "state") {
+          if (!acceptSnapshot(m.attempt, m.serverNow)) return;
           lastAck.current = Date.now();
           retryDelay = 1000;
           setConnected(true);
+          setHasConnected(true);
           setRecoveryExpired(false);
           updateAuthenticationGap(!!m.authenticationGap);
-          attemptRef.current = m.attempt;
-          setAttempt(m.attempt);
-          setServerOffset(m.serverNow - Date.now());
-          serverClock.current = { now: m.serverNow, at: performance.now() };
           if (m.attempt.state === "LOCKED") {
             armed.current = false;
             localLocked.current = true;
@@ -533,8 +605,8 @@ export function Workspace({
         }
       };
       s.onclose = () => {
+        if (!mounted || ws.current !== s) return;
         setConnected(false);
-        if (!mounted) return;
         if (Date.now() - lastAck.current > 15000) {
           setRecoveryExpired(true);
           if (attemptRef.current.state === "ACTIVE")
@@ -636,15 +708,14 @@ export function Workspace({
         }
     }, 250);
     const statusTimer = setInterval(() => {
+      const epoch = snapshotEpoch.current;
       void api(`/student/attempts/${id}/status`)
         .then((result) => {
-          attemptRef.current = result.attempt;
-          setAttempt(result.attempt);
-          setServerOffset(result.serverNow - Date.now());
-          serverClock.current = {
-            now: result.serverNow,
-            at: performance.now(),
-          };
+          if (
+            !mounted ||
+            !acceptSnapshot(result.attempt, result.serverNow, epoch)
+          )
+            return;
           updateAuthenticationGap(!!result.authenticationGap);
           if (result.attempt.state === "LOCKED") {
             armed.current = false;
@@ -760,15 +831,20 @@ export function Workspace({
   };
   const begin = async () => {
     const r = conditions();
+    ++snapshotEpoch.current;
     const result = await api(`/student/attempts/${id}/begin`, r, page);
-    serverClock.current = {
-      now: result.serverNow || result.attempt.start || Date.now(),
-      at: performance.now(),
-    };
+    ++snapshotEpoch.current;
+    if (
+      !acceptSnapshot(result.attempt, result.serverNow) &&
+      !(
+        result.attempt.state === "ACTIVE" &&
+        attemptRef.current.state === "ACTIVE" &&
+        result.attempt.generation === attemptRef.current.generation
+      )
+    )
+      return;
     setClock(serverClock.current.now);
-    attemptRef.current = result.attempt;
-    setAttempt(result.attempt);
-    armed.current = result.attempt.state === "ACTIVE";
+    armed.current = attemptRef.current.state === "ACTIVE";
     if (armed.current) {
       localLocked.current = false;
       setLocked(false);
@@ -801,18 +877,25 @@ export function Workspace({
   const continueExam = async () => {
     const readiness = readinessMessage(conditions(), settings.webcam);
     if (readiness) throw Error(readiness);
+    ++snapshotEpoch.current;
     const result = await api(
       `/student/attempts/${id}/continue`,
       conditions(),
       page,
     );
-    serverClock.current = {
-      now: result.serverNow || result.attempt.start || Date.now(),
-      at: performance.now(),
-    };
+    ++snapshotEpoch.current;
+    if (
+      !acceptSnapshot(result.attempt, result.serverNow) &&
+      !(
+        result.attempt.state === "ACTIVE" &&
+        attemptRef.current.state === "ACTIVE" &&
+        result.attempt.generation === attemptRef.current.generation
+      )
+    )
+      throw Error(
+        "Exam status changed while restoring. Review the current pause before continuing.",
+      );
     setClock(serverClock.current.now);
-    attemptRef.current = result.attempt;
-    setAttempt(result.attempt);
     localLocked.current = false;
     setLocked(false);
     armed.current = true;
@@ -906,7 +989,9 @@ export function Workspace({
                   ? "Connected"
                   : recoveryExpired
                     ? "Connection unavailable · retrying"
-                    : "Reconnecting · input blocked"}
+                    : hasConnected
+                      ? "Reconnecting · input blocked"
+                      : "Connecting…"}
             </span>
             {attempt.start && (
               <span className="status">
@@ -1097,7 +1182,7 @@ export function Workspace({
       )}
       {(locked || (!connected && attempt.state === "ACTIVE")) &&
         !ended &&
-        attempt.state !== "FINALIZING" && (
+        !protecting && (
           <div className="lock-overlay">
             <div className="card">
               <h1>
@@ -1294,7 +1379,7 @@ export function Workspace({
             </div>
           </div>
         )}
-      {attempt.state === "FINALIZING" && (
+      {protecting && (
         <div className="lock-overlay">
           <div className="card">
             <h1>
@@ -1307,10 +1392,26 @@ export function Workspace({
                 ? "Work is frozen while exam timing is verified. Your instructor can see this status."
                 : "Terminal access has ended. Saved files are being collected; wait for confirmation."}
             </p>
+            {finishError && (
+              <>
+                <p role="alert">{finishError}</p>
+                <button
+                  onClick={() =>
+                    void (attempt.state === "COMPLETED" && attempt.protected
+                      ? finishSignOut()
+                      : finishExam())
+                  }
+                >
+                  {attempt.state === "COMPLETED" && attempt.protected
+                    ? "Retry sign out"
+                    : "Retry finishing"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
-      {ended && (
+      {ended && !protecting && (
         <div className="lock-overlay">
           <div className="card">
             <h1>
@@ -1363,7 +1464,9 @@ export function Workspace({
       )}
       {dialog && (
         <Modal
-          onClose={() => setDialog(null)}
+          onClose={() => {
+            if (!dialogBusy) setDialog(null);
+          }}
           title={
             dialog.kind === "begin"
               ? "Begin your timed exam?"
@@ -1424,42 +1527,34 @@ export function Workspace({
               onChange={(e) => setDialog({ ...dialog, name: e.target.value })}
             />
           )}
-          <div className="actions">
-            <button onClick={() => setDialog(null)}>
+          <div className="actions" aria-busy={dialogBusy}>
+            <button disabled={dialogBusy} onClick={() => setDialog(null)}>
               {dialog.kind === "error" ? "Close" : "Cancel"}
             </button>
             {dialog.kind !== "error" && (
               <button
                 className="primary"
-                disabled={dialog.kind === "rename" && !dialog.name.trim()}
+                disabled={
+                  dialogBusy ||
+                  (dialog.kind === "rename" && !dialog.name.trim())
+                }
                 onClick={() =>
                   action(async () => {
                     const d = dialog;
-                    setDialog(null);
-                    if (d.kind === "signout") await onSignOut();
-                    if (d.kind === "begin") await begin();
-                    if (d.kind === "finish") {
-                      armed.current = false;
-                      capture.current?.stop();
-                      clipboard.current = "";
-                      const pending = {
-                        ...attemptRef.current,
-                        state: "FINALIZING",
-                      };
-                      attemptRef.current = pending;
-                      setAttempt(pending);
-                      const result = await api(
-                        `/student/attempts/${id}/finish`,
-                        {},
-                        page,
-                      );
-                      setAttempt(result.attempt);
-                      attemptRef.current = result.attempt;
-                      armed.current = false;
-                      capture.current?.stop();
-                      clipboard.current = "";
-                      setSignOutAfterFinish(true);
+                    if (dialogBusy) return;
+                    if (d.kind === "signout" || d.kind === "begin") {
+                      setDialogBusy(true);
+                      try {
+                        if (d.kind === "signout") await onSignOut();
+                        else await begin();
+                        setDialog(null);
+                      } finally {
+                        setDialogBusy(false);
+                      }
+                      return;
                     }
+                    setDialog(null);
+                    if (d.kind === "finish") await finishExam();
                     if (d.kind === "close") {
                       send({ type: "close", pane: d.pane });
                       remove(d.pane);

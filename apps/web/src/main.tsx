@@ -31,6 +31,9 @@ function App() {
     [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [reservation, setReservation] = useState<any>(null),
+    [navigation, setNavigation] = useState<
+      "preflight" | "restore" | "signout" | null
+    >(null),
     [answers, setAnswers] = useState<string[]>([]),
     [loginTest, setLoginTest] = useState<any>(null),
     [browserCheck, setBrowserCheck] = useState(() => ({
@@ -119,21 +122,38 @@ function App() {
     if (issue) throw Error(issue);
   };
   const browserBlocked = browserCheck.checking || !!browserCheck.issue;
-  const logout = async () => {
-    // The retained control socket must finish SSH cleanup before invalidation.
-    await api("/logout", {});
-    ++authAttempt.current;
-    browserSSH.close();
-    authSocket?.close();
-    setCsrf("");
-    setReservation(null);
-    setSession({ user: null, info: null });
-    setChallenge(null);
-    setAuthSocket(null);
-    clearAuthAnswers();
-    setPassword("");
-    setAuthPhase("idle");
+  const navigationBusy = useRef(false);
+  const navigate = async (
+    kind: "preflight" | "restore" | "signout",
+    fn: () => Promise<void>,
+  ) => {
+    if (navigationBusy.current) return;
+    navigationBusy.current = true;
+    setNavigation(kind);
+    try {
+      await fn();
+    } finally {
+      navigationBusy.current = false;
+      setNavigation(null);
+    }
   };
+  const logout = async () =>
+    navigate("signout", async () => {
+      // The retained control socket must finish SSH cleanup before invalidation.
+      await api(user?.role === "admin" ? "/admin/logout" : "/logout", {});
+      if (user?.role === "admin") history.replaceState(null, "", "/admin");
+      ++authAttempt.current;
+      browserSSH.close();
+      authSocket?.close();
+      setCsrf("");
+      setReservation(null);
+      setSession({ user: null, info: null });
+      setChallenge(null);
+      setAuthSocket(null);
+      clearAuthAnswers();
+      setPassword("");
+      setAuthPhase("idle");
+    });
   const finishLogin = async () => {
     setAuthPhase("completing");
     setError("");
@@ -262,7 +282,7 @@ function App() {
               Exam starts are paused for maintenance.
             </p>
           )}
-          <Admin onError={setError} />
+          <Admin onError={setError} onSignOut={logout} />
         </>
       ) : reservation ? (
         <Workspace
@@ -280,12 +300,14 @@ function App() {
           }}
         />
       ) : (
-        <div className="landing">
+        <div className="landing" aria-busy={!!navigation}>
           <nav>
             <strong>SSH exams</strong>
             {user?.role === "student" &&
               !["ACTIVE", "LOCKED"].includes(info?.attempt?.state) && (
-                <button onClick={() => action(logout)}>Sign out</button>
+                <button disabled={!!navigation} onClick={() => action(logout)}>
+                  {navigation === "signout" ? "Signing out…" : "Sign out"}
+                </button>
               )}
             <a href={admin ? "/" : "/admin"}>
               {admin ? "Student sign-in" : "Instructor sign-in"}
@@ -392,7 +414,7 @@ function App() {
                         {!info.sshConnected ? (
                           <>
                             <button
-                              disabled={browserBlocked}
+                              disabled={browserBlocked || !!navigation}
                               onClick={() =>
                                 action(async () => {
                                   await requireExamBrowser();
@@ -410,21 +432,25 @@ function App() {
                         ) : (
                           <>
                             <button
-                              disabled={browserBlocked}
+                              disabled={browserBlocked || !!navigation}
                               onClick={() =>
                                 action(async () => {
-                                  await requireExamBrowser();
-                                  const r = await api(
-                                    `/student/attempts/${info.attempt.id}/claim`,
-                                    {},
-                                  );
-                                  setReservation(r);
+                                  await navigate("restore", async () => {
+                                    await requireExamBrowser();
+                                    const r = await api(
+                                      `/student/attempts/${info.attempt.id}/claim`,
+                                      {},
+                                    );
+                                    setReservation(r);
+                                  });
                                 })
                               }
                             >
-                              {isSandbox(info.exam.id)
-                                ? "Restore page"
-                                : "Restore page after instructor authorization"}
+                              {navigation === "restore"
+                                ? "Restoring exam…"
+                                : isSandbox(info.exam.id)
+                                  ? "Restore page"
+                                  : "Restore page after instructor authorization"}
                             </button>
                           </>
                         )}
@@ -450,17 +476,21 @@ function App() {
                         ) : (
                           <button
                             className="primary"
-                            disabled={browserBlocked}
+                            disabled={browserBlocked || !!navigation}
                             onClick={() =>
                               action(async () => {
-                                await requireExamBrowser();
-                                setReservation(
-                                  await api("/student/preflight", {}),
-                                );
+                                await navigate("preflight", async () => {
+                                  await requireExamBrowser();
+                                  setReservation(
+                                    await api("/student/preflight", {}),
+                                  );
+                                });
                               })
                             }
                           >
-                            Open preflight & practice
+                            {navigation === "preflight"
+                              ? "Opening preflight…"
+                              : "Open preflight & practice"}
                           </button>
                         )}
                       </>
@@ -641,7 +671,7 @@ function App() {
                       Exam ID
                       <input
                         required
-                        disabled={browserBlocked}
+                        disabled={browserBlocked || !!navigation}
                         value={examId}
                         onChange={(e) => setExamId(e.target.value)}
                       />
@@ -653,7 +683,7 @@ function App() {
                       : "Enrolled username"}
                     <input
                       required
-                      disabled={browserBlocked}
+                      disabled={browserBlocked || !!navigation}
                       autoComplete="username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
