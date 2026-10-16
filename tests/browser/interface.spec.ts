@@ -1955,3 +1955,233 @@ for (const [violation, username] of [
     ).toHaveCount(0);
   });
 }
+
+test("active page reload requires one instructor grant and fresh SSH before restoring input, without a wrong screen flash", async ({
+  page,
+}) => {
+  const { observeScreens, resetScreens, onlyScreens } = await import(
+    "./transition-fixture.js"
+  );
+  await observeScreens(page);
+  await simulatedMedia(page);
+  await studentSignIn(page, "reload", "student11");
+  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
+  await page
+    .getByRole("button", { name: "3. Lock keyboard", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click();
+  await expect(page.locator(".winbox")).toHaveCount(1);
+  const original = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  // Suppress the cooperative pagehide beacon: reload recovery must work independently.
+  await page.evaluate(() => {
+    navigator.sendBeacon = () => false;
+  });
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Reconnect SSH", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".workspace, form")).toHaveCount(0);
+  await onlyScreens(page, ["empty", "loading", "summary"]);
+  const restored = await (await page.request.get("/api/student/exam")).json();
+  expect(restored.attempt).toMatchObject({
+    id: original.id,
+    state: "LOCKED",
+    deadline: original.deadline,
+    original_deadline: original.original_deadline,
+    page_hash: null,
+  });
+  expect(restored.sshConnected).toBe(false);
+  await page
+    .getByRole("button", { name: "Reconnect SSH", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Instructor authorization required",
+  );
+  await expect(page.locator(".workspace, form")).toHaveCount(0);
+  const admin = await request.newContext({
+    baseURL: "http://localhost:3100",
+    extraHTTPHeaders: { Origin: "http://localhost:3100" },
+  });
+  try {
+    const login = await admin.post("/api/admin/login", {
+      data: { username: "instructor", password: "fixture-password" },
+    });
+    expect(login.ok()).toBe(true);
+    const { csrf } = await login.json();
+    expect(
+      (
+        await admin.post(`/api/admin/attempts/${original.id}/authorize`, {
+          headers: { "X-CSRF-Token": csrf },
+          data: {},
+        })
+      ).ok(),
+    ).toBe(true);
+    // Reloading an already locked attempt must preserve this one authorization.
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "Reconnect SSH", exact: true }),
+    ).toBeVisible();
+    await onlyScreens(page, ["empty", "loading", "summary"]);
+    await page
+      .getByRole("button", { name: "Reconnect SSH", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Start SSH sign-in" }),
+    ).toBeVisible();
+    await resetScreens(page);
+    await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+    await page.getByLabel("Shared SSH password").fill("shared-password");
+    await page.getByRole("button", { name: "Respond to this host" }).click();
+    await expect(page.getByLabel("Host authentication messages")).toContainText(
+      "Enter number 42",
+    );
+    await expect(
+      page.getByRole("button", {
+        name: "Restore page after instructor authorization",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await onlyScreens(page, ["SSH authentication", "summary"]);
+    await resetScreens(page);
+    await page
+      .getByRole("button", {
+        name: "Restore page after instructor authorization",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Instructor review required" }),
+    ).toBeVisible();
+    await onlyScreens(page, ["summary", "Instructor review required"]);
+    await page
+      .getByRole("button", { name: "Restore screen sharing", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Restore fullscreen", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Restore keyboard lock", exact: true })
+      .click();
+    await page
+      .getByRole("button", {
+        name: "Continue exam after authorization",
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Instructor review required" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "New terminal", exact: true })
+      .click();
+    await expect(page.locator(".winbox")).toHaveCount(1);
+    await page.locator(".xterm-helper-textarea").focus();
+    await page.keyboard.type("reloaded answer");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".xterm-rows")).toContainText(
+      "Echo: reloaded answer",
+    );
+    const active = (await (await page.request.get("/api/student/exam")).json())
+      .attempt;
+    expect(active).toMatchObject({
+      id: original.id,
+      state: "ACTIVE",
+      deadline: original.deadline,
+    });
+  } finally {
+    await admin.dispose();
+  }
+});
+
+test("browser SSH control recovery keeps input blocked until both channels are rebound", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.EXAM_BROWSER_SSH !== "1",
+    "Browser SSH control channel only",
+  );
+  const { gate, observeScreens, resetScreens, onlyScreens } = await import(
+    "./transition-fixture.js"
+  );
+  await observeScreens(page);
+  await simulatedMedia(page);
+  let control: import("@playwright/test").WebSocketRoute | undefined;
+  const ack = gate();
+  let waiting = false;
+  await page.routeWebSocket("**/api/auth/dialogue", (socket) => {
+    control = socket;
+    socket.connectToServer();
+  });
+  await page.routeWebSocket("**/api/browser/ssh", (socket) => {
+    const server = socket.connectToServer();
+    server.onMessage(async (message) => {
+      if (JSON.parse(String(message)).type === "browser-bound") {
+        waiting = true;
+        await ack.promise;
+      }
+      socket.send(message);
+    });
+  });
+  await studentSignIn(page, "sandbox", "student12");
+  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
+  await page
+    .getByRole("button", { name: "3. Lock keyboard", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click();
+  await expect(page.locator(".winbox")).toHaveCount(1);
+  await page.locator(".xterm-helper-textarea").focus();
+  await page.keyboard.type("before");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText("Echo: before");
+  await resetScreens(page);
+  try {
+    control!.close({ code: 1012 });
+    await expect(
+      page.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toBeVisible();
+    await expect.poll(() => waiting).toBe(true);
+    await page.locator(".xterm-helper-textarea").evaluate((el) => {
+      (el as HTMLTextAreaElement).value = "discarded\r";
+      el.dispatchEvent(
+        new InputEvent("input", {
+          bubbles: true,
+          data: "discarded\r",
+          inputType: "insertText",
+        }),
+      );
+    });
+    await expect(
+      page.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toBeVisible();
+    await onlyScreens(page, ["active", "Reconnecting"]);
+    ack.release();
+    await expect(
+      page.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toHaveCount(0);
+    await page.locator(".xterm-helper-textarea").focus();
+    await page.keyboard.type("after");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".xterm-rows")).toContainText("Echo: after");
+    await expect(page.locator(".xterm-rows")).not.toContainText("discarded");
+    await onlyScreens(page, ["active", "Reconnecting"]);
+    expect(
+      (await (await page.request.get("/api/student/exam")).json()).attempt
+        .state,
+    ).toBe("ACTIVE");
+  } finally {
+    ack.release();
+  }
+});

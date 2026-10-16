@@ -1,11 +1,14 @@
 import { socket } from "./api.js";
 
-class BrowserSSH {
+export class BrowserSSH {
   private browserMode = false;
   private worker?: Worker;
   private control?: WebSocket;
   private token = "";
   private authenticated = false;
+  private controlReady = false;
+  private inputEnabled = false;
+  private inputEpoch = 0;
   private stopped = false;
   private callbacks = new Map<
     string,
@@ -25,6 +28,17 @@ class BrowserSSH {
   }
   get usingBrowser() {
     return this.browserMode;
+  }
+  get controlConnected() {
+    return !this.browserMode || this.controlReady;
+  }
+  setInputEnabled(enabled: boolean) {
+    if (this.inputEnabled === enabled) return;
+    this.inputEnabled = enabled;
+    if (!enabled) {
+      ++this.inputEpoch;
+      this.earlyInputs.clear();
+    }
   }
   begin(s: WebSocket, auth: (v: any) => void) {
     this.browserMode = false;
@@ -116,7 +130,10 @@ class BrowserSSH {
         this.close();
         return;
       }
-      this.disconnected ||= Date.now();
+      this.controlReady = false;
+      this.setInputEnabled(false);
+      this.emit({ type: "control", connected: false });
+      this.disconnected ||= performance.now();
       this.retry = setTimeout(() => this.reconnect(), 500);
     });
   }
@@ -145,7 +162,11 @@ class BrowserSSH {
       }
       void promise.then(
         (result) => {
-          if (m.op === "connect") this.authenticated = true;
+          if (m.op === "connect") {
+            this.authenticated = true;
+            this.controlReady = true;
+            this.emit({ type: "control", connected: true });
+          }
           if (this.control?.readyState === 1)
             this.control.send(
               JSON.stringify({
@@ -194,6 +215,7 @@ class BrowserSSH {
     if (!this.active || !["input", "resize", "close"].includes(m.type))
       return false;
     if (m.type === "input") {
+      if (!this.inputEnabled || !this.controlReady) return true;
       if (!this.readyPanes.has(m.pane)) {
         const q = this.earlyInputs.get(m.pane) || [];
         if (q.reduce((n, s) => n + s.length, 0) + m.data.length <= 65536) {
@@ -220,14 +242,20 @@ class BrowserSSH {
         this.input(pane, data.slice(start, start + 16000));
       return;
     }
+    const epoch = this.inputEpoch;
     const chain = (this.inputChains.get(pane) || Promise.resolve())
-      .then(() => this.request("input", { pane, data }))
-      .catch(() => this.emit({ type: "closed", pane }));
+      .then(() => {
+        if (epoch === this.inputEpoch && this.inputEnabled && this.controlReady)
+          return this.request("input", { pane, data });
+      })
+      .catch(() => {
+        if (epoch === this.inputEpoch) this.emit({ type: "closed", pane });
+      });
     this.inputChains.set(pane, chain);
   }
   private reconnect() {
     if (this.stopped) return;
-    if (Date.now() - this.disconnected > 15000) {
+    if (performance.now() - this.disconnected > 15000) {
       this.emit({ type: "loss" });
       this.close();
       return;
@@ -243,15 +271,25 @@ class BrowserSSH {
         }),
       );
     s.onmessage = ({ data }) => {
+      if (this.control !== s || this.stopped) return;
       const m = JSON.parse(data);
       if (m.type === "browser-bound") {
+        if (performance.now() - this.disconnected > 15000) {
+          this.emit({ type: "loss" });
+          this.close();
+          return;
+        }
         this.disconnected = 0;
+        this.controlReady = true;
+        this.emit({ type: "control", connected: true });
         return;
       }
       this.handle(m);
     };
   }
   close() {
+    this.setInputEnabled(false);
+    this.controlReady = false;
     this.stopped = true;
     clearTimeout(this.retry);
     this.worker?.terminate();

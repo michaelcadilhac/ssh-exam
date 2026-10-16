@@ -938,6 +938,33 @@ export async function createApp(
       return { ok: true };
     },
   );
+  app.post("/api/student/attempts/:id/recover-page", async (req) => {
+    let a = studentAttempt(req);
+    if (a.state === "ACTIVE") {
+      await life.lock(a.id, "Page reloaded; fresh SSH authentication required");
+      a = store.attempt(a.id);
+    }
+    if (a.state === "LOCKED") {
+      // Reload cannot prove ownership of the previous page-instance secret.
+      // Preserve any existing instructor grant for this locked generation.
+      const old = sockets.get(a.id);
+      sockets.delete(a.id);
+      old?.close(1008, "Page reloaded");
+      if (a.page_hash || !authenticationGap(a.id)) {
+        store.db
+          .prepare("UPDATE attempts SET page_hash=NULL WHERE id=?")
+          .run(a.id);
+        store.audit(
+          "gateway",
+          "reauthentication-required",
+          a.id,
+          "Page reloaded",
+        );
+        life.onPaused(store.attempt(a.id));
+      }
+    }
+    return { attempt: store.attempt(a.id), serverNow: now() };
+  });
   app.post("/api/student/attempts/:id/reauth", async (req, reply) => {
     let a = studentAttempt(req);
     await autoAuthorizeSandbox(a.id, true);
@@ -1839,6 +1866,7 @@ export async function createApp(
                 type: z.literal("bind"),
                 attempt: z.string().uuid(),
                 page: z.string().length(64),
+                binding: z.string().uuid().optional(),
               })
               .parse(rawMessage);
             a = store.attempt(bind.attempt);
@@ -1863,6 +1891,7 @@ export async function createApp(
             owned = true;
             send(ws, {
               type: "state",
+              binding: bind.binding,
               attempt: store.attempt(a.id),
               serverNow: now(),
               authenticationGap: authenticationGap(a.id),

@@ -54,8 +54,12 @@ export function Workspace({
     armed = useRef(false),
     keyboard = useRef(false),
     localLocked = useRef(attemptRef.current.state === "LOCKED"),
-    lastAck = useRef(Date.now()),
-    reconnectTimer = useRef<any>(null);
+    lastAck = useRef(performance.now()),
+    reconnectTimer = useRef<any>(null),
+    bound = useRef(false),
+    online = useRef(navigator.onLine !== false),
+    controlReady = useRef(browserSSH.controlConnected),
+    networkLossAt = useRef<number | null>(null);
   const serverClock = useRef({ now: Date.now(), at: performance.now() });
   const focusLostAt = useRef<number | null>(null);
   const warnings = useRef(new Set<number>());
@@ -161,6 +165,7 @@ export function Workspace({
     preflightRecovery ||
     ended ||
     protecting ||
+    authenticationGap ||
     (!connected && attempt.state === "ACTIVE");
   const dialogRef = useRef(dialog);
   dialogRef.current = dialog;
@@ -175,6 +180,7 @@ export function Workspace({
     for (const pane of panes.current.values()) pane.box.dom.inert = covered;
   }, [covered, count]);
   const send = (data: any) => {
+    if (data.type === "input" && (coveredRef.current || !interaction())) return;
     if (browserSSH.terminal(data)) return;
     if (ws.current?.readyState === WebSocket.OPEN)
       ws.current.send(JSON.stringify({ v: 1, ...data }));
@@ -197,6 +203,7 @@ export function Workspace({
     localLocked.current = true;
     armed.current = false;
     setLocked(true);
+    browserSSH.setInputEnabled(false);
     setMessage(reason);
     send({ type: "incident", reason });
     void capture.current?.sample("screen");
@@ -224,9 +231,18 @@ export function Workspace({
   };
   const interaction = () =>
     !localLocked.current &&
+    bound.current &&
+    online.current &&
+    controlReady.current &&
+    performance.now() - lastAck.current < 15000 &&
+    (networkLossAt.current === null ||
+      performance.now() - networkLossAt.current < 15000) &&
     focusLostAt.current === null &&
     ws.current?.readyState === WebSocket.OPEN &&
     ["ACTIVE", "PREPARING"].includes(attemptRef.current.state);
+  useEffect(() => {
+    browserSSH.setInputEnabled(!covered && interaction());
+  }, [covered, connected, attempt.state]);
   const addPane = (paneId: string) => {
     if (panes.current.has(paneId)) return;
     const el = document.createElement("div");
@@ -548,6 +564,15 @@ export function Workspace({
     const updateAuthenticationGap = (gap: boolean) => {
       setAuthenticationGap(gap);
       if (gap) {
+        browserSSH.setInputEnabled(false);
+        if (
+          attemptRef.current.state === "ACTIVE" ||
+          attemptRef.current.state === "LOCKED"
+        ) {
+          localLocked.current = true;
+          armed.current = false;
+          setLocked(true);
+        }
         capture.current?.stop();
         setScreen(false);
         setCamera(false);
@@ -555,6 +580,14 @@ export function Workspace({
         keyboard.current = false;
         setKeys(false);
       }
+    };
+    const interrupt = () => {
+      bound.current = false;
+      ++snapshotEpoch.current;
+      browserSSH.setInputEnabled(false);
+      setConnected(false);
+      if (networkLossAt.current === null)
+        networkLossAt.current = performance.now();
     };
     const connect = () => {
       if (
@@ -565,18 +598,38 @@ export function Workspace({
       )
         return;
       const s = socket("/student/session");
+      const binding = crypto.randomUUID();
       ws.current = s;
       s.onopen = () => {
-        send({ type: "bind", attempt: id, page });
+        if (!mounted || ws.current !== s) return;
+        send({ type: "bind", attempt: id, page, binding });
       };
       s.onmessage = (e) => {
         if (!mounted || ws.current !== s) return;
         const m = JSON.parse(e.data);
         if (m.type === "state") {
           if (!acceptSnapshot(m.attempt, m.serverNow)) return;
-          lastAck.current = Date.now();
+          if (
+            !bound.current &&
+            m.binding === binding &&
+            online.current &&
+            controlReady.current
+          ) {
+            if (
+              (performance.now() - lastAck.current >= 15000 ||
+                (networkLossAt.current !== null &&
+                  performance.now() - networkLossAt.current >= 15000)) &&
+              m.attempt.state === "ACTIVE"
+            ) {
+              incident("Network recovery grace expired");
+            }
+            bound.current = true;
+            networkLossAt.current = null;
+          }
+          if (bound.current && online.current && controlReady.current)
+            lastAck.current = performance.now();
           retryDelay = 1000;
-          setConnected(true);
+          setConnected(bound.current && online.current && controlReady.current);
           setHasConnected(true);
           setRecoveryExpired(false);
           updateAuthenticationGap(!!m.authenticationGap);
@@ -623,8 +676,8 @@ export function Workspace({
       };
       s.onclose = () => {
         if (!mounted || ws.current !== s) return;
-        setConnected(false);
-        if (Date.now() - lastAck.current > 15000) {
+        interrupt();
+        if (performance.now() - lastAck.current > 15000) {
           setRecoveryExpired(true);
           if (attemptRef.current.state === "ACTIVE")
             incident("Network recovery grace expired");
@@ -641,12 +694,30 @@ export function Workspace({
           p.term.write(Uint8Array.from(atob(m.data), (c) => c.charCodeAt(0)));
       }
       if (m.type === "closed") remove(m.pane);
+      if (m.type === "control") {
+        controlReady.current = m.connected;
+        interrupt();
+        if (
+          m.connected &&
+          online.current &&
+          ws.current?.readyState === WebSocket.OPEN
+        )
+          ws.current.close();
+      }
       if (m.type === "loss") {
         updateAuthenticationGap(true);
         setMessage("SSH disconnected. Sign in again to reconnect.");
       }
     });
     const heartbeat = setInterval(() => {
+      if (
+        networkLossAt.current !== null &&
+        performance.now() - networkLossAt.current >= 15000 &&
+        attemptRef.current.state === "ACTIVE" &&
+        !localLocked.current
+      ) {
+        incident("Network recovery grace expired");
+      }
       const r = conditions();
       setScreen(r.screen);
       setCamera(r.webcam);
@@ -663,11 +734,11 @@ export function Workspace({
         send({ type: "preflight-contact" });
       else if (r.fullscreen && r.visible && r.keyboard && r.screen)
         send({ type: "heartbeat", ready: r });
-      if (armed.current && Date.now() - lastAck.current > 15000)
+      if (armed.current && performance.now() - lastAck.current > 15000)
         incident("Network recovery grace expired");
       if (
         attemptRef.current.state === "PREPARING" &&
-        Date.now() - lastAck.current > 15000
+        performance.now() - lastAck.current > 15000
       ) {
         setConnected(false);
         setRecoveryExpired(true);
@@ -676,6 +747,8 @@ export function Workspace({
       }
     }, 2000);
     const timer = setInterval(() => {
+      if (armed.current && performance.now() - lastAck.current >= 15000)
+        incident("Network recovery grace expired");
       if (focusLostAt.current !== null) {
         if (!armed.current || attemptRef.current.state !== "ACTIVE")
           clearFocusWarning();
@@ -756,6 +829,17 @@ export function Workspace({
         })
         .catch(() => {});
     }, 2000);
+    const offline = () => {
+      online.current = false;
+      interrupt();
+    };
+    const onlineAgain = () => {
+      online.current = true;
+      // A fresh bind on a new socket is required after the offline interval.
+      if (ws.current?.readyState === WebSocket.OPEN) ws.current.close();
+    };
+    window.addEventListener("offline", offline);
+    window.addEventListener("online", onlineAgain);
     const blur = () => focusChanged(false),
       focus = () => {
         if (document.hasFocus()) focusChanged(true);
@@ -787,6 +871,10 @@ export function Workspace({
     return () => {
       unsubscribe();
       mounted = false;
+      bound.current = false;
+      browserSSH.setInputEnabled(false);
+      window.removeEventListener("offline", offline);
+      window.removeEventListener("online", onlineAgain);
       clearInterval(heartbeat);
       clearInterval(timer);
       clearInterval(statusTimer);

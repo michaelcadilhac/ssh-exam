@@ -56,9 +56,14 @@ function App() {
   const admin = location.pathname.startsWith("/admin");
   const completionAccepted = useRef(false);
   const authAttempt = useRef(0);
-  const readSession = async () => {
+  const readSession = async (recoverPage = false) => {
     const user = await api("/session");
-    const info = user.role === "student" ? await api("/student/exam") : null;
+    let info = user.role === "student" ? await api("/student/exam") : null;
+    if (recoverPage && ["ACTIVE", "LOCKED"].includes(info?.attempt?.state)) {
+      setCsrf(user.csrf);
+      await api(`/student/attempts/${info.attempt.id}/recover-page`, {});
+      info = await api("/student/exam");
+    }
     return { user, info };
   };
   const applySession = (next: Awaited<ReturnType<typeof readSession>>) => {
@@ -76,7 +81,7 @@ function App() {
     setError("");
     try {
       const [next, settings] = await Promise.all([
-        readSession().catch((e) => {
+        readSession(true).catch((e) => {
           if (e.status === 401) return { user: null, info: null };
           throw e;
         }),

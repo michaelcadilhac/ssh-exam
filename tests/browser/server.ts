@@ -84,6 +84,8 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       student08: 10008,
       student09: 10009,
       student10: 10010,
+      student11: 10011,
+      student12: 10012,
     };
     if (b.usernames.some((u: string) => !users[u]))
       throw Error("Unknown fixture account");
@@ -216,6 +218,8 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       student08: 10008,
       student09: 10009,
       student10: 10010,
+      student11: 10011,
+      student12: 10012,
     },
   }),
 );
@@ -306,6 +310,12 @@ for (const [id, webcam] of [
           : 10001,
     );
 }
+store.db
+  .prepare("INSERT INTO exams VALUES(?,?)")
+  .run("reload", JSON.stringify({ ...exam, id: "reload" }));
+store.db
+  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
+  .run("reload", "student11", null, null, null, 10011);
 // A separate locked account exercises continuation rejection without depending
 // on the old active-exam Sign out button.
 store.db
