@@ -128,6 +128,7 @@ async function fixture(page: Page, initial = "NONE", role = "student") {
     continuation: undefined as undefined | ((route: Route) => Promise<void>),
     finishCalls: 0,
     logoutCalls: 0,
+    messages: [] as any[],
   };
   const snapshot = () => ({
     attempt: { ...model.attempt },
@@ -144,7 +145,9 @@ async function fixture(page: Page, initial = "NONE", role = "student") {
   await page.routeWebSocket("**/api/student/session", (socket) => {
     model.socket = socket;
     socket.onMessage(async (raw) => {
-      if (JSON.parse(String(raw)).type === "bind") {
+      const message = JSON.parse(String(raw));
+      model.messages.push(message);
+      if (message.type === "bind") {
         model.bindSeen = true;
         await model.bind.promise;
         socket.send(JSON.stringify({ type: "state", ...snapshot() }));
@@ -551,6 +554,15 @@ test("finish stays on collection through stale active replies, early secured eve
     await expect.poll(() => staleSeen).toBe(true);
     await confirmFinish(page);
     await expect.poll(() => finishSeen).toBe(true);
+    const incidents = f.model.messages.filter(
+      (m) => m.type === "incident",
+    ).length;
+    f.send({ ...f.model.attempt, state: "ACTIVE" });
+    // The next heartbeat must not re-arm monitoring after confirmed Finish.
+    await page.waitForTimeout(2200);
+    expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(
+      incidents,
+    );
     stale.release();
     await onlyScreens(page, ["Finish exam?", "Protecting your submission"]);
     f.model.attempt.state = "COMPLETED";

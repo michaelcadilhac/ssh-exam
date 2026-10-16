@@ -74,6 +74,7 @@ export function Workspace({
     [message, setMessage] = useState(""),
     [dialog, setDialog] = useState<any>(null),
     [dialogBusy, setDialogBusy] = useState(false),
+    [openAfterBegin, setOpenAfterBegin] = useState(false),
     [finishing, setFinishing] = useState(false),
     [finishError, setFinishError] = useState(""),
     [review, setReview] = useState(""),
@@ -432,6 +433,21 @@ export function Workspace({
     send({ type: "open", pane });
     addPane(pane);
   };
+  useEffect(() => {
+    if (!openAfterBegin) return;
+    if (
+      ["LOCKED", "FINALIZING", "COMPLETED", "COLLECTION_FAILED"].includes(
+        attempt.state,
+      )
+    ) {
+      setOpenAfterBegin(false);
+      return;
+    }
+    if (attempt.state === "ACTIVE" && !covered && connected && interaction()) {
+      setOpenAfterBegin(false);
+      if (!panes.current.size) open();
+    }
+  }, [openAfterBegin, attempt.state, covered, connected]);
   const remove = (pane: string) => {
     const p = panes.current.get(pane);
     if (!p) return;
@@ -499,6 +515,7 @@ export function Workspace({
     setFinishError("");
     ++snapshotEpoch.current;
     armed.current = false;
+    localLocked.current = true;
     capture.current?.stop();
     clipboard.current = "";
     const pending = { ...attemptRef.current, state: "FINALIZING" };
@@ -850,7 +867,7 @@ export function Workspace({
       setLocked(false);
       for (const p of [...panes.current.values()]) remove(p.id);
       nextTerminal.current = 1;
-      open();
+      setOpenAfterBegin(true);
     }
   };
   const recoveryAction = async (
