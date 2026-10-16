@@ -6,7 +6,8 @@ creates additional accounts with the same permissions. Sign out is in the header
 First select an exam. The page shows only that exam's counts, students, attempt history,
 incidents and monitoring. **New exam** creates an exam; **Exam settings** changes the selected
 exam's name, start window, duration, default webcam setting, terminal limit and root-approved
-material template. Settings apply to future attempts. Dashboard times use America/Chicago;
+material template. See [Creating an exam template](template-authoring.md) for the
+folder format, authoring handoff and class-server installation. Settings apply to future attempts. Dashboard times use America/Chicago;
 start-window inputs use your device timezone. Sandbox always starts with five minutes.
 
 One table groups each student with every attempt beneath them, newest first. Enrollment

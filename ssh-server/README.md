@@ -78,6 +78,7 @@ an actual gated terminal during installation qualification.
     sudo cp -a examples/sample-exam /var/lib/exam-agent/templates/sample-exam
     sudo chown -R root:root /var/lib/exam-agent/templates
 
+See [Creating an exam template](../docs/template-authoring.md) for the complete authoring guide.
 Templates contain work/ starters and materials/ read-only questions. Work initializes once at
 activation; every later pane shares it. No /etc/profile changes or information hooks are needed.
 

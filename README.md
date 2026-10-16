@@ -77,7 +77,8 @@ only the gateway process.
 The gateway runs as one non-root Docker instance with private local storage. Host nginx
 terminates TLS and host systemd manages Compose. The native agent is installed separately.
 See [security](SECURITY.md), [privacy](PRIVACY.md), [architecture](docs/architecture.md),
-[student instructions](docs/student-instructions.md), [instructor operations](docs/instructor-operations.md)
+[student instructions](docs/student-instructions.md), [instructor operations](docs/instructor-operations.md),
+[template authoring](docs/template-authoring.md)
 and [recovery](docs/recovery-runbook.md). Backups restore saved work, never live SSH objects.
 
 ### Real SSH login testing
