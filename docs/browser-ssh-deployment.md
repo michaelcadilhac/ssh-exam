@@ -4,6 +4,61 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Recording, clock reset and focus grace update, 2026-10-15
+
+Deployed source `4f6e601` to marco and csc-sys on October 15 Chicago time
+(October 16 UTC). The web database migrated from schema 6 to 8. No active or
+unresolved exam/preflight was present during the coordinated upgrade.
+
+The terminal recording allowance is explicitly configured to 2048 MiB per
+attempt on both hosts. Instructor views show live presence and countdowns, with
+a reset dialog prefilled with the exam's default duration. Resets preserve an
+active student's terminal connection and also work while disconnected. Before
+deadline collection, the agent obtains a signed timing decision; if unavailable,
+it freezes writers and defers collection, retaining recoverability and access
+restrictions. This adds no idle timing polling. Focus loss alone now displays a
+20-second warning/countdown and permits recovery without instructor interaction
+before expiry; other lock conditions keep their existing policy.
+
+- Current image: `ssh-exam-workspace:clock-focus-4f6e601`, also tagged `:1.0.0`.
+- Image ID: `sha256:ff0062bcdaae10816690b8ec2c4958d43c899c992648f2196d05b1fcc055f0bd`.
+- Previous image: `ssh-exam-workspace:pre-clock-focus-4f6e601`.
+- Web configuration, secrets and consistent data backup:
+  `/var/backups/ssh-exam/20261016T034632Z-clock-focus-web-g2zflkm0`.
+- Native binary/configuration and state inspection backup:
+  `/var/backups/ssh-exam/20261016T034652Z-browser-ssh-0_dnxv50`.
+- Native configuration before setting the recording allowance:
+  `/var/backups/ssh-exam/20261016T034652Z-clock-focus-config-ocb7larf`.
+
+Installed native checksums:
+
+```text
+972ef48d8a1fb4fb89a48d507822a860b45f0399c29eac16cf42a4509bb7e9c2  exam-agent
+8714c9d9c9e9c973e4b4a33f948f4e4be55cb2b2fd792b730514026fb15c7b93  exam-login
+e04b70a48b8579fcbde58aed179c0d754c24dd2a151a005e7bcd311d2434ecec  examctl
+ce672a559f27ff1fda8347ea9baa4a577ce127fe39da81367a946718e3d4664f  exam-info
+```
+
+Predeployment validation passed 117 web/API tests, 21 browser-based SSH tests,
+type checking, production build and the native Go race suite. Live checks
+confirmed healthy web/agent/watchdog/reconciliation/relay services, signed agent
+capabilities, maintenance disabled, production readiness and notifications ready.
+A fresh browser loaded the new assets and both sign-in pages; an unsigned timing
+request was rejected with HTTP 403. No password, phone MFA approval or timed exam
+was exercised during this rollout.
+
+Database comparisons verified that administrator accounts, exams, enrollments
+and existing attempt intervals were preserved. Other configuration was unchanged.
+Sandbox remains five minutes and available; fresh administrative SSH, the normal
+mcadilha shell and sudo access were verified after installation.
+
+Rollback must account for the new timing protocol and schema 7/8 state. The old
+webserver cannot answer the agent's deadline timing check; rolling it back alone
+can leave collection frozen and pending. Drain attempts and coordinate compatible
+web/native versions under the recovery procedure. Preserve clock revisions,
+original/effective deadlines, pending resets, current account restrictions and
+protected copies; never restore an old state/database snapshot over newer work.
+
 ## Unsupported-browser view update, 2026-10-15
 
 Web source `0ca6ada` omits the student form and its supporting login notices when
@@ -11,7 +66,7 @@ browser requirements are unavailable, retaining the compatibility message and
 instructor sign-in link. The form also stays absent while compatibility checks
 are pending. Build/type checking and seven focused browser scenarios passed.
 
-- Current image: `ssh-exam-workspace:hidden-form-0ca6ada`, also tagged `:1.0.0`.
+- Image at this update: `ssh-exam-workspace:hidden-form-0ca6ada`, also tagged `:1.0.0`.
 - Image ID: `sha256:a941a0fd41ae6acae6165bd4234be6deeda38c09e925a28c204523dd4f606a74`.
 - Previous image: `ssh-exam-workspace:pre-hidden-form`.
 - Web configuration/consistent metadata backup:
@@ -74,7 +129,7 @@ cancelled an unfinished sandbox preflight before replacing the agent. Reload and
 open a fresh preflight after this update. Existing administrator access, sandbox,
 browser SSH, notifications and production readiness remain enabled.
 
-The current native checksums are:
+The native checksums at this update were:
 
 ```text
 715b9dd82e9a39171f808548d781680d349a0a6db89e835f107e78116931e030  exam-agent
@@ -200,8 +255,9 @@ For a web rollback, pause new starts and drain active attempts first. Stop the
 web service, restore the matching private configuration from the web backup,
 tag the retained prior image as `ssh-exam-workspace:1.0.0`, and restart the
 service. The new agent remains compatible with the legacy backend SSH transport,
-so a web rollback does not require rolling back the native binaries. Preserve
-all current metadata, root recordings, deadlines and protected submissions.
+but releases using deadline timing checks also require a compatible timing
+endpoint; see the coordinated rollback requirements above. Preserve all current
+metadata, root recordings, deadlines and protected submissions.
 
 Do not restore the SQLite or agent-state inspection backups as part of ordinary
 rollback: doing so would discard newer attempt, restriction and submission state.

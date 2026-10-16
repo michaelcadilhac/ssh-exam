@@ -324,7 +324,7 @@ Real attempt `bc2cabcd-337e-49cb-b0bb-139574a32f40` · SHA-256 `7ca70574a9832944
 - Native class-agent suite passed with Go's race detector. New coverage includes persistent/shared recording budgets and independent-pane concurrency; live and concurrent resets; immutable original access holds; restart/idempotency/stale receipts; signed HTTPS timing checks; disconnected extensions; unavailable verification freezing and deferring collection; subsequent collection; and a slow timing request not delaying other execution leases.
 - Deadline timing uses a separate bounded worker path; cutoff and lease reconciliation never wait on HTTP. No idle timing HTTP polling is added.
 - Source/configuration examples and design/operator/recovery documentation are updated. Defaults are 2048 MiB per attempt at both ends; no 64 MiB terminal recorder/receiver ceiling remains.
-- Verification used local SSH, TLS and browser fixtures. These changes have not been installed on marco or csc-sys; deployment requires the coordinated agent/gateway upgrade described in the recovery guide.
+- Verification used local SSH, TLS and browser fixtures. The subsequent coordinated production deployment to marco and csc-sys is recorded in [the deployment log](browser-ssh-deployment.md).
 
 
 ## Focus grace — 2026-10-15
@@ -333,4 +333,4 @@ Real attempt `bc2cabcd-337e-49cb-b0bb-139574a32f40` · SHA-256 `7ca70574a9832944
 - Migration 008 stores the first server-received loss timestamp. Repeated blur/heartbeats do not restart it; a late return cannot evade expiry. The server timer enforces the lock independently of client incidents. Normal continuation clears the previous interval.
 - Fullscreen exit, a hidden page, capture failures and the separate 15-second network bound retain their existing behavior. Begin/Continue still require focus.
 - **117 web/API tests passed**, including six new unit cases; **21 browser-based SSH tests passed**, including real-time countdown/recovery, a focus loss longer than 15 seconds, repeated blur, server expiry with the client incident suppressed, and immediate fullscreen/visibility locks during grace.
-- TypeScript check and production build passed. The warning was visually inspected at a desktop viewport; existing user screenshots were preserved. Verification used simulated focus/media with local SSH fixtures, not a physical dual-monitor qualification. Changes remain local and have not been deployed.
+- TypeScript check and production build passed. The warning was visually inspected at a desktop viewport; existing user screenshots were preserved. Verification used simulated focus/media with local SSH fixtures, not a physical dual-monitor qualification. The subsequent production deployment and live checks are recorded in [the deployment log](browser-ssh-deployment.md).
