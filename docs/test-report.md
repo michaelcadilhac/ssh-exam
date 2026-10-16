@@ -532,3 +532,35 @@ real student sessions, SSH/MFA requests, recordings or exams. Public and local r
 confirmed the healthy production instance with notifications enabled and maintenance
 disabled. Persistent-row/configuration fingerprints matched across deployment; the
 class-server agent and administrator access policy were unchanged.
+
+
+## Private temporary directories — 2026-10-16
+
+Added root-controlled per-attempt backing for `/tmp` and `/var/tmp`, shared across
+panes but distinct for practice and the timed exam. Both launch modes bind the private
+pair and set `TMPDIR=/tmp`. Sticky `1777` leaves are explicitly chmodded after creation
+under the private agent umask; `0700` parents and no-follow directory checks prevent
+student replacement of mount sources. Temporary files survive pane closure and agent
+restart, stay outside the collected work tree and are removed only after confirmed
+termination and secured collection, or confirmed preflight cancellation. Failed
+termination preserves the data; cleanup retries cannot replace the protected archive.
+Readiness/verifier checks require real rootfs mount directories; configured exam work
+cannot overlap temporary mounts.
+
+The native Go race suite passed (**141 test/subtest pass events** locally, with root-only
+checks run separately); `go vet` passed. New tests cover shared/restarted backing,
+attempt/practice separation, source links and permissions, path traversal, link-safe
+cleanup, cancellation/reconciliation, protected-copy preservation after failed
+termination, mount arguments, rootfs destinations and work-path collisions. Actual
+local bubblewrap checks passed. All **13 focused root checks on csc-sys** passed,
+including writes by UID 10001 without capabilities and real systemd host-launch
+services as nobody. The fixtures used disposable directories, no account creation,
+no real attempt, no student SSH/MFA and no changes to ordinary administrator access.
+
+Native source `c6522a1` was installed through the drained SHA-verified upgrade path.
+All 15 existing protected archives were verified before and after. Attempt/timing,
+configuration/key/policy and administrator-identity fingerprints matched. All four
+native/relay services stayed active after upgrade; native and public production
+readiness passed. No frontend code or web image changed. Installation syntax and
+Markdown links passed checks; the user's modified screenshot was preserved. Backup
+and rollback details are in [the deployment log](browser-ssh-deployment.md).

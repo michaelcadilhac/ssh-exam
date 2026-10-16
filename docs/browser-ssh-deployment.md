@@ -4,6 +4,51 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Private temporary storage agent update, 2026-10-16
+
+Installed native source `c6522a1` on csc-sys at 23:49 UTC. The web runtime remains
+`4a5610b`; no web image, configuration, SSH/PAM/sudo rule, relay or account change
+was needed. Each attempt now has separate writable `/tmp` and `/var/tmp`, shared
+across its panes with `TMPDIR=/tmp`. Practice uses a separate pair. Both the
+production sandbox and trusted administrator launch paths bind private directories.
+Files remain available across pane closure, authorized recovery and agent restart,
+are excluded from submissions, and are removed after verified protection and
+confirmed workload termination. Cancellation cleanup is also reconciled.
+
+The server was drained and already had real rootfs `/tmp`, `/var` and `/var/tmp`
+mount points. The SHA-verified native upgrader backed up binaries/configuration and
+preserved current state. All **15 protected archives** verified before and after;
+attempts, original/current deadlines, configuration, keys, SSH/PAM/sudo policy and
+administrator identity fingerprints were unchanged. Agent, independent watchdog,
+reconciliation timer and SSH relay remain active; native and public readiness pass.
+
+- Native backup: `/var/backups/ssh-exam/20261016T234921Z-browser-ssh-tvrg41xd`.
+- Protected inspection baseline:
+  `/var/backups/ssh-exam/private-temp-c6522a1-baseline.json`.
+- Installed SHA256 checksums:
+
+```text
+a269230c9be9419fa11d463e83af4bfe7066cfaae0a232925138b10b4c53e2c7  exam-agent
+dd9ea2edd39a689fdbb290f888af3bb7195b8b17820c260172028f115f83620b  exam-login
+7c97afea5e3202d6a9364f5bf7070bd38d2f2b9608e4c964b9d8f418cea63e1f  examctl
+55146cf6d1194c5ab07dbb1d4b233deecde595b041209c7f05300f64cfb1f673  exam-info
+```
+
+Validation: native Go race suite and `go vet` passed, including real local bubblewrap
+mount checks. All **13 focused root checks on csc-sys** passed in disposable state,
+including unprivileged UID 10001 writes, sticky-directory protection, actual systemd
+host-launch mounts using nobody, cross-pane sharing, attempt/practice separation,
+private-umask permissions, unsafe-link rejection, cleanup and retry protection.
+These created no real exam, student SSH login/MFA exchange or student account. The installation
+verifier's shell/Python syntax and documentation links were checked. The user's
+modified screenshot was preserved.
+
+Native rollback requires draining attempts and restoring only the saved binaries;
+retain current state/deadlines/submissions. Old binaries do not manage these new
+scratch directories: remove orphaned temporary storage only after confirming all
+relevant workloads are stopped. Existing terminal mount namespaces never change in
+place. See the class-server guide and recovery runbook for layout and permissions.
+
 ## Network recovery update, 2026-10-16
 
 Deployed web source `4a5610b` (including `a9e48f0`) to marco at 23:32 UTC.
