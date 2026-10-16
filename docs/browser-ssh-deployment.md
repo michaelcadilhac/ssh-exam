@@ -4,6 +4,75 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Exam administration and server-only submissions update, 2026-10-16
+
+Deployed application and native source `dd9819b` to marco and csc-sys on
+October 16 (18:49 UTC). The user confirmed this is a trial instance with no
+student work to interrupt. No started or unresolved exam was present. The
+native upgrader cancelled one unstarted sandbox preflight; that browser must
+sign in again. Database schema remains 8.
+
+The release includes the exam-first dashboard, grouped student/attempt history,
+individual and bulk future duration/webcam settings, reset and additive extension
+controls, administrator creation, and fullscreen-visible action errors. CSV imports
+change future enrollment settings; current-attempt clock actions use the dashboard.
+The class agent advertises both `clock-extend` and `server-only-submissions`.
+Archives remain on csc-sys; signed manifests/status and monitoring still return to
+the webserver. The former archive upload endpoint returns 410 before reading its
+body, and the web download route is absent (404).
+
+- Current image: `ssh-exam-workspace:admin-dd9819b`, also tagged `:1.0.0`.
+- Image ID: `sha256:f5dbe56d6018aeb049776044356a16a0f92e8dd74af6b7244c066703a7687c9a`.
+- Previous image retained as `ssh-exam-workspace:pre-admin-dd9819b`.
+- Consistent metadata and private configuration/trust/secrets backup:
+  `/var/backups/ssh-exam/20261016T184848Z-admin-web-co00ad16` on marco.
+- Native binary/configuration and state inspection backup:
+  `/var/backups/ssh-exam/20261016T184922Z-browser-ssh-eg_9q1sl` on csc-sys.
+
+The web backup deliberately excludes submission archive bytes and the runtime
+SMTP socket. Before retiring legacy web archives, root `examctl manifest` verified
+identity, checksum and protected storage on csc-sys. Three active web duplicates
+and their three copies in the earlier clock/focus web backup were then removed;
+protected authoritative submissions and web manifests/metadata were preserved.
+The root-private `retired-web-archive-inventory.json` in this release's web backup
+records all six exact paths, sizes and verified checksums. The earlier clock/focus
+backup consequently no longer contains submission archive payloads. All 15
+protected class-server submission bundles passed manifest verification afterward.
+
+Installed native checksums:
+
+```text
+dacdda42ab5fcf38a6a4d09446974a743e5f4de45768a9188d225a8570881549  exam-agent
+7f886341b96635be53995694d7175af9637444ca84907fd126dd320c1d4ae573  exam-login
+ff779cb0debae49e268399fdc42d4aaec16fa5e0063b6552db42241fe5305697  examctl
+9505b110a7ff1a892d87662199dad18a285f8d370a8bdf77b8ba17691d63a781  exam-info
+```
+
+Predeployment validation passed 126 application tests, all 24 browser SSH
+scenarios, type checking, the production build and the full native Go race suite.
+Live checks confirmed healthy web, agent, watchdog, reconciliation and relay
+services; the new signed capabilities; maintenance disabled; production readiness;
+and notifications ready. A fresh Chromium loaded both sign-in views and the new
+admin assets with no browser errors. Unauthenticated administrator creation
+returned 401, unsigned timing returned 403, retired downloads returned 404, and
+archive uploads returned 410. No password, phone MFA approval or timed exam was
+exercised during this rollout; interactive administration was covered by the local
+browser suite.
+
+Fingerprint comparisons confirmed that both administrator accounts, exams,
+enrollments, all original/effective attempt intervals and checksums, and both
+hosts' private configuration were preserved. Sandbox remains five minutes and
+repeatable. A fresh ordinary mcadilha SSH connection retained its normal home,
+`/bin/bash` and sudo access. Recording allowance remains 2048 MiB on both hosts.
+
+Rollback must coordinate web and native protocol capabilities after draining
+attempts. Preserve the server-only archive policy: do not re-enable archive uploads
+or restore deleted web duplicates. Use a compatible release or a targeted fix if
+an older release assumes downloadable archives. Retained images/binaries are
+recovery inputs, not authority to overwrite current state. Never restore inspection
+snapshots over newer submissions, clock requests, deadlines or access restrictions.
+Keep the independent deadline/watchdog services running.
+
 ## Recording, clock reset and focus grace update, 2026-10-15
 
 Deployed source `4f6e601` to marco and csc-sys on October 15 Chicago time
@@ -20,7 +89,7 @@ restrictions. This adds no idle timing polling. Focus loss alone now displays a
 20-second warning/countdown and permits recovery without instructor interaction
 before expiry; other lock conditions keep their existing policy.
 
-- Current image: `ssh-exam-workspace:clock-focus-4f6e601`, also tagged `:1.0.0`.
+- Image at this update: `ssh-exam-workspace:clock-focus-4f6e601`, then tagged `:1.0.0`.
 - Image ID: `sha256:ff0062bcdaae10816690b8ec2c4958d43c899c992648f2196d05b1fcc055f0bd`.
 - Previous image: `ssh-exam-workspace:pre-clock-focus-4f6e601`.
 - Web configuration, secrets and consistent data backup:

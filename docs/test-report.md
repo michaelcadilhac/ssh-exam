@@ -352,8 +352,8 @@ and a server-side Begin failure displayed in the same fullscreen error dialog.
 The dialog screenshot was visually inspected. All 117 application tests and four
 focused browser-SSH scenarios passed, including normal webcam preflight, active
 fullscreen recovery and Finish exam. Type checking and production build passed.
-Existing screenshots were preserved. These changes are local and not deployed;
-tests simulate the embedded browser's rejection rather than granting capabilities
+Existing screenshots were preserved. The subsequent coordinated deployment is
+recorded in [the deployment log](browser-ssh-deployment.md); tests simulate the embedded browser's rejection rather than granting capabilities
 the host browser does not provide.
 
 
@@ -378,7 +378,8 @@ concurrent duplicate creation. Three focused browser-SSH scenarios passed: admin
 creation/cancellation/mismatch/duplicate/sign-in, existing instructor enrollment controls,
 and the pending fullscreen-error regression. A held network request verified empty password
 fields and disabled submission while waiting. The dialog was visually inspected; existing
-screenshots were preserved. Changes are local and not deployed.
+screenshots were preserved. The subsequent coordinated deployment is recorded
+in [the deployment log](browser-ssh-deployment.md).
 
 
 ## Exam-first administration and SSH-server-only submissions — 2026-10-16
@@ -403,8 +404,9 @@ The native agent no longer uploads archives. Signed completion manifests/status 
 continue; archives remain protected on the SSH server for local examctl retrieval. Legacy
 archive uploads reject before parsing with 410; web download/delete routes are absent. Immutable
 web receipts use receipts/, with backup support and comparison against legacy manifests. Existing
-web archives/state are preserved for deliberate operator retirement after class-server checksum
-verification; no production data was deleted. Automatic resume-export is rejected. Removed the
+web archives/state were initially preserved for deliberate operator retirement after class-server
+checksum verification. The subsequent deployment retired verified web duplicates while preserving
+all protected class-server copies; see [the deployment log](browser-ssh-deployment.md). Automatic resume-export is rejected. Removed the
 unused tar-stream download dependencies. Production preflight requires server-only-submissions;
 additive changes require clock-extend. Coordinate both hosts' deployment after draining attempts.
 
@@ -418,4 +420,5 @@ Two real browser instances verified reset/extension without losing terminal inpu
 use local SSH/media fixtures, not a new institutional-host isolation qualification. Independent
 admin-test clients use distinct fixture IPs to respect the unchanged five-login/minute limit.
 The grouped interface was visually inspected; existing screenshots, including the user's modified
-login image, were restored exactly after tests. Documentation is updated. No deployment occurred.
+login image, were restored exactly after tests. The subsequent coordinated deployment to marco
+and csc-sys and live readiness/storage checks are recorded in [the deployment log](browser-ssh-deployment.md).
