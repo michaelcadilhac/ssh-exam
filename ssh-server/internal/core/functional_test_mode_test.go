@@ -74,6 +74,19 @@ func TestFunctionalConfigurationRejectsImplicitOrMultipleAccountExceptions(t *te
 	if _, err := LoadConfig(path); err == nil {
 		t.Fatal("multiple accounts accepted")
 	}
+	delete(c.Accounts, "other")
+	for _, directory := range []string{"/tmp", "/tmp/project", "/var", "/var/tmp", "/var/tmp/project"} {
+		c.ExamDirectory = directory
+		save()
+		if _, err := LoadConfig(path); err == nil {
+			t.Fatalf("work directory overlaps private temporary mount: %s", directory)
+		}
+	}
+	c.ExamDirectory = "/var/exam"
+	save()
+	if _, err := LoadConfig(path); err != nil {
+		t.Fatal("unrelated /var work directory rejected", err)
+	}
 }
 func TestFunctionalCollectorFreezesOnlyRecordedScopesAndPreservesManifestLabel(t *testing.T) {
 	e, c, _ := finalFixture(t, "ACTIVE", Millis()+5400000)

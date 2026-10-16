@@ -87,7 +87,10 @@ Include this notice, substituting the configured directory if it differs:
 There is no student submission command, upload, archive creation, or submission
 script. **Finish exam** is optional and irreversible. Doing nothing still collects
 saved files at the deadline. Only the configured working directory is collected;
-files saved in the student's home, `/tmp` or another directory are not a substitute.
+files saved in the student's home, `/tmp`, `/var/tmp` or another directory are not a substitute.
+Private `/tmp` and `/var/tmp` are writable and shared across the attempt's panes;
+`TMPDIR=/tmp` is provided for compiler/editor scratch files. They are separate from
+practice storage and are discarded after the attempt ends.
 Do not describe signing out as submitting or resuming a finished attempt as possible.
 
 Do not promise that student programs, tests or cleanup scripts run automatically at

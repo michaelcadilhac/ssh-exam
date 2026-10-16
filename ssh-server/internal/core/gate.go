@@ -229,19 +229,17 @@ func (e *Engine) local(c *net.UnixConn) {
 				return err
 			}
 		}
-		args := []string{"--scope", "--quiet", "--unit=" + strings.TrimSuffix(unit, ".scope"), "--slice=exam.slice", "--property=Delegate=no", "--property=MemoryMax=1G", "--property=TasksMax=128", "--property=CPUQuota=100%", "--", "/usr/bin/bwrap", "--unshare-ipc", "--unshare-pid", "--unshare-net", "--unshare-uts", "--unshare-cgroup", "--cap-drop", "ALL", "--cap-add", "CAP_SETUID", "--cap-add", "CAP_SETGID", "--cap-add", "CAP_SETPCAP", "--ro-bind", e.Config.Rootfs, "/", "--bind", work, a.WorkPath, "--tmpfs", "/tmp", "--proc", "/proc", "--dev", "/dev", "--dir", "/home/student", "--ro-bind", filepath.Join(e.Config.State, "homes", a.ID), "/home/student", "--ro-bind", filepath.Join(e.Config.State, "homes", a.ID, ".exam-passwd"), "/etc/passwd", "--ro-bind", filepath.Join(e.Config.State, "homes", a.ID, ".exam-group"), "/etc/group", "--chdir", "/", "--clearenv", "--setenv", "HOME", "/home/student", "--setenv", "USER", name, "--setenv", "LOGNAME", name, "--setenv", "TERM", "xterm-256color", "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin", "--setenv", "EXAM_DIR", a.WorkPath, "--setenv", "EXAM_ID", a.Exam, "--setenv", "EXAM_ATTEMPT_ID", a.ID, "--setenv", "EXAM_PANE_ID", cap.Pane, "--setenv", "EXAM_DEADLINE", time.UnixMilli(a.Deadline).UTC().Format(time.RFC3339)}
-		if !practice {
-			args = append(args, "--ro-bind", filepath.Join(e.Config.Templates, a.Settings.Template, "materials"), "/materials")
+		temporary, err := e.prepareTemporary(a, practice)
+		if err != nil {
+			return err
 		}
-		// Keep host file ownership and process UID aligned. The root-controlled
-		// setpriv runs before user code and irrevocably drops all capabilities.
-		args = append(args, "--", "/usr/bin/setpriv", "--reuid", strconv.Itoa(account.UID), "--regid", strconv.Itoa(account.GID), "--clear-groups", "--inh-caps=-all", "--ambient-caps=-all", "--bounding-set=-all", "--no-new-privs", "--", "/usr/bin/env", "--chdir="+a.WorkPath, account.Shell, "-l")
+		args := sandboxWorkloadArgs(unit, name, account, work, a, cap.Pane, practice, e.Config, temporary)
 		if e.hostAccess(a) {
 			// Explicit trusted-administrator exception: the system manager starts
 			// a normal host account session, independently of agent sandboxing.
 			// Still track its entire cgroup for terminal closure and collection.
 			unit = strings.TrimSuffix(unit, ".scope") + ".service"
-			args = functionalHostArgs(unit, name, account, work, a, cap.Pane, practice, e.Config.Templates)
+			args = functionalHostArgs(unit, name, account, work, a, cap.Pane, practice, e.Config.Templates, temporary)
 		}
 		launch = exec.Command("/usr/bin/systemd-run", args...)
 		launch.Stdin = slave

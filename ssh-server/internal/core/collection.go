@@ -409,6 +409,9 @@ func (e *Engine) finalize(a *Attempt, reason string) error {
 		return fail(err)
 	}
 	a.Units = []string{}
+	if err := e.cleanupTemporary(a); err != nil {
+		return fail(err)
+	}
 	a.State = "COMPLETED"
 	e.Audit("protected-collection-complete", a.ID)
 	return nil

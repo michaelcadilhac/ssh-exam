@@ -122,3 +122,21 @@ copies are inaccessible through the application but need deliberate operator ret
 after matching the root-protected copy/checksum and retention requirements. Keep backup
 receipts (`receipts/`) and current deletion ledgers. Never delete class-server originals or
 reset gates/deadlines to resolve an application upgrade.
+
+
+## Private temporary storage
+
+Attempt scratch files live under the agent's root-private
+`<state>/temporary/<attempt>/{practice,exam}/{tmp,var-tmp}`, outside the collected work
+and protected submission. Do not remove them while an attempt is active/locked or
+workload termination is unconfirmed. They are shared by that attempt's panes and can
+be needed after authorized reconnection. Reconciliation retries cancelled-preflight
+cleanup; finalization retries cleanup only after the protected archive and workload
+termination are verified, without recollecting. Inspect the agent's errors and state
+filesystem capacity if cleanup fails. Never follow student-created links while doing
+manual recovery. These files have no independent retention or backup guarantee.
+
+Upgrading or rolling back mount behavior requires draining attempts: existing shell
+namespaces do not acquire new mounts when the agent restarts. Retain current state,
+original deadlines and submissions during binary rollback. Rootfs `/tmp`, `/var` and
+`/var/tmp` must be real directories before enabling the new agent.

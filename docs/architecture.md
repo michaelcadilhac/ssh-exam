@@ -25,7 +25,13 @@ shells outside attempts. Forwarding stays disabled throughout course enrollment.
 
 The administrator builds a separate toolchain rootfs; mounting host root read-only would expose
 secrets/sockets/future content. /work persists and is collected; /materials is current read-only
-exam material; /tmp is disposable. HOME contains read-only copies of approved startup preferences,
+exam material. Private `/tmp` and `/var/tmp` use separate root-controlled, disk-backed
+per-attempt directories shared across panes, with separate practice/exam pairs and
+`TMPDIR=/tmp`. They survive authorized reconnection/agent restart but are not collected.
+After verified collection and workload termination (or confirmed preflight cancellation),
+link-safe cleanup removes them. Parent directories are private `0700`; bound leaves
+are root-owned sticky `1777`. The trusted administrator launch path binds the same
+private temporary directories while retaining its existing home/access policy. HOME contains read-only copies of approved startup preferences,
 never live host sockets; home edits do not persist. Per-pane network namespaces have no external
 interface. Shared loopback between panes is not implemented. Debian/systemd/cgroup v2 is the
 target, whose privileged integration remains untested here.

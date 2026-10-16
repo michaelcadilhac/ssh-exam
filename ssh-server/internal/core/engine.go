@@ -57,6 +57,7 @@ func (e *Engine) productionReady() (bool, []string) {
 			missing = append(missing, p)
 		}
 	}
+	missing = append(missing, temporaryMountIssues(e.Config.Rootfs)...)
 	if os.Geteuid() != 0 {
 		missing = append(missing, "agent must run as root")
 	}
@@ -398,6 +399,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return err
 			}
 			a.Units = nil
+			if err := e.cleanupTemporary(a); err != nil {
+				return err
+			}
 			e.Audit(op, a.ID)
 			result = a
 		default:
@@ -603,11 +607,14 @@ func (e *Engine) Tick() error {
 		// Cancellation must close practice shells even when their browser/old
 		// entry process disappeared. No started attempt is cancelled here.
 		for _, a := range e.state.Attempts {
-			if a.Start == 0 && a.State == "CANCELLED_BEFORE_START" && len(a.Units) > 0 {
+			if a.Start == 0 && a.State == "CANCELLED_BEFORE_START" {
 				if err := e.terminateWriters(a); err != nil {
 					a.Errors = appendError(a.Errors, err.Error())
 				} else {
 					a.Units = nil
+					if err := e.cleanupTemporary(a); err != nil {
+						a.Errors = appendError(a.Errors, err.Error())
+					}
 				}
 			}
 		}

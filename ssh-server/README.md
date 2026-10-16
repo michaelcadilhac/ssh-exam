@@ -60,10 +60,10 @@ Do not copy the live host root. Version the rootfs and template installation inp
 
 Pre-create the bind mount destinations before mounting the rootfs read-only:
 
-    sudo install -d -m 0755 /srv/exam-workspace/rootfs/home/student /srv/exam-workspace/rootfs/work /srv/exam-workspace/rootfs/materials
+    sudo install -d -m 0755 /srv/exam-workspace/rootfs/home/student /srv/exam-workspace/rootfs/work /srv/exam-workspace/rootfs/materials /srv/exam-workspace/rootfs/tmp /srv/exam-workspace/rootfs/var/tmp
 
 Use the configured exam directory instead of /work if customized. Native readiness rejects
-missing home/materials mount points; bubblewrap cannot create them inside the read-only tree.
+missing home/materials and temporary mount points (real directories, not symlinks); bubblewrap cannot create them inside the read-only tree.
 Include /usr/bin/setpriv from util-linux in the rootfs. The root launcher creates private
 mount, PID, network, IPC, UTS and cgroup namespaces, then the root-controlled setpriv drops
 to the real account UID/GID, clears supplementary groups and all capability sets, and sets
@@ -81,6 +81,38 @@ an actual gated terminal during installation qualification.
 See [Creating an exam template](../docs/template-authoring.md) for the complete authoring guide.
 Templates contain work/ starters and materials/ read-only questions. Work initializes once at
 activation; every later pane shares it. No /etc/profile changes or information hooks are needed.
+
+## Private temporary storage
+
+Each attempt has writable, private `/tmp` and `/var/tmp`, shared across its terminal
+panes. `TMPDIR=/tmp` is supplied to the initial shell. Both production bubblewrap
+workloads and the explicit administrator test/sandbox launch path bind only that
+attempt's directories; neither exposes the host's ordinary temporary files. Practice
+uses a separate pair, so preflight scratch files do not carry into the timed exam.
+
+Backing directories are disk-backed under
+`<state>/temporary/<attempt>/{practice,exam}/{tmp,var-tmp}`. Parent directories are
+agent-owned `0700`; mounted leaves are agent-owned sticky `1777`, applied explicitly
+after creation so the agent's `0077` umask cannot make them unwritable. Students cannot
+traverse the protected parent or replace a bind source. Source setup rejects links
+and unsafe parents. Capacity comes from the agent state filesystem; leave free space
+for temporary files as well as protected submissions. The collection size limit is
+not a quota on temporary writes.
+
+Temporary files survive closing/reopening panes, authorized pause/reconnection, and
+agent restarts. They are excluded from submissions: save answers in the configured
+exam directory. After verified collection and confirmed workload termination, the
+agent removes temporary storage without following student links. Failed termination
+retains it; cleanup failure keeps finalization recoverable and retries use the same
+protected submission. Cancelled preflight cleanup is retried by reconciliation. This
+is disposable attempt storage, not a guarantee of `/var/tmp` persistence after the
+attempt or protection from disk/server failures.
+
+On upgrade, drain existing attempts before replacing the native binaries. Ensure the
+rootfs has real `/tmp`, `/var`, and `/var/tmp` directories before making it read-only;
+readiness and `scripts/verify` reject missing or symlinked mount points. No new
+configuration key or ordinary-account access-policy change is needed. A running
+terminal's existing mount namespace is not changed in place.
 
 ## Account policy, SSH and PAM
 

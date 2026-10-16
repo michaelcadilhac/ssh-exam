@@ -44,6 +44,7 @@ func (e *Engine) Ready() (bool, []string) {
 			missing = append(missing, p)
 		}
 	}
+	missing = append(missing, temporaryMountIssues(e.Config.Rootfs)...)
 	for _, p := range []string{e.Config.State, e.Config.Work, e.Config.Rootfs, e.Config.Templates} {
 		i, err := os.Stat(p)
 		if err != nil || i.Sys().(*syscall.Stat_t).Uid != 0 || i.Mode().Perm()&0022 != 0 {

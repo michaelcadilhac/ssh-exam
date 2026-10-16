@@ -199,7 +199,10 @@ func LoadConfig(p string) (Config, error) {
 		if !filepath.IsAbs(p) || filepath.Clean(p) != p || p == "/" {
 			return c, errors.New("exam_directory must be a clean absolute directory")
 		}
-		for _, reserved := range []string{"/proc", "/dev", "/sys", "/tmp", "/home", "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64"} {
+		if p == "/var" {
+			return c, errors.New("exam_directory overlaps private /var/tmp")
+		}
+		for _, reserved := range []string{"/proc", "/dev", "/sys", "/tmp", "/var/tmp", "/home", "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64"} {
 			if p == reserved || strings.HasPrefix(p, reserved+"/") {
 				return c, errors.New("exam_directory overlaps a reserved sandbox path")
 			}
