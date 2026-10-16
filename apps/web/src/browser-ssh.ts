@@ -295,6 +295,7 @@ export class BrowserSSH {
     this.worker?.terminate();
     this.worker = undefined;
     this.authenticated = false;
+    this.disconnected = 0;
     this.token = "";
     this.buffers.clear();
     this.readyPanes.clear();

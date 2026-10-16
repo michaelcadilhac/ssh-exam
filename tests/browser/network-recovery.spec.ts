@@ -204,3 +204,58 @@ test("reloading ACTIVE waits for server-side recovery, preserves the deadline an
     recovery.release();
   }
 });
+
+test("a delayed authorized continuation cannot unlock after a second interruption", async ({
+  page,
+}) => {
+  const f = await fixture(page, "LOCKED"),
+    response = gate();
+  f.model.bind.release();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Exam paused" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Restore screen sharing", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Restore fullscreen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Restore keyboard lock", exact: true })
+    .click();
+  let seen = false;
+  f.model.continuation = async (route) => {
+    seen = true;
+    await response.promise;
+    f.model.attempt.state = "ACTIVE";
+    await route.fulfill({ json: f.snapshot() });
+  };
+  try {
+    await resetScreens(page);
+    await page
+      .getByRole("button", { name: "Continue exam", exact: true })
+      .click();
+    await expect.poll(() => seen).toBe(true);
+    await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await expect.poll(() => f.model.bindings.length).toBe(2);
+    response.release();
+    await expect(page.getByRole("alert")).toContainText("exam remains paused");
+    await expect(
+      page.getByRole("heading", { name: "Exam paused" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "New terminal", exact: true }),
+    ).toBeDisabled();
+    f.send();
+    await expect(
+      page.getByRole("heading", { name: "Exam paused" }),
+    ).toBeVisible();
+    expect(inputs(f)).toBe("");
+    await onlyScreens(page, ["Exam paused"]);
+  } finally {
+    response.release();
+  }
+});

@@ -107,6 +107,7 @@ export function Workspace({
       if (left <= seconds * 1000) warnings.current.add(seconds);
   }, [attempt.clock_revision]);
   const snapshotEpoch = useRef(0);
+  const activationEpoch = useRef(0);
   const lastServerSnapshot = useRef<number | null>(null);
   const acceptSnapshot = (
     next: any,
@@ -200,6 +201,7 @@ export function Workspace({
   const incident = (reason: string) => {
     if (!armed.current) return;
     clearFocusWarning();
+    ++activationEpoch.current;
     localLocked.current = true;
     armed.current = false;
     setLocked(true);
@@ -564,6 +566,7 @@ export function Workspace({
     const updateAuthenticationGap = (gap: boolean) => {
       setAuthenticationGap(gap);
       if (gap) {
+        ++activationEpoch.current;
         browserSSH.setInputEnabled(false);
         if (
           attemptRef.current.state === "ACTIVE" ||
@@ -582,6 +585,7 @@ export function Workspace({
       }
     };
     const interrupt = () => {
+      ++activationEpoch.current;
       bound.current = false;
       ++snapshotEpoch.current;
       browserSSH.setInputEnabled(false);
@@ -934,7 +938,30 @@ export function Workspace({
     keyboard.current = true;
     setKeys(true);
   };
+  const confirmActivation = (epoch: number) => {
+    if (attemptRef.current.state !== "ACTIVE")
+      throw Error(
+        "Exam status changed. Review the current state before continuing.",
+      );
+    if (
+      epoch !== activationEpoch.current ||
+      !bound.current ||
+      !online.current ||
+      !controlReady.current ||
+      performance.now() - lastAck.current >= 15000 ||
+      readinessMessage(conditions(), settings.webcam)
+    ) {
+      armed.current = true;
+      incident(
+        "Connection or required conditions changed during exam activation",
+      );
+      throw Error(
+        "Connection or required conditions changed. The exam remains paused; reconnect and obtain authorization before continuing.",
+      );
+    }
+  };
   const begin = async () => {
+    const epoch = activationEpoch.current;
     const r = conditions();
     ++snapshotEpoch.current;
     const result = await api(`/student/attempts/${id}/begin`, r, page);
@@ -951,6 +978,7 @@ export function Workspace({
     setClock(serverClock.current.now);
     armed.current = attemptRef.current.state === "ACTIVE";
     if (armed.current) {
+      confirmActivation(epoch);
       localLocked.current = false;
       setLocked(false);
       for (const p of [...panes.current.values()]) remove(p.id);
@@ -980,6 +1008,7 @@ export function Workspace({
     }
   };
   const continueExam = async () => {
+    const epoch = activationEpoch.current;
     const readiness = readinessMessage(conditions(), settings.webcam);
     if (readiness) throw Error(readiness);
     ++snapshotEpoch.current;
@@ -1000,6 +1029,7 @@ export function Workspace({
       throw Error(
         "Exam status changed while restoring. Review the current pause before continuing.",
       );
+    confirmActivation(epoch);
     setClock(serverClock.current.now);
     localLocked.current = false;
     setLocked(false);

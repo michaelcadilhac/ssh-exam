@@ -88,5 +88,6 @@ it("a delayed control acknowledgment after 15 seconds terminates SSH rather than
   sockets[0].onmessage({ data: JSON.stringify({ type: "browser-bound" }) });
   expect(client.active).toBe(false);
   expect(client.controlConnected).toBe(false);
+  expect(c.disconnected).toBe(0);
   expect(events).toContainEqual({ type: "loss" });
 });
