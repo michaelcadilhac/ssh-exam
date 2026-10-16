@@ -4,6 +4,49 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Network recovery update, 2026-10-16
+
+Deployed web source `4a5610b` (including `a9e48f0`) to marco at 23:32 UTC.
+Both the workspace socket and browser SSH control connection must be acknowledged
+before terminal input is enabled. Offline/disconnect events immediately cover the
+workspace, invalidate queued input and require a new per-socket bind acknowledgment.
+Unrelated HTTP/state replies cannot establish the connection; a late ACTIVE reply
+cannot clear a local pause or renew an expired 15-second recovery grace. Grace uses
+monotonic elapsed time and the last acknowledged healthy contact. A new interruption
+or lost required condition while Begin/Continue is pending invalidates its delayed
+activation reply.
+
+An active-page reload stays in loading until an owned, CSRF-protected server request
+locks the attempt, revokes its old page binding and disconnects SSH. It then opens the
+recovery summary without showing sign-in, preflight or an active workspace in between.
+This works even without a pagehide beacon. Repeated recovery requests preserve an
+already granted instructor authorization; one grant plus fresh SSH/MFA and the normal
+continue handshake is sufficient. Original timing is unchanged. Sandbox retains its
+automatic-authorization exception; completed attempts cannot reopen.
+
+- Current image: `ssh-exam-workspace:network-4a5610b`, also tagged `:1.0.0`.
+- Image ID: `sha256:d80412d908ce24b3217f9c804f043788c4155ba8f83123a8720883d8a76a34ed`.
+- Prior image retained as `ssh-exam-workspace:pre-network-4a5610b`.
+- Consistent metadata and private configuration/trust/secrets backup:
+  `/var/backups/ssh-exam/20261016T233220Z-network-web-9sw6k4do` on marco.
+
+The guarded cutover verified no pending/active attempt and preserved fingerprints of
+all administrator, exam, enrollment and attempt rows, plus configuration. Schema 8,
+native agent, relay and server access policy are unchanged. No submission archives
+exist on marco; protected copies remain on csc-sys. Roll back only the web image using
+the retained prior tag after draining attempts; do not overwrite newer metadata.
+
+Type checking, production build, all **130 application tests** and **43 browser SSH
+scenarios** passed. Browser regressions observe every DOM commit and exercise real
+fixture SSH/MFA, an open but unacknowledged reconnect, offline/online events, silent
+connections, expired grace, queued input, delayed continuation and active reload with
+one instructor authorization. Existing screenshots and the user's modified login
+image were preserved. All **12 legacy transport transition/network scenarios** and
+**12 post-cutover checks against the deployed bundle** also passed. The deployed
+checks use browser-local API/WebSocket fixtures; no real student session, SSH/MFA
+request, recording or exam was created. Both local and public readiness report healthy,
+production-ready, notifications enabled and maintenance disabled.
+
 ## Workspace transition update, 2026-10-16
 
 Deployed web source `bb24c17` (including `2619de5`) to marco on October 16
@@ -22,7 +65,7 @@ retryable in place; collection failure displays recovery rather than success.
 Starting also retains its confirmation until acknowledgment, then opens the first
 terminal after the dialog has actually unmounted.
 
-- Current image: `ssh-exam-workspace:transitions-bb24c17`, also tagged `:1.0.0`.
+- Image at that deployment: `ssh-exam-workspace:transitions-bb24c17`, also tagged `:1.0.0`.
 - Image ID: `sha256:b01d201ec247aa5df73834d913abc9de77603dd9a3ca33bc4a0100959ca9bdf5`.
 - Previous image retained as `ssh-exam-workspace:pre-transitions-bb24c17`.
 - Consistent metadata and private configuration/trust/secrets backup:

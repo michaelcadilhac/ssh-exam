@@ -488,3 +488,47 @@ The existing suite still covers real fixture SSH, terminal input/first-window
 behavior, pause/reauthentication, clock controls, fullscreen and focus policy.
 Existing screenshots and the user's modified login image were preserved. Deployment
 and recovery details are in [the deployment log](browser-ssh-deployment.md).
+
+
+## Network loss and active reload — 2026-10-16
+
+Terminal input now depends on acknowledged workspace and browser SSH control
+connections, online state, healthy contact within the original recovery grace, and
+the existing monitored/authorized attempt state. A socket opening or HTTP poll cannot
+uncover the workspace. Offline/close events synchronously block dispatch and discard
+queued and early-pane input. A fresh binding nonce ties the acknowledgment to the
+current socket. Expired grace, local locks and a newer interruption during pending
+Begin/Continue cannot be undone by a late ACTIVE response. Monotonic elapsed time
+prevents wall-clock changes from extending recovery; closing SSH clears the old
+recovery timer for a subsequent fresh login.
+
+Reload recovery is explicit and server-side, independent of pagehide delivery. The
+loading/retry view remains until the owned active attempt is locked, its old page
+binding revoked and SSH disconnected. Original start/deadline remain unchanged.
+Already locked retries preserve an existing instructor grant. A complete fixture SSH
+exercise proves one approval, fresh shared-password/MFA authentication and continuation
+restore the same attempt and working terminal. Sandbox keeps automatic approval.
+Finished/finalizing/failed-collection attempts never reopen through this route.
+
+New coverage includes both socket and offline-event recovery with input while the
+replacement socket is open but unbound, wrong binding acknowledgments, grace expiry,
+silent open sockets, late ACTIVE events, recovery-service errors/retries, active reload
+without a beacon, and a second interruption during a delayed continuation. A real
+browser SSH control-channel test retains the SSH worker but holds its bind response,
+checks input remains blocked, then verifies fresh input works with no discarded input
+replay. Unit tests independently verify early-pane and queued worker-input invalidation
+and expired control acknowledgments. API tests cover CSRF/ownership, concurrent reload,
+page revocation, original timing, grant-preserving retries and final-state protection.
+
+Validation passed **130 application tests**, **43 browser SSH scenarios**, type
+checking and the production build. Screen tests inspect DOM commits through held,
+failed and reordered responses, rather than relying on a final screenshot. Existing
+screenshots, including the user's modified login image, were preserved. See the
+[deployment log](browser-ssh-deployment.md) for the web-only rollout and rollback.
+
+All **12 targeted legacy transport scenarios** and **12 deployed-bundle scenarios**
+also passed. Deployed checks used browser-local API/WebSocket fixtures and created no
+real student sessions, SSH/MFA requests, recordings or exams. Public and local readiness
+confirmed the healthy production instance with notifications enabled and maintenance
+disabled. Persistent-row/configuration fingerprints matched across deployment; the
+class-server agent and administrator access policy were unchanged.
