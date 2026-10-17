@@ -429,11 +429,15 @@ func Gate(socket string) error {
 	if err != nil {
 		return err
 	}
-	var response map[string]any
+	var response struct {
+		Directory string `json:"directory"`
+		Deadline  int64  `json:"deadline"`
+		Error     any    `json:"error"`
+	}
 	if json.Unmarshal(result, &response) != nil {
 		return errors.New("invalid agent response")
 	}
-	if response["error"] != nil {
+	if response.Error != nil {
 		return errors.New("admission denied")
 	}
 	fmt.Printf("EXAM-READY %s", result)
@@ -444,7 +448,7 @@ func Gate(socket string) error {
 		return err
 	}
 	defer restore()
-	fmt.Printf("\r\nWelcome to the exam. Saved files in %v are collected automatically when time expires or you finish the exam. Unsaved editor buffers are not included. Deadline: %v\r\n", response["directory"], response["deadline"])
+	fmt.Print(terminalWelcome(response.Directory, response.Deadline))
 	conn.Write([]byte{1})
 	ended, err := reader.ReadBytes('\n')
 	if err != nil {
@@ -457,4 +461,12 @@ func Gate(socket string) error {
 		return errors.New("protected terminal failed; contact your instructor")
 	}
 	return nil
+}
+
+// Preflight has no deadline: its zero value must not look like an expired exam.
+func terminalWelcome(directory string, deadline int64) string {
+	if deadline == 0 {
+		return "\r\nPractice terminal. The exam clock has not started.\r\n"
+	}
+	return fmt.Sprintf("\r\nWelcome to the exam. Saved files in %s are collected automatically when time expires or you finish the exam. Unsaved editor buffers are not included. Deadline: %d\r\n", directory, deadline)
 }

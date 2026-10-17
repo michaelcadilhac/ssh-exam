@@ -564,3 +564,16 @@ native/relay services stayed active after upgrade; native and public production
 readiness passed. No frontend code or web image changed. Installation syntax and
 Markdown links passed checks; the user's modified screenshot was preserved. Backup
 and rollback details are in [the deployment log](browser-ssh-deployment.md).
+
+
+## Practice terminal welcome — 2026-10-16
+
+Preflight's unset server-side deadline now produces “Practice terminal. The exam
+clock has not started.” instead of the timed-exam collection banner and
+`Deadline: 0`. The admission reply uses an integer deadline, preserving its exact
+value for timed exam messages. This changes terminal text only; starting the exam,
+collection timing and the SSH admission protocol are unchanged.
+
+Focused regressions check the absence of a deadline/collection claim during
+practice and the presence of the deadline and automatic-collection notice during
+a timed exam. The complete native Go race suite and `go vet` passed.
