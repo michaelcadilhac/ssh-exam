@@ -4,6 +4,45 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Instructor dashboard redesign, 2026-10-17
+
+Deployed web source `57d4210` on marco at 23:51 UTC (18:51 Chicago time).
+The compact exam toolbar, overview filters and grouped student/attempt roster are
+live. Administration and row menus hold secondary actions; bulk edits use the
+approved action-first selection mode. Review separates Monitoring, Activity and
+Submission, with fresh status, deliberate recovery authorization and named deletion
+confirmation. Exam settings are more compact and clarify the materials template.
+
+- Image: `ssh-exam-workspace:admin-57d4210`, also tagged `:1.0.0`.
+- Image ID: `sha256:4a4c6545bf58c5f91f67ea009399b53fc15e01d58e13b9dd1ba6ffcf60033c08`.
+- Previous image: `ssh-exam-workspace:pre-admin-57d4210`
+  (`sha256:e2433bf5af51f1d457d16109f3de8a61acb1fcdaa04b4cbc439d422f618b2855`).
+- Consistent metadata/data and private configuration/trust/secrets backup:
+  `/var/backups/ssh-exam/20261017T235135Z-admin-web-cd6k8cds` on marco.
+
+The guarded cutover refused started/unresolved attempts and preserved unstarted
+preflight records. All administrator, exam, enrollment, attempt, preview and
+continuation row fingerprints matched before/after. Configuration, trust, service
+and proxy fingerprints matched; schema remains 8 and no metadata migration was
+needed. Only the web application restarted. The native class-server agent, relay,
+account policy, deadlines, administrator recovery access and protected submissions
+on csc-sys were untouched. Sandbox remains available and no submission archives
+exist on marco. Local/public readiness confirms production-ready, notifications
+enabled and maintenance disabled; the container is healthy.
+
+Validation before release: 136 application tests, type checking, production build
+and 54 browser scenarios verified across the complete run and focused reruns; see
+[test details](test-report.md#instructor-interface-redesign--2026-10-17).
+Public JavaScript and CSS bytes match the tested local build. The instructor-only
+example endpoint rejects anonymous access. No production account/exam mutation or
+real DePaul SSH/MFA login was used for these checks.
+
+Rollback after started exams drain: retag the retained previous image as `:1.0.0`
+and restart ssh-exam. Keep current data and deadlines; no schema reversal is needed.
+The backup database is for inspection/recovery, never overwrite newer metadata.
+Monitoring backups retain the existing 60-day deletion policy. Runtime mail sockets
+were excluded from backup; protected submissions remain separate on csc-sys.
+
 ## Combined enrollment dialog update, 2026-10-17
 
 Deployed web source `969fd87` on marco at 23:05 UTC (18:05 Chicago time).

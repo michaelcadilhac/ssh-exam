@@ -662,9 +662,13 @@ New desktop/mobile previews use disposable test data:
 [desktop](screenshots/admin-redesign-desktop.png),
 [mobile](screenshots/admin-redesign-mobile.png).
 
-This change is local and has not been deployed. No production database/configuration,
-SSH-side agent, account policy, deadline or protected submission was changed. Schema 8
-and existing display-name compatibility storage remain intact.
+Deployed web source `57d4210` on marco at 23:51 UTC on 2026-10-17. The guarded
+web-only cutover preserved all administrator, exam, enrollment, attempt, preview and
+continuation rows and configuration fingerprints. Schema 8 and existing compatibility
+storage remain intact. Public assets match the tested build; production readiness and
+notifications pass, maintenance is off, and the container is healthy. The SSH-side
+agent, account policy, deadlines, administrator access and protected submissions were
+not changed. See [deployment and rollback details](browser-ssh-deployment.md).
 
 A final manual check exposed the existing dialog's disabled-first-input focus bug.
 Modal autofocus now skips disabled/hidden inputs while honoring an explicit initial
