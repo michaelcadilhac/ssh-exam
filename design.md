@@ -458,7 +458,7 @@ Provide a separate authenticated instructor interface. Bootstrap the initial adm
 
 The dashboard initially shows an explicit exam selector and global administrative controls, with no preselected exam and no exam data fetched/displayed until selection. Every count, student group, attempt, incident and review in the workspace belongs to that exam; switching exams clears selections, dialogs and stale data, and late responses cannot replace the new view. Paginate by student, retaining each student's complete attempt history together. Use one table: a student row for enrollment/future allowance/webcam settings, followed by every attempt as a separate row, newest first. Preserve stable attempt numbering through filtering. Include students without attempts and historical attempts whose enrollment was removed.
 
-Show Working only from the matching attempt's live SSH, open browser control socket and fresh contact. Distinguish working, disconnected, preflight, locked and ended attempts. Poll every five seconds and render the server-synchronized remaining clock every second. Keep current attempt webcam settings separate from future enrollment settings. Student checkboxes select future duration/webcam edits; eligible attempt checkboxes select Reset clock/Extend time. Provide individual actions and expandable bulk controls with explicit target confirmation. Compare each attempt's revision, persist independent request IDs, show per-target failures/pending outcomes and make retries incapable of applying an extension twice. Clock actions are capped at 100 attempts per request. Future settings changes are transactional across the selected enrolled students and do not touch attempt snapshots. CSV imports contain only enrollment settings; they never execute live clock actions.
+Show Working only from the matching attempt's live SSH, open browser control socket and fresh contact. Distinguish working, disconnected, preflight, locked and ended attempts. Poll every five seconds and render the server-synchronized remaining clock every second. Keep current attempt webcam settings separate from future enrollment settings. Choose a bulk action before exposing checkboxes: future duration/webcam actions select student rows; Reset clock/Extend time selects eligible attempt rows. Allow one selection scope at a time and clear it on action, exam, search, filter or page changes. Provide page selection and explicit target confirmation. Individual actions remain in row menus. Compare each attempt's revision, persist independent request IDs, show per-target failures/pending outcomes and make retries incapable of applying an extension twice. Clock actions are capped at 100 attempts per request. Future settings changes are transactional across the selected enrolled students and do not touch attempt snapshots. CSV imports contain only enrollment settings; they never execute live clock actions.
 
 ### 11.1 Exam management
 
@@ -1283,3 +1283,42 @@ active attempts. Require `server-only-submissions` at production preflight and `
 for additive clock actions. Keep existing account restrictions, MFA/host pins, password reuse,
 monitoring, sandbox repeats and authorized recovery unchanged. CSV columns remain `username`,
 `duration_minutes`, `require_webcam`; bulk webpage actions operate separately.
+
+
+### Compact instructor workspace (2026-10-17)
+
+Use a compact global bar with exam picker, New exam and an Administration menu for
+alerts, administrator creation and sign-out. Exam settings and Add student belong to
+the selected exam's toolbar. Do not show an exam's students before an exam is selected.
+Use one dense roster with compact overview filters rather than large metric cards or
+separate student/attempt panels. Show every matching attempt beneath its student;
+retain stable numbering, readable status labels, current clocks/webcam requirements
+and clearly labeled future enrollment settings. Individual student settings/removal
+and attempt clock actions use keyboard-accessible menus. Review remains immediately
+available on each attempt. Reflow grouped rows on narrow screens without page overflow.
+
+Bulk actions are action-first, with a single selection scope: duration/webcam selects
+students' future settings; reset/extension selects eligible current attempts. Clear
+selection on action, exam, query, filter and page changes. Display the count, scope and
+named targets before confirmation. Preserve idempotent clock requests, current revision
+checks, per-target errors and persistent pending status. Never conflate changing a
+future allowance with changing the current countdown.
+
+Apply search/status/webcam filters before roster pagination. Overview counts describe
+the entire selected exam, not just the current page. Working requires live monitored
+connectivity; attention includes pauses and collection failures. Show stale-data feedback
+on failed/silent updates and block clock edits/recovery authorization until fresh data
+returns. Do not discard every slow refresh by continuously replacing it with another;
+new exam/filter intents must still supersede older responses. An open review remains
+scoped to its original exam/attempt and receives fresh status even outside the roster
+filter. Ignore replies from closed/replaced reviews.
+
+Review separates Monitoring, Activity and Submission. Keep image history/replay,
+incident messages and authorization available, with in-dialog loading/errors/retry.
+Focus Close review when opening; authorization requires a deliberate action. Expose
+collection pending/failure separately from verified security, and retain original/current
+deadlines, account holds, access-recovery details, checksums and manifest inspection.
+No submission download, instructor stop button or timing/access-policy change is added.
+Monitoring deletion requires a separate named confirmation and retains submissions.
+Ordinary success notifications expire; pending/failure information remains where the
+instructor needs it. Preserve enrollment upload, admin creation and authentication flows.

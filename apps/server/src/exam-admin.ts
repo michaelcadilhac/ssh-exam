@@ -4,6 +4,11 @@ import { Store } from "./db.js";
 import { Agent } from "./agent.js";
 import { ClockControl } from "./clock-control.js";
 import { username } from "../../../packages/protocol/index.js";
+import {
+  dashboardViews,
+  matchesDashboardView,
+  needsAttention,
+} from "../../../packages/protocol/admin.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 
 export function registerExamAdmin(
@@ -24,42 +29,79 @@ export function registerExamAdmin(
   app.get("/api/admin/exams/:exam/dashboard", async (req: any) => {
     principal(req, "admin");
     findExam(req.params.exam);
-    const { q = "", offset = "0" } = req.query;
+    const {
+      q = "",
+      offset = "0",
+      view = "",
+    } = z
+      .object({
+        q: z.string().max(64).optional(),
+        offset: z.string().optional(),
+        view: z.enum(dashboardViews).optional(),
+        review: z.string().uuid().optional(),
+      })
+      .parse(req.query);
     const start = Math.max(0, Math.floor(Number(offset) || 0));
+    const allUsers = store.db
+      .prepare(
+        `SELECT username FROM (
+      SELECT username FROM enrollments WHERE exam=? UNION SELECT username FROM attempts WHERE exam=?
+    ) ORDER BY username`,
+      )
+      .all(req.params.exam, req.params.exam) as any[];
     const users = store.db
       .prepare(
         `SELECT username FROM (
       SELECT username FROM enrollments WHERE exam=? UNION SELECT username FROM attempts WHERE exam=?
     ) WHERE username LIKE ? ORDER BY username`,
       )
-      .all(
-        req.params.exam,
-        req.params.exam,
-        `%${String(q).slice(0, 64)}%`,
-      ) as any[];
-    const all = store.db
-      .prepare("SELECT * FROM attempts WHERE exam=? ORDER BY rowid DESC")
-      .all(req.params.exam) as any[];
-    const students = users.slice(start, start + 100).map(({ username }) => ({
-      username,
+      .all(req.params.exam, req.params.exam, `%${q}%`) as any[];
+    const all = (
+      store.db
+        .prepare("SELECT * FROM attempts WHERE exam=? ORDER BY rowid DESC")
+        .all(req.params.exam) as any[]
+    ).map(describe);
+    const grouped = new Map<string, any[]>();
+    for (const attempt of all) {
+      if (!grouped.has(attempt.username)) grouped.set(attempt.username, []);
+      grouped.get(attempt.username)!.push(attempt);
+    }
+    const matches = users
+      .map(({ username }) => {
+        const attempts = grouped.get(username) || [];
+        return {
+          username,
+          attempts: attempts
+            .map((a, i) => ({ ...a, attempt_number: attempts.length - i }))
+            .filter((a) => matchesDashboardView(a, view)),
+        };
+      })
+      .filter((s) => !view || s.attempts.length);
+    const students = matches.slice(start, start + 100).map((s) => ({
+      ...s,
       enrollment:
         store.db
           .prepare(
             "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
           )
-          .get(req.params.exam, username) || null,
-      attempts: all
-        .filter((a) => a.username === username)
-        .map((a, i, group) => ({
-          ...describe(a),
-          attempt_number: group.length - i,
-        })),
+          .get(req.params.exam, s.username) || null,
     }));
     return {
       serverNow: Date.now(),
       students,
-      total: users.length,
+      reviewAttempt: req.query.review
+        ? (() => {
+            const a = all.find((a) => a.id === req.query.review);
+            if (!a) return null;
+            const group = grouped.get(a.username)!;
+            return { ...a, attempt_number: group.length - group.indexOf(a) };
+          })()
+        : null,
+      total: matches.length,
       counts: {
+        students: allUsers.length,
+        working: all.filter((a) => a.working).length,
+        attention: all.filter(needsAttention).length,
         active: all.filter((a) => a.state === "ACTIVE").length,
         locked: all.filter((a) => a.state === "LOCKED").length,
         collected: all.filter((a) => !!a.protected).length,

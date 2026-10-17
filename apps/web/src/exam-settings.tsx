@@ -36,8 +36,10 @@ export function ExamSettings({
       }}
     >
       <form
+        className="admin-exam-form"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (busy) return;
           setBusy(true);
           setError("");
           try {
@@ -50,66 +52,80 @@ export function ExamSettings({
           }
         }}
       >
+        <div className="admin-form-grid">
+          <label>
+            Exam ID
+            <input
+              required
+              value={form.id}
+              disabled={!!initial.id || busy}
+              pattern="[a-zA-Z0-9_\-]{1,64}"
+              onChange={(e) => setForm({ ...form, id: e.target.value })}
+            />
+          </label>
+          <label>
+            Name
+            <input
+              required
+              maxLength={120}
+              disabled={busy}
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </label>
+        </div>
         <label>
-          Exam ID
+          Materials template
           <input
             required
-            value={form.id}
-            disabled={!!initial.id || busy}
             pattern="[a-zA-Z0-9_\-]{1,64}"
-            onChange={(e) => setForm({ ...form, id: e.target.value })}
-          />
-        </label>
-        <label>
-          Name
-          <input
-            required
-            maxLength={120}
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-        </label>
-        <label>
-          Template ID
-          <input
-            required
-            pattern="[a-zA-Z0-9_\-]{1,64}"
+            disabled={busy}
             value={form.template}
             onChange={(e) => setForm({ ...form, template: e.target.value })}
           />
         </label>
+        <small className="admin-field-help">
+          Name of the exam template installed on the SSH server.
+        </small>
         {!isSandbox(form.id) && (
-          <>
-            <label>
-              Earliest start
-              <input
-                required
-                type="datetime-local"
-                value={dateValue(form.earliest)}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    earliest: new Date(e.target.value).getTime(),
-                  })
-                }
-              />
-            </label>
-            <label>
-              Latest start
-              <input
-                required
-                type="datetime-local"
-                value={dateValue(form.latest)}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    latest: new Date(e.target.value).getTime(),
-                  })
-                }
-              />
-            </label>
-            <small>Start-window inputs use your device timezone.</small>
-          </>
+          <fieldset className="admin-form-group">
+            <legend>Start window</legend>
+            <div className="admin-form-grid">
+              <label>
+                Earliest start
+                <input
+                  required
+                  disabled={busy}
+                  type="datetime-local"
+                  value={dateValue(form.earliest)}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      earliest: new Date(e.target.value).getTime(),
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Latest start
+                <input
+                  required
+                  disabled={busy}
+                  type="datetime-local"
+                  value={dateValue(form.latest)}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      latest: new Date(e.target.value).getTime(),
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <small>
+              Times use your device timezone. This sets when students may begin.
+            </small>
+          </fieldset>
         )}
         {isSandbox(form.id) && (
           <p>
@@ -117,40 +133,44 @@ export function ExamSettings({
             approval
           </p>
         )}
-        <label>
-          Duration (minutes)
-          <input
-            required
-            type="number"
-            min={1}
-            max={360}
-            disabled={isSandbox(form.id)}
-            value={isSandbox(form.id) ? 5 : form.duration / 60}
-            onChange={(e) =>
-              setForm({ ...form, duration: Number(e.target.value) * 60 })
-            }
-          />
-        </label>
+        <div className="admin-form-grid">
+          <label>
+            Duration (minutes)
+            <input
+              required
+              type="number"
+              min={1}
+              max={360}
+              disabled={busy || isSandbox(form.id)}
+              value={isSandbox(form.id) ? 5 : form.duration / 60}
+              onChange={(e) =>
+                setForm({ ...form, duration: Number(e.target.value) * 60 })
+              }
+            />
+          </label>
+          <label>
+            Terminal limit
+            <input
+              required
+              type="number"
+              min={1}
+              max={4}
+              disabled={busy}
+              value={form.terminals}
+              onChange={(e) =>
+                setForm({ ...form, terminals: Number(e.target.value) })
+              }
+            />
+          </label>
+        </div>
         <label>
           <input
             type="checkbox"
+            disabled={busy}
             checked={form.webcam}
             onChange={(e) => setForm({ ...form, webcam: e.target.checked })}
           />{" "}
           Default webcam requirement
-        </label>
-        <label>
-          Terminal limit
-          <input
-            required
-            type="number"
-            min={1}
-            max={4}
-            value={form.terminals}
-            onChange={(e) =>
-              setForm({ ...form, terminals: Number(e.target.value) })
-            }
-          />
         </label>
         <p>Changes apply to future attempts.</p>
         {error && (

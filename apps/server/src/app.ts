@@ -1485,6 +1485,9 @@ export async function createApp(
           "SELECT * FROM frames WHERE attempt=? ORDER BY received LIMIT 10000",
         )
         .all(req.params.id),
+      incidents: store.db
+        .prepare("SELECT * FROM incidents WHERE attempt=? ORDER BY opened DESC")
+        .all(req.params.id),
       terminals: store.db
         .prepare("SELECT * FROM recordings WHERE attempt=?")
         .all(req.params.id),

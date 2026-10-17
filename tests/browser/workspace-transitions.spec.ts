@@ -31,10 +31,13 @@ test("administrator sign-out stays on its current screen during failure/retry an
   try {
     await page.goto("/");
     await expect(
-      page.getByRole("button", { name: "Add administrator" }),
+      page.getByRole("button", { name: "Administration", exact: true }),
     ).toBeVisible();
     await resetScreens(page);
-    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Administration", exact: true })
+      .click();
+    await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await expect.poll(() => seen).toBe(true);
     await expect(
       page.getByRole("button", { name: "Signing out…" }),
@@ -45,7 +48,10 @@ test("administrator sign-out stays on its current screen during failure/retry an
     await onlyScreens(page, ["admin"]);
     fail = false;
     await page.getByRole("button", { name: "Dismiss", exact: true }).click();
-    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Administration", exact: true })
+      .click();
+    await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Instructor sign-in" }),
     ).toBeVisible();

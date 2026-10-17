@@ -1,73 +1,40 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Terminal } from "@xterm/xterm";
+import "./admin.css";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api, chicago, remaining } from "./api.js";
 import { Modal } from "./modal.js";
 import { CreateAdministrator } from "./create-administrator.js";
 import { ExamSettings } from "./exam-settings.js";
 import { StudentImport } from "./student-import.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
-function accountAccess(a: any) {
-  if (a.functional_test)
-    return "Administrator functional test; ordinary SSH remains available";
-  if (a.access_state === "OVERRIDDEN")
-    return "Ordinary access released by administrator override";
-  if (a.access_state === "RELEASED") return "Ordinary access released";
-  if (a.start)
-    return `Ordinary access blocked until at least ${chicago(Math.max(a.original_deadline || 0, a.deadline || 0))} and secured collection`;
-  return "Account access restriction not started";
-}
-function Replay({ id, pane }: { id: string; pane: string }) {
-  const root = useRef<HTMLDivElement>(null);
-  const [events, setEvents] = useState<any[]>([]),
-    [position, setPosition] = useState(0);
-  const terminal = useRef<Terminal | null>(null);
-  useEffect(() => {
-    const t = new Terminal({
-      disableStdin: true,
-      scrollback: 2000,
-      cols: 100,
-      rows: 24,
-    });
-    terminal.current = t;
-    t.parser.registerOscHandler(52, () => true);
-    t.parser.registerOscHandler(8, () => true);
-    t.open(root.current!);
-    api(`/admin/attempts/${id}/recordings/${pane}`).then((text) => {
-      setEvents(
-        text
-          .split("\n")
-          .filter(Boolean)
-          .map((s: string) => JSON.parse(s)),
-      );
-    });
-    return () => t.dispose();
-  }, [id, pane]);
-  useEffect(() => {
-    const t = terminal.current;
-    if (!t) return;
-    t.reset();
-    for (const e of events.slice(0, position + 1)) {
-      if (e.event === "output")
-        t.write(Uint8Array.from(atob(e.data), (c) => c.charCodeAt(0)));
-      if (e.event === "resize") t.resize(e.cols, e.rows);
-    }
-  }, [events, position]);
-  return (
-    <>
-      <label>
-        Replay position {chicago(events[position]?.at)}
-        <input
-          type="range"
-          min="0"
-          max={Math.max(0, events.length - 1)}
-          value={position}
-          onChange={(e) => setPosition(Number(e.target.value))}
-        />
-      </label>
-      <div ref={root} />
-    </>
-  );
-}
+import { AdminMenu } from "./admin-menu.js";
+import { AdminReview } from "./admin-review.js";
+import {
+  attemptStatus,
+  clockEditable,
+  webcamRequired,
+  matchesDashboardView,
+  type DashboardView,
+} from "../../../packages/protocol/admin.js";
+const filterLabels: [DashboardView, string][] = [
+  ["", "All students"],
+  ["working", "Working"],
+  ["attention", "Needs attention"],
+  ["secured", "Submission secured"],
+  ["PREPARING", "Preflight"],
+  ["ACTIVE", "Active attempts"],
+  ["LOCKED", "Paused"],
+  ["FINALIZING", "Collecting"],
+  ["COMPLETED", "Completed"],
+  ["COLLECTION_FAILED", "Collection failed"],
+  ["CANCELLED_BEFORE_START", "Cancelled"],
+  ["camera", "Webcam required"],
+  ["no-camera", "Webcam not required"],
+];
+const clockFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Chicago",
+  timeStyle: "short",
+});
+const timeOfDay = (n: number) => clockFormat.format(n);
 export function Admin({
   onError,
   onSignOut,
@@ -75,140 +42,138 @@ export function Admin({
   onError: (s: string) => void;
   onSignOut: () => Promise<void>;
 }) {
-  const [signingOut, setSigningOut] = useState(false);
   const [exams, setExams] = useState<any[]>([]),
     [exam, setExam] = useState("");
   const [data, setData] = useState<any>(null),
     [search, setSearch] = useState(""),
-    [filter, setFilter] = useState("");
+    [filter, setFilter] = useState<DashboardView>("");
   const [offset, setOffset] = useState(0),
+    [loading, setLoading] = useState(true),
     [stale, setStale] = useState(false),
-    [clock, setClock] = useState(Date.now());
-  const [notice, setNotice] = useState(""),
-    [creatingAdmin, setCreatingAdmin] = useState(false);
-  const [editingExam, setEditingExam] = useState<any>(null),
-    [addingStudent, setAddingStudent] = useState(false);
-  const [studentSelection, setStudentSelection] = useState(new Set<string>()),
-    [attemptSelection, setAttemptSelection] = useState(new Set<string>());
-  const [studentAction, setStudentAction] = useState("duration"),
-    [attemptAction, setAttemptAction] = useState("reset");
+    [error, setError] = useState("");
+  const [clock, setClock] = useState(Date.now()),
+    [notice, setNotice] = useState("");
+  const [creatingAdmin, setCreatingAdmin] = useState(false),
+    [editingExam, setEditingExam] = useState<any>(null),
+    [addingStudent, setAddingStudent] = useState(false),
+    [alerts, setAlerts] = useState(false);
+  const [bulkKind, setBulkKind] = useState(""),
+    [selection, setSelection] = useState(new Set<string>());
   const [operation, setOperation] = useState<StudentAction | null>(null),
-    [removing, setRemoving] = useState<string | null>(null);
+    [removing, setRemoving] = useState<string | null>(null),
+    [removingBusy, setRemovingBusy] = useState(false),
+    [removingError, setRemovingError] = useState("");
   const [selected, setSelected] = useState<any>(null),
-    [media, setMedia] = useState<any>(null),
-    [pane, setPane] = useState("");
-  const [sound, setSound] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  useEffect(() => {
-    if (studentSelection.size || attemptSelection.size) setBulkOpen(true);
-  }, [studentSelection.size, attemptSelection.size]);
-  const examRef = useRef(exam);
-  examRef.current = exam;
-  const seenLoaded = useRef(false);
-  const reviewVersion = useRef(0);
-  const requestVersion = useRef(0),
+    [sound, setSound] = useState(false),
+    [signingOut, setSigningOut] = useState(false);
+  const [alertsError, setAlertsError] = useState(""),
+    [alertsNotice, setAlertsNotice] = useState(""),
+    [alertsBusy, setAlertsBusy] = useState(false);
+  const [permission, setPermission] = useState(
+    typeof Notification === "undefined"
+      ? "unavailable"
+      : Notification.permission,
+  );
+  const query = useRef({ exam, search, filter, offset }),
+    selectedRef = useRef<any>(null),
+    soundRef = useRef(sound);
+  query.current = { exam, search, filter, offset };
+  soundRef.current = sound;
+  const requestPending = useRef(0),
+    lastUpdate = useRef(0);
+  const version = useRef(0),
     serverOffset = useRef(0),
-    seen = useRef(new Set<string>());
-  const refresh = async () => {
-    const id = examRef.current,
-      version = ++requestVersion.current;
-    const [list, result] = await Promise.all([
-      api("/admin/exams"),
-      id
-        ? api(
-            `/admin/exams/${id}/dashboard?q=${encodeURIComponent(search)}&offset=${offset}`,
-          )
-        : Promise.resolve(null),
-    ]);
-    if (version !== requestVersion.current || id !== examRef.current) return;
-    setExams(list);
-    setData(result);
-    setStale(false);
-    if (!result) return;
-    serverOffset.current = result.serverNow - Date.now();
-    setClock(result.serverNow);
-    for (const i of result.incidents) {
-      if (seenLoaded.current && !seen.current.has(i.id)) {
-        if (
-          typeof Notification !== "undefined" &&
-          Notification.permission === "granted"
-        )
-          new Notification("Exam needs attention", {
-            body: `${list.find((e: any) => e.id === id)?.name || id}: instructor review requested`,
-          });
-        if (sound) {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          osc.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.2);
-          osc.onended = () => void ctx.close();
+    seen = useRef(new Set<string>()),
+    seenLoaded = useRef(false),
+    mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      ++version.current;
+    };
+  }, []);
+  const refresh = useCallback(async () => {
+    const request = ++version.current,
+      q = { ...query.current },
+      review = selectedRef.current?.id;
+    requestPending.current = request;
+    try {
+      const [list, result] = await Promise.all([
+        api("/admin/exams"),
+        q.exam
+          ? api(
+              `/admin/exams/${q.exam}/dashboard?q=${encodeURIComponent(q.search)}&offset=${q.offset}&view=${q.filter}${review ? `&review=${review}` : ""}`,
+            )
+          : Promise.resolve(null),
+      ]);
+      if (
+        !mounted.current ||
+        request !== version.current ||
+        q.exam !== query.current.exam
+      )
+        return;
+      lastUpdate.current = performance.now();
+      setExams(list);
+      setData(result);
+      setStale(false);
+      setLoading(false);
+      setError("");
+      if (!result) return;
+      serverOffset.current = result.serverNow - Date.now();
+      setClock(result.serverNow);
+      if (selectedRef.current?.id === review) {
+        const latest =
+          result.reviewAttempt ||
+          result.students
+            .flatMap((s: any) => s.attempts)
+            .find((a: any) => a.id === review);
+        if (latest) {
+          selectedRef.current = latest;
+          setSelected(latest);
         }
       }
-      seen.current.add(i.id);
-    }
-    seenLoaded.current = true;
-  };
-  const chooseExam = (id: string) => {
-    ++requestVersion.current;
-    ++reviewVersion.current;
-    examRef.current = id;
-    setExam(id);
-    setData(null);
-    setSearch("");
-    setOffset(0);
-    setFilter("");
-    setNotice("");
-    setStudentSelection(new Set());
-    setAttemptSelection(new Set());
-    setSelected(null);
-    setMedia(null);
-    setOperation(null);
-    seen.current.clear();
-    seenLoaded.current = false;
-  };
-  const closeReview = () => {
-    ++reviewVersion.current;
-    setSelected(null);
-    setMedia(null);
-    setPane("");
-  };
-  const openReview = async (a: any) => {
-    const version = ++reviewVersion.current;
-    setSelected(a);
-    setPane("");
-    setMedia(null);
-    try {
-      const result = await api(`/admin/attempts/${a.id}/recordings`);
-      if (version === reviewVersion.current && examRef.current === a.exam)
-        setMedia(result);
-    } catch (error) {
-      if (version === reviewVersion.current && examRef.current === a.exam)
-        onError((error as Error).message);
-    }
-  };
-  const action = async (fn: () => Promise<any>) => {
-    try {
-      await fn();
-      await refresh();
+      for (const i of result.incidents) {
+        if (seenLoaded.current && !seen.current.has(i.id)) {
+          if (
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted"
+          )
+            new Notification("Exam needs attention", {
+              body: `${list.find((e: any) => e.id === q.exam)?.name || q.exam}: instructor review requested`,
+            });
+          if (soundRef.current) {
+            const ctx = new AudioContext(),
+              osc = ctx.createOscillator();
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+            osc.onended = () => void ctx.close();
+          }
+        }
+        seen.current.add(i.id);
+      }
+      seenLoaded.current = true;
     } catch (e) {
-      onError((e as Error).message);
+      if (mounted.current && request === version.current) {
+        setStale(true);
+        setLoading(false);
+        setError((e as Error).message);
+      }
+    } finally {
+      if (requestPending.current === request) requestPending.current = 0;
     }
-  };
+  }, []);
   useEffect(() => {
-    let mounted = true;
-    const load = () =>
-      void refresh().catch(() => {
-        if (mounted) setStale(true);
-      });
-    load();
-    const timer = setInterval(load, 5000);
+    void refresh();
+    const timer = setInterval(() => {
+      if (!requestPending.current) void refresh();
+    }, 5000);
     return () => {
-      mounted = false;
-      ++requestVersion.current;
+      ++version.current;
       clearInterval(timer);
     };
-  }, [exam, search, offset, sound]);
+  }, [exam, search, offset, filter, refresh]);
   useEffect(() => {
     const timer = setInterval(
       () => setClock(Date.now() + serverOffset.current),
@@ -216,22 +181,90 @@ export function Admin({
     );
     return () => clearInterval(timer);
   }, []);
-  const current = exams.find((e) => e.id === exam);
-  const students = data?.students || [];
-  const eligible = (a: any) =>
-    ["ACTIVE", "LOCKED"].includes(a.state) &&
-    a.deadline > clock &&
-    !a.protected &&
-    !a.pendingClockReset;
-  const toggle = (
-    value: string,
-    selected: Set<string>,
-    setter: (s: Set<string>) => void,
-  ) => {
-    const next = new Set(selected);
-    next.has(value) ? next.delete(value) : next.add(value);
-    setter(next);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 6000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  useEffect(() => {
+    if (
+      data &&
+      lastUpdate.current &&
+      performance.now() - lastUpdate.current > 15000
+    )
+      setStale(true);
+  }, [clock, data]);
+  const clearView = () => {
+    ++version.current;
+    setData(null);
+    setLoading(true);
+    setSelection(new Set());
+    setNotice("");
+    setError("");
   };
+  const chooseExam = (id: string) => {
+    clearView();
+    query.current = { exam: id, search: "", filter: "", offset: 0 };
+    setExam(id);
+    setSearch("");
+    setFilter("");
+    setOffset(0);
+    setBulkKind("");
+    selectedRef.current = null;
+    setSelected(null);
+    setOperation(null);
+    setRemoving(null);
+    setAddingStudent(false);
+    setEditingExam(null);
+    seen.current.clear();
+    seenLoaded.current = false;
+  };
+  const chooseFilter = (view: DashboardView) => {
+    if (view === filter) return;
+    clearView();
+    setFilter(view);
+    setOffset(0);
+    query.current = { ...query.current, filter: view, offset: 0 };
+  };
+  const closeReview = () => {
+    selectedRef.current = null;
+    setSelected(null);
+  };
+  const openReview = (a: any) => {
+    selectedRef.current = a;
+    setSelected(a);
+    void refresh();
+  };
+  const current = exams.find((e) => e.id === exam),
+    students = data?.students || [];
+  // The server filters before pagination; the client check also tolerates older cached responses.
+  const visible = students
+    .map((s: any) => ({
+      ...s,
+      attempts: s.attempts.filter((a: any) => matchesDashboardView(a, filter)),
+    }))
+    .filter((s: any) => !filter || s.attempts.length);
+  const future = bulkKind === "duration" || bulkKind === "webcam";
+  const candidates = future
+    ? visible.filter((s: any) => s.enrollment)
+    : visible.flatMap((s: any) =>
+        s.attempts.filter((a: any) => clockEditable(a, clock)),
+      );
+  const keyOf = (a: any) => (future ? a.username : a.id);
+  const chosen = candidates.filter((a: any) => selection.has(keyOf(a)));
+  useEffect(() => {
+    const valid = new Set(candidates.map(keyOf));
+    setSelection((old) => {
+      const next = new Set([...old].filter((id) => valid.has(id)));
+      return next.size === old.size ? old : next;
+    });
+  }, [data, clock, bulkKind]);
+  const toggle = (id: string) =>
+    setSelection((old) => {
+      const next = new Set(old);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   const openOperation = (kind: string, targets: any[]) =>
     setOperation({
       kind: kind as StudentAction["kind"],
@@ -247,40 +280,31 @@ export function Admin({
             }))
           : [],
     });
-  const status = (a: any) =>
-    a.working
-      ? "Working"
-      : a.state === "ACTIVE"
-        ? "Disconnected"
-        : a.state === "PREPARING"
-          ? "Preflight"
-          : a.state;
-  const visible = students
-    .map((s: any) => ({
-      ...s,
-      attempts: s.attempts.filter(
-        (a: any) =>
-          !filter ||
-          (filter === "camera"
-            ? JSON.parse(a.settings).webcam
-            : filter === "no-camera"
-              ? !JSON.parse(a.settings).webcam
-              : a.state === filter),
-      ),
-    }))
-    .filter((s: any) => !filter || s.attempts.length);
+  const signOut = async () => {
+    setSigningOut(true);
+    try {
+      await onSignOut();
+    } catch (e) {
+      setSigningOut(false);
+      onError((e as Error).message);
+    }
+  };
+  const bulkType = future ? "students" : "attempts";
   return (
-    <div className="admin">
-      <header>
+    <main className="admin admin-redesign">
+      <header className="admin-header">
         <h1>Exams</h1>
-        <label>
-          Selected exam
+        <label className="admin-exam-picker">
+          <span className="visually-hidden">Selected exam</span>
           <select
             aria-label="Selected exam"
             value={exam}
+            disabled={loading && !exams.length}
             onChange={(e) => chooseExam(e.target.value)}
           >
-            <option value="">Select an exam</option>
+            <option value="">
+              {loading && !exams.length ? "Loading exams…" : "Select an exam"}
+            </option>
             {exams.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name === e.id ? e.name : `${e.name} · ${e.id}`}
@@ -288,466 +312,582 @@ export function Admin({
             ))}
           </select>
         </label>
-        <button onClick={() => setEditingExam({})}>New exam</button>
-        <details className="alert-settings">
-          <summary>Alerts</summary>
-          <div>
-            <button
-              onClick={() =>
-                action(async () => {
-                  if (typeof Notification === "undefined")
-                    throw Error(
-                      "Desktop notifications are unavailable in this browser",
-                    );
-                  await Notification.requestPermission();
-                })
-              }
-            >
-              Enable desktop alerts
-            </button>
-            <label>
-              <input
-                type="checkbox"
-                checked={sound}
-                onChange={(e) => setSound(e.target.checked)}
-              />{" "}
-              Attention sound
-            </label>
-            <button
-              onClick={() => action(() => api("/admin/notifications/test", {}))}
-            >
-              Test email alert
-            </button>
-          </div>
-        </details>
-        <button onClick={() => setCreatingAdmin(true)}>
-          Add administrator
+        <button className="quiet-button" onClick={() => setEditingExam({})}>
+          New exam
         </button>
-        <button
+        <AdminMenu
+          label={signingOut ? "Signing out…" : "Administration"}
           disabled={signingOut}
-          onClick={() =>
-            action(async () => {
-              setSigningOut(true);
-              try {
-                await onSignOut();
-              } finally {
-                setSigningOut(false);
-              }
-            })
-          }
+          actions={[
+            {
+              label: "Alerts",
+              onSelect: () => {
+                setAlertsError("");
+                setAlertsNotice("");
+                setAlerts(true);
+              },
+            },
+            {
+              label: "Add administrator",
+              onSelect: () => setCreatingAdmin(true),
+            },
+            {
+              label: signingOut ? "Signing out…" : "Sign out",
+              disabled: signingOut,
+              onSelect: () => void signOut(),
+            },
+          ]}
         >
-          {signingOut ? "Signing out…" : "Sign out"}
-        </button>
+          {signingOut ? "Signing out…" : "Administration"}
+        </AdminMenu>
       </header>
-      {notice && <p role="status">{notice}</p>}
-      {!exam && <p>Select an exam to manage its students and attempts.</p>}
-      {exam && (
-        <>
-          <div className="section-title">
-            <h2>{current?.name || exam}</h2>
-            <span className={stale ? "status warn" : "status"}>
-              {stale ? "Data stale · connection lost" : "Live"}
-            </span>
-            <button onClick={() => setEditingExam(current)}>
-              Exam settings
-            </button>
-            <button onClick={() => setAddingStudent(true)}>Add student</button>
-          </div>
-          {data && (
+      {error && (
+        <div className="admin-service-error" role="alert">
+          <span>
+            {stale && data ? "Updates paused. " : ""}
+            {error}
+          </span>
+          <button onClick={() => void refresh()}>Retry updates</button>
+        </div>
+      )}
+      {stale && !error && (
+        <div className="admin-service-error" role="alert">
+          <span>Updates paused. Displayed information may be out of date.</span>
+          <button onClick={() => void refresh()}>Retry updates</button>
+        </div>
+      )}
+      {notice && (
+        <div className="admin-notice" role="status">
+          {notice}
+          <button
+            aria-label="Dismiss notification"
+            onClick={() => setNotice("")}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {!exam ? (
+        <section className="admin-start" aria-label="Choose an exam">
+          {loading ? (
+            <p role="status">Loading exams…</p>
+          ) : (
             <>
-              <section className="metrics">
-                <div>
-                  <b>{data.counts.active}</b>Active
-                </div>
-                <div>
-                  <b>{data.counts.locked}</b>Need review
-                </div>
-                <div>
-                  <b>{data.counts.collected}</b>Collected
-                </div>
-              </section>
-              <section className="card">
-                <div className="section-title">
-                  <h2>Students & attempts</h2>
-                  <input
-                    aria-label="Search username"
-                    placeholder="Search username"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setOffset(0);
-                      setStudentSelection(new Set());
-                      setAttemptSelection(new Set());
-                    }}
-                  />
-                  <select
-                    aria-label="Filter attempts"
-                    value={filter}
-                    onChange={(e) => {
-                      setFilter(e.target.value);
-                      setStudentSelection(new Set());
-                      setAttemptSelection(new Set());
-                    }}
-                  >
-                    <option value="">All states</option>
-                    <option value="camera">Webcam required</option>
-                    <option value="no-camera">Webcam not required</option>
-                    {[
-                      "PREPARING",
-                      "ACTIVE",
-                      "LOCKED",
-                      "FINALIZING",
-                      "COMPLETED",
-                      "COLLECTION_FAILED",
-                      "CANCELLED_BEFORE_START",
-                    ].map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <details
-                  open={bulkOpen}
-                  onToggle={(e) => setBulkOpen(e.currentTarget.open)}
-                >
-                  <summary>
-                    Bulk actions
-                    {studentSelection.size || attemptSelection.size
-                      ? ` · ${studentSelection.size} students · ${attemptSelection.size} attempts`
-                      : ""}
-                  </summary>
-                  <div className="bulk-actions" aria-label="Bulk actions">
-                    <button
-                      onClick={() =>
-                        setStudentSelection(
-                          new Set(
-                            visible
-                              .filter((s: any) => s.enrollment)
-                              .map((s: any) => s.username),
-                          ),
-                        )
-                      }
-                    >
-                      Select students on this page
-                    </button>
-                    <button
-                      onClick={() =>
-                        setAttemptSelection(
-                          new Set(
-                            visible.flatMap((s: any) =>
-                              s.attempts.filter(eligible).map((a: any) => a.id),
-                            ),
-                          ),
-                        )
-                      }
-                    >
-                      Select current attempts
-                    </button>
-                    <button
-                      disabled={
-                        !studentSelection.size && !attemptSelection.size
-                      }
-                      onClick={() => {
-                        setStudentSelection(new Set());
-                        setAttemptSelection(new Set());
-                      }}
-                    >
-                      Clear selection
-                    </button>
-                    <label>
-                      Student action
-                      <select
-                        aria-label="Student action"
-                        value={studentAction}
-                        onChange={(e) => setStudentAction(e.target.value)}
-                      >
-                        <option value="duration">Set duration</option>
-                        <option value="webcam">Set webcam requirement</option>
-                      </select>
-                    </label>
-                    <button
-                      disabled={!studentSelection.size}
-                      onClick={() =>
-                        openOperation(
-                          studentAction,
-                          students.filter((s: any) =>
-                            studentSelection.has(s.username),
-                          ),
-                        )
-                      }
-                    >
-                      Apply to {studentSelection.size}{" "}
-                      {studentSelection.size === 1 ? "student" : "students"}
-                    </button>
-                    <label>
-                      Attempt action
-                      <select
-                        aria-label="Attempt action"
-                        value={attemptAction}
-                        onChange={(e) => setAttemptAction(e.target.value)}
-                      >
-                        <option value="reset">Reset clock</option>
-                        <option value="extend">Extend time</option>
-                      </select>
-                    </label>
-                    <button
-                      disabled={
-                        !attemptSelection.size || attemptSelection.size > 100
-                      }
-                      onClick={() =>
-                        openOperation(
-                          attemptAction,
-                          students.flatMap((s: any) =>
-                            s.attempts.filter((a: any) =>
-                              attemptSelection.has(a.id),
-                            ),
-                          ),
-                        )
-                      }
-                    >
-                      Apply to {attemptSelection.size}{" "}
-                      {attemptSelection.size === 1 ? "attempt" : "attempts"}
-                    </button>
-                  </div>
-                </details>
-                <div className="table-scroll">
-                  <table aria-label="Students and attempts">
-                    <thead>
-                      <tr>
-                        <th>Select</th>
-                        <th>Student / attempt</th>
-                        <th>Status</th>
-                        <th>Webcam</th>
-                        <th>Time remaining</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    {visible.map((s: any) => (
-                      <tbody key={s.username} aria-label={s.username}>
-                        <tr className="student-row">
-                          <td>
-                            <input
-                              type="checkbox"
-                              aria-label={`Select student ${s.username}`}
-                              disabled={!s.enrollment}
-                              checked={studentSelection.has(s.username)}
-                              onChange={() =>
-                                toggle(
-                                  s.username,
-                                  studentSelection,
-                                  setStudentSelection,
-                                )
-                              }
-                            />
-                          </td>
-                          <td>
-                            <strong>{s.username}</strong>
-                            <small>
-                              {s.enrollment
-                                ? `Future duration: ${(s.enrollment.duration ?? current?.duration) / 60} minutes${s.enrollment.duration === null ? " · exam default" : ""}`
-                                : "Not enrolled"}
-                            </small>
-                          </td>
-                          <td>
-                            {s.attempts.length
-                              ? `${s.attempts.length} attempts`
-                              : "Not started"}
-                          </td>
-                          <td>
-                            {s.enrollment && (
-                              <>
-                                <span>
-                                  Future:{" "}
-                                  {(
-                                    s.enrollment.webcam === null
-                                      ? current?.webcam
-                                      : !!s.enrollment.webcam
-                                  )
-                                    ? "Required"
-                                    : "Not required"}
-                                </span>
-                                {s.enrollment.webcam === null && (
-                                  <small>Exam default</small>
-                                )}
-                              </>
-                            )}
-                          </td>
-                          <td>—</td>
-                          <td>
-                            {s.enrollment && (
-                              <>
-                                <button
-                                  onClick={() => openOperation("duration", [s])}
-                                >
-                                  Set duration
-                                </button>
-                                <button
-                                  onClick={() => openOperation("webcam", [s])}
-                                >
-                                  Set webcam
-                                </button>
-                                <button
-                                  className="danger"
-                                  aria-label={`Remove ${s.username} from exam`}
-                                  onClick={() => setRemoving(s.username)}
-                                >
-                                  Remove
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                        {s.attempts.map((a: any, i: number) => (
-                          <tr key={a.id} className="attempt-row">
-                            <td>
-                              {["ACTIVE", "LOCKED"].includes(a.state) && (
-                                <input
-                                  type="checkbox"
-                                  aria-label={`Select attempt ${a.id}`}
-                                  disabled={!eligible(a)}
-                                  checked={attemptSelection.has(a.id)}
-                                  onChange={() =>
-                                    toggle(
-                                      a.id,
-                                      attemptSelection,
-                                      setAttemptSelection,
-                                    )
-                                  }
-                                />
-                              )}
-                            </td>
-                            <td>
-                              <span>Attempt {a.attempt_number}</span>
-                              <small>
-                                {a.start ? chicago(a.start) : "Preflight"}
-                              </small>
-                            </td>
-                            <td>
-                              <span
-                                className={
-                                  a.state === "LOCKED" ||
-                                  a.state === "COLLECTION_FAILED"
-                                    ? "badge warn"
-                                    : "badge"
-                                }
-                              >
-                                {status(a)}
-                              </span>
-                              {a.reason && <small>{a.reason}</small>}
-                              {a.protected && (
-                                <small>Submission secured on SSH server</small>
-                              )}
-                            </td>
-                            <td>
-                              {JSON.parse(a.settings).webcam
-                                ? "Required"
-                                : "Not required"}
-                              <small>For this attempt</small>
-                            </td>
-                            <td>
-                              {["ACTIVE", "LOCKED"].includes(a.state)
-                                ? remaining(a.deadline, clock)
-                                : "—"}
-                              {a.deadline && (
-                                <small>Deadline: {chicago(a.deadline)}</small>
-                              )}
-                              {a.pendingClockReset && (
-                                <small className="warn">
-                                  Clock change pending agent confirmation
-                                </small>
-                              )}
-                            </td>
-                            <td>
-                              {["ACTIVE", "LOCKED"].includes(a.state) && (
-                                <>
-                                  {" "}
-                                  <button
-                                    disabled={!eligible(a)}
-                                    aria-label={`Reset clock for ${s.username}`}
-                                    onClick={() => openOperation("reset", [a])}
-                                  >
-                                    Reset clock
-                                  </button>
-                                  <button
-                                    disabled={!eligible(a)}
-                                    aria-label={`Extend time for ${s.username}`}
-                                    onClick={() => openOperation("extend", [a])}
-                                  >
-                                    Extend time
-                                  </button>
-                                </>
-                              )}
-                              <button onClick={() => void openReview(a)}>
-                                Review
-                              </button>
-                              {a.state === "LOCKED" && (
-                                <button
-                                  onClick={() =>
-                                    action(() =>
-                                      api(
-                                        `/admin/attempts/${a.id}/authorize`,
-                                        {},
-                                      ),
-                                    )
-                                  }
-                                >
-                                  Authorize resume
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    ))}
-                  </table>
-                  {!visible.length && <p>No students match this view.</p>}
-                </div>
-                {(offset > 0 || data.total > 100) && (
-                  <div>
-                    <button
-                      disabled={!offset}
-                      onClick={() => {
-                        setOffset(Math.max(0, offset - 100));
-                        setStudentSelection(new Set());
-                        setAttemptSelection(new Set());
-                      }}
-                    >
-                      Previous
-                    </button>
-                    <span>
-                      {offset + 1}–{Math.min(offset + 100, data.total)} of{" "}
-                      {data.total} students
-                    </span>
-                    <button
-                      disabled={offset + 100 >= data.total}
-                      onClick={() => {
-                        setOffset(offset + 100);
-                        setStudentSelection(new Set());
-                        setAttemptSelection(new Set());
-                      }}
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
-              </section>
-              {!!data.incidents.length && (
-                <section className="card">
-                  <details>
-                    <summary>Exam activity</summary>
-                    {data.incidents.map((i: any) => (
-                      <p key={i.id}>
-                        {chicago(i.opened)} · {i.attempt} ·{" "}
-                        {JSON.parse(i.events)
-                          .map((e: any) => e.reason)
-                          .join("; ")}
-                        {i.message && ` · Student: ${i.message}`}
-                      </p>
-                    ))}
-                  </details>
-                </section>
-              )}
+              <h2>
+                {exams.length
+                  ? "Select an exam"
+                  : stale
+                    ? "Exam list unavailable"
+                    : "Create your first exam"}
+              </h2>
+              <p>
+                {exams.length
+                  ? "Choose an exam above to manage students and review their work."
+                  : stale
+                    ? "Use Retry updates to load your exams."
+                    : "Start with New exam to configure an exam and add students."}
+              </p>
             </>
           )}
+        </section>
+      ) : (
+        <>
+          <section className="admin-exam-heading">
+            <div>
+              <h2>{current?.name || exam}</h2>
+              <p>
+                {current
+                  ? `${current.duration / 60} minutes · Webcam ${current.webcam ? "required" : "not required"} by default`
+                  : "Loading exam settings…"}
+              </p>
+            </div>
+            <div>
+              <button
+                onClick={() => setEditingExam(current)}
+                disabled={!current}
+              >
+                Exam settings
+              </button>
+              <button
+                className="primary"
+                onClick={() => setAddingStudent(true)}
+                disabled={!current}
+              >
+                Add student
+              </button>
+            </div>
+          </section>
+          <section className="admin-roster" aria-label="Students and attempts">
+            <div
+              className="admin-view-strip"
+              role="group"
+              aria-label="Exam overview"
+            >
+              {(
+                [
+                  ["", "All students", data?.counts.students ?? data?.total],
+                  [
+                    "working",
+                    "Working",
+                    data?.counts.working ?? data?.counts.active,
+                  ],
+                  [
+                    "attention",
+                    "Needs attention",
+                    data?.counts.attention ?? data?.counts.locked,
+                  ],
+                  ["secured", "Secured", data?.counts.collected],
+                ] as const
+              ).map(([value, label, count]) => (
+                <button
+                  key={value}
+                  aria-pressed={filter === value}
+                  onClick={() => chooseFilter(value)}
+                >
+                  {label}
+                  <span>{count ?? "—"}</span>
+                </button>
+              ))}
+              <span
+                className={`admin-live ${stale ? "warning" : ""}`}
+                role="status"
+              >
+                {stale ? "Updates paused" : loading ? "Updating…" : "Live"}
+              </span>
+            </div>
+            <div className="admin-roster-tools">
+              <label className="admin-search">
+                <span className="visually-hidden">Search username</span>
+                <input
+                  aria-label="Search username"
+                  placeholder="Find a student…"
+                  maxLength={64}
+                  value={search}
+                  onChange={(e) => {
+                    clearView();
+                    setSearch(e.target.value);
+                    setOffset(0);
+                    query.current = {
+                      ...query.current,
+                      search: e.target.value,
+                      offset: 0,
+                    };
+                  }}
+                />
+              </label>
+              <label>
+                <span className="visually-hidden">Filter attempts</span>
+                <select
+                  aria-label="Filter attempts"
+                  value={filter}
+                  onChange={(e) =>
+                    chooseFilter(e.target.value as DashboardView)
+                  }
+                >
+                  {filterLabels.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="admin-bulk-picker">
+                <span className="visually-hidden">Bulk action</span>
+                <select
+                  aria-label="Bulk action"
+                  value={bulkKind}
+                  onChange={(e) => {
+                    setBulkKind(e.target.value);
+                    setSelection(new Set());
+                  }}
+                >
+                  <option value="">Bulk actions…</option>
+                  <optgroup label="Future attempt settings">
+                    <option value="duration">Set duration</option>
+                    <option value="webcam">Set webcam requirement</option>
+                  </optgroup>
+                  <optgroup label="Current attempt clocks">
+                    <option value="reset">Reset clock</option>
+                    <option value="extend">Extend time</option>
+                  </optgroup>
+                </select>
+              </label>
+            </div>
+            {bulkKind && (
+              <div
+                className="admin-selection-bar"
+                role="region"
+                aria-label="Bulk selection"
+              >
+                <span>
+                  <strong>
+                    {chosen.length}{" "}
+                    {chosen.length === 1 ? bulkType.slice(0, -1) : bulkType}{" "}
+                    selected
+                  </strong>{" "}
+                  · {future ? "Future attempts" : "Current clocks"}
+                </span>
+                <label className="admin-select-page">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select all ${bulkType} on this page`}
+                    checked={
+                      !!candidates.length && chosen.length === candidates.length
+                    }
+                    ref={(el) => {
+                      if (el)
+                        el.indeterminate =
+                          chosen.length > 0 &&
+                          chosen.length < candidates.length;
+                    }}
+                    onChange={(e) =>
+                      setSelection(
+                        new Set(e.target.checked ? candidates.map(keyOf) : []),
+                      )
+                    }
+                    disabled={!candidates.length || stale}
+                  />
+                  Select page
+                </label>
+                <button
+                  className="quiet-button"
+                  onClick={() => {
+                    setBulkKind("");
+                    setSelection(new Set());
+                  }}
+                >
+                  Cancel selection
+                </button>
+                <button
+                  className="primary"
+                  disabled={
+                    !chosen.length || stale || (!future && chosen.length > 100)
+                  }
+                  onClick={() => openOperation(bulkKind, chosen)}
+                >
+                  Apply to {chosen.length}{" "}
+                  {chosen.length === 1 ? bulkType.slice(0, -1) : bulkType}
+                </button>
+                {!future && chosen.length > 100 && (
+                  <span className="warn">
+                    Select at most 100 current attempts.
+                  </span>
+                )}
+              </div>
+            )}
+            {loading && !data ? (
+              <p className="admin-loading" role="status">
+                Loading students…
+              </p>
+            ) : (
+              data && (
+                <>
+                  {!visible.length ? (
+                    <div className="admin-empty">
+                      <h3>
+                        {search || filter
+                          ? "No matching students"
+                          : "No students yet"}
+                      </h3>
+                      <p>
+                        {search || filter
+                          ? "Change the search or filter to see more students."
+                          : "Add a student or upload a CSV roster to get started."}
+                      </p>
+                      {(search || filter) && (
+                        <button
+                          onClick={() => {
+                            clearView();
+                            setSearch("");
+                            setFilter("");
+                            setOffset(0);
+                            query.current = {
+                              ...query.current,
+                              search: "",
+                              filter: "",
+                              offset: 0,
+                            };
+                          }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="admin-roster-scroll">
+                      <table
+                        className={bulkKind ? "selecting" : undefined}
+                        aria-label="Students and attempts"
+                        role="table"
+                      >
+                        <thead>
+                          <tr role="row">
+                            {bulkKind && (
+                              <th className="selection-cell">
+                                <span className="visually-hidden">
+                                  Selection
+                                </span>
+                              </th>
+                            )}
+                            <th>Student / attempt</th>
+                            <th>Status</th>
+                            <th>Webcam</th>
+                            <th>Time remaining</th>
+                            <th>
+                              <span className="visually-hidden">Actions</span>
+                            </th>
+                          </tr>
+                        </thead>
+                        {visible.map((s: any) => (
+                          <tbody
+                            role="rowgroup"
+                            key={s.username}
+                            aria-label={s.username}
+                          >
+                            <tr className="student-row" role="row">
+                              {bulkKind && (
+                                <td className="selection-cell" role="cell">
+                                  {future && s.enrollment && (
+                                    <input
+                                      type="checkbox"
+                                      aria-label={`Select student ${s.username}`}
+                                      checked={selection.has(s.username)}
+                                      disabled={stale}
+                                      onChange={() => toggle(s.username)}
+                                    />
+                                  )}
+                                </td>
+                              )}
+                              <td className="student-identity" role="cell">
+                                <strong title={s.username}>{s.username}</strong>
+                                {!s.enrollment && <small>Not enrolled</small>}
+                              </td>
+                              <td role="cell" className="student-history-count">
+                                {s.attempts.length
+                                  ? `${s.attempts.length} ${s.attempts.length === 1 ? "attempt" : "attempts"}`
+                                  : "Not started"}
+                              </td>
+                              <td role="cell" className="future-setting">
+                                {s.enrollment && (
+                                  <>
+                                    <span>
+                                      Future:{" "}
+                                      {(s.enrollment.webcam ?? current?.webcam)
+                                        ? "Required"
+                                        : "Not required"}
+                                    </span>
+                                    {s.enrollment.webcam === null && (
+                                      <small>Exam default</small>
+                                    )}
+                                  </>
+                                )}
+                              </td>
+                              <td role="cell" className="future-setting">
+                                {s.enrollment && (
+                                  <>
+                                    <span>
+                                      Future duration:{" "}
+                                      {(s.enrollment.duration ??
+                                        current?.duration) / 60}{" "}
+                                      minutes
+                                    </span>
+                                    {s.enrollment.duration === null && (
+                                      <small>Exam default</small>
+                                    )}
+                                  </>
+                                )}
+                              </td>
+                              <td role="cell" className="row-actions">
+                                {s.enrollment && (
+                                  <AdminMenu
+                                    label={`Actions for student ${s.username}`}
+                                    actions={[
+                                      {
+                                        label: "Set duration",
+                                        disabled: stale,
+                                        onSelect: () =>
+                                          openOperation("duration", [s]),
+                                      },
+                                      {
+                                        label: "Set webcam",
+                                        disabled: stale,
+                                        onSelect: () =>
+                                          openOperation("webcam", [s]),
+                                      },
+                                      {
+                                        label: "Remove from exam…",
+                                        danger: true,
+                                        disabled: stale,
+                                        onSelect: () => {
+                                          setRemovingError("");
+                                          setRemoving(s.username);
+                                        },
+                                      },
+                                    ]}
+                                  />
+                                )}
+                              </td>
+                            </tr>
+                            {s.attempts.map((a: any) => {
+                              const status = attemptStatus(a),
+                                editable = !stale && clockEditable(a, clock),
+                                webcam = webcamRequired(a);
+                              return (
+                                <tr
+                                  key={a.id}
+                                  className="attempt-row"
+                                  role="row"
+                                >
+                                  {bulkKind && (
+                                    <td className="selection-cell" role="cell">
+                                      {!future &&
+                                        ["ACTIVE", "LOCKED"].includes(
+                                          a.state,
+                                        ) && (
+                                          <input
+                                            type="checkbox"
+                                            aria-label={`Select attempt ${a.id}`}
+                                            checked={
+                                              editable && selection.has(a.id)
+                                            }
+                                            disabled={!editable}
+                                            onChange={() => toggle(a.id)}
+                                          />
+                                        )}
+                                    </td>
+                                  )}
+                                  <td className="attempt-identity" role="cell">
+                                    <span>Attempt {a.attempt_number}</span>
+                                    {!!a.start && (
+                                      <time
+                                        dateTime={new Date(
+                                          a.start,
+                                        ).toISOString()}
+                                        title={chicago(a.start)}
+                                      >
+                                        Started {timeOfDay(a.start)}
+                                      </time>
+                                    )}
+                                  </td>
+                                  <td role="cell">
+                                    <span
+                                      className={`attempt-status ${status.tone}`}
+                                    >
+                                      {status.label}
+                                    </span>
+                                    {!!a.reason &&
+                                      (a.state === "LOCKED" ||
+                                        a.state === "COLLECTION_FAILED") && (
+                                        <small
+                                          className="attempt-reason"
+                                          title={a.reason}
+                                        >
+                                          {a.reason}
+                                        </small>
+                                      )}
+                                  </td>
+                                  <td role="cell" data-label="Webcam">
+                                    {webcam === null
+                                      ? "Unknown"
+                                      : webcam
+                                        ? "Required"
+                                        : "Not required"}
+                                  </td>
+                                  <td
+                                    role="cell"
+                                    data-label="Time remaining"
+                                    className="attempt-clock"
+                                  >
+                                    <time
+                                      title={
+                                        a.deadline
+                                          ? `Deadline: ${chicago(a.deadline)}`
+                                          : undefined
+                                      }
+                                    >
+                                      {["ACTIVE", "LOCKED"].includes(a.state)
+                                        ? remaining(a.deadline, clock)
+                                        : "—"}
+                                    </time>
+                                    {a.pendingClockReset && (
+                                      <small className="warn">
+                                        Clock change pending
+                                      </small>
+                                    )}
+                                  </td>
+                                  <td role="cell" className="row-actions">
+                                    <button
+                                      className={
+                                        a.state === "LOCKED"
+                                          ? "review-needed"
+                                          : "quiet-button"
+                                      }
+                                      onClick={() => openReview(a)}
+                                    >
+                                      Review
+                                    </button>
+                                    {["ACTIVE", "LOCKED"].includes(a.state) && (
+                                      <AdminMenu
+                                        label={`Actions for ${s.username} attempt ${a.attempt_number}`}
+                                        children="More"
+                                        actions={[
+                                          {
+                                            label: "Reset clock",
+                                            disabled: !editable,
+                                            onSelect: () =>
+                                              openOperation("reset", [a]),
+                                          },
+                                          {
+                                            label: "Extend time",
+                                            disabled: !editable,
+                                            onSelect: () =>
+                                              openOperation("extend", [a]),
+                                          },
+                                        ]}
+                                      />
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        ))}
+                      </table>
+                    </div>
+                  )}
+                  <footer className="admin-pagination">
+                    <span>
+                      {data.total
+                        ? `${offset + 1}–${Math.min(offset + 100, data.total)} of ${data.total} students`
+                        : "0 students"}
+                    </span>
+                    {(offset > 0 || data.total > 100) && (
+                      <div>
+                        <button
+                          disabled={!offset}
+                          onClick={() => {
+                            clearView();
+                            setOffset(Math.max(0, offset - 100));
+                          }}
+                        >
+                          Previous
+                        </button>
+                        <button
+                          disabled={offset + 100 >= data.total}
+                          onClick={() => {
+                            clearView();
+                            setOffset(offset + 100);
+                          }}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </footer>
+                </>
+              )
+            )}
+          </section>
         </>
       )}
       {creatingAdmin && (
@@ -764,7 +904,6 @@ export function Admin({
           initial={editingExam}
           onClose={() => setEditingExam(null)}
           onSaved={async (e) => {
-            setEditingExam(null);
             chooseExam(e.id);
             await refresh();
           }}
@@ -789,9 +928,7 @@ export function Admin({
           onClose={() => setOperation(null)}
           onDone={async (text) => {
             setNotice(text);
-            setStudentSelection(new Set());
-            setAttemptSelection(new Set());
-            setBulkOpen(false);
+            setSelection(new Set());
             await refresh();
           }}
         />
@@ -799,213 +936,121 @@ export function Admin({
       {removing && (
         <Modal
           title={`Remove ${removing} from this exam?`}
-          onClose={() => setRemoving(null)}
+          onClose={() => {
+            if (!removingBusy) setRemoving(null);
+          }}
         >
           <p>
-            Enrollment is removed. Attempt history, monitoring and SSH-server
-            submissions are kept. An exam already in progress continues.
+            Future exam access is removed. Current attempts, history, monitoring
+            and submissions are kept.
           </p>
+          {removingError && (
+            <p role="alert" className="warn">
+              {removingError}
+            </p>
+          )}
           <div className="actions">
-            <button onClick={() => setRemoving(null)}>Cancel</button>
+            <button disabled={removingBusy} onClick={() => setRemoving(null)}>
+              Cancel
+            </button>
             <button
               className="danger"
-              onClick={() =>
-                action(async () => {
+              disabled={removingBusy}
+              onClick={async () => {
+                if (removingBusy) return;
+                setRemovingBusy(true);
+                setRemovingError("");
+                try {
                   await api(`/admin/exams/${exam}/roster/remove`, {
                     username: removing,
                     confirm: true,
                   });
                   setRemoving(null);
                   await refresh();
-                })
-              }
+                } catch (e) {
+                  setRemovingError((e as Error).message);
+                } finally {
+                  setRemovingBusy(false);
+                }
+              }}
             >
-              Remove student
+              {removingBusy ? "Removing…" : "Remove student"}
             </button>
           </div>
         </Modal>
       )}
       {selected && (
-        <Modal
-          wide
-          title={`${selected.username} · ${selected.state}`}
-          onClose={() => {
-            closeReview();
-          }}
-        >
+        <AdminReview
+          key={selected.id}
+          attempt={selected}
+          clock={clock}
+          stale={stale}
+          onClose={closeReview}
+          onChanged={refresh}
+        />
+      )}
+      {alerts && (
+        <Modal title="Alerts" onClose={() => setAlerts(false)}>
+          {alertsError && (
+            <p role="alert" className="warn">
+              {alertsError}
+            </p>
+          )}
+          {alertsNotice && <p role="status">{alertsNotice}</p>}
+          <p>
+            Desktop alerts:{" "}
+            {permission === "unavailable"
+              ? "unavailable in this browser"
+              : permission === "granted"
+                ? "enabled"
+                : permission === "denied"
+                  ? "blocked in browser settings"
+                  : "not enabled"}
+          </p>
           <button
-            onClick={() => {
-              closeReview();
+            disabled={permission === "unavailable" || permission === "granted"}
+            onClick={async () => {
+              try {
+                setPermission(await Notification.requestPermission());
+              } catch (e) {
+                setAlertsError((e as Error).message);
+              }
             }}
           >
-            Close review
+            Enable desktop alerts
           </button>
-          {
-            <>
-              {selected.state === "CANCELLED_BEFORE_START" ? (
-                <p>
-                  Preflight ended before activation. No exam time was consumed.
-                  The student can sign in again and retry preflight.
-                </p>
-              ) : (
-                <>
-                  <p>
-                    Original deadline:{" "}
-                    {chicago(selected.original_deadline || selected.deadline)}
-                  </p>
-                  <p>
-                    {accountAccess(selected)}. Finishing never reopens exam
-                    access.
-                  </p>
-                  {selected.access_override && (
-                    <p>Audited override: {selected.access_override}</p>
-                  )}
-                  {selected.access_error && (
-                    <p className="error">
-                      Access recovery: {selected.access_error}
-                    </p>
-                  )}
-                  <p>
-                    {selected.protected
-                      ? "Submission secured"
-                      : "Protected submission not confirmed"}{" "}
-                    · Retained on the SSH server
-                  </p>
-                  <details>
-                    <summary>Collection details</summary>
-                    {selected.access_checked_at && (
-                      <p>
-                        Class-server access state last checked:{" "}
-                        {chicago(selected.access_checked_at)}
-                      </p>
-                    )}
-                    <p>
-                      Execution ended:{" "}
-                      {selected.completed_at
-                        ? chicago(selected.completed_at)
-                        : "Not confirmed"}{" "}
-                      · Collected:{" "}
-                      {selected.collected_at
-                        ? chicago(selected.collected_at)
-                        : "Not confirmed"}{" "}
-                      · Secured:{" "}
-                      {selected.secured_at
-                        ? chicago(selected.secured_at)
-                        : "Not confirmed"}
-                    </p>
-                    <p>
-                      Collection: {selected.reason || "Not ended"} · protected
-                      copy:{" "}
-                      {selected.protected
-                        ? "Verified on class server"
-                        : "Not confirmed"}{" "}
-                      · source: {selected.work_path || "/work"}
-                    </p>
-                    {selected.checksum && (
-                      <p>
-                        SHA-256: <code>{selected.checksum}</code>
-                      </p>
-                    )}
-                  </details>
-                </>
-              )}
-              {media?.manifest && (
-                <details>
-                  <summary>Collection manifest and omissions</summary>
-                  <pre>{JSON.stringify(media.manifest, null, 2)}</pre>
-                </details>
-              )}
-              {media && (
-                <>
-                  <div className="images">
-                    {["screen", "webcam"].map((source) => {
-                      const frames = media.frames.filter(
-                        (f: any) => f.source === source,
-                      );
-                      if (
-                        source === "webcam" &&
-                        !JSON.parse(selected.settings).webcam &&
-                        !frames.length
-                      )
-                        return null;
-                      const latest = frames.at(-1);
-                      return latest ? (
-                        <figure key={source}>
-                          <img src={`/api/admin/media/${latest.id}`} />
-                          <figcaption>
-                            {source} · captured {chicago(latest.captured)} ·
-                            received {chicago(latest.received)}
-                          </figcaption>
-                        </figure>
-                      ) : (
-                        <p key={source}>{source}: no images</p>
-                      );
-                    })}
-                  </div>
-                  <label>
-                    Image timeline
-                    <select
-                      onChange={(e) => {
-                        const img =
-                          document.querySelector<HTMLImageElement>(
-                            "#timeline-image",
-                          );
-                        if (img) img.src = `/api/admin/media/${e.target.value}`;
-                      }}
-                    >
-                      <option>Select image timestamp</option>
-                      {media.frames.map((f: any) => (
-                        <option key={f.id} value={f.id}>
-                          {f.source} {chicago(f.captured)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <img id="timeline-image" className="timeline" />
-                  <select
-                    value={pane}
-                    onChange={(e) => setPane(e.target.value)}
-                  >
-                    <option value="">Select terminal replay</option>
-                    {media.terminals.map((r: any, index: number) => (
-                      <option key={r.pane} value={r.pane}>
-                        Terminal {index + 1}
-                      </option>
-                    ))}
-                  </select>
-                  {pane && <Replay id={selected.id} pane={pane} />}
-                </>
-              )}
-              {selected.ended && (
-                <details>
-                  <summary>Delete monitoring</summary>
-                  <button
-                    className="danger"
-                    onClick={() =>
-                      action(async () => {
-                        if (
-                          !window.confirm(
-                            "Permanently delete all monitoring for this attempt? The submission is kept.",
-                          )
-                        )
-                          return;
-                        await api(
-                          `/admin/attempts/${selected.id}/delete-monitoring`,
-                          { confirm: true },
-                        );
-                        setMedia(null);
-                        setSelected(null);
-                      })
-                    }
-                  >
-                    Delete monitoring permanently (keeps submission)
-                  </button>
-                </details>
-              )}
-            </>
-          }
+          <label>
+            <input
+              type="checkbox"
+              checked={sound}
+              onChange={(e) => setSound(e.target.checked)}
+            />{" "}
+            Attention sound
+          </label>
+          <button
+            disabled={alertsBusy}
+            onClick={async () => {
+              if (alertsBusy) return;
+              setAlertsBusy(true);
+              setAlertsError("");
+              setAlertsNotice("");
+              try {
+                await api("/admin/notifications/test", {});
+                setAlertsNotice("Test email queued.");
+              } catch (e) {
+                setAlertsError((e as Error).message);
+              } finally {
+                setAlertsBusy(false);
+              }
+            }}
+          >
+            Test email alert
+          </button>
+          <div className="actions">
+            <button onClick={() => setAlerts(false)}>Close</button>
+          </div>
         </Modal>
       )}
-    </div>
+    </main>
   );
 }

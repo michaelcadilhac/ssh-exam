@@ -23,7 +23,10 @@ export function Modal({
           'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]',
         ),
       ].filter((el) => el.getClientRects().length > 0);
-    (root.current!.querySelector<HTMLElement>("input, textarea") ||
+    (root.current!.querySelector<HTMLElement>("[data-initial-focus]") ||
+      root.current!.querySelector<HTMLElement>(
+        'input:not(:disabled):not([type="hidden"]), textarea:not(:disabled)',
+      ) ||
       controls()[0] ||
       root.current)!.focus();
     const key = (event: KeyboardEvent) => {

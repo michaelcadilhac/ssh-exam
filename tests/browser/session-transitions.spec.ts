@@ -64,7 +64,7 @@ for (const path of ["/", "/admin"]) {
       await noSignIn(page);
       settings.release();
       await expect(
-        page.getByRole("button", { name: "Add administrator" }),
+        page.getByRole("button", { name: "Administration", exact: true }),
       ).toBeVisible();
       await expect(page.getByLabel("Selected exam")).toHaveValue("");
       await noSignIn(page);

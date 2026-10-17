@@ -1198,3 +1198,42 @@ health advertises `signed-ssh-control` and `durable-status-callbacks`; gateway p
 these alongside interval access and all-channel admission. Verify key ownership, signature
 exchange, callback delivery/recovery and archive limits before marking those deployment
 checks complete. Local simulated browser tests alone do not qualify privileged isolation.
+
+
+### Compact instructor workspace (2026-10-17)
+
+Use a compact global bar with exam picker, New exam and an Administration menu for
+alerts, administrator creation and sign-out. Exam settings and Add student belong to
+the selected exam's toolbar. Do not show an exam's students before an exam is selected.
+Use one dense roster with compact overview filters rather than large metric cards or
+separate student/attempt panels. Show every matching attempt beneath its student;
+retain stable numbering, readable status labels, current clocks/webcam requirements
+and clearly labeled future enrollment settings. Individual student settings/removal
+and attempt clock actions use keyboard-accessible menus. Review remains immediately
+available on each attempt. Reflow grouped rows on narrow screens without page overflow.
+
+Bulk actions are action-first, with a single selection scope: duration/webcam selects
+students' future settings; reset/extension selects eligible current attempts. Clear
+selection on action, exam, query, filter and page changes. Display the count, scope and
+named targets before confirmation. Preserve idempotent clock requests, current revision
+checks, per-target errors and persistent pending status. Never conflate changing a
+future allowance with changing the current countdown.
+
+Apply search/status/webcam filters before roster pagination. Overview counts describe
+the entire selected exam, not just the current page. Working requires live monitored
+connectivity; attention includes pauses and collection failures. Show stale-data feedback
+on failed/silent updates and block clock edits/recovery authorization until fresh data
+returns. Do not discard every slow refresh by continuously replacing it with another;
+new exam/filter intents must still supersede older responses. An open review remains
+scoped to its original exam/attempt and receives fresh status even outside the roster
+filter. Ignore replies from closed/replaced reviews.
+
+Review separates Monitoring, Activity and Submission. Keep image history/replay,
+incident messages and authorization available, with in-dialog loading/errors/retry.
+Focus Close review when opening; authorization requires a deliberate action. Expose
+collection pending/failure separately from verified security, and retain original/current
+deadlines, account holds, access-recovery details, checksums and manifest inspection.
+No submission download, instructor stop button or timing/access-policy change is added.
+Monitoring deletion requires a separate named confirmation and retains submissions.
+Ordinary success notifications expire; pending/failure information remains where the
+instructor needs it. Preserve enrollment upload, admin creation and authentication flows.

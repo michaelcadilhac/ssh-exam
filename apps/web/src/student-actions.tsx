@@ -86,21 +86,29 @@ export function StudentActions({
           }
         }}
       >
-        <ul className="selection-list">
+        <p className="admin-operation-scope">
+          <strong>
+            {settings
+              ? `${op.students.length} ${op.students.length === 1 ? "student" : "students"}`
+              : `${op.attempts.length} ${op.attempts.length === 1 ? "attempt" : "attempts"}`}
+          </strong>{" "}
+          · {settings ? "Future attempts only" : "Current clocks"}
+        </p>
+        <ul className="admin-target-list">
           {(settings ? op.students : op.attempts).map((a) => (
             <li key={a.id || a.username}>
-              {a.username}
-              {!settings &&
-                ` · attempt ${a.id.slice(0, 8)}${op.kind === "reset" ? ` · reset to ${a.allowance} minutes` : ""}`}
+              <strong>{a.username}</strong>
+              {!settings && (
+                <span>
+                  Attempt {a.attempt_number || 1} · {remaining(a.deadline)}{" "}
+                  remaining
+                  {op.kind === "reset" ? ` → ${a.allowance} minutes` : ""}
+                </span>
+              )}
             </li>
           ))}
         </ul>
-        {settings && (
-          <p>
-            Applies to future attempts. Current attempts keep their duration and
-            webcam requirement.
-          </p>
-        )}
+        {settings && <p>Current attempts keep their existing settings.</p>}
         {op.kind === "duration" && (
           <>
             <label>
@@ -171,16 +179,9 @@ export function StudentActions({
         {!settings && (
           <>
             <p>
-              Students stay signed in. The original access restriction remains.
-              A disconnected agent confirms changes before collection.
+              Clock changes do not disconnect students or authorize recovery.
+              Changes remain pending until the exam server confirms them.
             </p>
-            <ul className="selection-list">
-              {op.attempts.map((a) => (
-                <li key={a.id}>
-                  {a.username}: {remaining(a.deadline)} remaining
-                </li>
-              ))}
-            </ul>
           </>
         )}
         {results && (

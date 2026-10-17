@@ -12,8 +12,10 @@ import net from "node:net";
 import { hash } from "../../apps/server/src/db.js";
 const h = await hosts();
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
-if (browserMode) {
-  const relay = new WebSocketServer({ port: 3101, host: "127.0.0.1" });
+const relay = browserMode
+  ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
+  : null;
+if (relay) {
   relay.on("connection", (ws, req) => {
     if (req.headers.origin !== "http://localhost:3100") {
       ws.close(1008);
@@ -340,4 +342,19 @@ store.db
     "HELD",
   );
 await app.listen({ host: "127.0.0.1", port: 3100 });
-process.on("SIGTERM", () => void app.close().then(() => h.close()));
+let stopping = false;
+async function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  for (const client of relay?.clients || []) client.terminate();
+  await Promise.all([
+    app.close(),
+    new Promise<void>((resolve, reject) => {
+      if (!relay) return resolve();
+      relay.close((error) => (error ? reject(error) : resolve()));
+    }),
+  ]);
+  await h.close();
+}
+process.once("SIGTERM", () => void shutdown());
+process.once("SIGINT", () => void shutdown());

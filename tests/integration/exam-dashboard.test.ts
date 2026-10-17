@@ -116,7 +116,14 @@ it("scopes the combined dashboard to the selected exam, includes all attempts an
     );
     expect(body.students[1].attempts).toEqual([]);
     expect(body.students[2].enrollment).toBeNull();
-    expect(body.counts).toEqual({ active: 1, locked: 0, collected: 0 });
+    expect(body.counts).toEqual({
+      students: 3,
+      working: 0,
+      attention: 0,
+      active: 1,
+      locked: 0,
+      collected: 0,
+    });
     const filtered = await t.app.inject({
       url: `/api/admin/exams/${t.exam}/dashboard?q=bob`,
       headers: t.headers,
@@ -280,6 +287,67 @@ it("reset uses each student's future configured allowance with exam-default fall
     });
     expect(result.json().results[0].pending.remaining_seconds).toBe(7200);
     expect(result.json().results[0].pending.extend_seconds).toBeUndefined();
+  } finally {
+    await t.close();
+  }
+});
+
+it("filters before pagination, keeps original attempt numbers and scopes an open review to its exam", async () => {
+  const t = await setup(true);
+  try {
+    for (let i = 0; i < 120; i++)
+      t.store.db
+        .prepare("INSERT INTO enrollments(exam,username,uid) VALUES(?,?,?)")
+        .run(t.exam, `student${String(i).padStart(3, "0")}`, 2000 + i);
+    const late = randomUUID();
+    t.store.db
+      .prepare("INSERT INTO enrollments(exam,username,uid) VALUES(?,?,?)")
+      .run(t.exam, "zz_last_student", 3000);
+    t.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline) VALUES(?,?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        late,
+        t.exam,
+        "zz_last_student",
+        3000,
+        "LOCKED",
+        JSON.stringify({ webcam: true }),
+        Date.now() - 1000,
+        t.deadline,
+        t.deadline,
+      );
+    const read = async (query: string) =>
+      t.app.inject({
+        url: `/api/admin/exams/${t.exam}/dashboard?${query}`,
+        headers: t.headers,
+      });
+    const attention = (await read("view=attention")).json();
+    expect(attention.total).toBe(1);
+    expect(attention.students.map((s: any) => s.username)).toEqual([
+      "zz_last_student",
+    ]);
+    expect(attention.counts.students).toBe(124);
+    expect(attention.counts.attention).toBe(1);
+    expect(
+      (await read("offset=100"))
+        .json()
+        .students.some((s: any) => s.username === "zz_last_student"),
+    ).toBe(true);
+    const completed = (await read(`view=COMPLETED&review=${t.ids[0]}`)).json();
+    expect(
+      completed.students.find((s: any) => s.username === "alice").attempts[0]
+        .attempt_number,
+    ).toBe(2);
+    expect(completed.reviewAttempt).toMatchObject({
+      id: t.ids[0],
+      state: "ACTIVE",
+      attempt_number: 1,
+    });
+    expect((await read(`review=${t.ids[3]}`)).json().reviewAttempt).toBeNull();
+    expect((await read("view=unknown")).statusCode).toBe(400);
+    expect((await read("review=invalid")).statusCode).toBe(400);
   } finally {
     await t.close();
   }

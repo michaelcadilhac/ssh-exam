@@ -1,0 +1,858 @@
+/* Instructor workspace. Student exam and sign-in styling is unchanged. */
+.admin.admin-redesign {
+  max-width: 1440px;
+  padding: 24px 32px 40px;
+}
+.admin-redesign .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.admin-redesign > .admin-header {
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #26364b;
+}
+.admin.admin-redesign h1 {
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+.admin-redesign > .admin-header > .admin-exam-picker {
+  flex: 0 1 340px;
+  min-width: 160px;
+  margin: 0;
+}
+.admin-exam-picker select {
+  width: 100%;
+}
+.admin-redesign button,
+.admin-redesign select,
+.admin-redesign input {
+  font-size: 13px;
+}
+.admin-redesign .admin-header > button:last-child {
+  margin-left: auto;
+}
+.admin-redesign .quiet-button {
+  background: transparent;
+}
+.admin-redesign .quiet-button:hover {
+  background: #1c2d42;
+}
+.admin-start {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.admin-start h2 {
+  margin-bottom: 0;
+  font-size: 22px;
+}
+.admin-start p {
+  max-width: 430px;
+  font-size: 14px;
+}
+.admin-exam-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px 0 22px;
+}
+.admin-exam-heading > div {
+  min-width: 0;
+}
+.admin-exam-heading h2 {
+  margin: 0;
+  font-size: 25px;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+.admin-exam-heading p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: #91a6bf;
+}
+.admin-exam-heading > div:last-child {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.admin-roster {
+  border: 1px solid #2b3c52;
+  border-radius: 10px;
+  background: #0f1929;
+  min-width: 0;
+  overflow: hidden;
+}
+.admin-view-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0 14px;
+  gap: 4px;
+  border-bottom: 1px solid #2b3c52;
+}
+.admin-view-strip button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: #a9bbd1;
+}
+.admin-view-strip button span {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #d9e5f2;
+}
+.admin-view-strip button[aria-pressed="true"] {
+  color: #8bdecf;
+  border-bottom-color: #68dac5;
+}
+.admin-view-strip button:hover {
+  background: #19273b;
+}
+.admin-live {
+  margin-left: auto;
+  padding: 8px;
+  font-size: 11px;
+  color: #a0b2c9;
+}
+.admin-live::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #77d1b0;
+  margin: 0 6px 1px 0;
+}
+.admin-live.warning,
+.attempt-status.warning {
+  color: #f1c781;
+}
+.admin-live.warning::before {
+  background: #f1c781;
+}
+.admin-roster-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #25364a;
+}
+.admin-roster-tools label {
+  margin: 0;
+}
+.admin-roster-tools .admin-search {
+  flex: 1;
+  min-width: 160px;
+  max-width: 370px;
+}
+.admin-roster-tools input {
+  margin: 0 !important;
+}
+.admin-roster-tools .admin-bulk-picker {
+  margin-left: auto;
+}
+.admin-roster-tools select {
+  max-width: 100%;
+}
+.admin-selection-bar {
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #192c40;
+  border-bottom: 1px solid #36516c;
+  font-size: 12px;
+}
+.admin-selection-bar > span:first-child {
+  margin-right: auto;
+  color: #bdcbdb;
+}
+.admin-selection-bar strong {
+  color: #e2edf7;
+}
+.admin-selection-bar button {
+  padding: 7px 10px;
+}
+.admin-roster-scroll {
+  overflow-x: auto;
+}
+.admin-roster table {
+  table-layout: fixed;
+}
+.admin-roster th {
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  padding: 12px 16px;
+}
+.admin-roster th:first-child {
+  width: 25%;
+}
+.admin-roster th:nth-last-child(4) {
+  width: 22%;
+}
+.admin-roster th:nth-last-child(3) {
+  width: 14%;
+}
+.admin-roster th:nth-last-child(2) {
+  width: 19%;
+}
+.admin-roster th:last-child {
+  width: 140px;
+}
+.admin-roster th.selection-cell {
+  width: 42px;
+  padding-left: 15px;
+  padding-right: 0;
+}
+.admin-roster td {
+  vertical-align: middle;
+  padding: 10px 16px;
+  font-size: 13px;
+  border-top: 1px solid #1f3045;
+  overflow-wrap: anywhere;
+}
+.admin-roster .student-row {
+  background: #162438;
+}
+.admin-roster .student-row td {
+  border-top: 1px solid #33475f;
+}
+.admin-roster .student-row:first-child td {
+  border-top-width: 1px;
+}
+.admin-roster .student-identity strong {
+  font-size: 14px;
+}
+.admin-roster small {
+  margin-top: 3px;
+  font-size: 11px;
+}
+.admin-roster .student-history-count {
+  color: #9db1c9;
+  font-size: 12px;
+}
+.admin-roster .future-setting {
+  font-size: 11px;
+  color: #c0cde0;
+}
+.admin-roster .future-setting small {
+  color: #8399b4;
+  font-size: 10px;
+}
+.admin-roster .attempt-row td {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.admin-roster .attempt-identity {
+  padding-left: 30px;
+}
+.admin-roster .attempt-identity > span::before {
+  content: "↳";
+  color: #657e9d;
+  margin-right: 7px;
+}
+.admin-roster .attempt-identity time {
+  display: block;
+  padding-left: 20px;
+  margin-top: 3px;
+  color: #8399b4;
+  font-size: 10px;
+}
+.attempt-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: #adbed3;
+}
+.attempt-status::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 50%;
+  margin: 0 6px 2px 0;
+}
+.attempt-status.good {
+  color: #8ad7b6;
+}
+.attempt-status.danger {
+  color: #ffa9a1;
+}
+.admin-roster .attempt-reason {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.admin-roster .attempt-clock time {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.admin-roster .row-actions {
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 4px;
+}
+.admin-roster .row-actions button {
+  margin: 0 0 0 5px;
+  font-size: 12px;
+  padding: 6px 9px;
+}
+.admin-roster .review-needed {
+  color: #f7d7a2;
+  border-color: #725d3d;
+  background: #342c22;
+}
+.admin-roster td.selection-cell {
+  padding-left: 15px;
+  padding-right: 0;
+}
+.admin-roster input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #68dac5;
+  cursor: pointer;
+  margin: 0;
+}
+.admin-pagination {
+  min-height: 50px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 18px;
+  color: #93a8c1;
+  font-size: 11px;
+  border-top: 1px solid #2b3c52;
+}
+.admin-pagination > div {
+  display: flex;
+  gap: 8px;
+}
+.admin-pagination button {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.admin-empty,
+.admin-loading {
+  padding: 40px 20px;
+  text-align: center;
+}
+.admin-empty h3 {
+  font-size: 18px;
+  margin: 0;
+}
+.admin-empty p,
+.admin-empty-inline {
+  font-size: 13px;
+  color: #9bafc8;
+}
+.admin-service-error,
+.admin-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #705e3d;
+  border-radius: 6px;
+  color: #f2cd91;
+  font-size: 13px;
+}
+.admin-notice {
+  border-color: #3b6157;
+  color: #b2ddcc;
+}
+.admin-notice button {
+  padding: 0 5px;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+}
+.admin-action-menu {
+  position: fixed;
+  z-index: 1000010;
+  width: 220px;
+  max-width: calc(100vw - 16px);
+  padding: 5px;
+  border: 1px solid #415671;
+  border-radius: 8px;
+  background: #17263a;
+  box-shadow: 0 8px 28px #0008;
+}
+.admin-action-menu button {
+  display: block;
+  text-align: left;
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 4px;
+  padding: 9px 11px;
+  font-size: 13px;
+  background: transparent;
+}
+.admin-action-menu button:hover:not(:disabled),
+.admin-action-menu button:focus-visible {
+  background: #2a3e57;
+  outline: 1px solid #7acdbb;
+  outline-offset: -1px;
+}
+.review-heading,
+.review-heading-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.review-heading {
+  justify-content: space-between;
+  border-bottom: 1px solid #32465e;
+  padding-bottom: 16px;
+}
+.review-heading button {
+  font-size: 12px;
+}
+.review-clock {
+  display: inline-block;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin-left: 16px;
+}
+.review-reason {
+  font-size: 13px;
+}
+.review-navigation {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #32465e;
+  margin: 18px 0;
+}
+.review-navigation button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-size: 13px;
+  padding: 10px 14px;
+  color: #9bafc8;
+}
+.review-navigation button[aria-pressed="true"] {
+  border-bottom-color: #68dac5;
+  color: #a4e2d5;
+}
+.review-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 16px;
+}
+.review-images figure {
+  margin: 0;
+  min-width: 0;
+  background: #0d1727;
+  border: 1px solid #2d4058;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.review-images figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+.review-images figcaption span {
+  color: #a4b8cf;
+}
+.review-images img {
+  display: block;
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  background: #080e18;
+}
+.monitoring-empty {
+  padding: 30px 12px;
+  text-align: center;
+  font-size: 13px;
+}
+.review-selectors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.review-selectors label {
+  font-size: 12px;
+}
+.review-selectors select {
+  width: 100%;
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.review-history-image {
+  margin: 10px 0;
+}
+.review-history-image img {
+  max-width: 100%;
+  max-height: 500px;
+}
+.review-history-image figcaption {
+  font-size: 12px;
+  color: #9bafc8;
+}
+.admin-replay {
+  max-width: 100%;
+  overflow: auto;
+}
+.admin-replay label {
+  font-size: 12px;
+}
+.monitoring-deletion,
+.review-access {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid #32465e;
+  font-size: 12px;
+}
+.incident-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.incident-list li {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid #2c3e55;
+  font-size: 13px;
+}
+.incident-list time {
+  color: #95acc7;
+  font-size: 12px;
+}
+.incident-list p {
+  margin: 0 0 5px;
+}
+.incident-list blockquote {
+  margin: 10px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid #516b87;
+}
+.review-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px;
+  background: #111d2f;
+  border-radius: 6px;
+}
+.review-facts dt {
+  color: #91a8c3;
+  font-size: 11px;
+}
+.review-facts dd {
+  margin: 5px 0 0;
+  font-size: 13px;
+}
+.collection-summary {
+  margin-bottom: 4px;
+}
+.collection-summary.good {
+  color: #8ad7b6;
+}
+@media (max-width: 900px) {
+  .admin.admin-redesign {
+    padding: 18px;
+  }
+  .admin-redesign > .admin-header {
+    gap: 8px;
+  }
+  .admin-redesign > .admin-header > .admin-exam-picker {
+    flex: 1;
+  }
+  .admin-roster th,
+  .admin-roster td {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .admin-roster th:last-child {
+    width: 132px;
+  }
+}
+@media (max-width: 700px) {
+  .admin.admin-redesign {
+    padding: 16px 12px;
+  }
+  .admin-redesign > .admin-header h1 {
+    font-size: 20px;
+  }
+  .admin-redesign > .admin-header > .admin-exam-picker {
+    flex-basis: calc(100% - 80px);
+  }
+  .admin-redesign .admin-header > button:last-child {
+    margin-left: auto;
+  }
+  .admin-exam-heading {
+    align-items: flex-start;
+    padding: 20px 0 16px;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .admin-exam-heading h2 {
+    font-size: 22px;
+  }
+  .admin-exam-heading > div:last-child {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .admin-view-strip {
+    padding: 0 8px;
+    gap: 0;
+  }
+  .admin-view-strip button {
+    font-size: 11px;
+    padding: 12px 6px 10px;
+    gap: 5px;
+  }
+  .admin-live {
+    flex-basis: 100%;
+    text-align: right;
+    padding: 0 6px 8px;
+  }
+  .admin-roster-tools {
+    padding: 12px;
+    gap: 8px;
+  }
+  .admin-roster-tools .admin-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .admin-roster-tools select {
+    font-size: 12px;
+  }
+  .admin-roster-tools .admin-bulk-picker {
+    min-width: 0;
+  }
+  .admin-roster-tools .admin-bulk-picker select {
+    max-width: 165px;
+  }
+  .admin-selection-bar {
+    padding: 10px 12px;
+  }
+  .admin-selection-bar > span:first-child {
+    flex-basis: 100%;
+  }
+  .admin-roster table,
+  .admin-roster tbody {
+    display: block;
+    width: 100%;
+  }
+  .admin-roster thead {
+    display: none;
+  }
+  .admin-roster tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+    gap: 6px 8px;
+  }
+  .admin-roster table.selecting tr {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+  .admin-roster tbody {
+    border-top: 1px solid #3a506b;
+  }
+  .admin-roster td {
+    display: block;
+    padding: 0 !important;
+    border: 0 !important;
+    min-width: 0;
+  }
+  .admin-roster .student-row {
+    align-items: center;
+  }
+  .admin-roster .student-history-count {
+    display: none;
+  }
+  .admin-roster .student-identity,
+  .admin-roster .attempt-identity {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .admin-roster .row-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .admin-roster .future-setting {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+  .admin-roster .future-setting small {
+    margin: 0;
+  }
+  .admin-roster .future-setting small::before {
+    content: "· ";
+  }
+  .admin-roster .attempt-row {
+    border-top: 1px solid #25364a;
+  }
+  .admin-roster .attempt-row td:nth-last-child(4) {
+    grid-column: 1 / -1;
+  }
+  .admin-roster .attempt-row td[data-label="Webcam"] {
+    grid-column: 1;
+  }
+  .admin-roster .attempt-row td[data-label="Time remaining"] {
+    grid-column: 2;
+    text-align: right;
+  }
+  .admin-roster .attempt-row td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    color: #819ab8;
+    margin-bottom: 3px;
+  }
+  .admin-roster .attempt-identity time {
+    padding-left: 20px;
+    font-size: 10px;
+  }
+  .admin-roster .attempt-reason {
+    white-space: normal;
+  }
+  .admin-roster table.selecting .student-identity,
+  .admin-roster table.selecting .attempt-identity {
+    grid-column: 2;
+  }
+  .admin-roster table.selecting .row-actions {
+    grid-column: 3;
+  }
+  .admin-roster table.selecting .future-setting,
+  .admin-roster table.selecting .attempt-row td:nth-last-child(4) {
+    grid-column: 2 / -1;
+  }
+  .admin-roster table.selecting .attempt-row td[data-label="Webcam"] {
+    grid-column: 2;
+  }
+  .admin-roster table.selecting .attempt-row td[data-label="Time remaining"] {
+    grid-column: 3;
+  }
+  .admin-roster td.selection-cell {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    padding-top: 3px !important;
+  }
+  .review-heading-actions {
+    margin-top: 6px;
+  }
+  .review-selectors,
+  .review-facts {
+    grid-template-columns: 1fr;
+  }
+  .incident-list li {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+.admin-operation-scope {
+  font-size: 13px;
+  color: #a7bbd1;
+}
+.admin-target-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid #30435d;
+  border-radius: 6px;
+}
+.admin-target-list li {
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.admin-target-list li + li {
+  border-top: 1px solid #25364c;
+}
+.admin-target-list span {
+  color: #a1b5ce;
+}
+.admin-select-page {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: #bdcbdb;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.admin-select-page input {
+  width: 15px !important;
+  margin: 0 !important;
+  accent-color: #68dac5;
+}
+
+.admin-roster .student-identity strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.admin-exam-form label {
+  margin: 10px 0;
+  font-size: 13px;
+}
+.admin-field-help {
+  margin: -3px 0 16px;
+}
+.admin-form-group {
+  border: 0;
+  border-top: 1px solid #32465e;
+  padding: 14px 0 8px;
+  margin: 22px 0 8px;
+  min-width: 0;
+}
+.admin-form-group legend {
+  font-size: 12px;
+  color: #a7bbd1;
+  padding: 0 8px 0 0;
+}
+@media (max-width: 520px) {
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

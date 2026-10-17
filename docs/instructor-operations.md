@@ -3,20 +3,30 @@
 Bootstrap the initial administrator interactively and visit /admin. **Add administrator**
 creates additional accounts with the same permissions. Sign out is in the header.
 
-First select an exam. The page shows only that exam's counts, students, attempt history,
-incidents and monitoring. **New exam** creates an exam; **Exam settings** changes the selected
-exam's name, start window, duration, default webcam setting, terminal limit and root-approved
-material template. See [Creating an exam template](template-authoring.md) for the
-folder format, authoring handoff and class-server installation. Settings apply to future attempts. Dashboard times use America/Chicago;
-start-window inputs use your device timezone. Sandbox always starts with five minutes.
+First select an exam in the top bar. The exam toolbar contains **Exam settings** and
+**Add student**; **New exam** remains beside the exam picker. Global **Administration**
+contains **Alerts**, **Add administrator** and **Sign out**. Notification setup and SMTP
+recipients remain deployment-controlled; Test email alert reports queueing, not delivery.
 
-One table groups each student with every attempt beneath them, newest first. Enrollment
-settings are on the student row; attempt rows show their own fixed monitoring requirement,
-current status, countdown, collection protection and review controls. Removed enrollments
-retain history. Students without attempts remain visible. Search/pagination works by student,
-keeping each student's attempts together. **Working** requires that attempt's live SSH,
-open browser connection and fresh contact. Clocks tick each second; status refreshes every
-five seconds. Stale polling is marked. Attempt numbering stays stable through filters.
+A compact overview filters **All students**, **Working**, **Needs attention** and **Secured**.
+The filter menu also offers individual states and webcam requirements. Search and filters
+apply across the entire roster before pagination. Every matching attempt appears beneath
+its student, with stable attempt numbers. Rows show current webcam requirements and live
+clocks; the student row separately labels future settings. **Working** requires live SSH,
+an acknowledged browser connection and fresh contact. Updates poll every five seconds;
+clocks tick every second. Failed or silent updates are marked stale and clock edits are
+blocked until fresh data arrives. Removed enrollments retain their history.
+
+Use a student's **Actions** menu for future duration, webcam settings and enrollment
+removal. Use an attempt's **More** menu for clock actions. **Review** opens monitoring,
+incidents and recovery for that particular attempt. Controls support keyboard navigation
+and Escape; opening review focuses Close review, never Authorize resume.
+
+**New exam** and **Exam settings** configure the name, start window, duration, default
+webcam requirement, terminal count and root-approved material template. See
+[Creating an exam template](template-authoring.md) for authoring and installation.
+Materials template names identify files installed on the SSH server. Settings apply to future attempts. Dashboard times use America/Chicago; start-window
+inputs use your device timezone. Sandbox always starts with five minutes.
 
 **Set duration** selects an individual future allowance (1–360 whole minutes) or restores
 the exam default. **Set webcam** changes only future attempts, with required/not-required/
@@ -26,12 +36,13 @@ to the exam default, counted from the request time. **Extend time** adds 1–360
 exactly to the current deadline. Both preserve an active student's connection and original
 access restriction. Expired/finalizing/secured attempts cannot be reset or extended.
 
-For bulk edits, select student checkboxes for future settings, or eligible attempt checkboxes
-for current clocks. Bulk controls expand when selecting; page-wide selection buttons are
-available. Confirmation identifies targets. Up to 100 clock changes are queued per request.
-Each attempt uses a persisted unique request ID and revision; retries do not add time twice.
-Results can be pending, confirmed or failed independently. Do not repeat a lost extension
-with a new request as compensation. Refresh/review its pending state first.
+For bulk edits, first choose **Bulk actions…**: Set duration/Set webcam targets students'
+future settings; Reset clock/Extend time targets eligible current attempts. Then select
+rows or use **Select page**. One selection scope is active at a time; changing the action,
+exam, search, filter or page clears selection. Apply shows the named targets and scope
+before confirmation. Clock changes are capped at 100 attempts per request. Each request
+has a persisted identity and revision, so retrying cannot add time twice. Pending changes
+remain visible on the attempt row, and partial failures remain in the action dialog.
 
 A disconnected clock change stays pending until the agent confirms it at reconnection or
 its signed outbound check before deadline collection. Absolute reset deadlines and additive
@@ -57,11 +68,18 @@ attempt settings. Use webpage bulk clock actions separately. Invalid accounts/he
 block import. Limits: 10,000 students, 10 MiB. Roster CSV export remains available through the
 authenticated API.
 
-Review contains authenticated, audited images, terminal replay, incident messages, collection
-manifest, checksum and access recovery information. Client reports are evidence, not automated
-misconduct scores. **Authorize resume** grants the current lock a single fresh-SSH recovery
-before the deadline; sandbox grants the same authorization automatically. Students reauthenticate
-with capture stopped, restore conditions and continue. Approval does not grant time.
+**Review** has Monitoring, Activity and Submission sections. Monitoring provides the
+latest authenticated images, image history and terminal replay, with explicit refresh
+and inline retry on failure. Activity lists incidents and student messages for that
+attempt. **Authorize resume** grants the paused attempt one fresh-SSH recovery before
+its deadline; sandbox grants authorization automatically. Approval does not grant time.
+The review stays current even if its attempt no longer matches the roster filter.
+
+Submission distinguishes collection pending/failed from a verified protected copy. It
+shows collection timestamps, manifest/checksum and server-access recovery details; no
+archive downloads are offered. Monitoring deletion requires explicit confirmation naming
+the student and attempt and keeps the submission. Client reports are evidence, not
+misconduct scores. Administrative actions and sensitive recording access remain audited.
 
 Submissions are automatic: saved files are collected at expiration or irreversible Finish exam.
 Archives remain in root-private storage on the SSH server. The webserver receives signed
@@ -75,3 +93,8 @@ outside the dashboard. Monitoring expires after 60 days; archives/receipts have 
 Enable optional desktop/sound alerts while the dashboard is open. Test actual SMTP receipt
 before production. Signed callback failures and the durable email outbox retain recoverability.
 Alert links require normal authentication and never expose images or perform an action on GET.
+
+
+Interface previews using disposable test data:
+[desktop](screenshots/admin-redesign-desktop.png) ·
+[narrow window](screenshots/admin-redesign-mobile.png).

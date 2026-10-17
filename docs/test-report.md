@@ -620,3 +620,57 @@ with schema 8 unchanged. Public readiness passes with maintenance disabled. Chro
 also checked the deployed assets using browser-local API fixtures, with no real
 mutations and no page errors. The actual example endpoint requires administrator
 authentication. See [deployment and rollback details](browser-ssh-deployment.md).
+
+
+## Instructor interface redesign — 2026-10-17
+
+Implemented a compact exam toolbar, overview filters and one grouped roster. Global
+alerts/account utilities live in Administration; individual settings/clock actions use
+keyboard-accessible row menus. The user approved one action-first bulk selection mode:
+choose future settings or a current-clock action, then select matching targets. Switching
+action/exam/search/filter/page clears selection. Individual and bulk changes keep existing
+server validation, request identities, confirmations, revision checks and pending results.
+
+Review now separates Monitoring, Activity and Submission. It includes incident messages,
+image history/replay, local loading/retry, deliberate resume authorization and a separate
+named monitoring-deletion confirmation. Opening review focuses Close review. Pending and
+failed collection cannot be shown as secured; archive downloads/stop controls remain absent.
+Review status remains fresh outside the current roster filter and closed/replaced requests
+cannot reopen it. Dates/timezone labels and original access-hold details remain available.
+
+Server-side filters run before pagination and return whole-exam counts. A new integration
+case finds a matching student beyond the first 100 rows and verifies stable attempt numbers
+and exam-scoped review. Slow refreshes no longer continuously invalidate one another;
+failed/silent updates become stale and block clock/recovery actions. Menus support arrows,
+Home/End, Escape and Tab with focus return, and transient notices expire. Exam settings use
+compact identity/start-window/allowance groups and clarify the materials-template name.
+Formatting hot paths reuse date formatters instead of rebuilding them every clock tick.
+
+Validation: **136 application tests**, type checking and production build passed. All **54
+browser scenarios** were verified across the complete run and focused reruns: the full
+run passed 52; its remaining sign-out test still referenced the removed header button.
+After updating that test and adding visible sign-out progress in Administration, all nine
+final focused checks passed, including failed/retried logout with DOM-commit observations,
+no wrong-screen flashes, enrollment/CSV, administrator creation, form saving, 1280/430px
+layouts and keyboard focus. Additional new coverage verifies live review changes, safe
+partial-failure retries with unchanged request IDs, explicit monitoring deletion, unverified
+collection status, slow/failing updates and empty views. The broader suite also verified
+MFA, multiple terminals, preflight, finish, focus grace, active reload and network recovery.
+
+The user's existing screenshot was preserved; other existing screenshots were restored.
+New desktop/mobile previews use disposable test data:
+[desktop](screenshots/admin-redesign-desktop.png),
+[mobile](screenshots/admin-redesign-mobile.png).
+
+This change is local and has not been deployed. No production database/configuration,
+SSH-side agent, account policy, deadline or protected submission was changed. Schema 8
+and existing display-name compatibility storage remain intact.
+
+A final manual check exposed the existing dialog's disabled-first-input focus bug.
+Modal autofocus now skips disabled/hidden inputs while honoring an explicit initial
+focus target. The added 54th browser scenario verifies the existing exam ID remains
+disabled, Name receives focus, the narrow form fits and Escape returns focus correctly.
+All eight final dialog checks passed, including shared student preflight/finish dialogs.
+The local-only browser fixture now closes its relay on SIGTERM/SIGINT; the shutdown
+previously left port 3101 occupied after closing HTTP. Production fixture exclusions
+remain in place. No unresolved application or browser regression remains.

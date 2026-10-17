@@ -23,14 +23,12 @@ export const socket = (url: string) =>
   new WebSocket(
     `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api${url}`,
   );
-export const chicago = (v: number | null) =>
-  v
-    ? new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Chicago",
-        dateStyle: "medium",
-        timeStyle: "medium",
-      }).format(v)
-    : "—";
+const chicagoDate = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Chicago",
+  dateStyle: "medium",
+  timeStyle: "medium",
+});
+export const chicago = (v: number | null) => (v ? chicagoDate.format(v) : "—");
 export const remaining = (deadline: number | null, serverNow = Date.now()) => {
   if (!deadline) return "Not started";
   const secs = Math.max(0, Math.ceil((deadline - serverNow) / 1000));

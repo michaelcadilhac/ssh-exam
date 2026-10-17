@@ -1,4 +1,14 @@
-import { test, expect, request } from "@playwright/test";
+import { test, expect, request, type Page } from "@playwright/test";
+async function adminCommand(page: Page, command: string) {
+  await page
+    .getByRole("button", { name: "Administration", exact: true })
+    .click();
+  await page.getByRole("menuitem", { name: command, exact: true }).click();
+}
+async function rowCommand(page: Page, label: string, command: string) {
+  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.getByRole("menuitem", { name: command, exact: true }).click();
+}
 test("sandbox auto-enrolls, resumes without an instructor, preserves the deadline and retains repeat history", async ({
   page,
 }) => {
@@ -255,23 +265,24 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await expect(
     roster.getByRole("row").filter({ hasText: "student02" }),
   ).toContainText("Not required");
-  await page
-    .getByRole("button", { name: "Remove student02 from exam" })
-    .click();
+  await rowCommand(page, "Actions for student student02", "Remove from exam…");
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(roster).toContainText("student02");
   await page.getByLabel("Selected exam").selectOption("admin-created");
   await expect(roster).toContainText("student02");
-  await page
-    .getByRole("button", { name: "Remove student02 from exam" })
-    .click();
+  await rowCommand(page, "Actions for student student02", "Remove from exam…");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Remove student", exact: true })
     .click();
-  await expect(roster).not.toContainText("student02");
+  await expect(
+    page.getByRole("rowgroup", { name: "student02", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "No students yet", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Add student", exact: true }).click();
   const importDialog = page.getByRole("dialog", {
     name: "Add students",
@@ -295,14 +306,15 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await expect(roster).toContainText("student01");
   await expect(roster).toContainText("student03");
   await page
+    .getByLabel("Bulk action", { exact: true })
+    .selectOption("duration");
+  await page
     .getByRole("checkbox", { name: "Select student student01", exact: true })
     .check();
   await page
     .getByRole("checkbox", { name: "Select student student03", exact: true })
     .check();
-  await page
-    .getByLabel("Student action", { exact: true })
-    .selectOption("duration");
+
   await page
     .getByRole("button", { name: "Apply to 2 students", exact: true })
     .click();
@@ -320,15 +332,14 @@ test("instructor can add, remove and import students, cancel removal with Escape
     await expect(
       roster.getByRole("rowgroup", { name, exact: true }),
     ).toContainText("Future duration: 120 minutes");
+  await page.getByLabel("Bulk action", { exact: true }).selectOption("webcam");
   await page
     .getByRole("checkbox", { name: "Select student student01", exact: true })
     .check();
   await page
     .getByRole("checkbox", { name: "Select student student03", exact: true })
     .check();
-  await page
-    .getByLabel("Student action", { exact: true })
-    .selectOption("webcam");
+
   await page
     .getByRole("button", { name: "Apply to 2 students", exact: true })
     .click();
@@ -349,7 +360,7 @@ test("instructor can add, remove and import students, cancel removal with Escape
     path: "docs/screenshots/instructor-dashboard.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await adminCommand(page, "Sign out");
   await expect(
     page.getByRole("heading", { name: "Instructor sign-in" }),
   ).toBeVisible();
@@ -470,6 +481,7 @@ test("exam selection scopes the grouped history and ignores late replies after s
       .first()
       .getByRole("button", { name: "Review", exact: true })
       .click();
+    await page.getByRole("button", { name: "Submission", exact: true }).click();
     await expect(page.getByRole("dialog")).toContainText("fresh-receipt");
     releaseReview();
     await expect.poll(() => oldReviewSent).toBe(true);
@@ -513,10 +525,7 @@ test("instructor creates an administrator with confirmation, cancellation and du
   await page.getByLabel("Username", { exact: true }).fill("instructor");
   await page.getByLabel("Password", { exact: true }).fill("fixture-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  const add = page.getByRole("button", {
-    name: "Add administrator",
-    exact: true,
-  });
+  const add = { click: () => adminCommand(page, "Add administrator") };
   await add.click();
   let dialog = page.getByRole("dialog", { name: "Add administrator" });
   await dialog
@@ -527,7 +536,9 @@ test("instructor creates an administrator with confirmation, cancellation and du
     .fill("cancelled-password");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect(add).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Administration", exact: true }),
+  ).toBeFocused();
   await add.click();
   dialog = page.getByRole("dialog", { name: "Add administrator" });
   await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue("");
@@ -609,13 +620,15 @@ test("instructor creates an administrator with confirmation, cancellation and du
     path: test.info().outputPath("add-administrator.png"),
   });
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await adminCommand(page, "Sign out");
   await page.getByLabel("Username", { exact: true }).fill("helper-admin");
   await page
     .getByLabel("Password", { exact: true })
     .fill("helper-admin-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(add).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Administration", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Exams", exact: true }),
   ).toBeVisible();
@@ -1716,17 +1729,19 @@ test("instructor sees a working student and live clock, resets time without disc
     });
     await expect(row).toContainText("Working", { timeout: 10000 });
     await expect(row).toContainText(/4:\d{2}|5:00/);
-    await row
-      .getByRole("button", { name: "Reset clock for student06" })
-      .click();
-    await expect(instructor.getByRole("dialog")).toContainText(
-      "reset to 5 minutes",
+    await rowCommand(
+      instructor,
+      "Actions for student06 attempt 1",
+      "Reset clock",
     );
+    await expect(instructor.getByRole("dialog")).toContainText("→ 5 minutes");
     await instructor.keyboard.press("Escape");
     await expect(instructor.getByRole("dialog")).toHaveCount(0);
-    await row
-      .getByRole("button", { name: "Reset clock for student06" })
-      .click();
+    await rowCommand(
+      instructor,
+      "Actions for student06 attempt 1",
+      "Reset clock",
+    );
     await instructor
       .getByRole("button", { name: "Apply reset", exact: true })
       .click();
@@ -1747,15 +1762,16 @@ test("instructor sees a working student and live clock, resets time without disc
     expect(updated.state).toBe("ACTIVE");
     expect(updated.deadline - Date.now()).toBeGreaterThan(290000);
     expect(updated.deadline - Date.now()).toBeLessThanOrEqual(300000);
+    await instructor
+      .getByLabel("Bulk action", { exact: true })
+      .selectOption("extend");
     await row
       .getByRole("checkbox", {
         name: `Select attempt ${updated.id}`,
         exact: true,
       })
       .check();
-    await instructor
-      .getByLabel("Attempt action", { exact: true })
-      .selectOption("extend");
+
     await instructor
       .getByRole("button", { name: "Apply to 1 attempt", exact: true })
       .click();
@@ -1777,9 +1793,11 @@ test("instructor sees a working student and live clock, resets time without disc
     expect(extended.deadline).toBe(updated.deadline + 180000);
     expect(extended.original_deadline).toBe(original.deadline);
     await expect(row).toContainText(/7:\d{2}|8:00/);
-    const clockText = await row.locator("tr.attempt-row td").nth(4).innerText();
+    const clockText = await row
+      .locator("tr.attempt-row .attempt-clock")
+      .innerText();
     await expect
-      .poll(() => row.locator("tr.attempt-row td").nth(4).innerText())
+      .poll(() => row.locator("tr.attempt-row .attempt-clock").innerText())
       .not.toBe(clockText);
     const terminal = page.locator(".winbox").first();
     await terminal.locator(".xterm-helper-textarea").focus();
@@ -1798,7 +1816,7 @@ test("instructor sees a working student and live clock, resets time without disc
       .getByRole("dialog")
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
-    await expect(row).toContainText("COMPLETED", { timeout: 10000 });
+    await expect(row).toContainText("Submission secured", { timeout: 10000 });
     const attempts = instructor.getByRole("table", {
       name: "Students and attempts",
     });
