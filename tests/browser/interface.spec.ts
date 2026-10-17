@@ -272,13 +272,22 @@ test("instructor can add, remove and import students, cancel removal with Escape
     .getByRole("button", { name: "Remove student", exact: true })
     .click();
   await expect(roster).not.toContainText("student02");
-  await page
-    .getByText("Import multiple students (CSV)", { exact: true })
+  await page.getByRole("button", { name: "Add student", exact: true }).click();
+  const importDialog = page.getByRole("dialog", {
+    name: "Add students",
+    exact: true,
+  });
+  await importDialog
+    .getByRole("button", { name: "CSV file", exact: true })
     .click();
-  await page
-    .getByLabel("Roster CSV")
-    .fill("username,require_webcam\nstudent01,false\nstudent03,inherit");
-  await page.getByRole("button", { name: "Validate & preview" }).click();
+  await expect(importDialog.locator("textarea")).toHaveCount(0);
+  await importDialog.getByLabel("CSV file", { exact: true }).setInputFiles({
+    name: "roster.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "username,require_webcam\nstudent01,false\nstudent03,inherit",
+    ),
+  });
   await expect(
     page.getByText("2 validated rows.", { exact: false }),
   ).toBeVisible();

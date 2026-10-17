@@ -39,18 +39,23 @@ extensions survive delivery delays/restarts. Unavailable timing verification fre
 at the last committed deadline and defers packaging; restore HTTPS/signature trust to recover.
 A reset or extension does not authorize a locked student to resume or reopen finished work.
 
-**Add student** enrolls a root-approved existing course account, with optional future duration
-and webcam overrides. Removing enrollment requires confirmation; it blocks future Begin but
-does not stop an already running exam or delete history, monitoring or protected submissions.
+**Add student** opens one dialog: choose **One student** to enroll a root-approved existing
+course account with optional future duration and webcam overrides, or **CSV file** to upload
+a roster. Download the example CSV from that dialog and replace its sample usernames.
+Selecting a file automatically validates it and shows a preview; **Confirm import** applies it.
+There is no CSV paste field or display-name setting. Removing enrollment requires confirmation;
+it blocks future Begin but does not stop an already running exam or delete history, monitoring
+or protected submissions.
 Only a server administrator can stop a running exam using local `examctl stop`.
 
-CSV upload/paste supports headers `username`, `display_name`, `duration_minutes`,
-`require_webcam`, or one-username-per-line mode. Missing optional columns stay unchanged;
+CSV upload supports headers `username`, `duration_minutes`, `require_webcam`.
+Missing optional columns stay unchanged;
 blank/inherit duration/webcam restores the exam default. Webcam accepts true/yes/1 or
 false/no/0; duration is 1–360 whole minutes. Preview, then Confirm; imports are transactional,
 idempotent add/update, never replace omitted students, and never modify current clocks or
 attempt settings. Use webpage bulk clock actions separately. Invalid accounts/headers/rows
-block import. Limits: 10,000 students, 10 MiB. Roster CSV export is available.
+block import. Limits: 10,000 students, 10 MiB. Roster CSV export remains available through the
+authenticated API.
 
 Review contains authenticated, audited images, terminal replay, incident messages, collection
 manifest, checksum and access recovery information. Client reports are evidence, not automated

@@ -541,9 +541,6 @@ export function Admin({
                           </td>
                           <td>
                             <strong>{s.username}</strong>
-                            {s.enrollment?.display_name && (
-                              <small>{s.enrollment.display_name}</small>
-                            )}
                             <small>
                               {s.enrollment
                                 ? `Future duration: ${(s.enrollment.duration ?? current?.duration) / 60} minutes${s.enrollment.duration === null ? " · exam default" : ""}`
@@ -733,16 +730,6 @@ export function Admin({
                   </div>
                 )}
               </section>
-              <StudentImport
-                key={exam}
-                exam={exam}
-                onDone={async () => {
-                  setNotice(
-                    "Import completed. Future attempt settings updated.",
-                  );
-                  await refresh();
-                }}
-              />
               {!!data.incidents.length && (
                 <section className="card">
                   <details>
@@ -786,7 +773,6 @@ export function Admin({
       {addingStudent && current && (
         <StudentImport
           exam={exam}
-          adding
           defaultWebcam={current.webcam}
           defaultDuration={current.duration}
           onClose={() => setAddingStudent(false)}

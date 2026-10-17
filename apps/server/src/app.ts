@@ -662,7 +662,9 @@ export async function createApp(
       .prepare("SELECT config FROM exams WHERE id=?")
       .get(s.exam) as any;
     const row = store.db
-      .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
+      .prepare(
+        "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
+      )
       .get(s.exam, s.username) as any;
     if (!exam || !row) throw Error("Enrollment not found");
     const latest = store.db
@@ -698,7 +700,9 @@ export async function createApp(
       ).config,
     );
     const enrollment = store.db
-      .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
+      .prepare(
+        "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
+      )
       .get(s.exam, s.username) as any;
     if (!enrollment) throw Error("Enrollment unavailable");
     const h = await conn.command("health");
@@ -1139,7 +1143,9 @@ export async function createApp(
   app.get("/api/admin/exams/:exam/roster", async (req: any) => {
     principal(req, "admin");
     return store.db
-      .prepare("SELECT * FROM enrollments WHERE exam=? ORDER BY username")
+      .prepare(
+        "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? ORDER BY username",
+      )
       .all(req.params.exam)
       .map((row: any) => {
         const a = store.db
@@ -1187,13 +1193,14 @@ export async function createApp(
       )
         throw Error("Student is already enrolled in this exam");
       store.db
-        .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
+        .prepare(
+          "INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?)",
+        )
         .run(
           req.params.exam,
           b.username,
           b.webcam === null ? null : Number(b.webcam),
           b.duration,
-          null,
           uid,
         );
       store.audit(s.username, "enroll-student", req.params.exam, b.username);
@@ -1237,7 +1244,9 @@ export async function createApp(
     const existing = new Map(
       (
         store.db
-          .prepare("SELECT * FROM enrollments WHERE exam=?")
+          .prepare(
+            "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=?",
+          )
           .all(req.params.exam) as any[]
       ).map((r) => [r.username, r]),
     );
@@ -1249,7 +1258,6 @@ export async function createApp(
         : [
               ["webcam", r.webcam],
               ["duration", r.duration],
-              ["display_name", r.display_name],
             ].some(
               ([k, v]) =>
                 v !== undefined &&
@@ -1304,13 +1312,15 @@ export async function createApp(
     store.db.transaction(() => {
       for (const r of rows) {
         const prev = store.db
-          .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
+          .prepare(
+            "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
+          )
           .get(p.exam, r.username) as any;
         if (JSON.stringify(prev || null) !== JSON.stringify(r.previous || null))
           throw Error("Roster changed since preview; validate again");
         store.db
           .prepare(
-            "INSERT INTO enrollments VALUES(?,?,?,?,?,?) ON CONFLICT(exam,username) DO UPDATE SET webcam=excluded.webcam,duration=excluded.duration,display_name=excluded.display_name,uid=excluded.uid",
+            "INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?) ON CONFLICT(exam,username) DO UPDATE SET webcam=excluded.webcam,duration=excluded.duration,uid=excluded.uid",
           )
           .run(
             p.exam,
@@ -1321,9 +1331,6 @@ export async function createApp(
                 ? null
                 : Number(r.webcam),
             r.duration === undefined ? (prev?.duration ?? null) : r.duration,
-            r.display_name === undefined
-              ? (prev?.display_name ?? null)
-              : r.display_name,
             r.uid,
           );
       }
@@ -1341,6 +1348,26 @@ export async function createApp(
     })();
     return { ok: true };
   });
+  app.get("/api/admin/exams/:exam/roster/example", async (req: any, reply) => {
+    principal(req, "admin");
+    if (
+      !store.db.prepare("SELECT 1 FROM exams WHERE id=?").get(req.params.exam)
+    )
+      throw Error("Exam not found");
+    return reply
+      .type("text/csv")
+      .header(
+        "Content-Disposition",
+        'attachment; filename="example-roster.csv"',
+      )
+      .send(
+        exportRoster([
+          { username: "student01", webcam: null, duration: null },
+          { username: "student02", webcam: true, duration: null },
+          { username: "student03", webcam: false, duration: null },
+        ]),
+      );
+  });
   app.get("/api/admin/exams/:exam/roster/export", async (req: any, reply) => {
     principal(req, "admin");
     return reply
@@ -1349,7 +1376,9 @@ export async function createApp(
       .send(
         exportRoster(
           store.db
-            .prepare("SELECT * FROM enrollments WHERE exam=?")
+            .prepare(
+              "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=?",
+            )
             .all(req.params.exam),
         ),
       );

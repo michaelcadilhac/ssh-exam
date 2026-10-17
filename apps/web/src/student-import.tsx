@@ -4,23 +4,18 @@ import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 export function StudentImport({
   exam,
-  adding = false,
   defaultWebcam = false,
   defaultDuration = 5400,
   onClose,
   onDone,
 }: {
   exam: string;
-  adding?: boolean;
   defaultWebcam?: boolean;
   defaultDuration?: number;
-  onClose?: () => void;
+  onClose: () => void;
   onDone: () => Promise<void>;
 }) {
-  const [csv, setCsv] = useState(
-      "username,display_name,duration_minutes,require_webcam\n",
-    ),
-    [mode, setMode] = useState("csv");
+  const [method, setMethod] = useState<"single" | "csv">("single");
   const [preview, setPreview] = useState<any>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -40,14 +35,42 @@ export function StudentImport({
       setBusy(false);
     }
   };
-  if (adding)
-    return (
-      <Modal
-        title="Add student"
-        onClose={() => {
-          if (!busy) onClose?.();
-        }}
+  return (
+    <Modal
+      title="Add students"
+      onClose={() => {
+        if (!busy) onClose();
+      }}
+    >
+      <div
+        className="actions enrollment-method"
+        role="group"
+        aria-label="Add students using"
       >
+        {(
+          [
+            ["single", "One student"],
+            ["csv", "CSV file"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={method === value}
+            disabled={busy}
+            onClick={() => {
+              if (method !== value) {
+                setMethod(value);
+                setError("");
+                setPreview(null);
+              }
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {method === "single" ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -65,6 +88,7 @@ export function StudentImport({
             Student username
             <input
               required
+              disabled={busy}
               pattern="[a-z][a-z0-9_\-]{0,31}"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -72,7 +96,11 @@ export function StudentImport({
           </label>
           <label>
             Webcam for this student
-            <select value={webcam} onChange={(e) => setWebcam(e.target.value)}>
+            <select
+              disabled={busy}
+              value={webcam}
+              onChange={(e) => setWebcam(e.target.value)}
+            >
               <option value="inherit">
                 Exam default ({defaultWebcam ? "required" : "not required"})
               </option>
@@ -84,7 +112,7 @@ export function StudentImport({
             <input
               type="checkbox"
               checked={inherit}
-              disabled={isSandbox(exam)}
+              disabled={busy || isSandbox(exam)}
               onChange={(e) => setInherit(e.target.checked)}
             />{" "}
             Use exam duration ({defaultDuration / 60} minutes)
@@ -97,7 +125,7 @@ export function StudentImport({
               max={360}
               step={1}
               required
-              disabled={inherit || isSandbox(exam)}
+              disabled={busy || inherit || isSandbox(exam)}
               value={duration}
               onChange={(e) => setDuration(Number(e.target.value))}
             />
@@ -117,131 +145,95 @@ export function StudentImport({
             </button>
           </div>
         </form>
-      </Modal>
-    );
-  return (
-    <section className="card">
-      <details className="bulk-import">
-        <summary>Import multiple students (CSV)</summary>
-        <p>
-          Enrollment settings only: username, display_name, duration_minutes,
-          require_webcam. Omitted columns stay unchanged; empty duration/webcam
-          uses the exam default. Current attempts stay unchanged. Use the
-          table’s bulk actions to reset or extend clocks.
-        </p>
-        <label>
-          Import format
-          <select
-            disabled={busy}
-            value={mode}
-            onChange={(e) => {
-              setMode(e.target.value);
-              setPreview(null);
-            }}
-          >
-            <option value="csv">CSV with headers</option>
-            <option value="lines">One username per line</option>
-          </select>
-        </label>
-        <input
-          aria-label="Upload CSV file"
-          type="file"
-          disabled={busy}
-          accept=".csv,text/csv"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            if (f.size > 10485760) {
-              setError("File exceeds 10 MiB");
-              return;
-            }
-            void f
-              .text()
-              .then((text) => {
-                setCsv(text);
-                setPreview(null);
-              })
-              .catch(() => setError("Unable to read CSV file"));
-          }}
-        />
-        <textarea
-          className="csv"
-          aria-label="Roster CSV"
-          disabled={busy}
-          value={csv}
-          onChange={(e) => {
-            setCsv(e.target.value);
-            setPreview(null);
-          }}
-        />
-        <div className="actions">
-          <button
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                setPreview(
-                  await api(`/admin/exams/${exam}/roster/import-preview`, {
-                    text: csv,
-                    mode,
-                  }),
-                );
-              })
-            }
-          >
-            Validate & preview
-          </button>
-          <a className="button" href={`/api/admin/exams/${exam}/roster/export`}>
-            Export roster / template
-          </a>
-        </div>
-        {error && (
-          <p className="warn" role="alert">
-            {error}
+      ) : (
+        <>
+          <p>
+            <a href={`/api/admin/exams/${exam}/roster/example`}>
+              Download example CSV
+            </a>{" "}
+            and replace the example usernames with course-server accounts.
+            Optional duration and webcam settings apply to future attempts.
           </p>
-        )}
-        {preview && (
-          <>
-            <p>
-              {preview.total} validated rows. Current attempts are unchanged.
+          <label>
+            CSV file
+            <input
+              type="file"
+              disabled={busy}
+              accept=".csv,text/csv"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                setPreview(null);
+                setError("");
+                if (!file) return;
+                void run(async () => {
+                  if (file.size > 10 * 1024 * 1024)
+                    throw Error("File exceeds 10 MiB");
+                  const text = await file.text();
+                  setPreview(
+                    await api(`/admin/exams/${exam}/roster/import-preview`, {
+                      text,
+                      mode: "csv",
+                    }),
+                  );
+                });
+              }}
+            />
+          </label>
+          {busy && !preview && <p role="status">Checking CSV…</p>}
+          {error && (
+            <p className="warn" role="alert">
+              {error}
             </p>
-            <div className="preview">
-              {preview.rows.slice(0, 100).map((r: any) => (
-                <p key={r.username}>
-                  {r.action}: {r.username} · duration{" "}
-                  {r.duration === undefined
-                    ? "unchanged"
-                    : r.duration === null
-                      ? "exam default"
-                      : `${r.duration / 60} minutes`}{" "}
-                  · webcam{" "}
-                  {r.webcam === undefined
-                    ? "unchanged"
-                    : r.webcam === null
-                      ? "exam default"
-                      : r.webcam
-                        ? "required"
-                        : "not required"}
-                </p>
-              ))}
-            </div>
+          )}
+          {preview && (
+            <>
+              <p role="status">
+                {preview.total} validated {preview.total === 1 ? "row" : "rows"}
+                . Current attempts are unchanged.
+              </p>
+              <div className="preview" aria-label="Import preview">
+                {preview.rows.slice(0, 100).map((r: any) => (
+                  <p key={r.username}>
+                    {r.action}: {r.username} · duration{" "}
+                    {r.duration === undefined
+                      ? "unchanged"
+                      : r.duration === null
+                        ? "exam default"
+                        : `${r.duration / 60} minutes`}{" "}
+                    · webcam{" "}
+                    {r.webcam === undefined
+                      ? "unchanged"
+                      : r.webcam === null
+                        ? "exam default"
+                        : r.webcam
+                          ? "required"
+                          : "not required"}
+                  </p>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="actions">
+            <button type="button" disabled={busy} onClick={onClose}>
+              Cancel
+            </button>
             <button
               className="primary"
-              disabled={busy}
+              disabled={busy || !preview}
               onClick={() =>
-                run(async () => {
+                void run(async () => {
                   await api(`/admin/exams/${exam}/roster/import-confirm`, {
                     id: preview.id,
                   });
-                  setPreview(null);
                   await onDone();
                 })
               }
             >
               Confirm import
             </button>
-          </>
-        )}
-      </details>
-    </section>
+          </div>
+        </>
+      )}
+    </Modal>
   );
 }

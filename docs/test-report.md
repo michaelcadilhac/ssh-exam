@@ -583,3 +583,33 @@ cancelling the open sandbox preflight. All 15 protected archives were checked
 against their manifests and remained unchanged. Attempt state/deadlines, trust
 configuration and administrator policy were preserved. Native and public
 production readiness passed; see [the deployment log](browser-ssh-deployment.md).
+
+
+## Combined enrollment dialog — 2026-10-17
+
+The exam's Add student action now opens one dialog offering One student or CSV file.
+CSV selection automatically validates the uploaded file and shows a preview before
+confirmation; an authenticated example CSV download replaces the old combined
+roster/template link. Removed the standalone import panel, paste editor, username-list
+selector and unused paste-area styles. Display names are absent from the dashboard,
+student/admin enrollment responses, previews, imports and exports. The supported CSV
+columns are username, require_webcam and duration_minutes.
+
+This is a non-destructive application change: schema 8, existing enrollment rows and
+pending previews remain intact. The unused legacy database column is retained for
+compatibility/rollback; application queries exclude it and new writes never set it.
+An old preview whose stored enrollment snapshot includes that field must be validated
+again, using the existing stale-preview check. No attempt settings, clocks or protected
+submissions are changed by the interface update.
+
+Validation: all **132 application tests**, type checking and production build passed.
+Four focused browser scenarios passed: single add/remove and CSV confirmation, exam
+scoping/grouped history, administrator creation, and the new combined-dialog flow.
+The latter checks example download contents, no CSV textarea, automatic preview,
+repeat selection, rejection of removed columns and oversized files, invalid-file
+replacement clearing a previous valid preview, confirmed duration/webcam settings,
+clean reopening and Escape with focus return. API coverage verifies role protection
+and no legacy-name exposure while preserving stored records. CSV tests retain BOM,
+quoted CRLF, 10,000-row streaming, inheritance, duplicate rejection, safe export and
+round-trip settings coverage. Existing screenshots, including the user's modified
+login image, were preserved; the new dialog screenshot is in Playwright's test output.

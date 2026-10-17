@@ -7,7 +7,6 @@ export type RosterRow = {
   username: string;
   webcam?: boolean | null;
   duration?: number | null;
-  display_name?: string | null;
 };
 export function parseRoster(
   text: string,
@@ -35,12 +34,7 @@ export function parseRoster(
 function decodeTable(table: string[][]): RosterRow[] {
   if (!table.length) throw Error("CSV is empty");
   const headers = table.shift()!;
-  const allowed = [
-    "username",
-    "require_webcam",
-    "display_name",
-    "duration_minutes",
-  ];
+  const allowed = ["username", "require_webcam", "duration_minutes"];
   if (
     !headers.includes("username") ||
     new Set(headers).size !== headers.length ||
@@ -65,11 +59,6 @@ function decodeTable(table: string[][]): RosterRow[] {
           row.duration = Number(v) * 60;
         else throw Error(`Row ${i + 2}: duration must be 1–360 whole minutes`);
       }
-      if ("display_name" in item) {
-        if (item.display_name.length > 120)
-          throw Error("Display name too long");
-        row.display_name = item.display_name || null;
-      }
       return row;
     }),
   );
@@ -91,17 +80,11 @@ export function exportRoster(rows: any[]) {
       username: escapeCell(r.username),
       require_webcam:
         r.webcam === null ? "inherit" : r.webcam ? "true" : "false",
-      display_name: escapeCell(r.display_name || ""),
       duration_minutes: r.duration === null ? "" : r.duration / 60,
     })),
     {
       header: true,
-      columns: [
-        "username",
-        "require_webcam",
-        "display_name",
-        "duration_minutes",
-      ],
+      columns: ["username", "require_webcam", "duration_minutes"],
     },
   );
 }

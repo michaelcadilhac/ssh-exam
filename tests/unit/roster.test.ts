@@ -12,16 +12,17 @@ describe("roster import", () => {
   });
   it("preserves missing optional fields", () =>
     expect(parseRoster("username\na")[0]).toEqual({ username: "a" }));
-  it("handles BOM, CRLF, quoted commas and newlines", () =>
+  it("handles BOM, CRLF and quoted settings", () =>
     expect(
       parseRoster(
-        '\ufeffusername,display_name\r\na,"Last, First\nSecond"\r\n',
-      )[0].display_name,
-    ).toBe("Last, First\nSecond"));
+        '\ufeff"username","require_webcam","duration_minutes"\r\n"a","yes","90"\r\n',
+      ),
+    ).toEqual([{ username: "a", webcam: true, duration: 5400 }]));
   it.each([
     "username,username\na,a",
     "usernme\na",
     "username,host\na,evil",
+    "username,display_name\na,Alice",
     "username\na\na",
     "username,require_webcam\na,nope",
     "username,duration_minutes\na,1.5",
@@ -40,14 +41,11 @@ describe("roster import", () => {
     ).toHaveLength(10000));
   it("clears explicit blanks", () =>
     expect(
-      parseRoster(
-        "username,require_webcam,duration_minutes,display_name\na,,,",
-      )[0],
+      parseRoster("username,require_webcam,duration_minutes\na,,")[0],
     ).toEqual({
       username: "a",
       webcam: null,
       duration: null,
-      display_name: null,
     }));
   it("supports username lists", () =>
     expect(parseRoster("a\r\nb\n", "lines")).toHaveLength(2));
@@ -55,19 +53,38 @@ describe("roster import", () => {
     expect(
       exportRoster([
         {
-          username: "a",
+          username: '=HYPERLINK("x")',
           webcam: 0,
           duration: null,
-          display_name: '=HYPERLINK("x")',
         },
       ]),
     ).toContain("'=HYPERLINK"));
 });
 
-it("streaming import handles UTF-8 chunks and 10,000 records", async () => {
+it("streaming import handles BOM, quoted CRLF records and 10,000 students across chunks", async () => {
   const { parseRosterAsync } = await import("../../apps/server/src/roster.js");
   const text =
-    "username,display_name\n" +
-    Array.from({ length: 10000 }, (_, i) => `student${i},José ${i}`).join("\n");
-  expect(await parseRosterAsync(text)).toHaveLength(10000);
+    "\ufeffusername,require_webcam,duration_minutes\r\n" +
+    Array.from(
+      { length: 10000 },
+      (_, i) => `"student${i}","inherit","90"`,
+    ).join("\r\n");
+  const rows = await parseRosterAsync(text);
+  expect(rows).toHaveLength(10000);
+  expect(rows[9999]).toEqual({
+    username: "student9999",
+    webcam: null,
+    duration: 5400,
+  });
+});
+
+it("exports only the supported fields and round-trips enrollment settings", () => {
+  const csv = exportRoster([
+    { username: "a", webcam: 0, duration: 8100, display_name: "Legacy name" },
+  ]);
+  expect(csv.split("\n")[0]).toBe("username,require_webcam,duration_minutes");
+  expect(csv).not.toContain("Legacy name");
+  expect(parseRoster(csv)).toEqual([
+    { username: "a", webcam: false, duration: 8100 },
+  ]);
 });

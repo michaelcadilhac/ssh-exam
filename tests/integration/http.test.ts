@@ -1,3 +1,4 @@
+import { parseRoster } from "../../apps/server/src/roster.js";
 import { it, expect } from "vitest";
 import { createApp } from "../../apps/server/src/app.js";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -125,6 +126,55 @@ it("confirms imports idempotently, preserves omitted fields and rejects stale pr
       payload: { text: "username,require_webcam\nalice,false\nbob,inherit" },
     });
     expect(preview.statusCode).toBe(200);
+    expect(preview.body).not.toContain("display_name");
+    expect(preview.body).not.toContain('"Alice"');
+    for (const path of ["roster", "dashboard", "roster/export"]) {
+      const response = await app.inject({
+        url: `/api/admin/exams/e/${path}`,
+        headers,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).not.toContain("display_name");
+      expect(response.body).not.toContain('"Alice"');
+    }
+    const exampleURL = "/api/admin/exams/e/roster/example";
+    expect((await app.inject({ url: exampleURL })).statusCode).toBe(401);
+    const student = store.session("student", "alice", "e");
+    expect(
+      (
+        await app.inject({
+          url: exampleURL,
+          headers: { cookie: `session=${student.token}` },
+        })
+      ).statusCode,
+    ).toBe(401);
+    const example = await app.inject({ url: exampleURL, headers });
+    expect(example.statusCode).toBe(200);
+    expect(example.headers["content-type"]).toContain("text/csv");
+    expect(example.headers["content-disposition"]).toContain(
+      'filename="example-roster.csv"',
+    );
+    expect(parseRoster(example.body)).toEqual([
+      { username: "student01", webcam: null, duration: null },
+      { username: "student02", webcam: true, duration: null },
+      { username: "student03", webcam: false, duration: null },
+    ]);
+    expect(
+      (
+        await app.inject({
+          url: "/api/admin/exams/missing/roster/example",
+          headers,
+        })
+      ).statusCode,
+    ).toBe(400);
+    const removedColumn = await app.inject({
+      method: "POST",
+      url: "/api/admin/exams/e/roster/import-preview",
+      headers,
+      payload: { text: "username,display_name\nalice,Changed" },
+    });
+    expect(removedColumn.statusCode).toBe(400);
+    expect(removedColumn.json().error).toContain("unsupported headers");
     const confirm = () =>
       app.inject({
         method: "POST",
@@ -150,9 +200,7 @@ it("confirms imports idempotently, preserves omitted fields and rejects stale pr
       payload: { text: "username,require_webcam\nalice,true" },
     });
     store.db
-      .prepare(
-        "UPDATE enrollments SET display_name='Edited' WHERE username='alice'",
-      )
+      .prepare("UPDATE enrollments SET duration=7200 WHERE username='alice'")
       .run();
     const result = await app.inject({
       method: "POST",

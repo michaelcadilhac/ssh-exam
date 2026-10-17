@@ -1,4 +1,4 @@
-username,require_webcam,display_name,duration_minutes
-student01,true,"Student One",90
-student02,false,"Student Two",90
-student03,,"Student Three",135
+username,require_webcam,duration_minutes
+student01,true,90
+student02,false,90
+student03,,135

@@ -399,7 +399,7 @@ Implement an in-memory, attempt-local text clipboard shared by the terminal wind
 - Do not enable auto-link opening, arbitrary URL handlers, terminal-triggered downloads, or file-transfer escape protocols.
 - Clear the internal clipboard at attempt end; do not persist it through a reload. It need not be destroyed during a temporary lock, but may not be pasted while locked.
 
-Clipboard restrictions apply to the active exam workspace. Do not unnecessarily disable password-manager paste in authentication forms or the instructor's CSV upload/paste controls. Keep these code paths separate. This is a best-effort browser interaction restriction, not a claim that a malicious client cannot inject text.
+Clipboard restrictions apply to the active exam workspace. Do not unnecessarily disable password-manager paste in authentication forms or the instructor's enrollment controls. Keep these code paths separate. This is a best-effort browser interaction restriction, not a claim that a malicious client cannot inject text.
 
 ## 10. Screen, webcam, and terminal recording
 
@@ -470,7 +470,7 @@ Before a timed attempt starts, snapshot its effective settings. Changing an exam
 
 Show searchable, paginated roster/attempt rows with:
 
-- Username, optional display name, and effective webcam requirement.
+- Username and effective webcam requirement.
 - Not started / active / reconnecting / locked / finalizing / completed / collection problem.
 - Start time, current/original deadline, remaining time, and terminal count in review.
 - Last screen image, last required webcam image, and the ages of both.
@@ -509,7 +509,7 @@ This is a required first-class dashboard feature, not a developer-only command.
 
 ### 12.1 Accepted input
 
-Provide CSV upload and a large paste box. The paste box may accept CSV or an explicitly selected **one username per line** mode. Supply downloadable templates and export of the current roster.
+The **Add student** button opens one dialog with **One student** and **CSV file** choices. Single entry accepts a course-server username plus optional future duration/webcam settings. CSV entry accepts a file upload, offers a downloadable example CSV, automatically validates the selected file and requires explicit confirmation of the preview. Do not show a CSV paste box or username-list editor. Display names are not used or accepted. Current roster export remains available through the authenticated API.
 
 The minimum CSV schema is:
 
@@ -523,10 +523,10 @@ student03,true
 Also support these optional columns:
 
 ```csv
-username,require_webcam,display_name,duration_minutes
-student01,true,"Student One",90
-student02,false,"Student Two",90
-student03,,"Student Three",135
+username,require_webcam,duration_minutes
+student01,true,90
+student02,false,90
+student03,,135
 ```
 
 `require_webcam` is an explicit per-enrollment override:
@@ -539,7 +539,7 @@ student03,,"Student Three",135
 
 Parse booleans case-insensitively, after trimming. Reject all other nonempty values. Do not interpret the string `false` as truthy. Internally store this as nullable boolean, distinct from the resolved effective boolean. The dashboard must show both the override and its effective result.
 
-A missing optional column means **leave that field unchanged on an existing enrollment**, or inherit/default it for a new enrollment. An explicitly present empty `require_webcam` cell means clear that override and inherit. Apply the analogous, documented rule to an empty duration override. Blank display names clear an existing optional display name only when that column is explicitly present.
+A missing optional column means **leave that field unchanged on an existing enrollment**, or inherit/default it for a new enrollment. An explicitly present empty `require_webcam` cell means clear that override and inherit. Apply the analogous, documented rule to an empty duration override.
 
 `duration_minutes`, when supplied, is a positive integer within configured administrative bounds; default is 90 minutes or the exam duration. Do not accept executable expressions or infer numbers with locale-dependent parsing.
 
@@ -549,7 +549,7 @@ Use an established CSV parser with UTF-8/BOM handling, quoted commas/newlines, C
 
 Support at least 10,000 enrollment rows within a configurable 10 MiB upload limit, using streaming parsing and pagination/virtualization where needed. These are input limits, not a claim that the host can run 10,000 simultaneous exams.
 
-The workflow is **Upload/paste → Validate → Preview → Confirm import → Result**:
+The workflow is **Choose CSV file → Automatic validation → Preview → Confirm import → Result**:
 
 - Preview added, changed, unchanged, duplicate, and invalid rows with original row numbers.
 - Resolve account names against the class-server account registry/agent. Importing a roster must not create Unix accounts.
@@ -1282,4 +1282,4 @@ removing authoritative protected bundles. Coordinate the web/native upgrade afte
 active attempts. Require `server-only-submissions` at production preflight and `clock-extend`
 for additive clock actions. Keep existing account restrictions, MFA/host pins, password reuse,
 monitoring, sandbox repeats and authorized recovery unchanged. CSV columns remain `username`,
-`display_name`, `duration_minutes`, `require_webcam`; bulk webpage actions operate separately.
+`duration_minutes`, `require_webcam`; bulk webpage actions operate separately.

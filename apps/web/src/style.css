@@ -485,14 +485,6 @@ td .button {
   grid-template-columns: 1fr 1.4fr;
   gap: 25px;
 }
-.csv {
-  width: 100%;
-  height: 180px;
-  margin: 15px 0;
-  font:
-    13px ui-monospace,
-    monospace;
-}
 .preview {
   max-height: 260px;
   overflow: auto;
@@ -624,11 +616,6 @@ button,
 .add-student button {
   margin-bottom: 1px;
 }
-.bulk-import {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid #33445b;
-}
 summary {
   cursor: pointer;
   color: #c6e8e1;
@@ -667,14 +654,6 @@ summary {
 .directory {
   flex-wrap: wrap;
 }
-.bulk-import > button,
-.bulk-import > .button {
-  margin: 6px 8px 0 0;
-}
-.bulk-import > select {
-  margin-right: 8px;
-}
-
 /* One exam toolbar; optional utilities stay out of the terminal area. */
 .exam-toolbar {
   gap: 10px;
@@ -866,3 +845,11 @@ summary {
 .student-row td { border-top: 2px solid #425671; }
 .attempt-row td:nth-child(2) { padding-left: 2rem; }
 .selection-list { max-height: 12rem; overflow: auto; }
+
+.enrollment-method {
+  margin-bottom: 18px;
+}
+.enrollment-method button[aria-pressed="true"] {
+  border-color: #68dac5;
+  color: #8de1c7;
+}

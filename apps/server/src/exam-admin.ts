@@ -44,7 +44,9 @@ export function registerExamAdmin(
       username,
       enrollment:
         store.db
-          .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
+          .prepare(
+            "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
+          )
           .get(req.params.exam, username) || null,
       attempts: all
         .filter((a) => a.username === username)
@@ -102,7 +104,9 @@ export function registerExamAdmin(
     store.db.transaction(() => {
       for (const name of b.usernames) {
         const r = store.db
-          .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
+          .prepare(
+            "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
+          )
           .get(req.params.exam, name) as any;
         if (!r)
           throw Error(
