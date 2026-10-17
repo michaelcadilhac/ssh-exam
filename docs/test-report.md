@@ -613,3 +613,10 @@ and no legacy-name exposure while preserving stored records. CSV tests retain BO
 quoted CRLF, 10,000-row streaming, inheritance, duplicate rejection, safe export and
 round-trip settings coverage. Existing screenshots, including the user's modified
 login image, were preserved; the new dialog screenshot is in Playwright's test output.
+
+Deployed source `969fd87` on marco. All persistent administrator/exam/enrollment/
+attempt/preview/continuation and configuration fingerprints matched across cutover,
+with schema 8 unchanged. Public readiness passes with maintenance disabled. Chromium
+also checked the deployed assets using browser-local API fixtures, with no real
+mutations and no page errors. The actual example endpoint requires administrator
+authentication. See [deployment and rollback details](browser-ssh-deployment.md).

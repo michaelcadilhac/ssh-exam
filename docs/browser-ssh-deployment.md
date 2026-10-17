@@ -4,6 +4,44 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Combined enrollment dialog update, 2026-10-17
+
+Deployed web source `969fd87` on marco at 23:05 UTC (18:05 Chicago time).
+The exam's Add student button now opens one dialog with One student and CSV file
+choices. Upload validates automatically and requires explicit preview confirmation;
+a downloadable example CSV is provided, with no paste editor or separate import
+panel. Display names are removed from the interface and supported import/export/API
+responses. Supported CSV columns are username, require_webcam and duration_minutes.
+
+- Image: `ssh-exam-workspace:enrollment-969fd87`, also tagged `:1.0.0`.
+- Image ID: `sha256:e2433bf5af51f1d457d16109f3de8a61acb1fcdaa04b4cbc439d422f618b2855`.
+- Previous image: `ssh-exam-workspace:pre-enrollment-969fd87`.
+- Consistent metadata/data and private configuration/trust/secrets backup:
+  `/var/backups/ssh-exam/20261017T230535Z-enrollment-web-r0nbk5ca` on marco.
+
+The guarded cutover refused started/unresolved exams and retained the unstarted
+preflight record. Only the web application was restarted. All administrator, exam,
+enrollment, attempt, preview and continuation row fingerprints matched before/after;
+configuration, trust and service/proxy settings also matched. Schema remains 8: the
+unused legacy name column is retained to preserve stored data and image rollback,
+but application reads exclude it and new writes do not set it. No records/previews
+were dropped. Native agent/login, relay, server account policy and protected archives
+on csc-sys were not changed. No submission archives exist on marco. Public and local
+readiness confirm production-ready, notifications enabled and maintenance disabled.
+
+Validation: all 132 application tests, type checking, production build and four
+focused browser scenarios passed. A fresh Chromium additionally loaded the deployed
+public assets and verified the two-method dialog, example download, CSV preview and
+confirmation, absent paste field/legacy name and Escape. These deployed UI checks
+intercepted every API call with browser-local fixtures and performed no real exam or
+account mutations; the actual new example endpoint separately rejected anonymous
+access. No browser errors occurred. Existing screenshots were preserved.
+
+Rollback after started exams drain: retag the retained previous image as `:1.0.0`
+and restart ssh-exam. No schema reversal is needed; retain current data and deadlines.
+The backup database is for inspection/recovery, never overwrite newer exam metadata.
+Monitoring backups retain the existing 60-day deletion policy.
+
 ## Practice terminal welcome update, 2026-10-16
 
 Installed `exam-login` from source `22039e8` on csc-sys at 2026-10-17
