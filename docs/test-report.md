@@ -577,3 +577,9 @@ collection timing and the SSH admission protocol are unchanged.
 Focused regressions check the absence of a deadline/collection claim during
 practice and the presence of the deadline and automatic-collection notice during
 a timed exam. The complete native Go race suite and `go vet` passed.
+
+The welcome-only binary was installed on csc-sys without restarting services or
+cancelling the open sandbox preflight. All 15 protected archives were checked
+against their manifests and remained unchanged. Attempt state/deadlines, trust
+configuration and administrator policy were preserved. Native and public
+production readiness passed; see [the deployment log](browser-ssh-deployment.md).

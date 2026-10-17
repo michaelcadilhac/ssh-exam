@@ -4,6 +4,33 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Practice terminal welcome update, 2026-10-16
+
+Installed `exam-login` from source `22039e8` on csc-sys at 2026-10-17
+01:25 UTC (October 16 Chicago time). Newly opened practice terminals say
+“Practice terminal. The exam clock has not started.” instead of `Deadline: 0`
+and the timed-exam collection banner. The actual deadline state is unchanged.
+
+This was an atomic replacement of the login display program only. The running
+sandbox preflight and its practice terminal were preserved; no agent, watchdog,
+relay or web service was restarted. Other native binaries retain `c6522a1` and
+the web runtime retains `4a5610b`. The update held the agent state lock, refused
+started/unresolved attempts and verified unchanged attempt state, deadlines,
+configuration, trust keys, SSH/PAM/sudo policy and administrator identity.
+All 15 protected archive checksums matched their manifests before installation
+and remained unchanged afterward. Native and public production readiness pass;
+all four class-server services remain active and maintenance remains disabled.
+
+- Installed `exam-login` SHA256:
+  `7fc296627f9bcb413f4c90df995057ea66dc397f0dcfd904173cd8755a4b2827`.
+- Previous login binary and checksum:
+  `/var/backups/ssh-exam/20261017T012551Z-welcome-22039e8-6n7f9l7g`.
+- Validation: focused practice/timed welcome regressions, full native Go race
+  suite and `go vet` passed. No real student login/MFA was initiated.
+- Rollback: atomically restore only the backed-up `exam-login`; retain current
+  agent state, deadlines and submissions. Existing terminals keep their running
+  executable and already printed text until closed.
+
 ## Private temporary storage agent update, 2026-10-16
 
 Installed native source `c6522a1` on csc-sys at 23:49 UTC. The web runtime remains
