@@ -552,9 +552,9 @@ Support at least 10,000 enrollment rows within a configurable 10 MiB upload limi
 The workflow is **Choose CSV file → Automatic validation → Preview → Confirm import → Result**:
 
 - Preview added, changed, unchanged, duplicate, and invalid rows with original row numbers.
-- Resolve account names against the class-server account registry/agent. Importing a roster must not create Unix accounts.
+- Roster entry/import validates username syntax and exam settings without consulting an agent account list or requiring `examctl accounts` output. It must work while the class agent is offline. Importing a roster must not create Unix accounts or change SSH/PAM/account policy.
 - Reject root, privileged/service identities, disallowed course identities, invalid usernames, NULs, path separators, and unsupported account mappings.
-- Preserve actual account case/canonical identity; do not blindly lowercase usernames. Bind enrollment to the verified server identity/UID.
+- Preserve actual account case/canonical identity; do not blindly lowercase usernames. At SSH login, verify webserver exam enrollment and obtain the account UID through a live, authenticated, agent-signed SSH command scoped to that same user and transport. The SSH server still enforces its account eligibility, gateway signature, transport and sandbox-only administrator policy. Bind enrollment to this verified UID before authentication completes; never trust a CSV, browser-supplied UID or cached account snapshot. New roster entries use internal UID 0 solely as an unresolved marker (schema 8 compatibility); preflight must reject an unresolved identity. CSV edits preserve an already verified UID. No pre-enumeration of students is required for roster management.
 - Identical duplicate rows may collapse with a warning; conflicting duplicates are errors, never last-row-wins silently.
 - Reject duplicate headers. Report unknown columns for correction or explicit mapping instead of quietly ignoring misspellings.
 - Default to an all-or-nothing validated import. Errors block confirmation until corrected; provide an error report for download.

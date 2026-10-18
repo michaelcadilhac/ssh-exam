@@ -1237,3 +1237,11 @@ No submission download, instructor stop button or timing/access-policy change is
 Monitoring deletion requires a separate named confirmation and retains submissions.
 Ordinary success notifications expire; pending/failure information remains where the
 instructor needs it. Preserve enrollment upload, admin creation and authentication flows.
+
+Roster management does not require an account registry callback or `examctl accounts`
+listing. Add/import validates usernames and settings while the agent may be offline.
+SSH login independently checks enrollment and resolves the same student's UID through
+the live authenticated SSH command path before completing login. Fresh enrollments
+use internal UID 0 as an unresolved marker, never as an execution identity; preflight
+rejects it. CSV updates retain any previously verified UID. SSH-side account isolation,
+signatures, per-transport ownership and sandbox administrator restrictions remain required.

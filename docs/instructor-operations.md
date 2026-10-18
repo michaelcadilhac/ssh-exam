@@ -59,6 +59,11 @@ it blocks future Begin but does not stop an already running exam or delete histo
 or protected submissions.
 Only a server administrator can stop a running exam using local `examctl stop`.
 
+Enrollment and CSV preview do not require an `examctl accounts` listing or an online
+class agent. Account existence, identity and SSH-side eligibility are checked during
+the student's SSH login, before preflight. Enrollment itself never provisions a
+server account or changes its access policy.
+
 CSV upload supports headers `username`, `duration_minutes`, `require_webcam`.
 Missing optional columns stay unchanged;
 blank/inherit duration/webcam restores the exam default. Webcam accepts true/yes/1 or

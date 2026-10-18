@@ -705,6 +705,10 @@ export async function createApp(
       )
       .get(s.exam, s.username) as any;
     if (!enrollment) throw Error("Enrollment unavailable");
+    if (!Number.isSafeInteger(enrollment.uid) || enrollment.uid < 1000)
+      throw Error(
+        "Sign in through SSH again to verify your course-server identity.",
+      );
     const h = await conn.command("health");
     if (
       config.browserSSH &&
@@ -1178,13 +1182,6 @@ export async function createApp(
       throw Error("Exam not found");
     if (isSandbox(req.params.exam) && b.duration !== null && b.duration !== 300)
       throw Error("Sandbox attempts always start with five minutes");
-    const accounts = await agent.call("resolve-course-accounts", {
-      usernames: [b.username],
-      exam: req.params.exam,
-    });
-    const uid = accounts[b.username];
-    if (!Number.isSafeInteger(uid) || uid < 1000)
-      throw Error("Student needs a root-approved course account");
     store.db.transaction(() => {
       if (
         store.db
@@ -1201,7 +1198,7 @@ export async function createApp(
           b.username,
           b.webcam === null ? null : Number(b.webcam),
           b.duration,
-          uid,
+          0, // Unresolved until verified over this student's authenticated SSH transport.
         );
       store.audit(s.username, "enroll-student", req.params.exam, b.username);
     })();
@@ -1237,10 +1234,10 @@ export async function createApp(
       )
     )
       throw Error("Sandbox attempts always start with five minutes");
-    const accounts = await agent.call("resolve-course-accounts", {
-      usernames: rows.map((r) => r.username),
-      exam: req.params.exam,
-    });
+    if (
+      !store.db.prepare("SELECT 1 FROM exams WHERE id=?").get(req.params.exam)
+    )
+      throw Error("Exam not found");
     const existing = new Map(
       (
         store.db
@@ -1252,7 +1249,7 @@ export async function createApp(
     );
     const result = rows.map((r, index) => ({
       ...r,
-      uid: accounts[r.username],
+      uid: existing.get(r.username)?.uid ?? 0,
       action: !existing.has(r.username)
         ? "add"
         : [
@@ -1274,10 +1271,6 @@ export async function createApp(
       rowNumber: index + 2,
       previous: existing.get(r.username) || null,
     }));
-    if (result.some((r) => !Number.isSafeInteger(r.uid) || r.uid < 1000))
-      throw Error(
-        "Every username requires root-approved course account provisioning",
-      );
     const id = randomUUID();
     store.db
       .prepare("INSERT INTO previews(id,exam,rows,created) VALUES(?,?,?,?)")
@@ -1331,7 +1324,7 @@ export async function createApp(
                 ? null
                 : Number(r.webcam),
             r.duration === undefined ? (prev?.duration ?? null) : r.duration,
-            r.uid,
+            prev?.uid ?? 0,
           );
       }
       store.db.prepare("UPDATE previews SET consumed=1 WHERE id=?").run(id);
@@ -1831,7 +1824,9 @@ export async function createApp(
                 }
               : undefined,
           });
-          if (!config.loginOnly && isSandbox(m.exam)) {
+          if (!config.loginOnly) {
+            // Resolve identity through the live, signed student SSH channel, never
+            // from an enrollment/import field or an advertised account snapshot.
             const accounts = await p.connection.command(
               "resolve-course-accounts",
               {
@@ -1842,11 +1837,21 @@ export async function createApp(
             const uid = accounts[m.username];
             if (!Number.isSafeInteger(uid) || uid < 1000)
               throw Error("Account not approved by the class server");
-            store.db
+            if (isSandbox(m.exam))
+              store.db
+                .prepare(
+                  "INSERT OR IGNORE INTO enrollments(exam,username,uid) VALUES(?,?,?)",
+                )
+                .run(m.exam, m.username, uid);
+            const enrolled = store.db
               .prepare(
-                "INSERT OR IGNORE INTO enrollments(exam,username,uid) VALUES(?,?,?)",
+                "UPDATE enrollments SET uid=? WHERE exam=? AND username=?",
               )
-              .run(m.exam, m.username, uid);
+              .run(uid, m.exam, m.username);
+            if (!enrolled.changes)
+              throw signInError(
+                "This account is no longer enrolled in the selected exam.",
+              );
           }
           p.done = true;
           send(ws, { type: "authenticated" });

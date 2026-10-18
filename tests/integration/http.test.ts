@@ -261,7 +261,7 @@ it("adds and removes approved enrollments without changing attempts or allowing 
     expect((await add("e", "alice")).statusCode).toBe(200);
     expect((await add("other", "alice")).statusCode).toBe(200);
     expect((await add("e", "alice")).statusCode).toBe(400);
-    expect((await add("e", "unknown")).statusCode).toBe(400);
+    expect((await add("e", "unknown")).statusCode).toBe(200);
     const deadline = Date.now() + 5400000,
       page = "1".repeat(64);
     store.db
