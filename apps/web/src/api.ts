@@ -1,3 +1,4 @@
+import { formatCountdown } from "../../../packages/protocol/time.js";
 export let csrf = "";
 export function setCsrf(v: string) {
   csrf = v;
@@ -44,6 +45,5 @@ const chicagoDate = new Intl.DateTimeFormat("en-US", {
 export const chicago = (v: number | null) => (v ? chicagoDate.format(v) : "—");
 export const remaining = (deadline: number | null, serverNow = Date.now()) => {
   if (!deadline) return "Not started";
-  const secs = Math.max(0, Math.ceil((deadline - serverNow) / 1000));
-  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+  return formatCountdown((deadline - serverNow) / 1000);
 };

@@ -1,3 +1,4 @@
+import { formatDuration } from "../../../packages/protocol/time.js";
 import {
   FOCUS_GRACE_MS,
   FOCUS_GRACE_REASON,
@@ -83,12 +84,20 @@ export class Lifecycle {
     public agent: Agent,
     public monitoring: Monitoring,
   ) {}
-  alert(subject: string, body: string) {
-    const pending = this.store.db
-      .prepare(
-        "SELECT id,body FROM outbox WHERE subject=? AND status='pending' AND next>? LIMIT 1",
-      )
-      .get(subject, now() - 60000) as any;
+  alert(subject: string, body: string, options: { coalesce?: boolean } = {}) {
+    const pending = (
+      options.coalesce === false
+        ? this.store.db
+            .prepare(
+              "SELECT id,body FROM outbox WHERE subject=? AND body=? AND status='pending' AND next>? LIMIT 1",
+            )
+            .get(subject, body, now() - 60000)
+        : this.store.db
+            .prepare(
+              "SELECT id,body FROM outbox WHERE subject=? AND status='pending' AND next>? LIMIT 1",
+            )
+            .get(subject, now() - 60000)
+    ) as any;
     if (pending) {
       if (!pending.body.includes(body))
         this.store.db
@@ -137,7 +146,7 @@ export class Lifecycle {
           .run(randomUUID(), id, b.generation, now(), JSON.stringify(events));
         this.alert(
           `Exam interrupted: ${a.username}`,
-          `${a.exam}: ${reason}. Remaining ${Math.max(0, Math.floor(((a.deadline || now()) - now()) / 1000))} seconds. Open the authenticated instructor dashboard.`,
+          `${a.exam}: ${reason}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
         );
       }
       this.store.audit("gateway", "lock", id, reason);
@@ -489,11 +498,30 @@ export class Lifecycle {
           );
         }
         this.onSecured(this.store.attempt(id));
-        if (hasUnexpectedOmissions(manifest))
+        if (hasUnexpectedOmissions(manifest)) {
+          const omissions = Array.isArray(manifest.omissions)
+            ? manifest.omissions
+            : [manifest.omissions];
           this.alert(
-            "Submission entries omitted",
-            `Attempt ${id}: review the protected manifest.`,
+            `Submission entries omitted: ${a.username} (${a.exam})`,
+            [
+              `Student: ${a.username}`,
+              `Exam: ${a.exam}`,
+              `Attempt: ${id}`,
+              "",
+              "Omitted entries and reasons:",
+              // Quote filenames/reasons so a student-controlled newline cannot
+              // impersonate another student or another notification field.
+              ...omissions.map(
+                (entry: unknown) => `- ${JSON.stringify(entry)}`,
+              ),
+              "",
+              "Review the protected manifest in the authenticated instructor dashboard.",
+            ].join("\n"),
+            // Keep complete reports for separate attempts rather than truncating a summary.
+            { coalesce: false },
           );
+        }
       } else if (remote.state === "COMPLETED")
         throw Error("Completion requires verified protected collection");
       if (a.state === "COMPLETED" && remote.state !== "COMPLETED") return;

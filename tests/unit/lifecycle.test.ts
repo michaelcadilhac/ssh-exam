@@ -422,3 +422,25 @@ it.each(["NORMAL", "RESTORE_FAILED", undefined])(
     }
   },
 );
+
+it("keeps detailed omission reports complete and separate while deduplicating pending replays", () => {
+  const dir = mkdtempSync(tmpdir() + "/detailed-alert-");
+  const s = new Store(dir);
+  try {
+    const life = new Lifecycle(s, {} as any, new Monitoring(s));
+    const subject = "Submission entries omitted: alice (e)";
+    const first =
+      "Student: alice\nExam: e\nAttempt: first\n" +
+      "omitted entry and reason\n".repeat(600);
+    const second = first.replace("Attempt: first", "Attempt: second");
+    life.alert(subject, first, { coalesce: false });
+    life.alert(subject, second, { coalesce: false });
+    life.alert(subject, first, { coalesce: false });
+    expect(
+      s.db.prepare("SELECT body FROM outbox ORDER BY rowid").all(),
+    ).toEqual([{ body: first }, { body: second }]);
+  } finally {
+    s.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

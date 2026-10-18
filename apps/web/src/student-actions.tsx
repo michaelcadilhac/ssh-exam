@@ -10,11 +10,13 @@ export type StudentAction = {
 export function StudentActions({
   exam,
   operation: op,
+  clock,
   onClose,
   onDone,
 }: {
   exam: any;
   operation: StudentAction;
+  clock: number;
   onClose: () => void;
   onDone: (text: string) => Promise<void>;
 }) {
@@ -100,8 +102,8 @@ export function StudentActions({
               <strong>{a.username}</strong>
               {!settings && (
                 <span>
-                  Attempt {a.attempt_number || 1} · {remaining(a.deadline)}{" "}
-                  remaining
+                  Attempt {a.attempt_number || 1} ·{" "}
+                  {remaining(a.deadline, clock)} remaining
                   {op.kind === "reset" ? ` → ${a.allowance} minutes` : ""}
                 </span>
               )}

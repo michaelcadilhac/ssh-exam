@@ -159,7 +159,7 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         expect(initial.start).toBeGreaterThanOrEqual(configured.earliest);
         expect(initial.start).toBeLessThanOrEqual(configured.latest);
         await expect(page.locator(".exam-toolbar b")).toHaveText(
-          index % 2 ? /^(120:00|119:\d\d)$/ : /^(90:00|89:\d\d)$/,
+          index % 2 ? /^(2:00:00|1:59:\d\d)$/ : /^(1:30:00|1:29:\d\d)$/,
         );
         const reset = await admin.post(
           `/api/admin/attempts/${initial.id}/reset-clock`,
@@ -176,7 +176,7 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         expect(current.original_deadline).toBe(initial.deadline);
         expect(current.deadline).toBeGreaterThan(Date.now() + 89 * 60000);
         await expect(page.locator(".exam-toolbar b")).toHaveText(
-          /^(90:00|89:\d\d)$/,
+          /^(1:30:00|1:29:\d\d)$/,
         );
         const extended = await admin.post(
           `/api/admin/exams/${exam}/attempts/clocks`,
@@ -206,7 +206,7 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         expect(after.attempt.original_deadline).toBe(initial.deadline);
         expect(after.sshConnected).toBe(true);
         await expect(page.locator(".exam-toolbar b")).toHaveText(
-          /^(97:00|96:\d\d)$/,
+          /^(1:37:00|1:36:\d\d)$/,
         );
         await page
           .getByRole("button", { name: "Finish exam", exact: true })

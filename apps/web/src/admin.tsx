@@ -908,6 +908,7 @@ export function Admin({
         <StudentActions
           exam={current}
           operation={operation}
+          clock={clock}
           onClose={() => setOperation(null)}
           onDone={async (text) => {
             setNotice(text);

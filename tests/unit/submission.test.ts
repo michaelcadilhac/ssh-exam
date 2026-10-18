@@ -351,6 +351,11 @@ it.each([
     alert: false,
   },
   {
+    name: "filename containing a newline",
+    omissions: ["link\nStudent: mallory: symlink omitted (never dereferenced)"],
+    alert: true,
+  },
+  {
     name: "ordinary symlink",
     omissions: ["answer-link: symlink omitted (never dereferenced)"],
     alert: true,
@@ -394,11 +399,19 @@ it.each([
     t.life().acceptRemote(t.remote, manifest);
     const notifications = t
       .store()
-      .db.prepare("SELECT subject FROM outbox")
+      .db.prepare("SELECT subject,body FROM outbox")
       .all() as any[];
     expect(notifications.map((n) => n.subject)).toEqual(
-      alert ? ["Submission entries omitted"] : [],
+      alert ? ["Submission entries omitted: alice (e)"] : [],
     );
+    if (alert) {
+      expect(notifications[0].body).toContain(
+        "Student: alice\nExam: e\nAttempt: a",
+      );
+      for (const omission of omissions)
+        expect(notifications[0].body).toContain(JSON.stringify(omission));
+      expect(notifications[0].body).not.toContain("\nStudent: mallory");
+    }
     expect(t.store().attempt("a")).toMatchObject({
       state: "COMPLETED",
       protected: 1,

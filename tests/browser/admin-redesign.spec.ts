@@ -963,3 +963,88 @@ test("inline setting failures preserve edits for retry and cancellation", async 
   await expect(duration).toBeFocused();
   expect(s.calls).toHaveLength(2);
 });
+
+for (const width of [1280, 430])
+  test(`admin time displays use readable units at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const s = await fixture(page);
+    const now = Date.now();
+    const attempt = s.rows[0].attempts[0];
+    attempt.deadline = now + 5400000;
+    attempt.settings = JSON.stringify({ webcam: true, duration: 5400 });
+    s.media.frames.push(
+      {
+        id: "old-screen",
+        source: "screen",
+        captured: now - 3661000,
+        received: now,
+      },
+      {
+        id: "old-camera",
+        source: "webcam",
+        captured: now - 125000,
+        received: now,
+      },
+    );
+    (s.media as any).manifest = {
+      checksum: "fixture-checksum",
+      attempt: { settings: { duration: 5400 } },
+    };
+    await page
+      .getByLabel("Selected exam", { exact: true })
+      .selectOption("beta");
+    await page
+      .getByLabel("Selected exam", { exact: true })
+      .selectOption("alpha");
+    const student = page.getByRole("rowgroup", { name: "amy", exact: true });
+    await expect(student.locator(".attempt-clock time").first()).toHaveText(
+      /^(1:30:00|1:29:\d\d)$/,
+    );
+    await student
+      .getByRole("button", { name: "Review", exact: true })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(
+      dialog.locator(".review-images figcaption").first(),
+    ).toContainText(/1h 1min(?: \d+s)? ago/);
+    await expect(
+      dialog.locator(".review-images figcaption").nth(1),
+    ).toContainText(/2min \d+s ago/);
+    await expect(dialog.locator(".review-clock")).toContainText(/1:29:\d\d/);
+    await dialog
+      .getByRole("button", { name: "Submission", exact: true })
+      .click();
+    await expect(
+      dialog
+        .getByText("Exam duration", { exact: true })
+        .locator("..")
+        .locator("dd"),
+    ).toHaveText("1h 30min");
+    await dialog.getByText("Collection details", { exact: true }).click();
+    await expect(dialog.locator("pre")).not.toBeVisible();
+    await page.screenshot({
+      path: info.outputPath(`time-review-${width}.png`),
+      fullPage: true,
+    });
+    await dialog.getByText("Raw manifest (technical)", { exact: true }).click();
+    await expect(dialog.locator("pre")).toBeVisible();
+    await expect(dialog).toContainText(
+      "remaining_seconds and extend_seconds are in seconds",
+    );
+    await dialog
+      .getByRole("button", { name: "Close review", exact: true })
+      .click();
+    await student
+      .getByRole("button", { name: "Actions for amy attempt 2", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Reset clock", exact: true })
+      .click();
+    const clock = page.getByRole("dialog").locator(".admin-target-list");
+    const before = await clock.innerText();
+    await expect.poll(() => clock.innerText()).not.toBe(before);
+    await expect(clock).toContainText(/1:29:\d\d remaining/);
+  });

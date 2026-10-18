@@ -1,3 +1,4 @@
+import { formatDuration } from "../../../packages/protocol/time.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { api, chicago, remaining } from "./api.js";
@@ -256,6 +257,15 @@ export function AdminReview({
     frames = media?.frames || [],
     incidents = media?.incidents || [];
   const oldFrame = frames.find((f: any) => f.id === frame);
+  let duration: number | null = null;
+  try {
+    const settings =
+      typeof a.settings === "string" ? JSON.parse(a.settings) : a.settings;
+    if (Number.isFinite(settings?.duration)) duration = settings.duration;
+  } catch {
+    /* Unknown historical settings are displayed as unavailable. */
+  }
+
   return (
     <Modal
       wide
@@ -364,11 +374,8 @@ export function AdminReview({
                             <span
                               title={`Captured ${chicago(latest.captured)}; received ${chicago(latest.received)}`}
                             >
-                              {Math.max(
-                                0,
-                                Math.floor((clock - latest.captured) / 1000),
-                              )}
-                              s ago
+                              {formatDuration((clock - latest.captured) / 1000)}{" "}
+                              ago
                             </span>
                           )}
                         </figcaption>
@@ -546,6 +553,10 @@ export function AdminReview({
                   <dd>{chicago(a.start)}</dd>
                 </div>
                 <div>
+                  <dt>Exam duration</dt>
+                  <dd>{duration === null ? "—" : formatDuration(duration)}</dd>
+                </div>
+                <div>
                   <dt>Current deadline</dt>
                   <dd>{chicago(a.deadline)}</dd>
                 </div>
@@ -578,7 +589,14 @@ export function AdminReview({
                   </p>
                 )}
                 {media?.manifest && (
-                  <pre>{JSON.stringify(media.manifest, null, 2)}</pre>
+                  <details>
+                    <summary>Raw manifest (technical)</summary>
+                    <p>
+                      Raw timestamps are Unix milliseconds. Duration,
+                      remaining_seconds and extend_seconds are in seconds.
+                    </p>
+                    <pre>{JSON.stringify(media.manifest, null, 2)}</pre>
+                  </details>
                 )}
               </details>
             </>

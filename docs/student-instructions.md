@@ -13,7 +13,8 @@
    are highlighted. Practice actual editor/toolchain shortcuts including
    Escape, Ctrl-C/Ctrl-D/Ctrl-Z and your keyboard layout. Practice does not consume exam time.
 5. Click Begin exam and confirm. The app secures server access automatically while keeping
-   your existing screen sharing, fullscreen and keyboard lock. You do not enter your password
+   your existing screen sharing, fullscreen and keyboard lock. The remaining clock uses
+   minutes:seconds, or hours:minutes:seconds when at least an hour remains. You do not enter your password
    or approve phone MFA again. The clock starts only when setup succeeds. Save other server
    work first: conflicting sessions and background processes are stopped. Use each terminal
    title bar to snap left/right or rename, and Arrange to tile windows.

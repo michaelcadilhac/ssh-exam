@@ -21,7 +21,7 @@ it("shows an explicit Chicago timezone and preserves elapsed minutes across dayl
     expect(chicago(start)).toContain(startLabel);
     expect(chicago(deadline)).toContain(endLabel);
     expect(deadline - start).toBe(90 * 60000);
-    expect(remaining(deadline, start)).toBe("90:00");
+    expect(remaining(deadline, start)).toBe("1:30:00");
     expect(remaining(deadline, start + 45 * 60000)).toBe("45:00");
     expect(remaining(deadline, deadline)).toBe("0:00");
     expect(remaining(deadline, deadline + 1)).toBe("0:00");

@@ -491,7 +491,7 @@ Implement all three channels:
 2. **Desktop notification:** requested through an instructor **Enable alerts** action. Show permission status and a test action. Do not claim it works with the dashboard closed; persistent web push is not required. Browser notifications require permission. [R15]
 3. **SMTP email:** backend-generated independently of dashboard presence, with configured recipients, retry policy, and delivery/failure status. Use a durable outbox so a process restart does not lose alerts.
 
-Send interruption alerts with username, exam, reason, time remaining at generation, and a link to the incident requiring normal administrator authentication. Never embed screenshots, passwords, one-use continuation credentials, or a link that performs an action on GET.
+Send interruption alerts with username, exam, reason, time remaining at generation, and a link to the incident requiring normal administrator authentication. Omission emails must identify the student and exam in their subject/body, retain the attempt identifier for correlation, and list the omitted entries with their recorded reasons. Escape control characters in student-controlled filenames rather than allowing them to impersonate notification fields. Routine editor-lock suppression remains as specified in Section 15.3. Never embed screenshots, passwords, one-use continuation credentials, or a link that performs an action on GET.
 
 Coalesce correlated triggers into one incident. Send a follow-up when the student requests review, without allowing message flooding. Also alert on collection failure, recording-storage failure, class-agent loss, and collection/status recovery failures. During widespread outages, group email summaries while retaining individual incident records.
 
@@ -1415,3 +1415,8 @@ attempt, or reopen a finished attempt. Normal interrupted-exam recovery still re
 existing instructor authorization and fresh password/MFA login. Installation checks must
 validate the dedicated CA, protected helper and actual effective SSH configuration. Do not
 replace an unrelated SSH CA/principals integration or weaken existing authentication methods.
+
+
+### Human-readable time presentation
+
+Stored durations remain seconds and timestamps remain absolute Unix milliseconds; display formatting never changes authorization or exam timing. Use minutes/hours/days with explicit units for elapsed ages and durations, retaining seconds where useful for short intervals. Countdown displays use minutes:seconds below one hour and hours:minutes:seconds at or above one hour. Keep duration/extension inputs and CSV columns explicitly in minutes. Review facts show human-readable dates with an explicit timezone and a formatted exam duration. Raw manifest timing values remain available behind a separate technical disclosure, labeled with their actual storage units. The open clock-action dialog updates its countdown from the same live dashboard clock.
