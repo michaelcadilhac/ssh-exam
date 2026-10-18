@@ -977,7 +977,7 @@ export function Workspace({
       await (navigator as any).keyboard.lock();
     } catch (error) {
       throw Error(
-        "Keyboard lock could not be enabled. Try again and approve any browser permission prompt. If it still fails, open this page in a standalone desktop Chrome or Chromium window. " +
+        "Keyboard lock could not be enabled. Try again and approve any browser permission prompt. If it still fails, open this page in a standalone desktop Chrome, Edge or Chromium window. " +
           `Browser message: ${(error as Error).message}`,
       );
     }

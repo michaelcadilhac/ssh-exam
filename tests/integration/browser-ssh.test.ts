@@ -4,7 +4,10 @@ import { generateKeyPairSync, sign } from "node:crypto";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { BrowserConnection } from "../../apps/server/src/browser-ssh.js";
-import { Agent } from "../../apps/server/src/agent.js";
+import {
+  Agent,
+  AgentCommandDisconnectedError,
+} from "../../apps/server/src/agent.js";
 
 it("accepts only agent-signed SSH identity/results with exact nonce, account and transport", async () => {
   const dir = mkdtempSync(tmpdir() + "/browser-proof-");
@@ -84,6 +87,17 @@ it("accepts only agent-signed SSH identity/results with exact nonce, account and
         });
     };
     await expect(conn.command("health")).rejects.toThrow("Signed SSH");
+    // A pause closes this transport while its signed command is still pending.
+    socket.send = () => {};
+    const pending = conn.command("lock-attempt", { id: "attempt" });
+    const rejected = expect(pending).rejects.toBeInstanceOf(
+      AgentCommandDisconnectedError,
+    );
+    conn.close();
+    await rejected;
+    await expect(conn.command("health")).rejects.toBeInstanceOf(
+      AgentCommandDisconnectedError,
+    );
   } finally {
     conn.close();
     rmSync(dir, { recursive: true, force: true });

@@ -2,7 +2,7 @@ import ssh2 from "ssh2";
 import type { Client as SSHClient, ClientChannel, ConnectConfig } from "ssh2";
 const { Client } = ssh2;
 import type { Config } from "../../../packages/config/index.js";
-import type { Agent } from "./agent.js";
+import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
 import { LoginPassword, isPasswordPrompt } from "./login-password.js";
 export type Dialogue = (
   host: string,
@@ -321,7 +321,8 @@ export class Connection {
     }
   }
   async command(op: string, body: any = {}): Promise<any> {
-    if (!this.alive) throw Error("SSH transports unavailable");
+    if (!this.alive)
+      throw new AgentCommandDisconnectedError("SSH transports unavailable");
     const envelope = this.agent.sign(op, this.username, this.transport, body);
     return new Promise((resolve, reject) => {
       this.class.exec("exam-control", (error, channel) => {
@@ -345,7 +346,11 @@ export class Connection {
         );
         channel.on("error", (e: Error) => finish(e));
         channel.on("close", () =>
-          finish(Error("SSH command ended without acknowledgment")),
+          finish(
+            new AgentCommandDisconnectedError(
+              "SSH command ended without acknowledgment",
+            ),
+          ),
         );
         channel.on("data", (chunk: Buffer) => {
           input = Buffer.concat([input, chunk]);
@@ -433,7 +438,8 @@ export class Connection {
   async open(attempt: string, pane: string, purpose = "exam") {
     if (this.config.loginOnly)
       throw Error("Terminals are unavailable during login-only testing");
-    if (!this.alive) throw Error("SSH transports unavailable");
+    if (!this.alive)
+      throw new AgentCommandDisconnectedError("SSH transports unavailable");
     const admission = await this.command("issue-channel-admission", {
       id: attempt,
       pane,

@@ -18,7 +18,7 @@ Verify current library interfaces when implementing, pin dependency versions and
 ### Non-negotiable requirements
 
 - One continuous timed attempt, normally **90 minutes**. No student-controlled pause or resume.
-- Chrome/Chromium desktop browser, with successful capability and permission checks.
+- Chrome, Edge or Chromium desktop browser, with successful capability and permission checks.
 - One fullscreen browser workspace containing **floating terminal windows**, not browser popups or tabs.
 - No tmux. Each terminal uses a separate SSH session channel on one retained connection to the class server.
 - One initial two-hop SSH authentication sequence, including jump-host two-factor authentication. Creating terminals must not authenticate again.
@@ -83,7 +83,7 @@ Distinguish these guarantees in documentation:
 ## 4. Architecture
 
 ```text
-Student Chrome/Chromium
+Student Chrome/Edge/Chromium
   ├─ Fullscreen workspace, floating xterm terminals, screen/webcam capture
   ├─ Dedicated Web Worker: Go/WASM SSH client, two retained SSH transports
   │    └─ WSS csc-sys relay → institutional proxy → sshjump (password + MFA)
@@ -494,6 +494,8 @@ Implement all three channels:
 Send interruption alerts with username, exam, reason, time remaining at generation, and a link to the incident requiring normal administrator authentication. Never embed screenshots, passwords, one-use continuation credentials, or a link that performs an action on GET.
 
 Coalesce correlated triggers into one incident. Send a follow-up when the student requests review, without allowing message flooding. Also alert on collection failure, recording-storage failure, class-agent loss, and collection/status recovery failures. During widespread outages, group email summaries while retaining individual incident records.
+
+Pausing deliberately disconnects student SSH, which can cancel the outstanding lock-command acknowledgment. Treat that as an unconfirmed command, not evidence that the class agent is unavailable. Retain the interruption email and audit the lost confirmation with its generation and a non-secret cause; do not send a second outage email for a disconnected command transport. Unexpected command failures still generate an accurately labeled pause-confirmation-pending alert. Signed callbacks remain authoritative, and the independent local execution lease/watchdog still enforces the pause. This notification handling must not delay disconnection, authorize input, extend the deadline, or weaken recovery requirements.
 
 SMTP recipients are administrator-configurable as an address list. Host-local OpenSMTPD may use a private Unix socket owned by the application UID, forwarded to a dedicated loopback SMTP listener; its administrative enqueue socket is not a raw SMTP endpoint. Verify actual recipient delivery and durable retry across an application restart.
 
@@ -1109,7 +1111,7 @@ Automate what is practical and provide a signed-off manual matrix for browser/OS
 - Move, resize, minimize, maximize, restore, side-by-side, snap, rename, close, and layout reset preserve appropriate terminal state.
 - The timer and lock overlay remain visible above all internal windows.
 - PTY size reaches editors; minimizing never sends invalid zero dimensions or opens another shell.
-- Escape, interrupt, suspend, EOF, editor shortcuts, non-US/Dvorak layouts, and supported input methods work in the tested Chrome/Chromium matrix.
+- Escape, interrupt, suspend, EOF, editor shortcuts, non-US/Dvorak layouts, and supported input methods work in the tested Chrome/Edge/Chromium matrix.
 - Internal clipboard works between terminals, including multiline bracketed paste, while ordinary paste/middle-click/drag-drop paths and OSC 52 integration are blocked in the active exam.
 - Login/password-manager input and administrator CSV paste remain usable.
 - Hostile terminal titles/output/URLs cannot execute script, navigate the browser, open another app, or alter clipboard policy.

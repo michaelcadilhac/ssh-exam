@@ -3,7 +3,7 @@ import { randomUUID, sign, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { WebSocket } from "ws";
 import { Connection, type Dialogue } from "./ssh.js";
-import type { Agent } from "./agent.js";
+import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
 import type { Config } from "../../../packages/config/index.js";
 
 class BrowserPane extends EventEmitter {
@@ -149,7 +149,9 @@ export class BrowserConnection extends Connection {
   private request(op: string, args: any, timeout = 120000): Promise<any> {
     if (!this.socket || this.socket.readyState !== 1)
       return Promise.reject(
-        Error("Browser SSH control connection unavailable"),
+        new AgentCommandDisconnectedError(
+          "Browser SSH control connection unavailable",
+        ),
       );
     const id = randomUUID();
     return new Promise((resolve, reject) => {
@@ -265,7 +267,8 @@ export class BrowserConnection extends Connection {
     }
   }
   override async command(op: string, body: any = {}) {
-    if (!this.alive) throw Error("SSH transports unavailable");
+    if (!this.alive)
+      throw new AgentCommandDisconnectedError("SSH transports unavailable");
     const frame = this.authority.sign(op, this.username, this.transport, {
       ...body,
       browser_ssh: true,
@@ -321,7 +324,7 @@ export class BrowserConnection extends Connection {
     this.authority.unbind(this);
     for (const p of this.pending.values()) {
       clearTimeout(p.timer);
-      p.reject(Error("SSH connection ended"));
+      p.reject(new AgentCommandDisconnectedError("SSH connection ended"));
     }
     this.pending.clear();
     for (const p of this.panes.values()) p.close();

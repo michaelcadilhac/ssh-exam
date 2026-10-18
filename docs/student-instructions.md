@@ -1,6 +1,6 @@
 # Student instructions
 
-1. Use desktop Chrome/Chromium. Save other class-account work: beginning closes conflicting
+1. Use desktop Chrome, Edge or Chromium. Save other class-account work: beginning closes conflicting
    sessions/processes. References are physical documents or documents through SSH terminals.
 2. Enter the exam ID and enrolled username. Enter your shared SSH password once, follow the
    displayed number in your authentication app and wait for approval. The browser temporarily

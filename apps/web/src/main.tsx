@@ -726,7 +726,7 @@ function App() {
                 <p className="login-note">
                   {loginTest?.loginOnly
                     ? "Login test only; no exam or recording starts."
-                    : "Chrome/Chromium required, with fullscreen and entire-display sharing. During the exam: screen images every five seconds, webcam when required, and terminal output. No audio or raw keystrokes. Monitoring is deleted after 60 days; submissions are retained separately."}
+                    : "Desktop Chrome, Edge or Chromium required, with fullscreen and entire-display sharing. During the exam: screen images every five seconds, webcam when required, and terminal output. No audio or raw keystrokes. Monitoring is deleted after 60 days; submissions are retained separately."}
                 </p>
               )}
             </section>

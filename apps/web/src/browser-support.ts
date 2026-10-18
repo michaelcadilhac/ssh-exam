@@ -1,5 +1,5 @@
 const requirement =
-  "This browser cannot run an exam. Open this page in desktop Chrome or Chromium with fullscreen, screen sharing and keyboard lock enabled.";
+  "This browser cannot run an exam. Open this page in desktop Chrome, Edge or Chromium with fullscreen, screen sharing and keyboard lock enabled.";
 
 function deniedByPolicy(feature: string) {
   const policy =

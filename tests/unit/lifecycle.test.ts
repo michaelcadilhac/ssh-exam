@@ -1,6 +1,7 @@
 import { it, expect } from "vitest";
 import { Store } from "../../apps/server/src/db.js";
 import { Lifecycle } from "../../apps/server/src/lifecycle.js";
+import { AgentCommandDisconnectedError } from "../../apps/server/src/agent.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -41,6 +42,61 @@ it("announces pause and disconnects before waiting for the class agent", async (
     rmSync(dir, { recursive: true, force: true });
   }
 });
+it.each([true, false])(
+  "audits an unconfirmed pause (disconnected=%s) without claiming an agent outage",
+  async (disconnected) => {
+    const dir = mkdtempSync(tmpdir() + "/pause-alert-");
+    const s = new Store(dir);
+    try {
+      s.db.exec(
+        "INSERT INTO exams VALUES('e','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline) VALUES('a','e','alice',1001,'ACTIVE','{}',1,9999999999999);",
+      );
+      let reject!: (error: Error) => void;
+      const life = new Lifecycle(
+        s,
+        {
+          call: () =>
+            new Promise((_, fail) => {
+              reject = fail;
+            }),
+        } as any,
+        new Monitoring(s),
+      );
+      life.onPaused = () => {
+        reject(
+          disconnected
+            ? new AgentCommandDisconnectedError("SSH connection ended")
+            : Error("Agent command rejected: do not expose secret-details"),
+        );
+      };
+      await life.lock("a", "Monitoring confirmation expired");
+      expect(s.attempt("a").state).toBe("LOCKED");
+      expect(s.attempt("a").deadline).toBe(9999999999999);
+      const alerts = s.db
+        .prepare("SELECT subject,body FROM outbox ORDER BY rowid")
+        .all() as any[];
+      expect(alerts.map((a) => a.subject)).toEqual(
+        disconnected
+          ? ["Exam interrupted: alice"]
+          : ["Exam interrupted: alice", "Exam pause confirmation pending"],
+      );
+      expect(alerts[0].body).toContain("Monitoring confirmation expired");
+      const audit = s.db
+        .prepare(
+          "SELECT detail FROM audit WHERE action='lock-acknowledgment-pending'",
+        )
+        .get() as any;
+      expect(JSON.parse(audit.detail)).toEqual({
+        generation: 1,
+        cause: disconnected ? "ssh-disconnected" : "command-failed",
+      });
+      expect(JSON.stringify({ alerts, audit })).not.toContain("secret-details");
+    } finally {
+      s.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
 it("reconciles a lost activation acknowledgment into a lock with the original deadline", async () => {
   const dir = mkdtempSync(tmpdir() + "/exam-reconcile-");
   const s = new Store(dir);

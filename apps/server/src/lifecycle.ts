@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { Store, now, hash, type Attempt } from "./db.js";
-import { Agent } from "./agent.js";
+import { Agent, AgentCommandDisconnectedError } from "./agent.js";
 import { Monitoring } from "./monitoring.js";
 // Collection metadata is immutable; connection bookkeeping is not part of the
 // submission. SSH replies and callbacks must compare the same public snapshot.
@@ -114,11 +114,8 @@ export class Lifecycle {
     });
     transaction();
     this.store.audit("gateway", "reauthentication-required", id);
-    const locking = this.agent.call("lock-attempt", {
-      id,
-      reason,
-      generation: this.store.attempt(id).generation,
-    });
+    const generation = this.store.attempt(id).generation;
+    const locking = this.agent.call("lock-attempt", { id, reason, generation });
     this.onPaused(this.store.attempt(id));
     await locking
       .then((remote) => {
@@ -131,12 +128,25 @@ export class Lifecycle {
             .run(id);
         }
       })
-      .catch(() =>
-        this.alert(
-          "Class agent unavailable",
-          `Attempt ${id} is locked at the gateway. Local execution lease must expire.`,
-        ),
-      );
+      .catch((error) => {
+        const disconnected = error instanceof AgentCommandDisconnectedError;
+        // Pausing deliberately closes student SSH, including pending command replies.
+        // Keep the uncertainty visible without misreporting that as an agent outage.
+        this.store.audit(
+          "gateway",
+          "lock-acknowledgment-pending",
+          id,
+          JSON.stringify({
+            generation,
+            cause: disconnected ? "ssh-disconnected" : "command-failed",
+          }),
+        );
+        if (!disconnected)
+          this.alert(
+            "Exam pause confirmation pending",
+            `${a.exam}: ${a.username}, attempt ${id}. Exam access is blocked at the gateway, but the class-server pause command was not confirmed. The local watchdog enforces expired execution leases. Review the authenticated dashboard and class-server status. A missing confirmation does not establish an agent outage.`,
+          );
+      });
   }
   async reconcile(id: string) {
     const remote = await this.agent.call("inspect-attempt", { id });

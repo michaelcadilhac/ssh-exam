@@ -18,6 +18,21 @@ This runtime qualification does not grant production deployment signoff. The Doc
 pins the official 26.11.1-bookworm-slim image by registry-verified manifest digest;
 the container build remains untested because no Docker daemon is available here.
 
+## Microsoft Edge qualification (2026-10-18)
+
+Genuine Microsoft Edge 155.0.4283.62 on Linux passed native fullscreen,
+Keyboard Lock and display capture, plus preflight with and without a webcam.
+The browser WASM SSH flow passed fixture MFA, practice/active terminal input,
+multiple panes and finishing. Network/recovery and window lifecycle checks passed;
+two collection-failure simulation tests initially timed out and passed on a traced
+rerun. No browser API overrides were used in the native capability tests.
+
+This used an isolated X11 display, automated permission approval, a synthetic camera
+and local SSH/MFA fixtures. It does not qualify Windows/macOS, physical camera/input
+behavior or actual DePaul phone approval. Browser admission remains based on
+capabilities and permissions, with actual grants checked during preflight; the Edge
+name does not bypass those requirements.
+
 ## Deployment qualification
 
 | Integration | Evidence here | Required qualification |
@@ -25,7 +40,7 @@ the container build remains untested because no Docker daemon is available here.
 | DePaul jump-host number matching | Disposable ssh2 host, including zero-prompt instruction round | Real authorized login, cancellation, rejection, timeout and safe instruction display; **untested** |
 | Separate class authentication, pins, four channels | Real loopback SSH transports; both host-key mismatch tests pass | Actual MaxSessions, forwarding policy and retained transport behavior |
 | Ubuntu/systemd/cgroup v2 guard | Native state/collector, real localhost OpenSSH route tests and machine-check contract tests | Root install on disposable target; all ordinary-access bypass, process/job quiescence, transport survival and resource-limit checks in SPEC §22.2–22.3 |
-| Fullscreen and Keyboard Lock | Chromium headless fullscreen; Keyboard Lock stub | Real Chrome/Chromium version and OS; separate user gestures, Escape, focus loss, application switching, keyboard layouts and editor shortcuts |
+| Fullscreen and Keyboard Lock | Chromium headless fullscreen; Keyboard Lock stub | Real Chrome/Edge/Chromium version and OS; separate user gestures, Escape, focus loss, application switching, keyboard layouts and editor shortcuts |
 | Screen and webcam permissions | Synthetic video tracks in browser tests | Entire-display selection rejection for tab/window, track loss, webcam override, independent cadence, clear readable images and credentials excluded during approved authentication |
 | Protected cutoff and recovery | Hostile filesystem collector tests | Background writer under real frozen cgroup, disk exhaustion, daemon/host restarts, export outage and restoration only after original deadline AND secured collection |
 | HTTPS, nginx, Docker and systemd | nginx syntax with temporary certificates | Real certificate/WebSocket path, Compose build/start/stop, non-root private-volume permissions and systemd startup; Docker daemon unavailable here |

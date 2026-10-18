@@ -194,6 +194,9 @@ for (const [index, missing] of [
     await expect(page.getByRole("alert")).toContainText(
       "This browser cannot run an exam",
     );
+    await expect(page.getByRole("alert")).toContainText(
+      "desktop Chrome, Edge or Chromium",
+    );
     await expect(
       page.getByRole("button", { name: "Start SSH sign-in" }),
     ).toHaveCount(0);
@@ -899,7 +902,7 @@ test("preflight errors stay visible inside fullscreen and keyboard lock can be r
   await lock.click();
   const error = page.getByRole("dialog", { name: "Keyboard lock failed" });
   await expect(error).toBeVisible();
-  await expect(error).toContainText("standalone desktop Chrome or Chromium");
+  await expect(error).toContainText("standalone desktop Chrome, Edge or Chromium");
   await expect(error).toContainText("lock() request could not be registered.");
   await error.screenshot({
     path: test.info().outputPath("fullscreen-keyboard-error.png"),

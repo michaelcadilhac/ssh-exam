@@ -2,6 +2,13 @@ import { readFileSync } from "node:fs";
 import { randomUUID, sign, verify } from "node:crypto";
 import type { Config } from "../../../packages/config/index.js";
 import type { Store } from "./db.js";
+// Losing the student command transport is not evidence of a class-agent outage.
+export class AgentCommandDisconnectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AgentCommandDisconnectedError";
+  }
+}
 export interface AgentSession {
   username: string;
   alive: boolean;
@@ -102,7 +109,7 @@ export class Agent {
       }
       return result as T;
     }
-    throw Error(
+    throw new AgentCommandDisconnectedError(
       "Reconnect student SSH before this operation; deadlines are enforced locally",
     );
   }
