@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""Install a verified agent bundle and the normal read-only server filesystem view."""
+import argparse
+import datetime
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
+SERVICES = ['exam-agent.service', 'exam-deadline-watchdog.service', 'exam-reconcile.timer']
+TARGETS = {'exam-agent': '/usr/local/sbin/exam-agent', 'examctl': '/usr/local/sbin/examctl',
+           'exam-login': '/usr/local/libexec/exam-login', 'exam-info': '/usr/local/bin/exam-info',
+           'enroll-accounts': '/usr/local/sbin/exam-enroll-accounts'}
+
+
+def run(*args):
+    return subprocess.run(args, check=True, text=True, capture_output=True).stdout.strip()
+
+
+def drained(state):
+    data = json.loads((state / 'state.json').read_text())
+    if any(a['state'] not in ['COMPLETED', 'CANCELLED_BEFORE_START'] or
+           (a.get('start') and a.get('access_state') not in ['RELEASED', 'OVERRIDDEN'])
+           for a in data.get('attempts', {}).values()):
+        raise ValueError('Drain all exams and preflights, and restore account restrictions first')
+    if any(json.loads(p.read_text()).get('phase') != 'NORMAL' for p in (state / 'account-policy').glob('*.json')):
+        raise ValueError('Unresolved account restrictions')
+    if any(Path('/sys/fs/cgroup/exam.slice').glob('exam-*.*')):
+        raise ValueError('Exam workload cgroups still exist')
+    return [(a['id'], a.get('start'), a.get('original_deadline'), a.get('deadline'), a.get('checksum'))
+            for a in data.get('attempts', {}).values() if a.get('start')]
+
+
+def socket_directories():
+    directories = set()
+    for line in Path('/proc/net/unix').read_text().splitlines():
+        fields = line.split()
+        if len(fields) < 8 or not fields[7].startswith('/'):
+            continue
+        path = Path(' '.join(fields[7:])).resolve()
+        if any(path.is_relative_to(base) for base in ['/run', '/tmp', '/var/tmp', '/home', '/root']):
+            continue
+        directory = path.parent
+        # Service data only; never silently hide programs or public configuration.
+        if not directory.is_relative_to('/var') or directory == Path('/var'):
+            raise ValueError('Review unexpected host service socket: ' + str(path))
+        directories.add(str(directory))
+    return directories
+
+
+def atomic(path, data, mode=0o600):
+    fd, name = tempfile.mkstemp(prefix='.exam-install-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'wb') as file:
+            file.write(data)
+            file.flush()
+            os.fsync(file.fileno())
+        os.chmod(name, mode)
+        os.chown(name, 0, 0)
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bundle', type=Path, required=True)
+    parser.add_argument('--apply', action='store_true')
+    args = parser.parse_args()
+    if os.geteuid() != 0:
+        raise SystemExit('Root installation required')
+    os.umask(0o077)
+    checks = json.loads((args.bundle / 'checksums.json').read_text())
+    for name in TARGETS:
+        if hashlib.sha256((args.bundle / name).read_bytes()).hexdigest() != checks[name]:
+            raise ValueError('Bundle checksum mismatch: ' + name)
+    config_path = Path('/etc/exam-agent/agent.json')
+    config = json.loads(config_path.read_text())
+    state = Path(config['state'])
+    before = drained(state)
+    hidden = set(config.get('host_filesystem_hidden_paths', [])) | socket_directories()
+    if str(Path(config['work'])).startswith('/srv/exam-workspace/'):
+        hidden.add('/srv/exam-workspace')
+    hidden.update(str(p) for p in Path('/opt').glob('ssh-exam-*') if p.is_dir())
+    proposed = {**config, 'rootfs': '/', 'host_filesystem': True, 'host_filesystem_hidden_paths': sorted(hidden)}
+    print(json.dumps({'filesystem': 'normal host, read-only', 'hiddenPaths': sorted(hidden), 'apply': args.apply}), flush=True)
+    if not args.apply:
+        return
+    unitdir = Path('/etc/systemd/system')
+    old_mounts = []
+    for path in unitdir.glob('*.mount'):
+        if path.read_text().startswith('# Managed by ssh-exam install-host-toolchain\n'):
+            where = next(line[6:] for line in path.read_text().splitlines() if line.startswith('Where='))
+            old_mounts.append((where, path))
+    dependencies = [unitdir / (name + '.d') / 'host-toolchain.conf' for name in
+                    ['exam-agent.service', 'exam-deadline-watchdog.service', 'exam-reconcile.service']]
+    backups = Path('/var/backups/ssh-exam')
+    backups.mkdir(mode=0o700, parents=True, exist_ok=True)
+    backup = Path(tempfile.mkdtemp(prefix=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-host-filesystem-', dir=backups))
+    files = [config_path, *map(Path, TARGETS.values()), *dependencies, *(path for _, path in old_mounts)]
+    originals = {}
+    for index, path in enumerate(files):
+        saved = backup / str(index)
+        if path.exists():
+            shutil.copy2(path, saved)
+            originals[str(path)] = {'file': str(index), 'mode': path.stat().st_mode & 0o777}
+        else:
+            originals[str(path)] = None
+    (backup / 'files.json').write_text(json.dumps(originals, indent=2))
+    administrator = (run('getent', 'passwd', 'mcadilha'), run('id', '-G', 'mcadilha'))
+    stopped = []
+    mutated = False
+    try:
+        with open(state / 'lock', 'a+') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            if drained(state) != before:
+                raise ValueError('Attempt timing changed during staging')
+            for service in SERVICES:
+                if subprocess.run(['systemctl', 'is-active', '--quiet', service]).returncode == 0:
+                    run('systemctl', 'stop', service)
+                    stopped.append(service)
+        mutated = True
+        for name, destination in TARGETS.items():
+            atomic(Path(destination), (args.bundle / name).read_bytes(), 0o755)
+        # Required destinations for bubblewrap; no existing account home is changed.
+        for name in ['/work', '/materials', '/home/student']:
+            path = Path(name)
+            if not path.exists():
+                path.mkdir(mode=0o755)
+                path.chmod(0o755)
+            if not path.is_dir() or path.is_symlink():
+                raise ValueError('Unsafe mount destination: ' + name)
+        atomic(config_path, (json.dumps(proposed, indent=2) + '\n').encode())
+        for path in dependencies:
+            path.unlink(missing_ok=True)
+        run('systemctl', 'daemon-reload')
+        for _, path in sorted(old_mounts, reverse=True):
+            run('systemctl', 'stop', path.name)
+            path.unlink()
+        run('systemctl', 'daemon-reload')
+        health = json.loads(run('/usr/local/sbin/examctl', 'health'))
+        if not health['ready'] or not health['production_ready'] or not health.get('host_filesystem'):
+            raise ValueError('New filesystem did not qualify: ' + json.dumps(health))
+        if drained(state) != before or administrator != (run('getent', 'passwd', 'mcadilha'), run('id', '-G', 'mcadilha')):
+            raise ValueError('Attempt timing or administrator identity changed')
+        if 'NOPASSWD: ALL' not in run('sudo', '-n', '-l', '-U', 'mcadilha'):
+            raise ValueError('Administrator recovery access changed')
+        (backup / 'receipt.json').write_text(json.dumps({'health': health, 'checksums': checks, 'attemptsPreserved': True, 'administratorUnchanged': True}, indent=2))
+        print(json.dumps({'installed': True, 'backup': str(backup), 'health': health}), flush=True)
+    except BaseException:
+        if not mutated:
+            raise
+        for path, saved in originals.items():
+            if saved is None:
+                Path(path).unlink(missing_ok=True)
+            else:
+                atomic(Path(path), (backup / saved['file']).read_bytes(), saved['mode'])
+        run('systemctl', 'daemon-reload')
+        for _, path in sorted(old_mounts):
+            run('systemctl', 'start', path.name)
+        raise
+    finally:
+        for service in reversed(stopped):
+            run('systemctl', 'start', service)
+
+
+if __name__ == '__main__':
+    main()

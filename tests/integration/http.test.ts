@@ -701,3 +701,86 @@ it("completes login-only WebSocket challenges without enrollment or exam-agent a
     rmSync(dir, { recursive: true, force: true });
   }
 }, 15000);
+
+it("imports approved uppercase accounts without changing their case", async () => {
+  const dir = mkdtempSync(tmpdir() + "/exam-uppercase-import-");
+  const { app, store } = await createApp({
+    mode: "development",
+    origin: "http://localhost:3000",
+    data: dir,
+    port: 3000,
+    jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
+    class: { host: "localhost", port: 2223, pins: ["0".repeat(64)] },
+    agent: {
+      id: "class",
+      signingKey: "/missing",
+      callbackPublicKey: "/missing",
+    },
+    maintenance: false,
+  });
+  try {
+    store.db.prepare("INSERT INTO exams VALUES('e','{}')").run();
+    store.db
+      .prepare("INSERT INTO agent_snapshot VALUES(?,?,?)")
+      .run(
+        "class",
+        1,
+        JSON.stringify({ accounts: { STUDENT31: 1001 }, health: {} }),
+      );
+    const session = store.session("admin", "instructor", null);
+    const headers = {
+      cookie: `session=${session.token}`,
+      origin: "http://localhost:3000",
+      "x-csrf-token": session.csrf,
+    };
+    const preview = await app.inject({
+      method: "POST",
+      url: "/api/admin/exams/e/roster/import-preview",
+      headers,
+      payload: {
+        text: "username,require_webcam,duration_minutes\nSTUDENT31,true,90",
+      },
+    });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.json().rows).toMatchObject([
+      { username: "STUDENT31", uid: 0, webcam: true, duration: 5400 },
+    ]);
+    const confirmed = await app.inject({
+      method: "POST",
+      url: "/api/admin/exams/e/roster/import-confirm",
+      headers,
+      payload: { id: preview.json().id },
+    });
+    expect(confirmed.statusCode).toBe(200);
+    expect(
+      store.db
+        .prepare(
+          "SELECT username, uid, webcam, duration FROM enrollments WHERE exam='e'",
+        )
+        .all(),
+    ).toEqual([
+      { username: "STUDENT31", uid: 0, webcam: 1, duration: 5400 },
+    ]);
+    const wrongCase = await app.inject({
+      method: "POST",
+      url: "/api/admin/exams/e/roster/import-preview",
+      headers,
+      payload: { text: "username\nstudent31" },
+    });
+    expect(wrongCase.statusCode).toBe(200);
+    expect(wrongCase.json().rows[0].username).toBe("student31");
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/api/admin/exams/e/roster/import-preview",
+      headers,
+      payload: { text: "username\nSTUDENT31\nBAD.NAME" },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json().error).toContain(
+      'Row 3: invalid username "BAD.NAME"',
+    );
+  } finally {
+    await app.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

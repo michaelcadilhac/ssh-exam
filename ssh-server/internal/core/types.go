@@ -25,6 +25,8 @@ type Account struct {
 	Home        string `json:"home"`
 }
 type Config struct {
+	HostFilesystem            bool               `json:"host_filesystem,omitempty"`
+	HostFilesystemHiddenPaths []string           `json:"host_filesystem_hidden_paths,omitempty"`
 	HandoffCA                 string             `json:"handoff_ca,omitempty"`
 	HomeConfigPaths           []string           `json:"home_config_paths,omitempty"`
 	TemporaryAccountPolicy    bool               `json:"temporary_account_policy,omitempty"`
@@ -214,6 +216,9 @@ func LoadConfig(p string) (Config, error) {
 	}
 	if (len(c.Accounts) == 0 && !c.TemporaryAccountPolicy) || !filepath.IsAbs(c.State) || !filepath.IsAbs(c.Work) || !filepath.IsAbs(c.Rootfs) {
 		return c, errors.New("absolute paths and locally approved accounts required")
+	}
+	if err := validateHostFilesystem(c); err != nil {
+		return c, err
 	}
 	if c.TemporaryAccountPolicy {
 		if c.FunctionalTestAccount != "" {

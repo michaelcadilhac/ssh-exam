@@ -201,6 +201,14 @@ func (e *Engine) local(c *net.UnixConn) {
 		if a.Transport != identity || a.Username != name {
 			return errors.New("attempt transport mismatch")
 		}
+		if e.Config.HostFilesystem && !e.hostAccess(a) {
+			if issues := hostFilesystemIssues(e.Config); len(issues) != 0 {
+				return fmt.Errorf("host filesystem isolation unavailable: %v", issues)
+			}
+			if err := validateLiveHome(account); err != nil {
+				return err
+			}
+		}
 		practice := cap.Purpose == "practice"
 		if err := workloadAllowed(a, cap.Purpose); err != nil {
 			return err
@@ -245,6 +253,9 @@ func (e *Engine) local(c *net.UnixConn) {
 			return err
 		}
 		args := sandboxWorkloadArgs(unit, name, account, work, a, cap.Pane, practice, e.Config, temporary)
+		if len(args) == 0 && !e.hostAccess(a) {
+			return errors.New("application state cannot be safely isolated in this home")
+		}
 		if e.hostAccess(a) {
 			// Explicit trusted-administrator exception: the system manager starts
 			// a normal host account session, independently of agent sandboxing.

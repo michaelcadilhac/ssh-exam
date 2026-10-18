@@ -89,7 +89,7 @@ export function StudentImport({
             <input
               required
               disabled={busy}
-              pattern="[a-z][a-z0-9_\-]{0,31}"
+              pattern="[a-zA-Z][a-zA-Z0-9_\-]{0,31}"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />

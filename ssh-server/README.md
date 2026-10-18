@@ -58,6 +58,63 @@ ncurses-term. Include /usr/local/bin/exam-info. It must contain no host homes/se
 sockets, privileged hooks or future materials. Test chosen tools/TERM inside the actual sandbox.
 Do not copy the live host root. Version the rootfs and template installation inputs.
 
+### Normal server filesystem (deployed student environment)
+
+Use `"host_filesystem": true` with `"rootfs": "/"`. The student receives a read-only
+view of the normal server filesystem, including installed programs, libraries,
+headers, modules, public configuration and documentation. No software allowlist or
+second package installation is needed. The legacy separate `rootfs` mode remains
+available for existing installations.
+
+The actual student home is mounted read-only at its original `/home/...` path (or
+`/home/student` for homes elsewhere). Shell/editor configuration is read normally;
+application cache, data, history, runtime and editor state use disposable storage.
+Other homes are hidden. `/work` is the writable attempt directory; `/materials` is
+only the active exam's read-only material. `/tmp` and `/var/tmp` are private to the
+attempt/phase. PID, network, IPC, UTS and cgroup namespaces remain isolated, `/proc`
+and `/dev` are private, and `/sys` is hidden. Student capabilities remain zero.
+
+Host service sockets need separate protection: read-only mounts still allow UNIX
+socket connections. `/run`, agent configuration/state, protected storage and work
+bases are hidden. Root-only `host_filesystem_hidden_paths` lists additional private
+exam installation trees and site-specific service socket directories. Readiness and
+every new pane check `/proc/net/unix` and reject uncovered host service sockets.
+Sockets under ordinary `/var/run` aliases resolve to the hidden `/run`. A live host
+socket in the student's home blocks admission; finish quiescing its owner first.
+Do not enable new host services during exams without reviewing their socket paths.
+
+After building the native binaries, stage a bundle containing `exam-agent`,
+`examctl`, `exam-login`, `exam-info`, `enroll-accounts` and a `checksums.json` mapping
+those names to SHA-256 values. On the class server run:
+
+    sudo ./scripts/install-host-filesystem --bundle /path/to/bundle
+    sudo ./scripts/install-host-filesystem --bundle /path/to/bundle --apply
+
+The default is a dry run. Installation requires all exams and preflights drained,
+account restrictions restored and no remaining workload cgroups. It stops admission
+under the state lock, backs up binaries/configuration, installs the verified bundle,
+records service socket exclusions, and removes the earlier per-toolchain mounts and
+dependencies. No student account, sudo setting, deadline or submission is changed.
+Failures restore the previous configuration, binaries, mounts and services. Successful
+installation prints a root-private `/var/backups/ssh-exam/*-host-filesystem-*` backup
+containing `files.json` and a qualification receipt. To roll back later, first drain
+attempts and stop admission/watchdog/reconciliation; restore the numbered files using
+`files.json` (remove paths recorded as null), reload systemd, restore any recorded
+mount units parent first, then restart the services. Never restore old attempt state.
+
+Qualify the installed environment without enrolling a real student:
+
+    go test -c -o /tmp/exam-core.test ./internal/core
+    sudo env EXAM_TOOLCHAIN_ROOTFS=/ EXAM_TOOLCHAIN_CONFIG=/etc/exam-agent/agent.json /tmp/exam-core.test -test.run '^TestInstalledStudentToolchain$' -test.v
+
+The test uses an unused unprivileged UID and the real launcher to exercise GCC/G++,
+GDB, Python, Java, editors, public commands, ordinary home reads, read-only home and
+software, private temporary storage and zero capabilities. Also run it in a transient
+service matching the agent's hardening settings. The administrator sandbox continues
+using its unrestricted host environment.
+
+The following rootfs-building instructions apply to the legacy separate-rootfs mode.
+
 Pre-create the bind mount destinations before mounting the rootfs read-only:
 
     sudo install -d -m 0755 /srv/exam-workspace/rootfs/home/student /srv/exam-workspace/rootfs/work /srv/exam-workspace/rootfs/materials /srv/exam-workspace/rootfs/tmp /srv/exam-workspace/rootfs/var/tmp

@@ -18,9 +18,11 @@ export function parseRoster(
     return validate(
       text
         .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((s) => ({ username: username.parse(s) })),
+        .map((s, i) => ({ value: s.trim(), line: i + 1 }))
+        .filter(({ value }) => value)
+        .map(({ value, line }) => ({
+          username: parseUsername(value, `Line ${line}`),
+        })),
     );
   const table = parse(text, {
     bom: true,
@@ -30,6 +32,14 @@ export function parseRoster(
     max_record_size: 8192,
   }) as string[][];
   return decodeTable(table);
+}
+function parseUsername(value: string, location: string): string {
+  const result = username.safeParse(value);
+  if (!result.success)
+    throw Error(
+      `${location}: invalid username ${JSON.stringify(value)}. ${result.error.issues[0].message}`,
+    );
+  return result.data;
 }
 function decodeTable(table: string[][]): RosterRow[] {
   if (!table.length) throw Error("CSV is empty");
@@ -44,7 +54,9 @@ function decodeTable(table: string[][]): RosterRow[] {
   return validate(
     table.map((cells, i) => {
       const item = Object.fromEntries(headers.map((h, j) => [h, cells[j]]));
-      const row: RosterRow = { username: username.parse(item.username) };
+      const row: RosterRow = {
+        username: parseUsername(item.username, `Row ${i + 2}`),
+      };
       if ("require_webcam" in item) {
         const v = item.require_webcam.toLowerCase();
         if (["", "inherit"].includes(v)) row.webcam = null;

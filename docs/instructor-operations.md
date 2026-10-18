@@ -65,6 +65,9 @@ the student's SSH login, before preflight. Enrollment itself never provisions a
 server account or changes its access policy.
 
 CSV upload supports headers `username`, `duration_minutes`, `require_webcam`.
+Usernames preserve capitalization and must match the approved course-server account exactly.
+They contain 1–32 characters: an initial letter followed by letters, digits, underscores,
+or hyphens. Invalid usernames are reported with their row number and value.
 Missing optional columns stay unchanged;
 blank/inherit duration/webcam restores the exam default. Webcam accepts true/yes/1 or
 false/no/0; duration is 1–360 whole minutes. Preview, then Confirm; imports are transactional,
@@ -101,7 +104,6 @@ outside the dashboard. Monitoring expires after 60 days; archives/receipts have 
 Enable optional desktop/sound alerts while the dashboard is open. Test actual SMTP receipt
 before production. Signed callback failures and the durable email outbox retain recoverability.
 Alert links require normal authentication and never expose images or perform an action on GET.
-
 
 Interface previews using disposable test data:
 [desktop](screenshots/admin-redesign-desktop.png) ·

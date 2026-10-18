@@ -23,18 +23,24 @@ The reviewed course policy skips pam_systemd placement for managed SSH transport
 alternate local/job/user-service paths. Ordinary SSH commands/external SFTP use recorded original
 shells outside attempts. Forwarding stays disabled throughout course enrollment.
 
-The administrator builds a separate toolchain rootfs; mounting host root read-only would expose
-secrets/sockets/future content. /work persists and is collected; /materials is current read-only
+The deployed student environment uses the normal host filesystem read-only, with
+writable per-attempt work and disposable application state, the actual home read-only,
+private temporary storage and private proc/dev/network/PID/IPC/UTS/cgroup namespaces.
+It hides other homes, sysfs, host service sockets and private agent/exam storage;
+root-configured exclusions cover site-specific socket and private installation paths.
+Readiness and every pane reject uncovered host UNIX sockets. All normally accessible
+installed software/configuration remains available without a package allowlist.
+The legacy separate-rootfs mode remains supported. /work persists and is collected; /materials is current read-only
 exam material. Private `/tmp` and `/var/tmp` use separate root-controlled, disk-backed
 per-attempt directories shared across panes, with separate practice/exam pairs and
 `TMPDIR=/tmp`. They survive authorized reconnection/agent restart but are not collected.
 After verified collection and workload termination (or confirmed preflight cancellation),
 link-safe cleanup removes them. Parent directories are private `0700`; bound leaves
 are root-owned sticky `1777`. The trusted administrator launch path binds the same
-private temporary directories while retaining its existing home/access policy. HOME contains read-only copies of approved startup preferences,
-never live host sockets; home edits do not persist. Per-pane network namespaces have no external
+private temporary directories while retaining its existing home/access policy. Normal filesystem mode exposes the actual student home read-only; legacy rootfs mode
+uses copied startup preferences. Neither exposes live home sockets or persists home edits. Per-pane network namespaces have no external
 interface. Shared loopback between panes is not implemented. Debian/systemd/cgroup v2 is the
-target, whose privileged integration remains untested here.
+target; installed-environment qualification is recorded in `docs/toolchain-test-results.md`.
 
 Collection checks frozen cgroup.events, traverses through os.Root without following symlinks,
 and allows 10,000 entries, depth 32, 32 MiB per regular file and 64 MiB total logical bytes.

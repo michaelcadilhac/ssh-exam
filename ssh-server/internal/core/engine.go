@@ -60,6 +60,7 @@ func (e *Engine) productionReady() (bool, []string) {
 	}
 	missing = append(missing, temporaryMountIssues(e.Config.Rootfs)...)
 	missing = append(missing, homeMountIssues(e.Config.Rootfs)...)
+	missing = append(missing, hostFilesystemIssues(e.Config)...)
 	if os.Geteuid() != 0 {
 		missing = append(missing, "agent must run as root")
 	}
@@ -152,7 +153,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseRoster, exportRoster } from "../../apps/server/src/roster.js";
+import {
+  parseRoster,
+  parseRosterAsync,
+  exportRoster,
+} from "../../apps/server/src/roster.js";
 describe("roster import", () => {
   it("resolves explicit false separately from inherit", () => {
     expect(
@@ -87,4 +91,49 @@ it("exports only the supported fields and round-trips enrollment settings", () =
   expect(parseRoster(csv)).toEqual([
     { username: "a", webcam: false, duration: 8100 },
   ]);
+});
+
+describe.each([
+  ["synchronous", parseRoster],
+  ["streaming", parseRosterAsync],
+] as const)("%s roster username validation", (_name, parse) => {
+  it("preserves uppercase and mixed-case account identities", async () => {
+    expect(
+      await parse(
+        "username,require_webcam,duration_minutes\nSTUDENT31,true,90\nStudent_2,false,90\nstudent_2,true,90",
+      ),
+    ).toEqual([
+      { username: "STUDENT31", webcam: true, duration: 5400 },
+      { username: "Student_2", webcam: false, duration: 5400 },
+      { username: "student_2", webcam: true, duration: 5400 },
+    ]);
+  });
+  it.each([
+    "bad.name",
+    "1student",
+    "STUDENT@school.edu",
+    "../student",
+    "A".repeat(33),
+  ])("reports the row and value for invalid username %s", async (value) => {
+    await expect(
+      Promise.resolve().then(() => parse(`username\nGOOD\n${value}`)),
+    ).rejects.toThrow(
+      `Row 3: invalid username ${JSON.stringify(value)}. Usernames must be 1–32 characters`,
+    );
+  });
+  it("keeps original line numbers when blank lines are skipped", async () => {
+    await expect(
+      Promise.resolve().then(() => parse("GOOD\n\nBAD.NAME", "lines")),
+    ).rejects.toThrow('Line 3: invalid username "BAD.NAME"');
+  });
+  it.each(["root", "ROOT", "Daemon"])(
+    "rejects reserved identity %s",
+    async (value) => {
+      await expect(
+        Promise.resolve().then(() => parse(`username\n${value}`)),
+      ).rejects.toThrow(
+        `Row 2: invalid username ${JSON.stringify(value)}. Privileged/service account forbidden`,
+      );
+    },
+  );
 });

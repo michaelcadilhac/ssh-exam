@@ -40,6 +40,11 @@ func (e *Engine) prepareHome(a *Attempt) error {
 	if !ok {
 		return errors.New("home account unavailable")
 	}
+	if e.Config.HostFilesystem {
+		if err := validateLiveHome(account); err != nil {
+			return err
+		}
+	}
 	parent := filepath.Join(e.Config.State, "homes")
 	if err := os.MkdirAll(parent, 0700); err != nil {
 		return err

@@ -5,7 +5,7 @@ if os.geteuid()!=0:raise SystemExit('Root approval required')
 p=pathlib.Path('/etc/exam-agent/agent.json');c=json.loads(p.read_text());seen=set()
 if c.get('temporary_account_policy'):raise SystemExit('Permanent enrollment is disabled: enroll students in the webapp; temporary policy is applied only at exam start')
 for name in sys.argv[1:]:
- if not re.fullmatch(r'[a-z][a-z0-9_-]{0,31}',name):raise SystemExit('Invalid username')
+ if not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}',name):raise SystemExit('Invalid username')
  a=pwd.getpwnam(name);groups={grp.getgrgid(g).gr_name for g in os.getgrouplist(name,a.pw_gid)}
  if a.pw_uid<1000 or a.pw_uid in seen or groups & {'root','sudo','wheel','docker','lxd','adm','libvirt','disk'}:raise SystemExit('Privileged or duplicate account rejected')
  if pathlib.Path('/usr/bin/sudo').exists():

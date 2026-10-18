@@ -25,6 +25,9 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .getByRole("dialog")
     .getByRole("button", { name: "Begin exam", exact: true })
     .click();
+  await expect(
+    page.getByRole("button", { name: "Finish exam", exact: true }),
+  ).toBeVisible();
   const initial = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(initial.deadline - initial.start).toBe(300000);

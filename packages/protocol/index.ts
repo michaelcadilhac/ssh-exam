@@ -1,7 +1,10 @@
 import { z } from "zod";
 export const username = z
   .string()
-  .regex(/^[a-z][a-z0-9_-]{0,31}$/)
+  .regex(
+    /^[a-zA-Z][a-zA-Z0-9_-]{0,31}$/,
+    "Usernames must be 1–32 characters, start with a letter, and contain only letters, digits, underscores, or hyphens.",
+  )
   .refine(
     (v) =>
       ![
@@ -21,7 +24,7 @@ export const username = z
         "backup",
         "nobody",
         "systemd-network",
-      ].includes(v),
+      ].includes(v.toLowerCase()),
     "Privileged/service account forbidden",
   );
 export const examSchema = z
