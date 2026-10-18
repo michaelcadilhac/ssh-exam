@@ -1,9 +1,11 @@
 # Temporary account policy validation — 2026-10-17
 
-The candidate passed the application and isolated Linux checks below. The actual
-csc-sys SSSD provider has also passed three apply/remove cycles using an equivalent
-shell alias on the administrator account. Production admission remains in maintenance
-until the matching agent and web release are installed and verified.
+Release `3740e5f` is deployed on marco and csc-sys. Public HTTPS readiness reports
+`ready: true`, `productionReady: true`, `maintenance: false`, notifications enabled.
+The live class agent advertises temporary account policy, read-only home and disposable
+application state. mcadilha retains its exact ordinary shell, groups and sudo access;
+the explicit unrestricted administrator sandbox exception remains configured. Existing
+exams, enrollments, identities, attempt timestamps and checksums were preserved.
 
 ## Automated checks
 
@@ -79,3 +81,43 @@ Provider baseline backup:
 `/var/backups/ssh-exam/20261018T040426Z-sssd-local-view-xeer_1c2` on csc-sys.
 Keep mcadilha as the explicit administrator sandbox exception. Never substitute
 historical permanent enrollment for temporary per-attempt policy.
+
+## Production deployment receipt
+
+- Web source: `3740e5f`; additive metadata migration 9. Runtime image:
+  `ssh-exam-workspace:temporary-accounts-3740e5f`, also tagged `1.0.0` for the existing
+  systemd/Compose service convention. Image digest:
+  `sha256:76bcd07f62275d62e57fae63ad47834017350c13051674c7ab3099e8d00a5d79`.
+- Native agent SHA-256:
+  `50d5fafed0ceafc936fb7638232fce9f3447e6d2d45be180a7a0539a75d03ce0`.
+  All four binaries plus the policy, isolation-check and signed bootstrap helpers were
+  verified against the candidate checksums and installed root-owned. The rootfs has
+  real `home`, `run` and `usr/local/bin` mount targets. Both agent services and the
+  independent reconcile timer are active.
+- `temporary_account_policy` and qualified `temporaryAccountPolicy` are enabled.
+  The sole explicit account entry remains mcadilha with `sandbox_only: true`;
+  students are discovered from verified SSH peers and approved by signed exam-scoped
+  enrollment authorization. No permanent student allowlist or shell enrollment was added.
+- ppanagop remains enrolled in `test`. Its existing UID 0 roster marker is intentional:
+  successful signed SSH admission resolves the actual UID 1084959789. It was not
+  replaced with an administrator-supplied identity during deployment.
+- All 25 main Linux assertions and two setup-recovery assertions passed against the
+  deployed candidate. The disposable guest's policy journals were verified NORMAL,
+  all started holds released and its original account policy restored before stopping it.
+- The real guest deadline test initially encountered an absent guest-only timing fixture;
+  it correctly remained held. Starting the signed fixture recovered the protected
+  collection, and the complete suite was rerun successfully. Production uses the
+  existing authenticated outbound HTTPS callbacks, not that guest fixture.
+
+Root-private recovery backups and receipts:
+
+- marco: `/var/backups/ssh-exam/20261018T040313Z-temporary-account-migration-hocs_j5z`
+- csc-sys native/config: `/var/backups/ssh-exam/20261018T041800Z-temporary-policy-z0hd6y82`
+- csc-sys provider baseline: `/var/backups/ssh-exam/20261018T040426Z-sssd-local-view-xeer_1c2`
+
+Never restore inspection state snapshots over newer attempt deadlines or secured
+submissions. Once a temporary policy is active, use the recovery runbook and drain/
+restore it before any binary rollback. Students must reload the site before retrying,
+so their browser loads the matching secure-access/fresh-sign-in flow. A complete real
+student phone-MFA login remains a student-performed check; no student credentials were
+obtained or simulated during deployment.
