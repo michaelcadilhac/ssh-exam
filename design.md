@@ -765,6 +765,7 @@ Treat the working tree as hostile filesystem input. Implement and test collectio
 - Do not chown/chmod outside the verified tree through symlink traversal or recursive path races.
 - Preserve enough regular-file metadata for grading, but do not preserve setuid bits, arbitrary ownership, or privileged filesystem metadata in the exported archive.
 - Never silently truncate a submission or claim success after omitting unexpected regular files. Record omissions/errors and alert the instructor.
+- Keep every omission in the immutable manifest. Suppress omission email only for the collector's exact symlink-omission record for an Emacs `.#NAME` lock whose sibling `NAME` is present in the collected regular-file inventory. This is a notification filter, not permission to follow a link or discard file data. Orphan locks, other symlinks, special files (even with lock-like names), unknown omission reasons and mixed collections with any other omission still alert. Collection-failure alerts are independent and must never be suppressed by this filter.
 
 A privileged process may control the snapshot, but copying/archiving student data should use the narrowest readable view/privilege practical. Do not use a root `tar` invocation over unvalidated student-controlled paths as the complete solution.
 

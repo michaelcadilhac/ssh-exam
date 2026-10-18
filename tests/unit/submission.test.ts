@@ -336,3 +336,111 @@ it.each(["SSH", "callback"])(
     }
   },
 );
+
+it.each([
+  { name: "no omissions", omissions: [], alert: false },
+  {
+    name: "Emacs lock for saved file",
+    omissions: [".#answer.txt: symlink omitted (never dereferenced)"],
+    alert: false,
+  },
+  {
+    name: "nested Emacs lock",
+    omissions: ["src/.#answer.txt: symlink omitted (never dereferenced)"],
+    file: "src/answer.txt",
+    alert: false,
+  },
+  {
+    name: "ordinary symlink",
+    omissions: ["answer-link: symlink omitted (never dereferenced)"],
+    alert: true,
+  },
+  {
+    name: "lock-looking special file",
+    omissions: [".#answer.txt: special file omitted"],
+    alert: true,
+  },
+  {
+    name: "lock without saved counterpart",
+    omissions: [".#missing.txt: symlink omitted (never dereferenced)"],
+    alert: true,
+  },
+  {
+    name: "counterpart in different directory",
+    omissions: ["src/.#answer.txt: symlink omitted (never dereferenced)"],
+    alert: true,
+  },
+  {
+    name: "unknown omission reason",
+    omissions: [".#answer.txt: unreadable file omitted"],
+    alert: true,
+  },
+  {
+    name: "mixed lock and socket",
+    omissions: [
+      ".#answer.txt: symlink omitted (never dereferenced)",
+      "editor.sock: special file omitted",
+    ],
+    alert: true,
+  },
+])("omission email policy: $name", ({ omissions, alert, file }) => {
+  const t = setup();
+  try {
+    t.collect();
+    const manifest = t.manifest();
+    if (file) manifest.files[0].path = file;
+    manifest.omissions = [...omissions];
+    const original = JSON.stringify(manifest);
+    t.life().acceptRemote(t.remote, manifest);
+    const notifications = t
+      .store()
+      .db.prepare("SELECT subject FROM outbox")
+      .all() as any[];
+    expect(notifications.map((n) => n.subject)).toEqual(
+      alert ? ["Submission entries omitted"] : [],
+    );
+    expect(t.store().attempt("a")).toMatchObject({
+      state: "COMPLETED",
+      protected: 1,
+    });
+    expect(JSON.stringify(manifest)).toBe(original);
+    const receipt = readFileSync(t.dir + "/receipts/a.manifest.json", "utf8");
+    expect(JSON.parse(receipt).omissions).toEqual(omissions);
+    t.restart();
+    t.life().acceptRemote(t.remote, manifest);
+    expect(readFileSync(t.dir + "/receipts/a.manifest.json", "utf8")).toBe(
+      receipt,
+    );
+    expect(
+      t.store().db.prepare("SELECT count(*) AS count FROM outbox").get(),
+    ).toEqual({ count: alert ? 1 : 0 });
+  } finally {
+    t.close();
+  }
+});
+
+it("editor lock omissions do not suppress collection failure alerts", () => {
+  const t = setup();
+  try {
+    t.collect();
+    t.remote.state = "COLLECTION_FAILED";
+    t.remote.errors = ["workload cleanup failed"];
+    const manifest = t.manifest();
+    manifest.omissions = [".#answer.txt: symlink omitted (never dereferenced)"];
+    t.life().acceptRemote(t.remote, manifest);
+    expect(t.store().attempt("a")).toMatchObject({
+      state: "COLLECTION_FAILED",
+      protected: 1,
+      access_state: "HELD",
+    });
+    expect(t.store().db.prepare("SELECT subject FROM outbox").all()).toEqual([
+      { subject: "Collection requires recovery" },
+    ]);
+    expect(
+      JSON.parse(readFileSync(t.dir + "/receipts/a.manifest.json", "utf8"))
+        .omissions,
+    ).toEqual(manifest.omissions);
+  } finally {
+    t.close();
+  }
+});

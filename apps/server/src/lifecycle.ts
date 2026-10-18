@@ -42,6 +42,36 @@ function manifestSnapshot(manifest: any) {
         : value;
   return JSON.stringify(ordered(snapshot), null, 2);
 }
+// Only routine Emacs lock links for a file actually present in this submission
+// are notification noise. Do not alter the signed manifest or relax collection.
+function hasUnexpectedOmissions(manifest: {
+  files?: unknown;
+  omissions?: unknown;
+}) {
+  if (manifest.omissions === undefined || manifest.omissions === null)
+    return false;
+  if (!Array.isArray(manifest.omissions)) return true;
+  if (manifest.omissions.length === 0) return false;
+  const savedFiles = new Set(
+    Array.isArray(manifest.files)
+      ? manifest.files.flatMap((file) =>
+          typeof file?.path === "string" ? [file.path] : [],
+        )
+      : [],
+  );
+  const suffix = ": symlink omitted (never dereferenced)";
+  return manifest.omissions.some((omission) => {
+    if (typeof omission !== "string" || !omission.endsWith(suffix)) return true;
+    const omittedPath = omission.slice(0, -suffix.length);
+    const name = path.posix.basename(omittedPath);
+    if (!name.startsWith(".#") || name.length <= 2) return true;
+    const savedPath = path.posix.join(
+      path.posix.dirname(omittedPath),
+      name.slice(2),
+    );
+    return !savedFiles.has(savedPath);
+  });
+}
 export class Lifecycle {
   private busy = new Set<string>();
   onEnd = (_attempt: Attempt) => {};
@@ -459,7 +489,7 @@ export class Lifecycle {
           );
         }
         this.onSecured(this.store.attempt(id));
-        if (manifest.omissions?.length)
+        if (hasUnexpectedOmissions(manifest))
           this.alert(
             "Submission entries omitted",
             `Attempt ${id}: review the protected manifest.`,

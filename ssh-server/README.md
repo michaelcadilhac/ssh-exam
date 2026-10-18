@@ -258,7 +258,10 @@ process scan refuses uncontained writers; verified SSH/gate entry stubs are the 
 New directory access is revoked through a verified descriptor before collection. Existing
 write descriptors are made safe by the writer barrier, not by directory permissions alone.
 os.Root/O_NOFOLLOW/inode checks reject escapes, mounts, hardlinks and regular-file limit failures.
-Symlinks/special entries are omitted with manifest records. Limits: 10,000 entries, depth 32,
+Symlinks/special entries are omitted with manifest records. The webserver suppresses
+omission email for a routine Emacs `.#NAME` symlink only when the saved sibling `NAME`
+is in the same submission. The omission remains in the manifest; all other omissions
+and collection failures still alert. Limits: 10,000 entries, depth 32,
 32 MiB per file, 64 MiB logical total including sparse files. Never silently truncate or execute.
 
 A private staging directory is flushed and renamed as one complete archive/manifest/checksum
