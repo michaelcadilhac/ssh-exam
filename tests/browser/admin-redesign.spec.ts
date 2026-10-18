@@ -87,6 +87,24 @@ async function fixture(page: Page, large = false) {
     failedClock: "",
     slow: 0,
     reviewDelay: null as Promise<void> | null,
+    reviewCalls: 0,
+    replayOffsets: [] as number[],
+    replayEvents: [] as any[],
+    failReplay: false,
+    media: {
+      frames: [] as any[],
+      terminals: [] as any[],
+      manifest: { checksum: "fixture-checksum" },
+      incidents: [
+        {
+          id: "incident",
+          opened: Date.now() - 20000,
+          events: JSON.stringify([{ reason: "Fullscreen exited" }]),
+          message: "Ready to reconnect",
+          review_at: null,
+        },
+      ],
+    },
   };
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url()),
@@ -157,24 +175,33 @@ async function fixture(page: Page, large = false) {
         incidents: [],
       });
     }
+    if (path.includes("/recordings/")) {
+      const offset = Number(url.searchParams.get("offset"));
+      state.replayOffsets.push(offset);
+      if (state.failReplay) return json({ error: "Replay unavailable" }, 503);
+      const text = state.replayEvents
+        .map((e) => JSON.stringify(e) + "\n")
+        .join("");
+      return json({
+        text: text.slice(offset),
+        nextOffset: text.length,
+        more: false,
+      });
+    }
+    if (path.startsWith("/api/admin/media/"))
+      return route.fulfill({
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6lWQAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      });
     if (path.endsWith("/recordings")) {
+      state.reviewCalls++;
       if (state.reviewDelay) await state.reviewDelay;
       if (state.failReview)
         return json({ error: "Monitoring unavailable" }, 503);
-      return json({
-        frames: [],
-        terminals: [],
-        manifest: { checksum: "fixture-checksum" },
-        incidents: [
-          {
-            id: "incident",
-            opened: Date.now() - 20000,
-            events: JSON.stringify([{ reason: "Fullscreen exited" }]),
-            message: "Ready to reconnect",
-            review_at: null,
-          },
-        ],
-      });
+      return json(state.media);
     }
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
@@ -578,4 +605,195 @@ test("editing an exam focuses an editable field and fits a narrow dialog", async
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(settings).toBeFocused();
+});
+
+test("open review updates images, activity and incremental replay without moving the selection", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  const pane = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const capture = (id: string, source: string) => ({
+    id,
+    source,
+    captured: Date.now(),
+    received: Date.now(),
+  });
+  s.rows[0].attempts[0].settings = JSON.stringify({ webcam: true });
+  s.media.frames.push(
+    capture("screen-old", "screen"),
+    capture("webcam-old", "webcam"),
+  );
+  s.media.terminals.push({ pane });
+  s.replayEvents.push(
+    { at: Date.now(), event: "open" },
+    {
+      at: Date.now(),
+      event: "output",
+      data: Buffer.from("first output").toString("base64"),
+    },
+    {
+      at: Date.now(),
+      event: "output",
+      data: Buffer.from("second output").toString("base64"),
+    },
+  );
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  const timeline = dialog.getByRole("combobox", {
+    name: "Image timeline",
+    exact: true,
+  });
+  const terminal = dialog.getByRole("combobox", {
+    name: "Terminal replay",
+    exact: true,
+  });
+  await timeline.selectOption("screen-old");
+  await terminal.selectOption(pane);
+  const slider = dialog.getByRole("slider");
+  await expect(slider).toHaveAttribute("max", "2");
+  await slider.fill("1");
+  const originalOffset = s.replayOffsets.length;
+  await page.evaluate(() => {
+    (window as any).reviewTerminal = document.querySelector(
+      ".admin-replay .xterm",
+    );
+  });
+  await dialog.getByRole("button", { name: /^Activity/ }).click();
+  s.media.frames.push(
+    capture("screen-new", "screen"),
+    capture("webcam-new", "webcam"),
+  );
+  s.media.incidents.push({
+    id: "second",
+    opened: Date.now(),
+    events: JSON.stringify([{ reason: "Network disconnected" }]),
+    message: "New activity",
+    review_at: null,
+  });
+  s.replayEvents.push({
+    at: Date.now(),
+    event: "output",
+    data: Buffer.from("new output").toString("base64"),
+  });
+  await expect(dialog.getByRole("button", { name: /^Activity/ })).toHaveText(
+    "Activity (2)",
+    { timeout: 8000 },
+  );
+  await expect(
+    dialog.getByRole("button", { name: /^Activity/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(dialog).toContainText("New activity");
+  await expect
+    .poll(() => s.replayOffsets.length)
+    .toBeGreaterThan(originalOffset);
+  expect(s.replayOffsets.slice(1).every((offset) => offset > 0)).toBe(true);
+  await dialog.getByRole("button", { name: "Monitoring", exact: true }).click();
+  await expect(
+    dialog.getByAltText("Latest screen capture for amy"),
+  ).toHaveAttribute("src", "/api/admin/media/screen-new");
+  await expect(
+    dialog.getByAltText("Latest webcam capture for amy"),
+  ).toHaveAttribute("src", "/api/admin/media/webcam-new");
+  await expect(timeline).toHaveValue("screen-old");
+  await expect(terminal).toHaveValue(pane);
+  await expect(slider).toHaveAttribute("max", "3");
+  await expect(slider).toHaveValue("1");
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).reviewTerminal ===
+        document.querySelector(".admin-replay .xterm"),
+    ),
+  ).toBe(true);
+  await dialog
+    .getByRole("button", { name: "Refresh monitoring", exact: true })
+    .click();
+  await expect(timeline).toHaveValue("screen-old");
+  await expect(slider).toHaveValue("1");
+  await terminal.selectOption("");
+  await terminal.selectOption(pane);
+  await expect(slider).toHaveAttribute("max", "3");
+  await expect(slider).toHaveValue("1");
+});
+
+test("automatic review refresh recovers after network failure and stops when closed", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  const pane = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  s.media.terminals.push({ pane });
+  s.replayEvents.push(
+    { at: Date.now(), event: "open" },
+    { at: Date.now(), event: "output", data: "b2s=" },
+  );
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByRole("combobox", { name: "Terminal replay", exact: true })
+    .selectOption(pane);
+  await expect(dialog.getByRole("slider")).toHaveAttribute("max", "1");
+  await dialog.getByRole("slider").fill("1");
+  s.failReview = true;
+  s.failReplay = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(dialog).toContainText("Monitoring unavailable");
+  await expect(dialog).toContainText("Replay unavailable");
+  await expect(dialog.getByRole("slider")).toHaveValue("1");
+  s.failReview = false;
+  s.failReplay = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await expect(dialog.getByRole("slider")).toHaveValue("1");
+  await dialog.getByRole("button", { name: "Submission", exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    dialog.getByRole("button", { name: "Submission", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  const calls = s.reviewCalls,
+    replayCalls = s.replayOffsets.length;
+  await page.waitForTimeout(5500);
+  expect(s.reviewCalls).toBe(calls);
+  expect(s.replayOffsets).toHaveLength(replayCalls);
+});
+
+test("slow review polling does not overlap and closing cancels an outstanding refresh", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  let release!: () => void;
+  s.reviewDelay = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  await expect.poll(() => s.reviewCalls).toBe(1);
+  await page.waitForTimeout(5500);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(s.reviewCalls).toBe(1);
+  await page.keyboard.press("Escape");
+  release();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page
+    .getByRole("rowgroup", { name: "bob", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "bob · Attempt 1", exact: true }),
+  ).toContainText("No screen images received");
 });

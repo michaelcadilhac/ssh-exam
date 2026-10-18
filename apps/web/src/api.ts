@@ -2,9 +2,17 @@ export let csrf = "";
 export function setCsrf(v: string) {
   csrf = v;
 }
-export async function api(url: string, body?: any, page?: string) {
+export async function api(
+  url: string,
+  body?: any,
+  page?: string,
+  signal?: AbortSignal,
+) {
   const res = await fetch("/api" + url, {
     method: body === undefined ? "GET" : "POST",
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(15000)])
+      : undefined,
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": csrf,

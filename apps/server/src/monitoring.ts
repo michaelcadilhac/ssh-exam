@@ -7,6 +7,7 @@ import {
   existsSync,
   openSync,
   closeSync,
+  fstatSync,
   fsyncSync,
   readSync,
   statSync,
@@ -221,6 +222,38 @@ export class Monitoring {
       this.store.db
         .prepare("INSERT INTO recordings VALUES(?,?,?,?)")
         .run(randomUUID(), a, pane, now());
+  }
+  replay(attempt: string, pane: string, offset: number) {
+    if (!Number.isSafeInteger(offset) || offset < 0)
+      throw Error("Invalid recording offset");
+    const fd = openSync(
+      `${this.store.dir}/monitoring/${attempt}/${pane}.ndjson`,
+      "r",
+    );
+    try {
+      const size = fstatSync(fd).size;
+      if (offset > size) throw Error("Recording offset exceeds available data");
+      if (offset) {
+        const previous = Buffer.alloc(1);
+        readSync(fd, previous, 0, 1, offset - 1);
+        if (previous[0] !== 10)
+          throw Error("Recording offset must follow a complete event");
+      }
+      const bytes = Buffer.alloc(Math.min(size - offset, 1024 * 1024));
+      const count = readSync(fd, bytes, 0, bytes.length, offset);
+      const complete = bytes.subarray(0, count).lastIndexOf(10) + 1;
+      if (!complete && size - offset >= 1024 * 1024)
+        throw Error("Recording event exceeds replay batch limit");
+      const nextOffset = offset + complete;
+      return {
+        text: bytes.subarray(0, complete).toString("utf8"),
+        nextOffset,
+        // A partial last event will be retried on the next refresh.
+        more: count === 1024 * 1024 && nextOffset < size,
+      };
+    } finally {
+      closeSync(fd);
+    }
   }
   delete(id: string, actor: string) {
     this.store.db.transaction(() => {

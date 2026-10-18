@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { api, chicago, remaining } from "./api.js";
 import { Modal } from "./modal.js";
@@ -18,18 +18,57 @@ function accessDescription(a: any) {
     return `Normal server access remains blocked until at least ${chicago(Math.max(a.original_deadline || 0, a.deadline || 0))} and secured collection. Finishing early does not release this restriction.`;
   return "The server access restriction has not started.";
 }
-function Replay({ id, pane }: { id: string; pane: string }) {
-  const root = useRef<HTMLDivElement>(null),
-    terminal = useRef<Terminal | null>(null);
-  const [events, setEvents] = useState<any[]>([]),
-    [position, setPosition] = useState(0),
-    [error, setError] = useState("");
-  const [revision, setRevision] = useState(0);
+// One request at a time; reconnecting or returning to the page refreshes immediately.
+function useReviewRefresh(load: (signal: AbortSignal) => Promise<void>) {
+  const refresh = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
-    let cancelled = false;
-    setError("");
-    setEvents([]);
-    setPosition(0);
+    const controller = new AbortController();
+    let pending: Promise<void> | null = null;
+    const run = () => {
+      if (controller.signal.aborted) return Promise.resolve();
+      if (pending) return pending;
+      pending = load(controller.signal).finally(() => {
+        pending = null;
+      });
+      return pending;
+    };
+    refresh.current = run;
+    const update = () => {
+      void run();
+    };
+    update();
+    const timer = setInterval(update, 5000);
+    window.addEventListener("online", update);
+    window.addEventListener("focus", update);
+    return () => {
+      controller.abort();
+      refresh.current = null;
+      clearInterval(timer);
+      window.removeEventListener("online", update);
+      window.removeEventListener("focus", update);
+    };
+  }, [load]);
+  return useCallback(() => refresh.current?.() || Promise.resolve(), []);
+}
+function Replay({
+  id,
+  pane,
+  positions,
+}: {
+  id: string;
+  pane: string;
+  positions: Map<string, number>;
+}) {
+  const root = useRef<HTMLDivElement>(null),
+    terminal = useRef<Terminal | null>(null),
+    offset = useRef(0),
+    events = useRef<any[]>([]),
+    drawn = useRef(-1),
+    rendering = useRef(0);
+  const [length, setLength] = useState(0),
+    [position, setPosition] = useState(() => positions.get(pane) || 0),
+    [error, setError] = useState("");
+  useEffect(() => {
     const t = new Terminal({
       disableStdin: true,
       scrollback: 2000,
@@ -40,53 +79,96 @@ function Replay({ id, pane }: { id: string; pane: string }) {
     t.parser.registerOscHandler(52, () => true);
     t.parser.registerOscHandler(8, () => true);
     t.open(root.current!);
-    api(`/admin/attempts/${id}/recordings/${pane}`)
-      .then((text) => {
-        if (!cancelled)
-          setEvents(
-            text
-              .split("\n")
-              .filter(Boolean)
-              .map((line: string) => JSON.parse(line)),
-          );
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e.message);
-      });
     return () => {
-      cancelled = true;
       terminal.current = null;
       t.dispose();
     };
-  }, [id, pane, revision]);
+  }, [id, pane]);
+  const load = useCallback(
+    async (signal: AbortSignal) => {
+      try {
+        // Catch up in bounded batches without re-downloading the existing recording.
+        let more = true,
+          batches = 0;
+        while (more && batches++ < 8 && !signal.aborted) {
+          const batch = await api(
+            `/admin/attempts/${id}/recordings/${pane}?offset=${offset.current}`,
+            undefined,
+            undefined,
+            signal,
+          );
+          if (signal.aborted) return;
+          const next = batch.text
+            .split("\n")
+            .filter(Boolean)
+            .map((line: string) => JSON.parse(line));
+          for (const event of next) events.current.push(event);
+          offset.current = batch.nextOffset;
+          if (next.length) setLength(events.current.length);
+          more = batch.more;
+        }
+        if (!signal.aborted) setError("");
+      } catch (e) {
+        if (!signal.aborted) setError((e as Error).message);
+      }
+    },
+    [id, pane],
+  );
+  const refresh = useReviewRefresh(load);
   useEffect(() => {
     const t = terminal.current;
-    if (!t) return;
-    t.reset();
-    for (const e of events.slice(0, position + 1)) {
-      if (e.event === "output")
-        t.write(Uint8Array.from(atob(e.data), (c) => c.charCodeAt(0)));
-      if (e.event === "resize") t.resize(e.cols, e.rows);
-    }
-  }, [events, position]);
+    if (!t || !length) return;
+    const target = Math.min(position, length - 1);
+    // Appending new events must not redraw or advance a paused replay.
+    if (drawn.current === target) return;
+    const revision = ++rendering.current;
+    const current = () =>
+      rendering.current === revision && terminal.current === t;
+    const advance = (from: number) => {
+      if (!current()) return;
+      for (let i = from; i <= target; i++) {
+        const e = events.current[i];
+        if (e.event === "output")
+          t.write(Uint8Array.from(atob(e.data), (c) => c.charCodeAt(0)));
+        if (e.event === "resize") {
+          // Apply resizes after preceding asynchronous terminal writes finish.
+          t.write("", () => {
+            if (!current()) return;
+            t.resize(e.cols, e.rows);
+            advance(i + 1);
+          });
+          return;
+        }
+      }
+    };
+    t.write("", () => {
+      if (!current()) return;
+      t.reset();
+      t.resize(100, 24);
+      advance(0);
+    });
+    drawn.current = target;
+  }, [length, position]);
   return (
     <section className="admin-replay">
       {error && (
         <p role="alert">
-          {error}{" "}
-          <button onClick={() => setRevision((r) => r + 1)}>
-            Retry replay
-          </button>
+          {error} <button onClick={() => void refresh()}>Retry replay</button>
         </p>
       )}
       <label>
-        Replay position {chicago(events[position]?.at)}
+        Replay position{" "}
+        {chicago(events.current[Math.min(position, length - 1)]?.at)}
         <input
           type="range"
           min={0}
-          max={Math.max(0, events.length - 1)}
-          value={position}
-          onChange={(e) => setPosition(Number(e.target.value))}
+          max={Math.max(0, length - 1)}
+          value={Math.min(position, Math.max(0, length - 1))}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            positions.set(pane, next);
+            setPosition(next);
+          }}
         />
       </label>
       <div ref={root} />
@@ -106,6 +188,7 @@ export function AdminReview({
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
+  const [refreshError, setRefreshError] = useState("");
   const [section, setSection] = useState("Monitoring"),
     [media, setMedia] = useState<any>(null),
     [error, setError] = useState("");
@@ -115,29 +198,35 @@ export function AdminReview({
   const [pane, setPane] = useState(""),
     [frame, setFrame] = useState(""),
     [deleting, setDeleting] = useState(false);
-  const version = useRef(0);
-  const load = async () => {
-    const request = ++version.current;
-    setLoading(true);
-    setError("");
-    try {
-      const next = await api(`/admin/attempts/${a.id}/recordings`);
-      if (request === version.current) {
+  const positions = useRef(new Map<string, number>());
+  const fetchMonitoring = useCallback(
+    async (signal: AbortSignal) => {
+      setLoading(true);
+      try {
+        const next = await api(
+          `/admin/attempts/${a.id}/recordings`,
+          undefined,
+          undefined,
+          signal,
+        );
+        if (signal.aborted) return;
         setMedia(next);
-        setFrame("");
+        setFrame((selected) =>
+          next.frames.some((f: any) => f.id === selected) ? selected : "",
+        );
+        setPane((selected) =>
+          next.terminals.some((r: any) => r.pane === selected) ? selected : "",
+        );
+        setRefreshError("");
+      } catch (e) {
+        if (!signal.aborted) setRefreshError((e as Error).message);
+      } finally {
+        if (!signal.aborted) setLoading(false);
       }
-    } catch (e) {
-      if (request === version.current) setError((e as Error).message);
-    } finally {
-      if (request === version.current) setLoading(false);
-    }
-  };
-  useEffect(() => {
-    void load();
-    return () => {
-      ++version.current;
-    };
-  }, [a.id]);
+    },
+    [a.id],
+  );
+  const load = useReviewRefresh(fetchMonitoring);
   useEffect(() => {
     setNotice("");
   }, [a.generation]);
@@ -214,9 +303,9 @@ export function AdminReview({
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      {error && (
+      {(error || refreshError) && (
         <p className="warn" role="alert">
-          {error}{" "}
+          {error || refreshError}{" "}
           <button disabled={busy} onClick={() => void load()}>
             Retry monitoring
           </button>
@@ -240,8 +329,8 @@ export function AdminReview({
           </button>
         ))}
       </div>
-      {section === "Monitoring" && (
-        <section aria-label="Monitoring">
+      {(section === "Monitoring" || media) && (
+        <section aria-label="Monitoring" hidden={section !== "Monitoring"}>
           {loading && !media && <p role="status">Loading monitoring…</p>}
           {media && (
             <>
@@ -330,7 +419,14 @@ export function AdminReview({
                   </figcaption>
                 </figure>
               )}
-              {pane && <Replay key={pane} id={a.id} pane={pane} />}
+              {pane && (
+                <Replay
+                  key={pane}
+                  id={a.id}
+                  pane={pane}
+                  positions={positions.current}
+                />
+              )}
               {!!a.ended && (
                 <details className="monitoring-deletion">
                   <summary>Monitoring retention</summary>

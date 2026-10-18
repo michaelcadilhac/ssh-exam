@@ -150,3 +150,68 @@ it("uses a larger default and enforces a persistent shared recording budget with
     rmSync(s.dir, { recursive: true, force: true });
   }
 });
+
+it("reads bounded replay batches with byte cursors and waits for incomplete events", () => {
+  const s = new Store(mkdtempSync(tmpdir() + "/exam-replay-")),
+    m = new Monitoring(s);
+  try {
+    s.db.exec(
+      "INSERT INTO exams VALUES('e','{}');INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES('a','e','student',1001,'ACTIVE','{}')",
+    );
+    m.record("a", "pane", { event: "open", note: "日本語" });
+    const path = `${s.dir}/monitoring/a/pane.ndjson`;
+    const first = m.replay("a", "pane", 0);
+    expect(first.text).toBe(readFileSync(path, "utf8"));
+    expect(first.nextOffset).toBe(Buffer.byteLength(first.text));
+    expect(first.more).toBe(false);
+    expect(m.replay("a", "pane", first.nextOffset)).toEqual({
+      text: "",
+      nextOffset: first.nextOffset,
+      more: false,
+    });
+    m.record("a", "pane", { event: "output", data: "bmV3" });
+    const appended = m.replay("a", "pane", first.nextOffset);
+    expect(appended.text.trim().split("\n")).toHaveLength(1);
+    expect(JSON.parse(appended.text).data).toBe("bmV3");
+    for (const offset of [-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])
+      expect(() => m.replay("a", "pane", offset)).toThrow(
+        "Invalid recording offset",
+      );
+    expect(() => m.replay("a", "pane", appended.nextOffset + 1)).toThrow(
+      "exceeds",
+    );
+    expect(() => m.replay("a", "pane", 2)).toThrow("complete event");
+    writeFileSync(path, '{"event":"open"}');
+    expect(m.replay("a", "pane", 0)).toEqual({
+      text: "",
+      nextOffset: 0,
+      more: false,
+    });
+    writeFileSync(path, '{"event":"open"}\n');
+    expect(JSON.parse(m.replay("a", "pane", 0).text)).toEqual({
+      event: "open",
+    });
+    const line =
+      JSON.stringify({ event: "output", data: "a".repeat(10000) }) + "\n";
+    writeFileSync(path, line.repeat(150));
+    let cursor = 0,
+      combined = "",
+      batches = 0;
+    do {
+      const batch = m.replay("a", "pane", cursor);
+      expect(Buffer.byteLength(batch.text)).toBeLessThanOrEqual(1024 * 1024);
+      expect(batch.text.endsWith("\n")).toBe(true);
+      combined += batch.text;
+      cursor = batch.nextOffset;
+      batches++;
+      if (!batch.more) break;
+    } while (batches < 5);
+    expect(batches).toBe(2);
+    expect(combined).toBe(line.repeat(150));
+    writeFileSync(path, "x".repeat(1024 * 1024));
+    expect(() => m.replay("a", "pane", 0)).toThrow("batch limit");
+  } finally {
+    s.close();
+    rmSync(s.dir, { recursive: true, force: true });
+  }
+});

@@ -74,9 +74,12 @@ block import. Limits: 10,000 students, 10 MiB. Roster CSV export remains availab
 authenticated API.
 
 **Review** has Monitoring, Activity and Submission sections. Monitoring provides the
-latest authenticated images, image history and terminal replay, with explicit refresh
-and inline retry on failure. Activity lists incidents and student messages for that
-attempt. **Authorize resume** grants the paused attempt one fresh-SSH recovery before
+latest authenticated images, image history and terminal replay. The open review refreshes
+automatically every five seconds and when the page regains focus or connectivity. Activity
+and recording updates preserve the selected review section, historical image, terminal and
+replay position. Recording refreshes fetch only new events; they do not restart playback.
+Refresh and inline retry remain available after a network failure. Activity lists incidents
+and student messages for that attempt. **Authorize resume** grants the paused attempt one fresh-SSH recovery before
 its deadline; sandbox grants authorization automatically. Approval does not grant time.
 The review stays current even if its attempt no longer matches the roster filter.
 

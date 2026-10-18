@@ -1475,9 +1475,10 @@ export async function createApp(
         : null,
       frames: store.db
         .prepare(
-          "SELECT * FROM frames WHERE attempt=? ORDER BY received LIMIT 10000",
+          "SELECT * FROM frames WHERE attempt=? ORDER BY received DESC, id DESC LIMIT 10000",
         )
-        .all(req.params.id),
+        .all(req.params.id)
+        .reverse(),
       incidents: store.db
         .prepare("SELECT * FROM incidents WHERE attempt=? ORDER BY opened DESC")
         .all(req.params.id),
@@ -1494,6 +1495,14 @@ export async function createApp(
       .get(req.params.id, req.params.pane);
     if (!r) throw Error("Recording unavailable");
     store.audit(s.username, "terminal-replay", req.params.id);
+    if (req.query.offset !== undefined) {
+      const offset = z
+        .string()
+        .regex(/^(0|[1-9][0-9]*)$/)
+        .transform(Number)
+        .parse(req.query.offset);
+      return monitoring.replay(req.params.id, req.params.pane, offset);
+    }
     return readFileSync(
       `${store.dir}/monitoring/${req.params.id}/${req.params.pane}.ndjson`,
       "utf8",
