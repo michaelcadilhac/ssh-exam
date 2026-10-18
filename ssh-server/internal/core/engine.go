@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -58,6 +57,7 @@ func (e *Engine) productionReady() (bool, []string) {
 		}
 	}
 	missing = append(missing, temporaryMountIssues(e.Config.Rootfs)...)
+	missing = append(missing, homeMountIssues(e.Config.Rootfs)...)
 	if os.Geteuid() != 0 {
 		missing = append(missing, "agent must run as root")
 	}
@@ -91,6 +91,12 @@ func (e *Engine) productionReady() (bool, []string) {
 			missing = append(missing, "account UID/login policy differs from root registry: "+name)
 		}
 	}
+	if e.Config.TemporaryAccountPolicy {
+		info, err := os.Lstat("/usr/local/sbin/exam-account-policy")
+		if err != nil || !info.Mode().IsRegular() || info.Sys().(*syscall.Stat_t).Uid != 0 || info.Mode().Perm()&0022 != 0 {
+			missing = append(missing, "root-owned temporary account policy helper unavailable")
+		}
+	}
 	checker := "/usr/local/sbin/exam-check-isolation"
 	info, checkerErr := os.Lstat(checker)
 	if checkerErr != nil || !info.Mode().IsRegular() || info.Sys().(*syscall.Stat_t).Uid != 0 || info.Mode().Perm()&0022 != 0 {
@@ -112,6 +118,9 @@ func (e *Engine) productionReady() (bool, []string) {
 		if !report[k] {
 			missing = append(missing, "unverified guard: "+k)
 		}
+	}
+	if e.Config.TemporaryAccountPolicy && !report["temporaryAccountPolicy"] {
+		missing = append(missing, "unverified guard: temporaryAccountPolicy")
 	}
 	return len(missing) == 0, missing
 }
@@ -138,7 +147,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -147,7 +156,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			}
 			out := map[string]int{}
 			for _, n := range r.Usernames {
-				a, ok := e.Config.Accounts[n]
+				a, ok := e.account(n)
 				if !ok {
 					return fmt.Errorf("account not locally approved: %s", n)
 				}
@@ -168,6 +177,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 					return errors.New("preparation ownership mismatch")
 				}
 				if a.State == "PREPARING" {
+					a.PolicyRequired = e.temporaryPolicy(a)
 					if a.Transport != r.Transport {
 						if err := e.terminateWriters(a); err != nil {
 							return err
@@ -184,7 +194,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if !ready {
 				return fmt.Errorf("server guards unavailable: %v", missing)
 			}
-			account, ok := e.Config.Accounts[r.Username]
+			account, ok := e.account(r.Username)
 			if !ok || account.UID != r.UID || e.state.Registrations[r.Transport] != r.Username {
 				return errors.New("identity/transport not approved")
 			}
@@ -198,6 +208,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("invalid exam settings")
 			}
 			a := &Attempt{BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
+			a.PolicyRequired = e.temporaryPolicy(a)
 			if sandboxAttempt(a) {
 				a.Settings.Duration = SandboxDurationSeconds
 			}
@@ -242,6 +253,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if a.State != "PREPARING" {
 				return errors.New("not preparing")
 			}
+			if e.temporaryPolicy(a) && (a.PolicyState != "READY" || a.PolicyTransport == "" || a.PolicyTransport != a.Transport || a.PolicyReadyBoot != boot() || a.PolicyExpires <= Millis()) {
+				return errors.New("fresh SSH authentication under temporary account policy required before exam start")
+			}
 			if !sandboxAttempt(a) && (Millis() < a.Settings.Earliest || Millis() > a.Settings.Latest) {
 				return errors.New("outside start window")
 			}
@@ -255,6 +269,10 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			// Commit the original interval and hold BEFORE releasing material. A crash
 			// during initialization leaves a locked, started attempt, never an ordinary login.
 			commitStart(a, Millis(), uptime(), boot())
+			if e.temporaryPolicy(a) {
+				a.PolicyState = "HELD"
+				a.PolicyExpires = 0
+			}
 			a.State = "ACTIVATING"
 			a.Reason = "Activation in progress"
 			if err = e.save(); err != nil {
@@ -390,7 +408,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			e.Audit(op, a.ID)
 			result = a
 		case "cancel-attempt":
-			if a.Start != 0 {
+			if a.Start != 0 || a.Deadline != 0 || a.OriginalDeadline != 0 || (a.State != "PREPARING" && a.State != "CANCELLED_BEFORE_START") {
 				return errors.New("cannot cancel started attempt")
 			}
 			a.State = "CANCELLED_BEFORE_START"
@@ -436,7 +454,7 @@ func (e *Engine) initialize(a *Attempt) error {
 	if err := copyTemplate(filepath.Join(e.Config.Templates, a.Settings.Template, "work"), dest); err != nil {
 		return err
 	}
-	account := e.Config.Accounts[a.Username]
+	account, _ := e.account(a.Username)
 	if err := filepath.WalkDir(dest, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -742,12 +760,24 @@ func (e *Engine) Cutoff() error {
 func (e *Engine) Watch() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+	policy := make(chan struct{}, 1)
 	running := make(chan struct{}, 1)
 	timing := make(chan struct{}, 1)
 	delivery := make(chan struct{}, 1)
 	nextDelivery := time.Time{}
 	backoff := time.Second
 	for range ticker.C {
+		select {
+		case policy <- struct{}{}:
+			go func() {
+				defer func() { <-policy }()
+				if err := e.ReconcilePolicies(); err != nil {
+					log.Printf("account policy recovery pending: %v", err)
+				}
+			}()
+		default:
+		}
+
 		select {
 		case timing <- struct{}{}:
 			go func() {
@@ -792,67 +822,6 @@ func (e *Engine) Watch() {
 }
 func expired(a *Attempt) bool {
 	return Millis() >= a.Deadline || (a.Boot == boot() && uptime() >= a.UptimeDeadline)
-}
-
-func (e *Engine) prepareHome(a *Attempt) error {
-	if e.hostAccess(a) {
-		return nil // Authorized trusted test uses the real host home and NSS.
-	}
-	dest := filepath.Join(e.Config.State, "homes", a.ID)
-	if err := os.MkdirAll(dest, 0755); err != nil {
-		return err
-	}
-	if err := os.Chmod(dest, 0755); err != nil {
-		return err
-	}
-	account := e.Config.Accounts[a.Username]
-	passwd := fmt.Sprintf("root:x:0:0:root:/root:/bin/sh\n%s:x:%d:%d:Course account:/home/student:%s\n", a.Username, account.UID, account.GID, account.Shell)
-	group := fmt.Sprintf("root:x:0:\n%s:x:%d:\n", a.Username, account.GID)
-	if err := os.WriteFile(filepath.Join(dest, ".exam-passwd"), []byte(passwd), 0444); err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(dest, ".exam-group"), []byte(group), 0444); err != nil {
-		return err
-	}
-	// The agent's 0077 umask must not make NSS files unreadable to the student.
-	for _, name := range []string{".exam-passwd", ".exam-group"} {
-		if err := os.Chmod(filepath.Join(dest, name), 0444); err != nil {
-			return err
-		}
-	}
-	root, err := os.OpenRoot(e.Config.Accounts[a.Username].Home)
-	if err != nil {
-		return err
-	}
-	defer root.Close()
-	for _, name := range []string{".profile", ".bash_profile", ".bash_login", ".bashrc", ".zshenv", ".zprofile", ".zshrc", ".inputrc", ".vimrc", ".nanorc"} {
-		i, err := root.Lstat(name)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if !i.Mode().IsRegular() || i.Size() > 1024*1024 || i.Sys().(*syscall.Stat_t).Nlink != 1 {
-			return errors.New("shell preference must be a bounded regular file")
-		}
-		f, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
-		if err != nil {
-			return err
-		}
-		b, err := io.ReadAll(io.LimitReader(f, 1024*1024+1))
-		f.Close()
-		if err != nil || len(b) > 1024*1024 {
-			return errors.New("shell preference read failed")
-		}
-		if err = os.WriteFile(filepath.Join(dest, name), b, 0444); err != nil {
-			return err
-		}
-		if err = os.Chmod(filepath.Join(dest, name), 0444); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // One authoritative start/deadline pair; individual duration is already snapshotted.

@@ -26,6 +26,9 @@ func main() {
 		if err = e.Tick(); err != nil {
 			log.Fatal(err)
 		}
+		if err = e.ReconcilePolicies(); err != nil {
+			log.Print(err)
+		}
 		if err = e.DeliverCallbacks(); err != nil {
 			log.Print(err)
 		}

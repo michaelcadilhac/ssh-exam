@@ -1,10 +1,12 @@
-# Proposed temporary exam account isolation
+# Temporary exam account isolation
 
-Status: revised proposal, not implemented or deployed. This supersedes the earlier
-proposal for permanent per-student shell overrides and exam-managed membership.
-The user's requirement is normal account access outside exams, with temporary
-restrictions retained until the original deadline and secured collection. This
-revision documents a design; it does not authorize changes to live accounts.
+Status: implemented locally; production installation must explicitly enable and qualify
+`temporary_account_policy`. This supersedes permanent per-student shell overrides and
+exam-managed membership. Normal sign-in and practice do not change account policy.
+The per-UID transaction helper is `ssh-server/scripts/account-policy`, installed as
+`/usr/local/sbin/exam-account-policy`. Ordinary student identities are discovered over
+signed student SSH; the static `accounts` map is reserved for sandbox administrator
+exceptions when temporary policy is enabled.
 
 ## Policy
 
@@ -80,7 +82,9 @@ A fresh SSH login may require another password/MFA round. Existing password refe
 have already been discarded after authentication to both hosts; do not extend their
 lifetime, automatically retry passwords, or silently retain them to mask this transition.
 Explain the fresh sign-in before setup begins; no clock runs while it is completed.
-This interaction still needs implementation and usability validation.
+The preflight button is “Secure exam access” until the fresh transport is verified.
+The confirmation and sign-in notice explain the five-minute setup window. Then the
+normal “Begin exam” starts time; password/MFA is never retained across these sign-ins.
 
 ## Abandoned or failed activation
 
@@ -106,8 +110,9 @@ scheduler/service settings, ownership, policy generation and each applied/restor
 step. Capture only the affected account's configuration; do not copy SSSD credential
 cache databases or passwords. Preserve unrelated pre-existing overrides and attributes.
 
-Suggested policy states are NORMAL -> APPLYING -> HELD -> RESTORE_PENDING -> RESTORING
--> NORMAL, with explicit setup/restore errors. Submission state remains independent.
+Attempt policy states are APPLYING -> READY -> HELD -> RESTORE_PENDING -> NORMAL,
+with APPLY_FAILED and RESTORE_FAILED. The separate OS journal also records RESTORING.
+A per-account flock and generation fence serialize all apply/restore mutations. Submission state remains independent.
 Use durable operation IDs and idempotent operations; partial application/restoration
 and crashes at every step must be recoverable. Fence operations by UID and policy
 version so a delayed restoration cannot undo a newer exam's restriction. Serialize
@@ -160,7 +165,7 @@ service restart is a separate drained installation action. Pre-existing override
 attributes require lossless round-trip support, otherwise refuse automatic activation
 for that account without changing it.
 
-## Implementation changes required
+## Implementation and installation
 
 - Replace the proposed permanent admission helper with a root-only temporary-policy
   helper offering bounded inspect/apply/restore/verify operations. No setuid helper,
@@ -182,9 +187,34 @@ for that account without changing it.
 - Show the secure-access transition/fresh sign-in and actual release/restoration state
   in the student UI, admin dashboard and examctl. Update design/install/recovery documents.
 
-The existing implementation still uses persistent managed-account policy and changes
-access state without restoring every account setting. This proposal is not a claim
-that the current deployed agent already provides temporary policy restoration.
+The root helper runs as a fixed transient systemd service, outside the daemon's
+read-only filesystem namespace. The daemon does not gain a general writable `/etc`,
+a setuid helper or a remote account-management API. The helper accepts only fixed
+operations and validated account/attempt/generation arguments, reads root-private
+committed state and verifies the protected archive before started-attempt restoration.
+Slow OS work runs outside the shared attempt lock and independent deadline cutoff.
+
+Scheduler support is deliberately conservative: existing user crontabs, pending at jobs,
+system jobs and services running as the UID are rejected by read-only qualification.
+They are never deleted, disabled or consumed by exam setup. Removing temporary managed
+group membership restores eligibility for the globally conditional PAM rules. Other
+enabled writer routes require operator qualification or must fail preflight.
+
+Enable only after a drained migration: restore any historical permanent enrollment,
+retain administrator sandbox entries, install helper/checker and new native binaries,
+set `temporary_account_policy: true`, and qualify the `temporaryAccountPolicy` guard.
+For directory users, qualify SSSD local views and apply/remove propagation without a
+per-attempt SSSD restart. Initialization of SSSD local overrides may require a separate
+one-time drained installation restart. Never set the guard based solely on local-user
+tests; real directory-provider behavior needs installation verification.
+
+`examctl stop ATTEMPT --reason ...` and `finish` collect immediately and retain holds.
+`cancel` accepts only unstarted attempts, terminates practice and reconciles restoration.
+`examctl reconcile` retries eligible restoration; `info` and `list` show policy state.
+`examctl override-access ATTEMPT --reason ...` is root-only, durably audited and restores
+actual policy after protected-copy/writer verification; it does not reopen exam access.
+`examctl agent stop` leaves the independent deadline watchdog and reconciliation timer
+running. Uninstall and native upgrade refuse unresolved journals; never roll back state.
 
 ## Acceptance tests
 

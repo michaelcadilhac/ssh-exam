@@ -10,8 +10,13 @@ for key in ('gateway_public_key','callback_key'):
     p=c[key]; s=os.stat(p)
     assert os.path.isabs(p) and stat.S_ISREG(s.st_mode) and s.st_uid==0 and s.st_mode&0o022==0, 'Unprotected signature key'
     if key=='callback_key': assert s.st_mode&0o077==0, 'Private callback key exposed'
+if c.get('temporary_account_policy'):
+    assert all(a.get('sandbox_only') for a in c['accounts'].values()), 'Restore legacy permanent enrollments before enabling temporary policy'
+    for helper in ('/usr/local/sbin/exam-account-policy','/usr/local/bin/exam-control'):
+        s=os.lstat(helper)
+        assert stat.S_ISREG(s.st_mode) and s.st_uid==0 and s.st_mode&0o022==0, 'Unprotected temporary policy helper'
 assert c['callback_url'].startswith('https://'), 'HTTPS callback required'
-for name in ('tmp', 'var', 'var/tmp'):
+for name in ('tmp', 'var', 'var/tmp', 'home', 'run', 'usr/local/bin'):
     p=os.path.join(c['rootfs'],name)
     assert stat.S_ISDIR(os.lstat(p).st_mode), 'Private temporary mount point must be a real directory: '+p
 VERIFY_KEYS

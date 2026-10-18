@@ -614,7 +614,7 @@ The first supported server installation targets Linux with systemd and cgroup v2
 
 Install a compiled, root-owned session gate/launcher and a root-owned exam agent. The launcher itself is not a general setuid-root shell. Its unprivileged entry path runs under the account identity established by SSH and talks to the narrowly scoped agent. The agent performs privileged setup, containment, deadline enforcement, and collection, then runs student code with the student's ordinary, unprivileged execution identity inside the controlled environment.
 
-The webapp must not receive root SSH credentials, unrestricted sudo, write access to `/etc`, a host Docker socket, or arbitrary command execution in the agent. Its agent credential authorizes only defined exam operations for locally approved course accounts and templates.
+The webapp must not receive root SSH credentials, unrestricted sudo, write access to `/etc`, a host Docker socket, or arbitrary command execution in the agent. Its agent credential authorizes only defined exam operations for gateway-authorized NSS identities and administrator-configured templates.
 
 ### 14.2 Controlled entry before personal shell startup
 
@@ -628,7 +628,7 @@ After validating admission, preparing the pane, joining containment, and emittin
 
 Initialize the exam workspace once at activation. Each pane may display a welcome banner and set its initial working directory, but may not reset files, regenerate questions, or reset the clock. If the student's profile clears the screen or changes directories, provide a persistent workspace label in the web UI and a server-side `exam-info` command to redisplay the instructions and path. Personal shell behavior cannot undo the agent's restrictions.
 
-Outside an exam restriction, restore the account's original shell/SSSD override, group membership, lingering and supported scheduler/service policy. Preserve its original interactive startup, ordinary remote commands, file transfers and permitted forwarding; normal access must not depend on a running exam agent. Enrollment, initial SSH login and ordinary practice must not install permanent managed-account restrictions. Global conditional enforcement hooks may remain installed, but must be inactive for an account without an exam policy. The revised [temporary account-isolation proposal](docs/account-admission-proposal.md) specifies the activation and restoration transactions; this revision is a target design, not a claim that the currently deployed static-account implementation already restores policy.
+Outside an exam restriction, restore the account's original shell/SSSD override, group membership, lingering and supported scheduler/service policy. Preserve its original interactive startup, ordinary remote commands, file transfers and permitted forwarding; normal access must not depend on a running exam agent. Enrollment, initial SSH login and ordinary practice must not install permanent managed-account restrictions. Global conditional enforcement hooks may remain installed, but must be inactive for an account without an exam policy. The revised [temporary account-isolation proposal](docs/account-admission-proposal.md) specifies the activation and restoration transactions; the temporary lifecycle is implemented behind the root-controlled `temporary_account_policy` configuration and requires installation qualification before production enablement.
 
 ### 14.3 Ordinary-access restriction
 
@@ -667,7 +667,7 @@ Use root-controlled cgroup v2 and suitable systemd/namespace supervision. Studen
 
 Provide a per-attempt network namespace without external connectivity; a shared loopback within that attempt may be enabled for local programming exercises. Do not rely on removing `curl`, filtering command names, or a restricted shell. Prevent access to host service sockets that would provide an indirect network/process escape. No forwarded SSH agents, Docker sockets, host D-Bus/user-service sockets, or ambient privilege escalation.
 
-Provide an isolated filesystem view with the required toolchain, read-only documentation/materials, the student's needed shell configuration, private temporary storage, and the persistent writable submission directory. Provide writable `/tmp` and `/var/tmp` with normal sticky-directory permissions and `TMPDIR=/tmp`. Share each pair across one attempt's panes, isolate it from other attempts and the host's ordinary temporary storage, and use a separate pair for practice. Protect bind-source parents against student replacement and refuse symlinks or unsafe ownership. Preserve temporary files across authorized reconnection and agent restart; exclude them from submission collection and remove them without following links only after workload termination is confirmed. Failed collection/termination retains recoverability; temporary cleanup must not cause recollection or replacement of a protected archive. Validate real rootfs mount-point directories and reject a working-directory configuration overlapping these paths. Preserve shell preferences through a safe read-only or copy-on-write view of the student's own home; do not expose other students' work or all future exam templates. The implementation must document exactly which home changes persist and which do not.
+Provide an isolated filesystem view with the required toolchain, read-only documentation/materials, the student's needed shell configuration, private temporary storage, and the persistent writable submission directory. Provide writable `/tmp` and `/var/tmp` with normal sticky-directory permissions and `TMPDIR=/tmp`. Share each pair across one attempt's panes, isolate it from other attempts and the host's ordinary temporary storage, and use a separate pair for practice. Protect bind-source parents against student replacement and refuse symlinks or unsafe ownership. Preserve temporary files across authorized reconnection and agent restart; exclude them from submission collection and remove them without following links only after workload termination is confirmed. Failed collection/termination retains recoverability; temporary cleanup must not cause recollection or replacement of a protected archive. Validate real rootfs mount-point directories and reject a working-directory configuration overlapping these paths. Provide a read-only configuration home with the student's shell/editor startup files, configuration and plugin trees, including safe internal symlink dependencies. Use the original NSS home path for accounts under `/home/`; otherwise retain the contained `/home/student` mapping. Never change the real home’s ownership/permissions or expose host IPC sockets, SSH/GPG stores, other students' homes or future templates. Writable cache, data, history, runtime and editor directories use separate disposable attempt/phase storage. Legacy `.emacs.d`, XDG Emacs and `.vim` receive seeded writable copies, preserving init/plugins without changing originals; the home root and startup files remain read-only. Keep exam work in the configured work directory. Extra configuration dependencies may be declared with root-only `home_config_paths`; unsafe paths or excessive snapshots fail preflight explicitly. The trusted administrator sandbox continues to use its real unrestricted home and ordinary environment.
 
 This containment may use established systemd/namespace tooling on the class server; it does not require running the webapp itself with privileges. Use reviewed helpers for namespace/PTY setup instead of fragile ad hoc process tricks. Keep account identity, terminal job control, signals, and editor behavior correct.
 
@@ -682,6 +682,7 @@ Provide operations with bounded typed schemas, not arbitrary shell commands:
 ```text
 health / capabilities
 resolve-course-accounts
+prepare-account-policy
 prepare-attempt
 activate-attempt
 inspect-attempt / reconcile-operation
@@ -1322,3 +1323,48 @@ No submission download, instructor stop button or timing/access-policy change is
 Monitoring deletion requires a separate named confirmation and retains submissions.
 Ordinary success notifications expire; pending/failure information remains where the
 instructor needs it. Preserve enrollment upload, admin creation and authentication flows.
+
+### Temporary account policy implementation
+
+The root-private per-UID journal stores the complete local/SSSD baseline and write-ahead
+mutation intents. Setup lasts at most five minutes without a committed start. Signed
+registration discovers only the authenticated NSS peer and exam scope; enrollment and
+practice do not alter shells, groups or lingering. `prepare-account-policy` applies the
+temporary gate, conditional PAM/SSH membership and disables lingering; a root-owned SSH
+monitor born after the policy fence must register before `activate-attempt` can commit
+time and release material. A new multiplexed channel on the bootstrap transport fails.
+
+Restore eligibility authorizes a root helper job, not an immediate RELEASED flag. The
+independent watchdog and reconciliation timer invoke the per-UID serialized helper
+outside the shared attempt lock. Only its verified NORMAL acknowledgment marks access
+RELEASED/OVERRIDDEN. Missing/corrupt state or baselines, independent administrator edits,
+unsecured submissions and restoration errors retain recovery state and visible alerts.
+Original shell/full SSSD override (including absence), original groups, lingering and
+effective SSH policy are verified. Scheduled UID writers without safe reversible support
+fail read-only qualification; exam setup never deletes jobs. See the
+[implementation and qualification procedure](docs/account-admission-proposal.md).
+
+### Read-only student home and disposable application state
+
+Snapshot common Bash/Zsh/readline/editor settings plus `.config`, `.local/share`,
+`.local/bin`, Emacs and Vim configuration/plugin trees once per attempt. Internal
+symlink dependencies remain confined to the home view. Reject outside/private/reserved
+links, hardlinked regular files and unreadable configuration; omit sockets, FIFOs and
+devices without opening them. Bound snapshots to 256 MiB, 32 MiB per file, 30,000 entries
+and depth 48. Read original files through an `os.Root` with non-following/nonblocking
+opens; publish configuration and seeded state atomically under root-private parents.
+
+Application state is shared by an attempt’s panes and authorized reconnections,
+preserved across restart, and separate for practice/exam. Supply XDG paths, private
+runtime and standard history paths. Exam-only Emacs/Vim launchers preserve normal init
+and direct backups/autosave/history to disposable paths. They are reachable through
+the normal `/usr/local/bin`, while other local tools remain available. Root-controlled
+mount sources cannot be replaced by student processes; root never reseeds a live tree.
+Custom startup files may explicitly override state locations; protected-home writes
+still fail and site-specific configuration must use the disposable state paths.
+
+Neither state nor configuration snapshots are submissions. Remove both only after
+confirmed workload termination during successful secured collection or cancellation;
+failed termination/collection retains recovery data. Never follow student-created
+links during cleanup or modify the original home. Apply no home/state redirection
+to trusted administrator host sessions.

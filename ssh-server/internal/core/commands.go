@@ -65,6 +65,9 @@ func privateKey(path string) (ed25519.PrivateKey, error) {
 
 // The socket supplies the peer account and verified root sshd ancestry, never client flags.
 func (e *Engine) Command(frame SignedFrame, username, transport string) (any, error) {
+	return e.command(frame, username, transport, 0)
+}
+func (e *Engine) command(frame SignedFrame, username, transport string, monitor int) (any, error) {
 	payload, err := base64.StdEncoding.DecodeString(frame.Payload)
 	if err != nil || len(payload) > 32768 {
 		return nil, errors.New("invalid command payload")
@@ -84,6 +87,43 @@ func (e *Engine) Command(frame SignedFrame, username, transport string) (any, er
 	if json.Unmarshal(payload, &cmd) != nil || cmd.Audience != e.Config.AgentID || cmd.Username != username || len(cmd.Nonce) < 16 || len(cmd.Nonce) > 64 {
 		return nil, errors.New("command scope rejected")
 	}
+	if cmd.Expires <= Millis() || cmd.Expires > Millis()+30000 {
+		return nil, errors.New("command expired")
+	}
+	var discovered *Account
+	if _, explicit := e.Config.Accounts[username]; cmd.Op == "register" && e.Config.TemporaryAccountPolicy && !explicit {
+		if !identifier.MatchString(cmd.Body.Exam) || cmd.Transport != "" || transport == "" {
+			return nil, errors.New("exam-scoped fresh registration required")
+		}
+		a, err := e.identifyAccount(username)
+		if err != nil {
+			return nil, err
+		}
+		discovered = &a
+	}
+	// Read-only OS verification is deliberately outside the shared attempt lock.
+	if cmd.Op == "activate-attempt" {
+		var target *Attempt
+		if err := e.WithState(func() error {
+			a, err := e.Find(cmd.Body.ID)
+			if err != nil || a.Username != username || cmd.Transport != transport || a.Transport != transport || e.state.Registrations[transport] != username {
+				return errors.New("attempt SSH transport mismatch")
+			}
+			if e.temporaryPolicy(a) && a.Start == 0 {
+				snapshot := *a
+				target = &snapshot
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		if target != nil {
+			if _, err := e.policyRun("verify", username, target.ID, target.PolicyGeneration); err != nil {
+				return nil, err
+			}
+		}
+	}
+	setup := ""
 	var result any
 	err = e.WithState(func() error {
 		now := Millis()
@@ -103,7 +143,26 @@ func (e *Engine) Command(frame SignedFrame, username, transport string) (any, er
 		}
 		e.state.Commands[cmd.Nonce] = cmd.Expires
 		r := cmd.Body
-		account, ok := e.Config.Accounts[username]
+		if discovered != nil {
+			for name, other := range e.Config.Accounts {
+				if name != username && other.UID == discovered.UID {
+					return errors.New("account UID alias rejected")
+				}
+			}
+			for name, other := range e.state.Accounts {
+				if name != username && other.UID == discovered.UID {
+					return errors.New("account UID alias rejected")
+				}
+			}
+			if old, ok := e.state.Accounts[username]; ok && (old.UID != discovered.UID || old.GID != discovered.GID || old.Home != discovered.Home) {
+				return errors.New("account identity changed; administrator recovery required")
+			}
+			e.state.Accounts[username] = *discovered
+			e.accountMu.Lock()
+			e.accounts[username] = *discovered
+			e.accountMu.Unlock()
+		}
+		account, ok := e.account(username)
 		if !ok {
 			return errors.New("account not approved")
 		}
@@ -129,6 +188,23 @@ func (e *Engine) Command(frame SignedFrame, username, transport string) (any, er
 			if err := e.registrationAllowed(account.UID); err != nil {
 				return err
 			}
+			if a := e.Busy(account.UID); a != nil && a.PolicyGeneration != "" {
+				if a.Start == 0 {
+					if err := e.freshPolicyTransport(a, monitor); err != nil {
+						return err
+					}
+					if err := e.terminate(a); err != nil {
+						return err
+					}
+					a.Transport = transport
+					a.PolicyTransport = transport
+				} else {
+					started, err := e.transportUptime(monitor)
+					if err != nil || (a.PolicyReadyBoot == boot() && started <= a.PolicyReadyUptime) {
+						return errors.New("fresh protected SSH authentication required")
+					}
+				}
+			}
 			e.state.Registrations[transport] = username
 			result = map[string]any{"transport": transport, "uid": account.UID}
 			return nil
@@ -140,6 +216,13 @@ func (e *Engine) Command(frame SignedFrame, username, transport string) (any, er
 			return errors.New("command account mismatch")
 		}
 		switch cmd.Op {
+		case "prepare-account-policy":
+			a, err := e.Find(r.ID)
+			if err != nil || a.Username != username || a.Transport != transport || a.State != "PREPARING" || a.Start != 0 {
+				return errors.New("account setup owner/state mismatch")
+			}
+			setup = a.ID
+			return nil
 		case "health":
 		case "resolve-course-accounts":
 			if len(r.Usernames) != 1 || r.Usernames[0] != username {
@@ -181,5 +264,8 @@ func (e *Engine) Command(frame SignedFrame, username, transport string) (any, er
 		result, err = e.callLocked(cmd.Op, r)
 		return err
 	})
+	if err == nil && setup != "" {
+		return e.prepareAccountPolicy(setup)
+	}
 	return result, err
 }

@@ -12,7 +12,7 @@ import (
 // Root-configured, single-account functional testing only. Admissions expire; the
 // collector must retain the snapshotted test policy to recover an already begun attempt.
 func (e *Engine) functionalAccount(a *Attempt) bool {
-	account, ok := e.Config.Accounts[a.Username]
+	account, ok := e.account(a.Username)
 	return ok && len(e.Config.Accounts) == 1 && e.Config.FunctionalTestAccount == a.Username && account.UID == a.UID
 }
 
@@ -51,7 +51,7 @@ func (e *Engine) Ready() (bool, []string) {
 			missing = append(missing, "root-owned protected path required: "+p)
 		}
 	}
-	account, ok := e.Config.Accounts[e.Config.FunctionalTestAccount]
+	account, ok := e.account(e.Config.FunctionalTestAccount)
 	if !ok {
 		missing = append(missing, "functional account not approved")
 	} else {

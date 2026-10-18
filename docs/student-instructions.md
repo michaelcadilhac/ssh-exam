@@ -12,7 +12,10 @@
    consecutively: three without a webcam, four when a webcam is required. Completed permissions
    are highlighted. Practice actual editor/toolchain shortcuts including
    Escape, Ctrl-C/Ctrl-D/Ctrl-Z and your keyboard layout. Practice does not consume exam time.
-5. Click Begin exam deliberately. Use each terminal title bar to snap left/right or rename. Use Arrange to tile windows,
+5. If shown, click Secure exam access and confirm the temporary account restriction.
+   Sign in to SSH again, reopen preflight and restore permissions. The clock has not started;
+   setup expires five minutes after it was requested and abandoned setup is restored automatically.
+   Then click Begin exam deliberately. Use each terminal title bar to snap left/right or rename. Use Arrange to tile windows,
    and Tools to switch terminals or use internal Copy selection/Paste. Alt-Tab leaves the workspace.
 6. Work normally in the configured exam directory (shown in the toolbar, normally /work).
    Saved files in that directory are collected automatically when time expires or you finish
@@ -24,12 +27,13 @@
 8. After instructor approval, restore capture/fullscreen/keyboard and click Continue after authorization.
    Lost SSH requires approved reauthentication with capture stopped first. Saved files survive,
    but connection/server failure may lose unsaved editor buffers.
-9. Sign out is available before, during and after the exam. Signing out during the timed exam
-   disconnects terminals and locks the attempt; the clock continues and instructor approval is
-   required to return. Signing out does not submit work.
-10. Save before Finish exam. Expiration collects automatically. A COMPLETED receipt means a
-   protected local copy; export can still be pending. Collection failure is explicitly unsuccessful
-   until recovered. Capture stops when the attempt ends.
+9. Before starting, Sign out cancels preparation and disconnects practice terminals. During
+   the exam, Finish exam ends access permanently and collects saved work immediately.
+   Closing the browser alone does not finish or pause the clock.
+10. Save before Finish exam. Expiration collects automatically. Submission secured means a
+   verified protected copy on the class server. Collection failure needs instructor recovery.
+   Capture stops when the attempt ends. Ordinary access restoration is separate and cannot
+   occur early merely because collection succeeded.
 
 No audio is recorded. Monitoring normally expires after 60 days; submissions have separate
 retention. Incidents are evidence for instructor review, not automatic misconduct findings.
@@ -58,3 +62,9 @@ If the exam window loses focus while staying fullscreen and visible, a warning c
 20 seconds. Return to the exam before it reaches zero to continue without reconnecting.
 Monitoring and the exam clock continue. Staying away longer pauses the exam and requires
 normal reconnection/authorization. Leaving fullscreen or hiding the page still pauses it immediately.
+
+During ordinary student exams, your shell and editor settings are preserved in a
+read-only home view. Save answers in the configured exam directory. Cache, history
+and editor state use disposable storage and are discarded after your attempt’s
+processes end; they are not submitted or copied back to your real home. Administrator
+sandbox testing retains the ordinary unrestricted home.

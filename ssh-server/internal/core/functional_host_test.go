@@ -14,7 +14,7 @@ func TestHomeIdentityFilesSurvivePrivateAgentUmask(t *testing.T) {
 		syscall.Umask(0077)
 		state := os.Getenv("EXAM_HOME_STATE")
 		home := os.Getenv("EXAM_HOME_SOURCE")
-		e := &Engine{Config: Config{State: state, Accounts: map[string]Account{"student": {UID: 1001, GID: 1001, Home: home, Shell: "/bin/bash"}}}}
+		e := &Engine{Config: Config{State: state, Accounts: map[string]Account{"student": {UID: os.Getuid(), GID: os.Getgid(), Home: home, Shell: "/bin/bash"}}}}
 		if err := e.prepareHome(&Attempt{ID: finalID, Username: "student"}); err != nil {
 			t.Fatal(err)
 		}

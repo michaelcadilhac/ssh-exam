@@ -4,19 +4,13 @@
   "work": "/srv/exam-workspace/work",
   "rootfs": "/srv/exam-workspace/rootfs",
   "templates": "/var/lib/exam-agent/templates",
-  "accounts": {
-    "student01": {
-      "uid": 10001,
-      "gid": 10001,
-      "shell": "/bin/bash",
-      "home": "/home/student01"
-    }
-  },
+  "accounts": {},
   "socket": "/run/exam-agent/gate.sock",
   "guard_report": "/etc/exam-agent/guards.json",
   "exam_directory": "/work",
   "agent_id": "class",
   "gateway_public_key": "/etc/exam-agent/gateway-signing.pub",
   "callback_url": "https://exam.example.edu",
-  "callback_key": "/etc/exam-agent/callback.key"
+  "callback_key": "/etc/exam-agent/callback.key",
+  "temporary_account_policy": true
 }

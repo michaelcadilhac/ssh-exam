@@ -3,11 +3,12 @@
 Requires its preinstalled agent, isolated work/rootfs and root-only test signing key.
 Never run against a real student's state or home. Refuses non-fixture guard reports.
 """
-import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid
+import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--username',default='mcadilha')
+parser.add_argument('--setup-only',action='store_true',help='Focused temporary setup, lingering and offline-expiry recovery')
 parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
 parser.add_argument('--gateway-key',default='/etc/exam-agent/gateway.key')
@@ -18,6 +19,8 @@ guards=json.loads(pathlib.Path(config['guard_report']).read_text())
 assert guards.get('fixture','').startswith('Private qualification'), 'Not a disposable qualification fixture'
 assert not config.get('functional_test_account'), 'Strict isolation required'
 account=pwd.getpwnam(a.username)
+temporary=config.get('temporary_account_policy',False)
+baseline=(account.pw_shell, sorted(os.getgrouplist(a.username,account.pw_gid)), pathlib.Path('/var/lib/systemd/linger',a.username).exists())
 key=load_pem_private_key(pathlib.Path(a.gateway_key).read_bytes(),None)
 ssh=['ssh','-F','/dev/null','-i',a.key,'-o','IdentitiesOnly=yes','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+a.known_hosts,'-o','BatchMode=yes','-o','ConnectTimeout=3','-o','LogLevel=ERROR']
 target=a.username+'@127.0.0.1'
@@ -36,6 +39,12 @@ def wait_for(fn,timeout=70):
         time.sleep(.5)
     raise AssertionError('Timed out waiting for durable state')
 
+def agent_ready():
+    s=socket.socket(socket.AF_UNIX)
+    try:s.connect(config['socket']);return True
+    except OSError:return False
+    finally:s.close()
+
 class Connection:
     def __init__(self):
         self.socket='/root/qualification-'+uuid.uuid4().hex
@@ -51,8 +60,16 @@ class Connection:
         if 'error' in value: raise RuntimeError(value['error'])
         return value['result']
     def start(self):
-        self.transport=self.command('register')['transport'];id=str(uuid.uuid4())
+        self.transport=self.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
         self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':a.username,'transport':self.transport,'settings':{'duration':60,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
+        if temporary:
+            self.command('prepare-account-policy',{'id':id})
+            try:self.command('activate-attempt',{'id':id});raise AssertionError('Bootstrap started exam')
+            except RuntimeError:pass
+            self.close()
+            fresh=Connection();self.socket=fresh.socket;self.transport=""
+            self.transport=self.command('register',{'exam':'qualification'})['transport']
+            assert info(id)['start']==0,'Setup consumed exam time'
         self.command('activate-attempt',{'id':id});return id
     def pane(self,id):
         token=self.command('issue-channel-admission',{'id':id,'username':a.username,'transport':self.transport,'pane':str(uuid.uuid4()),'purpose':'exam'})['token']
@@ -83,16 +100,82 @@ def check_jobs():
     fixture=pathlib.Path('/etc/cron.d/qualification-writer')
     fixture.write_text('* * * * * '+a.username+' touch /tmp/scheduled-bypass\n')
     try:
-        p=run(['/usr/local/sbin/exam-check-isolation']);assert p.returncode!=0 and 'system cron writer' in p.stderr
+        p=run(['/usr/local/sbin/exam-account-policy','inspect','--username',a.username] if temporary else ['/usr/local/sbin/exam-check-isolation']);assert p.returncode!=0 and 'system cron writer' in p.stderr
     finally:fixture.unlink()
     ok('preflight rejects system cron writer')
     p=run(['crontab','-u',a.username,'-'],input='* * * * * touch /tmp/user-cron-bypass\n');assert p.returncode==0,p.stderr
     try:
-        p=run(['/usr/local/sbin/exam-check-isolation']);assert p.returncode!=0 and 'crontab' in p.stderr
+        p=run(['/usr/local/sbin/exam-account-policy','inspect','--username',a.username] if temporary else ['/usr/local/sbin/exam-check-isolation']);assert p.returncode!=0 and 'crontab' in p.stderr
     finally:root('crontab','-u',a.username,'-r')
     ok('preflight rejects user crontab')
-    p=run(['su',a.username,'-c','echo BYPASS']);denied(p,'PAM rejects alternate su route')
+    if not temporary:
+        p=run(['su',a.username,'-c','echo BYPASS']);denied(p,'PAM rejects alternate su route')
 
+def normal_access(label):
+    user=pwd.getpwnam(a.username)
+    actual=(user.pw_shell,sorted(os.getgrouplist(a.username,user.pw_gid)),pathlib.Path('/var/lib/systemd/linger',a.username).exists())
+    assert actual==baseline,(actual,baseline)
+    root('systemctl','stop','exam-agent')
+    try:
+        c=Connection()
+        try:
+            p=c.raw('printf ORDINARY-RESTORED');assert p.returncode==0 and p.stdout=='ORDINARY-RESTORED',p
+            p=run(['sftp','-F','/dev/null','-i',a.key,'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+a.known_hosts,'-o','BatchMode=yes','-b','-',target],input='pwd\n')
+            assert p.returncode==0,p.stderr
+        finally:c.close()
+    finally:
+        root('systemctl','start','exam-agent')
+        wait_for(agent_ready,40)
+    ok(label)
+
+wait_for(agent_ready,40)
+
+if a.setup_only:
+    assert temporary
+    import fcntl,tempfile
+    original_baseline=baseline
+    root('loginctl','enable-linger',a.username)
+    baseline=(baseline[0],baseline[1],True)
+    def setup():
+        c=Connection();c.transport=c.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
+        c.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':a.username,'transport':c.transport,'settings':{'duration':60,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
+        c.command('prepare-account-policy',{'id':id});return c,id
+    try:
+        current,id=setup()
+        result=json.loads(root('examctl','cancel',id,'--reason','Qualification cancels setup with original lingering enabled'))
+        assert result['policy_state']=='NORMAL' and not result['start'],result
+        current.close();normal_access('setup cancellation returns current restoration state and restores initially enabled lingering')
+        current,id=setup();current.close()
+        expires=info(id)['policy_expires']
+        root('systemctl','restart','exam-agent','exam-deadline-watchdog');wait_for(agent_ready,40)
+        assert info(id)['policy_expires']==expires and not info(id)['start']
+        state_dir=pathlib.Path(config['state'])
+        with open(state_dir/'lock','a+') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX)
+            state=json.loads((state_dir/'state.json').read_text());attempt=state['attempts'][id]
+            assert attempt['state']=='PREPARING' and not attempt['start'] and not attempt['deadline']
+            attempt['policy_expires']=int(time.time()*1000)-1
+            fd,path=tempfile.mkstemp(dir=state_dir)
+            with os.fdopen(fd,'w') as f:json.dump(state,f);f.flush();os.fsync(f.fileno())
+            os.replace(path,state_dir/'state.json')
+        root('systemctl','stop','exam-agent')
+        wait_for(lambda:info(id).get('policy_state')=='NORMAL',30)
+        assert not info(id)['start'] and info(id)['state']=='CANCELLED_BEFORE_START'
+        normal_access('watchdog restores abandoned setup after restart with no browser, SSH or gate service')
+    finally:
+        if not original_baseline[2]:root('loginctl','disable-linger',a.username)
+        root('systemctl','start','exam-agent')
+    print(json.dumps({'passed':passed,'count':len(passed),'setup_only':True}),flush=True)
+    raise SystemExit(0)
+
+if temporary:
+    normal_access('normal SSH/SFTP work before enrollment without exam daemon')
+    bootstrap=Connection()
+    try:
+        bootstrap.transport=bootstrap.command('register',{'exam':'qualification'})['transport']
+        assert pwd.getpwnam(a.username).pw_shell==baseline[0]
+        ok('signed registration leaves ordinary account policy unchanged')
+    finally:bootstrap.close()
 check_jobs()
 # Old authenticated connection and detached writer precede the activation barrier.
 old=Connection(); current=Connection()
@@ -101,7 +184,9 @@ try:
     p=old.raw("nohup /bin/sh -c 'while :; do echo writing >> "+writer+"; sleep .1; done' >/dev/null 2>&1 </dev/null & echo STARTED")
     assert p.returncode==0 and 'STARTED' in p.stdout,p
     wait_for(lambda:pathlib.Path(writer).exists(),5)
-    id=current.start();deadline=info(id)['deadline'];size=pathlib.Path(writer).stat().st_size;time.sleep(.4)
+    id=current.start();deadline=info(id)['deadline'];
+    if temporary:denied(run(['su',a.username,'-c','echo BYPASS']),'temporary PAM restriction blocks alternate su')
+    size=pathlib.Path(writer).stat().st_size;time.sleep(.4)
     assert pathlib.Path(writer).stat().st_size==size
     ok('activation terminates detached pre-existing writer')
     denied(old.raw('echo BYPASS'),'pre-existing multiplexed SSH channel denied')
@@ -125,7 +210,7 @@ try:
         except RuntimeError:ok('browser reload/fresh signed registration cannot reopen finished attempt')
         denied(fresh.raw('echo BYPASS'),'fresh direct SSH denied before original deadline')
     finally:fresh.close()
-    root('systemctl','restart','exam-agent','exam-deadline-watchdog');wait_for(lambda:pathlib.Path(config['socket']).exists(),10)
+    root('systemctl','restart','exam-agent','exam-deadline-watchdog');wait_for(agent_ready,40)
     assert info(id)['deadline']==deadline and info(id)['access_state']=='HELD'
     denied(old.raw('echo BYPASS'),'agent/watchdog restart preserves original access hold')
     current.close()
@@ -133,6 +218,7 @@ try:
     assert secure(id)[2]==checksum
     p=old.raw('printf ORDINARY-RESTORED');assert p.returncode==0 and 'ORDINARY-RESTORED' in p.stdout,p
     ok('ordinary access restores only after original deadline and protected collection')
+    if temporary:normal_access('exact account baseline and SSH/SFTP restored with gate daemon stopped')
 finally:old.close();current.close()
 
 # Class watchdog must finish locally while gate service and all clients are absent.
@@ -155,7 +241,7 @@ try:
 finally:current.close();root('systemctl','start','exam-agent')
 
 # Unsafe regular-file aliases fail collection; failures must retain the access hold.
-wait_for(lambda:pathlib.Path(config['socket']).exists(),10)
+wait_for(agent_ready,40)
 current=Connection()
 try:
     id=current.start();pane=current.pane(id)
@@ -177,4 +263,14 @@ try:
     wait_for(lambda:info(id)['access_state']=='RELEASED',10)
     ok('operator repair retries failed collection and secures protected copy before release')
 finally:current.close()
+if temporary:
+    current=Connection()
+    try:
+        current.transport=current.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
+        current.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':a.username,'transport':current.transport,'settings':{'duration':60,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
+        current.command('prepare-account-policy',{'id':id})
+        root('examctl','cancel',id,'--reason','Qualification cancels unstarted temporary setup')
+        assert info(id)['policy_state']=='NORMAL' and not info(id)['start']
+        normal_access('cancel unstarted setup restores exact ordinary policy')
+    finally:current.close()
 print(json.dumps({'passed':passed,'count':len(passed),'uid':account.pw_uid,'strict_isolation':True}),flush=True)

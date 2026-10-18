@@ -98,13 +98,13 @@ func main() {
 		result = attempts
 		if err == nil && !*asJSON {
 			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			fmt.Fprintln(w, "ATTEMPT\tEXAM\tSTUDENT\tSTATE\tACCESS\tDEADLINE")
+			fmt.Fprintln(w, "ATTEMPT\tEXAM\tSTUDENT\tSTATE\tACCESS\tPOLICY\tDEADLINE")
 			for _, a := range attempts {
 				deadline := "not started"
 				if a.Deadline > 0 {
 					deadline = time.UnixMilli(a.Deadline).UTC().Format(time.RFC3339)
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", a.ID, a.Exam, a.Username, a.State, a.AccessState, deadline)
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", a.ID, a.Exam, a.Username, a.State, a.AccessState, a.PolicyState, deadline)
 			}
 			w.Flush()
 			return
@@ -123,6 +123,9 @@ func main() {
 		err = e.RefreshExpiredTiming()
 		if tickErr := e.Tick(); err == nil {
 			err = tickErr
+		}
+		if policyErr := e.ReconcilePolicies(); err == nil {
+			err = policyErr
 		}
 		result = map[string]bool{"ok": err == nil}
 	case "override-access":

@@ -23,6 +23,7 @@ function App() {
     [authPhase, setAuthPhase] = useState<
       "idle" | "connecting" | "completing" | "failed"
     >("idle"),
+    [signInNotice, setSignInNotice] = useState(""),
     [error, setError] = useState(""),
     [challenge, setChallenge] = useState<AuthChallenge | null>(null),
     [responding, setResponding] = useState(false),
@@ -69,6 +70,7 @@ function App() {
   const applySession = (next: Awaited<ReturnType<typeof readSession>>) => {
     setCsrf(next.user?.csrf || "");
     if (next.user?.role === "student") {
+      setSignInNotice("");
       setExamId(next.user.exam);
       setUsername(next.user.username);
     }
@@ -302,7 +304,8 @@ function App() {
             functionalTest: !!loginTest?.functionalTest,
           }}
           onSignOut={logout}
-          onReauthenticate={(exam, name) => {
+          onReauthenticate={(exam, name, notice) => {
+            setSignInNotice(notice || "");
             setReservation(null);
             setSession({ user: null, info: null });
             setExamId(exam);
@@ -334,6 +337,11 @@ function App() {
             {loginTest?.functionalTest && (
               <p className="notice">
                 Administrator test · ordinary server access retained.
+              </p>
+            )}
+            {signInNotice && (
+              <p role="status" className="notice">
+                {signInNotice}
               </p>
             )}
             <section className="card sign-in">

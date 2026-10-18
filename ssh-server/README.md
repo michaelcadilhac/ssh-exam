@@ -119,23 +119,35 @@ terminal's existing mount namespace is not changed in place.
 Review config/sshd-exam.example.conf and config/pam/README.md. Match Group exam-managed applies
 ForceCommand exam-dispatch, PermitUserRC=no, no forwarding/agent/X11/tunnels and MaxSessions 8.
 Configure an external SFTP subsystem globally. Verify ForceCommand on every SSH listener and
-subsystem. Outside attempts, the gate dispatches SSH_ORIGINAL_COMMAND through the recorded shell.
+subsystem. Hooks apply only while temporary exam-managed membership is present.
 The compiled actual account shell runs before personal startup; EXAM_ID labels are not credentials.
 
-Review each PAM stack. Skip pam_systemd only for managed SSH sessions so terminating ordinary
-user sessions does not kill the retained transport. Deny course accounts' alternate local,
-su/runuser, cron/at, display-manager and user-service routes; disable lingering and chsh.
-Reject privileged groups/sudo/system cron tasks. Course forwarding/local jobs/user services
-remain deliberately disabled during enrollment even outside exams. Ordinary SSH/commands and
-supported external SFTP return only after the original deadline AND verified protection/termination.
+Set `temporary_account_policy: true`. Keep `accounts` empty except explicit trusted administrator
+sandbox exceptions. Web enrollment and signed SSH/NSS verification replace manual student
+allowlists; do not run the legacy `enroll-accounts` script in this mode. Enrollment, sign-in
+and practice leave ordinary shell, forwarding, local access and user services unchanged.
 
-Root approves existing accounts explicitly:
+The student's explicit Secure exam access action journals the exact original policy, temporarily
+sets the gate shell/SSSD override and exam-managed membership, and disables lingering. Existing
+jobs or system services that cannot safely be isolated cause qualification to fail without
+changing or deleting jobs. The student must authenticate a new SSH transport after setup;
+opening another channel on the bootstrap connection cannot start time or reveal material.
+Setup expires after five minutes and the watchdog restores a provably unstarted account.
 
-    sudo ./scripts/enroll-accounts student01 student02
+Actual exam activation terminates conflicting processes and commits the original deadline.
+Finishing early does not restore the account. After both original/current deadlines and
+verified secured collection/writer termination, the independent reconciler restores the
+exact baseline and verifies effective NSS, SSH, groups and lingering before marking RELEASED.
+Restoration failure stays visible/retryable; it never declares successful release. Normal
+SSH/SFTP/commands/forwarding then work without the exam agent.
 
-Original UID/GID/home/shell mapping saves atomically before usermod sets the gate. Privileged
-accounts/groups are rejected. CSV imports never create accounts or change hosts/paths/shells.
-Restart the agent for registry changes only while drained.
+The fixed root helper `/usr/local/sbin/exam-account-policy` runs through systemd-run outside
+the daemon's read-only filesystem namespace; no setuid binary or general account-control API
+is installed. Keep root-private `state.json` and `account-policy/UID.json` recovery records.
+Set the new `temporaryAccountPolicy` guard only after installation qualification, including
+per-user SSSD override round trips without per-attempt global restarts where applicable.
+See [temporary policy](../docs/account-admission-proposal.md) and
+[recovery](../docs/recovery-runbook.md).
 
     sudo sshd -t
     sudo sshd -T -C user=student01,host=class.example.edu,addr=JUMP_HOST_IP
@@ -154,8 +166,12 @@ Prepare closes ordinary admission. Activation kills conflicting sessions and unr
 processes while preserving the verified gateway transport, requiring validated PAM placement.
 Independent PTYs run in root-controlled systemd scopes under exam.slice. bubblewrap isolates
 network/PID/mount/IPC/UTS, separate toolchain root, proc/dev/tmp, writable /work and read-only
-/materials. HOME contains read-only copies of approved shell/editor startup preferences,
-excluding host sockets; home changes do not persist. Per-pane loopback is independent.
+/materials. HOME is a read-only configuration snapshot at the student's usual `/home/...` path
+(or `/home/student` for other layouts). It preserves Bash/Zsh, Emacs/Vim/Nano, `.config`,
+`.local/share` and `.local/bin`, including safe internal dotfile links. Host sockets,
+SSH/GPG stores and unrelated home documents are not exposed. The original home and its
+permissions remain untouched. Writable cache/data/state/runtime and seeded Emacs/Vim
+directories are disposable, shared across panes, and separate for practice/exam. Per-pane loopback is independent.
 
 The gateway receives no root SSH credential or arbitrary-command agent operation.
 Agent root privileges are needed for namespace/PTY/UID setup, cgroups, killing writers and
@@ -418,3 +434,40 @@ both signing identities work, and test a disconnected reset/outage/recovery befo
 availability/trust for pending timing decisions; never discard state or use an older collector
 to bypass them. Already persisted collection permission permits restart recovery even if the
 webserver subsequently disappears. Successful early Finish still collects immediately.
+
+## Student configuration and application state
+
+Create real rootfs `/home`, `/run` and `/usr/local/bin` directories; `scripts/verify`
+and readiness reject missing/symlinked mount points. `/run` and `/home` are private
+namespace views. Keep the normal toolchain and required editor packages in rootfs.
+
+Root-only optional `home_config_paths` adds home-relative configuration dependencies,
+for example `["dotfiles", "emacs-config", "shell-helpers"]`. Use it when startup code
+loads custom paths beyond the standard configuration trees. Absolute paths, parent
+traversal, reserved agent metadata, SSH/GPG stores and outside-home symlinks are rejected.
+Configuration snapshots are limited to 256 MiB total, 32 MiB per regular file, 30,000
+entries and depth 48. Oversized/unsafe/unreadable configuration fails preflight rather
+than silently dropping settings. Home content is snapshotted once; changes made outside
+preflight require a fresh preflight attempt to be incorporated.
+
+`XDG_CONFIG_HOME` reads the configuration view; XDG cache/data/state/runtime and standard
+shell/repl history variables point to disposable storage. `.cache`, `.local/share`,
+`.local/state`, Emacs configuration directories and `.vim` are mounted onto seeded
+private writable leaves. Copying to the home root or modifying startup files fails;
+writes under those application leaves are temporary and never reach the real home.
+Emacs and Vim launchers in the exam `/usr/local/bin` redirect their usual backup,
+autosave and history locations while retaining normal user initialization. Other
+local tools are retained through a read-only original-tool directory. Custom init
+code that overrides state paths must use the supplied XDG paths; arbitrary writes
+to protected locations remain errors.
+
+Storage is `<state>/temporary/<attempt>/{practice,exam}/application`; original configuration
+snapshots remain under root-private `<state>/homes/<attempt>`. Retain them through
+collection/termination failures. Confirmed termination with secured collection or
+pre-start cancellation removes both, without following student links. Nothing enters
+the submission archive and no state/config changes are copied back to the real home.
+
+The administrator sandbox bypasses configuration snapshotting, application redirects
+and editor launchers. Its real HOME, configuration, tools and administrator access
+remain unrestricted. Drain attempts for native upgrades; cancel old unstarted preflights
+and reopen them to obtain the new snapshot format. No running pane is remounted in place.

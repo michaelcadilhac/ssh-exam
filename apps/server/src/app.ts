@@ -818,9 +818,27 @@ export async function createApp(
       work_path: prepared.work_path || "/work",
       functionalTest: !!h.functional_test,
       administratorSandbox: !!prepared.administrator_sandbox,
+      requiresSecureAccess:
+        !!prepared.account_policy_required &&
+        prepared.policy_transport !== conn.transport,
+      username: s.username,
       notice:
         "Preflight images retained with this attempt if started; abandoned preflight images are deleted.",
     };
+  });
+  app.post("/api/student/attempts/:id/secure-access-reauth", async (req) => {
+    const a = studentAttempt(req);
+    page(req, a);
+    if (a.state !== "PREPARING" || a.start)
+      throw Error("Secure exam access is not ready for fresh sign-in");
+    const conn = connections.get(`${a.exam}:${a.username}`);
+    const remote = await conn?.command("inspect-attempt", { id: a.id });
+    if (remote?.policy_state !== "READY" || remote.start)
+      throw Error("Secure exam access is not ready for fresh sign-in");
+    attemptConnections.delete(a.id);
+    conn?.close();
+    connections.delete(`${a.exam}:${a.username}`);
+    return { ok: true };
   });
   app.post("/api/student/attempts/:id/practice", async (req) => {
     const a = studentAttempt(req);
@@ -867,6 +885,23 @@ export async function createApp(
       throw Error("Preparation is changing; check status before starting.");
     busy.add(a.id);
     try {
+      const prepared = await conn.command("inspect-attempt", { id: a.id });
+      if (
+        prepared.account_policy_required &&
+        prepared.policy_transport !== conn.transport
+      ) {
+        for (const c of conn.panes.values()) await c.close();
+        conn.panes.clear();
+        const secured = await conn.command("prepare-account-policy", {
+          id: a.id,
+        });
+        life.syncAccess(a.id, secured);
+        return {
+          requiresReauthentication: true,
+          attempt: store.attempt(a.id),
+          serverNow: now(),
+        };
+      }
       for (const c of conn.panes.values()) await c.close();
       conn.panes.clear();
       const result = await agent.call("activate-attempt", { id: a.id });
@@ -1602,7 +1637,7 @@ export async function createApp(
             at: now(),
             attention: store.db
               .prepare(
-                "SELECT count(*) n FROM attempts WHERE state IN ('LOCKED','COLLECTION_FAILED') OR access_error IS NOT NULL",
+                "SELECT count(*) n FROM attempts WHERE state IN ('LOCKED','COLLECTION_FAILED') OR access_error IS NOT NULL OR policy_error IS NOT NULL",
               )
               .get(),
           }),
@@ -1825,6 +1860,7 @@ export async function createApp(
               )
               .get(held.id, now()) as any);
           await p.connection.connect(dialogue, {
+            exam: m.exam,
             continuation: grant
               ? {
                   id: held!.id,

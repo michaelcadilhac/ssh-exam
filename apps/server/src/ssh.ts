@@ -31,6 +31,7 @@ export class Connection {
   async connect(
     dialogue: Dialogue,
     options: {
+      exam?: string;
       timeoutMs?: number;
       continuation?: { id: string; generation: number; expires: number };
     } = {},
@@ -301,6 +302,7 @@ export class Connection {
         return;
       }
       const result = await this.command("register", {
+        exam: options.exam,
         continuation: options.continuation,
       });
       this.transport = result.transport;

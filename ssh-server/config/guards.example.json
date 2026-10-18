@@ -15,5 +15,6 @@
   "alternateServices": false,
   "schedulerIsolation": false,
   "sshCommandTransport": false,
-  "statusCallbacks": false
+  "statusCallbacks": false,
+  "temporaryAccountPolicy": false
 }

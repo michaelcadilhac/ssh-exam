@@ -31,6 +31,9 @@ export interface Attempt {
   completed_at: number | null;
   collected_at: number | null;
   secured_at: number | null;
+  policy_state: string | null;
+  policy_expires: number | null;
+  policy_error: string | null;
   access_state: string;
   access_held_at: number | null;
   access_released_at: number | null;
@@ -85,6 +88,10 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=8").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/008.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=9").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/009.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

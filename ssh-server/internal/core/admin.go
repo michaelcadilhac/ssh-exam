@@ -61,6 +61,12 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 		result, err = e.callLocked(operation, Request{ID: id, Reason: "administrator: " + reason})
 		return err
 	})
+	if err == nil && (op == "cancel" || op == "stop" || op == "finish") {
+		err = e.reconcilePolicies(id)
+		if err == nil {
+			err = e.WithState(func() error { a, err := e.Find(id); result = a; return err })
+		}
+	}
 	return result, err
 }
 

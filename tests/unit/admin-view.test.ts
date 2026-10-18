@@ -45,3 +45,26 @@ it("limits clock selection to live, unprotected attempts without a pending chang
   ])
     expect(clockEditable(blocked, 1000)).toBe(false);
 });
+
+it("shows restoration failures independently of a secured submission", () => {
+  const a = {
+    state: "COMPLETED",
+    protected: 1,
+    policy_state: "RESTORE_FAILED",
+    policy_error: "NSS verification failed",
+  };
+  expect(needsAttention(a)).toBe(true);
+  expect(matchesDashboardView(a, "attention")).toBe(true);
+  expect(matchesDashboardView(a, "secured")).toBe(true);
+  expect(attemptStatus(a)).toEqual({
+    label: "Access recovery required",
+    tone: "danger",
+  });
+  expect(
+    attemptStatus({ ...a, policy_state: "RESTORE_PENDING", policy_error: null })
+      .label,
+  ).toBe("Restoring access");
+  expect(
+    attemptStatus({ ...a, policy_state: "NORMAL", policy_error: null }).label,
+  ).toBe("Submission secured");
+});

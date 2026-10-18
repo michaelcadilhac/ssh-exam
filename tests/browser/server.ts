@@ -62,6 +62,14 @@ const attempts = new Map<string, any>();
 const archive = Buffer.from("TEST-FIXTURE-ARCHIVE");
 const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (op === "register") {
+    if (!b.exam) throw Error("Exam-scoped registration required");
+    for (const a of attempts.values())
+      if (
+        a.exam === "temporary-access" &&
+        a.policy_state === "READY" &&
+        !a.start
+      )
+        a.policy_transport = b.transport;
     if (b.continuation) {
       const a = attempts.get(b.continuation.id);
       if (!a || a.state === "COMPLETED") throw Error("Attempt cannot resume");
@@ -81,6 +89,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
       ...timezoneAccounts,
+      policytest01: 12001,
       student01: 10001,
       student02: 10002,
       student03: 10003,
@@ -97,6 +106,24 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       throw Error("Unknown fixture account");
     return Object.fromEntries(b.usernames.map((u: string) => [u, users[u]]));
   }
+  if (op === "prepare-attempt" && b.exam === "temporary-access") {
+    const existing = attempts.get(b.id);
+    if (existing) {
+      existing.transport = b.transport;
+      return existing;
+    }
+    const a = {
+      ...b,
+      state: "PREPARING",
+      generation: 0,
+      start: 0,
+      account_policy_required: true,
+      policy_state: "",
+      policy_transport: "",
+    };
+    attempts.set(b.id, a);
+    return a;
+  }
   if (op === "prepare-attempt") {
     attempts.set(b.id, { ...b, state: "PREPARING", generation: 0 });
     return attempts.get(b.id);
@@ -104,6 +131,10 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   const a = attempts.get(b.id);
   if (!a) throw Error("Unknown fixture attempt");
   switch (op) {
+    case "prepare-account-policy":
+      a.policy_state = "READY";
+      a.policy_expires = Date.now() + 300000;
+      break;
     case "submission-status":
       break;
     case "submission-manifest":
@@ -120,6 +151,11 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       a.state = "CANCELLED_BEFORE_START";
       break;
     case "activate-attempt":
+      if (
+        a.account_policy_required &&
+        (a.policy_state !== "READY" || a.policy_transport !== a.transport)
+      )
+        throw Error("Fresh protected SSH sign-in required");
       a.state = "ACTIVE";
       a.start = Date.now();
       a.deadline = a.start + a.settings.duration * 1000;
@@ -216,6 +252,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
     health: { ready: true, fixture: true },
     accounts: {
       ...timezoneAccounts,
+      policytest01: 12001,
       student01: 10001,
       student02: 10002,
       student03: 10003,
@@ -346,6 +383,12 @@ store.db
     Date.now() + 5400000,
     "HELD",
   );
+store.db
+  .prepare("INSERT INTO exams VALUES(?,?)")
+  .run("temporary-access", JSON.stringify({ ...exam, id: "temporary-access" }));
+store.db
+  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
+  .run("temporary-access", "policytest01", null, null, null, 12001);
 await app.listen({ host: "127.0.0.1", port: 3100 });
 let stopping = false;
 async function shutdown() {

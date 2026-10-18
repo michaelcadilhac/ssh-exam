@@ -57,6 +57,11 @@ def main():
             raise SystemExit("Native checksum mismatch")
     config_path = Path("/etc/exam-agent/agent.json")
     config = json.loads(config_path.read_text())
+    if config.get("temporary_account_policy"):
+        run("/usr/local/sbin/examctl", "reconcile")
+        journals = Path(config["state"]) / "account-policy"
+        if any(json.loads(p.read_text()).get("phase") != "NORMAL" for p in journals.glob("*.json")):
+            raise SystemExit("Drain and restore temporary account policy before replacing binaries")
     state_path = Path(config["state"]) / "state.json"
     with drained_agent(state_path):
         state = json.loads(state_path.read_text())

@@ -170,6 +170,7 @@ export class BrowserConnection extends Connection {
   override async connect(
     _dialogue: Dialogue,
     options: {
+      exam?: string;
       timeoutMs?: number;
       continuation?: { id: string; generation: number; expires: number };
     } = {},
@@ -210,6 +211,7 @@ export class BrowserConnection extends Connection {
       sshAuthenticated = true;
       this.alive = true;
       const result = await this.command("register", {
+        exam: this.exam,
         continuation: options.continuation,
       });
       this.transport = result.transport;

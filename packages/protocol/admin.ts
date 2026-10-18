@@ -16,7 +16,13 @@ export const dashboardViews = [
 ] as const;
 export type DashboardView = (typeof dashboardViews)[number];
 export function needsAttention(a: any): boolean {
-  return a.state === "LOCKED" || a.state === "COLLECTION_FAILED";
+  return (
+    a.state === "LOCKED" ||
+    a.state === "COLLECTION_FAILED" ||
+    !!a.policy_error ||
+    !!a.access_error ||
+    ["APPLY_FAILED", "RESTORE_FAILED"].includes(a.policy_state)
+  );
 }
 export function webcamRequired(a: any): boolean | null {
   try {
@@ -46,6 +52,14 @@ export function matchesDashboardView(a: any, view: DashboardView): boolean {
   }
 }
 export function attemptStatus(a: any): { label: string; tone: string } {
+  if (a.policy_state === "RESTORE_FAILED")
+    return { label: "Access recovery required", tone: "danger" };
+  if (a.policy_state === "APPLY_FAILED")
+    return { label: "Access setup failed", tone: "danger" };
+  if (["RESTORE_PENDING", "RESTORING"].includes(a.policy_state))
+    return { label: "Restoring access", tone: "warning" };
+  if (a.policy_state === "APPLYING")
+    return { label: "Securing access", tone: "neutral" };
   if (a.state === "ACTIVE")
     return {
       label: a.working ? "Working" : "Disconnected",

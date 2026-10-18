@@ -31,6 +31,9 @@ type CallbackEvent struct {
 
 func publicAttempt(a *Attempt) *Attempt {
 	v := *a
+	v.PolicyTransport = ""
+	v.PolicyRestoreAuthorized = false
+	v.PolicyOverride = false
 	v.Transport = ""
 	v.ResumeTransport = ""
 	v.Authorization = 0

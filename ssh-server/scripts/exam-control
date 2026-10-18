@@ -1,0 +1,3 @@
+#!/bin/sh
+# Bootstrap signed control before an exam installs the temporary login gate.
+exec /usr/local/libexec/exam-login -c exam-control

@@ -10,7 +10,7 @@ func sandboxAttempt(a *Attempt) bool { return a.Exam == SandboxExamID }
 // Explicit root approval of an administrator is scoped to the reserved sandbox.
 // It never exempts a normal student attempt, even for the same UID.
 func (e *Engine) administratorSandbox(a *Attempt) bool {
-	account, ok := e.Config.Accounts[a.Username]
+	account, ok := e.account(a.Username)
 	return ok && account.SandboxOnly && account.UID == a.UID && sandboxAttempt(a) && a.AdministratorSandbox
 }
 func (e *Engine) hostAccess(a *Attempt) bool {

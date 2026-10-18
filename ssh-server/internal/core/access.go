@@ -11,6 +11,9 @@ import (
 
 // Access authorization is independent of submission state. Unknown states fail closed.
 func accessHeld(a *Attempt) bool {
+	if a.PolicyGeneration != "" && a.PolicyState != "NORMAL" {
+		return true
+	}
 	if a.State == "CANCELLED_BEFORE_START" && a.Start == 0 {
 		return false
 	}
@@ -36,10 +39,13 @@ func (e *Engine) verifyRelease(a *Attempt) error {
 	if _, err := ReadProtected(filepath.Join(e.Config.State, "submissions", a.ID), a); err != nil {
 		return err
 	}
-	return e.terminate(a)
+	if err := e.terminate(a); err != nil {
+		return err
+	}
+	return e.verifyWriters(a)
 }
 func (e *Engine) reconcileAccess(a *Attempt) {
-	if a.Start == 0 || !accessHeld(a) || (!sandboxAttempt(a) && !restrictionElapsed(a)) {
+	if a.Start == 0 || !accessHeld(a) || ((!sandboxAttempt(a) || e.temporaryPolicy(a)) && !restrictionElapsed(a)) {
 		return
 	}
 	if a.State != "COMPLETED" {
@@ -53,6 +59,13 @@ func (e *Engine) reconcileAccess(a *Attempt) {
 		}
 		return
 	} // Collection/recovery failure keeps the hold.
+	if e.temporaryPolicy(a) && a.PolicyGeneration != "" && a.PolicyState != "NORMAL" {
+		a.PolicyRestoreAuthorized = true
+		if a.PolicyState != "RESTORE_FAILED" {
+			a.PolicyState = "RESTORE_PENDING"
+		}
+		return
+	}
 	a.AccessState = "RELEASED"
 	a.AccessError = ""
 	a.AccessReleasedAt = Millis()
@@ -86,7 +99,15 @@ func (e *Engine) OverrideAccess(id, reason string) (any, error) {
 	if os.Geteuid() != 0 {
 		return nil, errors.New("root-only emergency access override")
 	}
-	return e.overrideSecuredAccess(id, reason)
+	result, err := e.overrideSecuredAccess(id, reason)
+	if err != nil {
+		return result, err
+	}
+	if err = e.reconcilePolicies(id); err != nil {
+		return result, err
+	}
+	err = e.WithState(func() error { a, err := e.Find(id); result = a; return err })
+	return result, err
 }
 
 func (e *Engine) overrideSecuredAccess(id, reason string) (any, error) {
@@ -125,6 +146,14 @@ func (e *Engine) overrideSecuredAccess(id, reason string) (any, error) {
 		f.Close()
 		if err != nil {
 			return err
+		}
+		if e.temporaryPolicy(a) && a.PolicyGeneration != "" && a.PolicyState != "NORMAL" {
+			a.PolicyOverride = true
+			a.PolicyRestoreAuthorized = true
+			a.PolicyState = "RESTORE_PENDING"
+			a.AccessOverride = reason
+			result = a
+			return nil
 		}
 		a.AccessState = "OVERRIDDEN"
 		a.AccessReleasedAt = Millis()

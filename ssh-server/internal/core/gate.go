@@ -99,7 +99,7 @@ func (e *Engine) ServeLocal() error {
 }
 func (e *Engine) local(c *net.UnixConn) {
 	defer c.Close()
-	c.SetDeadline(time.Now().Add(15 * time.Second))
+	c.SetDeadline(time.Now().Add(100 * time.Second))
 	cred, err := peer(c)
 	if err != nil {
 		return
@@ -123,17 +123,20 @@ func (e *Engine) local(c *net.UnixConn) {
 			break
 		}
 	}
-	if name == "" {
+	if name == "" && e.Config.TemporaryAccountPolicy {
+		name, account, err = peerAccount(int(cred.Uid))
+	}
+	if name == "" || err != nil {
 		json.NewEncoder(c).Encode(map[string]string{"error": "account not locally approved"})
 		return
 	}
 	if r.Command != nil {
-		identity, err := transportIdentity(int(cred.Pid), account.UID)
+		identity, monitor, err := transportInfo(int(cred.Pid), account.UID)
 		if err != nil {
 			json.NewEncoder(c).Encode(map[string]string{"error": "SSH ancestry rejected"})
 			return
 		}
-		result, err := e.Command(*r.Command, name, identity)
+		result, err := e.command(*r.Command, name, identity, monitor)
 		// Legacy fields remain for a drained rolling upgrade. Browser callers must
 		// verify the signed receipt rather than trusting these outer fields.
 		var cmd Command
@@ -166,6 +169,9 @@ func (e *Engine) local(c *net.UnixConn) {
 	id := ""
 	result := map[string]any{}
 	err = e.WithState(func() error {
+		if baseline, ok := e.account(name); ok {
+			account = baseline
+		}
 		if r.Ordinary {
 			if err := e.ordinaryAccess(account.UID); err != nil {
 				if a := e.Busy(account.UID); a != nil {
@@ -231,6 +237,10 @@ func (e *Engine) local(c *net.UnixConn) {
 			}
 		}
 		temporary, err := e.prepareTemporary(a, practice)
+		if err != nil {
+			return err
+		}
+		temporary, err = e.prepareApplication(a, temporary)
 		if err != nil {
 			return err
 		}

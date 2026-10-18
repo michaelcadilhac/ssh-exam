@@ -168,3 +168,28 @@ removed: verify the corresponding authoritative root-protected archive/checksum 
 then retire obsolete web copies and their backups under the operator retention policy.
 Do not restore an older transfer-enabled agent to implement a UI rollback. Keep watchdogs,
 current schema/state, pending timing changes and account holds intact.
+
+## Temporary student restrictions
+
+New configurations use `temporary_account_policy: true` and an empty `accounts` map;
+only explicit trusted administrator sandbox exceptions belong in that map. Do not run
+`enroll-accounts` for ordinary students. Web enrollment authorizes their signed SSH
+registration and NSS identity resolution without persistent OS account changes.
+
+Install `scripts/account-policy` as root-owned mode 0755
+`/usr/local/sbin/exam-account-policy`, together with the updated isolation checker and
+native binaries. The daemon launches only that fixed helper through systemd-run, outside
+its read-only namespace; do not grant the webserver sudo, root SSH or a general control
+API. Enable the independent watchdog/reconciliation units. The web metadata migration
+009 stores policy setup/restoration state separately from submission/access state.
+
+Drain and restore legacy permanent enrollments before enabling this mode; it rejects
+ordinary static-account entries. Preserve mcadilha's administrator sandbox exception.
+Qualify normal access, setup/fresh SSH, early finish, deadline restoration and outage
+recovery with the disposable guest. Directory-backed deployments additionally require
+SSSD local-override initialization and exact override round trips without per-exam
+SSSD restarts. Set `guards.json`'s `temporaryAccountPolicy` to true only after qualifying
+the actual installed provider and enabled access routes. Unsupported jobs/services fail
+preflight without deleting their configuration. See
+[temporary account isolation](account-admission-proposal.md) and the
+[recovery procedure](recovery-runbook.md).

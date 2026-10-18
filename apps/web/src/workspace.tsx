@@ -32,7 +32,7 @@ export function Workspace({
 }: {
   reservation: any;
   onSignOut: () => Promise<void>;
-  onReauthenticate: (exam: string, username: string) => void;
+  onReauthenticate: (exam: string, username: string, notice?: string) => void;
 }) {
   const root = useRef<HTMLDivElement>(null),
     area = useRef<HTMLDivElement>(null),
@@ -966,6 +966,18 @@ export function Workspace({
     ++snapshotEpoch.current;
     const result = await api(`/student/attempts/${id}/begin`, r, page);
     ++snapshotEpoch.current;
+    if (result.requiresReauthentication) {
+      await api(`/student/attempts/${id}/secure-access-reauth`, {}, page);
+      armed.current = false;
+      capture.current?.stop();
+      await document.exitFullscreen?.().catch(() => {});
+      onReauthenticate(
+        settings.id,
+        reservation.username || attemptRef.current.username,
+        "Exam access is ready. Sign in again, then reopen preflight to begin. Your exam clock has not started. Setup expires five minutes after you requested it.",
+      );
+      return;
+    }
     if (
       !acceptSnapshot(result.attempt, result.serverNow) &&
       !(
@@ -1267,7 +1279,9 @@ export function Workspace({
             }
             onClick={() => setDialog({ kind: "begin" })}
           >
-            Begin exam
+            {reservation.requiresSecureAccess
+              ? "Secure exam access"
+              : "Begin exam"}
           </button>
           {settings.webcam && (
             <video id="camera-preview" muted autoPlay playsInline />
@@ -1604,7 +1618,9 @@ export function Workspace({
           }}
           title={
             dialog.kind === "begin"
-              ? "Begin your timed exam?"
+              ? reservation.requiresSecureAccess
+                ? "Secure exam access?"
+                : "Begin your timed exam?"
               : dialog.kind === "finish"
                 ? "Finish exam?"
                 : dialog.kind === "close"
@@ -1631,7 +1647,16 @@ export function Workspace({
               exam.
             </p>
           )}
-          {dialog.kind === "begin" && (
+          {dialog.kind === "begin" && reservation.requiresSecureAccess && (
+            <p>
+              Ordinary server access will be temporarily restricted. You must
+              sign in to SSH again before the exam clock starts. Complete
+              sign-in within five minutes; abandoned setup is restored
+              automatically. Save work in other server sessions before
+              continuing.
+            </p>
+          )}
+          {dialog.kind === "begin" && !reservation.requiresSecureAccess && (
             <p>
               {!functionalTest &&
                 !reservation.administratorSandbox &&
@@ -1716,7 +1741,9 @@ export function Workspace({
                 }
               >
                 {dialog.kind === "begin"
-                  ? "Begin exam"
+                  ? reservation.requiresSecureAccess
+                    ? "Secure exam access"
+                    : "Begin exam"
                   : dialog.kind === "finish"
                     ? "Finish exam"
                     : dialog.kind === "close"

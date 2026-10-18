@@ -4,6 +4,15 @@ if os.geteuid()!=0:raise SystemExit('Root required')
 c=json.loads(pathlib.Path('/etc/exam-agent/agent.json').read_text());state=json.loads(pathlib.Path(c['state'],'state.json').read_text()) if pathlib.Path(c['state'],'state.json').exists() else {'attempts':{}}
 if not pathlib.Path(c['state'],'state.json').exists() and pathlib.Path(c['state'],'initialized').exists():raise SystemExit('State missing: restore administrator state before rollback')
 if any(not (a['state']=='CANCELLED_BEFORE_START' and not a.get('start')) and (a['state']!='COMPLETED' or a.get('access_state') not in ['RELEASED','OVERRIDDEN']) for a in state['attempts'].values()):raise SystemExit('Outstanding account hold: wait for original deadline and secured collection/release, or use audited root override before rollback')
+if c.get('temporary_account_policy'):
+ subprocess.run(['/usr/local/sbin/examctl','reconcile'],check=True)
+ state=json.loads(pathlib.Path(c['state'],'state.json').read_text())
+ if any(a.get('policy_generation') and a.get('policy_state')!='NORMAL' for a in state['attempts'].values()):raise SystemExit('Unresolved temporary policy: retain helper/watchdog and repair restoration before uninstall')
+ journals=pathlib.Path(c['state'],'account-policy')
+ for journal in journals.glob('*.json'):
+  if json.loads(journal.read_text()).get('phase')!='NORMAL':raise SystemExit('Unresolved account journal; do not uninstall enforcement')
+ print('All temporary policies verified restored. Recovery journals and submissions retained.')
+ raise SystemExit(0)
 for name,a in c['accounts'].items():
  account=pwd.getpwnam(name)
  if account.pw_uid!=a['uid']:raise SystemExit('UID changed; root investigation required')

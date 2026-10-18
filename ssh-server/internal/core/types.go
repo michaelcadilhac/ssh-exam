@@ -25,6 +25,8 @@ type Account struct {
 	Home        string `json:"home"`
 }
 type Config struct {
+	HomeConfigPaths           []string           `json:"home_config_paths,omitempty"`
+	TemporaryAccountPolicy    bool               `json:"temporary_account_policy,omitempty"`
 	TerminalRecordingLimitMiB int64              `json:"terminal_recording_limit_mib,omitempty"`
 	FunctionalHostAccess      bool               `json:"functional_host_access,omitempty"`
 	FunctionalTestAccount     string             `json:"functional_test_account,omitempty"`
@@ -65,48 +67,58 @@ type ClockReset struct {
 	Revision         int    `json:"revision"`
 }
 type Attempt struct {
-	TimingPendingSince     int64        `json:"timing_pending_since,omitempty"`
-	TimingNextCheck        int64        `json:"timing_next_check,omitempty"`
-	TimingVerifiedAt       int64        `json:"timing_verified_at,omitempty"`
-	TimingVerifiedDeadline int64        `json:"timing_verified_deadline,omitempty"`
-	TimingVerifiedRevision int          `json:"timing_verified_revision,omitempty"`
-	OriginalDeadline       int64        `json:"original_deadline,omitempty"`
-	OriginalUptimeDeadline float64      `json:"original_uptime_deadline,omitempty"`
-	ClockRevision          int          `json:"clock_revision,omitempty"`
-	ClockResets            []ClockReset `json:"clock_resets,omitempty"`
-	BrowserSSH             bool         `json:"browser_ssh,omitempty"`
-	AdministratorSandbox   bool         `json:"administrator_sandbox,omitempty"`
-	FunctionalTest         bool         `json:"functional_test,omitempty"`
-	ID                     string       `json:"id"`
-	Exam                   string       `json:"exam"`
-	Username               string       `json:"username"`
-	UID                    int          `json:"uid"`
-	Settings               Settings     `json:"settings"`
-	State                  string       `json:"state"`
-	Start                  int64        `json:"start"`
-	Deadline               int64        `json:"deadline"`
-	Ended                  int64        `json:"ended"`
-	CompletedAt            int64        `json:"completed_at"`
-	CollectedAt            int64        `json:"collected_at"`
-	SecuredAt              int64        `json:"secured_at"`
-	Lease                  int64        `json:"lease"`
-	WorkPath               string       `json:"work_path"`
-	Transport              string       `json:"transport"`
-	ResumeTransport        string       `json:"resume_transport,omitempty"`
-	Generation             int          `json:"generation"`
-	Authorization          int64        `json:"authorization"`
-	Reason                 string       `json:"reason"`
-	Checksum               string       `json:"checksum"`
-	Units                  []string     `json:"units"`
-	Errors                 []string     `json:"errors"`
-	Boot                   string       `json:"boot"`
-	UptimeDeadline         float64      `json:"uptime_deadline"`
-	Protected              bool         `json:"protected"`
-	AccessState            string       `json:"access_state"`
-	AccessHeldAt           int64        `json:"access_held_at"`
-	AccessReleasedAt       int64        `json:"access_released_at"`
-	AccessOverride         string       `json:"access_override,omitempty"`
-	AccessError            string       `json:"access_error,omitempty"`
+	PolicyRequired          bool         `json:"account_policy_required,omitempty"`
+	PolicyTransport         string       `json:"policy_transport,omitempty"`
+	PolicyGeneration        string       `json:"policy_generation,omitempty"`
+	PolicyState             string       `json:"policy_state,omitempty"`
+	PolicyExpires           int64        `json:"policy_expires,omitempty"`
+	PolicyReadyBoot         string       `json:"policy_ready_boot,omitempty"`
+	PolicyReadyUptime       float64      `json:"policy_ready_uptime,omitempty"`
+	PolicyRestoreAuthorized bool         `json:"policy_restore_authorized,omitempty"`
+	PolicyOverride          bool         `json:"policy_override,omitempty"`
+	PolicyError             string       `json:"policy_error,omitempty"`
+	TimingPendingSince      int64        `json:"timing_pending_since,omitempty"`
+	TimingNextCheck         int64        `json:"timing_next_check,omitempty"`
+	TimingVerifiedAt        int64        `json:"timing_verified_at,omitempty"`
+	TimingVerifiedDeadline  int64        `json:"timing_verified_deadline,omitempty"`
+	TimingVerifiedRevision  int          `json:"timing_verified_revision,omitempty"`
+	OriginalDeadline        int64        `json:"original_deadline,omitempty"`
+	OriginalUptimeDeadline  float64      `json:"original_uptime_deadline,omitempty"`
+	ClockRevision           int          `json:"clock_revision,omitempty"`
+	ClockResets             []ClockReset `json:"clock_resets,omitempty"`
+	BrowserSSH              bool         `json:"browser_ssh,omitempty"`
+	AdministratorSandbox    bool         `json:"administrator_sandbox,omitempty"`
+	FunctionalTest          bool         `json:"functional_test,omitempty"`
+	ID                      string       `json:"id"`
+	Exam                    string       `json:"exam"`
+	Username                string       `json:"username"`
+	UID                     int          `json:"uid"`
+	Settings                Settings     `json:"settings"`
+	State                   string       `json:"state"`
+	Start                   int64        `json:"start"`
+	Deadline                int64        `json:"deadline"`
+	Ended                   int64        `json:"ended"`
+	CompletedAt             int64        `json:"completed_at"`
+	CollectedAt             int64        `json:"collected_at"`
+	SecuredAt               int64        `json:"secured_at"`
+	Lease                   int64        `json:"lease"`
+	WorkPath                string       `json:"work_path"`
+	Transport               string       `json:"transport"`
+	ResumeTransport         string       `json:"resume_transport,omitempty"`
+	Generation              int          `json:"generation"`
+	Authorization           int64        `json:"authorization"`
+	Reason                  string       `json:"reason"`
+	Checksum                string       `json:"checksum"`
+	Units                   []string     `json:"units"`
+	Errors                  []string     `json:"errors"`
+	Boot                    string       `json:"boot"`
+	UptimeDeadline          float64      `json:"uptime_deadline"`
+	Protected               bool         `json:"protected"`
+	AccessState             string       `json:"access_state"`
+	AccessHeldAt            int64        `json:"access_held_at"`
+	AccessReleasedAt        int64        `json:"access_released_at"`
+	AccessOverride          string       `json:"access_override,omitempty"`
+	AccessError             string       `json:"access_error,omitempty"`
 }
 type Capability struct {
 	Username  string `json:"username"`
@@ -117,6 +129,7 @@ type Capability struct {
 	Expires   int64  `json:"expires"`
 }
 type State struct {
+	Accounts         map[string]Account    `json:"accounts,omitempty"`
 	Attempts         map[string]*Attempt   `json:"attempts"`
 	Caps             map[string]Capability `json:"capabilities"`
 	Registrations    map[string]string     `json:"registrations"`
@@ -129,13 +142,17 @@ type State struct {
 	RecordingOffsets map[string]int64      `json:"recording_offsets,omitempty"`
 }
 type Engine struct {
-	Config    Config
-	mu        sync.Mutex
-	monitorMu sync.Mutex
-	state     State
-	quiesce   func(*Attempt) error
-	terminate func(*Attempt) error
-	cutoff    func(*Attempt) error
+	accountMu       sync.RWMutex
+	accounts        map[string]Account
+	policyRun       func(string, string, string, string) ([]byte, error)
+	transportUptime func(int) (float64, error)
+	Config          Config
+	mu              sync.Mutex
+	monitorMu       sync.Mutex
+	state           State
+	quiesce         func(*Attempt) error
+	terminate       func(*Attempt) error
+	cutoff          func(*Attempt) error
 }
 
 var identifier = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
@@ -166,6 +183,11 @@ func LoadConfig(p string) (Config, error) {
 	if c.TerminalRecordingLimitMiB < 0 || c.TerminalRecordingLimitMiB > 1048576 {
 		return c, errors.New("terminal_recording_limit_mib must be 1..1048576, or omitted for 2048 MiB")
 	}
+	for _, name := range c.HomeConfigPaths {
+		if !validPreferencePath(name) {
+			return c, errors.New("home_config_paths must contain clean home-relative configuration paths, excluding private/reserved stores")
+		}
+	}
 	u, err := url.Parse(c.CallbackURL)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
 		return c, errors.New("callback_url must be a fixed HTTPS origin")
@@ -180,8 +202,18 @@ func LoadConfig(p string) (Config, error) {
 	for i := range key {
 		key[i] = 0
 	}
-	if len(c.Accounts) == 0 || !filepath.IsAbs(c.State) || !filepath.IsAbs(c.Work) || !filepath.IsAbs(c.Rootfs) {
+	if (len(c.Accounts) == 0 && !c.TemporaryAccountPolicy) || !filepath.IsAbs(c.State) || !filepath.IsAbs(c.Work) || !filepath.IsAbs(c.Rootfs) {
 		return c, errors.New("absolute paths and locally approved accounts required")
+	}
+	if c.TemporaryAccountPolicy {
+		if c.FunctionalTestAccount != "" {
+			return c, errors.New("temporary policy cannot use legacy functional-test access")
+		}
+		for _, a := range c.Accounts {
+			if !a.SandboxOnly {
+				return c, errors.New("temporary policy requires ordinary students to be dynamically resolved; static accounts are administrator exceptions only")
+			}
+		}
 	}
 	if c.FunctionalTestAccount != "" {
 		if len(c.Accounts) != 1 || c.FunctionalTestUntil <= 0 {
@@ -202,7 +234,7 @@ func LoadConfig(p string) (Config, error) {
 		if p == "/var" {
 			return c, errors.New("exam_directory overlaps private /var/tmp")
 		}
-		for _, reserved := range []string{"/proc", "/dev", "/sys", "/tmp", "/var/tmp", "/home", "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64"} {
+		for _, reserved := range []string{"/proc", "/dev", "/sys", "/run", "/tmp", "/var/tmp", "/home", "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64"} {
 			if p == reserved || strings.HasPrefix(p, reserved+"/") {
 				return c, errors.New("exam_directory overlaps a reserved sandbox path")
 			}
@@ -241,7 +273,9 @@ func New(c Config) (*Engine, error) {
 	if err := os.Chmod(c.State, 0700); err != nil {
 		return nil, err
 	}
-	e := &Engine{Config: c}
+	e := &Engine{Config: c, accounts: map[string]Account{}}
+	e.policyRun = e.systemPolicy
+	e.transportUptime = processUptime
 	e.quiesce = e.quiesceWriters
 	e.terminate = e.terminateWriters
 	e.cutoff = func(a *Attempt) error { return e.freeze(a, true) }
@@ -273,6 +307,15 @@ func (e *Engine) WithState(fn func() error) error {
 	if e.state.Attempts == nil || e.state.Caps == nil || e.state.Registrations == nil {
 		return errors.New("invalid administrator state; access denied")
 	}
+	if e.state.Accounts == nil {
+		e.state.Accounts = map[string]Account{}
+	}
+	e.accountMu.Lock()
+	e.accounts = make(map[string]Account, len(e.state.Accounts))
+	for name, a := range e.state.Accounts {
+		e.accounts[name] = a
+	}
+	e.accountMu.Unlock()
 	// Upgrade old records conservatively. Completion never implies access release.
 	for _, a := range e.state.Attempts {
 		if a.AccessState == "" && a.Start > 0 {

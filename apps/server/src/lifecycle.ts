@@ -453,6 +453,24 @@ export class Lifecycle {
   }
   syncAccess(id: string, remote: any) {
     if (
+      remote.policy_error &&
+      remote.policy_error !== this.store.attempt(id).policy_error
+    )
+      this.alert(
+        "Account policy requires recovery",
+        `Attempt ${id}: ${remote.policy_error}`,
+      );
+    this.store.db
+      .prepare(
+        "UPDATE attempts SET policy_state=?,policy_expires=?,policy_error=? WHERE id=?",
+      )
+      .run(
+        remote.policy_state || null,
+        remote.policy_expires || null,
+        remote.policy_error || null,
+        id,
+      );
+    if (
       remote.access_error &&
       remote.access_error !== this.store.attempt(id).access_error
     )
@@ -511,7 +529,8 @@ export class Lifecycle {
       a.start !== null ||
       a.deadline !== null ||
       remote.state !== "CANCELLED_BEFORE_START" ||
-      remote.start
+      remote.start ||
+      (remote.account_policy_required && remote.policy_state !== "NORMAL")
     ) {
       await this.reconcile(id);
       throw Error(

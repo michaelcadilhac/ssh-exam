@@ -9,8 +9,9 @@ import (
 )
 
 type temporaryPaths struct {
-	Tmp    string
-	VarTmp string
+	Application string
+	Tmp         string
+	VarTmp      string
 }
 
 // Every source directory's parent stays agent-owned and private. A student may
@@ -95,7 +96,7 @@ func (e *Engine) cleanupTemporary(a *Attempt) error {
 	}
 	defer state.Close()
 	if _, err := state.Lstat("temporary"); os.IsNotExist(err) {
-		return nil
+		return e.cleanupHome(a)
 	} else if err != nil {
 		return err
 	}
@@ -104,7 +105,10 @@ func (e *Engine) cleanupTemporary(a *Attempt) error {
 		return err
 	}
 	defer root.Close()
-	return root.RemoveAll(a.ID)
+	if err := root.RemoveAll(a.ID); err != nil {
+		return err
+	}
+	return e.cleanupHome(a)
 }
 
 func temporaryMountIssues(rootfs string) []string {

@@ -10,6 +10,15 @@ import {
 function accessDescription(a: any) {
   if (a.functional_test)
     return "Administrator test: normal SSH access is retained.";
+  if (a.policy_state === "RESTORE_FAILED")
+    return `Account restoration failed: ${a.policy_error || "administrator recovery required"}.`;
+  if (["RESTORE_PENDING", "RESTORING"].includes(a.policy_state))
+    return "Submission secured; ordinary account policy is being restored.";
+  if (
+    ["APPLYING", "READY", "APPLY_FAILED"].includes(a.policy_state) &&
+    !a.start
+  )
+    return `Temporary access setup: ${a.policy_state.toLowerCase().replaceAll("_", " ")}. The exam clock has not started.`;
   if (a.access_state === "OVERRIDDEN")
     return "Normal server access was released by an administrator override.";
   if (a.access_state === "RELEASED")

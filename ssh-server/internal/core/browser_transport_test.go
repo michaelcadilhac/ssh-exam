@@ -79,6 +79,10 @@ func TestCancelledPreflightRemovesStalePracticeUnits(t *testing.T) {
 	e.WithState(func() error {
 		a := e.state.Attempts[finalID]
 		a.Start = 0
+		a.Deadline = 0
+		a.OriginalDeadline = 0
+		a.UptimeDeadline = 0
+		a.OriginalUptimeDeadline = 0
 		a.State = "PREPARING"
 		a.Units = []string{"exam-" + finalID + "-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.scope"}
 		return nil

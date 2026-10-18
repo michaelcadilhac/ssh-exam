@@ -22,6 +22,13 @@ def check(config):
  declared_names=[line.split()[0] for line in declared.stdout.splitlines() if line.split() and line.split()[1:2]!=['alias']]
  templates=[name for name in declared_names if '@.service' in name]
  unit_names=sorted(set(unit_names+[name for name in declared_names if name not in templates]))
+ # Standard logind user managers are stopped by activation after the fresh SSH
+ # transport is fenced. They may already be running during ordinary preflight.
+ managers=[name for name in unit_names if re.fullmatch(r'user@[0-9]+\.service',name)]
+ for manager in managers:
+  launch=run(['/usr/bin/systemctl','show','--property=ExecStart','--value',manager])
+  require(launch.returncode==0 and re.search(r'path=(/usr/lib/systemd/systemd|/lib/systemd/systemd) ; argv\[\]=\1 --user(?: ;| )',launch.stdout) is not None,'Unexpected user manager implementation '+manager)
+ unit_names=[name for name in unit_names if name not in managers]
  service_users=set()
  if unit_names:
   properties=run(['/usr/bin/systemctl','show','--property=User','--value',*unit_names])
@@ -57,8 +64,9 @@ def check(config):
    require('exam-managed' not in groups,f'{name}: sandbox administrator must not be exam-managed')
    continue
   require(not any(name in rule.get('sshUsers',{}) or '*' in rule.get('sshUsers',{}) for rule in tail_rules if not rule.get('action',{}).get('reject')),f'{name}: Tailscale SSH must exclude managed accounts')
-  require(user.pw_uid==a['uid'] and user.pw_shell=='/usr/local/libexec/exam-login',f'{name}: UID/static login gate mismatch')
-  require('exam-managed' in groups and not groups & {'root','sudo','wheel','docker','lxd','adm','libvirt','disk'},f'{name}: unsafe groups')
+  active=a.get('policy_state','HELD')!='NORMAL'
+  require(user.pw_uid==a['uid'] and user.pw_shell==('/usr/local/libexec/exam-login' if active else a['shell']),f'{name}: effective shell policy mismatch')
+  require(('exam-managed' in groups)==active and not groups & {'root','sudo','wheel','docker','lxd','adm','libvirt','disk'},f'{name}: unsafe groups')
   if pathlib.Path('/usr/bin/sudo').exists():
    rights=run(['/usr/bin/sudo','-n','-l','-U',name])
    denied=re.compile(r'User '+re.escape(name)+r' is not allowed to run sudo on [^\n]+\.')
@@ -68,11 +76,11 @@ def check(config):
    result=run(['/usr/sbin/sshd','-T','-C',f'user={name},host=class.example.edu,addr={addr}'])
    require(result.returncode==0,f'{name}: sshd effective configuration unavailable')
    settings={line.split(' ',1)[0]:line.split(' ',1)[1] for line in result.stdout.splitlines() if ' ' in line}
-   for key,value in {'forcecommand':'exam-dispatch','permituserrc':'no','permituserenvironment':'no','disableforwarding':'yes','usepam':'yes'}.items():
+   for key,value in ({'forcecommand':'exam-dispatch','permituserrc':'no','permituserenvironment':'no','disableforwarding':'yes','usepam':'yes'} if active else {'usepam':'yes'}).items():
     require(settings.get(key)==value,f'{name}/{addr}: {key} must be {value}')
    require(all(v in ['LANG','LC_*'] or re.fullmatch(r'LC_[A-Z_]+',v) for v in settings.get('acceptenv','').split()),f'{name}: unsafe AcceptEnv')
-   require('internal-sftp' not in settings.get('subsystem',''),f'{name}: external SFTP through ForceCommand gate required')
-  require(not pathlib.Path('/var/lib/systemd/linger',name).exists(),f'{name}: lingering enabled')
+   require(not active or 'internal-sftp' not in settings.get('subsystem',''),f'{name}: external SFTP through ForceCommand gate required')
+  require(not active or not pathlib.Path('/var/lib/systemd/linger',name).exists(),f'{name}: lingering enabled')
   if pathlib.Path('/usr/bin/crontab').exists():
    jobs=run(['/usr/bin/crontab','-u',name,'-l'])
    require(jobs.returncode in [0,1],f'{name}: cannot inspect jobs')

@@ -140,3 +140,29 @@ Upgrading or rolling back mount behavior requires draining attempts: existing sh
 namespaces do not acquire new mounts when the agent restarts. Retain current state,
 original deadlines and submissions during binary rollback. Rootfs `/tmp`, `/var` and
 `/var/tmp` must be real directories before enabling the new agent.
+
+## Temporary account restoration
+
+With `temporary_account_policy` enabled, inspect `examctl info ATTEMPT` for `policy_state`,
+`policy_error`, `policy_expires` and the separate access/submission state. The original
+baseline and per-step journal live in the root-private `account-policy/UID.json` under
+the configured state directory. Preserve these files and `state.json` through upgrades,
+reboots and monitoring cleanup; they are not subject to monitoring retention.
+
+Use `examctl reconcile` to retry an expired unstarted setup or eligible post-deadline
+restoration. Fix reported NSS, permission/cache or independent administrator-change
+conflicts explicitly. Do not guess a shell, remove arbitrary SSSD overrides, replace the
+journal, or mark access released by editing metadata. Missing initialized state or a
+started-attempt baseline requires operator recovery and remains fail closed.
+
+`examctl cancel ATTEMPT --reason "..."` rolls back only provably unstarted preparation.
+`stop`/`finish` collect a started exam but retain its original/current deadline hold.
+An emergency early account restoration requires root `examctl override-access ATTEMPT
+--reason "..."`, a verified secured submission, confirmed stopped writers and a durable
+audit. It restores the account rather than merely changing an access flag.
+
+Do not stop the independent watchdog/timer or uninstall enforcement while any journal
+is not NORMAL. The rollback helper refuses unresolved temporary policies. Submissions,
+current state and recovery journals survive rollback; never restore an older database
+over current deadlines or protected archives. After normal restoration, verify ordinary
+SSH commands and file transfers with the exam gate daemon stopped.

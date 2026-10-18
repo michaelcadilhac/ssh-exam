@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""Root-only temporary account policy. No passwords or user-controlled commands."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import pwd
+import grp
+import re
+import stat
+import subprocess
+import tempfile
+import time
+
+GATE = '/usr/local/libexec/exam-login'
+MANAGED = 'exam-managed'
+PRIVILEGED = {'root', 'sudo', 'wheel', 'docker', 'lxd', 'adm', 'libvirt', 'disk'}
+NAME = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]{0,31}$')
+ATTEMPT = re.compile(r'^[a-f0-9-]{36}$')
+GENERATION = re.compile(r'^[a-f0-9]{64}$')
+SSH_KEYS = {'forcecommand', 'permituserrc', 'disableforwarding', 'allowtcpforwarding',
+            'allowagentforwarding', 'x11forwarding', 'permittunnel', 'permittty',
+            'permituserenvironment', 'acceptenv', 'usepam', 'subsystem', 'maxsessions'}
+
+def run(*args, codes=(0,), timeout=15):
+    r = subprocess.run(args, capture_output=True, text=True, timeout=timeout,
+                       env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LC_ALL': 'C'})
+    if r.returncode not in codes:
+        raise RuntimeError('Policy operation failed: ' + Path(args[0]).name)
+    return r
+
+def atomic(path, value):
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix='.' + path.name, dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(value, f, indent=2); f.write('\n'); f.flush(); os.fsync(f.fileno())
+        os.chmod(tmp, 0o600); os.replace(tmp, path)
+        fd = os.open(path.parent, os.O_RDONLY); os.fsync(fd); os.close(fd)
+    finally:
+        if os.path.exists(tmp): os.unlink(tmp)
+
+def protected_json(path):
+    st = path.lstat()
+    if not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o077:
+        raise RuntimeError('Unprotected policy state')
+    return json.loads(path.read_text())
+
+class System:
+    def __init__(self, config): self.config = config
+    def passwd(self, name):
+        if not NAME.fullmatch(name): raise RuntimeError('Invalid account name')
+        p = pwd.getpwnam(name)
+        groups = {grp.getgrgid(g).gr_name for g in os.getgrouplist(name, p.pw_gid)}
+        if p.pw_uid < 1000 or p.pw_gid < 1000 or groups & PRIVILEGED:
+            raise RuntimeError('Privileged/service account cannot use temporary student policy')
+        if not os.path.isabs(p.pw_dir) or os.path.normpath(p.pw_dir) != p.pw_dir or p.pw_dir == '/':
+            raise RuntimeError('Unsupported account home')
+        return p, groups
+    def override(self, name):
+        result = run('/usr/sbin/sss_override', 'user-show', name, codes=(0, 1))
+        lines = [s for s in result.stdout.splitlines() if s.strip()]
+        if len(lines) > 1: raise RuntimeError('Ambiguous directory override')
+        if not lines: return None
+        fields = lines[0].split(':')
+        if len(fields) != 8: raise RuntimeError('Unsupported directory override format')
+        return fields
+    def ssh(self, name):
+        result = {}
+        for address in ['127.0.0.1', '192.0.2.10']:
+            out = run('/usr/sbin/sshd', '-T', '-C', f'user={name},host=class.example.edu,addr={address}').stdout
+            result[address] = {k: v for k, v in (s.split(' ', 1) for s in out.splitlines() if ' ' in s) if k in SSH_KEYS}
+        return result
+    def capture(self, name):
+        p, groups = self.passwd(name)
+        if p.pw_shell not in ['/bin/bash', '/bin/zsh', '/bin/sh'] or MANAGED in groups:
+            raise RuntimeError('Unowned existing account restriction requires administrator recovery')
+        rights = run('/usr/bin/sudo', '-n', '-l', '-U', name, codes=(0, 1))
+        denied = re.compile(r'User ' + re.escape(name) + r' is not allowed to run sudo on [^\n]+\.')
+        if not any(denied.fullmatch(s.strip()) for s in (rights.stdout + '\n' + rights.stderr).splitlines()):
+            raise RuntimeError('Sudo rights present or unverifiable')
+        local = any(s.split(':', 1)[0] == name for s in Path('/etc/passwd').read_text().splitlines())
+        override = None if local else self.override(name)
+        return {'account': {'uid': p.pw_uid, 'gid': p.pw_gid, 'shell': p.pw_shell, 'home': p.pw_dir},
+                'groups': sorted(groups), 'linger': Path('/var/lib/systemd/linger', name).exists(),
+                'backend': 'local' if local else 'sssd', 'override': override, 'ssh': self.ssh(name)}
+    def check(self, name, snapshot, active):
+        account = {**snapshot['account'], 'policy_state': 'HELD' if active else 'NORMAL'}
+        config = {**self.config, 'accounts': {name: account}}
+        result = subprocess.run(['/usr/local/sbin/exam-check-isolation', '-'],
+                                input=json.dumps(config), text=True, capture_output=True, timeout=45)
+        if result.returncode: raise RuntimeError('Account isolation checks failed: ' + result.stderr.strip()[:1500])
+    def set_shell(self, name, snapshot, active):
+        if snapshot['backend'] == 'local':
+            run('/usr/sbin/usermod', '-s', GATE if active else snapshot['account']['shell'], name)
+        else:
+            fields = snapshot['override']
+            if active:
+                fields = list(fields) if fields else [name, '', '', '', '', '', '', '']
+                fields[6] = GATE
+            if fields is None:
+                run('/usr/sbin/sss_override', 'user-del', name, codes=(0, 1))
+            else:
+                args = ['/usr/sbin/sss_override', 'user-add', fields[0]]
+                for option, value in zip(['--name', '--uid', '--gid', '--gecos', '--home', '--shell', '--certificate'], fields[1:]):
+                    if value: args += [option, value]
+                run(*args)
+            run('/usr/sbin/sss_cache', '-u', name)
+    def secured(self, attempt):
+        for unit in attempt.get('units') or []:
+            if not re.fullmatch(r'exam-[a-f0-9-]{36}-[a-f0-9-]{36}\.(scope|service)', unit):
+                raise RuntimeError('Invalid workload unit')
+            if Path('/sys/fs/cgroup/exam.slice', unit).exists():
+                raise RuntimeError('Workload termination not confirmed')
+        if not attempt.get('start'): return
+        directory = Path(self.config['state'])/'submissions'/attempt['id']
+        manifest = protected_json(directory/'manifest.json')
+        archive = directory/'submission.tar.gz'
+        st = archive.lstat()
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o077:
+            raise RuntimeError('Unprotected submission archive')
+        with archive.open('rb') as source: checksum = hashlib.file_digest(source, 'sha256').hexdigest()
+        if checksum != manifest.get('checksum') or checksum != attempt.get('checksum'):
+            raise RuntimeError('Protected archive checksum mismatch')
+        original = manifest.get('attempt', {})
+        if any(original.get(k) != attempt.get(k) for k in ['id','username','uid','exam','start','original_deadline','deadline']):
+            raise RuntimeError('Protected submission identity mismatch')
+    def apply(self, name, snapshot, step):
+        step('shell'); self.set_shell(name, snapshot, True)
+        step('group'); run('/usr/bin/gpasswd', '-a', name, MANAGED)
+        step('linger'); run('/usr/bin/loginctl', 'disable-linger', name)
+    def verify(self, name, snapshot, active):
+        p, groups = self.passwd(name)
+        a = snapshot['account']
+        if (p.pw_uid, p.pw_gid, p.pw_dir, p.pw_shell) != (a['uid'], a['gid'], a['home'], GATE if active else a['shell']):
+            raise RuntimeError('Effective NSS identity/shell not restored or not active')
+        if (MANAGED in groups) != active: raise RuntimeError('Managed group policy mismatch')
+        if not active:
+            if groups != set(snapshot['groups']): raise RuntimeError('Group membership differs from account baseline')
+            if Path('/var/lib/systemd/linger', name).exists() != snapshot['linger']:
+                raise RuntimeError('Lingering differs from account baseline')
+            if snapshot['backend'] == 'sssd' and self.override(name) != snapshot['override']:
+                raise RuntimeError('Directory override differs from account baseline')
+            if self.ssh(name) != snapshot['ssh']: raise RuntimeError('Effective SSH policy differs from account baseline')
+    def restore(self, name, snapshot, steps):
+        # Refuse to overwrite an administrator's independent shell/override edits.
+        p, _ = self.passwd(name)
+        if p.pw_shell not in [GATE, snapshot['account']['shell']]:
+            raise RuntimeError('Concurrent administrator shell change; recovery required')
+        if snapshot['backend'] == 'sssd' and 'shell' in steps:
+            current = self.override(name)
+            applied = list(snapshot['override']) if snapshot['override'] else [name, '', '', '', '', '', '', '']
+            applied[6] = GATE
+            # SSSD may canonicalize the original name with a domain suffix.
+            def attrs(v): return v[1:] if v else None
+            if attrs(current) not in [attrs(applied), attrs(snapshot['override'])]:
+                raise RuntimeError('Concurrent administrator directory override change')
+        if 'shell' in steps: self.set_shell(name, snapshot, False)
+        if 'group' in steps:
+            if MANAGED in self.passwd(name)[1]: run('/usr/bin/gpasswd', '-d', name, MANAGED)
+        if 'linger' in steps and snapshot['linger']: run('/usr/bin/loginctl', 'enable-linger', name)
+
+class Transactions:
+    def __init__(self, root, system, load_attempt):
+        self.root, self.system, self.load_attempt = root, system, load_attempt
+    def transact(self, op, name, uid, attempt, generation):
+        if not ATTEMPT.fullmatch(attempt) or not GENERATION.fullmatch(generation):
+            raise RuntimeError('Invalid policy scope')
+        self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path = self.root / (str(uid) + '.json')
+        with open(self.root / (str(uid) + '.lock'), 'a+') as lock:
+            os.chmod(lock.name, 0o600); fcntl.flock(lock, fcntl.LOCK_EX)
+            a = self.load_attempt(attempt)
+            if not a or a['username'] != name or a['uid'] != uid or a.get('policy_generation') != generation:
+                raise RuntimeError('Stale policy generation or account scope')
+            record = protected_json(path) if path.exists() else None
+            if record and record['phase'] != 'NORMAL' and (record['attempt'], record['generation']) != (attempt, generation):
+                raise RuntimeError('Another attempt owns the account policy')
+            if op == 'apply':
+                if a.get('start') or a.get('deadline') or a.get('original_deadline') or a['state'] != 'PREPARING' or a.get('policy_expires', 0) <= int(time.time()*1000):
+                    raise RuntimeError('Activation expired or already started')
+                if record and (record['attempt'], record['generation']) == (attempt, generation):
+                    if record['phase'] == 'NORMAL': raise RuntimeError('Activation already restored')
+                else:
+                    baseline = self.system.capture(name)
+                    if baseline['account']['uid'] != uid: raise RuntimeError('NSS identity changed')
+                    record = {'attempt': attempt, 'generation': generation, 'username': name, 'uid': uid,
+                              'baseline': baseline, 'phase': 'APPLYING', 'steps': [], 'error': ''}
+                    atomic(path, record)
+                def step(value):
+                    # Write intent before mutation, allowing recovery after either side of a crash.
+                    if value not in record['steps']: record['steps'].append(value)
+                    record['phase'] = 'APPLYING'; atomic(path, record)
+                try:
+                    if record['phase'] != 'READY':
+                        if not record['steps']: self.system.check(name, record['baseline'], False)
+                        self.system.apply(name, record['baseline'], step)
+                    self.system.verify(name, record['baseline'], True)
+                    self.system.check(name, record['baseline'], True)
+                    record.update(phase='READY', error='', ready_boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+                                  ready_uptime=float(Path('/proc/uptime').read_text().split()[0]))
+                except Exception as error:
+                    record.update(phase='APPLY_FAILED', error=str(error)); atomic(path, record); raise
+            elif op == 'restore':
+                if not record: raise RuntimeError('Restoration baseline missing; administrator recovery required')
+                if (record['attempt'], record['generation']) != (attempt, generation):
+                    raise RuntimeError('Stale restoration baseline')
+                if not a.get('policy_restore_authorized'): raise RuntimeError('Restoration not authorized')
+                if a.get('start'):
+                    if a['state'] != 'COMPLETED' or not a.get('protected'): raise RuntimeError('Submission not secured')
+                    if not a.get('policy_override') and int(time.time()*1000) < max(a['deadline'], a.get('original_deadline', 0)):
+                        raise RuntimeError('Original/current deadline still held')
+                elif a['state'] != 'CANCELLED_BEFORE_START' or a.get('deadline') or a.get('original_deadline'): raise RuntimeError('Unstarted activation not proven cancelled')
+                self.system.secured(a)
+                try:
+                    record['phase'] = 'RESTORING'; atomic(path, record)
+                    self.system.restore(name, record['baseline'], record['steps'])
+                    self.system.verify(name, record['baseline'], False)
+                    record.update(phase='NORMAL', error='')
+                except Exception as error:
+                    record.update(phase='RESTORE_FAILED', error=str(error)); atomic(path, record); raise
+            elif op == 'verify':
+                if not record or record['generation'] != generation or record['phase'] != 'READY':
+                    raise RuntimeError('Protected account policy not ready')
+                self.system.verify(name, record['baseline'], True)
+                self.system.check(name, record['baseline'], True)
+            else: raise RuntimeError('Unsupported policy operation')
+            atomic(path, record)
+            return {k: record.get(k) for k in ['attempt','generation','phase','error','ready_boot','ready_uptime']}
+
+def main():
+    os.umask(0o077)
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('operation', choices=['identify','inspect','apply','restore','verify'])
+    p.add_argument('--username', required=True); p.add_argument('--attempt'); p.add_argument('--generation')
+    a = p.parse_args()
+    if os.geteuid() != 0: raise RuntimeError('Root-only account policy helper')
+    c = protected_json(Path('/etc/exam-agent/agent.json'))
+    if not c.get('temporary_account_policy'): raise RuntimeError('Temporary account policy is not enabled')
+    if a.username in c.get('accounts', {}): raise RuntimeError('Explicit legacy/administrator accounts cannot be changed automatically')
+    system = System(c)
+    user, _ = system.passwd(a.username)
+    state_path = Path(c['state']) / 'state.json'
+    def load_attempt(id):
+        state = protected_json(state_path)
+        result = state.get('attempts', {}).get(id)
+        if result and any(v['uid']==result['uid'] and k!=id and v.get('policy_generation') and
+                          v.get('policy_state') not in ['NORMAL',''] for k,v in state['attempts'].items()):
+            raise RuntimeError('Conflicting account-policy hold')
+        return result
+    if a.operation in ['identify','inspect']:
+        record_path = Path(c['state'])/'account-policy'/(str(user.pw_uid)+'.json')
+        record = protected_json(record_path) if record_path.exists() else None
+        if record and record['phase'] != 'NORMAL':
+            if record['username'] != a.username: raise RuntimeError('Policy account mismatch')
+            baseline = record['baseline']
+            if record['phase'] != 'READY': raise RuntimeError('Account policy requires recovery')
+            system.verify(a.username, baseline, True)
+        else: baseline = system.capture(a.username)
+        system.check(a.username, baseline, bool(record and record['phase'] != 'NORMAL'))
+        print(json.dumps(baseline['account'])); return
+    result = Transactions(Path(c['state'])/'account-policy', system, load_attempt).transact(
+        a.operation, a.username, user.pw_uid, a.attempt or '', a.generation or '')
+    with open(Path(c['state'])/'account-policy-audit.ndjson','a') as f:
+        f.write(json.dumps({'at':int(time.time()*1000),'action':a.operation,'username':a.username,**result})+'\n');f.flush();os.fsync(f.fileno())
+    print(json.dumps(result))
+
+if __name__ == '__main__':
+    try: main()
+    except Exception as error: raise SystemExit(str(error))
