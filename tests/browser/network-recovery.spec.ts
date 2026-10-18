@@ -2,6 +2,8 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   fixture,
   begin,
+  openPreflight,
+  ready,
   gate,
   resetScreens,
   onlyScreens,
@@ -259,5 +261,103 @@ test("a delayed authorized continuation cannot unlock after a second interruptio
     await onlyScreens(page, ["Exam paused"]);
   } finally {
     response.release();
+  }
+});
+
+test("fresh delayed monitoring replies remain live when HTTP snapshots arrive first", async ({
+  page,
+}) => {
+  test.setTimeout(50000);
+  const f = await fixture(page);
+  let running = true;
+  f.model.onMonitoring = async (socket, message) => {
+    if (!["preflight-contact", "heartbeat"].includes(message.type)) return;
+    const reply = {
+      type: "state",
+      ...f.snapshot(),
+      confirmation: message.confirmation,
+    };
+    // An ordinary HTTP poll overtakes the WebSocket reply. The snapshot is older,
+    // but this is still a fresh response to this connection's monitoring request.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    if (running) socket.send(JSON.stringify(reply));
+  };
+  await page.route("**/api/student/attempts/*/begin", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 9600));
+    f.model.attempt.state = f.model.state = "ACTIVE";
+    f.model.attempt.start = Date.now();
+    f.model.attempt.deadline = Date.now() + 300000;
+    await route.fulfill({ json: f.snapshot() });
+  });
+  try {
+    await openPreflight(page, f);
+    await ready(page);
+    await page.waitForTimeout(18000);
+    expect(f.model.bindings).toHaveLength(1);
+    await expect(
+      page.getByRole("button", { name: "Practice terminal", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Begin exam", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Finish exam", exact: true }),
+    ).toBeEnabled({ timeout: 15000 });
+    await expect(page.locator(".winbox")).toHaveCount(1);
+    // Replies generated before activation must not return the UI to preflight.
+    await page.waitForTimeout(4000);
+    await expect(
+      page.getByRole("button", { name: "New terminal", exact: true }),
+    ).toBeEnabled();
+    await type(page, "working");
+    await expect.poll(() => inputs(f)).toBe("working");
+    expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(
+      0,
+    );
+  } finally {
+    running = false;
+  }
+});
+
+test("a fresh reconnect bind still confirms ownership when HTTP has a newer snapshot", async ({
+  page,
+}) => {
+  const f = await fixture(page),
+    ack = gate();
+  await begin(page, f);
+  let generated = 0;
+  f.model.onBind = async (socket, binding) => {
+    const snapshot = f.snapshot();
+    generated = snapshot.serverNow;
+    await ack.promise;
+    socket.send(JSON.stringify({ type: "state", binding, ...snapshot }));
+  };
+  try {
+    f.model.socket!.close({ code: 1012 });
+    await expect.poll(() => f.model.bindings.length).toBe(2);
+    await expect(
+      page.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toBeVisible();
+    await type(page, "discarded");
+    let polled = 0;
+    f.model.status = async (route) => {
+      const snapshot = f.snapshot();
+      polled = snapshot.serverNow;
+      await route.fulfill({ json: snapshot });
+    };
+    await expect.poll(() => polled).toBeGreaterThan(generated);
+    ack.release();
+    await expect(
+      page.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toHaveCount(0);
+    await type(page, "after");
+    await expect.poll(() => inputs(f)).toBe("after");
+    expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(
+      0,
+    );
+  } finally {
+    ack.release();
   }
 });

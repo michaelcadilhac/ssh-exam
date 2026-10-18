@@ -59,10 +59,15 @@ export const readySchema = z.object({
 });
 export { readinessMessage } from "./readiness.js";
 export const messageSchema = z.discriminatedUnion("type", [
-  z.object({ v: z.literal(1), type: z.literal("preflight-contact") }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("preflight-contact"),
+    confirmation: z.string().uuid().optional(),
+  }),
   z.object({
     v: z.literal(1),
     type: z.literal("heartbeat"),
+    confirmation: z.string().uuid().optional(),
     ready: readySchema.extend({ focus: z.boolean() }),
   }),
   z.object({ v: z.literal(1), type: z.literal("focus"), focused: z.boolean() }),
@@ -70,6 +75,20 @@ export const messageSchema = z.discriminatedUnion("type", [
     v: z.literal(1),
     type: z.literal("incident"),
     reason: z.string().min(1).max(300),
+    diagnostics: z
+      .object({
+        acknowledgmentAgeMs: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(Number.MAX_SAFE_INTEGER),
+        rejectedSnapshots: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(Number.MAX_SAFE_INTEGER),
+      })
+      .optional(),
   }),
   z.object({
     v: z.literal(1),

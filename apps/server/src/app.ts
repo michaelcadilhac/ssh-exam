@@ -2002,9 +2002,17 @@ export async function createApp(
                 exam: a.exam,
                 username: a.username,
                 reason: m.reason,
+                diagnostics: m.diagnostics,
               },
               "Student exam paused",
             );
+            if (m.diagnostics)
+              store.audit(
+                "browser",
+                "monitoring-diagnostics",
+                a.id,
+                JSON.stringify(m.diagnostics),
+              );
             await life.lock(a.id, m.reason);
             send(ws, {
               type: "state",
@@ -2031,6 +2039,7 @@ export async function createApp(
                 .run(now(), a.id);
             send(ws, {
               type: "state",
+              confirmation: m.confirmation,
               attempt: store.attempt(a.id),
               serverNow: now(),
               authenticationGap: authenticationGap(a.id),
@@ -2079,6 +2088,7 @@ export async function createApp(
             }
             send(ws, {
               type: "state",
+              confirmation: m.confirmation,
               attempt: store.attempt(a.id),
               serverNow: now(),
               authenticationGap: authenticationGap(a.id),

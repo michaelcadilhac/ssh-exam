@@ -137,6 +137,9 @@ export async function fixture(page: Page, initial = "NONE", role = "student") {
     continuation: undefined as undefined | ((route: Route) => Promise<void>),
     finishCalls: 0,
     logoutCalls: 0,
+    onMonitoring: undefined as
+      | undefined
+      | ((socket: WebSocketRoute, message: any) => Promise<void>),
     messages: [] as any[],
   };
   const snapshot = () => ({
@@ -168,7 +171,7 @@ export async function fixture(page: Page, initial = "NONE", role = "student") {
             ...snapshot(),
           }),
         );
-      }
+      } else if (model.onMonitoring) await model.onMonitoring(socket, message);
     });
   });
   await page.routeWebSocket("**/api/admin/events", () => {});

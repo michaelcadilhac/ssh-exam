@@ -122,3 +122,9 @@ An abandoned preflight can be retried once the agent confirms it never started a
 account policy is normal. If policy was never applied, the agent explicitly confirms
 that fact after cancellation/restart. Actual restoration failures remain blocked and
 are reported as account-restoration failures rather than uncertain start status.
+
+Monitoring acknowledgment freshness is independent of status snapshot order. Healthy
+WebSocket replies still confirm the connection when HTTP polling delivers newer exam
+state first. The 15-second network limit and instructor recovery policy remain in
+force; delayed, replayed or previous-connection replies cannot reopen a paused exam.
+Monitoring incident diagnostics include acknowledgment age and rejected-snapshot count.

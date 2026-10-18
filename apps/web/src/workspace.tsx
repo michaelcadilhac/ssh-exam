@@ -14,6 +14,7 @@ import {
 } from "../../../packages/protocol/focus-grace.js";
 import { readinessMessage } from "../../../packages/protocol/readiness.js";
 import { browserSSH } from "./browser-ssh.js";
+import { MonitoringConfirmations } from "./monitoring-confirmations.js";
 import { examBrowserIssue } from "./browser-support.js";
 import "@xterm/xterm/css/xterm.css";
 import "winbox/dist/css/winbox.min.css";
@@ -106,6 +107,8 @@ export function Workspace({
     for (const seconds of [600, 300, 60])
       if (left <= seconds * 1000) warnings.current.add(seconds);
   }, [attempt.clock_revision]);
+  const confirmations = useRef<MonitoringConfirmations | null>(null);
+  const rejectedMonitoringSnapshots = useRef(0);
   const snapshotEpoch = useRef(0);
   const activationEpoch = useRef(0);
   const activating = useRef(false);
@@ -184,8 +187,20 @@ export function Workspace({
   const send = (data: any) => {
     if (data.type === "input" && (coveredRef.current || !interaction())) return;
     if (browserSSH.terminal(data)) return;
-    if (ws.current?.readyState === WebSocket.OPEN)
-      ws.current.send(JSON.stringify({ v: 1, ...data }));
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      const confirmation = ["preflight-contact", "heartbeat"].includes(
+        data.type,
+      )
+        ? confirmations.current?.issue()
+        : undefined;
+      ws.current.send(
+        JSON.stringify({
+          v: 1,
+          ...data,
+          ...(confirmation ? { confirmation } : {}),
+        }),
+      );
+    }
   };
   const conditions = () => ({
     fullscreen: document.fullscreenElement === root.current,
@@ -208,7 +223,17 @@ export function Workspace({
     setLocked(true);
     browserSSH.setInputEnabled(false);
     setMessage(reason);
-    send({ type: "incident", reason });
+    send({
+      type: "incident",
+      reason,
+      diagnostics: {
+        acknowledgmentAgeMs: Math.max(
+          0,
+          Math.round(performance.now() - lastAck.current),
+        ),
+        rejectedSnapshots: rejectedMonitoringSnapshots.current,
+      },
+    });
     void capture.current?.sample("screen");
   };
   const focusChanged = (focused: boolean) => {
@@ -589,6 +614,7 @@ export function Workspace({
       }
     };
     const interrupt = () => {
+      confirmations.current?.clear();
       ++activationEpoch.current;
       bound.current = false;
       ++snapshotEpoch.current;
@@ -607,18 +633,24 @@ export function Workspace({
         return;
       const s = socket("/student/session");
       const binding = crypto.randomUUID();
+      const confirmation = new MonitoringConfirmations();
+      confirmations.current = confirmation;
       ws.current = s;
       s.onopen = () => {
         if (!mounted || ws.current !== s) return;
+        confirmation.issue(binding);
         send({ type: "bind", attempt: id, page, binding });
       };
       s.onmessage = (e) => {
         if (!mounted || ws.current !== s) return;
         const m = JSON.parse(e.data);
         if (m.type === "state") {
-          if (!acceptSnapshot(m.attempt, m.serverNow)) return;
+          if (m.attempt?.id !== id) return;
+          const fresh = confirmation.confirm(m.confirmation ?? m.binding);
+          const accepted = acceptSnapshot(m.attempt, m.serverNow);
           if (
             !bound.current &&
+            fresh &&
             m.binding === binding &&
             online.current &&
             controlReady.current
@@ -627,19 +659,26 @@ export function Workspace({
               (performance.now() - lastAck.current >= 15000 ||
                 (networkLossAt.current !== null &&
                   performance.now() - networkLossAt.current >= 15000)) &&
-              m.attempt.state === "ACTIVE"
+              (m.attempt.state === "ACTIVE" ||
+                attemptRef.current.state === "ACTIVE")
             ) {
               incident("Network recovery grace expired");
             }
             bound.current = true;
             networkLossAt.current = null;
           }
-          if (bound.current && online.current && controlReady.current)
+          if (fresh && bound.current && online.current && controlReady.current)
             lastAck.current = performance.now();
           retryDelay = 1000;
           setConnected(bound.current && online.current && controlReady.current);
           setHasConnected(true);
           setRecoveryExpired(false);
+          // Older snapshots must not roll back state, but their fresh correlated
+          // response still confirms the socket. HTTP polling can overtake them.
+          if (!accepted) {
+            rejectedMonitoringSnapshots.current++;
+            return;
+          }
           updateAuthenticationGap(!!m.authenticationGap);
           if (m.attempt.state === "LOCKED") {
             armed.current = false;
@@ -988,6 +1027,10 @@ export function Workspace({
     focusChanged(r.focus);
   };
   const begin = async () => {
+    if (!interaction())
+      throw Error(
+        "Monitoring connection is not confirmed. Wait for it to reconnect before starting; the exam has not started.",
+      );
     const epoch = activationEpoch.current;
     const r = conditions();
     ++snapshotEpoch.current;
@@ -1292,6 +1335,7 @@ export function Workspace({
             className="primary"
             disabled={
               !connected ||
+              !interaction() ||
               authenticationGap ||
               !screen ||
               (settings.webcam && !camera) ||
