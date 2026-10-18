@@ -16,6 +16,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 	"unsafe"
 )
 
@@ -468,5 +469,11 @@ func terminalWelcome(directory string, deadline int64) string {
 	if deadline == 0 {
 		return "\r\nPractice terminal. The exam clock has not started.\r\n"
 	}
-	return fmt.Sprintf("\r\nWelcome to the exam. Saved files in %s are collected automatically when time expires or you finish the exam. Unsaved editor buffers are not included. Deadline: %d\r\n", directory, deadline)
+	// Match the instructor dashboard regardless of the server's local timezone.
+	zone, err := time.LoadLocation("America/Chicago")
+	if err != nil {
+		zone = time.UTC
+	}
+	readable := time.UnixMilli(deadline).In(zone).Format("Jan 2, 2006 at 3:04:05 PM MST")
+	return fmt.Sprintf("\r\nWelcome to the exam. Saved files in %s are collected automatically when time expires or you finish the exam. Unsaved editor buffers are not included. Deadline: %s\r\n", directory, readable)
 }
