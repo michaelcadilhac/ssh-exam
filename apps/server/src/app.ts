@@ -919,9 +919,15 @@ export async function createApp(
         );
       return { attempt: store.attempt(a.id), serverNow: now() };
     } catch (e) {
+      const reason = (e as Error).message.slice(0, 500);
+      store.audit("gateway", "activation-failed", a.id, reason);
+      app.log.warn(
+        { attempt: a.id, exam: a.exam, username: a.username, reason },
+        "Exam activation failed",
+      );
       await life.reconcile(a.id).catch(() => {});
       throw Error(
-        "Begin outcome requires reconciliation; do not create another attempt",
+        "Exam setup could not be confirmed. Check the current attempt status before retrying; your instructor can review the recorded failure.",
       );
     } finally {
       busy.delete(a.id);
@@ -1990,6 +1996,15 @@ export async function createApp(
           if (m.type === "open") openingPane = m.pane;
           const conn = connections.get(`${a.exam}:${a.username}`);
           if (m.type === "incident") {
+            app.log.warn(
+              {
+                attempt: a.id,
+                exam: a.exam,
+                username: a.username,
+                reason: m.reason,
+              },
+              "Student exam paused",
+            );
             await life.lock(a.id, m.reason);
             send(ws, {
               type: "state",

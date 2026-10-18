@@ -426,6 +426,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if err := e.cleanupTemporary(a); err != nil {
 				return err
 			}
+			e.acknowledgeUnappliedCancellation(a)
 			e.Audit(op, a.ID)
 			result = a
 		default:
@@ -715,11 +716,14 @@ func (e *Engine) Tick() error {
 			if a.State == "ACTIVE" && (Millis() > a.Lease || a.Boot != boot()) {
 				a.State = "LOCKED"
 				a.Generation++
-				a.Reason = "Execution lease expired or server rebooted"
+				a.Reason = "Monitoring authorization expired after 15 seconds without renewal"
+				if a.Boot != boot() {
+					a.Reason = "Class server restarted; exam access paused"
+				}
 				a.Authorization = 0
 				a.ResumeTransport = ""
 				a.Lease = 0
-				e.Audit("watchdog-lock", a.ID)
+				e.Audit("watchdog-lock", a.ID, a.Reason)
 			}
 			if a.State == "LOCKED" && len(a.Units) > 0 {
 				if err := e.disconnectPausedWorkload(a); err != nil {

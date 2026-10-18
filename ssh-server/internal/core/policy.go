@@ -196,6 +196,16 @@ func (e *Engine) freshPolicyTransport(a *Attempt, monitor int) error {
 	return nil
 }
 
+// No helper can have changed this account without a persisted policy generation.
+// Explicitly acknowledge normal access for cancelled preparations that never applied
+// a policy, including records written before this acknowledgement was introduced.
+func (e *Engine) acknowledgeUnappliedCancellation(a *Attempt) {
+	if e.temporaryPolicy(a) && a.State == "CANCELLED_BEFORE_START" && a.Start == 0 && a.Deadline == 0 && a.OriginalDeadline == 0 && a.PolicyGeneration == "" && a.PolicyError == "" && a.PolicyState == "" {
+		a.PolicyState = "NORMAL"
+		e.Audit("account-policy-unapplied", a.ID)
+	}
+}
+
 // Slow OS policy changes run outside the shared attempt lock and deadline cutoff.
 // The helper independently locks/fences the per-UID journal and reads root-owned
 // restore authorization from committed attempt state before changing the account.
@@ -207,6 +217,9 @@ func (e *Engine) reconcilePolicies(only string) error {
 	var jobs []Attempt
 	err := e.WithState(func() error {
 		for _, a := range e.state.Attempts {
+			if only == "" || a.ID == only {
+				e.acknowledgeUnappliedCancellation(a)
+			}
 			if (only != "" && a.ID != only) || !e.temporaryPolicy(a) || a.PolicyGeneration == "" || a.PolicyState == "NORMAL" {
 				continue
 			}

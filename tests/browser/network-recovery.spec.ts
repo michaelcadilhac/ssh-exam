@@ -242,7 +242,9 @@ test("a delayed authorized continuation cannot unlock after a second interruptio
     await page.evaluate(() => window.dispatchEvent(new Event("online")));
     await expect.poll(() => f.model.bindings.length).toBe(2);
     response.release();
-    await expect(page.getByRole("alert")).toContainText("exam remains paused");
+    await expect(page.getByRole("alert")).toContainText(
+      "connection interrupted during setup",
+    );
     await expect(
       page.getByRole("heading", { name: "Exam paused" }),
     ).toBeVisible();

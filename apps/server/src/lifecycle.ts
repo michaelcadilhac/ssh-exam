@@ -338,15 +338,32 @@ export class Lifecycle {
       ) &&
       !["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state)
     ) {
+      // A watchdog acknowledgement of the same pause must not hide the initiating
+      // browser/gateway failure. Retain both causes in the durable audit trail.
+      const detail = JSON.stringify({
+        generation: remote.generation || 0,
+        reason: remote.reason || "Monitoring authorization expired",
+      });
+      if (
+        !this.store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE target=? AND action='agent-lock' AND detail=?",
+          )
+          .get(id, detail)
+      )
+        this.store.audit("class-agent", "agent-lock", id, detail);
+      const reason =
+        a.state === "LOCKED" &&
+        (remote.generation || 0) === a.generation &&
+        a.reason
+          ? a.reason
+          : remote.reason ||
+            "Monitoring authorization expired; instructor authorization required";
       this.store.db
         .prepare(
           "UPDATE attempts SET state='LOCKED',generation=MAX(generation,?),reason=? WHERE id=?",
         )
-        .run(
-          remote.generation || 0,
-          remote.reason || "Execution lease expired",
-          id,
-        );
+        .run(remote.generation || 0, reason, id);
       if ((remote.generation || 0) > a.generation)
         this.store.db
           .prepare("DELETE FROM continuations WHERE attempt=?")
@@ -530,11 +547,24 @@ export class Lifecycle {
       a.deadline !== null ||
       remote.state !== "CANCELLED_BEFORE_START" ||
       remote.start ||
-      (remote.account_policy_required && remote.policy_state !== "NORMAL")
+      remote.deadline ||
+      remote.original_deadline
     ) {
       await this.reconcile(id);
       throw Error(
         "The previous preparation cannot be retried until its start status is confirmed.",
+      );
+    }
+    if (remote.account_policy_required && remote.policy_state !== "NORMAL") {
+      await this.reconcile(id);
+      this.store.audit(
+        "gateway",
+        "preflight-retry-blocked",
+        id,
+        `Account restoration: ${remote.policy_state || "unconfirmed"}`,
+      );
+      throw Error(
+        "The previous preparation was cancelled, but account access restoration is not yet confirmed. Retry shortly; contact your instructor if this continues.",
       );
     }
     this.monitoring.delete(id, "preflight-retry");

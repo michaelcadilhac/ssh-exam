@@ -390,11 +390,15 @@ func (e *Engine) save() error {
 	}
 	return err
 }
-func (e *Engine) Audit(action, id string) {
+func (e *Engine) Audit(action, id string, reason ...string) {
 	f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err == nil {
 		defer f.Close()
-		b, _ := json.Marshal(map[string]any{"at": Millis(), "action": action, "attempt": id})
+		event := map[string]any{"at": Millis(), "action": action, "attempt": id}
+		if len(reason) > 0 {
+			event["reason"] = reason[0]
+		}
+		b, _ := json.Marshal(event)
 		f.Write(append(b, '\n'))
 		f.Sync()
 	}

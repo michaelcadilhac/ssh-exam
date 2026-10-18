@@ -109,3 +109,16 @@ Alert links require normal authentication and never expose images or perform an 
 Interface previews using disposable test data:
 [desktop](screenshots/admin-redesign-desktop.png) ·
 [narrow window](screenshots/admin-redesign-mobile.png).
+
+### Activation and cancelled preflights
+
+An activation pause names the failed browser/connection conditions and records that
+reason in the incident audit and server log. Brief focus loss during activation has
+the same 20-second grace period as active work. The countdown continues after a
+server-committed start. A later execution-lease timeout does not replace the original
+pause reason; the class-server cause is recorded separately.
+
+An abandoned preflight can be retried once the agent confirms it never started and
+account policy is normal. If policy was never applied, the agent explicitly confirms
+that fact after cancellation/restart. Actual restoration failures remain blocked and
+are reported as account-restoration failures rather than uncertain start status.

@@ -107,3 +107,85 @@ test("one password and MFA sign-in, one preflight, automatic protected SSH hando
     page.getByRole("heading", { name: "Connect to your exam", exact: true }),
   ).toBeVisible();
 });
+
+test("brief focus loss during slow activation gets the existing grace period", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  const wait = gate();
+  await page.route("**/api/student/attempts/*/begin", async (route) => {
+    await wait.promise;
+    f.model.state = "ACTIVE";
+    Object.assign(f.model.attempt, {
+      state: "ACTIVE",
+      start: Date.now(),
+      deadline: Date.now() + 300000,
+    });
+    await route.fulfill({ json: f.snapshot() });
+  });
+  await openPreflight(page, f);
+  await ready(page);
+  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click();
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hasFocus", {
+      value: () => false,
+      configurable: true,
+    });
+    window.dispatchEvent(new Event("blur"));
+  });
+  await page.waitForTimeout(1200);
+  wait.release();
+  await expect(
+    page.getByRole("button", { name: "Finish exam", exact: true }),
+  ).toBeEnabled();
+  await expect(page.locator(".focus-warning")).toBeVisible();
+  expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(0);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hasFocus", {
+      value: () => true,
+      configurable: true,
+    });
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect(page.locator(".focus-warning")).toHaveCount(0);
+});
+
+test("activation reports the specific lost condition in the UI and incident log", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  const wait = gate();
+  await page.route("**/api/student/attempts/*/begin", async (route) => {
+    await wait.promise;
+    f.model.state = "ACTIVE";
+    Object.assign(f.model.attempt, {
+      state: "ACTIVE",
+      start: Date.now(),
+      deadline: Date.now() + 300000,
+    });
+    await route.fulfill({ json: f.snapshot() });
+  });
+  await openPreflight(page, f);
+  await ready(page);
+  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click();
+  await page.evaluate(() => document.exitFullscreen());
+  wait.release();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Exam activation paused: fullscreen lost; keyboard lock lost",
+  );
+  await expect
+    .poll(() => f.model.messages.filter((m) => m.type === "incident").length)
+    .toBe(1);
+  expect(f.model.messages.find((m) => m.type === "incident").reason).toBe(
+    "Exam activation paused: fullscreen lost; keyboard lock lost",
+  );
+  await expect(page.locator(".winbox")).toHaveCount(0);
+});

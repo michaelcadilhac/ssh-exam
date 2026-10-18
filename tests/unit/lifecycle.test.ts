@@ -287,3 +287,82 @@ it("delayed pause callbacks do not close an already resumed or newly authorized 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+it("retains the initiating pause reason when the watchdog later locks the same generation", async () => {
+  const dir = mkdtempSync(tmpdir() + "/exam-primary-reason-");
+  const s = new Store(dir);
+  try {
+    s.db.exec(
+      "INSERT INTO exams VALUES('e','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,generation,reason) VALUES('a','e','alice',1001,'LOCKED','{}',1,9999999999999,1,'Exam activation paused: fullscreen lost');",
+    );
+    const life = new Lifecycle(s, {} as any, new Monitoring(s));
+    const remote = {
+      state: "LOCKED",
+      start: 1,
+      deadline: 9999999999999,
+      generation: 1,
+      reason:
+        "Monitoring authorization expired after 15 seconds without renewal",
+    };
+    life.acceptRemote(remote, undefined, "a");
+    life.acceptRemote(remote, undefined, "a");
+    expect(s.attempt("a").reason).toBe(
+      "Exam activation paused: fullscreen lost",
+    );
+    const events = s.db
+      .prepare("SELECT detail FROM audit WHERE action='agent-lock'")
+      .all() as any[];
+    expect(events).toHaveLength(1);
+    expect(JSON.parse(events[0].detail).reason).toBe(remote.reason);
+    life.acceptRemote(
+      {
+        ...remote,
+        generation: 2,
+        reason: "Class server restarted; exam access paused",
+      },
+      undefined,
+      "a",
+    );
+    expect(s.attempt("a").reason).toContain("Class server restarted");
+  } finally {
+    s.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+it.each(["NORMAL", "RESTORE_FAILED", undefined])(
+  "requires explicit normal account policy before retiring a cancelled preflight: %s",
+  async (policy) => {
+    const dir = mkdtempSync(tmpdir() + "/exam-cancel-policy-");
+    const s = new Store(dir);
+    try {
+      s.db.exec(
+        "INSERT INTO exams VALUES('e','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES('a','e','alice',1001,'CANCELLED_BEFORE_START','{}');",
+      );
+      const life = new Lifecycle(
+        s,
+        {
+          call: async () => ({
+            state: "CANCELLED_BEFORE_START",
+            start: 0,
+            account_policy_required: true,
+            policy_state: policy,
+          }),
+        } as any,
+        new Monitoring(s),
+      );
+      if (policy === "NORMAL") {
+        await life.retirePreflight("a");
+        expect(s.db.prepare("SELECT * FROM attempts").all()).toHaveLength(0);
+      } else {
+        await expect(life.retirePreflight("a")).rejects.toThrow(
+          "account access restoration",
+        );
+        expect(s.attempt("a")).toBeTruthy();
+      }
+    } finally {
+      s.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);

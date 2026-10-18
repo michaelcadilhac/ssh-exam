@@ -108,6 +108,7 @@ export function Workspace({
   }, [attempt.clock_revision]);
   const snapshotEpoch = useRef(0);
   const activationEpoch = useRef(0);
+  const activating = useRef(false);
   const lastServerSnapshot = useRef<number | null>(null);
   const acceptSnapshot = (
     next: any,
@@ -211,7 +212,10 @@ export function Workspace({
     void capture.current?.sample("screen");
   };
   const focusChanged = (focused: boolean) => {
-    if (!armed.current || attemptRef.current.state !== "ACTIVE") {
+    if (
+      (!armed.current || attemptRef.current.state !== "ACTIVE") &&
+      !activating.current
+    ) {
       clearFocusWarning();
       return;
     }
@@ -754,7 +758,10 @@ export function Workspace({
       if (armed.current && performance.now() - lastAck.current >= 15000)
         incident("Network recovery grace expired");
       if (focusLostAt.current !== null) {
-        if (!armed.current || attemptRef.current.state !== "ACTIVE")
+        if (
+          (!armed.current || attemptRef.current.state !== "ACTIVE") &&
+          !activating.current
+        )
           clearFocusWarning();
         else {
           const left = focusGraceSeconds(
@@ -943,28 +950,54 @@ export function Workspace({
       throw Error(
         "Exam status changed. Review the current state before continuing.",
       );
+    const r = conditions();
+    const failures: string[] = [];
+    if (epoch !== activationEpoch.current)
+      failures.push("connection interrupted during setup");
+    if (!bound.current) failures.push("monitoring connection not confirmed");
+    if (!online.current) failures.push("browser offline");
+    if (!controlReady.current) failures.push("SSH control disconnected");
+    if (performance.now() - lastAck.current >= 15000)
+      failures.push("monitoring confirmation expired");
+    for (const [key, label] of [
+      ["fullscreen", "fullscreen lost"],
+      ["keyboard", "keyboard lock lost"],
+      ["screen", "screen sharing lost"],
+      ["visible", "exam page hidden"],
+      ...(settings.webcam ? [["webcam", "camera sharing lost"]] : []),
+    ])
+      if (!r[key as keyof typeof r]) failures.push(label);
+    // Setup can take several seconds. Focus loss during that interval gets the
+    // same grace as focus loss while working, without relaxing any other guard.
     if (
-      epoch !== activationEpoch.current ||
-      !bound.current ||
-      !online.current ||
-      !controlReady.current ||
-      performance.now() - lastAck.current >= 15000 ||
-      readinessMessage(conditions(), settings.webcam)
-    ) {
-      armed.current = true;
-      incident(
-        "Connection or required conditions changed during exam activation",
+      focusLostAt.current !== null &&
+      performance.now() - focusLostAt.current >= FOCUS_GRACE_MS
+    )
+      failures.push(FOCUS_GRACE_REASON);
+    if (failures.length) {
+      const reason = `Exam activation paused: ${failures.join("; ")}`.slice(
+        0,
+        300,
       );
+      armed.current = true;
+      incident(reason);
       throw Error(
-        "Connection or required conditions changed. The exam remains paused; reconnect and obtain authorization before continuing.",
+        `${reason}. Reconnect and request instructor authorization. The exam clock continues.`,
       );
     }
+    focusChanged(r.focus);
   };
   const begin = async () => {
     const epoch = activationEpoch.current;
     const r = conditions();
     ++snapshotEpoch.current;
-    const result = await api(`/student/attempts/${id}/begin`, r, page);
+    activating.current = true;
+    let result;
+    try {
+      result = await api(`/student/attempts/${id}/begin`, r, page);
+    } finally {
+      activating.current = false;
+    }
     ++snapshotEpoch.current;
     if (
       !acceptSnapshot(result.attempt, result.serverNow) &&

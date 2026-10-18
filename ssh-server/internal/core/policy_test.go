@@ -205,3 +205,50 @@ func TestTemporaryUncertainStartNeverRestoresAsAbandoned(t *testing.T) {
 		t.Fatal("uncertain activation cancelled")
 	}
 }
+
+func TestCancelledUnappliedPolicyIsExplicitlyNormalAndSurvivesRestart(t *testing.T) {
+	for _, legacy := range []bool{false, true} {
+		e := temporaryFixture(t, "PREPARING", Millis()+5400000)
+		e.WithState(func() error {
+			a := e.state.Attempts[finalID]
+			a.PolicyGeneration = ""
+			a.PolicyState = ""
+			if legacy {
+				a.State = "CANCELLED_BEFORE_START"
+			}
+			return nil
+		})
+		e.policyRun = func(string, string, string, string) ([]byte, error) {
+			t.Fatal("unapplied policy must not invoke restore")
+			return nil, nil
+		}
+		if !legacy {
+			if _, err := e.Call("cancel-attempt", Request{ID: finalID}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := e.ReconcilePolicies(); err != nil {
+			t.Fatal(err)
+		}
+		restarted, err := New(e.Config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := inspectFinal(t, restarted)
+		if a.State != "CANCELLED_BEFORE_START" || a.PolicyState != "NORMAL" || a.Start != 0 || a.Deadline != 0 {
+			t.Fatalf("cancel acknowledgement missing: %+v", a)
+		}
+	}
+}
+
+func TestCancelledAppliedPolicyStillRequiresVerifiedRestoration(t *testing.T) {
+	e := temporaryFixture(t, "PREPARING", Millis()+5400000)
+	e.WithState(func() error { e.state.Attempts[finalID].State = "CANCELLED_BEFORE_START"; return nil })
+	e.policyRun = func(string, string, string, string) ([]byte, error) { return nil, errors.New("restore unavailable") }
+	if err := e.ReconcilePolicies(); err == nil {
+		t.Fatal("failed restoration accepted")
+	}
+	if a := inspectFinal(t, e); a.PolicyState == "NORMAL" {
+		t.Fatal("applied policy bypassed restoration")
+	}
+}
