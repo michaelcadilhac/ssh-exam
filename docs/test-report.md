@@ -678,3 +678,58 @@ All eight final dialog checks passed, including shared student preflight/finish 
 The local-only browser fixture now closes its relay on SIGTERM/SIGINT; the shutdown
 previously left port 3101 occupied after closing HTTP. Production fixture exclusions
 remain in place. No unresolved application or browser regression remains.
+
+
+## Deployed instructor workflow verification — 2026-10-17
+
+Verified the actual HTTPS application using the existing instructor session. Created
+`ui-check-20261017` (clearly marked disposable) through New exam, selected it, reproduced
+the premature agent-account-list rejection, then repeated the workflows after the fix.
+Single entry added `uicheck_one`; the authenticated example CSV downloaded correctly.
+An invalid webcam value left Confirm import disabled and showed its row error; replacing
+the file produced a two-row preview with the correct duration/webcam settings. Confirm
+created exactly those rows. Bulk duration set all three students to 110 minutes, bulk
+webcam set all three to not required, and success cleared selection. Reset clock offered
+no eligible targets for students with no attempt. Student-menu End/Escape navigation,
+single-student settings/cancellation, exam settings autofocus, Administration/Alerts,
+exam switching and Escape were checked on the deployed page.
+
+Reviewed existing sandbox attempt 3 without mutating it: Monitoring, Activity and
+Submission loaded correctly, collection remained secured and SSH-server-only, and
+Escape returned focus to Review. Rechecked after the final deployment. Actual clock
+changes, recovery authorization and monitoring deletion used isolated fixtures rather
+than changing the user's attempts. The disposable exam, three enrollments and one
+preview were removed transactionally afterward. Comparison with the protected pre-test
+backup verified that all original administrator, exam, enrollment, attempt, preview and
+continuation rows were unchanged; cleanup itself was audited.
+
+Enrollment now validates names/settings without an agent snapshot or `examctl accounts`
+listing. Its UID stays unresolved (internal 0, schema 8 compatibility) until an agent-signed
+command on that student's authenticated SSH connection verifies it. Web enrollment is
+checked before connecting and again after identity resolution. Invalid/missing UID,
+SSH-side rejection and removed enrollment cannot complete login; unresolved identities
+cannot start preflight. CSV edits retain an already verified UID. Server-side account
+gates, host verification, MFA and transport binding remain enforced.
+
+The clean release passed **141 application tests**, type checking and production build.
+The new five integration cases exercise offline enrollment, idempotent CSV import,
+preserved verified UID, client-supplied UID rejection, stale snapshot exclusion, live
+SSH identity success, SSH-side rejection, invalid UID and unenrolled login rejection.
+A browser rerun exposed success being published while review was still busy refreshing;
+Escape could be ignored immediately after “Resume authorized.” The success notice now
+appears together with the settled action state. The regression forces a delayed refresh,
+checks Close review is enabled when success appears, then checks Escape removes review.
+All **17 admin/enrollment/transition browser scenarios** pass after the fix, plus **three
+real fixture-SSH browser scenarios** for MFA, resetting a working student's clock without
+disconnection, and active reload with one authorization plus fresh SSH before input.
+Desktop/narrow layouts, stale/slow refreshes, partial retry identities and monitoring
+review/delete confirmation are included. A clean source snapshot with separate fixture
+ports excluded unrelated local edits and left the user's local preview/screenshots intact.
+
+Deployed web source `69cef04` at 01:20 UTC on October 18 (October 17 Chicago), followed
+by the review fix `3fb9e74` at 01:23 UTC. Both guarded cutovers preserved persistent row
+and private configuration fingerprints, schema 8, sandbox and existing preflight state.
+Final public assets match the clean tested build. Container/public readiness pass with
+notifications enabled and maintenance disabled. No class-server binaries, account
+policies, deadlines or protected submissions were changed. See
+[deployment/rollback records](browser-ssh-deployment.md).

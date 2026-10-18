@@ -4,6 +4,44 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Enrollment/login identity and review completion, 2026-10-17
+
+Deployed `69cef04` at 2026-10-18 01:20 UTC (October 17, 20:20 Chicago), then
+`3fb9e74` at 01:23 UTC. Roster entry/import no longer consults an advertised account
+registry: the live student SSH login verifies the account identity before admission.
+The review fix publishes resume success only when its busy refresh has finished, so
+Escape and Close review work immediately when success appears.
+
+- Final image: `ssh-exam-workspace:review-3fb9e74`, also `:1.0.0`.
+- Final image ID: `sha256:5e089a7686ca0729081723589f11d273d878c806793d97ecd2fc4fb606a4e5ca`.
+- Final cutover backup: `/var/backups/ssh-exam/20261018T012304Z-review-web-xcypg43j`.
+- Previous image: `ssh-exam-workspace:pre-review-3fb9e74`
+  (`sha256:6f69a2182c4408f74b20b5bafc8bd92cdbb8ebd71d1f9fad4b1cb4230f137402`).
+- Initial enrollment-fix image: `ssh-exam-workspace:enrollment-login-69cef04`.
+- Initial backup: `/var/backups/ssh-exam/20261018T012016Z-enrollment-login-web-0da0uqdp`.
+- Pre-enrollment-fix image: `ssh-exam-workspace:pre-enrollment-login-69cef04`
+  (`sha256:4a4c6545bf58c5f91f67ea009399b53fc15e01d58e13b9dd1ba6ffcf60033c08`).
+
+Both guarded restarts refused started/unresolved attempts and preserved all persistent
+row/configuration fingerprints, schema 8 and unstarted preflight records. No SSH-server
+agent, relay, account policy, administrator recovery access, deadline or protected archive
+changed. Public and local readiness pass; notifications remain enabled and maintenance
+off. Final public JavaScript/CSS bytes match the clean tested build.
+
+The authenticated production walkthrough exercised a named disposable exam, single
+entry, example download, invalid/replacement CSV preview and confirmation, real bulk
+duration/webcam changes, menus/dialogs and read-only sandbox review. Temporary data
+was removed with no attempts ever created, and all original rows matched the backup;
+cleanup was audited. 141 clean application tests, type checking, production build,
+17 admin/enrollment/transition browser checks and three fixture-SSH clock/MFA/recovery
+checks passed; see [verification details](test-report.md#deployed-instructor-workflow-verification--2026-10-17).
+
+Rollback after started attempts drain: retag `pre-review-3fb9e74` as `:1.0.0` and restart
+to undo only the review fix. To roll back both changes use `pre-enrollment-login-69cef04`.
+Keep current metadata and deadlines; new unresolved enrollments can verify at login on
+subsequent forward deployment. Never restore an inspection backup over newer records.
+Monitoring backups retain the existing 60-day policy; protected submissions stay on csc-sys.
+
 ## Instructor dashboard redesign, 2026-10-17
 
 Deployed web source `57d4210` on marco at 23:51 UTC (18:51 Chicago time).
