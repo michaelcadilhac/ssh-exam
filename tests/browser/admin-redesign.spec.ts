@@ -370,13 +370,21 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
   expect(s.calls).toHaveLength(0);
   await dialog.getByRole("button", { name: /^Activity/ }).click();
   await expect(dialog).toContainText("Ready to reconnect");
+  s.slow = 500; // A refresh must not publish success while Escape is still blocked.
   await dialog
     .getByRole("button", { name: "Authorize resume", exact: true })
     .click();
   await expect(dialog).toContainText("Resume authorized");
+  expect(
+    await dialog
+      .getByRole("button", { name: "Close review", exact: true })
+      .isEnabled(),
+  ).toBe(true);
+  s.slow = 0;
   expect(s.calls[0].path).toContain("/authorize");
   // Keep an open review fresh even if it no longer matches the selected filter.
   await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
   await page
     .getByLabel("Filter attempts", { exact: true })
     .selectOption("attention");

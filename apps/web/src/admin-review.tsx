@@ -141,12 +141,13 @@ export function AdminReview({
   useEffect(() => {
     setNotice("");
   }, [a.generation]);
-  const run = async (fn: () => Promise<void>) => {
+  const run = async (fn: () => Promise<void | string>) => {
     if (busy) return;
     setBusy(true);
     setError("");
     try {
-      await fn();
+      const message = await fn();
+      if (message) setNotice(message);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -184,10 +185,8 @@ export function AdminReview({
               onClick={() =>
                 void run(async () => {
                   await api(`/admin/attempts/${a.id}/authorize`, {});
-                  setNotice(
-                    "Resume authorized. The student must reconnect and restore monitoring.",
-                  );
                   await onChanged();
+                  return "Resume authorized. The student must reconnect and restore monitoring.";
                 })
               }
             >
