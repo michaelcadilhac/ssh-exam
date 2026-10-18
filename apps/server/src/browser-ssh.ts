@@ -197,6 +197,7 @@ export class BrowserConnection extends Connection {
         readFileSync(this.settings.agent.signingKey),
       ).toString("base64"),
     };
+    let sshAuthenticated = false;
     try {
       await this.request("connect", {
         url: relay.relay,
@@ -206,6 +207,7 @@ export class BrowserConnection extends Connection {
         class: this.settings.class,
         controlToken: this.controlToken,
       });
+      sshAuthenticated = true;
       this.alive = true;
       const result = await this.command("register", {
         continuation: options.continuation,
@@ -213,8 +215,22 @@ export class BrowserConnection extends Connection {
       this.transport = result.transport;
       this.authority.bind(this);
     } catch (e) {
+      const publicMessage = sshAuthenticated
+        ? "SSH sign-in succeeded, but the exam server could not admit this account. Contact your instructor to check the account’s exam-server setup. No new exam was started."
+        : "SSH sign-in failed. Check your shared password and challenge approval. If it still fails, contact your instructor to check the server connection.";
+      // Closing first discards the error queued by the auth route: the browser
+      // only sees a close and silently returns to the sign-in form.
+      if (this.socket?.readyState === 1)
+        this.socket.send(
+          JSON.stringify({ v: 1, type: "error", error: publicMessage }),
+        );
       this.close();
-      throw e;
+      throw Object.assign(e instanceof Error ? e : Error("SSH login failed"), {
+        publicMessage,
+        authenticationStage: sshAuthenticated
+          ? "exam-admission"
+          : "ssh-authentication",
+      });
     }
   }
   override async command(op: string, body: any = {}) {

@@ -191,6 +191,7 @@ function App() {
     }
     if (attempt !== authAttempt.current) return;
     let handedOff = false;
+    let receivedError = false;
     const s = socket("/auth/dialogue");
     browserSSH.begin(s, (m) => {
       if (attempt !== authAttempt.current || handedOff) return;
@@ -223,6 +224,7 @@ function App() {
         void finishLogin();
       }
       if (m.type === "error") {
+        receivedError = true;
         browserSSH.close();
         clearAuthAnswers();
         setError(m.error);
@@ -234,6 +236,10 @@ function App() {
     };
     s.onclose = () => {
       if (attempt !== authAttempt.current || handedOff) return;
+      if (!receivedError)
+        setError(
+          "The connection closed before exam sign-in completed. Please sign in again; if this repeats, contact your instructor. No new exam was started.",
+        );
       setAuthPhase("idle");
       setAuthSocket(null);
       setChallenge(null);
