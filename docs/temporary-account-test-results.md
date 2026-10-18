@@ -1,6 +1,7 @@
 # Temporary account policy validation — 2026-10-17
 
-Release `3740e5f` is deployed on marco and csc-sys. Public HTTPS readiness reports
+The initial release `3740e5f` was deployed on marco and csc-sys. Its manual second-sign-in
+transition has since been replaced by the [single-sign-in release](single-sign-in-test-results.md). Public HTTPS readiness reports
 `ready: true`, `productionReady: true`, `maintenance: false`, notifications enabled.
 The live class agent advertises temporary account policy, read-only home and disposable
 application state. mcadilha retains its exact ordinary shell, groups and sudo access;
@@ -117,7 +118,7 @@ Root-private recovery backups and receipts:
 
 Never restore inspection state snapshots over newer attempt deadlines or secured
 submissions. Once a temporary policy is active, use the recovery runbook and drain/
-restore it before any binary rollback. Students must reload the site before retrying,
-so their browser loads the matching secure-access/fresh-sign-in flow. A complete real
+restore it before any binary rollback. For that historical release, students had to reload before retrying the secure-access/
+fresh-sign-in flow; the current automatic handoff requires no second interactive sign-in. A complete real
 student phone-MFA login remains a student-performed check; no student credentials were
 obtained or simulated during deployment.
