@@ -61,7 +61,7 @@ export function StudentActions({
                       webcam: webcam === "inherit" ? null : webcam === "true",
                     }),
               });
-              await onDone("Future attempt settings updated.");
+              await onDone("Student settings updated.");
               onClose();
             } else {
               const r = await api(`/admin/exams/${exam.id}/attempts/clocks`, {
@@ -92,7 +92,7 @@ export function StudentActions({
               ? `${op.students.length} ${op.students.length === 1 ? "student" : "students"}`
               : `${op.attempts.length} ${op.attempts.length === 1 ? "attempt" : "attempts"}`}
           </strong>{" "}
-          · {settings ? "Future attempts only" : "Current clocks"}
+          · {settings ? "Student settings" : "Current clocks"}
         </p>
         <ul className="admin-target-list">
           {(settings ? op.students : op.attempts).map((a) => (
@@ -140,7 +140,7 @@ export function StudentActions({
         )}
         {op.kind === "webcam" && (
           <label>
-            Webcam for future attempts
+            Webcam requirement
             <select
               value={webcam}
               disabled={busy}

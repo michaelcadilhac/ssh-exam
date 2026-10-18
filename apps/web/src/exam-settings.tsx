@@ -172,7 +172,7 @@ export function ExamSettings({
           />{" "}
           Default webcam requirement
         </label>
-        <p>Changes apply to future attempts.</p>
+        <p>Attempts already prepared keep their settings.</p>
         {error && (
           <p role="alert" className="warn">
             {error}

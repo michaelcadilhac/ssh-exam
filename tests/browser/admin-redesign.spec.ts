@@ -83,6 +83,7 @@ async function fixture(page: Page, large = false) {
     calls: [] as { path: string; body: any }[],
     dashboards: 0,
     failDashboard: false,
+    failSettings: false,
     failReview: false,
     failedClock: "",
     slow: 0,
@@ -206,6 +207,17 @@ async function fixture(page: Page, large = false) {
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
       state.calls.push({ path, body });
+      if (path.endsWith("/roster/settings")) {
+        if (state.failSettings)
+          return json({ error: "Settings could not be saved" }, 503);
+        for (const row of state.rows.filter((s) =>
+          body.usernames.includes(s.username),
+        )) {
+          for (const field of ["duration", "webcam"])
+            if (field in body) row.enrollment[field] = body[field];
+        }
+        return json({ ok: true });
+      }
       if (path.endsWith("/attempts/clocks")) {
         for (const t of body.targets) {
           const a = state.rows
@@ -353,22 +365,25 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
   await trigger.focus();
   await trigger.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Set duration", exact: true }),
+    page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Set webcam", exact: true }),
+    page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
   await expect(page.getByRole("menu")).toHaveCount(0);
   await trigger.click();
   await page
-    .getByRole("menuitem", { name: "Set duration", exact: true })
+    .getByRole("menuitem", { name: "Remove from exam…", exact: true })
     .click();
   await expect(
-    page.getByRole("dialog", { name: "Set duration", exact: true }),
-  ).toContainText("Future attempts only");
+    page.getByRole("dialog", {
+      name: "Remove amy from this exam?",
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
   await trigger.press("ArrowDown");
@@ -473,7 +488,7 @@ test("slow dashboard responses complete, stale data blocks clock edits, and exam
   s.rows[0].enrollment.duration = 7200;
   await expect(
     page.getByRole("rowgroup", { name: "amy", exact: true }),
-  ).toContainText("Future duration: 120 minutes", { timeout: 15000 });
+  ).toContainText("Duration: 120 minutes", { timeout: 15000 });
   s.slow = 0;
   s.failDashboard = true;
   await expect(page.getByRole("alert")).toContainText("Updates paused", {
@@ -796,4 +811,155 @@ test("slow review polling does not overlap and closing cancels an outstanding re
   await expect(
     page.getByRole("dialog", { name: "bob · Attempt 1", exact: true }),
   ).toContainText("No screen images received");
+});
+
+for (const width of [1280, 430])
+  test(`table settings edit in place, preserve attempts and show start times at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const s = await fixture(page);
+    const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
+    const duration = amy.getByRole("button", {
+      name: "Edit duration for amy",
+      exact: true,
+    });
+    const started = amy.locator(".attempt-row time").first();
+    await expect(started).toHaveAttribute(
+      "datetime",
+      new Date(s.rows[0].attempts[0].start).toISOString(),
+    );
+    await expect(started).toContainText("Started");
+    await expect(started).toContainText(
+      String(new Date(s.rows[0].attempts[0].start).getUTCFullYear()),
+    );
+    await expect(started).toContainText(/C[DS]T/);
+    await expect(page.locator("main")).not.toContainText(/\bfuture\b/i);
+    await duration.focus();
+    await duration.press("Enter");
+    let editor = amy.getByRole("form", {
+      name: "Edit duration for amy",
+      exact: true,
+    });
+    await expect(editor.getByLabel("Minutes", { exact: true })).toBeFocused();
+    await editor.getByLabel("Minutes", { exact: true }).fill("123");
+    await page.keyboard.press("Escape");
+    await expect(duration).toBeFocused();
+    expect(s.calls).toHaveLength(0);
+    await duration.click();
+    editor = amy.getByRole("form", {
+      name: "Edit duration for amy",
+      exact: true,
+    });
+    await editor.getByLabel("Minutes", { exact: true }).fill("120");
+    await page.screenshot({
+      path: info.outputPath(`inline-editor-${width}.png`),
+      fullPage: true,
+    });
+    await editor.getByLabel("Minutes", { exact: true }).press("Enter");
+    await expect(duration).toHaveText("Duration: 120 minutes");
+    expect(s.calls[0].body).toEqual({ usernames: ["amy"], duration: 7200 });
+    await amy
+      .getByRole("button", {
+        name: "Edit webcam requirement for amy",
+        exact: true,
+      })
+      .click();
+    let webcam = amy.getByRole("form", {
+      name: "Edit webcam requirement for amy",
+      exact: true,
+    });
+    await webcam
+      .getByRole("combobox", { name: "Webcam", exact: true })
+      .selectOption("true");
+    await webcam.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      amy.getByRole("button", {
+        name: "Edit webcam requirement for amy",
+        exact: true,
+      }),
+    ).toHaveText("Required");
+    expect(s.calls[1].body).toEqual({ usernames: ["amy"], webcam: true });
+    await expect(
+      amy.locator('.attempt-row [data-label="Webcam"]').first(),
+    ).toHaveText("Not required");
+    expect(s.rows[0].attempts[0].settings).toBe(
+      JSON.stringify({ webcam: false }),
+    );
+    expect(
+      s.calls.every((call) => call.path.endsWith("/roster/settings")),
+    ).toBe(true);
+    await duration.click();
+    editor = amy.getByRole("form", {
+      name: "Edit duration for amy",
+      exact: true,
+    });
+    await editor.getByRole("checkbox", { name: /Exam default/ }).check();
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(duration).toHaveText("Duration: 90 minutes");
+    expect(s.calls[2].body).toEqual({ usernames: ["amy"], duration: null });
+    await amy
+      .getByRole("button", {
+        name: "Edit webcam requirement for amy",
+        exact: true,
+      })
+      .click();
+    webcam = amy.getByRole("form", {
+      name: "Edit webcam requirement for amy",
+      exact: true,
+    });
+    await webcam
+      .getByRole("combobox", { name: "Webcam", exact: true })
+      .selectOption("inherit");
+    await webcam.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      amy.getByRole("button", {
+        name: "Edit webcam requirement for amy",
+        exact: true,
+      }),
+    ).toHaveText("Not required");
+    expect(s.calls[3].body).toEqual({ usernames: ["amy"], webcam: null });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath(`inline-settings-${width}.png`),
+      fullPage: true,
+    });
+  });
+
+test("inline setting failures preserve edits for retry and cancellation", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
+  const duration = amy.getByRole("button", {
+    name: "Edit duration for amy",
+    exact: true,
+  });
+  await duration.click();
+  const editor = amy.getByRole("form", {
+    name: "Edit duration for amy",
+    exact: true,
+  });
+  await editor.getByLabel("Minutes", { exact: true }).fill("125");
+  s.failSettings = true;
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(editor.getByRole("alert")).toContainText(
+    "Settings could not be saved",
+  );
+  await expect(editor.getByLabel("Minutes", { exact: true })).toHaveValue(
+    "125",
+  );
+  s.failSettings = false;
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(duration).toHaveText("Duration: 125 minutes");
+  await duration.click();
+  await editor.getByLabel("Minutes", { exact: true }).fill("140");
+  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(duration).toHaveText("Duration: 125 minutes");
+  await expect(duration).toBeFocused();
+  expect(s.calls).toHaveLength(2);
 });

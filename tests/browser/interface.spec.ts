@@ -334,7 +334,7 @@ test("instructor can add, remove and import students, cancel removal with Escape
   for (const name of ["student01", "student03"])
     await expect(
       roster.getByRole("rowgroup", { name, exact: true }),
-    ).toContainText("Future duration: 120 minutes");
+    ).toContainText("Duration: 120 minutes");
   await page.getByLabel("Bulk action", { exact: true }).selectOption("webcam");
   await page
     .getByRole("checkbox", { name: "Select student student01", exact: true })
@@ -350,14 +350,14 @@ test("instructor can add, remove and import students, cancel removal with Escape
     name: "Set webcam requirement",
     exact: true,
   });
-  await settings.getByLabel("Webcam for future attempts").selectOption("false");
+  await settings.getByLabel("Webcam requirement").selectOption("false");
   await settings
     .getByRole("button", { name: "Apply settings", exact: true })
     .click();
   await expect(settings).toHaveCount(0);
   await expect(
     roster.getByRole("rowgroup", { name: "student03", exact: true }),
-  ).toContainText("Future: Not required");
+  ).toContainText("Not required");
   await expect(page.getByRole("link", { name: /Download/ })).toHaveCount(0);
   await page.screenshot({
     path: "docs/screenshots/instructor-dashboard.png",
@@ -441,7 +441,7 @@ test("exam selection scopes the grouped history and ignores late replies after s
   await expect(table.locator(".attempt-row")).toHaveCount(2);
   await expect(
     table.getByRole("rowgroup", { name: "history-only-user", exact: true }),
-  ).toContainText("Future:");
+  ).toContainText("Exam default");
   await page
     .getByLabel("Filter attempts", { exact: true })
     .selectOption("COMPLETED");

@@ -152,7 +152,8 @@ export function StudentImport({
               Download example CSV
             </a>{" "}
             and replace the example usernames with course-server accounts.
-            Optional duration and webcam settings apply to future attempts.
+            Optional duration and webcam settings do not change existing
+            attempts.
           </p>
           <label>
             CSV file

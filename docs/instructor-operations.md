@@ -17,19 +17,20 @@ an acknowledged browser connection and fresh contact. Updates poll every five se
 clocks tick every second. Failed or silent updates are marked stale and clock edits are
 blocked until fresh data arrives. Removed enrollments retain their history.
 
-Use a student's **Actions** menu for future duration, webcam settings and enrollment
-removal. Use an attempt's **More** menu for clock actions. **Review** opens monitoring,
+Click a student's displayed duration or webcam requirement to edit it in the table.
+Save applies the change; Cancel or Escape discards it and returns focus to the value.
+Use the student's **Actions** menu for enrollment removal. Use an attempt's **More** menu for clock actions. **Review** opens monitoring,
 incidents and recovery for that particular attempt. Controls support keyboard navigation
 and Escape; opening review focuses Close review, never Authorize resume.
 
 **New exam** and **Exam settings** configure the name, start window, duration, default
 webcam requirement, terminal count and root-approved material template. See
 [Creating an exam template](template-authoring.md) for authoring and installation.
-Materials template names identify files installed on the SSH server. Settings apply to future attempts. Dashboard times use America/Chicago; start-window
+Materials template names identify files installed on the SSH server. Settings apply to future attempts. Each started attempt shows its start date, time and timezone. Dashboard times use America/Chicago; start-window
 inputs use your device timezone. Sandbox always starts with five minutes.
 
-**Set duration** selects an individual future allowance (1–360 whole minutes) or restores
-the exam default. **Set webcam** changes only future attempts, with required/not-required/
+The duration value selects an individual allowance (1–360 whole minutes) or restores
+the exam default. The webcam value changes the requirement, with required/not-required/
 exam-default choices. Prepared and active attempts retain their original settings.
 **Reset clock** sets a current countdown to the student's configured allowance, falling back
 to the exam default, counted from the request time. **Extend time** adds 1–360 whole minutes

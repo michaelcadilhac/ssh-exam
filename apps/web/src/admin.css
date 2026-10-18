@@ -250,11 +250,11 @@
   color: #9db1c9;
   font-size: 12px;
 }
-.admin-roster .future-setting {
+.admin-roster .enrollment-cell {
   font-size: 11px;
   color: #c0cde0;
 }
-.admin-roster .future-setting small {
+.admin-roster .enrollment-cell small {
   color: #8399b4;
   font-size: 10px;
 }
@@ -275,7 +275,7 @@
   padding-left: 20px;
   margin-top: 3px;
   color: #8399b4;
-  font-size: 10px;
+  font-size: 12px;
 }
 .attempt-status {
   font-size: 12px;
@@ -705,18 +705,15 @@
     grid-column: 2;
     grid-row: 1;
   }
-  .admin-roster .future-setting {
+  .admin-roster .enrollment-cell {
     grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
   }
-  .admin-roster .future-setting small {
+  .admin-roster .enrollment-cell small {
     margin: 0;
-  }
-  .admin-roster .future-setting small::before {
-    content: "· ";
   }
   .admin-roster .attempt-row {
     border-top: 1px solid #25364a;
@@ -740,7 +737,7 @@
   }
   .admin-roster .attempt-identity time {
     padding-left: 20px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .admin-roster .attempt-reason {
     white-space: normal;
@@ -752,7 +749,7 @@
   .admin-roster table.selecting .row-actions {
     grid-column: 3;
   }
-  .admin-roster table.selecting .future-setting,
+  .admin-roster table.selecting .enrollment-cell,
   .admin-roster table.selecting .attempt-row td:nth-last-child(4) {
     grid-column: 2 / -1;
   }
@@ -855,4 +852,66 @@
   .admin-form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.admin-roster .setting-value {
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #c9d9ed;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline dotted #718ba9;
+  text-underline-offset: 4px;
+}
+.admin-roster .setting-value:disabled {
+  text-decoration: none;
+}
+.admin-roster .setting-value:focus-visible {
+  outline: 2px solid #89b8ff;
+  outline-offset: 3px;
+}
+.admin-roster .enrollment-setting {
+  min-width: 0;
+}
+.admin-roster .setting-editor {
+  display: grid;
+  gap: 8px;
+  max-width: 240px;
+  overflow-wrap: normal;
+}
+.admin-roster .setting-editor label {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+.admin-roster .setting-editor input[type="number"],
+.admin-roster .setting-editor select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  box-sizing: border-box;
+  margin: 0;
+}
+.admin-roster .setting-editor .setting-inherit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-roster .setting-editor .setting-inherit input {
+  margin: 0;
+}
+.admin-roster .setting-editor small {
+  line-height: 1.4;
+}
+.admin-roster .setting-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-roster .setting-editor-actions button {
+  padding: 5px 10px;
+  font-size: 12px;
 }

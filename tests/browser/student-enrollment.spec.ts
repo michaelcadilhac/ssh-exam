@@ -98,7 +98,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     .getByRole("table", { name: "Students and attempts" })
     .getByRole("row")
     .filter({ hasText: "student02" });
-  await expect(row).toContainText("Future duration: 120 minutes");
+  await expect(row).toContainText("Duration: 120 minutes");
   await expect(row).toContainText("Not required");
   await add.click();
   await expect(

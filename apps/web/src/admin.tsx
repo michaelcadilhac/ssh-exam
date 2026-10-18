@@ -5,6 +5,7 @@ import { Modal } from "./modal.js";
 import { CreateAdministrator } from "./create-administrator.js";
 import { ExamSettings } from "./exam-settings.js";
 import { StudentImport } from "./student-import.js";
+import { EnrollmentSetting } from "./enrollment-setting.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
 import { AdminReview } from "./admin-review.js";
@@ -30,11 +31,16 @@ const filterLabels: [DashboardView, string][] = [
   ["camera", "Webcam required"],
   ["no-camera", "Webcam not required"],
 ];
-const clockFormat = new Intl.DateTimeFormat("en-US", {
+const startFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Chicago",
-  timeStyle: "short",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
 });
-const timeOfDay = (n: number) => clockFormat.format(n);
+const attemptStarted = (n: number) => startFormat.format(n);
 export function Admin({
   onError,
   onSignOut,
@@ -244,13 +250,13 @@ export function Admin({
       attempts: s.attempts.filter((a: any) => matchesDashboardView(a, filter)),
     }))
     .filter((s: any) => !filter || s.attempts.length);
-  const future = bulkKind === "duration" || bulkKind === "webcam";
-  const candidates = future
+  const studentSettings = bulkKind === "duration" || bulkKind === "webcam";
+  const candidates = studentSettings
     ? visible.filter((s: any) => s.enrollment)
     : visible.flatMap((s: any) =>
         s.attempts.filter((a: any) => clockEditable(a, clock)),
       );
-  const keyOf = (a: any) => (future ? a.username : a.id);
+  const keyOf = (a: any) => (studentSettings ? a.username : a.id);
   const chosen = candidates.filter((a: any) => selection.has(keyOf(a)));
   useEffect(() => {
     const valid = new Set(candidates.map(keyOf));
@@ -289,7 +295,7 @@ export function Admin({
       onError((e as Error).message);
     }
   };
-  const bulkType = future ? "students" : "attempts";
+  const bulkType = studentSettings ? "students" : "attempts";
   return (
     <main className="admin admin-redesign">
       <header className="admin-header">
@@ -502,7 +508,7 @@ export function Admin({
                   }}
                 >
                   <option value="">Bulk actions…</option>
-                  <optgroup label="Future attempt settings">
+                  <optgroup label="Student settings">
                     <option value="duration">Set duration</option>
                     <option value="webcam">Set webcam requirement</option>
                   </optgroup>
@@ -525,7 +531,7 @@ export function Admin({
                     {chosen.length === 1 ? bulkType.slice(0, -1) : bulkType}{" "}
                     selected
                   </strong>{" "}
-                  · {future ? "Future attempts" : "Current clocks"}
+                  · {studentSettings ? "Student settings" : "Current clocks"}
                 </span>
                 <label className="admin-select-page">
                   <input
@@ -561,14 +567,16 @@ export function Admin({
                 <button
                   className="primary"
                   disabled={
-                    !chosen.length || stale || (!future && chosen.length > 100)
+                    !chosen.length ||
+                    stale ||
+                    (!studentSettings && chosen.length > 100)
                   }
                   onClick={() => openOperation(bulkKind, chosen)}
                 >
                   Apply to {chosen.length}{" "}
                   {chosen.length === 1 ? bulkType.slice(0, -1) : bulkType}
                 </button>
-                {!future && chosen.length > 100 && (
+                {!studentSettings && chosen.length > 100 && (
                   <span className="warn">
                     Select at most 100 current attempts.
                   </span>
@@ -647,7 +655,7 @@ export function Admin({
                             <tr className="student-row" role="row">
                               {bulkKind && (
                                 <td className="selection-cell" role="cell">
-                                  {future && s.enrollment && (
+                                  {studentSettings && s.enrollment && (
                                     <input
                                       type="checkbox"
                                       aria-label={`Select student ${s.username}`}
@@ -667,53 +675,28 @@ export function Admin({
                                   ? `${s.attempts.length} ${s.attempts.length === 1 ? "attempt" : "attempts"}`
                                   : "Not started"}
                               </td>
-                              <td role="cell" className="future-setting">
-                                {s.enrollment && (
-                                  <>
-                                    <span>
-                                      Future:{" "}
-                                      {(s.enrollment.webcam ?? current?.webcam)
-                                        ? "Required"
-                                        : "Not required"}
-                                    </span>
-                                    {s.enrollment.webcam === null && (
-                                      <small>Exam default</small>
-                                    )}
-                                  </>
-                                )}
-                              </td>
-                              <td role="cell" className="future-setting">
-                                {s.enrollment && (
-                                  <>
-                                    <span>
-                                      Future duration:{" "}
-                                      {(s.enrollment.duration ??
-                                        current?.duration) / 60}{" "}
-                                      minutes
-                                    </span>
-                                    {s.enrollment.duration === null && (
-                                      <small>Exam default</small>
-                                    )}
-                                  </>
-                                )}
-                              </td>
+                              {(["webcam", "duration"] as const).map((kind) => (
+                                <td
+                                  key={kind}
+                                  role="cell"
+                                  className="enrollment-cell"
+                                >
+                                  {s.enrollment && (
+                                    <EnrollmentSetting
+                                      exam={current}
+                                      student={s}
+                                      kind={kind}
+                                      disabled={stale}
+                                      onSaved={refresh}
+                                    />
+                                  )}
+                                </td>
+                              ))}
                               <td role="cell" className="row-actions">
                                 {s.enrollment && (
                                   <AdminMenu
                                     label={`Actions for student ${s.username}`}
                                     actions={[
-                                      {
-                                        label: "Set duration",
-                                        disabled: stale,
-                                        onSelect: () =>
-                                          openOperation("duration", [s]),
-                                      },
-                                      {
-                                        label: "Set webcam",
-                                        disabled: stale,
-                                        onSelect: () =>
-                                          openOperation("webcam", [s]),
-                                      },
                                       {
                                         label: "Remove from exam…",
                                         danger: true,
@@ -740,7 +723,7 @@ export function Admin({
                                 >
                                   {bulkKind && (
                                     <td className="selection-cell" role="cell">
-                                      {!future &&
+                                      {!studentSettings &&
                                         ["ACTIVE", "LOCKED"].includes(
                                           a.state,
                                         ) && (
@@ -765,7 +748,7 @@ export function Admin({
                                         ).toISOString()}
                                         title={chicago(a.start)}
                                       >
-                                        Started {timeOfDay(a.start)}
+                                        Started {attemptStarted(a.start)}
                                       </time>
                                     )}
                                   </td>
@@ -941,8 +924,8 @@ export function Admin({
           }}
         >
           <p>
-            Future exam access is removed. Current attempts, history, monitoring
-            and submissions are kept.
+            Enrollment is removed. Current attempts, history, monitoring and
+            submissions are kept.
           </p>
           {removingError && (
             <p role="alert" className="warn">
