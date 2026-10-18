@@ -733,3 +733,40 @@ Final public assets match the clean tested build. Container/public readiness pas
 notifications enabled and maintenance disabled. No class-server binaries, account
 policies, deadlines or protected submissions were changed. See
 [deployment/rollback records](browser-ssh-deployment.md).
+
+
+## Visible SSH admission errors — 2026-10-17
+
+Production investigation confirmed an enrolled student's class-host SSH authentication
+succeeded, but the account had neither root-agent admission records nor the managed
+login shell/group. BrowserConnection closed the authentication WebSocket inside its
+connect error handler, before the route could send an explanation. The browser close
+handler then silently restored the sign-in form. No attempt or deadline was created.
+
+The connect failure path now sends a bounded public explanation before close/cleanup.
+It distinguishes SSH authentication from subsequent exam admission without forwarding
+unverified host output. The client keeps explicit errors through socket closure and
+shows a fallback explanation for unexplained closure. Error text says no *new* exam
+started, so it does not imply a resumed attempt's clock stopped. Audit records contain
+only username/exam and a fixed failure-stage code, never raw SSH output or credentials;
+shutdown skips auditing after the database has closed.
+
+Clean release validation: **143 application tests**, type checking and production
+build pass. Two new backend tests verify error-before-close ordering, cleanup and
+secret-free public output. Both new browser cases verify explicit admission failure
+and unexpected close retain a visible error, username/exam and an enabled retry.
+All **seven focused sign-in/initialization browser checks** pass. The first full test
+run found an asynchronous audit-after-database-close rejection despite all assertions
+passing; guarding shutdown resolved it and the complete rerun passes without errors.
+
+Web source `10c1faf` deployed on marco at 2026-10-18 01:43 UTC (October 17, 20:43 Chicago).
+The guarded cutover preserved administrator/exam/enrollment/attempt/preview/continuation
+fingerprints, private configuration, schema 8, sandbox and existing preflight records.
+Public assets match the clean tested build; readiness passes with notifications enabled
+and maintenance disabled. No class-server account, binary, policy or submission changed.
+
+Automatic approval review rejected introducing persistent root first-login account
+setup without explicit authorization for shell/group/registry changes. The root-side
+fix has NOT been implemented or installed, and the affected account is still unable
+to enter an exam until approved setup is completed. See
+[the pending account-admission proposal](account-admission-proposal.md).

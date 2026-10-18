@@ -4,6 +4,30 @@ Activated on 2026-10-13 Chicago time (2026-10-14 04:49 UTC).
 Application and native agent source: `6233337`.
 Production site: <https://ssh-exam.cadilhac.name>.
 
+## Visible login/admission failure update, 2026-10-17
+
+Deployed web source `10c1faf` at 2026-10-18 01:43 UTC (October 17, 20:43 Chicago).
+An admission rejection after successful SSH now sends its public explanation before
+closing the WebSocket. Unexplained socket closure also leaves a visible retryable
+error. Fixed-stage audit entries exclude raw SSH details and skip closed-database
+shutdown. The separate root-side account setup fix is pending explicit approval;
+this web release does not make unconfigured class-server accounts exam-ready.
+
+- Image: `ssh-exam-workspace:sign-in-error-10c1faf`, also `:1.0.0`.
+- Image ID: `sha256:824b57dd359d650ba87d424fbdd212e17aee878c41bc19f711befbb8b9d07ed1`.
+- Previous image: `ssh-exam-workspace:pre-sign-in-error-10c1faf`
+  (`sha256:5e089a7686ca0729081723589f11d273d878c806793d97ecd2fc4fb606a4e5ca`).
+- Backup: `/var/backups/ssh-exam/20261018T014327Z-sign-in-error-web-ffyeeomn`.
+
+143 clean application tests, type checking, build and seven focused sign-in/browser
+transition checks pass. Public JavaScript/CSS bytes match the tested build. The
+cutover refused started/unresolved attempts and preserved all persistent row/config
+fingerprints, schema 8 and unstarted preflight records. No class-server account policy,
+agent, deadline or protected submission changed. Production readiness and notifications
+pass; maintenance remains off. Rollback after started attempts drain: retag the previous
+image as `:1.0.0` and restart, retaining current metadata and deadlines. Inspection
+backups must not overwrite newer state; monitoring backups retain the 60-day policy.
+
 ## Enrollment/login identity and review completion, 2026-10-17
 
 Deployed `69cef04` at 2026-10-18 01:20 UTC (October 17, 20:20 Chicago), then
