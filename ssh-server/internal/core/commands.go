@@ -124,6 +124,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		}
 	}
 	setup := ""
+	handoff := false
 	var result any
 	err = e.WithState(func() error {
 		now := Millis()
@@ -193,6 +194,12 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 					if err := e.freshPolicyTransport(a, monitor); err != nil {
 						return err
 					}
+					if r.Handoff != "" {
+						if a.Handoff == nil || a.Handoff.ID != r.Handoff || a.Handoff.Expires <= Millis() || a.Handoff.Consumed != "" {
+							return errors.New("SSH handoff expired or already consumed")
+						}
+						a.Handoff.Consumed = transport
+					}
 					if err := e.terminate(a); err != nil {
 						return err
 					}
@@ -216,6 +223,13 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			return errors.New("command account mismatch")
 		}
 		switch cmd.Op {
+		case "issue-ssh-handoff":
+			a, err := e.Find(r.ID)
+			if err != nil || a.Username != username || a.Transport != transport {
+				return errors.New("SSH handoff owner mismatch")
+			}
+			handoff = true
+			return nil
 		case "prepare-account-policy":
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username || a.Transport != transport || a.State != "PREPARING" || a.Start != 0 {
@@ -264,6 +278,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		result, err = e.callLocked(cmd.Op, r)
 		return err
 	})
+	if err == nil && handoff {
+		return e.issueSSHHandoff(cmd.Body.ID, cmd.Body.PublicKey, transport)
+	}
 	if err == nil && setup != "" {
 		return e.prepareAccountPolicy(setup)
 	}

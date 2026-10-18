@@ -10,7 +10,9 @@ import { readFileSync } from "node:fs";
 import { WebSocketServer } from "ws";
 import net from "node:net";
 import { hash } from "../../apps/server/src/db.js";
-const h = await hosts();
+const h = await hosts({
+  classCertificates: process.env.EXAM_BROWSER_SSH === "1",
+});
 const timezoneAccounts = Object.fromEntries(
   Array.from({ length: 7 }, (_, i) => [`timezone${i + 1}`, 11001 + i]),
 );
@@ -68,8 +70,10 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         a.exam === "temporary-access" &&
         a.policy_state === "READY" &&
         !a.start
-      )
+      ) {
         a.policy_transport = b.transport;
+        a.transport = b.transport;
+      }
     if (b.continuation) {
       const a = attempts.get(b.continuation.id);
       if (!a || a.state === "COMPLETED") throw Error("Attempt cannot resume");
@@ -83,6 +87,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     }
     return {};
   }
+  if (op === "issue-ssh-handoff") return h.issueHandoff(b.public_key);
   if (op.startsWith("issue-")) return h.agent.call(op, b);
   if (op === "close-pane") return { closed: true };
   if (op === "health") return { ready: true, fixture: true };

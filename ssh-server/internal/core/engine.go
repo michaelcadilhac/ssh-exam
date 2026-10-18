@@ -16,6 +16,8 @@ import (
 )
 
 type Request struct {
+	PublicKey        string   `json:"public_key"`
+	Handoff          string   `json:"handoff"`
 	ExtendSeconds    int64    `json:"extend_seconds,omitempty"`
 	ResetID          string   `json:"reset_id,omitempty"`
 	Actor            string   `json:"actor,omitempty"`
@@ -92,6 +94,9 @@ func (e *Engine) productionReady() (bool, []string) {
 		}
 	}
 	if e.Config.TemporaryAccountPolicy {
+		if _, err := e.handoffSigner(); err != nil {
+			missing = append(missing, "protected SSH handoff CA unavailable")
+		}
 		info, err := os.Lstat("/usr/local/sbin/exam-account-policy")
 		if err != nil || !info.Mode().IsRegular() || info.Sys().(*syscall.Stat_t).Uid != 0 || info.Mode().Perm()&0022 != 0 {
 			missing = append(missing, "root-owned temporary account policy helper unavailable")
@@ -147,7 +152,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {

@@ -40,7 +40,7 @@ A completed attempt cannot reopen through instructor continuation. Ordinary stud
 in sandbox must not inherit a shortcut that bypasses these release predicates; the
 explicit trusted-administrator testing exception is separate and unchanged.
 
-## Activation and fresh SSH
+## Activation with one student sign-in
 
 1. Authenticate to both pinned hosts with the existing password/MFA flow. The root
    agent verifies the gateway's signed request, actual kernel peer UID, NSS identity,
@@ -50,7 +50,7 @@ explicit trusted-administrator testing exception is separate and unchanged.
    SSH/PAM/service/scheduler routes and whether temporary enforcement and exact
    restoration are supported. Reject unsupported isolation before starting time or
    revealing exam material. Never silently remove a student's jobs or account settings.
-3. Following the student's explicit start/secure-access action, acquire a per-UID
+3. Following the student's explicit Begin exam confirmation, acquire a per-UID
    activation fence and durably record the complete baseline and a bounded activation
    transaction before any account change. Setup is not a timed attempt and has no
    released exam material. Installation/enrollment must not pre-gate students for days.
@@ -61,13 +61,18 @@ explicit trusted-administrator testing exception is separate and unchanged.
    changes before admitting a protected transport. Do not change central directory
    records, password authentication, sshjump, global SSSD shell defaults or administrator
    accounts. Do not restart SSSD during individual student activation.
-5. The bootstrap SSH transport predates this policy and is ineligible for exam access.
-   Require fresh SSH authentication after the policy is effective, bound to this
-   activation generation. The agent must prove the new transport is newer than the
-   policy fence using root-owned SSH process identity/start information, rather than
-   trusting a browser claim or opening another channel on an old connection. Revoke
-   old admission tokens and neutralize all other pre-existing connections/processes.
-6. Verify restored browser monitoring and the protected connection. Atomically commit
+5. Automatically replace only the class-server transport after the policy is effective.
+   The browser keeps its authenticated jump connection and creates an ephemeral Ed25519 key
+   inside the SSH worker. A signed, attempt-owned command asks the root agent to issue a
+   certificate for that public key. The dedicated root-only CA grants at most 60 seconds,
+   a unique attempt/generation principal, forced exam dispatch and PTY only; forwarding,
+   user startup RC and other certificate extensions are absent. A root-owned SSH principals
+   helper checks the durable unstarted READY policy, generation, exact certificate, expiry
+   and unconsumed grant before authentication. The class host key is pinned again before
+   supplying the credential. Signed registration consumes the grant and binds the new
+   root-owned SSH monitor; its creation time must follow the policy fence. Retire the
+   bootstrap connection, revoke old admissions and neutralize all other connections/writers.
+6. Verify the still-running browser monitoring and the protected connection. Atomically commit
    start, original/current deadlines and HELD before releasing material; only this
    step starts the clock. Each later terminal channel still requires signed admission
    for this live transport, attempt, generation, pane and purpose.
@@ -78,13 +83,21 @@ ordinary practice. The start confirmation explains that ordinary server sessions
 background processes must end. Those terminated processes cannot be resurrected by
 later restoring account settings; do not describe restoration as resuming their memory.
 
-A fresh SSH login may require another password/MFA round. Existing password references
-have already been discarded after authentication to both hosts; do not extend their
-lifetime, automatically retry passwords, or silently retain them to mask this transition.
-Explain the fresh sign-in before setup begins; no clock runs while it is completed.
-The preflight button is “Secure exam access” until the fresh transport is verified.
-The confirmation and sign-in notice explain the five-minute setup window. Then the
-normal “Begin exam” starts time; password/MFA is never retained across these sign-ins.
+Students perform exactly one interactive password/phone-MFA sign-in and one preflight.
+The password is already discarded before capture; it is never kept for this handoff.
+The ephemeral private key never leaves the browser worker, is overwritten and dereferenced
+on handshake success/failure/cancellation/timeout, and is not available for later recovery.
+Only a public key and certificate pass through the webserver; the server-side journal stores
+public scope/expiry/consumption metadata. Memory cleanup is best-effort, not guaranteed
+runtime erasure. The dedicated class-server CA is an installation key protected from students;
+it is independent of the gateway and callback signing keys. SSH password/MFA policies,
+normal authorized keys, directory records and administrator settings are unchanged.
+
+“Begin exam” closes practice panes, applies temporary policy, performs the automatic
+handoff and then starts time. Capture/fullscreen/keyboard stay active throughout. Setup
+failure leaves the clock unstarted, and the independent five-minute restoration policy
+still applies. The handoff cannot resume an active/locked attempt or reopen a finished one;
+subsequent interruption recovery still requires the existing instructor-authorized fresh login.
 
 ## Abandoned or failed activation
 
@@ -184,7 +197,7 @@ for that account without changing it.
 - Replace rollback's local-usermod assumption with exact local/SSSD baseline restoration.
   Uninstall must refuse unresolved started holds, preserve submissions and account-policy
   recovery jobs, and never restore an old attempt database or deadline.
-- Show the secure-access transition/fresh sign-in and actual release/restoration state
+- Show automatic setup progress and actual release/restoration state
   in the student UI, admin dashboard and examctl. Update design/install/recovery documents.
 
 The root helper runs as a fixed transient systemd service, outside the daemon's

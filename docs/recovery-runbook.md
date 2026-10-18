@@ -166,3 +166,18 @@ is not NORMAL. The rollback helper refuses unresolved temporary policies. Submis
 current state and recovery journals survive rollback; never restore an older database
 over current deadlines or protected archives. After normal restoration, verify ordinary
 SSH commands and file transfers with the exam gate daemon stopped.
+
+## Automatic initial SSH handoff
+
+Initial account setup uses one student password/MFA login and one preflight. The browser
+keeps the jump connection, automatically replaces its class connection with an attempt-only
+certificate, and discards the private key. Failure before protected registration/activation
+must leave start/deadline unset; never bypass the new-monitor fence to recover it. Inspect
+policy errors, the root-owned `exam-principals` helper, dedicated handoff CA/public key and
+effective `TrustedUserCAKeys`/`AuthorizedPrincipalsCommand` settings. Do not log credentials.
+The five-minute unstarted setup watchdog restores abandoned policy; `examctl cancel` is the
+audited immediate alternative. A consumed/expired certificate cannot authenticate a second
+transport or resume an active attempt. Actual paused-exam recovery retains the original
+instructor authorization and fresh login policy. Keep the CA and helper in place while any
+account journal is unresolved. Restore installation backups only after draining/restoring
+policy and validating ordinary SSH access; never restore old attempt state snapshots.

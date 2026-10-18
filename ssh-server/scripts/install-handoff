@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+"""Install attempt-only SSH certificate authentication without changing normal login requirements."""
+import argparse,datetime,json,os,pathlib,shutil,stat,subprocess,tempfile
+p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apply',action='store_true');p.add_argument('--administrator',required=True);a=p.parse_args()
+assert os.geteuid()==0,'Root required'
+def run(*args):return subprocess.check_output(args,text=True)
+config_path=pathlib.Path('/etc/exam-agent/agent.json');config=json.loads(config_path.read_text());assert config['temporary_account_policy']
+ca=pathlib.Path('/etc/exam-agent/handoff-ca');dropin=pathlib.Path('/etc/ssh/sshd_config.d/05-exam-handoff.conf');helper=pathlib.Path('/usr/local/sbin/exam-principals')
+command='/usr/local/sbin/exam-principals %u %i %k'
+settings=dict(line.split(' ',1) for line in run('/usr/sbin/sshd','-T','-C','user='+a.administrator+',host=class.example.edu,addr=127.0.0.1').splitlines() if ' ' in line)
+assert settings['forcecommand']=='none','Administrator must keep ordinary access'
+assert settings['trustedusercakeys'] in ['none',str(ca)+'.pub'],'An existing SSH CA requires explicit integration'
+assert settings['authorizedprincipalscommand'] in ['none',command],'An existing principals command requires explicit integration'
+assert settings['pubkeyauthentication']=='yes' and settings['authenticationmethods']=='any','Do not weaken existing authentication requirements'
+assert stat.S_ISREG(helper.lstat().st_mode) and helper.stat().st_uid==0 and not helper.stat().st_mode&0o022,'Install the root-owned principals helper first'
+print('Install dedicated exam CA and unstarted-attempt principals gate; existing password/MFA and administrator routes remain unchanged.')
+if not a.apply:raise SystemExit
+pathlib.Path('/var/backups/ssh-exam').mkdir(mode=0o700,parents=True,exist_ok=True)
+backup=pathlib.Path(tempfile.mkdtemp(prefix=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-ssh-handoff-',dir='/var/backups/ssh-exam'));backup.chmod(0o700)
+shutil.copy2(config_path,backup/'agent.json')
+if dropin.exists():shutil.copy2(dropin,backup/'sshd-handoff.conf')
+try:
+ if not ca.exists():subprocess.run(['/usr/bin/ssh-keygen','-q','-t','ed25519','-N','','-C','exam attempt handoff CA','-f',str(ca)],check=True)
+ assert stat.S_ISREG(ca.lstat().st_mode) and ca.stat().st_uid==0 and ca.stat().st_mode&0o077==0
+ public=run('/usr/bin/ssh-keygen','-y','-f',str(ca)).strip();assert (ca.with_name(ca.name+'.pub')).read_text().split()[:2]==public.split()[:2]
+ text='TrustedUserCAKeys '+str(ca)+'.pub\nAuthorizedPrincipalsCommand '+command+'\nAuthorizedPrincipalsCommandUser root\n'
+ fd,name=tempfile.mkstemp(prefix='.handoff-',dir=dropin.parent)
+ with os.fdopen(fd,'w') as f:f.write(text)
+ os.chmod(name,0o644);os.replace(name,dropin)
+ config['handoff_ca']=str(ca)
+ fd,name=tempfile.mkstemp(prefix='.handoff-',dir=config_path.parent)
+ with os.fdopen(fd,'w') as f:json.dump(config,f,indent=2);f.write('\n');f.flush();os.fsync(f.fileno())
+ os.chmod(name,0o600);os.replace(name,config_path)
+ subprocess.run(['/usr/sbin/sshd','-t'],check=True)
+ new=dict(line.split(' ',1) for line in run('/usr/sbin/sshd','-T','-C','user='+a.administrator+',host=class.example.edu,addr=127.0.0.1').splitlines() if ' ' in line)
+ for k in ['forcecommand','authorizedkeyscommand','authorizedkeyscommanduser','authenticationmethods','passwordauthentication','kbdinteractiveauthentication','disableforwarding','permituserrc']:assert new.get(k)==settings.get(k),'Ordinary account setting changed: '+k
+ assert new['trustedusercakeys']==str(ca)+'.pub' and new['authorizedprincipalscommand']==command and new['authorizedprincipalscommanduser']=='root'
+ subprocess.run(['systemctl','reload','ssh.service'],check=True)
+except BaseException:
+ shutil.copy2(backup/'agent.json',config_path)
+ if (backup/'sshd-handoff.conf').exists():shutil.copy2(backup/'sshd-handoff.conf',dropin)
+ else:dropin.unlink(missing_ok=True)
+ subprocess.run(['/usr/sbin/sshd','-t'],check=False);raise
+print('Installed. Root-private backup:',backup)

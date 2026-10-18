@@ -3,7 +3,7 @@
 1. Use desktop Chrome/Chromium. Save other class-account work: beginning closes conflicting
    sessions/processes. References are physical documents or documents through SSH terminals.
 2. Enter the exam ID and enrolled username. Enter your shared SSH password once, follow the
-   displayed number in your authentication app and wait for approval. The server temporarily
+   displayed number in your authentication app and wait for approval. The browser temporarily
    reuses the password for the configured class host, then discards it. Screen capture starts only afterward.
 3. Open preflight. Share the entire display containing the exam, not a tab/window. Avoid extra
    monitors under course rules; the app cannot verify all displays. Enable webcam only when
@@ -12,11 +12,11 @@
    consecutively: three without a webcam, four when a webcam is required. Completed permissions
    are highlighted. Practice actual editor/toolchain shortcuts including
    Escape, Ctrl-C/Ctrl-D/Ctrl-Z and your keyboard layout. Practice does not consume exam time.
-5. If shown, click Secure exam access and confirm the temporary account restriction.
-   Sign in to SSH again, reopen preflight and restore permissions. The clock has not started;
-   setup expires five minutes after it was requested and abandoned setup is restored automatically.
-   Then click Begin exam deliberately. Use each terminal title bar to snap left/right or rename. Use Arrange to tile windows,
-   and Tools to switch terminals or use internal Copy selection/Paste. Alt-Tab leaves the workspace.
+5. Click Begin exam and confirm. The app secures server access automatically while keeping
+   your existing screen sharing, fullscreen and keyboard lock. You do not enter your password
+   or approve phone MFA again. The clock starts only when setup succeeds. Save other server
+   work first: conflicting sessions and background processes are stopped. Use each terminal
+   title bar to snap left/right or rename, and Arrange to tile windows.
 6. Work normally in the configured exam directory (shown in the toolbar, normally /work).
    Saved files in that directory are collected automatically when time expires or you finish
    the exam. Unsaved editor buffers are not included. No submission command, upload or archive

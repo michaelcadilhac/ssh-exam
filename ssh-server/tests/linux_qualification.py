@@ -3,11 +3,12 @@
 Requires its preinstalled agent, isolated work/rootfs and root-only test signing key.
 Never run against a real student's state or home. Refuses non-fixture guard reports.
 """
-import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket
+import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--username',default='mcadilha')
+parser.add_argument('--handoff-only',action='store_true',help='Verify automatic SSH handoff and cancel without starting time')
 parser.add_argument('--setup-only',action='store_true',help='Focused temporary setup, lingering and offline-expiry recovery')
 parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
@@ -46,12 +47,18 @@ def agent_ready():
     finally:s.close()
 
 class Connection:
-    def __init__(self):
+    def __init__(self,keyfile=None,certificate=None):
+        self.ssh=[*ssh]
+        if keyfile:self.ssh[self.ssh.index('-i')+1]=keyfile
+        if certificate:self.ssh+=['-o','CertificateFile='+certificate]
+        self.keydir=None
         self.socket='/root/qualification-'+uuid.uuid4().hex
         self.transport=''
-        p=run([*ssh,'-M','-S',self.socket,'-fN',target]);assert p.returncode==0,p.stderr
-    def close(self): run([*ssh,'-S',self.socket,'-O','exit',target])
-    def raw(self,command,**kw): return run([*ssh,'-S',self.socket,target,command],**kw)
+        p=run([*self.ssh,'-M','-S',self.socket,'-fN',target]);assert p.returncode==0,p.stderr
+    def close(self):
+        run([*self.ssh,'-S',self.socket,'-O','exit',target])
+        if self.keydir:shutil.rmtree(self.keydir,ignore_errors=True);self.keydir=None
+    def raw(self,command,**kw): return run([*self.ssh,'-S',self.socket,target,command],**kw)
     def command(self,op,body=None):
         payload=json.dumps({'audience':config['agent_id'],'nonce':str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':a.username,'transport':self.transport,'op':op,'body':body or {}},separators=(',',':')).encode()
         frame=json.dumps({'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(key.sign(payload)).decode()})+'\n'
@@ -59,21 +66,28 @@ class Connection:
         value=json.loads(p.stdout)
         if 'error' in value: raise RuntimeError(value['error'])
         return value['result']
-    def start(self):
+    def start(self,activate=True):
         self.transport=self.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
         self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':a.username,'transport':self.transport,'settings':{'duration':60,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
         if temporary:
             self.command('prepare-account-policy',{'id':id})
             try:self.command('activate-attempt',{'id':id});raise AssertionError('Bootstrap started exam')
             except RuntimeError:pass
+            directory=tempfile.mkdtemp(prefix='qualification-handoff-',dir='/root')
+            keyfile=directory+'/key';root('/usr/bin/ssh-keygen','-q','-t','ed25519','-N','','-f',keyfile)
+            grant=self.command('issue-ssh-handoff',{'id':id,'public_key':pathlib.Path(keyfile+'.pub').read_text()})
+            certfile=directory+'/key-cert.pub';pathlib.Path(certfile).write_text(grant['certificate']+'\n')
+            denied(run([*ssh[:ssh.index('-i')+1],keyfile,*ssh[ssh.index('-i')+2:],'-o','CertificateFile='+certfile,target,'echo BYPASS']),'handoff certificate cannot launch an ordinary command')
             self.close()
-            fresh=Connection();self.socket=fresh.socket;self.transport=""
-            self.transport=self.command('register',{'exam':'qualification'})['transport']
+            fresh=Connection(keyfile,certfile);self.socket=fresh.socket;self.ssh=fresh.ssh;self.keydir=directory;self.transport=""
+            self.transport=self.command('register',{'exam':'qualification','handoff':grant['id']})['transport']
+            denied(run([*self.ssh,target,'echo BYPASS']),'consumed handoff certificate cannot authenticate another transport')
             assert info(id)['start']==0,'Setup consumed exam time'
-        self.command('activate-attempt',{'id':id});return id
+        if activate:self.command('activate-attempt',{'id':id})
+        return id
     def pane(self,id):
         token=self.command('issue-channel-admission',{'id':id,'username':a.username,'transport':self.transport,'pane':str(uuid.uuid4()),'purpose':'exam'})['token']
-        p=subprocess.Popen([*ssh,'-S',self.socket,'-tt',target,'exam-gateway'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        p=subprocess.Popen([*self.ssh,'-S',self.socket,'-tt',target,'exam-gateway'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         read_until(p,b'EXAM-GATE/1');p.stdin.write((json.dumps({'token':token})+'\n').encode());p.stdin.flush();read_until(p,b'EXAM-READY');return p
 
 def read_until(p,needle,timeout=15):
@@ -129,6 +143,19 @@ def normal_access(label):
     ok(label)
 
 wait_for(agent_ready,40)
+
+if a.handoff_only:
+    assert temporary
+    c=Connection()
+    try:
+        id=c.start(False)
+        assert info(id)['start']==0 and info(id)['deadline']==0 and info(id)['policy_state']=='READY'
+        root('examctl','cancel',id,'--reason','Qualification cancels successful automatic handoff before timed activation')
+        assert info(id)['policy_state']=='NORMAL'
+        normal_access('automatic handoff preserves zero exam time and cancellation restores ordinary access')
+    finally:c.close()
+    print(json.dumps({'passed':passed,'count':len(passed),'handoff_only':True}),flush=True)
+    raise SystemExit(0)
 
 if a.setup_only:
     assert temporary

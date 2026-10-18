@@ -62,3 +62,13 @@ drained-attempt `ssh-server/scripts/upgrade-prebuilt` with a verified native bun
 The old backend transport remains for development and rollback compatibility.
 Rollback requires maintenance/drained attempts and the documented matched binary
 and configuration restoration; never restore a stale agent state snapshot.
+
+Initial temporary-account setup does not require a second student login. The worker creates
+an ephemeral Ed25519 key, and the authenticated, signed class-agent channel issues a public
+certificate scoped to the unstarted attempt. The worker rechecks the same class host pin and
+uses that certificate to replace only the class connection through the retained jump client.
+The root principals helper authorizes the exact grant once; root SSH start-time fencing and
+all per-channel admission checks remain mandatory. The private key stays in worker memory,
+is cleared on success/failure/cancellation/timeout, and is never used for exam reconnection.
+Auth callbacks/configs are removed after the handshake; cleanup is best-effort runtime memory
+hygiene. Retiring the bootstrap client's watcher must not report loss for its replacement.

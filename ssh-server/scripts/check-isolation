@@ -14,6 +14,17 @@ def check(config):
   if not ok: errors.append(message)
  def run(args): return subprocess.run(args,capture_output=True,text=True,timeout=15,env={**os.environ,'LC_ALL':'C'})
  require(trusted_gate(),'Static login gate must be root-owned, regular and not student-writable')
+ if config.get('handoff_ca'):
+  ca=config['handoff_ca']
+  for filename,private in [(ca,True),(ca+'.pub',False),('/usr/local/sbin/exam-principals',False)]:
+   try:
+    st=pathlib.Path(filename).lstat()
+    require(stat.S_ISREG(st.st_mode) and st.st_uid==0 and not st.st_mode & (0o077 if private else 0o022),'Unprotected SSH handoff credential/helper')
+   except OSError: errors.append('SSH handoff credential/helper missing')
+  global_ssh=run(['/usr/sbin/sshd','-T'])
+  settings={line.split(' ',1)[0]:line.split(' ',1)[1] for line in global_ssh.stdout.splitlines() if ' ' in line}
+  require(global_ssh.returncode==0 and settings.get('trustedusercakeys')==ca+'.pub' and settings.get('authorizedprincipalscommand')=='/usr/local/sbin/exam-principals %u %i %k' and settings.get('authorizedprincipalscommanduser')=='root' and settings.get('pubkeyauthentication')=='yes' and settings.get('authenticationmethods')=='any','Attempt-only SSH handoff authentication is not configured')
+
  units=run(['/usr/bin/systemctl','list-units','--type=service','--all','--no-legend','--plain'])
  require(units.returncode==0,'Cannot inspect system service writers')
  unit_names=[line.split()[0] for line in units.stdout.splitlines() if line.split()]

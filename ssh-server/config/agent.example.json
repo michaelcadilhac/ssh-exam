@@ -12,5 +12,6 @@
   "gateway_public_key": "/etc/exam-agent/gateway-signing.pub",
   "callback_url": "https://exam.example.edu",
   "callback_key": "/etc/exam-agent/callback.key",
+  "handoff_ca": "/etc/exam-agent/handoff-ca",
   "temporary_account_policy": true
 }

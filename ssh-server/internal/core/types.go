@@ -25,6 +25,7 @@ type Account struct {
 	Home        string `json:"home"`
 }
 type Config struct {
+	HandoffCA                 string             `json:"handoff_ca,omitempty"`
 	HomeConfigPaths           []string           `json:"home_config_paths,omitempty"`
 	TemporaryAccountPolicy    bool               `json:"temporary_account_policy,omitempty"`
 	TerminalRecordingLimitMiB int64              `json:"terminal_recording_limit_mib,omitempty"`
@@ -66,7 +67,16 @@ type ClockReset struct {
 	RemainingSeconds int64  `json:"remaining_seconds"`
 	Revision         int    `json:"revision"`
 }
+type SSHHandoff struct {
+	ID             string `json:"id"`
+	Principal      string `json:"principal"`
+	Certificate    string `json:"certificate"`
+	CertificateKey string `json:"certificate_key"`
+	Expires        int64  `json:"expires"`
+	Consumed       string `json:"consumed,omitempty"`
+}
 type Attempt struct {
+	Handoff                 *SSHHandoff  `json:"ssh_handoff,omitempty"`
 	PolicyRequired          bool         `json:"account_policy_required,omitempty"`
 	PolicyTransport         string       `json:"policy_transport,omitempty"`
 	PolicyGeneration        string       `json:"policy_generation,omitempty"`

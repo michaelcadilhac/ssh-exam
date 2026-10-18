@@ -12,7 +12,8 @@ for key in ('gateway_public_key','callback_key'):
     if key=='callback_key': assert s.st_mode&0o077==0, 'Private callback key exposed'
 if c.get('temporary_account_policy'):
     assert all(a.get('sandbox_only') for a in c['accounts'].values()), 'Restore legacy permanent enrollments before enabling temporary policy'
-    for helper in ('/usr/local/sbin/exam-account-policy','/usr/local/bin/exam-control'):
+    assert c.get('handoff_ca'), 'Install attempt-only SSH handoff before enabling student admission'
+    for helper in ('/usr/local/sbin/exam-account-policy','/usr/local/bin/exam-control','/usr/local/sbin/exam-principals'):
         s=os.lstat(helper)
         assert stat.S_ISREG(s.st_mode) and s.st_uid==0 and s.st_mode&0o022==0, 'Unprotected temporary policy helper'
 assert c['callback_url'].startswith('https://'), 'HTTPS callback required'

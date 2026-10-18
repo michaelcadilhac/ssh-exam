@@ -23,6 +23,7 @@ install -d -m 0700 /etc/exam-agent /var/lib/exam-agent
 install -d -m 0755 /usr/local/libexec /srv/exam-workspace/work
 install -o root -g root -m 0755 bin/exam-login /usr/local/libexec/exam-login
 install -o root -g root -m 0755 scripts/exam-control /usr/local/bin/exam-control
+install -o root -g root -m 0755 scripts/exam-principals /usr/local/sbin/exam-principals
 install -o root -g root -m 0755 scripts/account-policy /usr/local/sbin/exam-account-policy
 install -o root -g root -m 0755 scripts/check-isolation /usr/local/sbin/exam-check-isolation
 install -o root -g root -m 0755 bin/exam-info /usr/local/bin/exam-info

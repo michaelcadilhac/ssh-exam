@@ -216,7 +216,7 @@ Keyboard-interactive authentication is a multi-round protocol with instructions 
 
 Validate **both** SSH host keys against administrator-provisioned pins/known-host data. An unknown or changed key blocks connection and generates an administrative diagnostic. No automatic acceptance or trust-on-first-use for students. Do not turn on legacy cryptography automatically when a connection fails.
 
-Passwords, challenge answers, and authentication instructions must not enter screenshots, terminal recordings, request logs, tracing, database rows, disk queues, URLs, or error reports. Complete SSH authentication before beginning capture. Hold necessary credentials only in the browser worker for the authentication operation. Clear the DOM/password application references immediately after posting answers to that worker. Zero mutable Go byte buffers where practical; remove credential and dialogue references after both hosts authenticate or on failure/cancellation/disconnection/timeout. Authentication callbacks may retain only a cleared holder, never password values. Terminating a worker and clearing JavaScript/Go references is best-effort memory cleanup, not guaranteed erasure of immutable strings or runtime/transport copies. Never keep credentials for new terminals or reconnection.
+Passwords, challenge answers, and authentication instructions must not enter screenshots, terminal recordings, request logs, tracing, database rows, disk queues, URLs, or error reports. Complete interactive password/MFA authentication before beginning capture. Hold necessary credentials only in the browser worker for the authentication operation. Clear the DOM/password application references immediately after posting answers to that worker. Zero mutable Go byte buffers where practical; remove credential and dialogue references after both hosts authenticate or on failure/cancellation/disconnection/timeout. Authentication callbacks may retain only a cleared holder, never password values. Terminating a worker and clearing JavaScript/Go references is best-effort memory cleanup, not guaranteed erasure of immutable strings or runtime/transport copies. Never keep credentials for new terminals or reconnection.
 
 ### 6.2 Preflight, before questions or timing
 
@@ -233,7 +233,7 @@ After authentication, perform preflight without exposing exam material:
 
 Use separate buttons where browser user-activation requirements demand them; do not assume a long asynchronous setup chain retains activation. Do not request microphone access.
 
-Preflight can be retried without consuming the attempt. Test images should remain ephemeral and be deleted when preflight is abandoned; if an initial image is retained with the attempt, disclose that and apply the monitoring retention policy. A disconnected preflight expires and closes its retained SSH transports after a configurable idle timeout, default ten minutes. Before activation, retry interrupted browser connections with bounded backoff; the active-exam 15-second recovery limit must not strand preflight. Only report connected after an acknowledged session bind. If SSH transports are lost, including after a gateway restart, report an authentication gap, stop capture and keyboard lock, and offer fresh SSH sign-in without instructor authorization. Explain that the exam has not started and no exam time has elapsed. Recheck preflight after fresh authentication; never retain credentials to reconnect. Active attempts retain their existing pause, authorization and original-deadline policy. Preflight terminals must have a distinct, narrowly authorized practice purpose and no access to exam templates or workspaces. Close their shell channels before activation while retaining the two authenticated SSH transports.
+Preflight can be retried without consuming the attempt. Test images should remain ephemeral and be deleted when preflight is abandoned; if an initial image is retained with the attempt, disclose that and apply the monitoring retention policy. A disconnected preflight expires and closes its retained SSH transports after a configurable idle timeout, default ten minutes. Before activation, retry interrupted browser connections with bounded backoff; the active-exam 15-second recovery limit must not strand preflight. Only report connected after an acknowledged session bind. If SSH transports are lost, including after a gateway restart, report an authentication gap, stop capture and keyboard lock, and offer fresh SSH sign-in without instructor authorization. Explain that the exam has not started and no exam time has elapsed. Recheck preflight after fresh authentication; never retain credentials to reconnect. Active attempts retain their existing pause, authorization and original-deadline policy. Preflight terminals must have a distinct, narrowly authorized practice purpose and no access to exam templates or workspaces. Close their shell channels before activation while retaining the authenticated jump transport and automatically replacing the class transport as described below.
 
 ### 6.3 Begin exam
 
@@ -1368,3 +1368,39 @@ confirmed workload termination during successful secured collection or cancellat
 failed termination/collection retains recovery data. Never follow student-created
 links during cleanup or modify the original home. Apply no home/state redirection
 to trusted administrator host sessions.
+
+### Single interactive sign-in for initial account setup
+
+Students must perform one password/phone-MFA sign-in and one preflight. Applying temporary
+account policy still requires a new class-server SSH monitor because the bootstrap monitor
+cached the original account settings; merely opening another channel is unsafe. Replace
+that transport automatically during Begin exam. Keep the authenticated jump connection,
+web session, page, capture streams, fullscreen and keyboard lock. The original password and
+MFA references have already been discarded and must not be retained for this purpose.
+
+The browser SSH worker generates an ephemeral Ed25519 key and sends only its public key
+through the authenticated control channel. A gateway-signed, transport-bound attempt command
+asks the root class agent to issue a certificate using a dedicated root-only local CA. Require
+an unstarted, unexpired READY policy owned by that student and transport. Give the certificate
+a random grant ID, exact attempt/generation principal, validity no longer than 60 seconds,
+forced exam dispatch and PTY only. Do not grant forwarding, user RC, X11 or arbitrary principals.
+A root-owned AuthorizedPrincipalsCommand checks the exact certificate, student, protected
+per-UID journal, READY generation/boot, setup expiry and unused grant before authentication.
+Normal password/MFA policy, SSSD authorized keys and ordinary account settings remain intact.
+
+The worker pins the configured class host again, authenticates with that certificate through
+the existing jump connection, clears all private-key references/buffers and auth callbacks,
+and retires the bootstrap class connection. No private key leaves the worker or is persisted;
+only public certificate/scope/consumption metadata is journaled on the class host. Cleanup is
+best-effort JavaScript/Go runtime memory hygiene, not guaranteed erasure. Signed registration
+consumes the grant once and binds its genuinely newer root SSH monitor. The normal activation
+barrier still terminates pre-existing sessions/writers and commits start plus original/current
+deadlines before material release. No second login screen or repeated preflight is shown.
+
+Failure leaves the clock unstarted and material unreleased; bounded abandoned-setup recovery
+restores the exact account baseline. A handoff grant cannot authenticate another transport
+after consumption, survive setup expiry/cancellation/restoration, resume an active or locked
+attempt, or reopen a finished attempt. Normal interrupted-exam recovery still requires its
+existing instructor authorization and fresh password/MFA login. Installation checks must
+validate the dedicated CA, protected helper and actual effective SSH configuration. Do not
+replace an unrelated SSH CA/principals integration or weaken existing authentication methods.

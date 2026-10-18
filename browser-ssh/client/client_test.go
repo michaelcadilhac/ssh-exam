@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -17,6 +18,8 @@ import (
 )
 
 type testHosts struct {
+	handoffCA             ssh.PublicKey
+	certCalls             atomic.Int32
 	jump, class           Host
 	password              string
 	jumpCalls, classCalls atomic.Int32
@@ -69,6 +72,20 @@ func hosts(t *testing.T, mixed, reject, repeat bool) *testHosts {
 					return nil, errors.New("rejected")
 				}
 				return nil, nil
+			}
+		}
+		if !jump {
+			cfg.PublicKeyCallback = func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+				cert, ok := key.(*ssh.Certificate)
+				if !ok || h.handoffCA == nil || !bytes.Equal(cert.SignatureKey.Marshal(), h.handoffCA.Marshal()) || meta.User() != "student" {
+					return nil, errors.New("certificate rejected")
+				}
+				checker := ssh.CertChecker{SupportedCriticalOptions: []string{"force-command"}}
+				if err := checker.CheckCert("exam:fixture", cert); err != nil {
+					return nil, err
+				}
+				h.certCalls.Add(1)
+				return &ssh.Permissions{}, nil
 			}
 		}
 		cfg.AddHostKey(key)
@@ -283,5 +300,154 @@ func TestUnknownHiddenPromptNotPassword(t *testing.T) {
 		if PasswordPrompt(p, "student", "host") {
 			t.Fatal("blind password reuse")
 		}
+	}
+}
+
+func TestAutomaticHandoffDoesNotRepeatPasswordOrMFA(t *testing.T) {
+	h := hosts(t, false, false, false)
+	c := New(func(any) {})
+	defer c.Close()
+	asks, phone := 0, 0
+	err := c.Connect(raw(t, h), "student", h.jump, h.class, func(_ context.Context, _ string, text string, p []Prompt) ([]string, error) {
+		if len(p) == 1 {
+			asks++
+			return []string{h.password}, nil
+		}
+		if text == "Phone MFA\nEnter number 42 in your authenticator app" {
+			phone++
+		}
+		return []string{}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, caPrivate, _ := ed25519.GenerateKey(rand.Reader)
+	ca, _ := ssh.NewSignerFromKey(caPrivate)
+	h.handoffCA = ca.PublicKey()
+	public, err := c.HandoffPublicKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	backing := c.handoffKey
+	pub, _, _, _, _ := ssh.ParseAuthorizedKey([]byte(public))
+	cert := &ssh.Certificate{Key: pub, CertType: ssh.UserCert, KeyId: "grant", ValidPrincipals: []string{"exam:fixture"}, ValidAfter: uint64(time.Now().Unix() - 5), ValidBefore: uint64(time.Now().Unix() + 60), Permissions: ssh.Permissions{CriticalOptions: map[string]string{"force-command": "exam-dispatch"}, Extensions: map[string]string{"permit-pty": ""}}}
+	cert.SignCert(rand.Reader, ca)
+	if err = c.HandoffClass(string(ssh.MarshalAuthorizedKey(cert))); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(30 * time.Millisecond)
+	s, err := c.session()
+	if err != nil {
+		t.Fatal("retired transport closed its replacement", err)
+	}
+	s.Close()
+	if asks != 1 || phone != 1 || h.jumpCalls.Load() != 1 || h.classCalls.Load() != 1 || h.certCalls.Load() != 1 {
+		t.Fatalf("extra authentication: prompts=%d MFA=%d jump=%d class=%d certificate=%d", asks, phone, h.jumpCalls.Load(), h.classCalls.Load(), h.certCalls.Load())
+	}
+	for _, v := range backing {
+		if v != 0 {
+			t.Fatal("ephemeral private key not overwritten")
+		}
+	}
+	if c.auth != nil || len(c.handoffKey) != 0 {
+		t.Fatal("authentication references retained")
+	}
+	if err = c.HandoffClass(string(ssh.MarshalAuthorizedKey(cert))); err == nil {
+		t.Fatal("private handoff key reused")
+	}
+}
+func TestHandoffKeyIsClearedOnCancellationAndExpiry(t *testing.T) {
+	for _, kind := range []string{"cancel", "expired", "invalid", "timeout"} {
+		t.Run(kind, func(t *testing.T) {
+			h := hosts(t, false, false, false)
+			c := New(func(any) {})
+			defer c.Close()
+			if err := c.Connect(raw(t, h), "student", h.jump, h.class, func(_ context.Context, _ string, _ string, p []Prompt) ([]string, error) {
+				if len(p) > 0 {
+					return []string{h.password}, nil
+				}
+				return nil, nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := c.HandoffPublicKey(); err != nil {
+				t.Fatal(err)
+			}
+			backing := c.handoffKey
+			switch kind {
+			case "cancel":
+				c.Close()
+			case "timeout":
+				c.handoffTimer.Reset(5 * time.Millisecond)
+				time.Sleep(20 * time.Millisecond)
+			case "expired":
+				c.handoffExpires = 0
+				if err := c.HandoffClass("invalid"); err == nil {
+					t.Fatal("expired key used")
+				}
+			case "invalid":
+				if err := c.HandoffClass("invalid"); err == nil {
+					t.Fatal("invalid certificate used")
+				}
+			}
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			for _, v := range backing {
+				if v != 0 {
+					t.Fatal("key reference not overwritten")
+				}
+			}
+			if len(c.handoffKey) != 0 {
+				t.Fatal("key retained")
+			}
+		})
+	}
+}
+
+func TestHandoffPinsHostAndRejectsBroaderCertificates(t *testing.T) {
+	for _, kind := range []string{"host-pin", "forwarding", "command"} {
+		t.Run(kind, func(t *testing.T) {
+			h := hosts(t, false, false, false)
+			c := New(func(any) {})
+			defer c.Close()
+			if err := c.Connect(raw(t, h), "student", h.jump, h.class, func(_ context.Context, _ string, _ string, p []Prompt) ([]string, error) {
+				if len(p) > 0 {
+					return []string{h.password}, nil
+				}
+				return nil, nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			_, private, _ := ed25519.GenerateKey(rand.Reader)
+			ca, _ := ssh.NewSignerFromKey(private)
+			h.handoffCA = ca.PublicKey()
+			public, err := c.HandoffPublicKey()
+			if err != nil {
+				t.Fatal(err)
+			}
+			backing := c.handoffKey
+			pub, _, _, _, _ := ssh.ParseAuthorizedKey([]byte(public))
+			cert := &ssh.Certificate{Key: pub, CertType: ssh.UserCert, ValidAfter: uint64(time.Now().Unix() - 5), ValidBefore: uint64(time.Now().Unix() + 60), ValidPrincipals: []string{"exam:fixture"}, Permissions: ssh.Permissions{CriticalOptions: map[string]string{"force-command": "exam-dispatch"}, Extensions: map[string]string{"permit-pty": ""}}}
+			switch kind {
+			case "host-pin":
+				c.classHost.Pins = []string{"wrong"}
+			case "forwarding":
+				cert.Extensions["permit-port-forwarding"] = ""
+			case "command":
+				cert.CriticalOptions["force-command"] = "/bin/bash"
+			}
+			cert.SignCert(rand.Reader, ca)
+			if err = c.HandoffClass(string(ssh.MarshalAuthorizedKey(cert))); err == nil {
+				t.Fatal("unsafe handoff accepted")
+			}
+			if h.certCalls.Load() != 0 || h.classCalls.Load() != 1 || h.jumpCalls.Load() != 1 {
+				t.Fatal("credentials supplied before verified host/scope, or password fallback attempted")
+			}
+			for _, v := range backing {
+				if v != 0 {
+					t.Fatal("failed handoff retained private key")
+				}
+			}
+		})
 	}
 }

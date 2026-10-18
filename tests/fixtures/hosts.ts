@@ -2,11 +2,14 @@ import ssh2 from "ssh2";
 const { Server, utils } = ssh2;
 import { generateKeyPairSync, randomUUID, sign, verify } from "node:crypto";
 import net from "node:net";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { createInterface } from "node:readline";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { hash, secret } from "../../apps/server/src/db.js";
 export async function hosts(
   options: {
+    classCertificates?: boolean;
     password?: string;
     rejectJump?: boolean;
     repeatJumpPassword?: boolean;
@@ -51,6 +54,37 @@ export async function hosts(
   const caps = new Map<string, any>();
   const clients: any[] = [];
   let classPort = 0;
+  let proxy: ChildProcess | undefined;
+  let handoffCA = "";
+  const issueHandoff = (publicKey: string) => {
+    if (!handoffCA) throw Error("Certificate fixture is disabled");
+    const id = randomUUID();
+    const publicPath = dir + "/handoff-" + id + ".pub";
+    writeFileSync(publicPath, publicKey);
+    execFileSync("ssh-keygen", [
+      "-q",
+      "-s",
+      handoffCA,
+      "-I",
+      id,
+      "-n",
+      "exam:fixture",
+      "-V",
+      "-5s:+60s",
+      "-O",
+      "clear",
+      "-O",
+      "force-command=exam-dispatch",
+      "-O",
+      "permit-pty",
+      publicPath,
+    ]);
+    const certificate = readFileSync(
+      publicPath.replace(/\.pub$/, "-cert.pub"),
+      "utf8",
+    ).trim();
+    return { id, certificate, expires: Date.now() + 60000 };
+  };
   let attempts = new Map<string, any>();
   const classServer = new Server({ hostKeys: [classKey] }, (client) => {
     const transportID = randomUUID();
@@ -298,6 +332,45 @@ export async function hosts(
     classServer.listen(0, "127.0.0.1", resolve),
   );
   classPort = (classServer.address() as net.AddressInfo).port;
+  if (options.classCertificates) {
+    handoffCA = dir + "/handoff-ca";
+    execFileSync("ssh-keygen", [
+      "-q",
+      "-t",
+      "ed25519",
+      "-N",
+      "",
+      "-f",
+      handoffCA,
+    ]);
+    const proxyConfig = dir + "/proxy.json";
+    writeFileSync(
+      proxyConfig,
+      JSON.stringify({
+        HostKey: classKey,
+        CA: readFileSync(handoffCA + ".pub", "utf8"),
+        Password: password,
+        Backend: "127.0.0.1:" + classPort,
+      }),
+      { mode: 0o600 },
+    );
+    const binary = dir + "/certificate-proxy";
+    execFileSync(
+      process.env.EXAM_GO || "go",
+      ["build", "-o", binary, "./cmd/fixture-proxy"],
+      { cwd: "browser-ssh" },
+    );
+    proxy = spawn(binary, [proxyConfig], { stdio: ["ignore", "pipe", "pipe"] });
+    const lines = createInterface({ input: proxy.stdout! });
+    classPort = await new Promise<number>((resolve, reject) => {
+      lines.once("line", (line) => {
+        resolve(JSON.parse(line).port);
+        lines.close();
+      });
+      proxy!.once("error", reject);
+      proxy!.once("exit", () => reject(Error("Certificate fixture ended")));
+    });
+  }
   const jumpServer = new Server({ hostKeys: [jumpKey] }, (client) => {
     clients.push(client);
     client.on("error", () => {});
@@ -400,6 +473,7 @@ export async function hosts(
     },
     class: { host: "127.0.0.1", port: classPort, pins: [pin(classKey)] },
     counts,
+    issueHandoff,
     authCalls,
     agent,
     agentConfig,
@@ -408,6 +482,7 @@ export async function hosts(
     caps,
     attempts,
     close: async () => {
+      proxy?.kill();
       rmSync(dir, { recursive: true, force: true });
       for (const timer of timers) clearTimeout(timer);
       for (const c of clients) c.end();

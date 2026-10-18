@@ -10,6 +10,12 @@ export type Dialogue = (
   prompts: { prompt: string; echo: boolean }[],
 ) => Promise<string[]>;
 export class Connection {
+  get supportsAutomaticHandoff(): boolean {
+    return false;
+  }
+  async secureAccess(_id: string, _exam: string): Promise<void> {
+    throw Error("Automatic exam setup requires browser SSH.");
+  }
   jump = new Client();
   class = new Client();
   panes = new Map<string, ClientChannel>();

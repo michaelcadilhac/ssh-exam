@@ -22,7 +22,8 @@ ATTEMPT = re.compile(r'^[a-f0-9-]{36}$')
 GENERATION = re.compile(r'^[a-f0-9]{64}$')
 SSH_KEYS = {'forcecommand', 'permituserrc', 'disableforwarding', 'allowtcpforwarding',
             'allowagentforwarding', 'x11forwarding', 'permittunnel', 'permittty',
-            'permituserenvironment', 'acceptenv', 'usepam', 'subsystem', 'maxsessions'}
+            'permituserenvironment', 'acceptenv', 'usepam', 'subsystem', 'maxsessions',
+            'trustedusercakeys', 'authorizedprincipalscommand', 'authorizedprincipalscommanduser'}
 
 def run(*args, codes=(0,), timeout=15):
     r = subprocess.run(args, capture_output=True, text=True, timeout=timeout,

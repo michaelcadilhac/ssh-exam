@@ -127,11 +127,13 @@ sandbox exceptions. Web enrollment and signed SSH/NSS verification replace manua
 allowlists; do not run the legacy `enroll-accounts` script in this mode. Enrollment, sign-in
 and practice leave ordinary shell, forwarding, local access and user services unchanged.
 
-The student's explicit Secure exam access action journals the exact original policy, temporarily
+The student's explicit Begin exam confirmation journals the exact original policy, temporarily
 sets the gate shell/SSSD override and exam-managed membership, and disables lingering. Existing
 jobs or system services that cannot safely be isolated cause qualification to fail without
-changing or deleting jobs. The student must authenticate a new SSH transport after setup;
-opening another channel on the bootstrap connection cannot start time or reveal material.
+changing or deleting jobs. The browser automatically authenticates a new class transport using a short-lived,
+attempt-specific certificate, retaining its jump connection and the same preflight.
+Students are not asked for another password or phone approval. Opening another channel
+on the bootstrap connection cannot start time or reveal material.
 Setup expires after five minutes and the watchdog restores a provably unstarted account.
 
 Actual exam activation terminates conflicting processes and commits the original deadline.
@@ -471,3 +473,24 @@ The administrator sandbox bypasses configuration snapshotting, application redir
 and editor launchers. Its real HOME, configuration, tools and administrator access
 remain unrestricted. Drain attempts for native upgrades; cancel old unstarted preflights
 and reopen them to obtain the new snapshot format. No running pane is remounted in place.
+
+### Automatic protected SSH handoff
+
+Install `scripts/exam-principals` root-owned at `/usr/local/sbin/exam-principals`, then run
+`scripts/install-handoff --administrator ADMIN` to review and add `--apply` to install.
+This creates the separate root-only `/etc/exam-agent/handoff-ca` and its public key, a
+`05-exam-handoff.conf` SSH drop-in, and `handoff_ca` in agent configuration. It preserves
+ordinary authentication, SSSD authorized keys, administrator access and forwarding settings.
+It refuses to overwrite an existing unrelated CA/principals command or weaken authentication.
+The effective global SSH configuration must include this drop-in; run `scripts/verify`.
+
+The worker sends only an ephemeral public key. `issue-ssh-handoff` requires a signed,
+transport-bound request for the owner's unstarted READY attempt. The certificate expires
+within 60 seconds, forces `exam-dispatch`, permits PTY only and has a generation-specific
+principal. The root principals helper checks the exact certificate against the durable
+policy journal and rejects expired, consumed, cancelled, started or restored grants.
+Fresh signed registration consumes it once. The new root SSH monitor must be newer than
+the policy fence; old sessions and writers are still neutralized before material release.
+No password or MFA answer is retained or reused for the automatic replacement. The browser
+worker clears the ephemeral private key after its one handshake; it cannot silently reconnect
+an active exam. Keep the existing instructor-authorization policy for actual recovery.

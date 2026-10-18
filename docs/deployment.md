@@ -185,7 +185,7 @@ API. Enable the independent watchdog/reconciliation units. The web metadata migr
 
 Drain and restore legacy permanent enrollments before enabling this mode; it rejects
 ordinary static-account entries. Preserve mcadilha's administrator sandbox exception.
-Qualify normal access, setup/fresh SSH, early finish, deadline restoration and outage
+Qualify normal access, automatic protected SSH handoff, early finish, deadline restoration and outage
 recovery with the disposable guest. Directory-backed deployments additionally require
 SSSD local-override initialization and exact override round trips without per-exam
 SSSD restarts. Set `guards.json`'s `temporaryAccountPolicy` to true only after qualifying
@@ -193,3 +193,12 @@ the actual installed provider and enabled access routes. Unsupported jobs/servic
 preflight without deleting their configuration. See
 [temporary account isolation](account-admission-proposal.md) and the
 [recovery procedure](recovery-runbook.md).
+
+Single-sign-in upgrade: install the matching browser WASM module, webserver and class agent.
+Install the root-owned `exam-principals` helper, then review/apply `ssh-server/scripts/install-handoff
+--administrator ADMIN`. It generates a dedicated root-private exam CA and validates the effective
+SSH include before reload. Existing unrelated CA/principals integrations require explicit operator
+integration; the installer refuses them rather than replacing them. No new listener or webserver
+SSH access is added. Health must advertise `single-sign-in-handoff` and report ready before
+reopening admission. Drain unstarted setup and active attempts before upgrading. Never remove
+an active account policy or roll back its state to perform a software rollback.

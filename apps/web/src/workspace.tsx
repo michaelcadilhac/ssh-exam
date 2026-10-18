@@ -966,18 +966,6 @@ export function Workspace({
     ++snapshotEpoch.current;
     const result = await api(`/student/attempts/${id}/begin`, r, page);
     ++snapshotEpoch.current;
-    if (result.requiresReauthentication) {
-      await api(`/student/attempts/${id}/secure-access-reauth`, {}, page);
-      armed.current = false;
-      capture.current?.stop();
-      await document.exitFullscreen?.().catch(() => {});
-      onReauthenticate(
-        settings.id,
-        reservation.username || attemptRef.current.username,
-        "Exam access is ready. Sign in again, then reopen preflight to begin. Your exam clock has not started. Setup expires five minutes after you requested it.",
-      );
-      return;
-    }
     if (
       !acceptSnapshot(result.attempt, result.serverNow) &&
       !(
@@ -1279,9 +1267,7 @@ export function Workspace({
             }
             onClick={() => setDialog({ kind: "begin" })}
           >
-            {reservation.requiresSecureAccess
-              ? "Secure exam access"
-              : "Begin exam"}
+            Begin exam
           </button>
           {settings.webcam && (
             <video id="camera-preview" muted autoPlay playsInline />
@@ -1618,9 +1604,7 @@ export function Workspace({
           }}
           title={
             dialog.kind === "begin"
-              ? reservation.requiresSecureAccess
-                ? "Secure exam access?"
-                : "Begin your timed exam?"
+              ? "Begin your timed exam?"
               : dialog.kind === "finish"
                 ? "Finish exam?"
                 : dialog.kind === "close"
@@ -1647,16 +1631,7 @@ export function Workspace({
               exam.
             </p>
           )}
-          {dialog.kind === "begin" && reservation.requiresSecureAccess && (
-            <p>
-              Ordinary server access will be temporarily restricted. You must
-              sign in to SSH again before the exam clock starts. Complete
-              sign-in within five minutes; abandoned setup is restored
-              automatically. Save work in other server sessions before
-              continuing.
-            </p>
-          )}
-          {dialog.kind === "begin" && !reservation.requiresSecureAccess && (
+          {dialog.kind === "begin" && (
             <p>
               {!functionalTest &&
                 !reservation.administratorSandbox &&
@@ -1741,8 +1716,8 @@ export function Workspace({
                 }
               >
                 {dialog.kind === "begin"
-                  ? reservation.requiresSecureAccess
-                    ? "Secure exam access"
+                  ? dialogBusy
+                    ? "Preparing exam…"
                     : "Begin exam"
                   : dialog.kind === "finish"
                     ? "Finish exam"

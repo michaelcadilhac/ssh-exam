@@ -2,7 +2,10 @@ package client
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -107,14 +110,19 @@ type Pane struct {
 	mu      sync.Mutex
 }
 type Client struct {
-	mu          sync.Mutex
-	ctx         context.Context
-	cancel      context.CancelFunc
-	raw         net.Conn
-	jump, class *ssh.Client
-	auth        *authState
-	panes       map[string]*Pane
-	Emit        func(any)
+	user           string
+	classHost      Host
+	handoffKey     ed25519.PrivateKey
+	handoffExpires int64
+	handoffTimer   *time.Timer
+	mu             sync.Mutex
+	ctx            context.Context
+	cancel         context.CancelFunc
+	raw            net.Conn
+	jump, class    *ssh.Client
+	auth           *authState
+	panes          map[string]*Pane
+	Emit           func(any)
 }
 
 func New(emit func(any)) *Client {
@@ -126,6 +134,12 @@ func (c *Client) Close() {
 	c.mu.Lock()
 	a := c.auth
 	c.auth = nil
+	clear(c.handoffKey)
+	c.handoffKey = nil
+	if c.handoffTimer != nil {
+		c.handoffTimer.Stop()
+		c.handoffTimer = nil
+	}
 	j, k, raw := c.jump, c.class, c.raw
 	c.jump = nil
 	c.class = nil
@@ -179,7 +193,7 @@ func (c *Client) Connect(raw net.Conn, user string, jump, class Host, dialogue D
 					return nil
 				}
 			}
-			c.Emit(map[string]any{"type":"host-key-mismatch","host":h.Host,"fingerprint":pin})
+			c.Emit(map[string]any{"type": "host-key-mismatch", "host": h.Host, "fingerprint": pin})
 			return errors.New("SSH host-key verification failed")
 		}
 		config.BannerCallback = func(text string) error { _, err := ask(text, nil); return err }
@@ -272,23 +286,10 @@ func (c *Client) Connect(raw net.Conn, user string, jump, class Host, dialogue D
 	c.mu.Lock()
 	c.auth = nil
 	c.class = k
+	c.user = user
+	c.classHost = class
 	c.mu.Unlock()
-	go func() { k.Wait(); c.Close(); c.Emit(map[string]any{"type": "loss"}) }()
-	go func() {
-		t := time.NewTicker(5 * time.Second)
-		defer t.Stop()
-		for {
-			select {
-			case <-c.ctx.Done():
-				return
-			case <-t.C:
-				if _, _, err := k.SendRequest("keepalive@openssh.com", true, nil); err != nil {
-					c.Close()
-					return
-				}
-			}
-		}
-	}()
+	c.watchClass(k)
 	return nil
 }
 func itoa(n int) string { return fmtInt(n) }
@@ -437,4 +438,145 @@ func (c *Client) ClosePane(pane string) {
 	if p != nil {
 		p.session.Close()
 	}
+}
+
+// Watchers from the retired bootstrap transport must not close its replacement.
+func (c *Client) watchClass(k *ssh.Client) {
+	current := func() bool { c.mu.Lock(); defer c.mu.Unlock(); return c.class == k }
+	fail := func() {
+		c.mu.Lock()
+		if c.class != k {
+			c.mu.Unlock()
+			return
+		}
+		c.class = nil
+		c.mu.Unlock()
+		k.Close()
+		c.Close()
+		c.Emit(map[string]any{"type": "loss"})
+	}
+	go func() { k.Wait(); fail() }()
+	go func() {
+		t := time.NewTicker(5 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-t.C:
+				if !current() {
+					return
+				}
+				if _, _, err := k.SendRequest("keepalive@openssh.com", true, nil); err != nil {
+					fail()
+					return
+				}
+			}
+		}
+	}()
+}
+
+func (c *Client) DiscardHandoffKey() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	clear(c.handoffKey)
+	c.handoffKey = nil
+	if c.handoffTimer != nil {
+		c.handoffTimer.Stop()
+		c.handoffTimer = nil
+	}
+}
+func (c *Client) HandoffPublicKey() (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ctx.Err() != nil || c.class == nil || c.jump == nil || c.auth != nil || len(c.panes) != 0 || len(c.handoffKey) != 0 {
+		return "", errors.New("SSH handoff is not ready")
+	}
+	pub, key, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+	k, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		clear(key)
+		return "", err
+	}
+	c.handoffKey = key
+	c.handoffExpires = time.Now().Add(90 * time.Second).UnixMilli()
+	c.handoffTimer = time.AfterFunc(90*time.Second, c.DiscardHandoffKey)
+	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(k))), nil
+}
+
+// Reuse the authenticated jump connection, never the discarded password. The
+// private key stays inside this worker and is cleared after this one handshake.
+func (c *Client) HandoffClass(certificate string) error {
+	c.mu.Lock()
+	private := c.handoffKey
+	expires := c.handoffExpires
+	c.handoffKey = nil
+	if c.handoffTimer != nil {
+		c.handoffTimer.Stop()
+		c.handoffTimer = nil
+	}
+	j, old, h, user := c.jump, c.class, c.classHost, c.user
+	c.mu.Unlock()
+	defer clear(private)
+	if len(private) != ed25519.PrivateKeySize || expires <= time.Now().UnixMilli() || j == nil || old == nil {
+		return errors.New("SSH handoff key expired")
+	}
+	pub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(certificate))
+	if err != nil {
+		return errors.New("invalid SSH handoff certificate")
+	}
+	cert, ok := pub.(*ssh.Certificate)
+	if !ok {
+		return errors.New("SSH certificate required")
+	}
+	_, permitsPTY := cert.Extensions["permit-pty"]
+	signer, err := ssh.NewSignerFromKey(private)
+	if !ok || err != nil || cert.CertType != ssh.UserCert || cert.ValidBefore <= uint64(time.Now().Unix()) || cert.ValidBefore > uint64(time.Now().Unix()+65) || cert.ValidAfter > uint64(time.Now().Unix()) || !bytes.Equal(cert.Key.Marshal(), signer.PublicKey().Marshal()) || len(cert.CriticalOptions) != 1 || cert.CriticalOptions["force-command"] != "exam-dispatch" || len(cert.Extensions) != 1 || !permitsPTY || cert.Extensions["permit-pty"] != "" {
+		return errors.New("SSH handoff certificate scope rejected")
+	}
+	signed, err := ssh.NewCertSigner(cert, signer)
+	if err != nil {
+		return err
+	}
+	ctx, end := context.WithTimeout(c.ctx, 25*time.Second)
+	defer end()
+	conn, err := j.DialContext(ctx, "tcp", net.JoinHostPort(h.Host, itoa(h.Port)))
+	if err != nil {
+		return errors.New("SSH handoff connection failed")
+	}
+	stop := context.AfterFunc(ctx, func() { conn.Close() })
+	defer stop()
+	config := &ssh.ClientConfig{User: user, Timeout: 25 * time.Second, Auth: []ssh.AuthMethod{ssh.PublicKeys(signed)}, HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+		sum := sha256.Sum256(key.Marshal())
+		pin := hex.EncodeToString(sum[:])
+		for _, s := range h.Pins {
+			if s == pin {
+				return nil
+			}
+		}
+		c.Emit(map[string]any{"type": "host-key-mismatch", "host": h.Host, "fingerprint": pin})
+		return errors.New("SSH host-key verification failed")
+	}}
+	sc, channels, requests, err := ssh.NewClientConn(conn, net.JoinHostPort(h.Host, itoa(h.Port)), config)
+	config.Auth = nil
+	config.HostKeyCallback = nil
+	if err != nil {
+		conn.Close()
+		return errors.New("SSH handoff authentication failed")
+	}
+	k := ssh.NewClient(sc, channels, requests)
+	c.mu.Lock()
+	if c.ctx.Err() != nil || c.class != old {
+		c.mu.Unlock()
+		k.Close()
+		return errors.New("SSH handoff cancelled")
+	}
+	c.class = k
+	c.mu.Unlock()
+	c.watchClass(k)
+	old.Close()
+	return nil
 }

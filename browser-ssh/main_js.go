@@ -103,6 +103,20 @@ func handle(r request) (any, error) {
 		}
 		ch <- a.Answers
 		return nil, nil
+	case "handoff-key":
+		public, err := sshClient.HandoffPublicKey()
+		return map[string]string{"public_key": public}, err
+	case "handoff":
+		var a struct {
+			Certificate string `json:"certificate"`
+		}
+		if json.Unmarshal(r.Args, &a) != nil {
+			return nil, errors.New("invalid SSH handoff")
+		}
+		return nil, sshClient.HandoffClass(a.Certificate)
+	case "discard-handoff":
+		sshClient.DiscardHandoffKey()
+		return nil, nil
 	case "command":
 		return sshClient.Command(r.Args)
 	case "open":

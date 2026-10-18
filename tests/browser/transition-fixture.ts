@@ -78,7 +78,11 @@ export async function simulatedMedia(page: Page) {
       return media;
     };
     Object.defineProperty(navigator.mediaDevices, "getDisplayMedia", {
-      value: async () => stream(),
+      value: async () => {
+        (window as any).__screenCaptureRequests =
+          ((window as any).__screenCaptureRequests || 0) + 1;
+        return stream();
+      },
     });
     Object.defineProperty(navigator, "keyboard", {
       value: { lock: async () => {}, unlock: () => {} },

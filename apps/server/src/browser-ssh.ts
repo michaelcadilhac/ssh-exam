@@ -30,7 +30,7 @@ class BrowserPane extends EventEmitter {
         id: this.attempt,
         pane: this.pane,
       });
-    this.owner.notify("close-pane", { pane: this.pane });
+    await this.owner.detachPane(this.pane);
     this.owner.panes.delete(this.pane);
     this.emit("close");
   }
@@ -40,6 +40,32 @@ class BrowserPane extends EventEmitter {
 // Passwords, MFA prompts and PTY bytes stay in the browser/class-server path.
 export class BrowserConnection extends Connection {
   readonly browser = true;
+  override get supportsAutomaticHandoff() {
+    return true;
+  }
+  override async secureAccess(id: string, exam: string) {
+    try {
+      const key = await this.request("handoff-key", {});
+      const grant = await this.command("issue-ssh-handoff", {
+        id,
+        public_key: key.public_key,
+      });
+      await this.request("handoff", { certificate: grant.certificate });
+      this.transport = "";
+      const result = await this.command("register", {
+        exam,
+        handoff: grant.id,
+      });
+      if (!result.transport)
+        throw Error("Protected SSH handoff was not registered");
+      this.transport = result.transport;
+    } catch (error) {
+      this.close();
+      throw error;
+    } finally {
+      if (this.alive) await this.request("discard-handoff", {}).catch(() => {});
+    }
+  }
   readonly controlToken = randomUUID() + randomUUID();
   private socket?: WebSocket;
   private pending = new Map<
@@ -136,6 +162,9 @@ export class BrowserConnection extends Connection {
         JSON.stringify({ v: 1, type: "browser-request", id, op, args }),
       );
     });
+  }
+  async detachPane(pane: string) {
+    await this.request("close-pane", { pane });
   }
   notify(op: string, args: any) {
     if (this.socket?.readyState === 1)
