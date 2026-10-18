@@ -56,3 +56,7 @@ The 2026-10-18 [inline admin update](inline-admin-deployment.md) was deployed
 through a temporary nginx frontend overlay to preserve an open student preflight.
 That document records its verification, rollback and removal during the next drained
 webserver restart.
+
+The [activation recovery deployment](recovery-diagnostics-deployment.md) removed
+that temporary overlay during a drained restart later on 2026-10-18. The standard
+nginx proxy and normal image-based deployment workflow are in use again.

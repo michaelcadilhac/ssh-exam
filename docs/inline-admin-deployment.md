@@ -51,6 +51,10 @@ changed.
 
 ## Next normal restart and rollback
 
+**Completed:** the [recovery deployment](recovery-diagnostics-deployment.md) restarted
+the drained gateway with the complete current image and removed these temporary
+nginx locations on 2026-10-18. The following notes describe the historical overlay.
+
 After draining student preflights and attempts, the normal documented systemd
 restart will use the newly tagged image, which contains this frontend. Once that
 image is running, remove the three temporary nginx locations, validate nginx and
