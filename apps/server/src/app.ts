@@ -1857,15 +1857,16 @@ export async function createApp(
           send(ws, { type: "authenticated" });
         } catch (e) {
           // Log only a bounded stage code; SSH output and credentials never enter audit.
-          store.audit(
-            p.username || "gateway",
-            "student-sign-in-failed",
-            p.exam || "",
-            (e as Error & { authenticationStage?: string })
-              .authenticationStage === "exam-admission"
-              ? "exam-admission"
-              : "authentication-or-eligibility",
-          );
+          if (store.db.open)
+            store.audit(
+              p.username || "gateway",
+              "student-sign-in-failed",
+              p.exam || "",
+              (e as Error & { authenticationStage?: string })
+                .authenticationStage === "exam-admission"
+                ? "exam-admission"
+                : "authentication-or-eligibility",
+            );
           send(ws, {
             type: "error",
             error:
