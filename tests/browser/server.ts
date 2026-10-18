@@ -11,6 +11,9 @@ import { WebSocketServer } from "ws";
 import net from "node:net";
 import { hash } from "../../apps/server/src/db.js";
 const h = await hosts();
+const timezoneAccounts = Object.fromEntries(
+  Array.from({ length: 7 }, (_, i) => [`timezone${i + 1}`, 11001 + i]),
+);
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -77,6 +80,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (op === "health") return { ready: true, fixture: true };
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
+      ...timezoneAccounts,
       student01: 10001,
       student02: 10002,
       student03: 10003,
@@ -211,6 +215,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
   JSON.stringify({
     health: { ready: true, fixture: true },
     accounts: {
+      ...timezoneAccounts,
       student01: 10001,
       student02: 10002,
       student03: 10003,

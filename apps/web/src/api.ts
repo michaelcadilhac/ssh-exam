@@ -33,8 +33,13 @@ export const socket = (url: string) =>
   );
 const chicagoDate = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Chicago",
-  dateStyle: "medium",
-  timeStyle: "medium",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZoneName: "short",
 });
 export const chicago = (v: number | null) => (v ? chicagoDate.format(v) : "—");
 export const remaining = (deadline: number | null, serverNow = Date.now()) => {
