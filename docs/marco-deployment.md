@@ -51,3 +51,8 @@ sudo systemctl restart ssh-exam
 Changing nginx assets also requires copying the new file to servers.d, running `sudo nginx -t`
 and reloading nginx. Preserve private configuration and data across updates; never run
 `docker compose down -v` for an update. Restart only after draining active attempts.
+
+The 2026-10-18 [inline admin update](inline-admin-deployment.md) was deployed
+through a temporary nginx frontend overlay to preserve an open student preflight.
+That document records its verification, rollback and removal during the next drained
+webserver restart.
