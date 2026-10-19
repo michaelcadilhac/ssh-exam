@@ -209,7 +209,8 @@ Connection workers are supervised OS processes, not additional HTTP instances. C
 `connectionWorkers` controls concurrent live login/attempt workers (default 32, range 1–128).
 New logins at the limit are rejected without evicting students. Every worker has a 64 MiB V8
 heap cap, bounded IPC and reduced thread counts. The default Compose memory budget is 4 GiB
-and its PID/task allowance is 1,024; provision higher memory and task capacity before increasing
+and its PID/task allowance is 1,024. Core-file limits are zero for the supervisor and
+inherited workers, to avoid writing process-memory dumps on fatal failure; provision higher memory and task capacity before increasing
 worker count. The heap cap does not count native allocations, and these processes still share
 the host/container. Linux workers raise their OOM score above the HTTP supervisor. A worker
 crash/hang is an attempt-local interruption and durable email, not a webserver restart. Check
