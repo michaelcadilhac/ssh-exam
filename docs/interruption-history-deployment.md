@@ -48,3 +48,37 @@ ignores the additive table; deletion triggers continue enforcing retention. It c
 new successful resume times, so gaps during a rollback are unknown on upgrade. Never restore
 an old database snapshot over newer deadlines, monitoring deletions or protected receipts.
 Native class-server binaries and policy do not change for this feature.
+
+## Deployment verification
+
+Deployed revision `9739339` on October 19, 2026, at 18:54 UTC. No preparing, active,
+paused or unresolved attempt was present at either live or offline cutover guard.
+No student was interrupted. A network-disabled rehearsal of the exact new image on a private
+production database copy passed before cutover; the copy was then deleted.
+
+- Image: `ssh-exam-workspace:interruption-history-9739339`, also normal `:1.0.0` tag.
+- Image SHA-256: `e763326a0a3d76ee3081bb804e1f1e273d4408a0535e46adfa275201e7aa0efa`.
+- Previous image: `5f8189fc46130f84ca87725fa9f996fe402645499f6440ed62a5b74d97322654`.
+- Private backup/receipt: `/var/backups/ssh-exam/20261019T185422Z-interruption-history-hph4ow7t`.
+- JavaScript `/assets/index-BNQb97EO.js` SHA-256:
+  `d15a5d32419bdac66c1990c0c0c89e3511bbf1cead1c07c92e7ba9a9c774457e`.
+- Stylesheet `/assets/index-B4D6BeLg.css` SHA-256:
+  `0103b1885b4856b616ff89467fb5fd5cd1d0a343deaf06d8862bf01e2f9338da`.
+- Compiled interruption service SHA-256:
+  `01d2e44f1b51ffa2230c11a1917094bc0e1e0a793230bbd4e67525fab18f67c9`.
+
+Production serves the exact tested assets/modules. The service/container is active/healthy,
+restart count zero; public readiness is production-ready with maintenance false and
+notifications true. Schema 11 is installed with both retention triggers. All 15 existing
+attempt identities, states, starts/ends, original/current deadlines, protection and checksums
+are unchanged. Four historical interruption records were recovered without inventing resumed
+timestamps or durations; deleted monitoring was not resurrected. Sandbox, two administrator
+accounts and configured SMTP recipients are unchanged. No native csc-sys binaries, account
+policy or protected archives were modified.
+
+Typecheck/build passed. The full server suite passed 265 tests across 44 files; final focused
+history/API/migration/retention checks passed 10 tests, including an additional rollback-trigger
+regression. Twenty-four instructor/SSH browser checks passed. The actual WASM browser-SSH
+worker-fault test passed after the continuation fence, verifying five approval/reconnect/
+Continue cycles and an uninterrupted sibling attempt. Desktop/mobile disclosure screenshots
+were inspected at 1280 and 390 pixels; fixtures contain synthetic student data only.

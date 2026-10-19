@@ -136,6 +136,14 @@ it("reports approval separately from resumption, including expiration and automa
       "Expired without resuming",
     );
     expect(e.authorizations[1].actor).toBe("teacher");
+    time.mockReturnValue(31000);
+    t.store.interruptions.authorize(a, "teacher", 90000);
+    e = t.store.interruptions.list("a")[0];
+    expect(e.authorizations[1].replaced_at).toBe(31000);
+    expect(authorizationStatus(e.authorizations[1], 31000)).toBe(
+      "Replaced by a later approval",
+    );
+
     expect(
       interruptionSeconds({ opened: null, outcome: "historical" }, a, 99999),
     ).toBeNull();
