@@ -330,6 +330,11 @@ export class Connection {
           reject(error);
           return;
         }
+        if (!this.alive) {
+          channel.close();
+          reject(new AgentCommandDisconnectedError("SSH connection ended"));
+          return;
+        }
         let input = Buffer.alloc(0),
           settled = false;
         const finish = (error?: Error, value?: any) => {
@@ -379,26 +384,50 @@ export class Connection {
       this.class.exec(
         "exam-gateway",
         { pty: { term: "xterm-256color", cols: 100, rows: 30 } },
-        (e, c) => (e ? reject(e) : resolve(c)),
+        (error, channel) => {
+          if (error) return reject(error);
+          // A channel can fail after admission, when handshake listeners have
+          // been removed. Consume its error rather than crashing the gateway.
+          channel.on("error", () => {});
+          if (!this.alive) {
+            channel.close();
+            reject(new AgentCommandDisconnectedError("SSH connection ended"));
+          } else resolve(channel);
+        },
       ),
     );
   }
   private handshake(channel: ClientChannel, token: string): Promise<any> {
     return new Promise((resolve, reject) => {
       let input = Buffer.alloc(0),
-        sent = false;
-      const timer = setTimeout(() => {
-        channel.close();
-        reject(Error("Controlled session gate timed out"));
-      }, 10000);
+        sent = false,
+        settled = false;
+      const finish = (error?: Error, result?: any) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        channel.off("data", data);
+        channel.off("close", closed);
+        channel.off("error", failed);
+        if (error) {
+          channel.close();
+          reject(error);
+        } else resolve(result);
+      };
+      const closed = () =>
+        finish(
+          new AgentCommandDisconnectedError(
+            "Session gate closed before admission",
+          ),
+        );
+      const failed = (error: Error) => finish(error);
+      const timer = setTimeout(
+        () => finish(Error("Controlled session gate timed out")),
+        10000,
+      );
       const data = (chunk: Buffer) => {
         input = Buffer.concat([input, chunk]);
-        if (input.length > 8192) {
-          cleanup();
-          reject(Error("Invalid gate response"));
-          channel.close();
-          return;
-        }
+        if (input.length > 8192) return finish(Error("Invalid gate response"));
         let idx;
         while ((idx = input.indexOf(10)) >= 0) {
           const line = input.subarray(0, idx).toString().trim();
@@ -410,29 +439,21 @@ export class Connection {
             try {
               const result = JSON.parse(line.slice(11));
               channel.pause();
-              cleanup();
               if (input.length) channel.unshift(input);
-              resolve(result);
-              return;
-            } catch (e) {
-              cleanup();
-              reject(e);
+              finish(undefined, result);
+            } catch {
+              finish(Error("Invalid gate response"));
             }
+            return;
           } else if (line.startsWith("EXAM-ERROR")) {
-            cleanup();
-            reject(Error("Class-server admission rejected"));
+            finish(Error("Class-server admission rejected"));
+            return;
           }
         }
       };
-      const cleanup = () => {
-        clearTimeout(timer);
-        channel.off("data", data);
-      };
       channel.on("data", data);
-      channel.once("close", () => {
-        cleanup();
-        reject(Error("Session gate closed before admission"));
-      });
+      channel.once("close", closed);
+      channel.once("error", failed);
     });
   }
   async open(attempt: string, pane: string, purpose = "exam") {
@@ -449,6 +470,12 @@ export class Connection {
     });
     const channel = await this.exec();
     await this.handshake(channel, admission.token);
+    if (!this.alive) {
+      channel.close();
+      throw new AgentCommandDisconnectedError(
+        "SSH connection ended during admission",
+      );
+    }
     this.panes.set(pane, channel);
     channel.once("close", () => this.panes.delete(pane));
     return channel;

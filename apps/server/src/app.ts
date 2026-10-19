@@ -126,7 +126,13 @@ export async function createApp(
   life.onClockChanged = life.onEnd;
   // Do not deliver PTY hangup/signals before the agent has secured its frozen file view.
   life.onSecured = (a) => {
-    attemptConnections.get(a.id)?.close();
+    const connection = attemptConnections.get(a.id);
+    if (connection) {
+      connection.onLoss = () => {};
+      connection.close();
+      if (connections.get(`${a.exam}:${a.username}`) === connection)
+        connections.delete(`${a.exam}:${a.username}`);
+    }
     attemptConnections.delete(a.id);
   };
   life.onPaused = (a) => {
@@ -1594,6 +1600,7 @@ export async function createApp(
     );
   });
   wss.on("connection", (ws, raw) => {
+    ws.on("error", () => ws.terminate());
     const cookies = app.parseCookie(raw.headers.cookie || "");
     const pathname = new URL(raw.url!, config.origin).pathname;
     let session: any;
@@ -2120,6 +2127,10 @@ export async function createApp(
               m.pane,
               practice ? "practice" : "exam",
             );
+            if (!conn.panes.has(m.pane)) {
+              send(ws, { type: "closed", pane: m.pane });
+              return;
+            }
             if (!practice && !(conn instanceof BrowserConnection))
               monitoring.record(a.id, m.pane, { event: "open" });
             c.on("data", (bytes: Buffer) => {

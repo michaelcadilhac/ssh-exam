@@ -177,6 +177,11 @@ test("activation reports the specific lost condition in the UI and incident log"
     .getByRole("button", { name: "Begin exam", exact: true })
     .click();
   await page.evaluate(() => document.exitFullscreen());
+  // The fullscreen promise may settle before fullscreenchange clears Keyboard
+  // Lock. Wait for that actual state transition before releasing activation.
+  await expect(
+    page.getByRole("button", { name: "2. Enter fullscreen", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
   wait.release();
   await expect(page.getByRole("dialog")).toContainText(
     "Exam activation paused: fullscreen lost; keyboard lock lost",

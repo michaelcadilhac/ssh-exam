@@ -72,3 +72,28 @@ all per-channel admission checks remain mandatory. The private key stays in work
 is cleared on success/failure/cancellation/timeout, and is never used for exam reconnection.
 Auth callbacks/configs are removed after the handshake; cleanup is best-effort runtime memory
 hygiene. Retiring the bootstrap client's watcher must not report loss for its replacement.
+
+## Cleanup and terminal lifecycle
+
+Individual terminal closure uses one signed server-authorized close operation; duplicate
+clicks coalesce. Natural shell exits notify the webserver to release that connection’s
+terminal slot. This is untrusted bookkeeping only: the class agent still checks actual
+channels, attempt authorization and limits independently. Early exit cannot resurrect a
+pane when a delayed open reply arrives. Closing a pane during admission cancels its SSH
+channel; another terminal remains usable. Admission is bounded to ten seconds and
+commands to 120 seconds, with channels closed on cancellation or deadline.
+
+Logout, pause, secured completion and connection shutdown reject pending operations,
+clear timers/caches and terminate the worker/control session. Old worker messages,
+RPC replies and queued input cannot affect a new login. Successful collection retires
+only its matching connection and does not close a newer session. Finalization still
+uses the protected-copy confirmation before intentional terminal teardown. Account
+holds, original deadlines, automatic collection and MFA/password/host-key policies
+remain unchanged. SSH input chunks are at most 8,000 UTF-16 code units, preserving
+surrogate pairs and staying below the worker’s 32 KiB UTF-8 input bound.
+
+`tests/browser/ssh-cleanup.spec.ts` exercises real browser WASM/SSH against local
+fixtures: repeated shell exits, closing one of multiple panes, preflight sign-out,
+fresh login, early finish/collection/sign-out, and direct active-session logout with
+an unchanged deadline. The Go race suite includes cancellation during both an agent
+command and terminal admission, duplicate opens/closes and preserving another pane.

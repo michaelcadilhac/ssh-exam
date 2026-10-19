@@ -9,6 +9,7 @@ import type { Config } from "../../../packages/config/index.js";
 class BrowserPane extends EventEmitter {
   writableLength = 0;
   private disposed = false;
+  private closing?: Promise<void>;
   constructor(
     public pane: string,
     private attempt: string,
@@ -28,11 +29,17 @@ class BrowserPane extends EventEmitter {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
-    this.owner.panes.delete(this.pane);
+    if (this.owner.panes.get(this.pane) === (this as any))
+      this.owner.panes.delete(this.pane);
     this.emit("close");
   }
-  async close() {
-    if (this.disposed) return;
+  close(): Promise<void> {
+    if (this.disposed) return Promise.resolve();
+    if (this.closing) return this.closing;
+    this.closing = this.closeRemote();
+    return this.closing;
+  }
+  private async closeRemote() {
     try {
       if (this.owner.alive) {
         await this.owner.command("close-pane", {
@@ -91,6 +98,7 @@ export class BrowserConnection extends Connection {
   >();
   private detachment?: NodeJS.Timeout;
   private closed = false;
+  private opening = new Map<string, { closed: boolean }>();
   constructor(
     user: string,
     private exam: string,
@@ -104,17 +112,9 @@ export class BrowserConnection extends Connection {
   attach(ws: WebSocket) {
     if (this.closed) throw Error("SSH connection ended");
     clearTimeout(this.detachment);
+    const previous = this.socket;
     this.socket = ws;
-    for (const [id, p] of this.pending)
-      ws.send(
-        JSON.stringify({
-          v: 1,
-          type: "browser-request",
-          id,
-          op: p.op,
-          args: p.args,
-        }),
-      );
+    if (previous && previous !== ws) previous.close(1000, "Control replaced");
     ws.on("close", () => {
       if (this.socket !== ws) return;
       this.socket = undefined;
@@ -126,6 +126,29 @@ export class BrowserConnection extends Connection {
           this.close();
         }, 15000);
     });
+    // Install close handling before replay: a failed resend must still start
+    // the bounded detachment cleanup, rather than orphaning this connection.
+    for (const [id, p] of this.pending) {
+      const failed = (error?: Error) => {
+        if (error && this.socket === ws)
+          ws.close(1011, "Control replay failed");
+      };
+      try {
+        ws.send(
+          JSON.stringify({
+            v: 1,
+            type: "browser-request",
+            id,
+            op: p.op,
+            args: p.args,
+          }),
+          failed,
+        );
+      } catch {
+        failed(Error("Replay send failed"));
+        break;
+      }
+    }
   }
   receive(m: any) {
     if (m.type === "browser-host-key-mismatch") {
@@ -145,6 +168,14 @@ export class BrowserConnection extends Connection {
       this.alive = false;
       this.onLoss();
       this.close();
+      return true;
+    }
+    if (m.type === "browser-pane-closed") {
+      if (typeof m.pane !== "string") return false;
+      const pane = this.panes.get(m.pane);
+      if (pane instanceof BrowserPane) pane.dispose();
+      const opening = this.opening.get(m.pane);
+      if (opening) opening.closed = true;
       return true;
     }
     if (m.type !== "browser-result") return false;
@@ -171,19 +202,41 @@ export class BrowserConnection extends Connection {
         reject(Error(`Browser SSH operation timed out: ${op}`));
       }, timeout);
       this.pending.set(id, { op, args, resolve, reject, timer });
-      this.socket!.send(
-        JSON.stringify({ v: 1, type: "browser-request", id, op, args }),
-      );
+      const failed = (error?: Error) => {
+        if (!error || this.pending.get(id)?.timer !== timer) return;
+        this.pending.delete(id);
+        clearTimeout(timer);
+        reject(
+          new AgentCommandDisconnectedError(
+            "Browser SSH request could not be sent",
+          ),
+        );
+      };
+      try {
+        this.socket!.send(
+          JSON.stringify({ v: 1, type: "browser-request", id, op, args }),
+          failed,
+        );
+      } catch {
+        failed(Error("Socket send failed"));
+      }
     });
   }
   async detachPane(pane: string) {
     await this.request("close-pane", { pane });
   }
   notify(op: string, args: any) {
-    if (this.socket?.readyState === 1)
-      this.socket.send(
-        JSON.stringify({ v: 1, type: "browser-notify", op, args }),
-      );
+    if (this.socket?.readyState === 1) {
+      try {
+        this.socket.send(
+          JSON.stringify({ v: 1, type: "browser-notify", op, args }),
+          () => {},
+        );
+      } catch {
+        // Best-effort notification: socket close/rebind owns transport recovery.
+        // In particular a failed close notification must not interrupt teardown.
+      }
+    }
   }
   private receipt(proof: any, kind: string, nonce: string, transport?: string) {
     if (
@@ -302,29 +355,42 @@ export class BrowserConnection extends Connection {
     return receipt.result;
   }
   override async open(attempt: string, pane: string, purpose = "exam") {
-    const admission = await this.command("issue-channel-admission", {
-      id: attempt,
-      pane,
-      transport: this.transport,
-      username: this.username,
-      purpose,
-    });
-    const acknowledgment = await this.request(
-      "open",
-      { pane, token: admission.token },
-      15000,
-    );
-    const receipt = this.receipt(
-      acknowledgment?.proof,
-      "ssh-pane-receipt",
-      createHash("sha256").update(admission.token).digest("hex"),
-      this.transport,
-    );
-    if (receipt.result?.attempt !== attempt || receipt.result?.pane !== pane)
-      throw Error("Pane acknowledgment mismatch");
-    const channel = new BrowserPane(pane, attempt, this);
-    this.panes.set(pane, channel as any);
-    return channel as any;
+    if (this.panes.has(pane) || this.opening.has(pane))
+      throw Error("Terminal already opening or open");
+    const opening = { closed: false };
+    this.opening.set(pane, opening);
+    try {
+      const admission = await this.command("issue-channel-admission", {
+        id: attempt,
+        pane,
+        transport: this.transport,
+        username: this.username,
+        purpose,
+      });
+      const acknowledgment = await this.request(
+        "open",
+        { pane, token: admission.token },
+        15000,
+      );
+      const receipt = this.receipt(
+        acknowledgment?.proof,
+        "ssh-pane-receipt",
+        createHash("sha256").update(admission.token).digest("hex"),
+        this.transport,
+      );
+      if (receipt.result?.attempt !== attempt || receipt.result?.pane !== pane)
+        throw Error("Pane acknowledgment mismatch");
+      const channel = new BrowserPane(pane, attempt, this);
+      if (!this.alive || this.closed)
+        throw new AgentCommandDisconnectedError(
+          "SSH connection ended during terminal admission",
+        );
+      if (opening.closed) channel.dispose();
+      else this.panes.set(pane, channel as any);
+      return channel as any;
+    } finally {
+      this.opening.delete(pane);
+    }
   }
   override close() {
     if (this.closed) return;
@@ -338,6 +404,7 @@ export class BrowserConnection extends Connection {
       p.reject(new AgentCommandDisconnectedError("SSH connection ended"));
     }
     this.pending.clear();
+    this.opening.clear();
     // Whole-transport teardown is local: the close notification already asks
     // the browser to stop SSH. Awaited pane operations were rejected above.
     // Never start new browser RPCs after clearing pending requests: an orphaned

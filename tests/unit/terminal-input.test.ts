@@ -11,3 +11,9 @@ it("chunks large clipboard pastes without changing text or splitting emoji", () 
   ).toBe(true);
   expect([...terminalInputChunks("")]).toEqual([]);
 });
+it("bounds UTF-8 worker input even for three-byte scripts", () => {
+  const text = "漢字".repeat(20000) + "🌍".repeat(9000);
+  const chunks = [...terminalInputChunks(text)];
+  expect(chunks.join("")).toBe(text);
+  expect(chunks.every((chunk) => Buffer.byteLength(chunk) <= 32768)).toBe(true);
+});

@@ -18,6 +18,8 @@ import (
 )
 
 type testHosts struct {
+	sessionFn func(ssh.Channel, <-chan *ssh.Request)
+
 	handoffCA             ssh.PublicKey
 	certCalls             atomic.Int32
 	jump, class           Host
@@ -127,6 +129,13 @@ func hosts(t *testing.T, mixed, reject, repeat bool) *testHosts {
 						} else if !jump && ch.ChannelType() == "session" {
 							s, r, err := ch.Accept()
 							if err == nil {
+								h.mu.Lock()
+								handler := h.sessionFn
+								h.mu.Unlock()
+								if handler != nil {
+									go handler(s, r)
+									continue
+								}
 								go func() {
 									for q := range r {
 										q.Reply(true, nil)

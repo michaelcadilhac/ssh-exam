@@ -109,6 +109,8 @@ type Pane struct {
 	out     *bufio.Reader
 	mu      sync.Mutex
 }
+type pendingPane struct{ cancel context.CancelFunc }
+
 type Client struct {
 	user           string
 	classHost      Host
@@ -122,12 +124,13 @@ type Client struct {
 	jump, class    *ssh.Client
 	auth           *authState
 	panes          map[string]*Pane
+	opening        map[string]*pendingPane
 	Emit           func(any)
 }
 
 func New(emit func(any)) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Client{ctx: ctx, cancel: cancel, panes: map[string]*Pane{}, Emit: emit}
+	return &Client{ctx: ctx, cancel: cancel, panes: map[string]*Pane{}, opening: map[string]*pendingPane{}, Emit: emit}
 }
 func (c *Client) Close() {
 	c.cancel()
@@ -146,6 +149,7 @@ func (c *Client) Close() {
 	c.raw = nil
 	ps := c.panes
 	c.panes = map[string]*Pane{}
+	c.opening = map[string]*pendingPane{}
 	c.mu.Unlock()
 	if a != nil {
 		a.clear()
@@ -270,6 +274,11 @@ func (c *Client) Connect(raw net.Conn, user string, jump, class Host, dialogue D
 		return err
 	}
 	c.mu.Lock()
+	if c.ctx.Err() != nil {
+		c.mu.Unlock()
+		j.Close()
+		return errors.New("SSH connection ended")
+	}
 	c.jump = j
 	c.mu.Unlock()
 	conn, err := j.Dial("tcp", net.JoinHostPort(class.Host, itoa(class.Port)))
@@ -284,6 +293,11 @@ func (c *Client) Connect(raw net.Conn, user string, jump, class Host, dialogue D
 	}
 	a.clear()
 	c.mu.Lock()
+	if c.ctx.Err() != nil {
+		c.mu.Unlock()
+		k.Close()
+		return errors.New("SSH connection ended")
+	}
 	c.auth = nil
 	c.class = k
 	c.user = user
@@ -297,10 +311,15 @@ func (c *Client) session() (*ssh.Session, error) {
 	c.mu.Lock()
 	k := c.class
 	c.mu.Unlock()
-	if k == nil {
+	if k == nil || c.ctx.Err() != nil {
 		return nil, errors.New("SSH disconnected")
 	}
-	return k.NewSession()
+	session, err := k.NewSession()
+	if err == nil && c.ctx.Err() != nil {
+		session.Close()
+		return nil, errors.New("SSH connection ended")
+	}
+	return session, err
 }
 func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 	s, err := c.session()
@@ -308,6 +327,10 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 		return nil, err
 	}
 	defer s.Close()
+	ctx, cancel := context.WithTimeout(c.ctx, 120*time.Second)
+	defer cancel()
+	stop := context.AfterFunc(ctx, func() { s.Close() })
+	defer stop()
 	in, err := s.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -330,16 +353,33 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 	return json.RawMessage(line), nil
 }
 func (c *Client) Open(pane, token string) (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+	opening := &pendingPane{cancel: cancel}
 	c.mu.Lock()
 	_, exists := c.panes[pane]
-	c.mu.Unlock()
-	if exists {
-		return nil, errors.New("pane exists")
+	_, busy := c.opening[pane]
+	if exists || busy || c.ctx.Err() != nil {
+		c.mu.Unlock()
+		cancel()
+		return nil, errors.New("pane exists or SSH ended")
 	}
+	c.opening[pane] = opening
+	c.mu.Unlock()
+	defer func() {
+		cancel()
+		c.mu.Lock()
+		if c.opening[pane] == opening {
+			delete(c.opening, pane)
+		}
+		c.mu.Unlock()
+	}()
+
 	s, err := c.session()
 	if err != nil {
 		return nil, err
 	}
+	stop := context.AfterFunc(ctx, func() { s.Close() })
+	defer stop()
 	ok := false
 	defer func() {
 		if !ok {
@@ -387,6 +427,10 @@ func (c *Client) Open(pane, token string) (json.RawMessage, error) {
 	}
 	p := &Pane{session: s, in: in, out: reader}
 	c.mu.Lock()
+	if ctx.Err() != nil || c.opening[pane] != opening {
+		c.mu.Unlock()
+		return nil, errors.New("terminal opening cancelled")
+	}
 	c.panes[pane] = p
 	c.mu.Unlock()
 	ok = true
@@ -403,9 +447,15 @@ func (c *Client) Open(pane, token string) (json.RawMessage, error) {
 		}
 		s.Wait()
 		c.mu.Lock()
-		delete(c.panes, pane)
+		current := c.panes[pane]
+		if current == p {
+			delete(c.panes, pane)
+		}
+		replaced := (current != nil && current != p) || (c.opening[pane] != nil && c.opening[pane] != opening)
 		c.mu.Unlock()
-		c.Emit(map[string]any{"type": "closed", "pane": pane})
+		if !replaced && c.ctx.Err() == nil {
+			c.Emit(map[string]any{"type": "closed", "pane": pane})
+		}
 	}()
 	return result, nil
 }
@@ -433,8 +483,13 @@ func (c *Client) Resize(pane string, rows, cols int) error {
 func (c *Client) ClosePane(pane string) {
 	c.mu.Lock()
 	p := c.panes[pane]
+	opening := c.opening[pane]
+	delete(c.opening, pane)
 	delete(c.panes, pane)
 	c.mu.Unlock()
+	if opening != nil {
+		opening.cancel()
+	}
 	if p != nil {
 		p.session.Close()
 	}

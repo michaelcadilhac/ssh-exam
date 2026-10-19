@@ -76,6 +76,7 @@ it("a delayed control acknowledgment after 15 seconds terminates SSH rather than
       this.listeners.set(name, cb);
     }
     send() {}
+    close() {}
   }
   vi.stubGlobal("WebSocket", Socket);
   vi.stubGlobal("location", { protocol: "https:", host: "example.test" });

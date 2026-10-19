@@ -1,6 +1,9 @@
+import { terminalInputChunks } from "./terminal-input.js";
 import { socket } from "./api.js";
 
 export class BrowserSSH {
+  private lifecycle = 0;
+  private openingPanes = new Map<string, { closed: boolean }>();
   private browserMode = false;
   private worker?: Worker;
   private control?: WebSocket;
@@ -41,6 +44,7 @@ export class BrowserSSH {
     }
   }
   begin(s: WebSocket, auth: (v: any) => void) {
+    this.close();
     this.browserMode = false;
     this.attach(s, auth);
   }
@@ -66,12 +70,29 @@ export class BrowserSSH {
     }
     for (const fn of this.listeners) fn(v);
   }
+  private sendControl(message: any) {
+    const control = this.control;
+    if (control?.readyState !== 1) return;
+    try {
+      control.send(JSON.stringify(message));
+    } catch {
+      control.close();
+    }
+  }
   private initialize() {
     this.stopped = false;
     this.worker = new Worker(new URL("./ssh-worker.ts", import.meta.url), {
       type: "module",
     });
+    const worker = this.worker;
+    const lifecycle = this.lifecycle;
     this.worker.onmessage = ({ data: m }) => {
+      if (
+        this.worker !== worker ||
+        this.lifecycle !== lifecycle ||
+        this.stopped
+      )
+        return;
       if (m.type === "rpc-result") {
         const p = this.callbacks.get(m.id);
         this.callbacks.delete(m.id);
@@ -83,25 +104,24 @@ export class BrowserSSH {
         return;
       }
       if (m.type === "host-key-mismatch") {
-        if (this.control?.readyState === 1)
-          this.control.send(
-            JSON.stringify({
-              v: 1,
-              type: "browser-host-key-mismatch",
-              host: m.host,
-              fingerprint: m.fingerprint,
-            }),
-          );
+        this.sendControl({
+          v: 1,
+          type: "browser-host-key-mismatch",
+          host: m.host,
+          fingerprint: m.fingerprint,
+        });
         return;
       }
       if (m.type === "loss" || m.type === "fatal") {
-        if (this.control?.readyState === 1)
-          this.control.send(JSON.stringify({ v: 1, type: "browser-loss" }));
+        this.sendControl({ v: 1, type: "browser-loss" });
         this.emit({ type: "loss" });
         this.close();
         return;
       }
       if (m.type === "closed") {
+        const opening = this.openingPanes.get(m.pane);
+        if (opening) opening.closed = true;
+        this.sendControl({ v: 1, type: "browser-pane-closed", pane: m.pane });
         this.readyPanes.delete(m.pane);
         this.earlyInputs.delete(m.pane);
         this.inputChains.delete(m.pane);
@@ -109,6 +129,12 @@ export class BrowserSSH {
       this.emit(m);
     };
     this.worker.onerror = () => {
+      if (
+        this.worker !== worker ||
+        this.lifecycle !== lifecycle ||
+        this.stopped
+      )
+        return;
       this.emit({ type: "loss" });
       this.close();
     };
@@ -118,7 +144,12 @@ export class BrowserSSH {
     const id = crypto.randomUUID();
     return new Promise((resolve, reject) => {
       this.callbacks.set(id, { resolve, reject });
-      this.worker!.postMessage({ id, op, args });
+      try {
+        this.worker!.postMessage({ id, op, args });
+      } catch {
+        this.callbacks.delete(id);
+        reject(Error("SSH worker unavailable"));
+      }
     });
   }
   attach(s: WebSocket, auth: (v: any) => void) {
@@ -142,51 +173,52 @@ export class BrowserSSH {
       let promise = this.controlReplies.get(m.id);
       if (!promise) {
         if (m.op === "connect") {
-          this.close();
+          this.close(true);
           this.browserMode = true;
           this.initialize();
           this.token = m.args.controlToken;
         }
-        promise = this.request(m.op, m.args).then((result) => {
-          if (m.op === "open") {
-            this.readyPanes.add(m.args.pane);
-            const pending = this.earlyInputs.get(m.args.pane) || [];
-            this.earlyInputs.delete(m.args.pane);
-            for (const data of pending) this.input(m.args.pane, data);
-          }
-          return result;
-        });
+        const lifecycle = this.lifecycle;
+        const opening = m.op === "open" ? { closed: false } : undefined;
+        if (opening) this.openingPanes.set(m.args.pane, opening);
+        promise = this.request(m.op, m.args)
+          .then((result) => {
+            if (this.lifecycle !== lifecycle || this.stopped) return result;
+            if (m.op === "open" && !opening?.closed) {
+              this.readyPanes.add(m.args.pane);
+              const pending = this.earlyInputs.get(m.args.pane) || [];
+              this.earlyInputs.delete(m.args.pane);
+              for (const data of pending) this.input(m.args.pane, data);
+            }
+            return result;
+          })
+          .finally(() => {
+            if (this.openingPanes.get(m.args.pane) === opening)
+              this.openingPanes.delete(m.args.pane);
+          });
         this.controlReplies.set(m.id, promise);
         if (this.controlReplies.size > 64)
           this.controlReplies.delete(this.controlReplies.keys().next().value!);
       }
+      const lifecycle = this.lifecycle;
       void promise.then(
         (result) => {
+          if (this.lifecycle !== lifecycle || this.stopped) return;
           if (m.op === "connect") {
             this.authenticated = true;
             this.controlReady = true;
             this.emit({ type: "control", connected: true });
           }
-          if (this.control?.readyState === 1)
-            this.control.send(
-              JSON.stringify({
-                v: 1,
-                type: "browser-result",
-                id: m.id,
-                result,
-              }),
-            );
+          this.sendControl({ v: 1, type: "browser-result", id: m.id, result });
         },
         () => {
-          if (this.control?.readyState === 1)
-            this.control.send(
-              JSON.stringify({
-                v: 1,
-                type: "browser-result",
-                id: m.id,
-                error: true,
-              }),
-            );
+          if (this.lifecycle !== lifecycle || this.stopped) return;
+          this.sendControl({
+            v: 1,
+            type: "browser-result",
+            id: m.id,
+            error: true,
+          });
         },
       );
       return true;
@@ -227,29 +259,53 @@ export class BrowserSSH {
       this.input(m.pane, m.data);
       return true;
     }
-    const op = m.type === "close" ? "close-pane" : m.type;
+    if (m.type === "close") {
+      this.readyPanes.delete(m.pane);
+      this.earlyInputs.delete(m.pane);
+      const opening = this.openingPanes.get(m.pane);
+      if (opening) opening.closed = true;
+      // The server authorizes close and then asks the worker once. Do not race
+      // an unsigned direct worker close against that same server operation.
+      return false;
+    }
+    const lifecycle = this.lifecycle;
+    const op = m.type;
     void this.request(op, {
       pane: m.pane,
       data: m.data,
       rows: m.rows,
       cols: m.cols,
-    }).catch(() => this.emit({ type: "loss" }));
+    }).catch(() => {
+      if (this.lifecycle === lifecycle && !this.stopped)
+        this.emit({ type: "loss" });
+    });
     return m.type === "input";
   }
   private input(pane: string, data: string) {
-    if (data.length > 16000) {
-      for (let start = 0; start < data.length; start += 16000)
-        this.input(pane, data.slice(start, start + 16000));
+    if (data.length > 8000) {
+      for (const chunk of terminalInputChunks(data)) this.input(pane, chunk);
       return;
     }
     const epoch = this.inputEpoch;
+    const lifecycle = this.lifecycle;
     const chain = (this.inputChains.get(pane) || Promise.resolve())
       .then(() => {
-        if (epoch === this.inputEpoch && this.inputEnabled && this.controlReady)
+        if (
+          lifecycle === this.lifecycle &&
+          epoch === this.inputEpoch &&
+          this.inputEnabled &&
+          this.controlReady &&
+          this.readyPanes.has(pane)
+        )
           return this.request("input", { pane, data });
       })
       .catch(() => {
-        if (epoch === this.inputEpoch) this.emit({ type: "closed", pane });
+        if (
+          lifecycle === this.lifecycle &&
+          epoch === this.inputEpoch &&
+          !this.stopped
+        )
+          this.emit({ type: "closed", pane });
       });
     this.inputChains.set(pane, chain);
   }
@@ -287,7 +343,8 @@ export class BrowserSSH {
       this.handle(m);
     };
   }
-  close() {
+  close(keepControl = false) {
+    ++this.lifecycle;
     this.setInputEnabled(false);
     this.controlReady = false;
     this.stopped = true;
@@ -305,6 +362,13 @@ export class BrowserSSH {
       p.reject(Error("SSH connection ended"));
     this.callbacks.clear();
     this.controlReplies.clear();
+    this.openingPanes.clear();
+    if (!keepControl) {
+      const control = this.control;
+      this.control = undefined;
+      this.authListener = undefined;
+      control?.close();
+    }
   }
 }
 export const browserSSH = new BrowserSSH();
