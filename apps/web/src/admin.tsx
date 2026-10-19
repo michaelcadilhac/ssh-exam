@@ -8,9 +8,11 @@ import { StudentImport } from "./student-import.js";
 import { EnrollmentSetting } from "./enrollment-setting.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
+import { formatDuration } from "../../../packages/protocol/time.js";
 import { AdminReview } from "./admin-review.js";
 import {
   attemptStatus,
+  attemptElapsed,
   clockEditable,
   webcamRequired,
   matchesDashboardView,
@@ -640,7 +642,7 @@ export function Admin({
                             <th>Student / attempt</th>
                             <th>Status</th>
                             <th>Webcam</th>
-                            <th>Time remaining</th>
+                            <th>Time</th>
                             <th>
                               <span className="visually-hidden">Actions</span>
                             </th>
@@ -741,6 +743,17 @@ export function Admin({
                                   )}
                                   <td className="attempt-identity" role="cell">
                                     <span>Attempt {a.attempt_number}</span>
+                                    {!!a.preflight_started_at && !a.start && (
+                                      <time
+                                        dateTime={new Date(
+                                          a.preflight_started_at,
+                                        ).toISOString()}
+                                        title={chicago(a.preflight_started_at)}
+                                      >
+                                        Preflight{" "}
+                                        {attemptStarted(a.preflight_started_at)}
+                                      </time>
+                                    )}
                                     {!!a.start && (
                                       <time
                                         dateTime={new Date(
@@ -749,6 +762,16 @@ export function Admin({
                                         title={chicago(a.start)}
                                       >
                                         Started {attemptStarted(a.start)}
+                                      </time>
+                                    )}
+                                    {!!a.ended && (
+                                      <time
+                                        dateTime={new Date(
+                                          a.ended,
+                                        ).toISOString()}
+                                        title={chicago(a.ended)}
+                                      >
+                                        Ended {attemptStarted(a.ended)}
                                       </time>
                                     )}
                                   </td>
@@ -778,7 +801,13 @@ export function Admin({
                                   </td>
                                   <td
                                     role="cell"
-                                    data-label="Time remaining"
+                                    data-label={
+                                      ["ACTIVE", "LOCKED"].includes(a.state)
+                                        ? "Time remaining"
+                                        : a.ended && a.start
+                                          ? "Time taken"
+                                          : "Time"
+                                    }
                                     className="attempt-clock"
                                   >
                                     <time
@@ -790,8 +819,24 @@ export function Admin({
                                     >
                                       {["ACTIVE", "LOCKED"].includes(a.state)
                                         ? remaining(a.deadline, clock)
-                                        : "—"}
+                                        : a.ended &&
+                                            attemptElapsed(a, clock) !== null
+                                          ? `${formatDuration(attemptElapsed(a, clock)!)} taken`
+                                          : "—"}
                                     </time>
+                                    {![
+                                      "COMPLETED",
+                                      "CANCELLED_BEFORE_START",
+                                    ].includes(a.state) &&
+                                      !a.ended &&
+                                      attemptElapsed(a, clock) !== null && (
+                                        <small>
+                                          {formatDuration(
+                                            attemptElapsed(a, clock)!,
+                                          )}{" "}
+                                          {a.ended ? "taken" : "elapsed"}
+                                        </small>
+                                      )}
                                     {a.pendingClockReset && (
                                       <small className="warn">
                                         Clock change pending

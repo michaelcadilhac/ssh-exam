@@ -14,6 +14,10 @@ function makeAttempt(
     state,
     settings: JSON.stringify({ webcam: false }),
     start,
+    preflight_started_at: start - 120000,
+    connected: state === "ACTIVE",
+    last_contact: Date.now(),
+    terminalCount: state === "ACTIVE" ? 2 : 0,
     deadline: Date.now() + 300000,
     original_deadline: Date.now() + 300000,
     clock_revision: 0,
@@ -627,15 +631,17 @@ test("open review updates images, activity and incremental replay without moving
 }) => {
   const s = await fixture(page);
   const pane = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  let captureIndex = 0;
   const capture = (id: string, source: string) => ({
     id,
     source,
-    captured: Date.now(),
+    captured: Date.now() + captureIndex++ * 1000,
     received: Date.now(),
   });
   s.rows[0].attempts[0].settings = JSON.stringify({ webcam: true });
   s.media.frames.push(
     capture("screen-old", "screen"),
+    capture("screen-current", "screen"),
     capture("webcam-old", "webcam"),
   );
   s.media.terminals.push({ pane });
@@ -658,17 +664,17 @@ test("open review updates images, activity and incremental replay without moving
     .first()
     .click();
   const dialog = page.getByRole("dialog");
-  const timeline = dialog.getByRole("combobox", {
-    name: "Image timeline",
+  const timeline = dialog.getByRole("slider", {
+    name: "Screen timeline",
     exact: true,
   });
   const terminal = dialog.getByRole("combobox", {
     name: "Terminal replay",
     exact: true,
   });
-  await timeline.selectOption("screen-old");
+  await timeline.fill("0");
   await terminal.selectOption(pane);
-  const slider = dialog.getByRole("slider");
+  const slider = dialog.locator(".admin-replay input[type=range]");
   await expect(slider).toHaveAttribute("max", "2");
   await slider.fill("1");
   const originalOffset = s.replayOffsets.length;
@@ -707,13 +713,15 @@ test("open review updates images, activity and incremental replay without moving
     .toBeGreaterThan(originalOffset);
   expect(s.replayOffsets.slice(1).every((offset) => offset > 0)).toBe(true);
   await dialog.getByRole("button", { name: "Monitoring", exact: true }).click();
-  await expect(
-    dialog.getByAltText("Latest screen capture for amy"),
-  ).toHaveAttribute("src", "/api/admin/media/screen-new");
-  await expect(
-    dialog.getByAltText("Latest webcam capture for amy"),
-  ).toHaveAttribute("src", "/api/admin/media/webcam-new");
-  await expect(timeline).toHaveValue("screen-old");
+  await expect(dialog.getByAltText("Screen capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/screen-old",
+  );
+  await expect(dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/webcam-new",
+  );
+  await expect(timeline).toHaveValue("0");
   await expect(terminal).toHaveValue(pane);
   await expect(slider).toHaveAttribute("max", "3");
   await expect(slider).toHaveValue("1");
@@ -727,8 +735,18 @@ test("open review updates images, activity and incremental replay without moving
   await dialog
     .getByRole("button", { name: "Refresh monitoring", exact: true })
     .click();
-  await expect(timeline).toHaveValue("screen-old");
+  await expect(timeline).toHaveValue("0");
   await expect(slider).toHaveValue("1");
+  await dialog
+    .getByRole("button", { name: "Live screen", exact: true })
+    .click();
+  await expect(dialog.getByAltText("Screen capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/screen-new",
+  );
+  await expect(
+    dialog.getByRole("button", { name: "Live screen", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await terminal.selectOption("");
   await terminal.selectOption(pane);
   await expect(slider).toHaveAttribute("max", "3");
@@ -1017,6 +1035,9 @@ for (const width of [1280, 430])
     await dialog
       .getByRole("button", { name: "Submission", exact: true })
       .click();
+    await dialog
+      .getByText("Timing and monitoring details", { exact: true })
+      .click();
     await expect(
       dialog
         .getByText("Exam duration", { exact: true })
@@ -1048,3 +1069,172 @@ for (const width of [1280, 430])
     await expect.poll(() => clock.innerText()).not.toBe(before);
     await expect(clock).toContainText(/1:29:\d\d remaining/);
   });
+
+test("capture sliders are independent, keyboard accessible, and stop following when the student pauses", async ({
+  page,
+}, info) => {
+  const s = await fixture(page);
+  const a = s.rows[0].attempts[0],
+    now = Date.now();
+  a.settings = JSON.stringify({ webcam: true, duration: 5400 });
+  a.preflight_started_at = now - 180000;
+  s.media.frames.push(
+    ...["screen", "webcam"].flatMap((source) =>
+      [0, 1, 2].map((i) => ({
+        id: `${source}-${i}`,
+        source,
+        captured: now - (2 - i) * 15000,
+        received: now - (2 - i) * 15000,
+      })),
+    ),
+  );
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  const screen = dialog.getByRole("slider", {
+    name: "Screen timeline",
+    exact: true,
+  });
+  const webcam = dialog.getByRole("slider", {
+    name: "Webcam timeline",
+    exact: true,
+  });
+  await expect(screen).toHaveValue("2");
+  await screen.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(screen).toHaveValue("1");
+  await expect(dialog.getByAltText("Screen capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/screen-1",
+  );
+  await expect(webcam).toHaveValue("2");
+  await expect(
+    dialog.getByRole("button", { name: "Live screen", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    dialog.getByRole("button", { name: "Live webcam", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(screen).toHaveAttribute("aria-valuetext", /CDT/);
+  await page.screenshot({
+    path: info.outputPath("capture-sliders-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await page.screenshot({
+    path: info.outputPath("capture-sliders-mobile.png"),
+    fullPage: true,
+  });
+  expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
+  a.state = "LOCKED";
+  a.working = false;
+  a.connected = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    dialog.getByRole("button", { name: "Live webcam", exact: true }),
+  ).toHaveCount(0);
+  s.media.frames.push({
+    id: "webcam-late",
+    source: "webcam",
+    captured: now + 1000,
+    received: now + 1000,
+  });
+  await dialog
+    .getByRole("button", { name: "Refresh monitoring", exact: true })
+    .click();
+  await expect(dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/webcam-2",
+  );
+  await expect(screen).toHaveValue("1");
+  a.state = "ACTIVE";
+  a.working = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    dialog.getByRole("button", { name: "Live webcam", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await dialog
+    .getByRole("button", { name: "Live webcam", exact: true })
+    .click();
+  await expect(dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/webcam-late",
+  );
+});
+
+test("review shows preflight, finished duration, access failures, clock changes and omission reasons in plain language", async ({
+  page,
+}) => {
+  const s = await fixture(page),
+    a = s.rows[0].attempts[0];
+  a.state = "COMPLETED";
+  a.working = false;
+  a.connected = false;
+  a.protected = 1;
+  a.start = Date.UTC(2026, 9, 19, 15);
+  a.preflight_started_at = a.start - 120000;
+  a.ended = a.start + 2400000;
+  a.deadline = a.start + 5400000;
+  a.original_deadline = a.deadline;
+  a.clock_revision = 1;
+  a.clock_resets = JSON.stringify([
+    {
+      id: "reset",
+      actor: "instructor",
+      requested_at: a.start + 60000,
+      applied_at: a.start + 61000,
+      remaining_seconds: 3600,
+      deadline: a.deadline,
+    },
+  ]);
+  a.access_error = "Writer remains active";
+  (s.media as any).manifest = {
+    files: [{ path: "answer.c" }],
+    omissions: [".#answer.c: symbolic link omitted"],
+  };
+  await page.getByLabel("Selected exam", { exact: true }).selectOption("beta");
+  await page.getByLabel("Selected exam", { exact: true }).selectOption("alpha");
+  const group = page.getByRole("rowgroup", { name: "amy", exact: true });
+  await expect(group).toContainText("40min taken");
+  await expect(group).toContainText("Ended Oct 19, 2026");
+  await group
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText("Preflight started", { exact: true }).locator(".."),
+  ).toContainText("9:58:00 AM CDT");
+  await expect(
+    dialog.getByText("Exam ended", { exact: true }).locator(".."),
+  ).toContainText("10:40:00 AM CDT");
+  await expect(
+    dialog.getByText("Time taken", { exact: true }).locator(".."),
+  ).toContainText("40min");
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Writer remains active",
+  );
+  await dialog
+    .getByText("Timing and monitoring details", { exact: true })
+    .click();
+  await expect(
+    dialog.getByText("Preflight duration", { exact: true }).locator(".."),
+  ).toContainText("2min");
+  await expect(dialog.getByLabel("Clock change history")).toContainText(
+    "Reset to 1h",
+  );
+  await expect(dialog.getByLabel("Clock change history")).toContainText(
+    "instructor",
+  );
+  await dialog.getByRole("button", { name: "Submission", exact: true }).click();
+  await expect(dialog).toContainText("1 file collected · 1 entry omitted");
+  await dialog.getByText("Omitted entries", { exact: true }).click();
+  await expect(dialog).toContainText(".#answer.c: symbolic link omitted");
+  await expect(
+    dialog.getByRole("button", { name: "Live screen", exact: true }),
+  ).toHaveCount(0);
+});

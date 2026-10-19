@@ -26,7 +26,7 @@ and Escape; opening review focuses Close review, never Authorize resume.
 **New exam** and **Exam settings** configure the name, start window, duration, default
 webcam requirement, terminal count and root-approved material template. See
 [Creating an exam template](template-authoring.md) for authoring and installation.
-Materials template names identify files installed on the SSH server. Settings apply to future attempts. Each started attempt shows its start date, time and timezone. Dashboard times use America/Chicago; start-window
+Materials template names identify files installed on the SSH server. Settings apply to future attempts. Attempt rows show start/end dates and time taken, or the live countdown and elapsed time. Unstarted rows show when preflight opened. Dashboard times use America/Chicago; start-window
 inputs use your device timezone. Sandbox always starts with five minutes.
 
 The duration value selects an individual allowance (1–360 whole minutes) or restores
@@ -78,17 +78,17 @@ block import. Limits: 10,000 students, 10 MiB. Roster CSV export remains availab
 authenticated API.
 
 **Review** has Monitoring, Activity and Submission sections. Monitoring provides the
-latest authenticated images, image history and terminal replay. The open review refreshes
+screen and webcam captures with independent history sliders and terminal replay. Each image shows its capture date/time and receipt time in the tooltip. Drag the slider or use its arrow keys; **Live** follows incoming captures only while the student is working. Live uses the existing capture cadence and five-second refresh; it is not a continuous video stream. Pausing/finishing freezes the selected image, and resuming does not silently return an instructor to Live. The open review refreshes
 automatically every five seconds and when the page regains focus or connectivity. Activity
 and recording updates preserve the selected review section, historical image, terminal and
 replay position. Recording refreshes fetch only new events; they do not restart playback.
-Refresh and inline retry remain available after a network failure. Activity lists incidents
+Refresh and inline retry remain available after a network failure. The timing summary stays available across review sections: preflight opened, exam started/ended, elapsed/time taken, current deadline and connection/terminal status. Expand **Timing and monitoring details** for preflight duration, original deadline, configured duration/webcam, last browser contact, clock-change dates/actor and attempt ID. Elapsed exam time includes pauses because the clock continues; it stops at the recorded effective end or current cutoff. Historical preflight dates that were never recorded say **Not recorded**. Activity lists incidents
 and student messages for that attempt. **Authorize resume** grants the paused attempt one fresh-SSH recovery before
 its deadline; sandbox grants authorization automatically. Approval does not grant time.
 The review stays current even if its attempt no longer matches the roster filter.
 
 Submission distinguishes collection pending/failed from a verified protected copy. It
-shows collection timestamps, manifest/checksum and server-access recovery details; no
+shows collection/execution/protection timestamps, file and omission counts/reasons, manifest/checksum, and server-access recovery/release dates; no
 archive downloads are offered. Monitoring deletion requires explicit confirmation naming
 the student and attempt and keeps the submission. Client reports are evidence, not
 misconduct scores. Administrative actions and sensitive recording access remain audited.

@@ -13,6 +13,7 @@ export interface Attempt {
   uid: number;
   state: State;
   settings: string;
+  preflight_started_at: number | null;
   start: number | null;
   deadline: number | null;
   original_deadline: number | null;
@@ -92,6 +93,10 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=9").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/009.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=10").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/010.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

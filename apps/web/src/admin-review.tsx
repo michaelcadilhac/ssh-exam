@@ -2,9 +2,12 @@ import { formatDuration } from "../../../packages/protocol/time.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { api, chicago, remaining } from "./api.js";
+import { CaptureTimeline } from "./capture-timeline.js";
 import { Modal } from "./modal.js";
 import {
   attemptStatus,
+  attemptElapsed,
+  preflightElapsed,
   webcamRequired,
 } from "../../../packages/protocol/admin.js";
 
@@ -206,7 +209,6 @@ export function AdminReview({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   const [pane, setPane] = useState(""),
-    [frame, setFrame] = useState(""),
     [deleting, setDeleting] = useState(false);
   const positions = useRef(new Map<string, number>());
   const fetchMonitoring = useCallback(
@@ -221,9 +223,6 @@ export function AdminReview({
         );
         if (signal.aborted) return;
         setMedia(next);
-        setFrame((selected) =>
-          next.frames.some((f: any) => f.id === selected) ? selected : "",
-        );
         setPane((selected) =>
           next.terminals.some((r: any) => r.pane === selected) ? selected : "",
         );
@@ -256,8 +255,17 @@ export function AdminReview({
   const status = attemptStatus(a),
     frames = media?.frames || [],
     incidents = media?.incidents || [];
-  const oldFrame = frames.find((f: any) => f.id === frame);
   let duration: number | null = null;
+  let clockChanges: any[] = [];
+  try {
+    const history =
+      typeof a.clock_resets === "string"
+        ? JSON.parse(a.clock_resets)
+        : a.clock_resets;
+    if (Array.isArray(history)) clockChanges = history;
+  } catch {
+    /* Historical clock details can be unavailable. */
+  }
   try {
     const settings =
       typeof a.settings === "string" ? JSON.parse(a.settings) : a.settings;
@@ -310,6 +318,117 @@ export function AdminReview({
         </div>
       </div>
       {a.reason && <p className="review-reason">{a.reason}</p>}
+      {(a.access_error || a.policy_error) && (
+        <p className="warn" role="alert">
+          Server access needs attention: {a.policy_error || a.access_error}
+        </p>
+      )}
+      <dl className="review-facts review-overview" aria-label="Attempt timing">
+        <div>
+          <dt>Preflight started</dt>
+          <dd>
+            {a.preflight_started_at
+              ? chicago(a.preflight_started_at)
+              : "Not recorded"}
+          </dd>
+        </div>
+        <div>
+          <dt>Exam started</dt>
+          <dd>{chicago(a.start)}</dd>
+        </div>
+        <div>
+          <dt>{a.start ? "Exam ended" : "Preflight ended"}</dt>
+          <dd>{chicago(a.ended)}</dd>
+        </div>
+        <div>
+          <dt>
+            {a.ended || a.state === "COMPLETED" ? "Time taken" : "Exam elapsed"}
+          </dt>
+          <dd>
+            {attemptElapsed(a, clock) === null
+              ? a.start
+                ? "Not recorded"
+                : "Not started"
+              : formatDuration(attemptElapsed(a, clock)!)}
+          </dd>
+        </div>
+        <div>
+          <dt>Current deadline</dt>
+          <dd>{chicago(a.deadline)}</dd>
+        </div>
+        <div>
+          <dt>Connection</dt>
+          <dd>
+            {a.connected ? "Connected" : "Disconnected"}
+            {Number.isFinite(a.terminalCount)
+              ? ` · ${a.terminalCount} ${a.terminalCount === 1 ? "terminal" : "terminals"}`
+              : ""}
+          </dd>
+        </div>
+      </dl>
+      <details className="review-timing-details">
+        <summary>Timing and monitoring details</summary>
+        <dl className="review-facts">
+          <div>
+            <dt>Preflight duration</dt>
+            <dd>
+              {preflightElapsed(a, clock) === null
+                ? "Not recorded"
+                : formatDuration(preflightElapsed(a, clock)!)}
+            </dd>
+          </div>
+          <div>
+            <dt>Exam duration</dt>
+            <dd>{duration === null ? "—" : formatDuration(duration)}</dd>
+          </div>
+          <div>
+            <dt>Original deadline</dt>
+            <dd>{chicago(a.original_deadline || a.deadline)}</dd>
+          </div>
+          <div>
+            <dt>Last browser contact</dt>
+            <dd>{chicago(a.last_contact)}</dd>
+          </div>
+          <div>
+            <dt>Webcam</dt>
+            <dd>
+              {webcamRequired(a) === null
+                ? "Unknown"
+                : webcamRequired(a)
+                  ? "Required"
+                  : "Not required"}
+            </dd>
+          </div>
+          <div>
+            <dt>Clock changes</dt>
+            <dd>{a.clock_revision || 0}</dd>
+          </div>
+        </dl>
+        {!!clockChanges.length && (
+          <ol
+            className="clock-change-history"
+            aria-label="Clock change history"
+          >
+            {clockChanges.map((change, i) => (
+              <li key={change.id || i}>
+                <strong>
+                  {change.extend_seconds
+                    ? `Extended by ${formatDuration(change.extend_seconds)}`
+                    : `Reset to ${formatDuration(change.remaining_seconds)}`}
+                </strong>
+                <span>
+                  Requested {chicago(change.requested_at)} by {change.actor};
+                  confirmed {chicago(change.applied_at)}. Deadline{" "}
+                  {chicago(change.deadline)}.
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className="review-attempt-id">
+          Attempt ID: <code>{a.id}</code>
+        </p>
+      </details>
       {a.pendingClockReset && (
         <p className="warn" role="status">
           Clock change pending confirmation. The displayed deadline remains in
@@ -361,79 +480,34 @@ export function AdminReview({
                       webcamRequired(a) ||
                       frames.some((f: any) => f.source === source),
                   )
-                  .map((source) => {
-                    const latest = frames
-                      .filter((f: any) => f.source === source)
-                      .at(-1);
-                    const label = source === "screen" ? "Screen" : "Webcam";
-                    return (
-                      <figure key={source}>
-                        <figcaption>
-                          <strong>{label}</strong>
-                          {latest && (
-                            <span
-                              title={`Captured ${chicago(latest.captured)}; received ${chicago(latest.received)}`}
-                            >
-                              {formatDuration((clock - latest.captured) / 1000)}{" "}
-                              ago
-                            </span>
-                          )}
-                        </figcaption>
-                        {latest ? (
-                          <img
-                            alt={`Latest ${source} capture for ${a.username}`}
-                            src={`/api/admin/media/${latest.id}`}
-                          />
-                        ) : (
-                          <p className="monitoring-empty">
-                            No {source} images received.
-                          </p>
-                        )}
-                      </figure>
-                    );
-                  })}
+                  .map((source) => (
+                    <CaptureTimeline
+                      key={source}
+                      source={source}
+                      frames={frames}
+                      username={a.username}
+                      working={!!a.working && !stale}
+                      clock={clock}
+                    />
+                  ))}
               </div>
-              <div className="review-selectors">
-                <label>
-                  Image timeline
-                  <select
-                    value={frame}
-                    onChange={(e) => setFrame(e.target.value)}
-                  >
-                    <option value="">Choose an image</option>
-                    {frames.map((f: any) => (
-                      <option key={f.id} value={f.id}>
-                        {f.source} · {chicago(f.captured)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Terminal replay
-                  <select
-                    value={pane}
-                    onChange={(e) => setPane(e.target.value)}
-                  >
-                    <option value="">Choose a terminal</option>
-                    {media.terminals.map((r: any, i: number) => (
-                      <option key={r.pane} value={r.pane}>
-                        Terminal {i + 1}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              {oldFrame && (
-                <figure className="review-history-image">
-                  <img
-                    alt={`${oldFrame.source} capture at ${chicago(oldFrame.captured)}`}
-                    src={`/api/admin/media/${oldFrame.id}`}
-                  />
-                  <figcaption>
-                    Captured {chicago(oldFrame.captured)} · received{" "}
-                    {chicago(oldFrame.received)}
-                  </figcaption>
-                </figure>
+              {!!media.terminals.length && (
+                <div className="review-selectors">
+                  <label>
+                    Terminal replay
+                    <select
+                      value={pane}
+                      onChange={(e) => setPane(e.target.value)}
+                    >
+                      <option value="">Choose a terminal</option>
+                      {media.terminals.map((r: any, i: number) => (
+                        <option key={r.pane} value={r.pane}>
+                          Terminal {i + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               )}
               {pane && (
                 <Replay
@@ -549,24 +623,14 @@ export function AdminReview({
               <p>Submissions are retained on the SSH server.</p>
               <dl className="review-facts">
                 <div>
-                  <dt>Started</dt>
-                  <dd>{chicago(a.start)}</dd>
-                </div>
-                <div>
-                  <dt>Exam duration</dt>
-                  <dd>{duration === null ? "—" : formatDuration(duration)}</dd>
-                </div>
-                <div>
-                  <dt>Current deadline</dt>
-                  <dd>{chicago(a.deadline)}</dd>
-                </div>
-                <div>
-                  <dt>Original deadline</dt>
-                  <dd>{chicago(a.original_deadline || a.deadline)}</dd>
-                </div>
-                <div>
                   <dt>Collection reason</dt>
-                  <dd>{a.reason || "Not ended"}</dd>
+                  <dd>
+                    {a.reason || (a.ended ? "Not recorded" : "Not ended")}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Execution ended</dt>
+                  <dd>{chicago(a.completed_at)}</dd>
                 </div>
                 <div>
                   <dt>Collected</dt>
@@ -577,12 +641,42 @@ export function AdminReview({
                   <dd>{chicago(a.secured_at)}</dd>
                 </div>
               </dl>
+              {media?.manifest && (
+                <div className="submission-inventory">
+                  <p>
+                    {media.manifest.files?.length || 0}{" "}
+                    {media.manifest.files?.length === 1 ? "file" : "files"}{" "}
+                    collected · {media.manifest.omissions?.length || 0}{" "}
+                    {media.manifest.omissions?.length === 1
+                      ? "entry"
+                      : "entries"}{" "}
+                    omitted
+                  </p>
+                  {!!media.manifest.omissions?.length && (
+                    <details>
+                      <summary>Omitted entries</summary>
+                      <ul>
+                        {media.manifest.omissions.map(
+                          (entry: any, i: number) => (
+                            <li key={i}>
+                              {typeof entry === "string" ? (
+                                entry
+                              ) : (
+                                <>
+                                  <code>{entry.path}</code>: {entry.reason}
+                                </>
+                              )}
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
               <details>
                 <summary>Collection details</summary>
-                <p>
-                  Source: {a.work_path || "/work"} · Execution ended:{" "}
-                  {chicago(a.completed_at)}
-                </p>
+                <p>Source: {a.work_path || "/work"}</p>
                 {a.checksum && (
                   <p>
                     SHA-256: <code>{a.checksum}</code>
@@ -608,6 +702,16 @@ export function AdminReview({
             {a.access_error && (
               <p className="warn">Access recovery: {a.access_error}</p>
             )}
+            <dl className="review-facts">
+              <div>
+                <dt>Restriction began</dt>
+                <dd>{chicago(a.access_held_at)}</dd>
+              </div>
+              <div>
+                <dt>Access restored</dt>
+                <dd>{chicago(a.access_released_at)}</dd>
+              </div>
+            </dl>
             {!!a.access_checked_at && (
               <small>Last checked {chicago(a.access_checked_at)}</small>
             )}

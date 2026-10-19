@@ -794,7 +794,7 @@ export async function createApp(
     if (!previous)
       store.db
         .prepare(
-          "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact) VALUES(?,?,?,?,'PREPARING',?,?,?)",
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at) VALUES(?,?,?,?,'PREPARING',?,?,?,?)",
         )
         .run(
           id,
@@ -803,6 +803,7 @@ export async function createApp(
           enrollment.uid,
           JSON.stringify(settings),
           hash(pageSecret),
+          now(),
           now(),
         );
     else

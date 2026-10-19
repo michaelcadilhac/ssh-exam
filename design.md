@@ -472,6 +472,10 @@ Before a timed attempt starts, snapshot its effective settings. Changing an exam
 
 ### 11.2 Live view
 
+Persist the first server-side preflight opening timestamp independently of mutable last-contact time; preserve it across reconnects/restarts. Do not invent a preflight opening time for historical attempts. Show exam start/end dates and elapsed/time taken on attempt rows, with explicit timezone. Review keeps a compact timing/connection summary across sections, plus readable original/current deadlines, preflight duration, last browser contact, required webcam, clock-change history/actors, collection/protection and account-restoration dates. Elapsed exam time includes pauses and stops at the effective end/cutoff; unstarted preflight is never counted as timed exam work.
+
+Monitoring review uses a history slider on each main screen/webcam picture, with capture timestamps and receipt metadata. Preserve each chosen frame by identity across refreshes and tab changes. Offer Live only for a currently working attempt; it follows incoming captures at the normal monitoring cadence, not continuous video. Pausing/finishing freezes the selection; resuming requires an explicit Live selection to follow again. Retain terminal replay position independently. Empty/deleted images and failed loads must be understandable and retryable without replacing the review screen.
+
 Show searchable, paginated roster/attempt rows with:
 
 - Username and effective webcam requirement.

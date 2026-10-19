@@ -510,17 +510,6 @@
   margin-top: 6px;
   font-size: 12px;
 }
-.review-history-image {
-  margin: 10px 0;
-}
-.review-history-image img {
-  max-width: 100%;
-  max-height: 500px;
-}
-.review-history-image figcaption {
-  font-size: 12px;
-  color: #9bafc8;
-}
 .admin-replay {
   max-width: 100%;
   overflow: auto;
@@ -914,4 +903,94 @@
 .admin-roster .setting-editor-actions button {
   padding: 5px 10px;
   font-size: 12px;
+}
+
+.admin-roster .attempt-clock small {
+  display: block;
+  margin-top: 4px;
+  color: #9db1c9;
+  font-size: 11px;
+}
+.review-overview {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.review-timing-details {
+  margin: 12px 0;
+  font-size: 12px;
+}
+.review-facts dd {
+  overflow-wrap: anywhere;
+}
+.capture-controls {
+  padding: 10px 12px;
+}
+.capture-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  font-size: 11px;
+  color: #c1d1e4;
+}
+.capture-selected button {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.capture-selected .live-selected {
+  color: #9ae8ca;
+  border-color: #497964;
+  background: #193f34;
+}
+.capture-controls input[type="range"] {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 0;
+  accent-color: #68dac5;
+}
+.capture-bounds {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 10px;
+  color: #91a8c3;
+}
+.capture-bounds span:last-child {
+  text-align: right;
+}
+@media (max-width: 700px) {
+  .review-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.clock-change-history {
+  padding-left: 18px;
+}
+.clock-change-history li {
+  margin: 12px 0;
+}
+.clock-change-history span {
+  display: block;
+  margin-top: 4px;
+  color: #a4b8cf;
+  line-height: 1.5;
+}
+.review-attempt-id {
+  overflow-wrap: anywhere;
+  color: #a4b8cf;
+}
+.submission-inventory {
+  font-size: 12px;
+  margin: 16px 0;
+}
+.submission-inventory li {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.review-images img[hidden] {
+  display: none;
 }

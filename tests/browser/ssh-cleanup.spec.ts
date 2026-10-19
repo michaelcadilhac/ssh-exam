@@ -7,10 +7,16 @@ async function login(page: Page, username: string) {
   await page.getByRole("button", { name: "Start SSH sign-in" }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
   await page.getByRole("button", { name: "Respond to this host" }).click();
+  const preflightOpened = Date.now();
   await page.getByRole("button", { name: "Open preflight & practice" }).click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
   ).toBeEnabled();
+  const attempt = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(attempt.preflight_started_at).toBeGreaterThanOrEqual(preflightOpened);
+  expect(attempt.preflight_started_at).toBeLessThanOrEqual(Date.now());
+  expect(attempt.start).toBeNull();
 }
 async function command(page: Page, text: string) {
   await page

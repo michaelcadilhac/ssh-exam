@@ -68,3 +68,20 @@ it("shows restoration failures independently of a secured submission", () => {
     attemptStatus({ ...a, policy_state: "NORMAL", policy_error: null }).label,
   ).toBe("Submission secured");
 });
+
+it("measures timed work including pauses, freezes finished durations and caps a still-open expired attempt", async () => {
+  const { attemptElapsed, preflightElapsed } = await import(
+    "../../packages/protocol/admin.js"
+  );
+  const a = { preflight_started_at: 1000, start: 61000, deadline: 361000 };
+  expect(preflightElapsed(a, 90000)).toBe(60);
+  expect(attemptElapsed({ ...a, state: "LOCKED" }, 181000)).toBe(120);
+  expect(attemptElapsed({ ...a, ended: 121000 }, 999000)).toBe(60);
+  expect(attemptElapsed(a, 999000)).toBe(300);
+  expect(attemptElapsed({ ...a, state: "COMPLETED" }, 999000)).toBeNull();
+  expect(attemptElapsed({ ...a, start: null }, 999000)).toBeNull();
+  expect(
+    preflightElapsed({ preflight_started_at: 1000, ended: 31000 }, 999000),
+  ).toBe(30);
+  expect(preflightElapsed({ start: 61000 }, 999000)).toBeNull();
+});

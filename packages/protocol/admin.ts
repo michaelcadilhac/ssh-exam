@@ -94,3 +94,22 @@ export function clockEditable(a: any, now: number): boolean {
     !a.pendingClockReset
   );
 }
+
+// Exam elapsed time includes pauses because the clock continues. Never keep a
+// finished attempt ticking, or count an unstarted preflight as exam time.
+export function attemptElapsed(a: any, now: number): number | null {
+  if (
+    !a.start ||
+    (["COMPLETED", "CANCELLED_BEFORE_START"].includes(a.state) && !a.ended)
+  )
+    return null;
+  const end = a.ended || Math.min(now, a.deadline || now);
+  return Math.max(0, (end - a.start) / 1000);
+}
+export function preflightElapsed(a: any, now: number): number | null {
+  if (!a.preflight_started_at) return null;
+  return Math.max(
+    0,
+    ((a.start || a.ended || now) - a.preflight_started_at) / 1000,
+  );
+}
