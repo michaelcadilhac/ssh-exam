@@ -52,3 +52,40 @@ unconfirmed protection/termination. They no longer call account restoration a co
 Run the root qualification with a compiled core test binary and
 `EXAM_RELEASE_SSH_TEST=1 ... -test.run=^TestDeniedIdleSSHRestorationWithRealOpenSSH$`.
 The test refuses to reuse its fixed UID 29980 or an existing account.
+
+## Deployment and rollback
+
+Deployed code revision `e10ff5e` on October 19, 2026. Both class-server state and the
+webserver database had no preparing, active, locked or unresolved collection attempts.
+The native installer used its state-lock drain barrier with PREPARING also prohibited,
+so no preflight or timed attempt was cancelled. No account policy/configuration changed.
+
+- Web image: `ssh-exam-workspace:denied-ssh-e10ff5e`, also the normal `:1.0.0` service tag.
+- Image SHA-256: `988ef297127a0b6644a6f6462755ebc2aa3b1b39da498fd809d6e271f1d41fc4`.
+- Previous image: `ddb8071015526b55c745ca1efe158f6508c7d4ff2c60004d11082ad39515c8c2`.
+- Private web backup/receipt: `/var/backups/ssh-exam/20261019T172017Z-denied-ssh-o6sl5x74`.
+- Native binary/configuration backup: `/var/backups/ssh-exam/20261019T172010Z-browser-ssh-3xvb6log`
+  (the existing upgrade tool retains its historical backup label).
+- Installed exam-agent SHA-256: `8c6902288517eb466139ff951cddf6e08fd65c51a3c838e69c83daf1b235a344`.
+- Installed exam-login SHA-256: `32fcf80b2f135bf36e3e6fa88452f85750516c525684ca6a133d5fc24586a19e`.
+- Installed examctl SHA-256: `e31d840051ce380989fd891403cd3d230b0e082217340611d0310359e6523e39`.
+- Installed exam-info SHA-256: `3c62e75960e6b9c19a5bd9156bafb6de60f887f9ed97f203a8a201bfaccde1e0`.
+
+All four installed native hashes and all three changed compiled server modules match the
+local build. Public readiness reports production ready, maintenance false and notifications
+true. The web container is healthy with zero restarts; agent and independent watchdog are
+active with zero restarts. Native health is ready and still lists mcadilha as the unrestricted
+administrator sandbox. Its login shell remains `/bin/bash`; native configuration is byte-for-byte
+unchanged. The disposable qualification account was removed.
+
+An isolated check imported the exact deployed server modules, exercised failed cancellation,
+retry deduplication and secured-submission restoration alerts against temporary data, and passed.
+It neither touched production attempts nor sent mail. Frontend assets are unchanged.
+The affected adomecq attempt remains COMPLETED/protected, policy NORMAL, access RELEASED,
+with no access error. `examctl manifest` verified the same original protected checksum.
+
+Rollback requires drained attempts and the existing guarded native/web installation procedure.
+Restore the previous binaries/image, preserving current state, policy journals, deadlines and
+protected submissions. Never restore the backup state snapshot over newer attempts or archives.
+No database/schema rollback is needed. Older agent code ignores the new denial bookkeeping
+and reverts to its stricter restoration scan, so denied idle SSH can again delay release.
