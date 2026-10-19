@@ -1237,4 +1237,9 @@ test("review shows preflight, finished duration, access failures, clock changes 
   await expect(
     dialog.getByRole("button", { name: "Live screen", exact: true }),
   ).toHaveCount(0);
+  a.ended = null; // A historical end can be missing; never keep it ticking.
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    dialog.getByText("Time taken", { exact: true }).locator(".."),
+  ).toContainText("Not recorded");
 });

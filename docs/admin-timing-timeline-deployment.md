@@ -42,3 +42,25 @@ Rollback must preserve the current database/deadlines/submissions. Migration 010
 older server versions ignore the nullable column. Do not remove the column or restore an old
 state backup over newer attempts. Restore the previous complete image under the normal drain
 barrier if necessary; the native agent needs no rollback for this UI deployment.
+
+## Production verification
+
+Deployed revision `a9bc573` on October 19, 2026, at 18:34 UTC. Both live and offline
+cutover checks found no preparing/active/paused/unresolved attempts; no student was interrupted.
+
+- Image: `ssh-exam-workspace:admin-timing-a9bc573`, also normal `:1.0.0` tag.
+- Image SHA-256: `5f8189fc46130f84ca87725fa9f996fe402645499f6440ed62a5b74d97322654`.
+- Previous image: `988ef297127a0b6644a6f6462755ebc2aa3b1b39da498fd809d6e271f1d41fc4`.
+- Private backup/receipt: `/var/backups/ssh-exam/20261019T183428Z-admin-timing-vvt9_teo`.
+- JavaScript `/assets/index-Dmv0O7y9.js` SHA-256:
+  `fb574400e5094ac0324b4e905bf5c29a9040659cd8b7157fd3caa0b83f1bab02`.
+- Stylesheet `/assets/index-BTmCEDaV.css` SHA-256:
+  `62b964202b5f17de47508675c2e69a1028ee0c2b9edc737cca0e06fee7ea2e0b`.
+
+The public admin HTML references these exact tested assets; deployed hashes match the local
+production build. The container is healthy with zero restarts. Readiness is production-ready,
+maintenance false, notifications enabled. Schema version 10 is installed; all 15 existing
+attempts retain their identity, state, original/current deadlines, start/end, protection and
+checksum exactly. Their unrecorded preflight dates remain NULL. Two instructor accounts,
+sandbox and configurable instructor email recipients remain intact. Native class-server
+binaries/configuration were not changed by this deployment.
