@@ -554,3 +554,34 @@ the policy fence; old sessions and writers are still neutralized before material
 No password or MFA answer is retained or reused for the automatic replacement. The browser
 worker clears the ephemeral private key after its one handshake; it cannot silently reconnect
 an active exam. Keep the existing instructor-authorization policy for actual recovery.
+
+### Global terminal Emacs clipboard
+
+Install the tracked `emacs/50terminal-clipboard.el` root-owned, mode 0644 at
+`/etc/emacs/site-start.d/50terminal-clipboard.el` (Ubuntu/Debian’s global site-start
+loader). Back up an existing file first; do not leave an older same-name `.elc`,
+which takes precedence. No agent, SSH or Emacs daemon restart is required for new
+standalone Emacs processes. Existing Emacs processes need to load the file and run
+`depaul-terminal-clipboard-setup` in their terminal frame, or restart Emacs.
+
+Emacs 29’s built-in xterm backend sends OSC 52 on **C-w** (cut) and **M-w** (copy).
+An ordinary SSH client terminal must allow OSC 52 writes for its system clipboard
+to change. Clipboard queries are not enabled. Native GUI frames retain their normal
+backend, other terminal capabilities are preserved, and a user can opt out with
+`(setq depaul-terminal-clipboard-enabled nil)` in their init file. `-Q`/`--no-site-file`
+intentionally skip global startup. Multiplexer OSC 52 forwarding remains the client’s
+responsibility. User clipboard settings/customizations remain respected.
+
+The exam’s read-only host filesystem includes this global configuration. Its Emacs
+state wrapper preserves normal startup. The exam terminal accepts bounded OSC 52
+writes into the existing attempt-local clipboard, shared between panes; it never
+uses the computer’s clipboard or answers queries. Locked/covered/disconnected panes
+and instructor replay cannot change that clipboard. Clipboard text is not separately
+persisted; terminal recordings still contain terminal output under the existing policy.
+
+Run `emacs -Q --batch -l ssh-server/emacs/terminal-clipboard-tests.el -f
+ert-run-tests-batch-and-exit` from the repository root. The browser clipboard suite
+also runs real `emacs -nw` in a disposable PTY (`emacs` and Python 3 required), then
+checks its output through the actual exam terminal and cross-pane paste. It requires
+no SSH credentials or system clipboard access. Rollback removes/restores the single
+global file and reloads/restarts Emacs; it does not change student account settings.

@@ -69,3 +69,8 @@ read-only home view. Save answers in the configured exam directory. Cache, histo
 and editor state use disposable storage and are discarded after your attempt’s
 processes end; they are not submitted or copied back to your real home. Administrator
 sandbox testing retains the ordinary unrestricted home.
+
+Terminal Emacs supports the exam clipboard: **C-w cuts** the selected region and
+**M-w copies** it. Paste into another exam terminal with **Ctrl+Shift+V** or the
+terminal’s right-click **Paste** action. This clipboard stays inside the attempt;
+it does not change your computer’s clipboard. Normal Emacs yank (**C-y**) still works.

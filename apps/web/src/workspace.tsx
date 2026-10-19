@@ -1,3 +1,5 @@
+import { decodeTerminalClipboard } from "./terminal-clipboard.js";
+import { terminalInputChunks } from "./terminal-input.js";
 import React, { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -287,7 +289,15 @@ export function Workspace({
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
-    term.parser.registerOscHandler(52, () => true);
+    term.parser.registerOscHandler(52, (data) => {
+      // Always consume the sequence, even when disallowed; no fallback handler
+      // may query or overwrite the system clipboard.
+      if (!coveredRef.current && interaction() && panes.current.has(paneId)) {
+        const text = decodeTerminalClipboard(data);
+        if (text !== null) clipboard.current = text;
+      }
+      return true;
+    });
     term.parser.registerOscHandler(8, () => true);
     term.onSelectionChange(() => {
       if (coveredRef.current || !interaction()) return;
@@ -427,13 +437,15 @@ export function Workspace({
     panes.current.set(paneId, pane);
     term.open(el);
     term.onData((data) => {
-      if (!coveredRef.current && interaction())
+      for (const chunk of terminalInputChunks(data)) {
+        if (coveredRef.current || !interaction()) break;
         send({
           type: "input",
           pane: paneId,
-          data,
+          data: chunk,
           generation: attemptRef.current.generation,
         });
+      }
     });
     for (const [classname, symbol, label, click] of [
       [

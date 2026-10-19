@@ -399,7 +399,7 @@ Implement an in-memory, attempt-local text clipboard shared by the terminal wind
 - Keep clipboard/zoom actions in the context menu; the top bar contains a Terminals switcher instead of duplicate clipboard buttons or a text-size slider. Zoom is per pane and Reset zoom restores 15px. Fit and send updated SSH terminal dimensions after zoom. Clamp menus to the viewport, support arrow keys, dismiss on Escape/outside click, restore terminal focus, and close on exam lock, dialogs or completion. Optional shortcuts must not conflict with shell control keys.
 - Block ordinary system paste routes into the active student interface, including context-menu paste, standard paste shortcuts, middle-click paste, drag/drop, and browser textarea fallback routes.
 - Intercept copy behavior so it does not intentionally write exam text to the system clipboard. Do not read or overwrite the user's existing OS clipboard.
-- Do not enable OSC 52 clipboard integration or other terminal control sequences that read/write the system clipboard.
+- Accept OSC 52 writes only into the attempt-local clipboard from a current, interactive, uncovered terminal. Decode canonical base64/UTF-8 with a 75,000-byte cap; consume malformed/oversized requests without side effects. Never answer clipboard queries or read/write the OS clipboard. Replay also consumes OSC 52 without clipboard effects. Global terminal Emacs setup enables its built-in copy writer, so C-w (cut) and M-w (copy) populate the same internal buffer. Preserve per-terminal capability discovery and GUI behavior; do not enable clipboard reads. Split large pastes below the input-message limit without splitting surrogate pairs, checking authorization for every piece.
 - Do not enable auto-link opening, arbitrary URL handlers, terminal-triggered downloads, or file-transfer escape protocols.
 - Clear the internal clipboard at attempt end; do not persist it through a reload. It need not be destroyed during a temporary lock, but may not be pasted while locked.
 
@@ -1113,7 +1113,7 @@ Automate what is practical and provide a signed-off manual matrix for browser/OS
 - The timer and lock overlay remain visible above all internal windows.
 - PTY size reaches editors; minimizing never sends invalid zero dimensions or opens another shell.
 - Escape, interrupt, suspend, EOF, editor shortcuts, non-US/Dvorak layouts, and supported input methods work in the tested Chrome/Edge/Chromium matrix.
-- Internal clipboard works between terminals, including multiline bracketed paste, while ordinary paste/middle-click/drag-drop paths and OSC 52 integration are blocked in the active exam.
+- Internal clipboard works between terminals, including multiline bracketed paste, while ordinary paste/middle-click/drag-drop paths remain blocked in the active exam. OSC 52 writes from interactive terminals update only the internal buffer; queries, malformed/oversized writes, covered/locked/disconnected terminals and replay have no clipboard effects.
 - Login/password-manager input and administrator CSV paste remain usable.
 - Hostile terminal titles/output/URLs cannot execute script, navigate the browser, open another app, or alter clipboard policy.
 
