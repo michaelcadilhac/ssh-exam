@@ -365,6 +365,17 @@ store.db
 store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("reload", "student11", null, null, null, 10011);
+for (const [id, username, uid] of [
+  ["closure", "student07", 10007],
+  ["reload-opening", "student06", 10006],
+] as const) {
+  store.db
+    .prepare("INSERT INTO exams VALUES(?,?)")
+    .run(id, JSON.stringify({ ...exam, id }));
+  store.db
+    .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
+    .run(id, username, null, null, null, uid);
+}
 // A separate locked account exercises continuation rejection without depending
 // on the old active-exam Sign out button.
 store.db
@@ -394,6 +405,11 @@ store.db
 store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("temporary-access", "policytest01", null, null, null, 12001);
+// Disposable browser-test instrumentation only; never part of the production app.
+app.get("/api/fixture/runtime", async () => ({
+  pid: process.pid,
+  panes: [...h.activePanes.values()],
+}));
 await app.listen({ host: "127.0.0.1", port: 3100 });
 let stopping = false;
 async function shutdown() {

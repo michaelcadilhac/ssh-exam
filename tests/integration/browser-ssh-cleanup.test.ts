@@ -181,3 +181,41 @@ it("failed replay on a replacement control socket still expires and clears pendi
   expect(vi.getTimerCount()).toBe(0);
   await vi.advanceTimersByTimeAsync(120001);
 });
+it.each([14999, 15000, 20000])(
+  "server control rebind at %d ms enforces elapsed grace even before timer dispatch",
+  async (elapsed) => {
+    vi.useFakeTimers();
+    const { conn, socket, pane } = await setup();
+    let clock = 0;
+    const now = vi.spyOn(performance, "now").mockImplementation(() => clock);
+    try {
+      conn.onLoss = vi.fn();
+      socket.emit("close");
+      clock = elapsed;
+      const replacement = Object.assign(new EventEmitter(), {
+        send: vi.fn(),
+        close: vi.fn(),
+      });
+      if (elapsed < 15000) {
+        conn.attach(replacement as any);
+        expect(conn.alive).toBe(true);
+        expect(conn.onLoss).not.toHaveBeenCalled();
+        expect(conn.panes.size).toBe(1);
+      } else {
+        expect(() => conn.attach(replacement as any)).toThrow(
+          "recovery grace expired",
+        );
+        expect(conn.alive).toBe(false);
+        expect(conn.onLoss).toHaveBeenCalledTimes(1);
+        expect(conn.panes.size).toBe(0);
+      }
+      conn.close();
+      await pane.close();
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(120001);
+    } finally {
+      now.mockRestore();
+      conn.close();
+    }
+  },
+);

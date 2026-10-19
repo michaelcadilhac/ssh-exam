@@ -902,7 +902,9 @@ test("preflight errors stay visible inside fullscreen and keyboard lock can be r
   await lock.click();
   const error = page.getByRole("dialog", { name: "Keyboard lock failed" });
   await expect(error).toBeVisible();
-  await expect(error).toContainText("standalone desktop Chrome, Edge or Chromium");
+  await expect(error).toContainText(
+    "standalone desktop Chrome, Edge or Chromium",
+  );
   await expect(error).toContainText("lock() request could not be registered.");
   await error.screenshot({
     path: test.info().outputPath("fullscreen-keyboard-error.png"),
@@ -2012,9 +2014,15 @@ test("active page reload requires one instructor grant and fresh SSH before rest
   await expect(page.locator(".winbox")).toHaveCount(1);
   const original = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
-  // Suppress the cooperative pagehide beacon: reload recovery must work independently.
+  // Incidents use the monitoring WebSocket. Suppress that actual message so
+  // recovery is tested independently of cooperative pagehide/visibility events.
   await page.evaluate(() => {
-    navigator.sendBeacon = () => false;
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (typeof data === "string" && JSON.parse(data).type === "incident")
+        return;
+      return send.call(this, data);
+    };
   });
   await page.reload();
   await expect(

@@ -97,6 +97,7 @@ export class BrowserConnection extends Connection {
     }
   >();
   private detachment?: NodeJS.Timeout;
+  private detachedAt: number | null = null;
   private closed = false;
   private opening = new Map<string, { closed: boolean }>();
   constructor(
@@ -111,7 +112,21 @@ export class BrowserConnection extends Connection {
   }
   attach(ws: WebSocket) {
     if (this.closed) throw Error("SSH connection ended");
+    // Timer dispatch may be delayed by the event loop. Never let a late bind
+    // extend the server's recovery grace merely by clearing an overdue timer.
+    if (
+      this.detachedAt !== null &&
+      performance.now() - this.detachedAt >= 15000
+    ) {
+      this.alive = false;
+      this.onLoss();
+      this.close();
+      throw new AgentCommandDisconnectedError(
+        "SSH recovery grace expired; fresh authentication is required",
+      );
+    }
     clearTimeout(this.detachment);
+    this.detachedAt = null;
     const previous = this.socket;
     this.socket = ws;
     if (previous && previous !== ws) previous.close(1000, "Control replaced");
@@ -119,12 +134,14 @@ export class BrowserConnection extends Connection {
       if (this.socket !== ws) return;
       this.socket = undefined;
       if (!this.alive) this.close();
-      else
+      else {
+        this.detachedAt = performance.now();
         this.detachment = setTimeout(() => {
           this.alive = false;
           this.onLoss();
           this.close();
         }, 15000);
+      }
     });
     // Install close handling before replay: a failed resend must still start
     // the bounded detachment cleanup, rather than orphaning this connection.
@@ -396,6 +413,7 @@ export class BrowserConnection extends Connection {
     if (this.closed) return;
     this.closed = true;
     clearTimeout(this.detachment);
+    this.detachedAt = null;
     this.notify("close", {});
     this.alive = false;
     this.authority.unbind(this);

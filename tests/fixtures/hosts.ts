@@ -51,6 +51,7 @@ export async function hosts(
   const authCalls = { jump: 0, class: 0 };
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const counts = { jump: 0, class: 0, panes: 0 };
+  const activePanes = new Map<string, { attempt: string; pane: string }>();
   const caps = new Map<string, any>();
   const clients: any[] = [];
   let classPort = 0;
@@ -270,6 +271,9 @@ export async function hosts(
                   );
                 else {
                   counts.panes++;
+                  const key = transportID + ":" + cap.pane;
+                  activePanes.set(key, { attempt: cap.id, pane: cap.pane });
+                  stream.once("close", () => activePanes.delete(key));
                   const result = {
                     attempt: cap.id,
                     pane: cap.pane,
@@ -473,6 +477,7 @@ export async function hosts(
     },
     class: { host: "127.0.0.1", port: classPort, pins: [pin(classKey)] },
     counts,
+    activePanes,
     issueHandoff,
     authCalls,
     agent,
