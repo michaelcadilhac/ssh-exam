@@ -1,3 +1,4 @@
+import { cleanupDiagnostic } from "./cleanup-diagnostic.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
 import {
   FOCUS_GRACE_MS,
@@ -79,6 +80,7 @@ export class Lifecycle {
   onSecured = (_attempt: Attempt) => {};
   onPaused = (_attempt: Attempt) => {};
   onClockChanged = (_attempt: Attempt) => {};
+  onPreflightFailure = (_details: Record<string, unknown>) => {};
   constructor(
     public store: Store,
     public agent: Agent,
@@ -538,13 +540,25 @@ export class Lifecycle {
     }
   }
   syncAccess(id: string, remote: any) {
+    const a = this.store.attempt(id);
+    const identity = [
+      `Student: ${a.username}`,
+      `Exam: ${a.exam}`,
+      `Attempt: ${id}`,
+    ];
     if (
       remote.policy_error &&
       remote.policy_error !== this.store.attempt(id).policy_error
     )
       this.alert(
         "Account policy requires recovery",
-        `Attempt ${id}: ${remote.policy_error}`,
+        [
+          ...identity,
+          "",
+          "Account policy enforcement or restoration needs attention.",
+          `Reason: ${JSON.stringify(remote.policy_error)}`,
+        ].join("\n"),
+        { coalesce: false },
       );
     this.store.db
       .prepare(
@@ -562,7 +576,17 @@ export class Lifecycle {
     )
       this.alert(
         "Account access release requires recovery",
-        `Attempt ${id}: ${remote.access_error}. Account remains restricted.`,
+        [
+          ...identity,
+          "",
+          (remote.protected && remote.state === "COMPLETED") ||
+          (a.protected && a.state === "COMPLETED")
+            ? "The submission is already secured. Ordinary account access has not yet been restored."
+            : "Submission protection or workload termination has not been confirmed. Ordinary account access remains restricted.",
+          `Restoration check: ${JSON.stringify(String(remote.access_error).replace("collection refused until all writers are quiesced", "account restoration blocked until all writers are quiesced"))}`,
+          "The class server retries restoration; inspect its status if this persists.",
+        ].join("\n"),
+        { coalesce: false },
       );
     const state = ["HELD", "RELEASED", "OVERRIDDEN"].includes(
       remote.access_state,
@@ -590,19 +614,74 @@ export class Lifecycle {
     const a = this.store.attempt(id);
     if (a.state !== "PREPARING" || a.start !== null) return;
     this.busy.add(id);
+    let stage = "cancel-attempt";
+    const confirmed = () => {
+      if (this.store.attempt(id).state !== "CANCELLED_BEFORE_START")
+        return false;
+      this.store.db
+        .prepare("UPDATE attempts SET reason=? WHERE id=?")
+        .run(reason, id);
+      this.store.audit("gateway", "cancel-preflight", id, reason);
+      return true;
+    };
     try {
       await this.agent.call("cancel-attempt", { id });
+      stage = "confirm-cancellation";
       await this.reconcile(id);
-      if (this.store.attempt(id).state === "CANCELLED_BEFORE_START") {
-        this.store.db
-          .prepare("UPDATE attempts SET reason=? WHERE id=?")
-          .run(reason, id);
-        this.store.audit("gateway", "cancel-preflight", id, reason);
-      }
-    } catch (e) {
-      // A lost activation response must never become a fresh attempt.
+      if (!confirmed())
+        throw Error(
+          "Preflight cancellation was not confirmed by the class server",
+        );
+    } catch (error) {
+      // The cancellation reply may be lost even after the root agent committed it.
+      // Never retry a preparation whose activation actually committed remotely.
       await this.reconcile(id).catch(() => {});
-      throw e;
+      const diagnostic = cleanupDiagnostic(error);
+      const current = this.store.attempt(id);
+      const outcome = confirmed()
+        ? "cancellation-confirmed"
+        : current.start !== null
+          ? "attempt-started"
+          : "cleanup-pending";
+      const detail = { stage, ...diagnostic, outcome };
+      const prior = this.store.db
+        .prepare(
+          "SELECT action,detail FROM audit WHERE target=? AND action IN ('preflight-cleanup-failed','cancel-preflight') ORDER BY rowid DESC LIMIT 1",
+        )
+        .get(id) as { action: string; detail: string } | undefined;
+      const signature = JSON.stringify(detail);
+      if (
+        prior?.action !== "preflight-cleanup-failed" ||
+        prior.detail !== signature
+      ) {
+        this.store.audit("gateway", "preflight-cleanup-failed", id, signature);
+        this.onPreflightFailure({
+          attempt: id,
+          username: a.username,
+          exam: a.exam,
+          ...detail,
+        });
+        if (outcome === "cleanup-pending")
+          this.alert(
+            `Preflight cleanup pending: ${a.username} (${a.exam})`,
+            [
+              `Student: ${a.username}`,
+              `Exam: ${a.exam}`,
+              `Attempt: ${id}`,
+              "",
+              "Cancellation of this unstarted preflight could not be confirmed.",
+              `Stage: ${stage}`,
+              `Reason: ${diagnostic.reason}`,
+              `Cause: ${diagnostic.cause}`,
+              diagnostic.cause === "ssh-disconnected"
+                ? "The student's SSH command connection is unavailable. This does not establish a class-agent outage."
+                : "The cancellation command or confirmation failed; this does not establish a class-agent outage.",
+              "Cleanup will be retried when an authenticated student SSH connection is available. Check the class-server status before resetting this preparation.",
+            ].join("\n"),
+            { coalesce: false },
+          );
+      }
+      if (outcome !== "cancellation-confirmed") throw error;
     } finally {
       this.busy.delete(id);
     }

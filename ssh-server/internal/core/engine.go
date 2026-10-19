@@ -434,6 +434,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 		}
 		return err
 	}()
+	if op == "cancel-attempt" && err != nil && attemptID.MatchString(r.ID) {
+		log.Printf("preflight cancellation failed attempt=%s operation=cancel-attempt: %v", r.ID, err)
+	}
 	return result, err
 }
 func (e *Engine) issue(c Capability) any {

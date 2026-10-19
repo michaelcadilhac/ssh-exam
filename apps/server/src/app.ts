@@ -83,6 +83,8 @@ export async function createApp(
     agent = new Agent(config.agent, store),
     monitoring = new Monitoring(store, config.terminalRecordingLimitMiB),
     life = new Lifecycle(store, agent, monitoring);
+  life.onPreflightFailure = (details) =>
+    app.log.warn(details, "Preflight cleanup failed");
   const clocks = new ClockControl(store, agent, life);
   const authAttempts = new Map<string, { at: number; count: number }>();
   store.db
@@ -637,13 +639,9 @@ export async function createApp(
         if (a.state === "PREPARING")
           await life
             .cancelPreflight(a.id, "Signed out before starting")
-            .catch(() =>
-              life.alert(
-                "Preflight cleanup pending",
-                `Attempt ${a.id}: class agent unavailable; cleanup will retry.`,
-              ),
-            );
-        else
+            .catch(() => {});
+        // Activation may have committed while cancellation was in flight.
+        if (["ACTIVE", "LOCKED"].includes(store.attempt(a.id).state))
           await life.lock(
             a.id,
             "Student signed out; instructor review required",

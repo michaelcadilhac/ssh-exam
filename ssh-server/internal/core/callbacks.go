@@ -40,6 +40,7 @@ func publicAttempt(a *Attempt) *Attempt {
 	v.Authorization = 0
 	v.Lease = 0
 	v.Units = nil
+	v.DeniedSSHTransports = nil
 	return &v
 }
 

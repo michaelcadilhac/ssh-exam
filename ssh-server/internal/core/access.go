@@ -42,7 +42,7 @@ func (e *Engine) verifyRelease(a *Attempt) error {
 	if err := e.terminate(a); err != nil {
 		return err
 	}
-	return e.verifyWriters(a)
+	return e.verifyReleaseWriters(a)
 }
 func (e *Engine) reconcileAccess(a *Attempt) {
 	if a.Start == 0 || !accessHeld(a) || ((!sandboxAttempt(a) || e.temporaryPolicy(a)) && !restrictionElapsed(a)) {
@@ -59,6 +59,7 @@ func (e *Engine) reconcileAccess(a *Attempt) {
 		}
 		return
 	} // Collection/recovery failure keeps the hold.
+	a.AccessError = ""
 	if e.temporaryPolicy(a) && a.PolicyGeneration != "" && a.PolicyState != "NORMAL" {
 		a.PolicyRestoreAuthorized = true
 		if a.PolicyState != "RESTORE_FAILED" {

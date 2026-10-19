@@ -53,6 +53,12 @@ failure is alerted separately. Missing/corrupt initialized state is a recovery f
 an empty registry. Restore authoritative state and protected copies together; retain original
 deadlines and restrictions. Do not remove the initialized marker or force an empty state.
 
+A denied SSH connection can remain idle after its shell/command/SFTP/SCP channel is rejected. A completed, protected attempt records that denial against the kernel-verified transport. Restoration ignores only the live root-installed SSH daemon directly under that verified privileged monitor and without writable regular-file descriptors. The original/current deadlines still apply. Shells, background writers, nested processes, unrecorded transports and stale identities remain blockers. Collection and activation retain their stricter checks; no submission is recollected or replaced. Denial proofs survive agent restarts in root-private state and are omitted from callbacks.
+
+“Account access release requires recovery” now identifies student, exam and attempt and says whether the submission is already secured. Its process error concerns restoration, not a new collection failure. Inspect the PID executable, UID, parent, cgroup and open descriptors; avoid dumping command lines or environment. Never kill an arbitrary PID from an old email without checking its current identity.
+
+“Preflight cleanup pending” means cancellation or its confirmation failed. The email and `preflight-cleanup-failed` audit record include the actual safe operational cause and failed stage. The webserver structured log uses `Preflight cleanup failed`; native cancellation rejections are also in the exam-agent journal as `preflight cancellation failed`. A disconnected student command path is not evidence of an agent outage. Automatic retry requires that student's authenticated SSH connection; alternatively inspect and cancel a provably unstarted preparation with local examctl. Lost replies that reconcile as cancelled do not send a pending alert; a committed start keeps its original timing and recovery policy. Identical retries are deduplicated. Unknown SSH error text is omitted to protect secrets; use the native journal for the corresponding agent-side failure.
+
 For a secured and fully terminated attempt only, root can use:
 
     sudo examctl -reason 'Concrete emergency reason and administrator disposition' override-access ATTEMPT_UUID

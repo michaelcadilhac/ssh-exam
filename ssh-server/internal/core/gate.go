@@ -176,6 +176,7 @@ func (e *Engine) local(c *net.UnixConn) {
 			if err := e.ordinaryAccess(account.UID); err != nil {
 				if a := e.Busy(account.UID); a != nil {
 					e.Audit("ordinary-access-denied", a.ID)
+					e.recordDeniedSSH(a, int(cred.Pid))
 				}
 				return err
 			}

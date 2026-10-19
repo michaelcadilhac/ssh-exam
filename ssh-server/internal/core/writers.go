@@ -38,7 +38,9 @@ func (e *Engine) quiesceWriters(a *Attempt) error {
 	}
 	return f.Chmod(0500)
 }
-func (e *Engine) verifyWriters(a *Attempt) error {
+func (e *Engine) verifyWriters(a *Attempt) error        { return e.inspectWriters(a, false) }
+func (e *Engine) verifyReleaseWriters(a *Attempt) error { return e.inspectWriters(a, true) }
+func (e *Engine) inspectWriters(a *Attempt, release bool) error {
 	if e.trustedAdministratorAttempt(a) {
 		return nil
 	} // Explicit trusted administrator sandbox; other exam UIDs require isolation.
@@ -109,6 +111,12 @@ func (e *Engine) verifyWriters(a *Attempt) error {
 			if err == nil && (identity == a.Transport || e.state.Registrations[identity] == a.Username) {
 				continue
 			}
+		}
+		if release && e.idleDeniedSSH(a, pid) {
+			continue
+		}
+		if release {
+			return fmt.Errorf("uncontained process %d for exam UID; account restoration blocked until all writers are quiesced", pid)
 		}
 		return fmt.Errorf("uncontained process %d for exam UID; collection refused until all writers are quiesced", pid)
 	}
