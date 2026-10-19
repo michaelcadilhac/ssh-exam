@@ -197,3 +197,30 @@ it.each(["disconnect", "cancel", "shutdown"])(
     }
   },
 );
+
+it("emails a sign-in worker crash without claiming an unstarted exam needs instructor authorization", async () => {
+  const t = await setup({ mfaDelayMs: 5000 });
+  try {
+    start(t.ws);
+    await until(() => t.messages.some((m) => m.prompts?.length));
+    (t.connection() as any).child.kill("SIGKILL");
+    await until(
+      () =>
+        (t.store.db.prepare("SELECT count(*) n FROM outbox").get() as any).n ===
+        1,
+    );
+    const alert = t.store.db
+      .prepare("SELECT subject,body FROM outbox")
+      .get() as any;
+    expect(alert.subject).toBe("Exam connection failure: student");
+    expect(alert.body).toContain("Exam: unused");
+    expect(alert.body).toContain("exam clock has not started");
+    expect(alert.body).not.toMatch(/Instructor authorization|shared-password/);
+    expect(t.store.db.prepare("SELECT count(*) n FROM attempts").get()).toEqual(
+      { n: 0 },
+    );
+    expect((await t.app.inject({ url: "/health/live" })).statusCode).toBe(200);
+  } finally {
+    await t.close();
+  }
+});

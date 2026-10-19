@@ -79,8 +79,8 @@ class RemotePane extends EventEmitter {
   }
 }
 
-// This proxy owns no SSH machinery, callbacks, request timers or signing logic for
-// an attempt. Those run in a disposable OS process. Only bounded IPC crosses here.
+// SSH clients, signing and browser-operation lifecycles run in a disposable OS
+// process. The HTTP-side proxy owns only bounded IPC and supervision state.
 export class IsolatedConnection implements ConnectionHandle {
   panes = new Map<string, ClientChannel>();
   alive = false;
@@ -306,6 +306,13 @@ export class IsolatedConnection implements ConnectionHandle {
     if (m.kind === "socket-send") {
       const socket = this.sockets.get(m.socket);
       if (socket?.readyState === 1) {
+        if (
+          socket.bufferedAmount + Buffer.byteLength(m.data) >
+          16 * 1024 * 1024
+        ) {
+          socket.terminate();
+          return;
+        }
         try {
           socket.send(m.data, (error) => {
             if (error) socket.terminate();

@@ -1666,12 +1666,18 @@ export async function createApp(
       }
       let bound = false;
       let controls = Promise.resolve();
-      let controlQueue = 0;
+      let controlQueue = 0,
+        controlBytes = 0;
       ws.on("message", (data) => {
-        if (++controlQueue > 64) {
+        const bytes = Array.isArray(data)
+          ? data.reduce((n, b) => n + b.length, 0)
+          : data.byteLength;
+        if (ws.readyState !== WebSocket.OPEN) return;
+        if (++controlQueue > 64 || controlBytes + bytes > 16 * 1024 * 1024) {
           ws.close(1008, "Control queue exceeded");
           return;
         }
+        controlBytes += bytes;
         controls = controls.then(async () => {
           try {
             const m = JSON.parse(data.toString());
@@ -1691,6 +1697,7 @@ export async function createApp(
             ws.close(1008);
           } finally {
             controlQueue--;
+            controlBytes -= bytes;
           }
         });
       });
@@ -1883,29 +1890,39 @@ export async function createApp(
             const owned = [...attemptConnections].find(
               ([, c]) => c === isolated,
             );
+            const context = owned
+              ? store.attempt(owned[0])
+              : (store.db
+                  .prepare(
+                    "SELECT id,start FROM attempts WHERE exam=? AND username=? AND state IN ('PREPARING','ACTIVATING','ACTIVE','LOCKED') ORDER BY rowid DESC LIMIT 1",
+                  )
+                  .get(p.exam, p.username) as
+                  | Pick<Attempt, "id" | "start">
+                  | undefined);
             const event = randomUUID();
             const detail = JSON.stringify({ event, ...failure });
             store.audit(
               "supervisor",
               "attempt-worker-failed",
-              owned?.[0] || "",
+              context?.id || "",
               detail,
             );
             app.log.error(
               {
                 username: p.username,
                 exam: p.exam,
-                attempt: owned?.[0],
+                attempt: context?.id,
                 event,
                 ...failure,
               },
               "Attempt connection process failed",
             );
-            const reason =
-              "Exam connection process failed. Instructor authorization and fresh SSH sign-in are required.";
+            const reason = context?.start
+              ? "Exam connection process failed. Recovery authorization and fresh SSH sign-in are required."
+              : "SSH sign-in/preflight process failed. Sign in again; the exam clock has not started.";
             life.alert(
               "Exam connection failure: " + p.username,
-              `Student: ${p.username}\nExam: ${p.exam}\nAttempt: ${owned?.[0] || "sign-in/preflight"}\n${reason}\nDiagnostic: ${detail}`,
+              `Student: ${p.username}\nExam: ${p.exam}\nAttempt: ${context?.id || "sign-in/preflight"}\n${reason}\nDiagnostic: ${detail}`,
               { coalesce: false },
             );
             if (
