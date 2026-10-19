@@ -46,7 +46,8 @@ relay did not need restarting. No student attempt was reset or extended.
 - Production build/typecheck passed; **238 unit/integration tests passed**.
 - Go SSH-client tests passed with the race detector, including command/admission
   cancellation, duplicate pending opens/closes and preserving another terminal.
-- **Ten browser checks passed with the actual WASM/SSH relay fixture**: six repeated
+- **Ten browser checks passed** (seven actual WASM/SSH workflows and three controlled
+  activation-transition fixtures): six repeated
   shell exits beyond the pane limit, closing one of multiple panes, preflight logout,
   fresh sign-in, early finish/verified collection/sign-out, direct active logout with
   unchanged deadlines, protected handoff, sandbox repeat/recovery, terminal controls,
