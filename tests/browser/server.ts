@@ -1,4 +1,6 @@
 // Browser fixtures only; this file is excluded from the production server build.
+import { smtpFixture } from "../fixtures/smtp.js";
+import type { IsolatedConnection } from "../../apps/server/src/connection-process.js";
 import { createApp } from "../../apps/server/src/app.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -233,22 +235,42 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   }
   return a;
 };
-const { app, store } = await createApp({
-  mode: "development",
-  origin: "http://localhost:3100",
-  data: mkdtempSync(tmpdir() + "/exam-browser-"),
-  port: 3100,
-  jump: h.jump,
-  class: h.class,
-  agent: h.agentConfig,
-  ...(browserMode
-    ? {
-        browserSSH: { relay: "ws://localhost:3101", audience: "fixture-relay" },
-      }
-    : {}),
-  maintenance: false,
-  preflightIdleMs: 5000,
-});
+const workers: IsolatedConnection[] = [];
+const smtpPath = mkdtempSync(tmpdir() + "/exam-fixture-mail-") + "/smtp.sock";
+const mail = await smtpFixture(smtpPath);
+const { app, store } = await createApp(
+  {
+    mode: "development",
+    origin: "http://localhost:3100",
+    data: mkdtempSync(tmpdir() + "/exam-browser-"),
+    port: 3100,
+    jump: h.jump,
+    class: h.class,
+    agent: h.agentConfig,
+    ...(browserMode
+      ? {
+          browserSSH: {
+            relay: "ws://localhost:3101",
+            audience: "fixture-relay",
+          },
+        }
+      : {}),
+    smtp: {
+      socket: smtpPath,
+      from: "exam@example.edu",
+      to: ["instructor@example.edu"],
+    },
+    maintenance: false,
+    preflightIdleMs: 5000,
+  },
+  {
+    connectionWorkerEntry: new URL(
+      "../fixtures/faulting-connection-worker.ts",
+      import.meta.url,
+    ),
+    onConnection: (connection) => workers.push(connection),
+  },
+);
 h.control.command = fixtureCall;
 store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
   "class",
@@ -368,6 +390,8 @@ store.db
 for (const [id, username, uid] of [
   ["closure", "student07", 10007],
   ["reload-opening", "student06", 10006],
+  ["isolation-a", "student08", 10008],
+  ["isolation-b", "student09", 10009],
 ] as const) {
   store.db
     .prepare("INSERT INTO exams VALUES(?,?)")
@@ -409,7 +433,30 @@ store.db
 app.get("/api/fixture/runtime", async () => ({
   pid: process.pid,
   panes: [...h.activePanes.values()],
+  workers: workers
+    .filter((c) => c.alive)
+    .map((c: any) => ({ username: c.username, pid: c.child.pid })),
+  emails: mail.messages,
+  outbox: store.db
+    .prepare("SELECT subject,body,status,tries FROM outbox")
+    .all(),
 }));
+// Fault injection is strictly fixture-only; production has no corresponding route.
+app.post("/api/fixture/fault", async (req) => {
+  const { username, fault } = req.body as any;
+  const worker = workers.findLast(
+    (c) => c.username === username && c.alive,
+  ) as any;
+  if (!worker) throw Error("No live fixture worker");
+  if (fault === "kill") worker.child.kill("SIGKILL");
+  else worker.child.send({ kind: "fixture-fault", fault });
+  return { pid: worker.child.pid };
+});
+app.post("/api/fixture/mail", async (req) => {
+  mail.reject(!!(req.body as any).reject);
+  store.db.prepare("UPDATE outbox SET next=0 WHERE status='pending'").run();
+  return {};
+});
 await app.listen({ host: "127.0.0.1", port: 3100 });
 let stopping = false;
 async function shutdown() {
@@ -424,6 +471,7 @@ async function shutdown() {
     }),
   ]);
   await h.close();
+  await mail.close();
 }
 process.once("SIGTERM", () => void shutdown());
 process.once("SIGINT", () => void shutdown());

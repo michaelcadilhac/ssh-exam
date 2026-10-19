@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { Connection } from "../../apps/server/src/ssh.js";
+import { IsolatedConnection as Connection } from "../../apps/server/src/connection-process.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import WebSocket from "ws";

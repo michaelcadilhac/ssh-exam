@@ -48,6 +48,7 @@ const schema = z.object({
   loginOnly: z.boolean().optional(),
   functionalTest: z.boolean().optional(),
   terminalRecordingLimitMiB: z.number().int().min(1).max(1048576).optional(),
+  connectionWorkers: z.number().int().min(1).max(128).optional(),
   preflightIdleMs: z.number().int().min(1000).max(86400000).optional(),
   readinessFile: z.string().optional(),
 });

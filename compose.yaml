@@ -23,7 +23,7 @@ services:
       - /tmp:rw,noexec,nosuid,size=128m
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    pids_limit: 256
+    pids_limit: 1024
     mem_limit: 4g
     cpus: 4
     restart: unless-stopped

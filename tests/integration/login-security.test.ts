@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import WebSocket from "ws";
 import { createApp } from "../../apps/server/src/app.js";
-import { Connection } from "../../apps/server/src/ssh.js";
-import { LoginPassword } from "../../apps/server/src/login-password.js";
+import type { IsolatedConnection } from "../../apps/server/src/connection-process.js";
+
 import { hosts } from "../fixtures/hosts.js";
 async function setup(options: Parameters<typeof hosts>[0] = {}) {
   const h = await hosts(options);
@@ -28,7 +28,11 @@ async function setup(options: Parameters<typeof hosts>[0] = {}) {
     },
     maintenance: false,
   };
+  let connection: IsolatedConnection | undefined;
   const { app, store } = await createApp(config, {
+    onConnection: (value) => {
+      connection = value;
+    },
     logStream: new Writable({
       write(chunk, _encoding, done) {
         logs += chunk.toString();
@@ -65,6 +69,7 @@ async function setup(options: Parameters<typeof hosts>[0] = {}) {
     ws,
     messages,
     logs: () => logs,
+    connection: () => connection,
     close: async () => {
       ws.terminate();
       await app.close();
@@ -166,14 +171,6 @@ it.each(["disconnect", "cancel", "shutdown"])(
   "clears in-memory credentials on browser %s during phone approval",
   async (reason) => {
     const t = await setup({ mfaDelayMs: 5000 });
-    let c: Connection | undefined;
-    const originalConnect = Connection.prototype.connect;
-    const spy = vi
-      .spyOn(Connection.prototype, "connect")
-      .mockImplementation(function (this: Connection, ...args) {
-        c = this;
-        return originalConnect.apply(this, args);
-      });
     try {
       start(t.ws);
       await until(() => t.messages.some((m) => m.prompts?.length));
@@ -183,22 +180,19 @@ it.each(["disconnect", "cancel", "shutdown"])(
         "shared-password",
       );
       await until(() => t.messages.some((m) => m.instruction?.includes("42")));
-      const auth = (c as any).authentication;
-      const scope = auth.password as LoginPassword;
-      const buffer = (scope as any).value as Buffer;
-      expect(buffer.toString()).toBe("shared-password");
+      const c = t.connection()!;
+      const child = (c as any).child;
+      expect(child.pid).not.toBe(process.pid);
+      expect(c.alive).toBe(false);
       if (reason === "shutdown") await t.app.close();
       else if (reason === "disconnect") t.ws.terminate();
       else t.ws.send(JSON.stringify({ v: 1, type: "cancel" }));
-      await until(() => !(c as any).authentication);
-      expect([...buffer].every((b) => b === 0)).toBe(true);
-      expect(scope.available).toBe(false);
-      expect(auth.dialogue).toBeUndefined();
+      await until(() => child.exitCode !== null || child.signalCode !== null);
+      expect((c as any).dialogue).toBeUndefined();
+      expect((c as any).replies.size).toBe(0);
       expect(t.h.authCalls.class).toBe(0);
-      expect((c!.jump as any).config.authHandler).toBeUndefined();
       expect(t.logs()).not.toContain("shared-password");
     } finally {
-      spy.mockRestore();
       await t.close();
     }
   },

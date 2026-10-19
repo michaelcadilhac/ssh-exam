@@ -109,7 +109,7 @@ export class Lifecycle {
       .prepare("INSERT INTO outbox(id,subject,body,next) VALUES(?,?,?,?)")
       .run(randomUUID(), subject, body, now());
   }
-  async lock(id: string, reason: string) {
+  async lock(id: string, reason: string, options: { notify?: boolean } = {}) {
     const a = this.store.attempt(id);
     if (!["ACTIVE", "LOCKED"].includes(a.state)) return;
     const transaction = this.store.db.transaction(() => {
@@ -144,10 +144,11 @@ export class Lifecycle {
             "INSERT INTO incidents(id,attempt,generation,opened,events) VALUES(?,?,?,?,?)",
           )
           .run(randomUUID(), id, b.generation, now(), JSON.stringify(events));
-        this.alert(
-          `Exam interrupted: ${a.username}`,
-          `${a.exam}: ${reason}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
-        );
+        if (options.notify !== false)
+          this.alert(
+            `Exam interrupted: ${a.username}`,
+            `${a.exam}: ${reason}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
+          );
       }
       this.store.audit("gateway", "lock", id, reason);
     });

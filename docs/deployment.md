@@ -202,3 +202,15 @@ integration; the installer refuses them rather than replacing them. No new liste
 SSH access is added. Health must advertise `single-sign-in-handoff` and report ready before
 reopening admission. Drain unstarted setup and active attempts before upgrading. Never remove
 an active account policy or roll back its state to perform a software rollback.
+
+## Connection process capacity
+
+Connection workers are supervised OS processes, not additional HTTP instances. Configuration
+`connectionWorkers` controls concurrent live login/attempt workers (default 32, range 1–128).
+New logins at the limit are rejected without evicting students. Every worker has a 64 MiB V8
+heap cap, bounded IPC and reduced thread counts. The default Compose memory budget is 4 GiB
+and its PID/task allowance is 1,024; provision higher memory and task capacity before increasing
+worker count. The heap cap does not count native allocations, and these processes still share
+the host/container. Linux workers raise their OOM score above the HTTP supervisor. A worker
+crash/hang is an attempt-local interruption and durable email, not a webserver restart. Check
+the configured SMTP recipients in `smtp.to`; no recipient is hard-coded in the worker.

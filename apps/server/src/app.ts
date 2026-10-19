@@ -24,8 +24,11 @@ import {
 } from "../../../packages/config/index.js";
 import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
-import { Connection } from "./ssh.js";
-import { BrowserConnection } from "./browser-ssh.js";
+import type { ConnectionHandle as Connection } from "./connection-process.js";
+import {
+  IsolatedConnection,
+  IsolatedBrowserConnection as BrowserConnection,
+} from "./connection-process.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { ClockControl } from "./clock-control.js";
@@ -36,7 +39,11 @@ import { parseRosterAsync, exportRoster } from "./roster.js";
 import { isSandbox, sandboxExam } from "../../../packages/protocol/sandbox.js";
 export async function createApp(
   config: Config,
-  options: { logStream?: Writable } = {},
+  options: {
+    logStream?: Writable;
+    connectionWorkerEntry?: URL;
+    onConnection?: (connection: IsolatedConnection) => void;
+  } = {},
 ) {
   if (config.loginOnly && config.mode !== "development")
     throw Error("Login-only testing requires development mode");
@@ -1658,24 +1665,34 @@ export async function createApp(
         return;
       }
       let bound = false;
+      let controls = Promise.resolve();
+      let controlQueue = 0;
       ws.on("message", (data) => {
-        try {
-          const m = JSON.parse(data.toString());
-          if (!bound) {
-            if (
-              m.type !== "browser-bind" ||
-              m.controlToken !== conn.controlToken
-            )
-              throw Error("Invalid browser SSH binding");
-            conn.attach(ws);
-            bound = true;
-            send(ws, { type: "browser-bound" });
-            return;
-          }
-          if (!conn.receive(m)) throw Error("Invalid browser SSH message");
-        } catch {
-          ws.close(1008);
+        if (++controlQueue > 64) {
+          ws.close(1008, "Control queue exceeded");
+          return;
         }
+        controls = controls.then(async () => {
+          try {
+            const m = JSON.parse(data.toString());
+            if (!bound) {
+              if (
+                m.type !== "browser-bind" ||
+                m.controlToken !== conn.controlToken
+              )
+                throw Error("Invalid browser SSH binding");
+              await conn.attach(ws);
+              bound = true;
+              send(ws, { type: "browser-bound" });
+              return;
+            }
+            if (!conn.receive(m)) throw Error("Invalid browser SSH message");
+          } catch {
+            ws.close(1008);
+          } finally {
+            controlQueue--;
+          }
+        });
       });
       return;
     }
@@ -1843,8 +1860,71 @@ export async function createApp(
           p.username = m.username;
           p.exam = m.exam;
           p.connection = config.browserSSH
-            ? new BrowserConnection(m.username, m.exam, config, agent, ws)
-            : new Connection(m.username, config, agent);
+            ? new BrowserConnection(
+                m.username,
+                m.exam,
+                config,
+                agent,
+                ws,
+                options.connectionWorkerEntry,
+              )
+            : new IsolatedConnection(
+                m.username,
+                m.exam,
+                config,
+                agent,
+                false,
+                undefined,
+                options.connectionWorkerEntry,
+              );
+          const isolated = p.connection as IsolatedConnection;
+          isolated.onFailure = (failure) => {
+            if (!store.db.open) return;
+            const owned = [...attemptConnections].find(
+              ([, c]) => c === isolated,
+            );
+            const event = randomUUID();
+            const detail = JSON.stringify({ event, ...failure });
+            store.audit(
+              "supervisor",
+              "attempt-worker-failed",
+              owned?.[0] || "",
+              detail,
+            );
+            app.log.error(
+              {
+                username: p.username,
+                exam: p.exam,
+                attempt: owned?.[0],
+                event,
+                ...failure,
+              },
+              "Attempt connection process failed",
+            );
+            const reason =
+              "Exam connection process failed. Instructor authorization and fresh SSH sign-in are required.";
+            life.alert(
+              "Exam connection failure: " + p.username,
+              `Student: ${p.username}\nExam: ${p.exam}\nAttempt: ${owned?.[0] || "sign-in/preflight"}\n${reason}\nDiagnostic: ${detail}`,
+              { coalesce: false },
+            );
+            if (
+              owned &&
+              ["ACTIVE", "LOCKED"].includes(store.attempt(owned[0]).state)
+            ) {
+              void life
+                .lock(owned[0], reason, { notify: false })
+                .catch(() => {});
+            }
+          };
+          isolated.onLoss = () => {
+            const owned = [...attemptConnections].find(
+              ([, c]) => c === isolated,
+            );
+            if (owned)
+              void life.lock(owned[0], "SSH transport lost").catch(() => {});
+          };
+          options.onConnection?.(isolated);
           p.connection.onDiagnostic = (host, detail) => {
             store.audit("gateway", "ssh-diagnostic", host, detail);
             life.alert(
@@ -2086,7 +2166,15 @@ export async function createApp(
                     }
                     await agent.call("renew-execution-lease", { id: a.id });
                   } catch {
-                    await life.lock(a.id, "Class-agent lease renewal failed");
+                    // A failed worker already paused this generation. A late lease
+                    // failure must neither repeat its pause nor interrupt a new login.
+                    const current = store.attempt(a.id);
+                    if (
+                      current.state === "ACTIVE" &&
+                      current.generation === a.generation &&
+                      connections.get(`${a.exam}:${a.username}`) === conn
+                    )
+                      await life.lock(a.id, "Class-agent lease renewal failed");
                   } finally {
                     leases.delete(a.id);
                   }
@@ -2237,16 +2325,6 @@ export async function createApp(
         p.connection?.close();
         pending.delete(id);
       }
-    for (const [key, c] of connections) {
-      c.onLoss = () => {
-        const a = store.db
-          .prepare(
-            "SELECT id FROM attempts WHERE username=? AND state='ACTIVE'",
-          )
-          .get(c.username) as any;
-        if (a) void life.lock(a.id, "SSH transport lost");
-      };
-    }
     for (const a of store.db
       .prepare(
         "SELECT * FROM attempts WHERE state='PREPARING' AND COALESCE(last_contact,0)<?",

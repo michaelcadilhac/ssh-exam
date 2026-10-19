@@ -56,6 +56,30 @@ changes preserve terminals. WinBox fullscreen is disabled and window bounds excl
 Internal clipboard uses selection and xterm bracketed paste without navigator.clipboard.
 Automated canvas video and keyboard stubs exist only in the browser tests.
 
+Connection handling is supervised by `connection-process.ts`, with one OS child process
+(`connection-worker.ts`) per login/retained attempt connection. The child owns the existing
+BrowserConnection or fallback SSH Connection; the HTTP process owns a bounded proxy and
+persistent attempt authorization. Fatal child failures cannot escape as unhandled errors in
+the shared HTTP process. A hung child is retired by a 10-second heartbeat watchdog; individual
+supervisor RPCs are bounded to 125 seconds. Teardown rejects pending work, closes that browser's
+transport, retires panes and requires the normal instructor-authorized fresh SSH recovery.
+Lease failures are generation/connection scoped: a late failure cannot re-pause an already
+locked attempt or a replacement authenticated connection. No automatic credential replay occurs; original deadlines and independent class-server
+collection/access restrictions survive. Deliberate logout, finish and service shutdown do not
+send failure alerts. Unexpected worker failure produces one durable email containing student,
+exam, attempt and a fixed cause/exit code; stderr, exception messages and terminal data are not
+logged or emailed. SMTP outages use the existing persistent outbox retry policy.
+
+Each child has a 64 MiB V8 heap cap, reduced thread counts and Linux OOM preference above the
+supervisor. IPC is bounded to 8 MiB per packet, 16 MiB queued in either direction and 64 pending
+supervisor operations. `connectionWorkers` defaults to 32 (1–128); at capacity new logins are
+refused while existing sessions remain intact. Compose permits 1,024 tasks for worker threads.
+Increase memory/PID budgets before raising admission capacity. Process isolation contains
+attempt connection failures; the host/container, HTTP APIs, metadata database, capture processing
+and notification service remain shared infrastructure. It is not a malicious-code sandbox or
+protection against a whole-host outage. Production exposes no fault-injection API; the deliberate
+failure entrypoint and SMTP fixtures are only built/used by tests.
+
 SSH login owns a clearable credential scope with a 120-second whole-sequence deadline. The
 first verified password challenge collects one shared password, converted to a mutable Buffer.
 Both destinations come exclusively from server configuration and both host keys must match

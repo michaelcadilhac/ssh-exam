@@ -4,6 +4,10 @@ Never edit deadline state or remove account gates to resolve outages. Grant extr
 
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.
+- Attempt connection process failure: only that student loses SSH and is locked; the supervisor
+  queues a contextual email and audit event. Approve continuation and require fresh SSH; do not
+  reset the deadline or attempt to reuse a dead worker. Check the fixed cause/exit diagnostic.
+  Intentional logout/finish is not a worker-failure alert.
 - Gateway restart: SSH objects are gone. Persisted active attempts lock; independent lease
   freezes work and original deadline persists. Approve, reauthenticate with capture stopped,
   claim replacement page, restore conditions and Continue. Saved files persist; buffers may not.
