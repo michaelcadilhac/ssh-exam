@@ -8,6 +8,7 @@ import type { Config } from "../../../packages/config/index.js";
 
 class BrowserPane extends EventEmitter {
   writableLength = 0;
+  private disposed = false;
   constructor(
     public pane: string,
     private attempt: string,
@@ -24,15 +25,25 @@ class BrowserPane extends EventEmitter {
   }
   pause() {}
   resume() {}
-  async close() {
-    if (this.owner.alive)
-      await this.owner.command("close-pane", {
-        id: this.attempt,
-        pane: this.pane,
-      });
-    await this.owner.detachPane(this.pane);
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.owner.panes.delete(this.pane);
     this.emit("close");
+  }
+  async close() {
+    if (this.disposed) return;
+    try {
+      if (this.owner.alive) {
+        await this.owner.command("close-pane", {
+          id: this.attempt,
+          pane: this.pane,
+        });
+        if (this.owner.alive) await this.owner.detachPane(this.pane);
+      }
+    } finally {
+      this.dispose();
+    }
   }
 }
 
@@ -147,7 +158,7 @@ export class BrowserConnection extends Connection {
     return true;
   }
   private request(op: string, args: any, timeout = 120000): Promise<any> {
-    if (!this.socket || this.socket.readyState !== 1)
+    if (this.closed || !this.socket || this.socket.readyState !== 1)
       return Promise.reject(
         new AgentCommandDisconnectedError(
           "Browser SSH control connection unavailable",
@@ -157,7 +168,7 @@ export class BrowserConnection extends Connection {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(Error("Browser SSH operation timed out"));
+        reject(Error(`Browser SSH operation timed out: ${op}`));
       }, timeout);
       this.pending.set(id, { op, args, resolve, reject, timer });
       this.socket!.send(
@@ -327,7 +338,12 @@ export class BrowserConnection extends Connection {
       p.reject(new AgentCommandDisconnectedError("SSH connection ended"));
     }
     this.pending.clear();
-    for (const p of this.panes.values()) p.close();
+    // Whole-transport teardown is local: the close notification already asks
+    // the browser to stop SSH. Awaited pane operations were rejected above.
+    // Never start new browser RPCs after clearing pending requests: an orphaned
+    // close request otherwise rejects two minutes later and crashes the process.
+    for (const p of this.panes.values())
+      if (p instanceof BrowserPane) p.dispose();
     this.panes.clear();
     this.socket?.close();
     this.socket = undefined;

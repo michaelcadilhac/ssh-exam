@@ -361,3 +361,47 @@ test("a fresh reconnect bind still confirms ownership when HTTP has a newer snap
     ack.release();
   }
 });
+
+test("a new server pause clears feedback from a successful continuation and keeps input blocked", async ({
+  page,
+}) => {
+  const f = await fixture(page, "LOCKED");
+  f.model.bind.release();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Restore screen sharing", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Restore fullscreen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Restore keyboard lock", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Continue exam", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: "New terminal", exact: true }),
+  ).toBeEnabled();
+  f.model.attempt.state = "LOCKED";
+  f.model.attempt.generation++;
+  f.model.attempt.reason = "Exam webserver restarted. Reconnect SSH to resume.";
+  f.model.authenticationGap = true;
+  f.model.socket!.send(JSON.stringify({ type: "state", ...f.snapshot() }));
+  await expect(
+    page.getByRole("heading", { name: "Exam paused" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Reconnect SSH", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Exam resumed.", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".recovery-feedback")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "New terminal", exact: true }),
+  ).toBeDisabled();
+  expect(inputs(f)).toBe("");
+});

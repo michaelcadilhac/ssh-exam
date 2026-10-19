@@ -141,6 +141,13 @@ export function Workspace({
         next.state === "PREPARING")
     )
       return false;
+    if (
+      next.state === "LOCKED" &&
+      (current.state !== "LOCKED" ||
+        next.generation !== current.generation ||
+        next.reason !== current.reason)
+    )
+      setRecoveryFeedback(null);
     attemptRef.current = next;
     setAttempt(next);
     if (serverNow) {
@@ -223,6 +230,7 @@ export function Workspace({
     localLocked.current = true;
     armed.current = false;
     setLocked(true);
+    setRecoveryFeedback(null);
     browserSSH.setInputEnabled(false);
     setMessage(reason);
     send({
@@ -607,6 +615,7 @@ export function Workspace({
     const updateAuthenticationGap = (gap: boolean) => {
       setAuthenticationGap(gap);
       if (gap) {
+        setRecoveryFeedback(null);
         ++activationEpoch.current;
         browserSSH.setInputEnabled(false);
         if (
@@ -1079,11 +1088,13 @@ export function Workspace({
     success: string,
     fn: () => Promise<any>,
   ) => {
+    const epoch = activationEpoch.current;
     setRestoring(name);
     setRecoveryFeedback({ error: false, text: `${name}…` });
     try {
       await fn();
-      setRecoveryFeedback({ error: false, text: success });
+      if (epoch === activationEpoch.current)
+        setRecoveryFeedback(success ? { error: false, text: success } : null);
     } catch (e) {
       const error = e as Error;
       const text =
@@ -1569,7 +1580,7 @@ export function Workspace({
                     onClick={() =>
                       void recoveryAction(
                         "Checking continuation",
-                        "Exam resumed.",
+                        "",
                         continueExam,
                       )
                     }

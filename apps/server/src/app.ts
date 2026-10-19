@@ -2208,7 +2208,7 @@ export async function createApp(
     .all() as any[])
     await life.lock(
       row.id,
-      "Gateway restarted; SSH connection objects were lost",
+      "Exam webserver restarted. Reconnect SSH to resume.",
     );
   const tick = setInterval(() => {
     if (!config.loginOnly) void life.tick().catch(() => {});
