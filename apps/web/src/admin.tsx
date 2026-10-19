@@ -9,6 +9,7 @@ import { EnrollmentSetting } from "./enrollment-setting.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
+import { InterruptionHistory } from "./interruption-history.js";
 import { AdminReview } from "./admin-review.js";
 import {
   attemptStatus,
@@ -71,6 +72,7 @@ export function Admin({
     [removing, setRemoving] = useState<string | null>(null),
     [removingBusy, setRemovingBusy] = useState(false),
     [removingError, setRemovingError] = useState("");
+  const [interruptionRows, setInterruptionRows] = useState(new Set<string>());
   const [selected, setSelected] = useState<any>(null),
     [sound, setSound] = useState(false),
     [signingOut, setSigningOut] = useState(false);
@@ -203,6 +205,7 @@ export function Admin({
       setStale(true);
   }, [clock, data]);
   const clearView = () => {
+    setInterruptionRows(new Set());
     ++version.current;
     setData(null);
     setLoading(true);
@@ -718,164 +721,226 @@ export function Admin({
                                 editable = !stale && clockEditable(a, clock),
                                 webcam = webcamRequired(a);
                               return (
-                                <tr
-                                  key={a.id}
-                                  className="attempt-row"
-                                  role="row"
-                                >
-                                  {bulkKind && (
-                                    <td className="selection-cell" role="cell">
-                                      {!studentSettings &&
-                                        ["ACTIVE", "LOCKED"].includes(
-                                          a.state,
-                                        ) && (
-                                          <input
-                                            type="checkbox"
-                                            aria-label={`Select attempt ${a.id}`}
-                                            checked={
-                                              editable && selection.has(a.id)
-                                            }
-                                            disabled={!editable}
-                                            onChange={() => toggle(a.id)}
-                                          />
-                                        )}
-                                    </td>
-                                  )}
-                                  <td className="attempt-identity" role="cell">
-                                    <span>Attempt {a.attempt_number}</span>
-                                    {!!a.preflight_started_at && !a.start && (
-                                      <time
-                                        dateTime={new Date(
-                                          a.preflight_started_at,
-                                        ).toISOString()}
-                                        title={chicago(a.preflight_started_at)}
+                                <React.Fragment key={a.id}>
+                                  <tr className="attempt-row" role="row">
+                                    {bulkKind && (
+                                      <td
+                                        className="selection-cell"
+                                        role="cell"
                                       >
-                                        Preflight{" "}
-                                        {attemptStarted(a.preflight_started_at)}
-                                      </time>
+                                        {!studentSettings &&
+                                          ["ACTIVE", "LOCKED"].includes(
+                                            a.state,
+                                          ) && (
+                                            <input
+                                              type="checkbox"
+                                              aria-label={`Select attempt ${a.id}`}
+                                              checked={
+                                                editable && selection.has(a.id)
+                                              }
+                                              disabled={!editable}
+                                              onChange={() => toggle(a.id)}
+                                            />
+                                          )}
+                                      </td>
                                     )}
-                                    {!!a.start && (
-                                      <time
-                                        dateTime={new Date(
-                                          a.start,
-                                        ).toISOString()}
-                                        title={chicago(a.start)}
-                                      >
-                                        Started {attemptStarted(a.start)}
-                                      </time>
-                                    )}
-                                    {!!a.ended && (
-                                      <time
-                                        dateTime={new Date(
-                                          a.ended,
-                                        ).toISOString()}
-                                        title={chicago(a.ended)}
-                                      >
-                                        Ended {attemptStarted(a.ended)}
-                                      </time>
-                                    )}
-                                  </td>
-                                  <td role="cell">
-                                    <span
-                                      className={`attempt-status ${status.tone}`}
+                                    <td
+                                      className="attempt-identity"
+                                      role="cell"
                                     >
-                                      {status.label}
-                                    </span>
-                                    {!!a.reason &&
-                                      (a.state === "LOCKED" ||
-                                        a.state === "COLLECTION_FAILED") && (
-                                        <small
-                                          className="attempt-reason"
-                                          title={a.reason}
+                                      <span>Attempt {a.attempt_number}</span>
+                                      {!!a.preflight_started_at && !a.start && (
+                                        <time
+                                          dateTime={new Date(
+                                            a.preflight_started_at,
+                                          ).toISOString()}
+                                          title={chicago(
+                                            a.preflight_started_at,
+                                          )}
                                         >
-                                          {a.reason}
+                                          Preflight{" "}
+                                          {attemptStarted(
+                                            a.preflight_started_at,
+                                          )}
+                                        </time>
+                                      )}
+                                      {!!a.start && (
+                                        <time
+                                          dateTime={new Date(
+                                            a.start,
+                                          ).toISOString()}
+                                          title={chicago(a.start)}
+                                        >
+                                          Started {attemptStarted(a.start)}
+                                        </time>
+                                      )}
+                                      {!!a.ended && (
+                                        <time
+                                          dateTime={new Date(
+                                            a.ended,
+                                          ).toISOString()}
+                                          title={chicago(a.ended)}
+                                        >
+                                          Ended {attemptStarted(a.ended)}
+                                        </time>
+                                      )}
+                                    </td>
+                                    <td role="cell">
+                                      <span
+                                        className={`attempt-status ${status.tone}`}
+                                      >
+                                        {status.label}
+                                      </span>
+                                      {!!a.reason &&
+                                        (a.state === "LOCKED" ||
+                                          a.state === "COLLECTION_FAILED") && (
+                                          <small
+                                            className="attempt-reason"
+                                            title={a.reason}
+                                          >
+                                            {a.reason}
+                                          </small>
+                                        )}
+                                      {a.interruptionHistoryDeleted ? (
+                                        <small className="interruption-summary">
+                                          History deleted
+                                        </small>
+                                      ) : a.interruptions?.length ? (
+                                        <button
+                                          className="interruption-toggle"
+                                          aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
+                                          aria-expanded={interruptionRows.has(
+                                            a.id,
+                                          )}
+                                          aria-controls={`interruptions-${a.id}`}
+                                          onClick={() =>
+                                            setInterruptionRows((previous) => {
+                                              const next = new Set(previous);
+                                              if (next.has(a.id))
+                                                next.delete(a.id);
+                                              else next.add(a.id);
+                                              return next;
+                                            })
+                                          }
+                                        >
+                                          {a.interruptions.length}{" "}
+                                          {a.interruptions.length === 1
+                                            ? "interruption"
+                                            : "interruptions"}{" "}
+                                          {interruptionRows.has(a.id)
+                                            ? "▴"
+                                            : "▾"}
+                                        </button>
+                                      ) : (
+                                        <small className="interruption-summary">
+                                          {a.state === "LOCKED"
+                                            ? "Pause details not recorded"
+                                            : "No interruptions recorded"}
                                         </small>
                                       )}
-                                  </td>
-                                  <td role="cell" data-label="Webcam">
-                                    {webcam === null
-                                      ? "Unknown"
-                                      : webcam
-                                        ? "Required"
-                                        : "Not required"}
-                                  </td>
-                                  <td
-                                    role="cell"
-                                    data-label={
-                                      ["ACTIVE", "LOCKED"].includes(a.state)
-                                        ? "Time remaining"
-                                        : a.ended && a.start
-                                          ? "Time taken"
-                                          : "Time"
-                                    }
-                                    className="attempt-clock"
-                                  >
-                                    <time
-                                      title={
-                                        a.deadline
-                                          ? `Deadline: ${chicago(a.deadline)}`
-                                          : undefined
+                                    </td>
+                                    <td role="cell" data-label="Webcam">
+                                      {webcam === null
+                                        ? "Unknown"
+                                        : webcam
+                                          ? "Required"
+                                          : "Not required"}
+                                    </td>
+                                    <td
+                                      role="cell"
+                                      data-label={
+                                        ["ACTIVE", "LOCKED"].includes(a.state)
+                                          ? "Time remaining"
+                                          : a.ended && a.start
+                                            ? "Time taken"
+                                            : "Time"
                                       }
+                                      className="attempt-clock"
                                     >
-                                      {["ACTIVE", "LOCKED"].includes(a.state)
-                                        ? remaining(a.deadline, clock)
-                                        : a.ended &&
-                                            attemptElapsed(a, clock) !== null
-                                          ? `${formatDuration(attemptElapsed(a, clock)!)} taken`
-                                          : "—"}
-                                    </time>
-                                    {![
-                                      "COMPLETED",
-                                      "CANCELLED_BEFORE_START",
-                                    ].includes(a.state) &&
-                                      !a.ended &&
-                                      attemptElapsed(a, clock) !== null && (
-                                        <small>
-                                          {formatDuration(
-                                            attemptElapsed(a, clock)!,
-                                          )}{" "}
-                                          {a.ended ? "taken" : "elapsed"}
+                                      <time
+                                        title={
+                                          a.deadline
+                                            ? `Deadline: ${chicago(a.deadline)}`
+                                            : undefined
+                                        }
+                                      >
+                                        {["ACTIVE", "LOCKED"].includes(a.state)
+                                          ? remaining(a.deadline, clock)
+                                          : a.ended &&
+                                              attemptElapsed(a, clock) !== null
+                                            ? `${formatDuration(attemptElapsed(a, clock)!)} taken`
+                                            : "—"}
+                                      </time>
+                                      {![
+                                        "COMPLETED",
+                                        "CANCELLED_BEFORE_START",
+                                      ].includes(a.state) &&
+                                        !a.ended &&
+                                        attemptElapsed(a, clock) !== null && (
+                                          <small>
+                                            {formatDuration(
+                                              attemptElapsed(a, clock)!,
+                                            )}{" "}
+                                            {a.ended ? "taken" : "elapsed"}
+                                          </small>
+                                        )}
+                                      {a.pendingClockReset && (
+                                        <small className="warn">
+                                          Clock change pending
                                         </small>
                                       )}
-                                    {a.pendingClockReset && (
-                                      <small className="warn">
-                                        Clock change pending
-                                      </small>
-                                    )}
-                                  </td>
-                                  <td role="cell" className="row-actions">
-                                    <button
-                                      className={
-                                        a.state === "LOCKED"
-                                          ? "review-needed"
-                                          : "quiet-button"
-                                      }
-                                      onClick={() => openReview(a)}
-                                    >
-                                      Review
-                                    </button>
-                                    {["ACTIVE", "LOCKED"].includes(a.state) && (
-                                      <AdminMenu
-                                        label={`Actions for ${s.username} attempt ${a.attempt_number}`}
-                                        children="More"
-                                        actions={[
-                                          {
-                                            label: "Reset clock",
-                                            disabled: !editable,
-                                            onSelect: () =>
-                                              openOperation("reset", [a]),
-                                          },
-                                          {
-                                            label: "Extend time",
-                                            disabled: !editable,
-                                            onSelect: () =>
-                                              openOperation("extend", [a]),
-                                          },
-                                        ]}
-                                      />
-                                    )}
-                                  </td>
-                                </tr>
+                                    </td>
+                                    <td role="cell" className="row-actions">
+                                      <button
+                                        className={
+                                          a.state === "LOCKED"
+                                            ? "review-needed"
+                                            : "quiet-button"
+                                        }
+                                        onClick={() => openReview(a)}
+                                      >
+                                        Review
+                                      </button>
+                                      {["ACTIVE", "LOCKED"].includes(
+                                        a.state,
+                                      ) && (
+                                        <AdminMenu
+                                          label={`Actions for ${s.username} attempt ${a.attempt_number}`}
+                                          children="More"
+                                          actions={[
+                                            {
+                                              label: "Reset clock",
+                                              disabled: !editable,
+                                              onSelect: () =>
+                                                openOperation("reset", [a]),
+                                            },
+                                            {
+                                              label: "Extend time",
+                                              disabled: !editable,
+                                              onSelect: () =>
+                                                openOperation("extend", [a]),
+                                            },
+                                          ]}
+                                        />
+                                      )}
+                                    </td>
+                                  </tr>
+                                  {interruptionRows.has(a.id) && (
+                                    <tr className="interruption-row">
+                                      <td colSpan={bulkKind ? 6 : 5}>
+                                        <section
+                                          id={`interruptions-${a.id}`}
+                                          aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
+                                        >
+                                          <InterruptionHistory
+                                            attempt={a}
+                                            clock={clock}
+                                          />
+                                        </section>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                           </tbody>

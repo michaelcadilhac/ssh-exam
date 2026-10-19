@@ -40,6 +40,20 @@ async function restore(page: Page, admin: Page, headers: any, id: string) {
     { headers, data: {} },
   );
   expect(grant.ok()).toBe(true);
+  const history = async () =>
+    (
+      await (
+        await admin.request.get(
+          `/api/admin/exams/isolation-a/dashboard?review=${id}`,
+        )
+      ).json()
+    ).reviewAttempt.interruptions;
+  const approved = (await history()).at(-1);
+  expect(approved.outcome).toBeNull();
+  expect(approved.ended).toBeNull();
+  expect(approved.authorizations.at(-1).actor).toBe("instructor");
+  expect(approved.authorizations.at(-1).used_at).toBeUndefined();
+
   await page.reload();
   await page
     .getByRole("button", { name: "Reconnect SSH", exact: true })
@@ -66,6 +80,11 @@ async function restore(page: Page, admin: Page, headers: any, id: string) {
     .click();
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
   await expect(page.locator(".winbox")).toHaveCount(1);
+  const resumed = (await history()).at(-1);
+  expect(resumed.id).toBe(approved.id);
+  expect(resumed.outcome).toBe("resumed");
+  expect(resumed.ended).toBeGreaterThanOrEqual(resumed.opened);
+  expect(resumed.authorizations.at(-1).used_at).toBe(resumed.ended);
 }
 test("attempt exceptions, unhandled rejections, process death and hangs leave another active SSH exam working and send recoverable email alerts", async ({
   browser,
@@ -95,7 +114,9 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
     await echo(alice, "saved");
     await alice.keyboard.type("save saved answer");
     await alice.keyboard.press("Enter");
-    await expect(alice.locator(".xterm-rows")).toContainText("Saved fixture text");
+    await expect(alice.locator(".xterm-rows")).toContainText(
+      "Saved fixture text",
+    );
     for (const [index, fault] of [
       "exception",
       "rejection",

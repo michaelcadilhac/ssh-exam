@@ -1,3 +1,4 @@
+import { InterruptionHistory } from "./interruptions.js";
 import Database from "better-sqlite3";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomUUID, createHash, randomBytes } from "node:crypto";
@@ -45,6 +46,7 @@ export interface Attempt {
 }
 export class Store {
   db: Database.Database;
+  interruptions: InterruptionHistory;
   constructor(public dir: string) {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     this.db = new Database(`${dir}/metadata.sqlite`);
@@ -98,6 +100,13 @@ export class Store {
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/010.sql", "utf8")),
       )();
+    this.interruptions = new InterruptionHistory(this);
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=11").get())
+      this.db.transaction(() => {
+        this.db.exec(readFileSync("migrations/011.sql", "utf8"));
+        this.interruptions.seedLegacy();
+      })();
+    this.interruptions.recover();
   }
   audit(actor: string, action: string, target: string, detail = "") {
     this.db

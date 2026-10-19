@@ -994,3 +994,101 @@
 .review-images img[hidden] {
   display: none;
 }
+
+.interruption-summary {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: #91a8c3;
+}
+.admin-roster .interruption-toggle {
+  display: block;
+  margin: 5px 0 0;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: #b5d8ed;
+  font-size: 11px;
+  text-align: left;
+}
+.admin-roster .interruption-toggle:hover {
+  text-decoration: underline;
+}
+.admin-roster .interruption-row td {
+  padding: 4px 18px 16px 30px;
+  background: #101c2e;
+  white-space: normal;
+}
+.interruption-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.interruption-list > li {
+  padding: 14px 16px;
+  border: 1px solid #32465e;
+  border-radius: 6px;
+  margin: 10px 0;
+  background: #111d2f;
+  overflow-wrap: anywhere;
+}
+.interruption-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+.interruption-heading span,
+.interruption-dates {
+  color: #a4b8cf;
+  font-size: 11px;
+}
+.interruption-dates {
+  margin: 7px 0 14px;
+}
+.interruption-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.interruption-body > div > strong {
+  font-size: 11px;
+  color: #91a8c3;
+}
+.interruption-body ul {
+  padding-left: 16px;
+  margin: 6px 0 0;
+}
+.interruption-body li {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+.interruption-body p {
+  margin: 6px 0 0;
+}
+.interruption-body small {
+  display: block;
+  color: #a4b8cf;
+  font-size: 11px;
+}
+.interruption-empty {
+  color: #91a8c3;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .admin-roster .interruption-row,
+  .admin-roster .interruption-row td {
+    display: block;
+  }
+  .admin-roster .interruption-row td {
+    padding: 5px 12px 12px;
+  }
+  .interruption-body {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .interruption-list > li {
+    padding: 12px;
+  }
+}

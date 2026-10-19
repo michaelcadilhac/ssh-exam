@@ -17,6 +17,21 @@ an acknowledged browser connection and fresh contact. Updates poll every five se
 clocks tick every second. Failed or silent updates are marked stale and clock edits are
 blocked until fresh data arrives. Removed enrollments retain their history.
 
+Each attempt also shows its interruption count. Expand it directly in the table to see every
+recorded pause, its reasons, start/end, duration and approvals. The disclosure works with
+keyboard Enter/Space and stays open during refresh. A continuous pause remains one entry
+when further reasons arrive or an approval is revoked. **Awaiting resume** means approval was
+given but the student has not successfully continued; it does not stop the pause duration.
+Expired/replaced/revoked approvals and automatic sandbox approvals are identified separately.
+A resumed interval stops at successful Continue; a pause that reaches the exam end is labeled
+**Ended with exam**. The same history appears in Review → Activity without duplicating the
+incident reasons. History uses server timestamps and explicit Chicago timezone labels.
+
+Older records preserve known reasons and dated approvals, but say **Duration not recorded**
+when the old implementation did not record the actual resume. Do not interpret an approval
+as proof that the student resumed. Monitoring deletion/60-day expiry also erases this history;
+rows then show **History deleted**, not an assertion that the attempt was uninterrupted.
+
 Click a student's displayed duration or webcam requirement to edit it in the table.
 Save applies the change; Cancel or Escape discards it and returns focus to the value.
 Use the student's **Actions** menu for enrollment removal. Use an attempt's **More** menu for clock actions. **Review** opens monitoring,

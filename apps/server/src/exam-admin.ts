@@ -56,11 +56,25 @@ export function registerExamAdmin(
     ) WHERE username LIKE ? ORDER BY username`,
       )
       .all(req.params.exam, req.params.exam, `%${q}%`) as any[];
+    const interruptionHistory = store.interruptions.forExam(req.params.exam);
+    const deletedHistory = new Set(
+      (
+        store.db
+          .prepare(
+            "SELECT t.attempt FROM tombstones t JOIN attempts a ON a.id=t.attempt WHERE a.exam=?",
+          )
+          .all(req.params.exam) as any[]
+      ).map((r) => r.attempt),
+    );
     const all = (
       store.db
         .prepare("SELECT * FROM attempts WHERE exam=? ORDER BY rowid DESC")
         .all(req.params.exam) as any[]
-    ).map(describe);
+    ).map((a) => ({
+      ...describe(a),
+      interruptions: interruptionHistory.get(a.id) || [],
+      interruptionHistoryDeleted: deletedHistory.has(a.id),
+    }));
     const grouped = new Map<string, any[]>();
     for (const attempt of all) {
       if (!grouped.has(attempt.username)) grouped.set(attempt.username, []);

@@ -131,6 +131,7 @@ export class Lifecycle {
           .prepare("DELETE FROM continuations WHERE attempt=?")
           .run(id);
       const b = this.store.attempt(id);
+      this.store.interruptions.pause(b, reason);
       const prior = this.store.db
         .prepare("SELECT * FROM incidents WHERE attempt=? AND generation=?")
         .get(id, b.generation) as any;
@@ -165,6 +166,7 @@ export class Lifecycle {
           this.store.db
             .prepare("UPDATE attempts SET generation=? WHERE id=?")
             .run(remote.generation, id);
+          this.store.interruptions.pause(this.store.attempt(id), reason);
           this.store.db
             .prepare("DELETE FROM continuations WHERE attempt=?")
             .run(id);
@@ -189,6 +191,46 @@ export class Lifecycle {
             `${a.exam}: ${a.username}, attempt ${id}. Exam access is blocked at the gateway, but the class-server pause command was not confirmed. The local watchdog enforces expired execution leases. Review the authenticated dashboard and class-server status. A missing confirmation does not establish an agent outage.`,
           );
       });
+  }
+  confirmContinuation(id: string, generation: number) {
+    this.store.db.transaction(() => {
+      const a = this.store.attempt(id),
+        at = now();
+      const grant = this.store.db
+        .prepare("SELECT * FROM continuations WHERE attempt=?")
+        .get(id) as any;
+      // Native consumption awaits SSH. A new violation, expiry or completion may
+      // have superseded that approval before the reply arrived.
+      if (
+        a.state !== "LOCKED" ||
+        a.generation !== generation ||
+        !a.deadline ||
+        a.deadline <= at ||
+        !grant ||
+        grant.generation !== generation ||
+        grant.consumed ||
+        grant.expires <= at
+      )
+        throw Error(
+          "The pause or authorization changed. Instructor review is required before continuing.",
+        );
+      this.store.db
+        .prepare("UPDATE continuations SET consumed=1 WHERE attempt=?")
+        .run(id);
+      this.store.transition(id, ["LOCKED"], "ACTIVE");
+      this.store.interruptions.resume(a, at);
+      this.store.audit(
+        a.username,
+        "resume-continuation",
+        id,
+        String(generation),
+      );
+      this.store.db
+        .prepare(
+          "UPDATE attempts SET focus_lost_at=NULL,last_contact=? WHERE id=?",
+        )
+        .run(at, id);
+    })();
   }
   async reconcile(id: string) {
     const remote = await this.agent.call("inspect-attempt", { id });
@@ -338,6 +380,10 @@ export class Lifecycle {
             "UPDATE attempts SET state='LOCKED',reason='Activation acknowledgment lost',generation=generation+1 WHERE id=?",
           )
           .run(id);
+        this.store.interruptions.pause(
+          this.store.attempt(id),
+          "Activation acknowledgment lost",
+        );
         this.onPaused(this.store.attempt(id));
       }
     }
@@ -416,6 +462,12 @@ export class Lifecycle {
           "UPDATE attempts SET state='LOCKED',generation=MAX(generation,?),reason=? WHERE id=?",
         )
         .run(remote.generation || 0, reason, id);
+      this.store.interruptions.pause(this.store.attempt(id), reason);
+      if (remote.reason && remote.reason !== reason)
+        this.store.interruptions.pause(
+          this.store.attempt(id),
+          `Class server: ${remote.reason}`,
+        );
       if ((remote.generation || 0) > a.generation)
         this.store.db
           .prepare("DELETE FROM continuations WHERE attempt=?")
@@ -531,6 +583,7 @@ export class Lifecycle {
       this.store.db
         .prepare("UPDATE attempts SET state=?,ended=?,reason=? WHERE id=?")
         .run(remote.state, remote.ended || null, remote.reason || null, id);
+      this.store.interruptions.end(this.store.attempt(id));
       if (remote.state === "COLLECTION_FAILED")
         this.alert(
           "Collection requires recovery",

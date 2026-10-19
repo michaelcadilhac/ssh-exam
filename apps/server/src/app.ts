@@ -108,10 +108,13 @@ export async function createApp(
       grant.expires <= now()
     ) {
       const expires = Math.min(a.deadline, now() + 300000);
-      store.db
-        .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
-        .run(id, a.generation, expires);
-      store.audit("sandbox", "automatic-continuation", id);
+      store.db.transaction(() => {
+        store.db
+          .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
+          .run(id, a.generation, expires);
+        store.interruptions.authorize(a, "sandbox", expires, true);
+        store.audit("sandbox", "automatic-continuation", id);
+      })();
     }
     if (gap) store.audit(a.username, "authorized-authentication-gap", id);
   };
@@ -1137,17 +1140,7 @@ export async function createApp(
       await life.reconcile(a.id).catch(() => {});
       throw error;
     }
-    store.db.transaction(() => {
-      store.db
-        .prepare("UPDATE continuations SET consumed=1 WHERE attempt=?")
-        .run(a.id);
-      store.transition(a.id, ["LOCKED"], "ACTIVE");
-      store.db
-        .prepare(
-          "UPDATE attempts SET focus_lost_at=NULL,last_contact=? WHERE id=?",
-        )
-        .run(now(), a.id);
-    })();
+    life.confirmContinuation(a.id, a.generation);
     return { attempt: store.attempt(a.id), serverNow: now() };
   });
   app.post("/api/student/attempts/:id/finish", async (req) => {
@@ -1488,16 +1481,19 @@ export async function createApp(
     if (a.state !== "LOCKED" || !a.deadline || a.deadline <= now())
       throw Error("Attempt cannot continue");
     const expires = Math.min(a.deadline, now() + 300000);
-    store.db
-      .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
-      .run(a.id, a.generation, expires);
-    store.audit(s.username, "authorize-continuation", a.id);
-    store.audit(
-      s.username,
-      "authorized-authentication-gap",
-      a.id,
-      String(a.generation),
-    );
+    store.db.transaction(() => {
+      store.db
+        .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
+        .run(a.id, a.generation, expires);
+      store.interruptions.authorize(a, s.username, expires);
+      store.audit(s.username, "authorize-continuation", a.id);
+      store.audit(
+        s.username,
+        "authorized-authentication-gap",
+        a.id,
+        String(a.generation),
+      );
+    })();
     return { expires };
   });
   app.post("/api/admin/attempts/:id/delete-monitoring", async (req: any) => {

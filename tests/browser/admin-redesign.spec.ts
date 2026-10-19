@@ -1243,3 +1243,105 @@ test("review shows preflight, finished duration, access failures, clock changes 
     dialog.getByText("Time taken", { exact: true }).locator(".."),
   ).toContainText("Not recorded");
 });
+
+for (const width of [1280, 390])
+  test(`attempt interruption disclosures preserve history and authorization detail at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const s = await fixture(page),
+      a = s.rows[0].attempts[0],
+      now = Date.now();
+    a.state = "LOCKED";
+    a.working = false;
+    a.reason = "Screen sharing ended";
+    a.interruptions = [
+      {
+        id: "pause1",
+        opened: now - 180000,
+        ended: now - 60000,
+        outcome: "resumed",
+        generation: 1,
+        events: [
+          {
+            at: now - 180000,
+            reason: "Focus did not return within 20 seconds",
+          },
+        ],
+        authorizations: [
+          {
+            at: now - 100000,
+            actor: "teacher",
+            expires: now + 10000,
+            generation: 1,
+            used_at: now - 60000,
+          },
+        ],
+      },
+      {
+        id: "pause2",
+        opened: now - 10000,
+        ended: null,
+        outcome: null,
+        generation: 2,
+        events: [
+          { at: now - 10000, reason: "Screen sharing ended" },
+          { at: now - 9000, reason: "SSH disconnected" },
+        ],
+        authorizations: [
+          {
+            at: now - 5000,
+            actor: "teacher",
+            expires: now + 60000,
+            generation: 2,
+          },
+        ],
+      },
+    ];
+    await page
+      .getByLabel("Selected exam", { exact: true })
+      .selectOption("beta");
+    await page
+      .getByLabel("Selected exam", { exact: true })
+      .selectOption("alpha");
+    const button = page.getByRole("button", {
+      name: "Interruption history for amy attempt 2",
+      exact: true,
+    });
+    await expect(button).toContainText("2 interruptions");
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await button.focus();
+    await page.keyboard.press("Enter");
+    const history = page.getByRole("region", {
+      name: "Interruption history for amy attempt 2",
+      exact: true,
+    });
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await expect(history).toContainText("2min · Resumed");
+    await expect(history).toContainText("Used to resume");
+    await expect(history).toContainText("Awaiting resume");
+    await expect(history).toContainText("Screen sharing ended");
+    await expect(history).toContainText("SSH disconnected");
+    await expect(history).toContainText("Authorized by teacher");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath(`interruptions-${width}.png`),
+      fullPage: true,
+    });
+    a.interruptions[1].ended = now + 1000;
+    a.interruptions[1].outcome = "resumed";
+    a.interruptions[1].authorizations[0].used_at = now + 1000;
+    a.state = "ACTIVE";
+    a.working = true;
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(history).not.toContainText("Awaiting resume");
+    await expect(history).toContainText("11s · Resumed");
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await button.click();
+    await expect(history).toHaveCount(0);
+    await expect(button).toBeFocused();
+  });

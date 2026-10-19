@@ -2,6 +2,7 @@ import { formatDuration } from "../../../packages/protocol/time.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { api, chicago, remaining } from "./api.js";
+import { InterruptionHistory } from "./interruption-history.js";
 import { CaptureTimeline } from "./capture-timeline.js";
 import { Modal } from "./modal.js";
 import {
@@ -255,6 +256,12 @@ export function AdminReview({
   const status = attemptStatus(a),
     frames = media?.frames || [],
     incidents = media?.incidents || [];
+  const activityIncidents = a.interruptions
+    ? incidents.filter((i: any) => i.message || i.review_at)
+    : incidents;
+  const activityCount = a.interruptions
+    ? a.interruptions.length + activityIncidents.length
+    : incidents.length;
   let duration: number | null = null;
   let clockChanges: any[] = [];
   try {
@@ -461,9 +468,7 @@ export function AdminReview({
             onClick={() => setSection(name)}
           >
             {name}
-            {name === "Activity" && incidents.length
-              ? ` (${incidents.length})`
-              : ""}
+            {name === "Activity" && activityCount ? ` (${activityCount})` : ""}
           </button>
         ))}
       </div>
@@ -574,21 +579,25 @@ export function AdminReview({
       )}
       {section === "Activity" && (
         <section aria-label="Attempt activity">
+          {a.interruptions && <InterruptionHistory attempt={a} clock={clock} />}
           {loading && !media ? (
             <p role="status">Loading activity…</p>
-          ) : !incidents.length ? (
-            <p className="admin-empty-inline">
-              No incidents recorded for this attempt.
-            </p>
+          ) : !activityIncidents.length ? (
+            !a.interruptions ? (
+              <p className="admin-empty-inline">
+                No incidents recorded for this attempt.
+              </p>
+            ) : null
           ) : (
             <ol className="incident-list">
-              {incidents.map((i: any) => (
+              {activityIncidents.map((i: any) => (
                 <li key={i.id}>
                   <time>{chicago(i.opened)}</time>
                   <div>
-                    {JSON.parse(i.events).map((e: any, n: number) => (
-                      <p key={n}>{e.reason}</p>
-                    ))}
+                    {!a.interruptions &&
+                      JSON.parse(i.events).map((e: any, n: number) => (
+                        <p key={n}>{e.reason}</p>
+                      ))}
                     {i.message && <blockquote>{i.message}</blockquote>}
                     {i.review_at && (
                       <small>Reviewed {chicago(i.review_at)}</small>

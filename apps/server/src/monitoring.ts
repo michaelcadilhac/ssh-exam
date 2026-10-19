@@ -260,6 +260,9 @@ export class Monitoring {
       this.store.db
         .prepare("INSERT OR REPLACE INTO tombstones VALUES(?,?)")
         .run(id, now());
+      this.store.db
+        .prepare("DELETE FROM attempt_interruptions WHERE attempt=?")
+        .run(id);
       this.store.db.prepare("DELETE FROM frames WHERE attempt=?").run(id);
       this.store.db.prepare("DELETE FROM recordings WHERE attempt=?").run(id);
       this.store.db
