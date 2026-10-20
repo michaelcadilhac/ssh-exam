@@ -2400,6 +2400,7 @@ export async function createApp(
         .all(now()) as any[];
       for (const r of rows)
         try {
+          if (!life.preparePreflightNotification(r.id)) continue;
           const transport = mailTransport(smtp);
           try {
             await transport.sendMail({
@@ -2417,7 +2418,7 @@ export async function createApp(
         } catch {
           store.db
             .prepare(
-              "UPDATE outbox SET tries=tries+1,next=?,status=? WHERE id=?",
+              "UPDATE outbox SET tries=tries+1,next=?,status=? WHERE id=? AND status='pending'",
             )
             .run(
               now() + Math.min(3600000, 30000 * 2 ** r.tries),

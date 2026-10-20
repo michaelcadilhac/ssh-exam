@@ -645,6 +645,19 @@ a committed timed attempt or changes its original/current deadlines. Old records
 without a reliable native preparation date get one persisted bounded grace period;
 administrators may expire older records using authoritative web preparation dates.
 
+A disconnected student SSH command is not proof of cleanup failure. For an
+unstarted preflight, defer missing-reply/timeout notifications until two minutes
+after the later of expected local expiry or the first observed command failure.
+Persist the send deadline and attempt binding atomically using the outbox/audit;
+retries and restarts must not extend that window or send duplicate warnings.
+Signed cancellation or a confirmed committed start cancels unsent warnings and
+SMTP retries. Recheck state immediately before sending and never resurrect a
+cancelled warning after an in-flight SMTP failure. An overdue confirmation remains
+visible and alertable without declaring an agent outage or requiring student
+reconnection for autonomous cleanup. Explicit command rejections and signed native
+cleanup errors retain immediate, deduplicated alerts. Do not invent successful
+cleanup or reset an uncertain attempt. No extra agent polling or control API is used.
+
 Do not rely on student `.profile`, `.bash_profile`, `.bashrc`, or `.zshenv` for enforcement. Preserve them rather than editing or replacing them. Their purpose is the student's normal shell environment, which may execute another shell.
 
 Install the controlled binary as the actual account entry-point shell, with the original shell recorded in a root-owned mapping. Protect that mapping and the shell assignment from student changes. The gate must execute before personal startup files and before any exam-specific shell handoff. An optional `/etc/profile.d/` helper may display information, but is not an authorization or deadline mechanism.

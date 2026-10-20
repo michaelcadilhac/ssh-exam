@@ -120,6 +120,14 @@ extend preparation nor authorize/renew timed-exam execution. Existing native rec
 without a preparation timestamp receive one persisted fifteen-minute grace period unless
 an administrator can establish their age from authoritative web metadata.
 
+Disconnected cleanup commands and command timeouts wait for signed local-expiry
+confirmation before notifying instructors. The grace is two minutes after the
+later of expected expiry or the first failed command. The durable outbox/audit
+binding survives restarts and cannot be postponed by retries; signed cancellation
+or a committed start suppresses unsent/retrying warnings. Explicit command
+rejections and reported native cleanup errors still alert immediately. See
+[cleanup confirmation alerts](preflight-confirmation-alert-deployment.md).
+
 ## cadilhac.name installation
 
 On `marco`, `/opt/ssh-exam` links to `/home/micha/src/ssh-exam`. The `ssh-exam.service`

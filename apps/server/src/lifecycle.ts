@@ -1,4 +1,5 @@
 import { cleanupDiagnostic } from "./cleanup-diagnostic.js";
+import { PREFLIGHT_TIMEOUT_MS } from "../../../packages/protocol/preflight.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
 import {
   FOCUS_GRACE_MS,
@@ -20,6 +21,8 @@ import path from "node:path";
 import { Store, now, hash, type Attempt } from "./db.js";
 import { Agent, AgentCommandDisconnectedError } from "./agent.js";
 import { Monitoring } from "./monitoring.js";
+
+export const PREFLIGHT_CONFIRMATION_GRACE_MS = 2 * 60 * 1000;
 // Collection metadata is immutable; connection bookkeeping is not part of the
 // submission. SSH replies and callbacks must compare the same public snapshot.
 function manifestSnapshot(manifest: any) {
@@ -86,7 +89,11 @@ export class Lifecycle {
     public agent: Agent,
     public monitoring: Monitoring,
   ) {}
-  alert(subject: string, body: string, options: { coalesce?: boolean } = {}) {
+  alert(
+    subject: string,
+    body: string,
+    options: { coalesce?: boolean; notBefore?: number } = {},
+  ) {
     const pending = (
       options.coalesce === false
         ? this.store.db
@@ -105,11 +112,119 @@ export class Lifecycle {
         this.store.db
           .prepare("UPDATE outbox SET body=? WHERE id=?")
           .run((pending.body + "\n" + body).slice(0, 12000), pending.id);
-      return;
+      return pending.id as string;
     }
+    const id = randomUUID();
     this.store.db
       .prepare("INSERT INTO outbox(id,subject,body,next) VALUES(?,?,?,?)")
-      .run(randomUUID(), subject, body, now());
+      .run(id, subject, body, Math.max(now(), options.notBefore || 0));
+    return id;
+  }
+
+  private resolvePreflightNotifications(id: string) {
+    const notices = this.store.db
+      .prepare(
+        "SELECT json_extract(detail,'$.outbox') AS outbox FROM audit WHERE action='preflight-cleanup-notification' AND target=?",
+      )
+      .all(id) as { outbox: string }[];
+    for (const notice of notices) {
+      const changed = this.store.db
+        .prepare(
+          "UPDATE outbox SET status='cancelled' WHERE id=? AND status='pending'",
+        )
+        .run(notice.outbox);
+      if (changed.changes)
+        this.store.audit(
+          "gateway",
+          "preflight-cleanup-notification-cancelled",
+          id,
+          notice.outbox,
+        );
+    }
+  }
+
+  // The outbox deadline and audit binding survive restarts. This last check also
+  // catches a confirmation/committed start after the mail batch was selected.
+  preparePreflightNotification(outbox: string) {
+    const mail = this.store.db
+      .prepare("SELECT next,status,subject FROM outbox WHERE id=?")
+      .get(outbox) as
+      | { next: number; status: string; subject: string }
+      | undefined;
+    if (!mail || mail.status !== "pending" || mail.next > now()) return false;
+    if (!mail.subject.startsWith("Preflight cleanup pending: ")) return true;
+    const notice = this.store.db
+      .prepare(
+        "SELECT target FROM audit WHERE action='preflight-cleanup-notification' AND json_extract(detail,'$.outbox')=?",
+      )
+      .get(outbox) as { target: string } | undefined;
+    if (!notice) return true;
+    const a = this.store.db
+      .prepare("SELECT state,start FROM attempts WHERE id=?")
+      .get(notice.target) as
+      | { state: string; start: number | null }
+      | undefined;
+    if (a?.state === "PREPARING" && a.start === null) return true;
+    this.resolvePreflightNotifications(notice.target);
+    return false;
+  }
+
+  private notifyPreflightCleanup(
+    a: Attempt,
+    stage: string,
+    diagnostic: ReturnType<typeof cleanupDiagnostic>,
+  ) {
+    const deferred = ["ssh-disconnected", "command-timeout"].includes(
+      diagnostic.cause,
+    );
+    this.store.db.transaction(() => {
+      if (
+        deferred &&
+        this.store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE action='preflight-cleanup-notification' AND target=?",
+          )
+          .get(a.id)
+      )
+        return; // Retries/restarts never reset the wait or duplicate its warning.
+      if (!deferred) this.resolvePreflightNotifications(a.id);
+      const first = this.store.db
+        .prepare(
+          "SELECT at FROM audit WHERE action='preflight-cleanup-failed' AND target=? ORDER BY rowid LIMIT 1",
+        )
+        .get(a.id) as { at: number };
+      const expectedExpiry =
+        (a.preflight_started_at || first.at) + PREFLIGHT_TIMEOUT_MS;
+      const notBefore = deferred
+        ? Math.max(first.at, expectedExpiry) + PREFLIGHT_CONFIRMATION_GRACE_MS
+        : now();
+      const outbox = this.alert(
+        `Preflight cleanup pending: ${a.username} (${a.exam})`,
+        [
+          `Student: ${a.username}`,
+          `Exam: ${a.exam}`,
+          `Attempt: ${a.id}`,
+          "",
+          deferred
+            ? "Signed cleanup confirmation has not arrived after the expected local preflight expiry and a two-minute confirmation grace period."
+            : "The cancellation command or its confirmation failed.",
+          `Stage: ${stage}`,
+          `Reason: ${diagnostic.reason}`,
+          `Cause: ${diagnostic.cause}`,
+          "The class-server watchdog expires and cleans up unstarted preflights locally, even without the student's browser or SSH connection.",
+          "A missing SSH command connection is not evidence of a class-agent outage. Cleanup status remains unconfirmed until an authenticated agent report arrives.",
+          "Inspect the class-server attempt, watchdog and callback-delivery status with examctl before resetting this preparation. Signing in again is not required for local expiry or cleanup.",
+        ].join("\n"),
+        { coalesce: false, notBefore },
+      );
+      if (deferred)
+        this.store.audit(
+          "gateway",
+          "preflight-cleanup-notification",
+          a.id,
+          JSON.stringify({ outbox, notBefore }),
+        );
+    })();
   }
   async lock(id: string, reason: string, options: { notify?: boolean } = {}) {
     const a = this.store.attempt(id);
@@ -387,9 +502,12 @@ export class Lifecycle {
         this.onPaused(this.store.attempt(id));
       }
     }
+    if (remote.start) this.resolvePreflightNotifications(id);
     if (
       remote.state === "CANCELLED_BEFORE_START" &&
       !remote.start &&
+      !remote.deadline &&
+      !remote.original_deadline &&
       !a.start
     ) {
       this.store.db
@@ -397,6 +515,44 @@ export class Lifecycle {
           "UPDATE attempts SET state='CANCELLED_BEFORE_START',ended=COALESCE(ended,?),reason=COALESCE(?,reason) WHERE id=?",
         )
         .run(remote.ended || now(), remote.reason || null, id);
+      this.resolvePreflightNotifications(id);
+      // CANCELLED_BEFORE_START is committed before native cleanup completes.
+      // A signed error report is a real failure, unlike a missing SSH reply.
+      const errors = Array.isArray(remote.errors)
+        ? remote.errors
+            .filter((error: unknown) => typeof error === "string")
+            .slice(-20)
+            .map((error: string) => error.slice(0, 1000))
+        : [];
+      const errorDetail = JSON.stringify(errors);
+      if (
+        errors.length &&
+        !this.store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE action='preflight-cleanup-agent-error' AND target=? AND detail=?",
+          )
+          .get(id, errorDetail)
+      ) {
+        this.store.audit(
+          "class-agent",
+          "preflight-cleanup-agent-error",
+          id,
+          errorDetail,
+        );
+        this.alert(
+          `Preflight cleanup error: ${a.username} (${a.exam})`,
+          [
+            `Student: ${a.username}`,
+            `Exam: ${a.exam}`,
+            `Attempt: ${id}`,
+            "",
+            "The class agent reported errors while cleaning up this unstarted preflight:",
+            ...errors.map((error: string) => `- ${JSON.stringify(error)}`),
+            "Inspect the current class-server attempt and account policy. The retained errors may include earlier cleanup retries.",
+          ].join("\n"),
+          { coalesce: false },
+        );
+      }
       this.monitoring.delete(id, "unstarted-preparation");
       this.onEnd(this.store.attempt(id));
     }
@@ -676,6 +832,7 @@ export class Lifecycle {
         .prepare("UPDATE attempts SET reason=? WHERE id=?")
         .run(reason, id);
       this.store.audit("gateway", "cancel-preflight", id, reason);
+      this.resolvePreflightNotifications(id);
       this.onEnd(this.store.attempt(id));
       return true;
     };
@@ -717,26 +874,9 @@ export class Lifecycle {
           exam: a.exam,
           ...detail,
         });
-        if (outcome === "cleanup-pending")
-          this.alert(
-            `Preflight cleanup pending: ${a.username} (${a.exam})`,
-            [
-              `Student: ${a.username}`,
-              `Exam: ${a.exam}`,
-              `Attempt: ${id}`,
-              "",
-              "Cancellation of this unstarted preflight could not be confirmed.",
-              `Stage: ${stage}`,
-              `Reason: ${diagnostic.reason}`,
-              `Cause: ${diagnostic.cause}`,
-              diagnostic.cause === "ssh-disconnected"
-                ? "The student's SSH command connection is unavailable. This does not establish a class-agent outage."
-                : "The cancellation command or confirmation failed; this does not establish a class-agent outage.",
-              "Cleanup will be retried when an authenticated student SSH connection is available. Check the class-server status before resetting this preparation.",
-            ].join("\n"),
-            { coalesce: false },
-          );
       }
+      if (outcome === "cleanup-pending")
+        this.notifyPreflightCleanup(a, stage, diagnostic);
       if (outcome !== "cancellation-confirmed") throw error;
     } finally {
       this.busy.delete(id);
