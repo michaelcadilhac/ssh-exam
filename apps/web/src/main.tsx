@@ -6,6 +6,7 @@ import { Admin } from "./admin.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import {
   authMessageBlocks,
+  isPhoneApprovalChallenge,
   updateAuthChallenge,
   type AuthChallenge,
 } from "./auth-challenge.js";
@@ -26,6 +27,10 @@ function App() {
     [signInNotice, setSignInNotice] = useState(""),
     [error, setError] = useState(""),
     [challenge, setChallenge] = useState<AuthChallenge | null>(null),
+    [failedAuthMessages, setFailedAuthMessages] = useState<Pick<
+      AuthChallenge,
+      "host" | "instructions"
+    > | null>(null),
     [responding, setResponding] = useState(false),
     [authSocket, setAuthSocket] = useState<WebSocket | null>(null),
     [examId, setExamId] = useState(""),
@@ -42,6 +47,23 @@ function App() {
       issue: examBrowserIssue(),
     }));
   const answersRef = useRef<string[]>([]);
+  const authHistory = useRef<AuthChallenge | null>(null);
+  const showChallenge = (
+    message: Parameters<typeof updateAuthChallenge>[1],
+  ) => {
+    const next = updateAuthChallenge(authHistory.current, message);
+    authHistory.current = next;
+    setChallenge(next);
+  };
+  const retainAuthMessages = () => {
+    const last = authHistory.current;
+    setFailedAuthMessages(
+      last?.instructions?.length
+        ? { host: last.host, instructions: [...last.instructions] }
+        : null,
+    );
+    authHistory.current = null;
+  };
   const authFormRef = useRef<HTMLFormElement>(null);
   const replaceAnswers = (next: string[]) => {
     answersRef.current.fill("");
@@ -156,6 +178,8 @@ function App() {
       setReservation(null);
       setSession({ user: null, info: null });
       setChallenge(null);
+      authHistory.current = null;
+      setFailedAuthMessages(null);
       setAuthSocket(null);
       clearAuthAnswers();
       setPassword("");
@@ -171,6 +195,8 @@ function App() {
       }
       await load();
       setChallenge(null);
+      authHistory.current = null;
+      setFailedAuthMessages(null);
       setAuthPhase("idle");
     } catch (e) {
       setError((e as Error).message);
@@ -183,6 +209,8 @@ function App() {
     completionAccepted.current = false;
     setAuthPhase("connecting");
     setChallenge(null);
+    authHistory.current = null;
+    setFailedAuthMessages(null);
     clearAuthAnswers();
     setResponding(false);
     try {
@@ -197,7 +225,7 @@ function App() {
     const s = socket("/auth/dialogue");
     browserSSH.begin(s, (m) => {
       if (attempt !== authAttempt.current || handedOff) return;
-      setChallenge((current) => updateAuthChallenge(current, m));
+      showChallenge(m);
       if (m.type === "challenge") {
         setResponding(false);
         replaceAnswers(m.prompts.map(() => ""));
@@ -212,7 +240,7 @@ function App() {
       if (browserSSH.handle(m)) return;
       if (handedOff) return;
       if (m.type === "challenge" || m.type === "notice") {
-        setChallenge((current) => updateAuthChallenge(current, m));
+        showChallenge(m);
       }
       if (m.type === "challenge") {
         setResponding(false);
@@ -227,6 +255,7 @@ function App() {
       }
       if (m.type === "error") {
         receivedError = true;
+        retainAuthMessages();
         browserSSH.close();
         clearAuthAnswers();
         setError(m.error);
@@ -238,10 +267,12 @@ function App() {
     };
     s.onclose = () => {
       if (attempt !== authAttempt.current || handedOff) return;
-      if (!receivedError)
+      if (!receivedError) {
+        retainAuthMessages();
         setError(
           "The connection closed before exam sign-in completed. Please sign in again; if this repeats, contact your instructor. No new exam was started.",
         );
+      }
       setAuthPhase("idle");
       setAuthSocket(null);
       setChallenge(null);
@@ -258,6 +289,8 @@ function App() {
       authSocket?.send(JSON.stringify({ v: 1, type: "cancel" }));
       authSocket?.close();
       setChallenge(null);
+      authHistory.current = null;
+      setFailedAuthMessages(null);
       setAuthSocket(null);
       clearAuthAnswers();
     };
@@ -269,7 +302,33 @@ function App() {
       {error && (
         <div className="error" role="alert">
           {error}
-          <button onClick={() => setError("")}>Dismiss</button>
+          <button
+            onClick={() => {
+              setError("");
+              setFailedAuthMessages(null);
+            }}
+          >
+            Dismiss
+          </button>
+          {failedAuthMessages && (
+            <details>
+              <summary>SSH sign-in details</summary>
+              <small>{failedAuthMessages.host}</small>
+              <div className="challenge" aria-label="SSH sign-in details">
+                {failedAuthMessages
+                  .instructions!.flatMap(authMessageBlocks)
+                  .map((block, i) =>
+                    block.kind === "separator" ? (
+                      <hr key={i} />
+                    ) : block.kind === "formatted" ? (
+                      <pre key={i}>{block.text}</pre>
+                    ) : (
+                      <p key={i}>{block.text}</p>
+                    ),
+                  )}
+              </div>
+            </details>
+          )}
         </div>
       )}
       {initialization !== "ready" ? (
@@ -606,7 +665,8 @@ function App() {
                         )}
                     </div>
                   )}
-                  {(authPhase === "connecting"
+                  {(authPhase === "connecting" &&
+                  !isPhoneApprovalChallenge(challenge)
                     ? challenge?.prompts || []
                     : []
                   ).map((p: any, i: number) => (
@@ -638,7 +698,9 @@ function App() {
                     <button className="primary" disabled={responding}>
                       {responding
                         ? "Waiting for host…"
-                        : "Respond to this host"}
+                        : isPhoneApprovalChallenge(challenge)
+                          ? "Continue after phone approval"
+                          : "Respond to this host"}
                     </button>
                   ) : (
                     <p>
@@ -659,6 +721,8 @@ function App() {
                         authSocket?.close();
                         clearAuthAnswers();
                         setChallenge(null);
+                        authHistory.current = null;
+                        setFailedAuthMessages(null);
                         setAuthSocket(null);
                       }}
                     >

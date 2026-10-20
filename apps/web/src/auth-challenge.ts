@@ -6,6 +6,22 @@ export interface AuthChallenge {
   instructions?: string[];
 }
 
+// DePaul's number-matching flow calls its final empty acknowledgment "Code:".
+// This is a user-confirmed Enter, never an automatic answer to a generic OTP.
+export function isPhoneApprovalChallenge(challenge: AuthChallenge | null) {
+  const instruction =
+    challenge?.instruction.trim() || challenge?.instructions?.at(-1) || "";
+  return (
+    challenge?.host === "sshjump.depaul.edu" &&
+    challenge.prompts.length === 1 &&
+    !challenge.prompts[0].echo &&
+    /^code\s*:?$/i.test(challenge.prompts[0].prompt.trim()) &&
+    /open your authenticator app,?\s+and enter the number\s+['"]?\d+['"]?\s+to sign in/i.test(
+      instruction,
+    )
+  );
+}
+
 export type AuthMessageBlock = {
   kind: "paragraph" | "formatted" | "separator";
   text: string;

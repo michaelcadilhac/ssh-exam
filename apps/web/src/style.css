@@ -199,6 +199,18 @@ h2 {
   float: right;
   padding: 4px;
 }
+.error details {
+  clear: both;
+  margin-top: 8px;
+}
+.error details summary {
+  cursor: pointer;
+}
+.error details .challenge {
+  margin-top: 8px;
+  max-height: min(55dvh, 450px);
+  overflow: auto;
+}
 .workspace {
   height: 100dvh;
   display: flex;

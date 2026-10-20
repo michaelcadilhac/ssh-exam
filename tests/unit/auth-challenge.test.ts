@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import {
   authMessageBlocks,
+  isPhoneApprovalChallenge,
   updateAuthChallenge,
 } from "../../apps/web/src/auth-challenge.js";
 
@@ -45,6 +46,51 @@ const challenge = (
   instruction,
   prompts,
   round: crypto.randomUUID(),
+});
+it("recognizes only DePaul's explicit phone number-matching empty Code acknowledgment", () => {
+  const phone = {
+    ...challenge(
+      "Open your Authenticator app, and enter the number\n'59' to sign in.",
+      "sshjump.depaul.edu",
+      [{ prompt: "Code:", echo: false }],
+    ),
+    instructions: [
+      "Open your Authenticator app, and enter the number '59' to sign in.",
+    ],
+  };
+  expect(isPhoneApprovalChallenge(phone)).toBe(true);
+  expect(
+    isPhoneApprovalChallenge({ ...phone, host: "other.example.edu" }),
+  ).toBe(false);
+  expect(
+    isPhoneApprovalChallenge({
+      ...phone,
+      instruction: "Enter your six-digit verification code.",
+      instructions: [
+        ...phone.instructions,
+        "Enter your six-digit verification code.",
+      ],
+    }),
+  ).toBe(false);
+  expect(
+    isPhoneApprovalChallenge({
+      ...phone,
+      prompts: [{ prompt: "OTP:", echo: false }],
+    }),
+  ).toBe(false);
+  expect(
+    isPhoneApprovalChallenge({
+      ...phone,
+      prompts: [{ prompt: "Code:", echo: true }],
+    }),
+  ).toBe(false);
+  expect(
+    isPhoneApprovalChallenge({
+      ...phone,
+      prompts: [...phone.prompts, { prompt: "Security key:", echo: false }],
+    }),
+  ).toBe(false);
+  expect(isPhoneApprovalChallenge(null)).toBe(false);
 });
 it("retains number matching across empty rounds and later notices without duplicating messages", () => {
   let state = updateAuthChallenge(

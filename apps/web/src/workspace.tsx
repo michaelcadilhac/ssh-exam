@@ -613,7 +613,12 @@ export function Workspace({
     for (const pane of reservation.panes || []) addPane(pane);
     let mounted = true;
     let retryDelay = 1000;
+    let lastAuthenticationGap = false;
     const updateAuthenticationGap = (gap: boolean) => {
+      // Polling repeats the same gap every two seconds. Only a transition may
+      // reset recovery feedback or invalidate an in-progress recovery action.
+      if (gap === lastAuthenticationGap) return;
+      lastAuthenticationGap = gap;
       setAuthenticationGap(gap);
       if (gap) {
         setRecoveryFeedback(null);

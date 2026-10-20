@@ -405,3 +405,47 @@ test("a new server pause clears feedback from a successful continuation and keep
   ).toBeDisabled();
   expect(inputs(f)).toBe("");
 });
+
+test("repeated disconnected status preserves a rejected reconnect until a new pause, with terminal input blocked", async ({
+  page,
+}) => {
+  const f = await fixture(page, "LOCKED");
+  f.model.bind.release();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await expect.poll(() => Boolean(f.model.socket)).toBe(true);
+  f.model.authenticationGap = true;
+  f.model.socket!.send(JSON.stringify({ type: "state", ...f.snapshot() }));
+  await page.route("**/api/student/attempts/*/reauth", (route) =>
+    route.fulfill({
+      status: 403,
+      json: {
+        error: "Instructor authorization required for an authentication gap",
+      },
+    }),
+  );
+  await page
+    .getByRole("button", { name: "Reconnect SSH", exact: true })
+    .click();
+  const error = page
+    .getByRole("alert")
+    .filter({ hasText: "Instructor authorization required" });
+  await expect(error).toBeVisible();
+  for (let i = 0; i < 3; i++) {
+    f.model.socket!.send(JSON.stringify({ type: "state", ...f.snapshot() }));
+    await expect(error).toBeVisible();
+  }
+  await page.waitForTimeout(2500);
+  await expect(error).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "New terminal", exact: true }),
+  ).toBeDisabled();
+  expect(inputs(f)).toBe("");
+  f.model.attempt.generation++;
+  f.model.attempt.reason = "A new pause requires another authorization";
+  f.model.socket!.send(JSON.stringify({ type: "state", ...f.snapshot() }));
+  await expect(error).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "New terminal", exact: true }),
+  ).toBeDisabled();
+});

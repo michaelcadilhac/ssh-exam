@@ -43,7 +43,7 @@ test("real SSH shells can exit repeatedly, close one pane, log out, log back in 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await simulatedMedia(page);
-  await login(page, "student09");
+  await login(page, "cleanup01");
   for (let i = 0; i < 6; i++) {
     await page
       .getByRole("button", { name: "Practice terminal", exact: true })
@@ -65,7 +65,7 @@ test("real SSH shells can exit repeatedly, close one pane, log out, log back in 
     page.getByRole("heading", { name: "Connect to your exam" }),
   ).toBeVisible();
   expect((await page.request.get("/api/session")).status()).toBe(401);
-  await login(page, "student09");
+  await login(page, "cleanup01");
   await start(page);
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
   await expect(page.locator(".winbox")).toHaveCount(2);
@@ -97,7 +97,7 @@ test("direct logout with active SSH panes pauses the attempt and preserves its d
   request,
 }) => {
   await simulatedMedia(page);
-  await login(page, "student10");
+  await login(page, "cleanup02");
   await start(page);
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
   await expect(page.locator(".winbox")).toHaveCount(2);

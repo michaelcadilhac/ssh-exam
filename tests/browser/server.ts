@@ -19,6 +19,9 @@ const h = await hosts({
 const timezoneAccounts = Object.fromEntries(
   Array.from({ length: 7 }, (_, i) => [`timezone${i + 1}`, 11001 + i]),
 );
+// Independent identities prevent other specs' unfinished sandbox runs from
+// turning cleanup tests' fresh sign-in into an unrelated recovery flow.
+const cleanupAccounts = { cleanup01: 10013, cleanup02: 10014 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -97,6 +100,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
       ...timezoneAccounts,
+      ...cleanupAccounts,
       policytest01: 12001,
       student01: 10001,
       student02: 10002,
@@ -280,6 +284,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
     health: { ready: true, fixture: true },
     accounts: {
       ...timezoneAccounts,
+      ...cleanupAccounts,
       policytest01: 12001,
       student01: 10001,
       student02: 10002,
