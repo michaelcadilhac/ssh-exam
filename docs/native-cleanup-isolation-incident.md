@@ -92,6 +92,28 @@ These students sign in to `midterm-recovery`, complete preflight and begin their
 saved-work continuation. The four unexpired students reconnect to `midterm`.
 Instructor approval is already provided; normal SSH/MFA is still required.
 
+The incident waiver helper also queues the compensated countdown when each of
+the four original attempts actually returns to ACTIVE. The normal authenticated
+heartbeat path delivers that reset, so waiting for reconnection does not consume
+the refunded allowance. This is an incident-scoped administrator operation,
+not a permanent automatic-approval policy.
+
+## Additional admission repair
+
+A separately reported student was blocked by an abandoned, unstarted `test`
+preflight while trying to enter `midterm`. The root administrator used
+`examctl cancel ATTEMPT --reason REASON`, followed by
+`exam-agent -config /etc/exam-agent/agent.json -reconcile`. When callback delivery
+timed out, the verified native cancellation was synchronized through the
+webserver's lifecycle/monitoring code by an administrator script. No timed exam
+was cancelled. Native verification at 20:28 UTC showed that student ACTIVE in
+the midterm; all thirteen handoff-cohort attempts also remained ACTIVE at their
+original generations with fresh monitoring leases.
+
+The cancellation itself was through examctl. Incident clock adjustments and
+webserver continuation approvals used administrator helpers; those operations
+are not currently exposed as examctl subcommands.
+
 ## Completing the live handoff / rollback
 
 Do not stop either PTY-owning daemon during remaining exams. In a fully drained
