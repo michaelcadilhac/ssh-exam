@@ -1458,3 +1458,33 @@ replace an unrelated SSH CA/principals integration or weaken existing authentica
 ### Human-readable time presentation
 
 Stored durations remain seconds and timestamps remain absolute Unix milliseconds; display formatting never changes authorization or exam timing. Use minutes/hours/days with explicit units for elapsed ages and durations, retaining seconds where useful for short intervals. Countdown displays use minutes:seconds below one hour and hours:minutes:seconds at or above one hour. Keep duration/extension inputs and CSV columns explicitly in minutes. Review facts show human-readable dates with an explicit timezone and a formatted exam duration. Raw manifest timing values remain available behind a separate technical disclosure, labeled with their actual storage units. The open clock-action dialog updates its countdown from the same live dashboard clock.
+
+### Monitoring isolation from native cleanup
+
+An attempt's slow collection or systemd cleanup must not delay another attempt's
+monitoring acknowledgment. Signed `renew-execution-lease` commands use a separate
+root-private per-attempt lease journal and lock, independently of the shared
+collection/state transaction. Verify the gateway signature, peer-verified SSH
+transport, account, registration, active state, unexpired prior authorization,
+deadline, boot and one-use nonce before publishing a bounded fifteen-second lease.
+Persist nonce replay protection across restarts. Recheck state after publishing;
+consumers accept a journal only for the same active attempt, generation, transport
+and boot. A pause, finish or new transport cannot be undone by a racing renewal.
+The watchdog rereads the journal immediately before an expiry decision, including
+after another attempt's cleanup delayed its current transaction. Independent
+deadline cutoff remains separate and cannot be extended by monitoring renewals.
+
+Workload termination is proven by cgroup removal **or** a valid `populated 0` in
+`cgroup.events`, which includes descendants. A stopped empty frozen cgroup may
+remain on disk; its directory's presence is not evidence of a live writer.
+Successful systemctl exit or an empty direct process list alone are insufficient.
+Unknown/unreadable population status remains fail-closed.
+
+A live command-gate upgrade may keep the existing daemon's already-open PTY
+bridges running and start the tested replacement listener with `-handoff` under
+the same service restrictions. This root-only deployment mode skips startup
+reconciliation/configuration reporting, preserves existing authoritative state,
+and changes no authorization policy. Upgrade the independent watchdog first;
+do not run an old watchdog that cannot consume the new lease journals. Do not
+restart the webserver, SSH service, relay or old PTY daemon while exams are active.
+Consolidate the temporary replacement service only during a fully drained window.

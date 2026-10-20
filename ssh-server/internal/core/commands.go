@@ -90,6 +90,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if cmd.Expires <= Millis() || cmd.Expires > Millis()+30000 {
 		return nil, errors.New("command expired")
 	}
+	if cmd.Op == "renew-execution-lease" {
+		return e.renewSignedLease(cmd, username, transport)
+	}
 	var discovered *Account
 	if _, explicit := e.Config.Accounts[username]; cmd.Op == "register" && e.Config.TemporaryAccountPolicy && !explicit {
 		if !identifier.MatchString(cmd.Body.Exam) || cmd.Transport != "" || transport == "" {

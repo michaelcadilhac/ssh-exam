@@ -339,6 +339,9 @@ func (e *Engine) WithState(fn func() error) error {
 	e.accountMu.Unlock()
 	// Upgrade old records conservatively. Completion never implies access release.
 	for _, a := range e.state.Attempts {
+		if err := e.applyExecutionLease(a); err != nil {
+			return err
+		}
 		if a.AccessState == "" && a.Start > 0 {
 			a.AccessState = "HELD"
 			a.AccessHeldAt = a.Start

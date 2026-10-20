@@ -148,11 +148,16 @@ func (e *Engine) terminateWriters(a *Attempt) error {
 // A killed scope can disappear before systemctl stop observes it. Command exit
 // status alone cannot prove either failure or success; require cgroup removal.
 func terminateRecordedScope(ctx context.Context, base, unit string, run func(context.Context, ...string) error) error {
+	if empty, err := emptyRecordedScope(base); err != nil {
+		return err
+	} else if empty {
+		return nil
+	}
 	run(ctx, "kill", "--signal=KILL", unit)
 	run(ctx, "stop", unit)
 	for {
-		_, err := os.Stat(base)
-		if os.IsNotExist(err) {
+		empty, err := emptyRecordedScope(base)
+		if err == nil && empty {
 			return nil
 		}
 		if err != nil || ctx.Err() != nil {
@@ -160,6 +165,34 @@ func terminateRecordedScope(ctx context.Context, base, unit string, run func(con
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
+}
+
+// systemd may retain an empty frozen cgroup after the scope has stopped.
+// populated includes descendants; an empty direct cgroup.procs alone is not proof.
+func emptyRecordedScope(base string) (bool, error) {
+	b, err := os.ReadFile(filepath.Join(base, "cgroup.events"))
+	if os.IsNotExist(err) {
+		if _, statErr := os.Stat(base); os.IsNotExist(statErr) {
+			return true, nil
+		}
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 && fields[0] == "populated" {
+			if fields[1] == "0" {
+				return true, nil
+			}
+			if fields[1] == "1" {
+				return false, nil
+			}
+			return false, errors.New("invalid cgroup population status")
+		}
+	}
+	return false, errors.New("cgroup population status unavailable")
 }
 
 // Include real/effective/saved/filesystem UIDs, not just pgrep's effective UID.

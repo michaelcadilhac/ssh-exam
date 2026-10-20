@@ -734,6 +734,11 @@ func (e *Engine) Tick() error {
 				}
 				continue
 			}
+			// Another attempt's cleanup may have taken time since this state
+			// transaction began. Renewals use their own per-attempt journal.
+			if err := e.applyExecutionLease(a); err != nil {
+				return err
+			}
 			if a.State == "ACTIVE" && (Millis() > a.Lease || a.Boot != boot()) {
 				a.State = "LOCKED"
 				a.Generation++

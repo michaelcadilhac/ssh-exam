@@ -10,6 +10,7 @@ func main() {
 	configPath := flag.String("config", "/etc/exam-agent/agent.json", "configuration")
 	watch := flag.Bool("watchdog", false, "independent deadline watchdog")
 	once := flag.Bool("reconcile", false, "reconcile once")
+	handoff := flag.Bool("handoff", false, "serve a replacement command socket without startup reconciliation; existing PTY bridge stays running")
 	flag.Parse()
 	c, err := core.LoadConfig(*configPath)
 	if err != nil {
@@ -37,6 +38,12 @@ func main() {
 	if *watch {
 		e.Watch()
 		return
+	}
+	if *handoff {
+		if *once {
+			log.Fatal("handoff cannot reconcile")
+		}
+		log.Fatal(e.ServeLocal())
 	}
 	if err = e.Tick(); err != nil {
 		log.Fatal(err)
