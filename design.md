@@ -1487,6 +1487,22 @@ Stored durations remain seconds and timestamps remain absolute Unix milliseconds
 
 ### Monitoring isolation from native cleanup
 
+Renewal failures are reconciled against the current committed deadline before
+creating any interruption. Expiry while a request is in flight means local
+FINALIZING/pending native collection, not a lease-failure alert or new approval.
+Preserve all earlier genuine interruption history. Rejected native renewals may
+carry authenticated public state/reason after ownership validation; rejection
+never renews work. Verify signed browser receipts and carry typed state through
+worker IPC. Reconcile intentional administrator pause/finish without replacing
+the reason, and await a verified manifest before claiming secured completion.
+Fence late errors by attempt/exam/account, generation, clock revision, page,
+socket and connection ownership. Genuine pre-expiry failures still fail closed.
+
+Gateway preflight housekeeping requires unset start/current/original deadlines
+and positive evidence of preparation/contact. A NULL contact timestamp is not
+old contact. Preserve never-opened legacy reservations and reconcile uncertain
+committed starts rather than cancelling or emailing false cleanup failures.
+
 An attempt's slow collection or systemd cleanup must not delay another attempt's
 monitoring acknowledgment. Signed `renew-execution-lease` commands use a separate
 root-private per-attempt lease journal and lock, independently of the shared

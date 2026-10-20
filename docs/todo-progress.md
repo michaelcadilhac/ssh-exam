@@ -24,7 +24,7 @@ escalation. Generated screenshot changes must not become product changes.
 | --- | --- | --- | --- |
 | M0: inventory and proposals | baseline | Map web/native/incident operations to CLI; map attempt/initialization/lock boundaries; present decisions with migration and acceptance cases | Investigating |
 | M1: durable alert episodes and notification correctness | baseline | Distinct attempts/causes never merge; unchanged failures deduplicate after delivery/retry/restart; resolution/recurrence work; review requests remain audited; editor lock-only omissions are silent; actionable status/context. Regression and SMTP integration tests, typecheck/build | Core implemented/tested locally; explicit CLI reminder awaits C1 |
-| M2: renewal races and preparation housekeeping | M1 | Normal expiry has no new interruption; intentional actions survive delayed renewal results; stale replies cannot affect replacement ownership; never-contacted reservations do not generate cleanup; uncertain committed starts retained. Real WS/callback regressions and full integration suite | Pending |
+| M2: renewal races and preparation housekeeping | M1 | Normal expiry has no new interruption; intentional actions survive delayed renewal results; stale replies cannot affect replacement ownership; never-contacted reservations do not generate cleanup; uncertain committed starts retained. Real WS/callback regressions and full integration suite | Implemented/tested locally; not deployed |
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Pending |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Pending / design-dependent |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Pending |
@@ -60,6 +60,14 @@ boundary and the explicit reminder capability still pending C1.
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
 questions (C1–C4) have been presented; none is assumed approved. Investigation
 remains open. No production access or deployment performed.
+
+Local commit f9f2232 records M1 and the plan/proposals. M2 evidence: 294 tests
+pass (50 files); typecheck/build and full native race suite pass. Real SSH →
+worker IPC → monitoring WS regressions cover deadline, administrator pause/finish
+and genuine failure. Additional fences cover seven owner/revision changes; native
+tests cover authenticated rejection state and refused started cancellation.
+Housekeeping tests cover restart and uncertain activation. See
+renewal-cleanup-correctness.md for mixed-version rollout/rollback behavior.
 
 ## Proposed rollout boundary
 

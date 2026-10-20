@@ -2182,7 +2182,8 @@ export async function createApp(
             return;
           }
           if (m.type === "heartbeat") {
-            await reportFocus(life, a.id, m.ready.focus);
+            if (!life.expireDeadline(a.id))
+              await reportFocus(life, a.id, m.ready.focus);
             a = store.attempt(a.id);
             if (a.state === "PREPARING")
               store.db
@@ -2201,6 +2202,7 @@ export async function createApp(
                   .run(now(), a.id);
                 if (!leases.has(a.id)) {
                   leases.add(a.id);
+                  let renewing = a;
                   try {
                     const reset = clocks.pending(a.id);
                     if (reset) {
@@ -2212,17 +2214,23 @@ export async function createApp(
                         /* Remains queued for authenticated timing recovery. */
                       }
                     }
-                    await agent.call("renew-execution-lease", { id: a.id });
-                  } catch {
+                    renewing = store.attempt(a.id);
+                    if (
+                      renewing.state === "ACTIVE" &&
+                      !life.expireDeadline(a.id)
+                    )
+                      await agent.call("renew-execution-lease", { id: a.id });
+                  } catch (error) {
                     // A failed worker already paused this generation. A late lease
                     // failure must neither repeat its pause nor interrupt a new login.
-                    const current = store.attempt(a.id);
-                    if (
-                      current.state === "ACTIVE" &&
-                      current.generation === a.generation &&
-                      connections.get(`${a.exam}:${a.username}`) === conn
-                    )
-                      await life.lock(a.id, "Class-agent lease renewal failed");
+                    await life.renewalFailed(
+                      renewing,
+                      () =>
+                        connections.get(
+                          `${renewing.exam}:${renewing.username}`,
+                        ) === conn && sockets.get(renewing.id) === ws,
+                      error,
+                    );
                   } finally {
                     leases.delete(a.id);
                   }
@@ -2375,7 +2383,7 @@ export async function createApp(
       }
     for (const a of store.db
       .prepare(
-        "SELECT * FROM attempts WHERE state='PREPARING' AND (preflight_started_at<=? OR COALESCE(last_contact,0)<?)",
+        "SELECT * FROM attempts WHERE state='PREPARING' AND start IS NULL AND deadline IS NULL AND original_deadline IS NULL AND (preflight_started_at<=? OR (last_contact IS NOT NULL AND last_contact<?))",
       )
       .all(
         now() - PREFLIGHT_TIMEOUT_MS,

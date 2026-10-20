@@ -9,6 +9,17 @@ export class AgentCommandDisconnectedError extends Error {
     this.name = "AgentCommandDisconnectedError";
   }
 }
+// Construct only from an authenticated SSH reply (or verified native signature),
+// never from the browser's untrusted error string.
+export class AgentCommandStateError extends Error {
+  constructor(
+    message: string,
+    public readonly attemptState: any,
+  ) {
+    super(message);
+    this.name = "AgentCommandStateError";
+  }
+}
 export interface AgentSession {
   username: string;
   alive: boolean;

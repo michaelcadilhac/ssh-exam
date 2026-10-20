@@ -242,7 +242,10 @@ This is a design investigation; agree on the proposal before implementation.
   match, or truncate away a distinct failure. Test repeated callbacks, SMTP retry,
   restart, cause changes, resolution and recurrence, and simultaneous failures.
 
-- [ ] **Distinguish intentional administrator actions from lease failures.**
+- [x] **Distinguish intentional administrator actions from lease failures.**
+  Implemented/tested locally October 20; not deployed. Authenticated refusal
+  state/reason survives SSH receipts and worker IPC; delayed ownership/timing
+  replies are fenced. Native cancellation of a started attempt remains refused.
   An administrator pause during the recovery transfer rejected an in-flight
   renewal; the gateway reported “Class-agent lease renewal failed.” Review the
   heartbeat handler in `apps/server/src/app.ts`, native pause callbacks, and
@@ -251,7 +254,10 @@ This is a design investigation; agree on the proposal before implementation.
   visible and never let a late reply pause another generation or attempt. Test
   administrator pause, transfer, finish and cancellation against in-flight renewals.
 
-- [ ] **Do not report normal deadline expiry as a lease-renewal interruption.**
+- [x] **Do not report normal deadline expiry as a lease-renewal interruption.**
+  Implemented/tested locally October 20; not deployed. Current-deadline checks
+  before renewal and after rejection reconcile expiry without a new incident.
+  Earlier interruption history and genuine pre-expiry failure alerts are tested.
   Three October 20 alerts reported “Class-agent lease renewal failed” with zero
   time remaining. Audit timing places the gateway locks 119–363 ms after the
   authoritative deadlines; native collection completed successfully, archive
@@ -306,7 +312,10 @@ This is a design investigation; agree on the proposal before implementation.
 
 ## Preflight and recovery correctness
 
-- [ ] **Harden cleanup against records that never became real preflights.**
+- [x] **Harden cleanup against records that never became real preflights.**
+  Implemented/tested locally October 20; not deployed. Housekeeping requires
+  real contact/preparation evidence and unset start/deadline fields. Regression
+  covers never-contacted records, legacy contact, lost activation and restart.
   Housekeeping in `apps/server/src/app.ts` treats `last_contact = NULL` as an old
   contact (`COALESCE(last_contact,0)`), so unused recovery placeholders generated
   five false cleanup emails. Those incident placeholders have been removed and

@@ -2,7 +2,11 @@ import ssh2 from "ssh2";
 import type { Client as SSHClient, ClientChannel, ConnectConfig } from "ssh2";
 const { Client } = ssh2;
 import type { Config } from "../../../packages/config/index.js";
-import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
+import {
+  AgentCommandDisconnectedError,
+  AgentCommandStateError,
+  type Agent,
+} from "./agent.js";
 import { LoginPassword, isPasswordPrompt } from "./login-password.js";
 export type Dialogue = (
   host: string,
@@ -368,7 +372,9 @@ export class Connection {
           try {
             const response = JSON.parse(input.subarray(0, end).toString());
             finish(
-              response.error ? Error(response.error) : undefined,
+              response.error
+                ? new AgentCommandStateError(response.error, response.result)
+                : undefined,
               response.result,
             );
           } catch {

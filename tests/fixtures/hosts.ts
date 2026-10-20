@@ -204,7 +204,12 @@ export async function hosts(
                   }) + "\n",
                 );
               })().catch((error) =>
-                stream.end(JSON.stringify({ error: error.message }) + "\n"),
+                stream.end(
+                  JSON.stringify({
+                    error: error.message,
+                    result: error.attemptState,
+                  }) + "\n",
+                ),
               );
             });
             return;

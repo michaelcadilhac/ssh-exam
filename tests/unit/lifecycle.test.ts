@@ -5,6 +5,58 @@ import { AgentCommandDisconnectedError } from "../../apps/server/src/agent.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+it.each([
+  "generation",
+  "clock_revision",
+  "exam",
+  "username",
+  "uid",
+  "page_hash",
+  "transport",
+])("ignores a late renewal error after %s ownership changes", async (field) => {
+  const dir = mkdtempSync(tmpdir() + "/stale-renewal-");
+  const s = new Store(dir);
+  try {
+    s.db.exec(
+      "INSERT INTO exams VALUES('e','{}'); INSERT INTO exams VALUES('other','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,page_hash) VALUES('a','e','alice',1001,'ACTIVE','{}',1,9999999999999,'old-page');",
+    );
+    const expected = s.attempt("a");
+    let calls = 0;
+    const life = new Lifecycle(
+      s,
+      {
+        call: async () => {
+          calls++;
+          return {};
+        },
+      } as any,
+      new Monitoring(s),
+    );
+    const updates: Record<string, string | number> = {
+      generation: 1,
+      clock_revision: 1,
+      exam: "other",
+      username: "other",
+      uid: 1002,
+      page_hash: "new-page",
+    };
+    if (field !== "transport")
+      s.db
+        .prepare(`UPDATE attempts SET ${field}=? WHERE id='a'`)
+        .run(updates[field]);
+    await life.renewalFailed(
+      expected,
+      () => field !== "transport",
+      Error("late failure"),
+    );
+    expect(s.attempt("a").state).toBe("ACTIVE");
+    expect(calls).toBe(0);
+    expect(s.db.prepare("SELECT * FROM incidents").all()).toHaveLength(0);
+  } finally {
+    s.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 it("announces pause and disconnects before waiting for the class agent", async () => {
   const dir = mkdtempSync(tmpdir() + "/pause-disconnect-");
   const s = new Store(dir);

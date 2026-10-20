@@ -222,3 +222,40 @@ func TestOldLeaseCannotReviveNewPauseOrTransportGeneration(t *testing.T) {
 		}
 	}
 }
+
+func TestRejectedRenewalCarriesOnlyAuthenticatedAttemptState(t *testing.T) {
+	for _, state := range []string{"LOCKED", "FINALIZING", "COMPLETED", "CANCELLED_BEFORE_START"} {
+		t.Run(state, func(t *testing.T) {
+			e, key, cmd := leaseFixture(t)
+			e.WithState(func() error {
+				a := e.state.Attempts[finalID]
+				a.State = state
+				a.Generation++
+				a.Reason = "administrator: approved transfer"
+				return nil
+			})
+			result, err := e.Command(signedCommand(key, cmd), "student", "ssh-a")
+			if err == nil {
+				t.Fatal("transitioned workload was renewed")
+			}
+			a, ok := result.(*Attempt)
+			if !ok || a.State != state || a.Reason != "administrator: approved transfer" || a.Generation != 1 {
+				t.Fatalf("missing authenticated rejection state: %#v %v", result, err)
+			}
+			cmd.Nonce = Token()
+			if result, err := e.Command(signedCommand(key, cmd), "other", "ssh-a"); err == nil || result != nil {
+				t.Fatal("another account received attempt state")
+			}
+		})
+	}
+}
+
+func TestCancellationCannotRetireStartedAttemptDuringRenewal(t *testing.T) {
+	e, key, cmd := leaseFixture(t)
+	if _, err := e.Admin("cancel", finalID, "Synthetic attempted cancellation"); err == nil {
+		t.Fatal("started attempt cancelled")
+	}
+	if _, err := e.Command(signedCommand(key, cmd), "student", "ssh-a"); err != nil {
+		t.Fatal("refused cancellation incorrectly interrupted renewal", err)
+	}
+}

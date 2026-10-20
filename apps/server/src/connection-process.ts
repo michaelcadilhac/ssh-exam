@@ -4,7 +4,11 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { WebSocket } from "ws";
 import type { Config } from "../../../packages/config/index.js";
-import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
+import {
+  AgentCommandDisconnectedError,
+  AgentCommandStateError,
+  type Agent,
+} from "./agent.js";
 import type { Connection, Dialogue } from "./ssh.js";
 import type { ClientChannel } from "ssh2";
 export type ConnectionHandle = Pick<
@@ -294,7 +298,9 @@ export class IsolatedConnection implements ConnectionHandle {
       if (m.error) {
         const error = m.error.disconnected
           ? new AgentCommandDisconnectedError(m.error.message)
-          : Error(m.error.message);
+          : m.error.attemptState
+            ? new AgentCommandStateError(m.error.message, m.error.attemptState)
+            : Error(m.error.message);
         Object.assign(error, {
           publicMessage: m.error.publicMessage,
           authenticationStage: m.error.authenticationStage,

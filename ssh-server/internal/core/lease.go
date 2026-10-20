@@ -68,7 +68,9 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		return nil, err
 	}
 	if a.State != "ACTIVE" || expired(a) || a.Lease <= now || a.Boot != boot() {
-		return nil, errors.New("cannot renew locked/ended workload")
+		// Preserve the authenticated reason/state for a racing administrator
+		// pause or finish. This is still a rejection and grants no execution.
+		return publicAttempt(a), errors.New("cannot renew locked/ended workload")
 	}
 	file := filepath.Join(dir, a.ID+".json")
 	lease := executionLease{}
@@ -132,6 +134,9 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 	}
 	v := current.Attempts[a.ID]
 	if v == nil || v.State != "ACTIVE" || v.Generation != a.Generation || v.Transport != transport || expired(v) {
+		if v != nil && v.Username == username && v.UID == a.UID && v.Transport == transport {
+			return publicAttempt(v), errors.New("lease superseded by attempt transition")
+		}
 		return nil, errors.New("lease superseded by attempt transition")
 	}
 	a.Lease = lease.Until

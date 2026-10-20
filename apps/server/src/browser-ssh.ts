@@ -3,7 +3,11 @@ import { randomUUID, sign, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { WebSocket } from "ws";
 import { Connection, type Dialogue } from "./ssh.js";
-import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
+import {
+  AgentCommandDisconnectedError,
+  AgentCommandStateError,
+  type Agent,
+} from "./agent.js";
 import type { Config } from "../../../packages/config/index.js";
 
 class BrowserPane extends EventEmitter {
@@ -276,7 +280,7 @@ export class BrowserConnection extends Connection {
       (transport !== undefined && r.transport !== transport)
     )
       throw Error("SSH acknowledgment scope rejected");
-    if (r.error) throw Error(r.error);
+    if (r.error) throw new AgentCommandStateError(r.error, r.result);
     return r;
   }
   override async connect(

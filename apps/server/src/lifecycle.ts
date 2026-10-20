@@ -19,7 +19,11 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { Store, now, hash, type Attempt } from "./db.js";
-import { Agent, AgentCommandDisconnectedError } from "./agent.js";
+import {
+  Agent,
+  AgentCommandDisconnectedError,
+  AgentCommandStateError,
+} from "./agent.js";
 import { Monitoring } from "./monitoring.js";
 import { Alerts, alertContext, type AlertKey } from "./alerts.js";
 
@@ -963,6 +967,94 @@ export class Lifecycle {
   isBusy(id: string) {
     return this.busy.has(id);
   }
+  expireDeadline(id: string) {
+    const a = this.store.attempt(id);
+    if (
+      !["ACTIVE", "LOCKED"].includes(a.state) ||
+      !a.deadline ||
+      now() < a.deadline
+    )
+      return false;
+    this.store.db
+      .prepare(
+        "UPDATE attempts SET state='FINALIZING',reason='expiration' WHERE id=?",
+      )
+      .run(id);
+    this.onEnd(this.store.attempt(id));
+    return true;
+  }
+  async renewalFailed(
+    expected: Attempt,
+    stillOwned: () => boolean,
+    error: unknown,
+  ) {
+    const { id, generation } = expected;
+    let current = this.store.attempt(id);
+    // Never let a late reply affect a replacement page/transport/generation.
+    if (
+      current.state !== "ACTIVE" ||
+      current.generation !== generation ||
+      current.clock_revision !== expected.clock_revision ||
+      current.exam !== expected.exam ||
+      current.username !== expected.username ||
+      current.uid !== expected.uid ||
+      current.page_hash !== expected.page_hash ||
+      !stillOwned()
+    )
+      return;
+    if (this.expireDeadline(id)) return;
+    if (error instanceof AgentCommandStateError && error.attemptState) {
+      const remote = error.attemptState;
+      // A rejected renewal is not permission to change identity or timing.
+      if (
+        remote.id === current.id &&
+        remote.exam === current.exam &&
+        remote.username === current.username &&
+        remote.uid === current.uid &&
+        remote.start === current.start &&
+        remote.deadline === current.deadline &&
+        (remote.original_deadline || remote.deadline) ===
+          (current.original_deadline || current.deadline) &&
+        (remote.clock_revision || 0) === current.clock_revision &&
+        remote.generation >= current.generation &&
+        ["LOCKED", "FINALIZING", "COLLECTION_FAILED", "COMPLETED"].includes(
+          remote.state,
+        )
+      ) {
+        this.store.audit(
+          "class-agent",
+          "lease-renewal-superseded",
+          id,
+          JSON.stringify({
+            state: remote.state,
+            generation: remote.generation,
+            reason: remote.reason,
+          }),
+        );
+        // A renewal receipt contains state, not a verified submission manifest.
+        // Completion waits for that manifest via the normal signed callback.
+        this.acceptRemote(
+          remote.protected
+            ? {
+                ...remote,
+                protected: false,
+                state:
+                  remote.state === "COMPLETED" ? "FINALIZING" : remote.state,
+              }
+            : remote,
+        );
+        return;
+      }
+    }
+    current = this.store.attempt(id);
+    if (
+      current.state === "ACTIVE" &&
+      current.generation === generation &&
+      stillOwned() &&
+      !this.expireDeadline(id)
+    )
+      await this.lock(id, "Class-agent lease renewal failed");
+  }
   async finish(id: string, reason: string) {
     if (
       this.store.db
@@ -1066,12 +1158,7 @@ export class Lifecycle {
       .all() as Attempt[];
     for (const a of rows) {
       if (a.deadline && now() >= a.deadline) {
-        this.store.db
-          .prepare(
-            "UPDATE attempts SET state='FINALIZING',reason='expiration' WHERE id=?",
-          )
-          .run(a.id);
-        this.onEnd(this.store.attempt(a.id));
+        this.expireDeadline(a.id);
       } else if (
         a.state === "ACTIVE" &&
         a.focus_lost_at !== null &&

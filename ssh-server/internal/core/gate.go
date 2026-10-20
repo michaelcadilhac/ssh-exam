@@ -147,7 +147,7 @@ func (e *Engine) local(c *net.UnixConn) {
 		} else if cmd.Body.BrowserSSH {
 			json.NewEncoder(c).Encode(map[string]any{"proof": proof})
 		} else if err != nil {
-			json.NewEncoder(c).Encode(map[string]any{"error": err.Error(), "proof": proof})
+			json.NewEncoder(c).Encode(map[string]any{"error": err.Error(), "result": result, "proof": proof})
 		} else {
 			json.NewEncoder(c).Encode(map[string]any{"result": result, "proof": proof})
 		}

@@ -1,6 +1,10 @@
 import { EventEmitter } from "node:events";
 import { writeFileSync } from "node:fs";
-import { Agent, AgentCommandDisconnectedError } from "./agent.js";
+import {
+  Agent,
+  AgentCommandDisconnectedError,
+  AgentCommandStateError,
+} from "./agent.js";
 import { BrowserConnection } from "./browser-ssh.js";
 import { Connection } from "./ssh.js";
 
@@ -158,6 +162,10 @@ process.on("message", async (m: any) => {
         error: {
           message: error.message,
           disconnected: error instanceof AgentCommandDisconnectedError,
+          attemptState:
+            error instanceof AgentCommandStateError
+              ? error.attemptState
+              : undefined,
           publicMessage: error.publicMessage,
           authenticationStage: error.authenticationStage,
         },

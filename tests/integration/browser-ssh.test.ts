@@ -7,6 +7,7 @@ import { BrowserConnection } from "../../apps/server/src/browser-ssh.js";
 import {
   Agent,
   AgentCommandDisconnectedError,
+  AgentCommandStateError,
 } from "../../apps/server/src/agent.js";
 
 it("accepts only agent-signed SSH identity/results with exact nonce, account and transport", async () => {
@@ -67,6 +68,25 @@ it("accepts only agent-signed SSH identity/results with exact nonce, account and
   };
   try {
     expect(await conn.command("health")).toEqual({ trusted: true });
+    change = (r) => {
+      r.error = "cannot renew locked/ended workload";
+      r.result = {
+        id: "attempt",
+        state: "LOCKED",
+        reason: "administrator: approved transfer",
+        generation: 2,
+      };
+    };
+    await expect(
+      conn.command("renew-execution-lease", { id: "attempt" }),
+    ).rejects.toMatchObject({
+      name: "AgentCommandStateError",
+      attemptState: {
+        reason: "administrator: approved transfer",
+        generation: 2,
+      },
+    });
+    change = () => {};
     for (const field of ["agent", "type", "nonce", "username", "transport"]) {
       change = (r) => {
         r[field] = "forged";
