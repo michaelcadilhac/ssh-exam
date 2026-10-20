@@ -55,3 +55,19 @@ SSH policy and configuration do not change. When rolling back, inspect pending
 deferred preflight warnings: older code respects the stored outbox deadline but
 does not cancel or recheck them on later signed confirmation. Never restore a
 database snapshot over newer attempts/deadlines or signed reports.
+
+## Production receipt
+
+Deployed code revision `a32f3bb` on October 20, 2026 at 05:56 UTC. Image
+`ssh-exam-workspace:preflight-alert-a32f3bb` has SHA-256
+`f1d226b04c24a9d460003133a086dab538b18ac65caf9d667948c7fbb815d91a`.
+The protected backup is
+`/var/backups/ssh-exam/20261020T055605Z-preflight-alert-xc80zivy` on marco.
+
+Public readiness confirmed production ready, maintenance off and notifications
+enabled. The container was healthy with zero restarts, and both compiled server
+modules matched the tested local build. All 25 attempt records retained their
+state, timing and submission metadata. The reported preparation remained cancelled
+without a start or deadline. Frontend assets were unchanged. The class agent and
+deadline watchdog remained active without deployment or restart; mcadilha retained
+its `/bin/bash` administrator shell.
