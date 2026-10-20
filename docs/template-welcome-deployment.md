@@ -31,6 +31,10 @@ banner, a custom banner and a maximum-size banner: the welcome stays outside
 readiness, precedes the prompt, and Ctrl-C remains an interactive input byte.
 This test does not contact DePaul or use production student accounts.
 
+The full native race suite and `go vet ./...` pass. Focused welcome/PTY tests
+also pass with `TZ=Pacific/Kiritimati` and as an unprivileged process on csc-sys
+using the compiled Linux test executable and disposable fixtures.
+
 ## Deployment and rollback
 
 Both `exam-agent` and `exam-login` must be updated together; the gate no longer
