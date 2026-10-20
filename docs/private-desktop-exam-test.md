@@ -135,3 +135,7 @@ submission and audit records remain on their normal servers. Detailed transient
 test receipts and screenshots are in the private local directory
 `/tmp/ssh-exam-private30-YUAruv`; no authentication screenshot, password or response
 value is included in the test receipts.
+
+The user subsequently requested deployment; see the
+[production receipt](ssh-sign-in-diagnostics-deployment.md) for that separate
+web-only rollout.
