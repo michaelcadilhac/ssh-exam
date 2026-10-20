@@ -139,6 +139,14 @@ See [Creating an exam template](../docs/template-authoring.md) for the complete 
 Templates contain work/ starters and materials/ read-only questions. Work initializes once at
 activation; every later pane shares it. No /etc/profile changes or information hooks are needed.
 
+An optional `materials/WELCOME.txt` is printed before the login shell in each
+timed exam terminal. `[DEADLINE]`, `[USER]` and `[EXAM-NAME]` expand to the current
+deadline (explicit Chicago timezone), account username and exam display name.
+Missing/empty files produce no exam banner; practice keeps its own notice.
+Use a regular UTF-8 file up to 64 KiB, without symlinks/hard links. Invalid files
+are skipped with agent diagnostics. See the authoring guide for an example and
+the exact substitution behavior; reading the source with `cat` does not expand it.
+
 ## Private temporary storage
 
 Each attempt has writable, private `/tmp` and `/var/tmp`, shared across its terminal

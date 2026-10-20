@@ -16,7 +16,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	_ "time/tzdata"
 	"unsafe"
 )
 
@@ -280,6 +279,15 @@ func (e *Engine) local(c *net.UnixConn) {
 			}
 			result["proof"] = proof
 		}
+		welcome, welcomeErr := terminalWelcome(e.Config.Templates, a, practice)
+		if welcomeErr != nil {
+			// A bad optional banner must not prevent an authorized exam terminal.
+			e.Audit("terminal-welcome-unavailable", a.ID)
+			log.Printf("terminal welcome unavailable: attempt=%s: %v", a.ID, welcomeErr)
+		}
+		// Local-only display data: leave it out of the signed admission receipt
+		// and the browser's bounded EXAM-READY protocol line.
+		result["welcome"] = welcome
 		a.Units = append(a.Units, unit)
 		if err = e.save(); err != nil {
 			return err
@@ -456,6 +464,7 @@ func Gate(socket string) error {
 		Directory string `json:"directory"`
 		Deadline  int64  `json:"deadline"`
 		Error     any    `json:"error"`
+		Welcome   string `json:"welcome"`
 	}
 	if json.Unmarshal(result, &response) != nil {
 		return errors.New("invalid agent response")
@@ -463,7 +472,11 @@ func Gate(socket string) error {
 	if response.Error != nil {
 		return errors.New("admission denied")
 	}
-	fmt.Printf("EXAM-READY %s", result)
+	ready, err := terminalReadyResponse(result)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("EXAM-READY %s\n", ready)
 	// Only the inner PTY handles editing/signals. Otherwise Ctrl-C kills this
 	// outer gate and canonical buffering prevents interactive editor input.
 	restore, err := rawTerminal(0)
@@ -471,7 +484,7 @@ func Gate(socket string) error {
 		return err
 	}
 	defer restore()
-	fmt.Print(terminalWelcome(response.Directory, response.Deadline))
+	fmt.Print(response.Welcome)
 	conn.Write([]byte{1})
 	ended, err := reader.ReadBytes('\n')
 	if err != nil {
@@ -484,18 +497,4 @@ func Gate(socket string) error {
 		return errors.New("protected terminal failed; contact your instructor")
 	}
 	return nil
-}
-
-// Preflight has no deadline: its zero value must not look like an expired exam.
-func terminalWelcome(directory string, deadline int64) string {
-	if deadline == 0 {
-		return "\r\nPractice terminal. The exam clock has not started.\r\n"
-	}
-	// Match the instructor dashboard regardless of the server's local timezone.
-	zone, err := time.LoadLocation("America/Chicago")
-	if err != nil {
-		zone = time.UTC
-	}
-	readable := time.UnixMilli(deadline).In(zone).Format("Jan 2, 2006 at 3:04:05 PM MST")
-	return fmt.Sprintf("\r\nWelcome to the exam. Saved files in %s are collected automatically when time expires or you finish the exam. Unsaved editor buffers are not included. Deadline: %s\r\n", directory, readable)
 }

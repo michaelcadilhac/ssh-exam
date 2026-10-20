@@ -21,6 +21,7 @@ record, an archive, or an exam ID. For example, `csc300-midterm-v1` selects:
 │   ├── main.c
 │   └── public-tests/
 └── materials/
+    ├── WELCOME.txt
     └── questions.txt
 ```
 
@@ -37,7 +38,8 @@ digits, underscores or hyphens: `^[a-zA-Z0-9_-]{1,64}$`.
 Starter work is copied once when the attempt activates. Opening additional terminals
 or resuming an attempt does not reset the files. Practice terminals do not receive
 exam starters or materials. Files in a template do not automatically run, and a
-questions file does not automatically open. Include a short `work/README.txt`
+questions file does not automatically open. An optional `materials/WELCOME.txt`
+is displayed automatically as described below. Include a short `work/README.txt`
 pointing students to `/materials/questions.txt` and explaining how to begin.
 
 Exam ID and Template ID can differ. Multiple exams may use the same template.
@@ -59,6 +61,44 @@ State any remaining assumptions. Do not silently invent course requirements or a
 production schedule. Separate pedagogical decisions from deployment settings.
 
 ## Student-facing content
+
+### Terminal welcome
+
+To display a welcome when each exam terminal opens, add `materials/WELCOME.txt`
+to the template (visible as `/materials/WELCOME.txt` in the exam). There is no
+hardcoded exam banner when this file is absent or empty. Practice terminals keep
+their separate practice notice and never display exam materials.
+
+The agent replaces these case-sensitive keywords in the displayed text:
+
+| Keyword | Replacement |
+| --- | --- |
+| `[DEADLINE]` | The attempt's current authoritative deadline, formatted as a date and time with explicit Chicago timezone (`CST`/`CDT`). |
+| `[USER]` | The student's account username. |
+| `[EXAM-NAME]` | The configured exam display name (exam ID for legacy attempts without a name). |
+
+For example:
+
+```text
+Welcome, [USER], to [EXAM-NAME].
+Read /materials/questions.txt to begin.
+Saved files in /work are collected automatically when time expires or you finish the exam.
+Unsaved editor buffers are not included.
+Deadline: [DEADLINE]
+```
+
+Substitution happens once per terminal opening, including additional panes and
+authorized recovery. Clock changes are reflected in subsequently opened panes;
+already printed text is not rewritten. The source file remains unchanged, and
+`cat /materials/WELCOME.txt` shows its original placeholders. Unknown keywords
+are left intact; replacement values are not recursively substituted.
+
+Use a regular UTF-8 file, at most 64 KiB, normally root-owned and mode `0644`.
+Symlinks, hard links and special entries are rejected. An invalid/unreadable
+optional welcome is skipped and logged by the agent without blocking the exam.
+LF and CRLF line endings both display correctly in the terminal.
+
+### Questions and starters
 
 Put the questions, constraints, input/output formats, examples and marking guidance
 in `materials/questions.txt`, or similarly readable files. Plain UTF-8 text works in

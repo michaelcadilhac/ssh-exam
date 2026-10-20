@@ -1,0 +1,7 @@
+Welcome, [USER], to [EXAM-NAME].
+
+Read /materials/questions.txt to begin.
+Saved files in /work are collected automatically when time expires or you finish the exam.
+Unsaved editor buffers are not included.
+
+Deadline: [DEADLINE]
