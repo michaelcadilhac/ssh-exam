@@ -147,7 +147,7 @@ Use a regular UTF-8 file up to 64 KiB, without symlinks/hard links. Invalid file
 are skipped with agent diagnostics. See the authoring guide for an example and
 the exact substitution behavior; reading the source with `cat` does not expand it.
 
-Preflight has a separate five-minute limit from its initial preparation timestamp.
+Preflight has a separate fifteen-minute limit from its initial preparation timestamp.
 The local watchdog cancels an unstarted preparation at that limit even if its page
 continues heartbeating or the webserver is unavailable. It stops practice workloads
 and removes disposable state, then restores any temporary unstarted account setup.

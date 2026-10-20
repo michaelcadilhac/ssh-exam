@@ -1,4 +1,5 @@
 // Browser fixtures only; this file is excluded from the production server build.
+import { PREFLIGHT_TIMEOUT_MS } from "../../packages/protocol/preflight.js";
 import { smtpFixture } from "../fixtures/smtp.js";
 import type { IsolatedConnection } from "../../apps/server/src/connection-process.js";
 import { createApp } from "../../apps/server/src/app.js";
@@ -452,7 +453,7 @@ app.post("/api/fixture/age-preflight", async (req) => {
     .prepare(
       "UPDATE attempts SET preflight_started_at=?,last_contact=? WHERE id=?",
     )
-    .run(Date.now() - 300001, Date.now(), id);
+    .run(Date.now() - PREFLIGHT_TIMEOUT_MS - 1, Date.now(), id);
   return {};
 });
 app.post("/api/fixture/fault", async (req) => {

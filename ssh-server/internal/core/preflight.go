@@ -1,7 +1,7 @@
 package core
 
-const PreflightTimeoutMillis int64 = 5 * 60 * 1000
-const PreflightExpiredReason = "Preflight expired after 5 minutes. Sign out and sign in again; your exam has not started."
+const PreflightTimeoutMillis int64 = 15 * 60 * 1000
+const PreflightExpiredReason = "Preflight expired after 15 minutes. Sign out and sign in again; your exam has not started."
 
 func preflightExpired(a *Attempt, at int64) bool {
 	return a.State == "PREPARING" && a.Start == 0 && a.Deadline == 0 && a.OriginalDeadline == 0 && a.PreflightStartedAt > 0 && at >= a.PreflightStartedAt+PreflightTimeoutMillis

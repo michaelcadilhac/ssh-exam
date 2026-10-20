@@ -77,7 +77,10 @@ func TestExpiredPreflightCannotActivateOrIssuePracticeEvenBeforeTick(t *testing.
 }
 
 func TestPreflightTimerNotRenewedAndNeverCancelsStartedExam(t *testing.T) {
-	e, _ := preflightFixture(t, 1000)
+	if PreflightTimeoutMillis != 15*60*1000 {
+		t.Fatal("preflight timeout must be fifteen minutes")
+	}
+	e, _ := preflightFixture(t, 5*60*1000+1000)
 	before := inspectFinal(t, e).PreflightStartedAt
 	if err := e.Tick(); err != nil {
 		t.Fatal(err)

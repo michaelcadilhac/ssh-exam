@@ -1,5 +1,8 @@
 # Template terminal welcomes
 
+This records the original five-minute preflight release. The current preflight
+limit is fifteen minutes; see [the timeout update](preflight-timeout-deployment.md).
+
 The class agent reads the administrator-controlled template file mounted as
 `/materials/WELCOME.txt`, if present, for every timed terminal opening. It
 replaces `[DEADLINE]`, `[USER]` and `[EXAM-NAME]` with current attempt metadata.

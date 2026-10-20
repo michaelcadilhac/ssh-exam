@@ -12,6 +12,8 @@ import {
 
 it("uses elapsed preparation time, independent of heartbeats, and excludes started exams", () => {
   const a = { state: "PREPARING", start: null, preflight_started_at: 1000 };
+  expect(PREFLIGHT_TIMEOUT_MS).toBe(15 * 60 * 1000);
+  expect(preflightExpired(a, 1000 + 5 * 60 * 1000)).toBe(false);
   expect(preflightExpired(a, 1000 + PREFLIGHT_TIMEOUT_MS - 1)).toBe(false);
   expect(preflightExpired(a, 1000 + PREFLIGHT_TIMEOUT_MS)).toBe(true);
   expect(preflightExpired({ ...a, state: "ACTIVE", start: 1001 }, 999999)).toBe(

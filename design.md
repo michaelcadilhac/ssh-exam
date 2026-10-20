@@ -632,7 +632,7 @@ The webapp must not receive root SSH credentials, unrestricted sudo, write acces
 
 ### 14.2 Controlled entry before personal shell startup
 
-Preflight expires five minutes after it opens, independent of browser heartbeats
+Preflight expires fifteen minutes after it opens, independent of browser heartbeats
 or activity. Persist the native preparation timestamp so local watchdog expiry
 survives browser closure, webserver outages and agent restarts. Deny expired
 practice admissions, account setup and activation even between watchdog ticks;

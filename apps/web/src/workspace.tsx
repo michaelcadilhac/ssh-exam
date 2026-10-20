@@ -15,6 +15,7 @@ import {
   focusGraceSeconds,
 } from "../../../packages/protocol/focus-grace.js";
 import { readinessMessage } from "../../../packages/protocol/readiness.js";
+import { PREFLIGHT_TIMEOUT_MINUTES } from "../../../packages/protocol/preflight.js";
 import { browserSSH } from "./browser-ssh.js";
 import { MonitoringConfirmations } from "./monitoring-confirmations.js";
 import { examBrowserIssue } from "./browser-support.js";
@@ -1372,7 +1373,10 @@ export function Workspace({
           {settings.webcam && (
             <video id="camera-preview" muted autoPlay playsInline />
           )}
-          <span>Preflight expires after 5 minutes; you can sign in again.</span>
+          <span>
+            Preflight expires after {PREFLIGHT_TIMEOUT_MINUTES} minutes; you can
+            sign in again.
+          </span>
         </div>
       )}
       <main
@@ -1663,7 +1667,7 @@ export function Workspace({
               {attempt.state === "COMPLETED"
                 ? "Your saved files have been protected on the class server."
                 : attempt.state === "CANCELLED_BEFORE_START"
-                  ? `${attempt.reason?.startsWith("Preflight expired after 5 minutes") ? "Preflight expired after 5 minutes. " : ""}Your exam has not started and no exam time was consumed. Sign out and sign in again to retry preflight.`
+                  ? `${attempt.reason?.match(/^Preflight expired after \d+ minutes\./)?.[0] || ""} Your exam has not started and no exam time was consumed. Sign out and sign in again to retry preflight.`.trim()
                   : attempt.protected
                     ? "Your saved files are protected. The instructor must review workload cleanup."
                     : "Your attempt has ended. Automatic collection is pending or failed. Your instructor has been alerted; no submission action is required from you."}

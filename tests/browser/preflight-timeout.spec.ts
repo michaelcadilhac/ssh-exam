@@ -13,7 +13,7 @@ async function signIn(page: Page) {
   ).toBeEnabled();
 }
 
-test("five-minute age ends a connected preflight, closes SSH and practice, then permits a fresh login", async ({
+test("fifteen-minute age ends a connected preflight, closes SSH and practice, then permits a fresh login", async ({
   page,
 }) => {
   test.setTimeout(45000);
@@ -21,7 +21,9 @@ test("five-minute age ends a connected preflight, closes SSH and practice, then 
   page.on("pageerror", (e) => errors.push(e.message));
   await signIn(page);
   await expect(
-    page.getByText("Preflight expires after 5 minutes; you can sign in again."),
+    page.getByText(
+      "Preflight expires after 15 minutes; you can sign in again.",
+    ),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Practice terminal", exact: true })
@@ -45,7 +47,7 @@ test("five-minute age ends a connected preflight, closes SSH and practice, then 
     page.getByRole("heading", { name: "Preflight ended before starting" }),
   ).toBeVisible({ timeout: 15000 });
   await expect(page.locator(".lock-overlay")).toContainText(
-    "Preflight expired after 5 minutes",
+    "Preflight expired after 15 minutes",
   );
   await expect(page.locator(".lock-overlay")).toContainText(
     "no exam time was consumed",
@@ -65,7 +67,7 @@ test("five-minute age ends a connected preflight, closes SSH and practice, then 
     deadline: null,
   });
   await page.screenshot({
-    path: "docs/screenshots/preflight-five-minute-timeout.png",
+    path: "docs/screenshots/preflight-fifteen-minute-timeout.png",
     fullPage: true,
   });
   await page
