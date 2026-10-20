@@ -121,6 +121,12 @@ Enable optional desktop/sound alerts while the dashboard is open. Test actual SM
 before production. Signed callback failures and the durable email outbox retain recoverability.
 Alert links require normal authentication and never expose images or perform an action on GET.
 
+Local pending upgrade: [durable alert episodes](alert-episodes.md) distinguish an
+unchanged failure from a new cause or recurrence. Review requests remain in the
+audit but repeated identical messages email once per interruption. Routine Emacs
+lock links no longer require a saved sibling to suppress omission email; their
+manifest entries remain intact. This is locally implemented, not deployed.
+
 Interface previews using disposable test data:
 [desktop](screenshots/admin-redesign-desktop.png) ·
 [narrow window](screenshots/admin-redesign-mobile.png).

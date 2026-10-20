@@ -206,6 +206,32 @@ it("lost SSH acknowledgment stays pending; an authenticated failure alerts and l
     t.close();
   }
 });
+it("a secured submission with failed termination emails once across repeated callbacks, delivery and restart", () => {
+  const t = setup();
+  try {
+    t.collect();
+    t.remote.state = "COLLECTION_FAILED";
+    t.remote.errors = ["workload cleanup failed\nStudent: forged"];
+    const manifest = t.manifest();
+    for (let i = 0; i < 14; i++) t.life().acceptRemote(t.remote, manifest);
+    t.store().db.prepare("UPDATE outbox SET status='sent'").run();
+    t.restart();
+    t.life().acceptRemote(t.remote, manifest);
+    const messages = t
+      .store()
+      .db.prepare("SELECT body FROM outbox")
+      .all() as any[];
+    expect(messages).toHaveLength(1);
+    expect(messages[0].body).toContain("submission is already secured");
+    expect(messages[0].body).toContain("Account restriction: HELD");
+    expect(messages[0].body).toContain("America/Chicago");
+    expect(messages[0].body).toContain("examctl info a");
+    expect(messages[0].body).not.toContain("\nStudent: forged");
+    expect(t.store().attempt("a").protected).toBe(1);
+  } finally {
+    t.close();
+  }
+});
 it("rejects mismatched identities, intervals and conflicting secured artifacts", async () => {
   const t = setup();
   try {
@@ -368,12 +394,12 @@ it.each([
   {
     name: "lock without saved counterpart",
     omissions: [".#missing.txt: symlink omitted (never dereferenced)"],
-    alert: true,
+    alert: false,
   },
   {
     name: "counterpart in different directory",
     omissions: ["src/.#answer.txt: symlink omitted (never dereferenced)"],
-    alert: true,
+    alert: false,
   },
   {
     name: "unknown omission reason",
@@ -408,8 +434,14 @@ it.each([
       expect(notifications[0].body).toContain(
         "Student: alice\nExam: e\nAttempt: a",
       );
-      for (const omission of omissions)
-        expect(notifications[0].body).toContain(JSON.stringify(omission));
+      for (const omission of omissions) {
+        if (
+          omission.startsWith(".#") &&
+          omission.endsWith(": symlink omitted (never dereferenced)")
+        )
+          expect(notifications[0].body).not.toContain(JSON.stringify(omission));
+        else expect(notifications[0].body).toContain(JSON.stringify(omission));
+      }
       expect(notifications[0].body).not.toContain("\nStudent: mallory");
     }
     expect(t.store().attempt("a")).toMatchObject({

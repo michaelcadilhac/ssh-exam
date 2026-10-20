@@ -1005,15 +1005,28 @@ export async function createApp(
       const message = z
         .object({ message: z.string().max(1000) })
         .parse(req.body).message;
-      store.db
-        .prepare(
-          "UPDATE incidents SET message=?,review_at=? WHERE attempt=? AND generation=?",
-        )
-        .run(message, now(), a.id, a.generation);
-      life.alert(
-        `Review requested: ${a.username}`,
-        `${a.exam}: ${message}. Clock continues. Open the authenticated dashboard.`,
-      );
+      store.db.transaction(() => {
+        store.db
+          .prepare(
+            "UPDATE incidents SET message=?,review_at=? WHERE attempt=? AND generation=?",
+          )
+          .run(message, now(), a.id, a.generation);
+        store.audit(
+          a.username,
+          "review-request",
+          a.id,
+          JSON.stringify({ generation: a.generation, message }),
+        );
+        // Each distinct trimmed message notifies once per interruption. Requests
+        // remain auditable; no automatic reminders or continued-work permission.
+        life.notifyAttempt(
+          a,
+          `review-request:${hash(message.trim())}`,
+          `Review requested: ${a.username}`,
+          `Student message: ${JSON.stringify(message)}\nClock continues. Open the authenticated dashboard.`,
+          message.trim(),
+        );
+      })();
       return { ok: true };
     },
   );
@@ -2404,6 +2417,7 @@ export async function createApp(
           const transport = mailTransport(smtp);
           try {
             await transport.sendMail({
+              messageId: `<${r.id}@ssh-exam.local>`,
               from: smtp.from,
               to: smtp.to,
               subject: r.subject,

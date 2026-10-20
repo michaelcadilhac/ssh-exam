@@ -817,7 +817,7 @@ Treat the working tree as hostile filesystem input. Implement and test collectio
 - Do not chown/chmod outside the verified tree through symlink traversal or recursive path races.
 - Preserve enough regular-file metadata for grading, but do not preserve setuid bits, arbitrary ownership, or privileged filesystem metadata in the exported archive.
 - Never silently truncate a submission or claim success after omitting unexpected regular files. Record omissions/errors and alert the instructor.
-- Keep every omission in the immutable manifest. Suppress omission email only for the collector's exact symlink-omission record for an Emacs `.#NAME` lock whose sibling `NAME` is present in the collected regular-file inventory. This is a notification filter, not permission to follow a link or discard file data. Orphan locks, other symlinks, special files (even with lock-like names), unknown omission reasons and mixed collections with any other omission still alert. Collection-failure alerts are independent and must never be suppressed by this filter.
+- Keep every omission in the immutable manifest. Suppress notification entries for the collector's exact symlink-omission record for an Emacs `.#NAME` lock, including when no saved sibling exists. An editor lock alone never triggers omission email or a separate missing-answer warning. In mixed collections, report the other omissions without routine lock entries. This intentional instructor-requested policy supersedes the former saved-sibling requirement; it changes notifications only. Never follow or restore the symlink. Ordinary symlinks, special files (even with lock-like names), unknown reasons and actual collection failures remain alertable.
 
 A privileged process may control the snapshot, but copying/archiving student data should use the narrowest readable view/privilege practical. Do not use a root `tar` invocation over unvalidated student-controlled paths as the complete solution.
 
@@ -1314,6 +1314,18 @@ entry. The original clock and ordinary account restriction survive every step.
 
 
 ## Local administration and command/callback transport
+
+Firm management policy (October 20): every supported exam-management capability,
+including all web-admin actions/settings, must have a supported, discoverable
+examctl workflow using the same validation, authority, audit, revisions and
+idempotency. Clearly distinguish exam definitions, students, attempts and
+submissions. Explain prerequisites, effects, units, pending versus confirmed
+status, offline limitations, useful errors and practical next commands in help.
+No direct SQL/JSON edits, hidden endpoints or incident-only scripts constitute a
+supported workflow. Complete CLI coverage is under investigation in
+docs/todo-design-decisions.md; existing native-only commands do not yet satisfy
+this policy. Preserve signed student-SSH commands and outbound callbacks, not a
+new webserver-to-agent API.
 
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 

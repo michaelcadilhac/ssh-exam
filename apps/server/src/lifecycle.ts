@@ -21,6 +21,7 @@ import path from "node:path";
 import { Store, now, hash, type Attempt } from "./db.js";
 import { Agent, AgentCommandDisconnectedError } from "./agent.js";
 import { Monitoring } from "./monitoring.js";
+import { Alerts, alertContext, type AlertKey } from "./alerts.js";
 
 export const PREFLIGHT_CONFIRMATION_GRACE_MS = 2 * 60 * 1000;
 // Collection metadata is immutable; connection bookkeeping is not part of the
@@ -47,37 +48,25 @@ function manifestSnapshot(manifest: any) {
         : value;
   return JSON.stringify(ordered(snapshot), null, 2);
 }
-// Only routine Emacs lock links for a file actually present in this submission
-// are notification noise. Do not alter the signed manifest or relax collection.
-function hasUnexpectedOmissions(manifest: {
+// Filter notification entries only. Keep the signed manifest unchanged.
+function unexpectedOmissions(manifest: {
   files?: unknown;
   omissions?: unknown;
 }) {
   if (manifest.omissions === undefined || manifest.omissions === null)
-    return false;
-  if (!Array.isArray(manifest.omissions)) return true;
-  if (manifest.omissions.length === 0) return false;
-  const savedFiles = new Set(
-    Array.isArray(manifest.files)
-      ? manifest.files.flatMap((file) =>
-          typeof file?.path === "string" ? [file.path] : [],
-        )
-      : [],
-  );
+    return [];
+  if (!Array.isArray(manifest.omissions)) return [manifest.omissions];
   const suffix = ": symlink omitted (never dereferenced)";
-  return manifest.omissions.some((omission) => {
+  return manifest.omissions.filter((omission) => {
     if (typeof omission !== "string" || !omission.endsWith(suffix)) return true;
     const omittedPath = omission.slice(0, -suffix.length);
     const name = path.posix.basename(omittedPath);
     if (!name.startsWith(".#") || name.length <= 2) return true;
-    const savedPath = path.posix.join(
-      path.posix.dirname(omittedPath),
-      name.slice(2),
-    );
-    return !savedFiles.has(savedPath);
+    return false;
   });
 }
 export class Lifecycle {
+  alerts: Alerts;
   private busy = new Set<string>();
   onEnd = (_attempt: Attempt) => {};
   onSecured = (_attempt: Attempt) => {};
@@ -88,37 +77,41 @@ export class Lifecycle {
     public store: Store,
     public agent: Agent,
     public monitoring: Monitoring,
-  ) {}
+  ) {
+    this.alerts = new Alerts(store);
+  }
   alert(
     subject: string,
     body: string,
-    options: { coalesce?: boolean; notBefore?: number } = {},
+    options: { coalesce?: boolean; notBefore?: number; key?: AlertKey } = {},
   ) {
-    const pending = (
-      options.coalesce === false
-        ? this.store.db
-            .prepare(
-              "SELECT id,body FROM outbox WHERE subject=? AND body=? AND status='pending' AND next>? LIMIT 1",
-            )
-            .get(subject, body, now() - 60000)
-        : this.store.db
-            .prepare(
-              "SELECT id,body FROM outbox WHERE subject=? AND status='pending' AND next>? LIMIT 1",
-            )
-            .get(subject, now() - 60000)
-    ) as any;
-    if (pending) {
-      if (!pending.body.includes(body))
-        this.store.db
-          .prepare("UPDATE outbox SET body=? WHERE id=?")
-          .run((pending.body + "\n" + body).slice(0, 12000), pending.id);
-      return pending.id as string;
+    // Compatibility for callers without a durable event identity. Never combine
+    // different bodies by subject. Attempt failures use explicit episode keys.
+    if (!options.key && options.coalesce === false) {
+      const pending = this.store.db
+        .prepare(
+          "SELECT id FROM outbox WHERE subject=? AND body=? AND status='pending' LIMIT 1",
+        )
+        .get(subject, body) as { id: string } | undefined;
+      if (pending) return pending.id;
     }
-    const id = randomUUID();
-    this.store.db
-      .prepare("INSERT INTO outbox(id,subject,body,next) VALUES(?,?,?,?)")
-      .run(id, subject, body, Math.max(now(), options.notBefore || 0));
-    return id;
+    return this.alerts.enqueue(subject, body, options.key, options.notBefore);
+  }
+  notifyAttempt(
+    a: Attempt,
+    event: string,
+    subject: string,
+    body: string,
+    cause: string,
+  ) {
+    return this.alert(subject, [...alertContext(a), "", body].join("\n"), {
+      key: {
+        attempt: a.id,
+        event,
+        generation: a.generation,
+        cause: hash(cause),
+      },
+    });
   }
 
   private resolvePreflightNotifications(id: string) {
@@ -215,7 +208,15 @@ export class Lifecycle {
           "A missing SSH command connection is not evidence of a class-agent outage. Cleanup status remains unconfirmed until an authenticated agent report arrives.",
           "Inspect the class-server attempt, watchdog and callback-delivery status with examctl before resetting this preparation. Signing in again is not required for local expiry or cleanup.",
         ].join("\n"),
-        { coalesce: false, notBefore },
+        {
+          notBefore,
+          key: {
+            attempt: a.id,
+            event: "preflight-cleanup",
+            generation: a.generation,
+            cause: hash(JSON.stringify({ stage, ...diagnostic })),
+          },
+        },
       );
       if (deferred)
         this.store.audit(
@@ -263,9 +264,12 @@ export class Lifecycle {
           )
           .run(randomUUID(), id, b.generation, now(), JSON.stringify(events));
         if (options.notify !== false)
-          this.alert(
+          this.notifyAttempt(
+            b,
+            "interruption",
             `Exam interrupted: ${a.username}`,
             `${a.exam}: ${reason}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
+            reason,
           );
       }
       this.store.audit("gateway", "lock", id, reason);
@@ -277,6 +281,7 @@ export class Lifecycle {
     this.onPaused(this.store.attempt(id));
     await locking
       .then((remote) => {
+        this.alerts.resolve(id, "pause-confirmation", generation);
         if (remote?.generation > this.store.attempt(id).generation) {
           this.store.db
             .prepare("UPDATE attempts SET generation=? WHERE id=?")
@@ -301,9 +306,12 @@ export class Lifecycle {
           }),
         );
         if (!disconnected)
-          this.alert(
+          this.notifyAttempt(
+            this.store.attempt(id),
+            "pause-confirmation",
             "Exam pause confirmation pending",
             `${a.exam}: ${a.username}, attempt ${id}. Exam access is blocked at the gateway, but the class-server pause command was not confirmed. The local watchdog enforces expired execution leases. Review the authenticated dashboard and class-server status. A missing confirmation does not establish an agent outage.`,
+            "command-failed",
           );
       });
   }
@@ -333,6 +341,8 @@ export class Lifecycle {
         .prepare("UPDATE continuations SET consumed=1 WHERE attempt=?")
         .run(id);
       this.store.transition(id, ["LOCKED"], "ACTIVE");
+      this.alerts.resolve(id, "interruption");
+      this.alerts.resolve(id, "pause-confirmation");
       this.store.interruptions.resume(a, at);
       this.store.audit(
         a.username,
@@ -503,6 +513,8 @@ export class Lifecycle {
       }
     }
     if (remote.start) this.resolvePreflightNotifications(id);
+    if (!remote.timing_pending_since || remote.protected)
+      this.alerts.resolve(id, "timing-verification");
     if (
       remote.state === "CANCELLED_BEFORE_START" &&
       !remote.start &&
@@ -539,7 +551,9 @@ export class Lifecycle {
           id,
           errorDetail,
         );
-        this.alert(
+        this.notifyAttempt(
+          this.store.attempt(id),
+          "preflight-agent-error",
           `Preflight cleanup error: ${a.username} (${a.exam})`,
           [
             `Student: ${a.username}`,
@@ -550,7 +564,7 @@ export class Lifecycle {
             ...errors.map((error: string) => `- ${JSON.stringify(error)}`),
             "Inspect the current class-server attempt and account policy. The retained errors may include earlier cleanup retries.",
           ].join("\n"),
-          { coalesce: false },
+          errorDetail,
         );
       }
       this.monitoring.delete(id, "unstarted-preparation");
@@ -562,19 +576,13 @@ export class Lifecycle {
           "UPDATE attempts SET state='FINALIZING',reason='Collection pending: deadline timing verification unavailable' WHERE id=?",
         )
         .run(id);
-      if (
-        !this.store.db
-          .prepare(
-            "SELECT 1 FROM audit WHERE action='timing-pending-alert' AND target=?",
-          )
-          .get(id)
-      ) {
-        this.alert(
-          "Collection timing requires recovery",
-          `Attempt ${id}: work is frozen; collection awaits authenticated timing verification.`,
-        );
-        this.store.audit("class-agent", "timing-pending-alert", id);
-      }
+      this.notifyAttempt(
+        this.store.attempt(id),
+        "timing-verification",
+        "Collection timing requires recovery",
+        `Attempt ${id}: work is frozen; collection awaits authenticated timing verification.`,
+        "timing-unavailable",
+      );
       this.onEnd(this.store.attempt(id));
       return;
     }
@@ -593,6 +601,7 @@ export class Lifecycle {
       ) &&
       !["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state)
     ) {
+      this.alerts.resolve(id, "pause-confirmation");
       // A watchdog acknowledgement of the same pause must not hide the initiating
       // browser/gateway failure. Retain both causes in the durable audit trail.
       const detail = JSON.stringify({
@@ -704,17 +713,20 @@ export class Lifecycle {
             id,
             "Attempt finalized before pending clock change was applied",
           );
-          this.alert(
+          this.notifyAttempt(
+            this.store.attempt(id),
+            "clock-change-closed",
             "Clock change not applied",
             `Attempt ${id} was finalized; pending clock changes cannot reopen it.`,
+            "finalized-before-clock-change",
           );
         }
         this.onSecured(this.store.attempt(id));
-        if (hasUnexpectedOmissions(manifest)) {
-          const omissions = Array.isArray(manifest.omissions)
-            ? manifest.omissions
-            : [manifest.omissions];
-          this.alert(
+        const omissions = unexpectedOmissions(manifest);
+        if (omissions.length) {
+          this.notifyAttempt(
+            this.store.attempt(id),
+            "submission-omissions",
             `Submission entries omitted: ${a.username} (${a.exam})`,
             [
               `Student: ${a.username}`,
@@ -731,7 +743,7 @@ export class Lifecycle {
               "Review the protected manifest in the authenticated instructor dashboard.",
             ].join("\n"),
             // Keep complete reports for separate attempts rather than truncating a summary.
-            { coalesce: false },
+            JSON.stringify(omissions),
           );
         }
       } else if (remote.state === "COMPLETED")
@@ -741,11 +753,30 @@ export class Lifecycle {
         .prepare("UPDATE attempts SET state=?,ended=?,reason=? WHERE id=?")
         .run(remote.state, remote.ended || null, remote.reason || null, id);
       this.store.interruptions.end(this.store.attempt(id));
-      if (remote.state === "COLLECTION_FAILED")
-        this.alert(
+      this.alerts.resolve(id, "collection-acknowledgment");
+      this.alerts.resolve(id, "interruption");
+      this.alerts.resolve(id, "pause-confirmation");
+      if (remote.state === "COLLECTION_FAILED") {
+        const current = this.store.attempt(id);
+        const errors = Array.isArray(remote.errors)
+          ? remote.errors
+          : ["collection failed; no signed cause provided"];
+        this.notifyAttempt(
+          current,
+          "collection-failure",
           "Collection requires recovery",
-          `Attempt ${id}: ${remote.errors?.join("; ") || "collection failed"}. Account remains blocked.`,
+          [
+            current.protected
+              ? "The submission is already secured. Workload termination or account restoration still requires recovery; do not recollect or replace the protected bundle."
+              : "Collection/protection has not been verified. Account access remains restricted.",
+            "Confirmed class-agent errors:",
+            ...errors.map((error: unknown) => `- ${JSON.stringify(error)}`),
+            `Inspect: examctl info ${id}; examctl manifest ${id}. Correct the reported problem before an audited examctl retry. Access release still requires both deadlines and verified termination.`,
+          ].join("\n"),
+          JSON.stringify({ errors, protected: !!current.protected }),
         );
+      } else if (remote.state === "COMPLETED")
+        this.alerts.resolve(id, "collection-failure");
       this.onEnd(this.store.attempt(id));
     }
   }
@@ -756,11 +787,10 @@ export class Lifecycle {
       `Exam: ${a.exam}`,
       `Attempt: ${id}`,
     ];
-    if (
-      remote.policy_error &&
-      remote.policy_error !== this.store.attempt(id).policy_error
-    )
-      this.alert(
+    if (remote.policy_error)
+      this.notifyAttempt(
+        a,
+        "account-policy",
         "Account policy requires recovery",
         [
           ...identity,
@@ -768,8 +798,9 @@ export class Lifecycle {
           "Account policy enforcement or restoration needs attention.",
           `Reason: ${JSON.stringify(remote.policy_error)}`,
         ].join("\n"),
-        { coalesce: false },
+        remote.policy_error,
       );
+    else this.alerts.resolve(id, "account-policy");
     this.store.db
       .prepare(
         "UPDATE attempts SET policy_state=?,policy_expires=?,policy_error=? WHERE id=?",
@@ -780,11 +811,10 @@ export class Lifecycle {
         remote.policy_error || null,
         id,
       );
-    if (
-      remote.access_error &&
-      remote.access_error !== this.store.attempt(id).access_error
-    )
-      this.alert(
+    if (remote.access_error)
+      this.notifyAttempt(
+        a,
+        "access-release",
         "Account access release requires recovery",
         [
           ...identity,
@@ -796,8 +826,9 @@ export class Lifecycle {
           `Restoration check: ${JSON.stringify(String(remote.access_error).replace("collection refused until all writers are quiesced", "account restoration blocked until all writers are quiesced"))}`,
           "The class server retries restoration; inspect its status if this persists.",
         ].join("\n"),
-        { coalesce: false },
+        remote.access_error,
       );
+    else this.alerts.resolve(id, "access-release");
     const state = ["HELD", "RELEASED", "OVERRIDDEN"].includes(
       remote.access_state,
     )
@@ -970,9 +1001,12 @@ export class Lifecycle {
       if (this.store.attempt(id).protected) return;
       // A lost acknowledgment is pending, not proof that collection failed. The local
       // watchdog and durable callback recover it even when this SSH connection ends.
-      this.alert(
+      this.notifyAttempt(
+        this.store.attempt(id),
+        "collection-acknowledgment",
         "Collection acknowledgment pending",
         `Attempt ${id}: awaiting class-server status. The original deadline remains enforced locally.`,
+        "missing-acknowledgment",
       );
     } finally {
       this.busy.delete(id);

@@ -6,6 +6,7 @@ declare module "nodemailer" {
       to: string[];
       subject: string;
       text: string;
+        messageId?: string;
     }): Promise<unknown>;
   }
   const nodemailer: {

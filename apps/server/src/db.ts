@@ -107,6 +107,10 @@ export class Store {
         this.interruptions.seedLegacy();
       })();
     this.interruptions.recover();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=12").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/012.sql", "utf8")),
+      )();
   }
   audit(actor: string, action: string, target: string, detail = "") {
     this.db

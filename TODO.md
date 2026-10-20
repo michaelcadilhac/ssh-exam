@@ -8,6 +8,11 @@ clocks, or alter recovery enrollment. Use an agreed maintenance window for
 changes that could affect students. Keep student identities, credentials and
 individual incident records out of repository documentation.
 
+Local implementation is authorized separately as of October 20. Progress,
+dependency order, acceptance tests and decisions are tracked in
+[`docs/todo-progress.md`](docs/todo-progress.md). All production deferrals above
+remain in force. A local implementation/test result is never a deployment claim.
+
 ## Firm design policy: examctl is the complete management interface
 
 **If an exam-management operation can be done, it must be doable through
@@ -224,6 +229,10 @@ This is a design investigation; agree on the proposal before implementation.
 ## Confirmed alerting issues
 
 - [ ] **Deduplicate failure emails across delivery, retries and restarts.**
+  Local status (October 20): persistent episodes, resolution/recurrence, distinct
+  causes/generations and SMTP retry/restart regressions implemented and tested.
+  Explicit operator escalation/reminder workflow still awaits the CLI authority
+  decision; this item remains open for that supported management capability.
   `Lifecycle.alert()` in `apps/server/src/lifecycle.ts` only coalesces recently
   pending messages. Once sent, the same unchanged failure can generate another
   email on every callback/reconciliation. The incident produced 14 collection
@@ -255,7 +264,10 @@ This is a design investigation; agree on the proposal before implementation.
   replies, while still alerting genuine renewal failures before expiry; preserve
   real earlier interruptions in the history. Defer implementation until exams drain.
 
-- [ ] **Coalesce repeated review-request emails for the same interruption.**
+- [x] **Coalesce repeated review-request emails for the same interruption.**
+  Implemented/tested locally October 20; not deployed. Distinct trimmed messages
+  notify once per generation; all accepted requests are audited. No automatic
+  reminders, and the existing rate limit remains.
   The review-request endpoint currently permits two requests per minute and
   enqueues an email on every accepted request. Reloads/retries generated repeated
   identical requests. Preserve all useful requests in the dashboard/audit, but
@@ -264,6 +276,10 @@ This is a design investigation; agree on the proposal before implementation.
   genuinely new interruption; do not prevent students from asking for help.
 
 - [ ] **Give every actionable alert enough context and accurate status.**
+  Local status: lifecycle failure messages now include identity, Chicago observed
+  time, deadlines, protection/restriction and inspection guidance. Verified
+  collection versus termination failures are distinguished. Remaining non-attempt
+  diagnostic paths and complete CLI guidance remain under review.
   In particular, “Collection requires recovery” still uses only an attempt UUID
   and raw errors. Include student, exam, attempt, event time with timezone,
   confirmed cause, collection/protection status, account restriction status and
@@ -272,7 +288,10 @@ This is a design investigation; agree on the proposal before implementation.
   filenames and reasons and retain secret-free logging. Audit other alert paths
   for the same gaps; apply the revised editor-lock notification policy below.
 
-- [ ] **Suppress editor-lock omission emails even when the saved sibling is absent.**
+- [x] **Suppress editor-lock omission emails even when the saved sibling is absent.**
+  Implemented/tested locally October 20; not deployed. Mixed email reports filter
+  routine lock entries; protected manifests and collection failure alerts remain
+  unchanged. Canonical design documents this intentional notification policy.
   The instructor does not want warnings for routine Emacs `.#NAME` lock symlinks,
   including when the corresponding saved file `NAME` is not in the submission.
   Remove the current saved-sibling requirement for suppressing these notification
