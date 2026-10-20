@@ -632,6 +632,19 @@ The webapp must not receive root SSH credentials, unrestricted sudo, write acces
 
 ### 14.2 Controlled entry before personal shell startup
 
+Preflight expires five minutes after it opens, independent of browser heartbeats
+or activity. Persist the native preparation timestamp so local watchdog expiry
+survives browser closure, webserver outages and agent restarts. Deny expired
+practice admissions, account setup and activation even between watchdog ticks;
+serialize expiry and a committed exam start under the same state lock. Cancel
+only provably unstarted preparations, stop their practice workloads, revoke unused
+capabilities/handoffs, delete disposable preflight storage and restore any
+unstarted temporary account policy. Students may sign out and sign in again
+without instructor authorization or exam time consumed. This limit never cancels
+a committed timed attempt or changes its original/current deadlines. Old records
+without a reliable native preparation date get one persisted bounded grace period;
+administrators may expire older records using authoritative web preparation dates.
+
 Do not rely on student `.profile`, `.bash_profile`, `.bashrc`, or `.zshenv` for enforcement. Preserve them rather than editing or replacing them. Their purpose is the student's normal shell environment, which may execute another shell.
 
 Install the controlled binary as the actual account entry-point shell, with the original shell recorded in a root-owned mapping. Protect that mapping and the shell assignment from student changes. The gate must execute before personal startup files and before any exam-specific shell handoff. An optional `/etc/profile.d/` helper may display information, but is not an authorization or deadline mechanism.

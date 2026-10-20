@@ -43,4 +43,28 @@ timed exams and unresolved collection/access holds have drained. Preserve curren
 state, capabilities, deadlines, account-policy journals and protected submissions.
 Do not restore an old state snapshot during rollback. Rollback to the matching
 previous agent/login restores the old hardcoded banner. The web application
-requires no image rebuild or restart for this native-only change.
+requires no image rebuild for the welcome alone. The accompanying five-minute
+preflight timeout updates the web gateway and student message, so this combined
+release also includes a drained web restart.
+
+## Five-minute preflight expiry
+
+The companion change persists the native preparation timestamp, expires even a
+connected/background-heartbeating preflight after five minutes, and revokes its
+capabilities/handoff before local cleanup. Admission, account setup and activation
+check the deadline under the same lock as exam start. Started attempts retain
+their full duration and access restrictions. Expired preflight callbacks notify
+the page and close its SSH worker; a fresh sign-in can retire the cancelled
+preparation after confirmed account restoration. No instructor approval is needed.
+
+The four legacy preparations were confirmed unstarted and older than five minutes
+using the webserver's stored preparation dates, then cancelled through audited
+root-only `examctl` operations. Their recorded practice cgroups stopped; no timed
+exam was cancelled. Current page heartbeats had kept two of them alive under the
+former inactivity-only rule.
+
+Validation: 268 application tests pass across 45 files, plus the native race suite
+and focused expiry/restoration/restart tests. The real browser SSH fixture verifies
+connected expiry, SSH/practice closure, explanatory text, no consumed exam time and
+fresh login without approval. Existing shell/pane/logout regressions also pass.
+The timeout dialog was visually inspected using synthetic student data.

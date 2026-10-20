@@ -147,6 +147,14 @@ Use a regular UTF-8 file up to 64 KiB, without symlinks/hard links. Invalid file
 are skipped with agent diagnostics. See the authoring guide for an example and
 the exact substitution behavior; reading the source with `cat` does not expand it.
 
+Preflight has a separate five-minute limit from its initial preparation timestamp.
+The local watchdog cancels an unstarted preparation at that limit even if its page
+continues heartbeating or the webserver is unavailable. It stops practice workloads
+and removes disposable state, then restores any temporary unstarted account setup.
+Students may sign in again to obtain a fresh preflight. The timeout does not consume
+exam time or cancel an exam whose start was already committed. Original/current exam
+deadlines and access holds remain independent.
+
 ## Private temporary storage
 
 Each attempt has writable, private `/tmp` and `/var/tmp`, shared across its terminal

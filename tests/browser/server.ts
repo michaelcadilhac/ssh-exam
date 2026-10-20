@@ -392,6 +392,7 @@ for (const [id, username, uid] of [
   ["reload-opening", "student06", 10006],
   ["isolation-a", "student08", 10008],
   ["isolation-b", "student09", 10009],
+  ["preflight-limit", "student04", 10004],
 ] as const) {
   store.db
     .prepare("INSERT INTO exams VALUES(?,?)")
@@ -442,6 +443,18 @@ app.get("/api/fixture/runtime", async () => ({
     .all(),
 }));
 // Fault injection is strictly fixture-only; production has no corresponding route.
+app.post("/api/fixture/age-preflight", async (req) => {
+  const { id } = req.body as { id: string };
+  const a = store.attempt(id);
+  if (a.state !== "PREPARING" || a.start)
+    throw Error("Unstarted preflight required");
+  store.db
+    .prepare(
+      "UPDATE attempts SET preflight_started_at=?,last_contact=? WHERE id=?",
+    )
+    .run(Date.now() - 300001, Date.now(), id);
+  return {};
+});
 app.post("/api/fixture/fault", async (req) => {
   const { username, fault } = req.body as any;
   const worker = workers.findLast(

@@ -124,6 +124,9 @@ func (e *Engine) prepareAccountPolicy(id string) (any, error) {
 		if err != nil {
 			return err
 		}
+		if e.expirePreflight(a, Millis()) {
+			return errors.New(PreflightExpiredReason)
+		}
 		if !e.temporaryPolicy(a) {
 			snapshot = *a
 			return nil

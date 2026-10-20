@@ -37,6 +37,11 @@ import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { parseRosterAsync, exportRoster } from "./roster.js";
 import { isSandbox, sandboxExam } from "../../../packages/protocol/sandbox.js";
+import {
+  PREFLIGHT_TIMEOUT_MS,
+  PREFLIGHT_EXPIRED_REASON,
+  preflightExpired,
+} from "../../../packages/protocol/preflight.js";
 export async function createApp(
   config: Config,
   options: {
@@ -134,6 +139,7 @@ export async function createApp(
   life.onEnd = (a) => {
     const ws = sockets.get(a.id);
     if (ws) send(ws, { type: "state", attempt: a, serverNow: now() });
+    if (a.state === "CANCELLED_BEFORE_START") life.onSecured(a);
   };
   life.onClockChanged = life.onEnd;
   // Do not deliver PTY hangup/signals before the agent has secured its frozen file view.
@@ -193,6 +199,11 @@ export async function createApp(
       hash(String(req.headers["x-page-instance"])) !== a.page_hash
     )
       throw Object.assign(Error("Current page required"), { statusCode: 403 });
+  };
+  const requirePreflightTime = async (a: Attempt) => {
+    if (!preflightExpired(a, now())) return;
+    await life.cancelPreflight(a.id, PREFLIGHT_EXPIRED_REASON).catch(() => {});
+    throw Error(PREFLIGHT_EXPIRED_REASON);
   };
   const authenticationGap = (id: string) => {
     const a = store.attempt(id);
@@ -765,6 +776,8 @@ export async function createApp(
       )
       .get(s.exam, s.username) as Attempt | undefined;
     if (previous?.state === "PREPARING") {
+      if (preflightExpired(previous, now()))
+        await life.cancelPreflight(previous.id, PREFLIGHT_EXPIRED_REASON);
       await life.reconcile(previous.id).catch(() => {});
       previous = store.attempt(previous.id);
     }
@@ -823,6 +836,14 @@ export async function createApp(
       transport: conn.transport,
       browser_ssh: conn instanceof BrowserConnection,
     });
+    if (prepared.state && prepared.state !== "PREPARING") {
+      life.acceptRemote(prepared, undefined, id);
+      throw Error(
+        prepared.state === "CANCELLED_BEFORE_START"
+          ? PREFLIGHT_EXPIRED_REASON
+          : "Preparation status changed; check the current attempt before continuing.",
+      );
+    }
     store.db
       .prepare("UPDATE attempts SET work_path=?,functional_test=? WHERE id=?")
       .run(prepared.work_path || "/work", prepared.functional_test ? 1 : 0, id);
@@ -841,6 +862,7 @@ export async function createApp(
   app.post("/api/student/attempts/:id/practice", async (req) => {
     const a = studentAttempt(req);
     page(req, a);
+    await requirePreflightTime(a);
     if (a.state !== "PREPARING") throw Error("Practice only before starting");
     const conn = connections.get(`${a.exam}:${a.username}`)!;
     for (const c of conn.panes.values()) await c.close();
@@ -853,6 +875,7 @@ export async function createApp(
   app.post("/api/student/attempts/:id/begin", async (req) => {
     let a = studentAttempt(req);
     page(req, a);
+    await requirePreflightTime(a);
     const readiness = readinessMessage(
       req.body,
       JSON.parse(a.settings).webcam,
@@ -2339,12 +2362,20 @@ export async function createApp(
       }
     for (const a of store.db
       .prepare(
-        "SELECT * FROM attempts WHERE state='PREPARING' AND COALESCE(last_contact,0)<?",
+        "SELECT * FROM attempts WHERE state='PREPARING' AND (preflight_started_at<=? OR COALESCE(last_contact,0)<?)",
       )
-      .all(now() - (config.preflightIdleMs ?? 600000)) as Attempt[]) {
+      .all(
+        now() - PREFLIGHT_TIMEOUT_MS,
+        now() - (config.preflightIdleMs ?? PREFLIGHT_TIMEOUT_MS),
+      ) as Attempt[]) {
       if (busy.has(a.id) || life.isBusy(a.id)) continue;
       void life
-        .cancelPreflight(a.id, "Preflight expired after losing contact")
+        .cancelPreflight(
+          a.id,
+          preflightExpired(a, now())
+            ? PREFLIGHT_EXPIRED_REASON
+            : "Preflight expired after losing contact",
+        )
         .then(() => {
           if (store.attempt(a.id).state !== "CANCELLED_BEFORE_START") return;
           const key = `${a.exam}:${a.username}`;

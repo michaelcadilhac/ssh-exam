@@ -103,10 +103,22 @@ then switch the stopped mount. Retain the latest deletion ledger separately from
 Encrypt/private-protect backups and enforce monitoring expiry. Live database-only copying
 does not consistently back up SQLite WAL and files.
 
-`preflightIdleMs` optionally configures the disconnected-preflight timeout in milliseconds
-(default 600000). Connected preparation sends contact independently of fullscreen/capture
-readiness; these signals never authorize or renew timed-exam execution. Expiry cleanup
-also covers reservations whose SSH connection was lost during a gateway restart.
+Preflight expires five minutes after opening, even if a background page continues
+sending contact. The class agent persists its preparation timestamp and enforces
+expiry locally without the browser or webserver; restarting or signing in again
+never extends an existing preparation. Expiry closes practice workloads, revokes
+unused admission/handoff tokens, discards temporary preflight data and restores
+any unstarted account setup through the existing recovery transaction. It never
+starts or collects an exam. Students may sign out and sign in for a fresh preflight,
+without instructor authorization or exam time consumed. A committed exam start is
+excluded from preflight expiry.
+
+`preflightIdleMs` optionally shortens disconnected-preflight cleanup (default 300000).
+It cannot extend the five-minute absolute preparation limit. Connected preparation
+sends contact independently of fullscreen/capture readiness; these signals neither
+extend preparation nor authorize/renew timed-exam execution. Existing native records
+without a preparation timestamp receive one persisted five-minute grace period unless
+an administrator can establish their age from authoritative web metadata.
 
 ## cadilhac.name installation
 

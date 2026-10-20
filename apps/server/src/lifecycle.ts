@@ -394,10 +394,11 @@ export class Lifecycle {
     ) {
       this.store.db
         .prepare(
-          "UPDATE attempts SET state='CANCELLED_BEFORE_START',ended=COALESCE(ended,?) WHERE id=?",
+          "UPDATE attempts SET state='CANCELLED_BEFORE_START',ended=COALESCE(ended,?),reason=COALESCE(?,reason) WHERE id=?",
         )
-        .run(now(), id);
+        .run(remote.ended || now(), remote.reason || null, id);
       this.monitoring.delete(id, "unstarted-preparation");
+      this.onEnd(this.store.attempt(id));
     }
     if (remote.timing_pending_since && !remote.protected) {
       this.store.db
@@ -675,12 +676,14 @@ export class Lifecycle {
         .prepare("UPDATE attempts SET reason=? WHERE id=?")
         .run(reason, id);
       this.store.audit("gateway", "cancel-preflight", id, reason);
+      this.onEnd(this.store.attempt(id));
       return true;
     };
     try {
-      await this.agent.call("cancel-attempt", { id });
+      await this.agent.call("cancel-attempt", { id, reason });
       stage = "confirm-cancellation";
-      await this.reconcile(id);
+      if (this.store.attempt(id).state !== "CANCELLED_BEFORE_START")
+        await this.reconcile(id);
       if (!confirmed())
         throw Error(
           "Preflight cancellation was not confirmed by the class server",

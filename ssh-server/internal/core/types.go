@@ -107,6 +107,7 @@ type Attempt struct {
 	UID                     int                  `json:"uid"`
 	Settings                Settings             `json:"settings"`
 	State                   string               `json:"state"`
+	PreflightStartedAt      int64                `json:"preflight_started_at,omitempty"`
 	Start                   int64                `json:"start"`
 	Deadline                int64                `json:"deadline"`
 	Ended                   int64                `json:"ended"`

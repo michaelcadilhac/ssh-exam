@@ -79,7 +79,7 @@ func (e *Engine) ordinaryAccess(uid int) error {
 	return nil
 }
 func workloadAllowed(a *Attempt, purpose string) error {
-	if purpose == "practice" && a.State == "PREPARING" && a.Start == 0 {
+	if purpose == "practice" && a.State == "PREPARING" && a.Start == 0 && !preflightExpired(a, Millis()) {
 		return nil
 	}
 	if purpose == "exam" && a.State == "ACTIVE" && !expired(a) && a.Lease > Millis() && a.AccessState == "HELD" {

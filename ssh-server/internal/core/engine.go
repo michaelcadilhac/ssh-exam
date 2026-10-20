@@ -182,6 +182,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				if a.Username != r.Username || a.UID != r.UID || e.state.Registrations[r.Transport] != r.Username {
 					return errors.New("preparation ownership mismatch")
 				}
+				e.expirePreflight(a, Millis())
 				if a.State == "PREPARING" {
 					a.PolicyRequired = e.temporaryPolicy(a)
 					if a.Transport != r.Transport {
@@ -213,7 +214,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if !identifier.MatchString(r.Exam) || !identifier.MatchString(r.Settings.Template) || r.Settings.Duration < 60 || r.Settings.Duration > 21600 || r.Settings.Terminals < 1 || r.Settings.Terminals > 4 {
 				return errors.New("invalid exam settings")
 			}
-			a := &Attempt{BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
+			a := &Attempt{BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", PreflightStartedAt: Millis(), Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
 			a.PolicyRequired = e.temporaryPolicy(a)
 			if sandboxAttempt(a) {
 				a.Settings.Duration = SandboxDurationSeconds
@@ -238,6 +239,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 		if err != nil {
 			return err
 		}
+		e.expirePreflight(a, Millis())
 		switch op {
 		case "submission-manifest":
 			if !a.Protected {
@@ -271,6 +273,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			}
 			if err = e.quiesceOrdinary(a); err != nil {
 				return err
+			}
+			if e.expirePreflight(a, Millis()) {
+				return errors.New(PreflightExpiredReason)
 			}
 			// Commit the original interval and hold BEFORE releasing material. A crash
 			// during initialization leaves a locked, started attempt, never an ordinary login.
@@ -418,6 +423,12 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("cannot cancel started attempt")
 			}
 			a.State = "CANCELLED_BEFORE_START"
+			if a.Reason == "" {
+				a.Reason = r.Reason
+			}
+			if a.Ended == 0 {
+				a.Ended = Millis()
+			}
 			if err := e.terminateWriters(a); err != nil {
 				a.Errors = appendError(a.Errors, err.Error())
 				return err
@@ -635,6 +646,12 @@ func (e *Engine) Tick() error {
 		// Cancellation must close practice shells even when their browser/old
 		// entry process disappeared. No started attempt is cancelled here.
 		for _, a := range e.state.Attempts {
+			if a.State == "PREPARING" && a.Start == 0 && a.PreflightStartedAt == 0 {
+				// Legacy records have no reliable native preparation date. Give
+				// them one bounded grace period, never renewed on later restarts.
+				a.PreflightStartedAt = Millis()
+			}
+			e.expirePreflight(a, Millis())
 			if a.Start == 0 && a.State == "CANCELLED_BEFORE_START" {
 				if err := e.terminateWriters(a); err != nil {
 					a.Errors = appendError(a.Errors, err.Error())
@@ -643,6 +660,7 @@ func (e *Engine) Tick() error {
 					if err := e.cleanupTemporary(a); err != nil {
 						a.Errors = appendError(a.Errors, err.Error())
 					}
+					e.acknowledgeUnappliedCancellation(a)
 				}
 			}
 		}

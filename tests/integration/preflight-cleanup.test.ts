@@ -60,7 +60,10 @@ it("logout logs the actual preflight command failure, signs out and sends an acc
     expect(result.statusCode).toBe(200);
     expect(result.headers["set-cookie"]).toContain("session=;");
     expect(store.attempt(id).state).toBe("PREPARING");
-    expect(call).toHaveBeenCalledWith("cancel-attempt", { id });
+    expect(call).toHaveBeenCalledWith("cancel-attempt", {
+      id,
+      reason: "Signed out before starting",
+    });
     const diagnostic = logs
       .split("\n")
       .filter(Boolean)
