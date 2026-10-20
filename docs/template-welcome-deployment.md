@@ -68,3 +68,45 @@ and focused expiry/restoration/restart tests. The real browser SSH fixture verif
 connected expiry, SSH/practice closure, explanatory text, no consumed exam time and
 fresh login without approval. Existing shell/pane/logout regressions also pass.
 The timeout dialog was visually inspected using synthetic student data.
+
+## Deployment verification
+
+Deployed code revision `c30b952` on October 19, 2026, at 10:27 PM CDT
+(`2026-10-20T03:27Z`). The four expired preparations were cancelled before
+cutover; both the native state-lock barrier and the web live/offline guards
+confirmed no preparing, timed, paused or unresolved attempt during installation.
+
+- Web image: `ssh-exam-workspace:preflight-welcome-c30b952`, also normal `:1.0.0`.
+- Image SHA-256: `421e7411e6c8740916c8dfed15e06d996c697c8bd02f2d91fb70adf9ec49e8fa`.
+- Previous image: `e763326a0a3d76ee3081bb804e1f1e273d4408a0535e46adfa275201e7aa0efa`.
+- Private web backup/receipt: `/var/backups/ssh-exam/20261020T032717Z-preflight-welcome-foubdi5k`.
+- Native backup: `/var/backups/ssh-exam/20261020T032648Z-browser-ssh-usldsy4j`
+  (the existing upgrade tool retains its historical backup label).
+- Native exam-agent SHA-256: `1834e4f807c39e597c5ddebfc3b0724edff0bbc0541d4e499ab67b390631ac90`.
+- Native exam-login SHA-256: `dacde5b7671454fa461d548c5f3e0d08f76acedb9e838699da9c708b2855ea6b`.
+- Native examctl SHA-256: `cbf835513fab3388a66cc1dc60c0756e1930eb1da67e7e58fe54b321bb23fd03`.
+- Native exam-info SHA-256: `cc62d99ea99342220154af994a161e98d88811fd36157e194730c7247a4ed9d8`.
+- Public JavaScript `/assets/index-w8vH3NJU.js` SHA-256:
+  `85f1585d6baf432021eb62404cd052cf03daa686a1243c01df584bb07f7dc159`.
+
+All four installed native binaries and the compiled web app/lifecycle/preflight
+modules match the local build. The native welcome/PTY and preflight expiry,
+restart, reauthentication and confirmed-account-restoration fixtures also passed
+on csc-sys without modifying real account policy or using live MFA.
+
+Public readiness is production-ready, maintenance false and notifications true.
+The web container is healthy with zero restarts; class agent, independent watchdog
+and relay are active with zero automatic restarts. Native configuration is
+byte-for-byte unchanged; mcadilha retains `/bin/bash` and unrestricted administrator
+sandbox access. Both web administrators and sandbox remain present.
+
+The 52 existing native attempt fingerprints and 22 web attempt identities/states,
+starts, original/current deadlines, protection and checksums were unchanged by
+the installation after the explicitly requested cancellations. All four cancelled
+preflights have no start/deadline or remaining workload units and no applied account
+policy. No protected archive was replaced and no database migration was required.
+
+Rollback requires a drained deployment. Restore matching previous native binaries
+and the retained previous image while preserving all current attempt/monitoring/
+policy/submission state. Older versions restore the hardcoded banner and lack the
+absolute preparation timeout; do not restore an inspection state snapshot.
