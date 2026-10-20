@@ -230,6 +230,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if err := e.prepareHome(a); err != nil {
 				return err
 			}
+			if _, _, err := e.recoveryPreparation(a); err != nil {
+				return err
+			}
 			e.state.Attempts[r.ID] = a
 			e.Audit(op, r.ID)
 			result = a
@@ -270,6 +273,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			ready, _ := e.Ready()
 			if !ready {
 				return errors.New("guards unavailable")
+			}
+			if _, _, err = e.recoveryPreparation(a); err != nil {
+				return err
 			}
 			if err = e.quiesceOrdinary(a); err != nil {
 				return err
@@ -472,8 +478,18 @@ func (e *Engine) initialize(a *Attempt) error {
 	if _, err := os.Stat(filepath.Join(base, "initialized")); err == nil {
 		return nil
 	}
-	if err := copyTemplate(filepath.Join(e.Config.Templates, a.Settings.Template, "work"), dest); err != nil {
+	recovery, manifest, err := e.recoveryPreparation(a)
+	if err != nil {
 		return err
+	}
+	if recovery != nil {
+		if err := e.initializeRecovery(a, recovery, manifest, dest); err != nil {
+			return err
+		}
+	} else {
+		if err := copyTemplate(filepath.Join(e.Config.Templates, a.Settings.Template, "work"), dest); err != nil {
+			return err
+		}
 	}
 	account, _ := e.account(a.Username)
 	if err := filepath.WalkDir(dest, func(p string, d os.DirEntry, err error) error {

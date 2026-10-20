@@ -137,12 +137,63 @@ historical sequence entries and cannot overwrite the administrator's transfer.
 Student identities, checkpoint paths and individual allowances remain only in
 the protected operator audit and recovery records.
 
+## Deferred recovery correction
+
+The instructor subsequently required recovery time to remain untouched until
+each student actually begins recovery, even if they return after the old or
+compensated deadline. This supersedes the transferred live clocks and temporary
+approval/clock-reset helpers described above.
+
+The four transferred originals were returned to their original exam label before
+being collected through the normal protected finalizer. Their original timing and
+work history remain intact. The instructor explicitly approved the four audited
+root-only access overrides needed to hand these secured originals off to separate
+recovery attempts. This is an incident exception, not a change to normal interval
+restrictions. Other students and administrator access remain unchanged.
+
+All nine recovery entitlements are persisted under the root-private class-server
+`recovery-preparations` directory, independently of attempt state. Each binds exam,
+account/UID, exact remaining seconds at the original interruption plus 600 seconds,
+the original submission UUID/checksum, creation timestamp and administrator reason.
+The recovery exam's start window remains open for delayed returns. No live attempt,
+deadline, expiring authorization grant or helper process is needed while waiting.
+
+The normal sign-in creates a fresh preflight. The independent fifteen-minute
+preflight expiry remains in force; abandoning it does not consume the recovery
+entitlement. Only Begin commits the interval, using the full individual allowance.
+The agent then restores manifest-listed regular files from the verified protected
+original into the new private workspace. It rejects unsafe paths/links, unexpected
+or missing files, changed hashes and identity/allowance mismatches. It never copies
+the possibly changed original live workspace or overwrites an existing workspace.
+A durable consumption marker plus persisted start history prevents a second grant
+after crashes or restarts. Normal monitoring and subsequent interruption policy
+still apply after the new interval starts.
+
+Regression tests cover delayed start across restart, expired preflight followed
+by a new preparation, exact wall/monotonic deadlines, immutable original archives,
+one-use crash fencing, invalid grants, damaged sources and unsafe archive entries.
+
+Deployed at `2026-10-20T21:00:39Z` using an additional handoff listener,
+`exam-agent-deferred-recovery.service` (PID 2176941). Installed binary SHA-256:
+`2ae1dca01f903ca085a851aca665e049d8befe964450e50f83d14c44501cfc6d`.
+Protected backup: `/var/backups/exam-agent/20261020T210039Z-deferred-recovery`.
+The prior two gate daemons and independent watchdog were left running, with
+unchanged PIDs and zero restarts; the webserver was not restarted. All seventeen
+other active attempts remained ACTIVE with unchanged generations and timing, and
+no new lock events. One student changed their terminal-pane list normally during
+verification. The full native race suite and vet passed. The nine enrollments
+were checked against their root entitlements and protected archive checksums;
+unused, never-contacted placeholder preparations were retired with audit records,
+and their pending false cleanup notices were cancelled. No recovery attempt or
+countdown remained running after preparation.
+
 ## Completing the live handoff / rollback
 
 Do not stop either PTY-owning daemon during remaining exams. In a fully drained
-window (including preflights and unresolved collections), stop the temporary
-`exam-agent-live-upgrade` service and restart the canonical `exam-agent` service.
-Its installed binary is already patched. Then remove the temporary unit and the
+window (including preflights and unresolved collections), stop both temporary
+`exam-agent-live-upgrade` and `exam-agent-deferred-recovery` services, then restart
+the canonical `exam-agent` service.
+Its installed binary is already patched. Then remove the temporary units and the
 `live-preserve.conf` RuntimeDirectory-preservation drop-in, reload systemd and
 verify command admission, watchdog and public readiness. The temporary unit is
 not enabled for boot; normal boot uses the patched canonical daemon.
@@ -150,6 +201,7 @@ not enabled for boot; normal boot uses the patched canonical daemon.
 Rollback likewise requires a fully drained window: restore the previous binary
 from the protected backup, remove the temporary handoff service and restart the
 canonical gate/watchdog. Keep current authoritative state, timing resets, audit,
-lease journals, original submissions and recovery work. Never restore an old
+lease journals, original submissions, recovery entitlements/consumption markers
+and recovery work. Never restore an old
 state snapshot over post-incident student work. Old code does not consume the
 independent lease journal, so never downgrade a watchdog during active exams.

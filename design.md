@@ -30,6 +30,20 @@ Verify current library interfaces when implementing, pin dependency versions and
 - Bulk username enrollment, including CSV import with a per-student webcam requirement.
 - Monitoring-record deletion after 60 days, or earlier manually. Submission archives have a separate retention policy.
 
+An explicitly approved infrastructure-incident recovery may be a separate exam
+with a new attempt, rather than a paused original interval. Secure the original
+submission first and retain its immutable history. Any early release of its
+account restriction requires the existing audited, administrator-only emergency
+override and explicit approval. Persist the recovery allowance and source
+submission/checksum in root-private class-server state, with matching enrollment
+and an open recovery start window. Do not create a timed attempt while the student
+is absent. Waiting, server restarts and abandoned preflights consume none of the
+allowance; actual Begin commits the complete new interval and restores only
+verified manifest-listed regular files into a fresh workspace. Durable consumption
+and committed-start fences make the entitlement one-use. After Begin, normal
+deadlines, monitoring, interruption authorization and collection apply. This does
+not make ordinary exam clocks pausable or reopen completed original submissions.
+
 ## 2. Product context and defaults
 
 The instructor administers a programming exam on a Unix/Linux class server. Questions, tools, documentation, student files, and submission collection are server-side. The instructor has root access on that server. Students use their personal computers at home or supervised computers in person.

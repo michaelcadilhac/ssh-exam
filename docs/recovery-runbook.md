@@ -35,6 +35,26 @@ Root break-glass requires independently verified protected saved work, every wri
 an audited disposition and restored original settings. No remote force-unlock shortcut exists.
 See ssh-server/README.md for recovery commands and safe uninstall.
 
+For an explicitly instructor-approved separate recovery exam, a root administrator
+can stage a one-use saved-work entitlement at
+`STATE/recovery-preparations/EXAM/USERNAME.json` (root-owned directories 0700,
+file 0600). The JSON fields are `exam`, `username`, `uid`, `duration` (seconds),
+`source_attempt`, `checksum`, `created_at` (milliseconds) and `reason`. The source
+must be a completed, checksum-verified protected submission of the same account.
+Record the administrator approval in both audit trails, enroll the student in
+the recovery exam with the exact duration, and set an appropriate open start
+window. Do not pre-create a PREPARING attempt: ordinary sign-in creates it when
+the student returns. Do not consume the entitlement at enrollment or preflight.
+Actual Begin sets the full new interval and safely restores the source files;
+abandoned preflight expiry does not consume the entitlement. The root-private
+`.consumed` marker and persisted interval fence repeat starts across restarts.
+Preserve the original submission, entitlement, consumption marker and attempt
+history together during backup/restore. Never delete a marker to grant a retake;
+use a distinct approved recovery exam and retain the audit history instead.
+Existing original account restrictions still require their normal release
+conditions, or an explicitly approved and audited root emergency handoff after
+secured collection. This mechanism does not grant ordinary access by itself.
+
 Automatic collection recovery: the class agent checks committed bundles before live work.
 A bundle published just before a crash is verified and adopted even if state.json still says
 FINALIZING or protected=false. Never delete or overwrite a protected bundle to retry. Inspect
