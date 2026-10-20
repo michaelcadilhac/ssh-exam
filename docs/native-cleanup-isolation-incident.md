@@ -114,6 +114,29 @@ The cancellation itself was through examctl. Incident clock adjustments and
 webserver continuation approvals used administrator helpers; those operations
 are not currently exposed as examctl subcommands.
 
+## Subsequent cohort consolidation
+
+The instructor subsequently requested that the entire nine-person interruption
+cohort use `midterm-recovery`, superseding the split recovery arrangement above.
+The four unfinished attempts were paused, checkpointed and transferred in place
+on both servers. Their attempt IDs, saved work, original start/deadline and account
+policy ownership remained unchanged. Only those students' old login sessions
+were revoked; their new recovery enrollments and generation-scoped approvals were
+created without restarting services or disturbing unaffected exams.
+
+Saved files were verified against the protected pre-transfer checkpoints. The
+four transferred clocks use the original interruption's remaining time plus ten
+minutes, rounded upward to whole minutes by the clock interface. A scoped helper
+refreshes approvals and reapplies that allowance at continuation; a later explicit
+instructor time adjustment takes precedence. The five already-created recovery
+preparations retain their restored files and allowances. All nine enrollments,
+native clock acknowledgments and reconnect grants were verified. Callback delivery
+drained normally after the transfer; old pre-transfer snapshots are recorded as
+historical sequence entries and cannot overwrite the administrator's transfer.
+
+Student identities, checkpoint paths and individual allowances remain only in
+the protected operator audit and recovery records.
+
 ## Completing the live handoff / rollback
 
 Do not stop either PTY-owning daemon during remaining exams. In a fully drained
