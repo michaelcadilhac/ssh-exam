@@ -290,6 +290,10 @@ test.describe.serial("browser abandonment and recovery", () => {
     page,
     request,
   }) => {
+    test.skip(
+      process.env.EXAM_BROWSER_SSH !== "1",
+      "Requires browser SSH control requests; qualify with EXAM_BROWSER_SSH=1",
+    );
     test.setTimeout(45000);
     const headers = await admin(request);
     if (!serverPid) serverPid = (await runtime(request)).pid;

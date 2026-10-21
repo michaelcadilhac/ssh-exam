@@ -94,11 +94,30 @@ the unchanged 256 MiB/no-swap/32-task/120-second bounds, verifies the archive ov
 signed healthy renewals run in both phases, fresh registration is exercised, and
 healthy generation/deadline plus unconsumed target are checked. A three-second
 renewal budget is well below the 15-second enforcement lease; separate blocked-
-lock regressions retain their sub-second checks. Actual live MemoryPeak samples
-and final unit results are checked. Privileged writer hooks are explicitly fake:
+lock regressions retain their sub-second checks. Actual live kernel memory/swap/
+PID/group-OOM controls, peak observations and final unit results are checked.
+Privileged writer hooks are explicitly fake:
 this is real I/O/resource/process qualification, not installed root/PAM/PTYS proof.
 Fixture creation is flushed before measurement, and test services do not use
 RemainAfterExit (which would prevent systemd-run --wait from completing).
+
+October21 measurement correction: a full repeat completed collection/restore
+successfully but reported a peak of268,439,552 bytes, one4KiB page above the
+configured268,435,456-byte limit. Linux explicitly permits transient usage above
+memory.max; memory.peak records observed usage, not the configured ceiling. See
+the [kernel memory controller specification](https://docs.kernel.org/admin-guide/cgroup-v2.html).
+The test now requires actual live memory.max=268435456, memory.swap.max=0,
+pids.max=32 and memory.oom.group=1 from that owned test service's cgroup, plus
+finite positive peak observations and successful byte-verified collection/restore.
+Unavailable/unbounded/altered controls fail; no arbitrary peak tolerance or higher
+worker limit is introduced. Separate actual OOM/runtime-failure regressions remain
+required. This changes a measurement assertion, not production resource policy;
+peak/RSS and whole-host headroom must not be advertised as exact mathematical
+guarantees. The initial failed run is not counted as a full pass.
+The strengthened focused512MiB collection/restore repeat passes (37.2s), with
+byte-exact hashes, healthy signed renewals and observed live controls in both
+workers; a fresh full native race/resource/namespace/compiler/default-size run
+then passes (core118.8s, CLI3.2s). No production service/configuration changed.
 
 Final local evidence: 306 application tests/53 files, all three Go race suites,
 native fault/systemd/namespace/CLI/compiler/default-size opt-ins, CGO-free build,

@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -15,6 +17,41 @@ import (
 	"testing"
 	"time"
 )
+
+// memory.peak is an observation, not an exact enforcement-bound assertion:
+// memory.max explicitly permits temporary excess during kernel charging/reclaim.
+// https://docs.kernel.org/admin-guide/cgroup-v2.html (memory.max/memory.peak)
+// Validate the actual live kernel controls instead; never increase worker limits
+// or ignore unavailable/unbounded controls to satisfy a peak measurement.
+func validateLargeWorkerMemoryObservation(values map[string]string) (uint64, error) {
+	for key, want := range map[string]string{"memory.max": "268435456", "memory.swap.max": "0", "pids.max": "32", "memory.oom.group": "1"} {
+		if strings.TrimSpace(values[key]) != want {
+			return 0, fmt.Errorf("large worker live kernel control %s is unavailable or differs from required %s", key, want)
+		}
+	}
+	peak, err := strconv.ParseUint(strings.TrimSpace(values["memory.peak"]), 10, 64)
+	if err != nil || peak == 0 || peak == ^uint64(0) {
+		return 0, errors.New("large worker live memory.peak observation unavailable")
+	}
+	return peak, nil
+}
+
+func TestLargeWorkerMemoryObservationRequiresRealBoundsNotAnExactPeakCeiling(t *testing.T) {
+	values := map[string]string{"memory.max": "268435456", "memory.swap.max": "0", "pids.max": "32", "memory.oom.group": "1", "memory.peak": "268439552"}
+	if peak, err := validateLargeWorkerMemoryObservation(values); err != nil || peak != 268439552 {
+		t.Fatal("documented transient peak was confused with a raised limit", peak, err)
+	}
+	for key, invalid := range map[string][]string{"memory.max": {"", "max", "536870912"}, "memory.swap.max": {"max", "1"}, "pids.max": {"max", "64"}, "memory.oom.group": {"0", ""}, "memory.peak": {"0", "[not set]", "18446744073709551615"}} {
+		original := values[key]
+		for _, value := range invalid {
+			values[key] = value
+			if _, err := validateLargeWorkerMemoryObservation(values); err == nil {
+				t.Fatal("unavailable/unbounded live control or counter accepted", key, value)
+			}
+		}
+		values[key] = original
+	}
+}
 
 // Tests only: use an explicitly selected PRIVATE disk scratch parent for large
 // real I/O. Each fixture owns/removes only its fresh random child; never the
@@ -126,20 +163,47 @@ func TestLargeCollectionAndRestoreUserSystemd(t *testing.T) {
 	}
 	units := []string{}
 	peaks := map[string]uint64{}
+	boundsObserved := map[string]bool{}
 	var unitsMu sync.Mutex
 	unitSnapshot := func() []string {
 		unitsMu.Lock()
 		defer unitsMu.Unlock()
 		return append([]string(nil), units...)
 	}
-	// systemd drops MemoryPeak once a successful cgroup is removed. Sample the
-	// kernel-accounted high-water mark while it is alive, rather than keeping an
-	// exited service active (which would change --wait completion semantics).
+	// Sample actual controls/counter while the cgroup is alive, rather than
+	// keeping an exited service active (which changes --wait completion semantics).
 	observeMemory := func() {
 		for _, unit := range unitSnapshot() {
-			out, _ := exec.Command("/usr/bin/systemctl", "--user", "show", unit, "--property=MemoryPeak", "--value").Output()
-			peak, err := strconv.ParseUint(strings.TrimSpace(string(out)), 10, 64)
-			if err == nil && peak > peaks[unit] {
+			out, err := exec.Command("/usr/bin/systemctl", "--user", "show", unit, "--property=ControlGroup", "--value").Output()
+			group := strings.TrimSpace(string(out))
+			if err != nil || group == "" {
+				continue
+			} // Not created/already retired.
+			if !filepath.IsAbs(group) || filepath.Clean(group) != group || group == "/" {
+				t.Fatal("invalid test worker control group", unit)
+			}
+			values := map[string]string{}
+			retired := false
+			for _, key := range []string{"memory.max", "memory.swap.max", "pids.max", "memory.oom.group", "memory.peak"} {
+				data, err := os.ReadFile(filepath.Join("/sys/fs/cgroup", strings.TrimPrefix(group, "/"), key))
+				if errors.Is(err, os.ErrNotExist) {
+					retired = true
+					break
+				}
+				if err != nil {
+					t.Fatal("inspect live test-worker controls", err)
+				}
+				values[key] = string(data)
+			}
+			if retired {
+				continue
+			}
+			peak, err := validateLargeWorkerMemoryObservation(values)
+			if err != nil {
+				t.Fatal(err)
+			}
+			boundsObserved[unit] = true
+			if peak > peaks[unit] {
 				peaks[unit] = peak
 			}
 		}
@@ -340,9 +404,9 @@ func TestLargeCollectionAndRestoreUserSystemd(t *testing.T) {
 			t.Fatal("bounded large worker did not succeed", string(out))
 		}
 		peak := peaks[unit]
-		if peak == 0 || peak > 256*1024*1024 {
-			t.Fatal("invalid/over-limit observed worker memory peak", unit, peak)
+		if peak == 0 || !boundsObserved[unit] {
+			t.Fatal("live kernel controls/peak were not observed; no resource qualification", unit, peak)
 		}
-		t.Logf("worker %s observed_peak_bytes=%d", unit, peak)
+		t.Logf("worker %s observed_peak_bytes=%d; verified live memory.max=268435456 swap.max=0 pids.max=32 oom.group=1 (peak may transiently exceed memory.max)", unit, peak)
 	}
 }

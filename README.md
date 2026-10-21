@@ -54,6 +54,7 @@ the same disposable shared SSH password above.
     npm test
     npm run build
     npm run test:browser
+    EXAM_BROWSER_SSH=1 npm run test:browser
     cd ssh-server
     GOCACHE=/tmp/exam-go-cache go test -race ./...
     mkdir -p bin
@@ -63,6 +64,12 @@ Browser tests use /usr/bin/chromium; CHROMIUM overrides its path. They use simul
 and keyboard capabilities where stated, and do not certify real permissions/OS shortcuts.
 Screenshots are in [docs/screenshots](docs/screenshots). SSH tests use only disposable
 loopback hosts, never institutional hosts.
+The default fixture uses fallback server-side SSH; browser-control-only cases
+explicitly skip in that mode. `EXAM_BROWSER_SSH=1` exercises the browser WASM SSH
+worker/control channel, including delayed-open cleanup and control rebind. Report
+the selected transport and skips, not just the discovered case count. A build
+must finish before starting either browser fixture; do not rebuild shared UI
+assets underneath a running suite. These are local fixtures, not deployment.
 
 ## Production
 
