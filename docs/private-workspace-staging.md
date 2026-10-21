@@ -75,6 +75,35 @@ that worker's exact unpublished temporary copy, never the protected source.
 
 ## Verification and remaining gates
 
+### Reserved collection-name correction (local, not deployed)
+
+Collection already reserves root MANIFEST.json, but the copier had accepted that
+name from a starter tree. It could produce an uncollectable workspace before the
+student wrote anything. Fresh staging now refuses the root entry (any type),
+without starting time or consuming an allowance. Nested MANIFEST.json remains
+permitted. Adoption and final Begin also inspect the name in retained private
+stages: a valid old receipt/inode is not enough to admit known uncollectable work.
+No file is automatically omitted, renamed, replaced or deleted by this check.
+
+Inspect `examctl info ATTEMPT`. Correct the authored starter using a new, unused
+template version; do not edit a version serving other preparations/active exams.
+Configure future starts through the supported exam-settings workflow (and explicit
+unused-grant revision once unified grants exist). An already frozen bad private
+stage must not be recopied in place: cancel only its provably unstarted preparation
+with `examctl cancel ATTEMPT --reason 'Reviewed invalid starter before Begin'`.
+Wait for verified cancellation/account restoration, then retry student preflight.
+Never apply this path to a committed interval or override access to shortcut it.
+An invalid reserved file created after Begin still follows existing collection
+recovery rules; this correction does not reopen work or discard saved bytes.
+
+Signed preparation, explicit synthetic author repair, narrow nested-name allowance
+and legacy adoption/Begin regressions pass with zero clocks/leases and preserved
+source/private bytes. The initial signed fixture's key helper reset UID/GID;
+the fixture was corrected, not account identity checks. A legacy-stage test
+demonstrably failed against the old Begin/adoption path. Final full qualification
+is tracked in todo-progress.md. This enforces the existing rule earlier, not a
+new retention, timing, account or grant policy.
+
 Regressions exercise signed scope/replay, native preparation/Begin/repair, clock
 start after checks, idempotent Begin, cancellation/UID fencing, changed settings/
 owner/expiration, metadata, unsafe trees, corrupt saved sources, real SIGKILL

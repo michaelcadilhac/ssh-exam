@@ -8,6 +8,41 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Final reserved-starter/C2a0 local qualification: fresh full native race/resource/
+namespace/compiler/default-size suite passes (core110.4s, CLI3.3s), including real
+same-device template bind mounts, 128MiB streaming and the signed/legacy reserved-
+name regressions. Full app **346/64 (72.7s)**, typecheck/application-WASM build,
+static native build/vet pass. UI assets are unchanged from the **84 combined
+browser pass (10.6m)**. The narrow privileged test-host evidence still identifies
+its older artifact; no new production/host installation claim is made. Source
+inspector remains internal/unwired, not catalog/CLI or grant implementation.
+No deadlines, holds, protected copies, issued snapshots or production records were
+changed. No missing command or deployment. The legacy-unused-enrollment migration
+question is still awaiting an answer; independent catalog work can continue.
+
+New confirmed native starter correctness bug: Collect rejects root MANIFEST.json,
+but starter staging accepted it, including retained pre-upgrade ready trees whose
+receipt/inode still matched. A legacy-stage regression failed against the old
+adoption/Begin path. New copy validation and cheap stage-adoption/Begin checks
+refuse before time/consumption; source/private bytes stay intact. Guidance is
+inspect/correct source/cancel only that unstarted preparation, not overwrite its
+frozen receipt. Nested MANIFEST.json remains permitted. Signed fresh preparation/
+explicit author repair/legacy Begin regressions pass; the signed fixture's key
+helper initially reset UID/GID and was corrected without weakening identity checks.
+Full native/application/build qualification is running. No deployment/policy change.
+
+C2a0 internal source-inspection primitive has been implemented **unwired**: no
+new CLI/public capability, installer, grant issuance, settings/source binding or
+agent path. Pinned roots, same-device mount-ID fences, UTF-8 paths, no links/special
+files, per-tree10000 entries/depth32, declared logical bounds, material readability,
+ordinary mode/second+nsec mtime fingerprints and bounded streaming hashes. Pre/post
+inventories reject observed mutations; this is not a hostile-writer freeze/atomic
+FS snapshot. Future worker must copy quiescent input and verify its own private
+bytes before publication. Focused race/userns tests pass (3.8s), including actual
+same-device bind mount, 10,000-entry boundary, 128 MiB streaming and source
+link/special/layout/reserved-name/readability refusal cases. Final full tests are
+recorded above; this does NOT complete catalog investigation.
+
 C1gb4 final audit fix and combined qualification: **all84 combined browser checks
 pass (10.6m)** on the frozen gateway/UI; all nine generated documentation screenshots
 are restored. The root-only inventory request resource-label regression now passes

@@ -42,6 +42,60 @@ or implementation. Independent purge work continues.
 
 ## Ordered increments and required acceptance
 
+Local C2a0 foundation now implements an **internal, unwired source inspector** in
+template_source.go, not a catalog/CLI/installer/agent capability. It pins no-follow
+package/work/material roots; refuses links, special files, nested mount IDs,
+non-UTF-8 paths, unreadable materials and reserved root work metadata; enforces
+declared file/combined-byte bounds, 10,000 entries per tree and depth 32. Ordinary
+mode and second+nsec mtime plus streamed file hashes form a canonical domain-
+separated fingerprint; physical inode/device/mount/ctime are race fences, not
+version identity. Fingerprints alone are not published immutable versions.
+Pre/post inventories reject observed source mutation, not guarantee an atomic FS
+snapshot or verified freeze of hostile writers. The eventual worker must import
+quiescent input and verify its own private copy before atomic publication.
+
+Focused native race/userns tests pass, including unchanged source identity across
+distinct physical copies, mode-sensitive hashes, links/FIFO/layout/readability,
+after-read mutation with restored mtime, the 10,000-entry boundary/depth 32, real
+same-device bind mounts and 128 MiB streaming without proportional allocation.
+No existing reader or settings hash was changed. Full qualification is in
+todo-progress.md; bounded worker/CLI installation, publication/crash recovery,
+all-reader binding and catalog acknowledgement remain unimplemented. Do not
+mark the catalog investigation complete from this primitive or the proposal below.
+
+Further October 21 source findings (investigation remains open):
+
+- Enrollment rows retain current duration/webcam overrides, but no issuance or
+  enrollment timestamp/settings copy. Existing enroll-student audit contains only
+  the username; mutable defaults cannot be reconstructed reliably. A separate
+  migration question is awaiting the instructor: reviewed bulk issuance from
+  current effective settings/unchanged windows plus an explicitly selected
+  immutable version, or explicit selected reissuance before legacy unused rows
+  become available. No original enrollment-time snapshot will be invented.
+- copyPrivateTemplate makes copied directories 0700 and applies student ownership;
+  it is not directly suitable for readable/searchable root-owned materials.
+  The catalog must capture work/materials/WELCOME together while keeping their
+  distinct permission semantics. Existing preparations/started records retain
+  their recorded legacy settings/source behavior, not a silently substituted
+  current catalog version.
+- The existing collection protocol requires an actual persisted attempt UUID and
+  owns attempt/collection slots. Catalog import must use its own bounded worker
+  protocol/pool, not a fake attempt or a new heavy shared-state transaction.
+- Source import needs pinned no-follow roots, regular/single-link files, bounded
+  inventory, pre/post identity/ctime checks and streaming hashes. st_dev alone
+  does not detect a same-filesystem bind mount: kernel fdinfo mnt_id identifies
+  the containing mount. Use descriptor identity and test same-device bind mounts
+  in a private user/mount namespace before claiming safe traversal. See the
+  [kernel proc documentation](https://docs.kernel.org/filesystems/proc.html#proc-pid-fdinfo-fd-information-about-opened-file).
+  These are implementation requirements, not completed tests/catalog code.
+
+Proposed implementation increment: metadata/validation primitive first, then a
+separate resource-bounded root worker and discoverable templates list/show/
+validate/install. Publish an exact content-addressed version atomically without
+overwriting old template directories or implicitly selecting the latest version
+for existing grants. Bind every material/welcome/work reader only in the next
+qualified increment. Do not mark this investigation complete from this proposal.
+
 1. **Immutable native catalog and CLI.** Supported root-only templates list/show/
    validate/install, helpful errors and idempotent exact-content installation.
    Validate/import work and materials outside the global lock in a bounded OS

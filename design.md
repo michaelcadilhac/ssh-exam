@@ -277,6 +277,14 @@ publication repair never reopens time or recopies a mutable source. See
 docs/private-workspace-staging.md for restart/CLI/mixed-version constraints and
 remaining unified-grant/privileged qualification. This is local, not deployed.
 
+The existing protected-collection reservation of root MANIFEST.json is now also
+enforced in fresh starter copying, retained private-stage adoption and final
+pre-commit Begin checks. Refuse before any interval/consumption, preserve source/
+private bytes and provide inspection/corrected-unused-template/unstarted-cancel
+guidance. A valid old receipt cannot admit known uncollectable starter work.
+Nested names remain permitted; no saved file is silently renamed, omitted or
+deleted, and an already committed interval is never reset by this correction.
+
 Monitoring socket liveness and exam-state ordering are separate checks. Each bind and two-second preflight/heartbeat request uses a one-use connection-local confirmation value; the gateway echoes it only on the authenticated, page-owned socket. A reply within 15 seconds refreshes liveness even if a newer HTTP snapshot has overtaken its state. Apply state through the existing monotonic snapshot/generation checks independently. HTTP replies, unknown/replayed confirmations, replies from a retired socket and replies at or beyond the timeout cannot renew liveness, bind a replacement page or unlock a paused attempt. Before committing a new start, require a currently confirmed monitoring connection. Timeout diagnostics record only numeric acknowledgment age and rejected-snapshot counts, never confirmation values or credentials.
 
 Activation diagnostics must name the failed conditions (monitoring binding/acknowledgment, offline browser, SSH control, fullscreen, keyboard lock, visibility and required capture) in both the student error and durable server audit/log. Focus lost during activation uses the same 20-second grace as active work. A later watchdog acknowledgment of the same pause must retain the initiating reason and record its own cause separately; lease expiry and server reboot are distinct reasons.

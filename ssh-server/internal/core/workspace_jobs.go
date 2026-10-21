@@ -125,6 +125,17 @@ func workspaceDirectoryMatches(p string, r *WorkspaceReceipt) error {
 	return nil
 }
 
+func workspaceCollectionNameReady(id, work string) error {
+	_, err := os.Lstat(filepath.Join(work, "MANIFEST.json"))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("staged workspace collection-name inspection failed; preserve preparation and retry inspection: %w", err)
+	}
+	return fmt.Errorf("staged workspace MANIFEST.json is reserved for protected collection metadata; no clock has started. Inspect examctl info %s, correct the authored template, then cancel only this unstarted preparation with examctl cancel %s --reason 'Reviewed invalid starter before Begin' and retry student preflight. Do not overwrite its frozen private receipt or reopen a started attempt", id, id)
+}
+
 // Called by the same resource-bounded, two-slot worker boundary as collection.
 // The attempt lock is already held. Student-owned contents stay below a root-
 // private parent, never mounted by practice, until a later explicit Begin.
@@ -198,6 +209,9 @@ func (e *Engine) stageWorkspace(snapshot *Attempt) error {
 	if err := workspaceDirectoryMatches(filepath.Join(base, "workspace-ready", "work"), r); err != nil {
 		return err
 	}
+	if err := workspaceCollectionNameReady(snapshot.ID, filepath.Join(base, "workspace-ready", "work")); err != nil {
+		return err
+	}
 	return e.WithState(func() error {
 		a, err := e.Find(snapshot.ID)
 		if err != nil || !workspaceFence(a, snapshot) || e.expirePreflight(a, Millis()) {
@@ -227,7 +241,10 @@ func (e *Engine) workspaceForBegin(a *Attempt) error {
 	if err := e.checkWorkspaceReceipt(a, r); err != nil {
 		return err
 	}
-	return workspaceDirectoryMatches(filepath.Join(base, "workspace-ready", "work"), r)
+	if err := workspaceDirectoryMatches(filepath.Join(base, "workspace-ready", "work"), r); err != nil {
+		return err
+	}
+	return workspaceCollectionNameReady(a.ID, filepath.Join(base, "workspace-ready", "work"))
 }
 
 func (e *Engine) prepareActivation(a *Attempt) error {

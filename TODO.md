@@ -193,6 +193,18 @@ Existing enrollment migration and implementation remain outstanding.
   in docs/private-workspace-staging.md and docs/todo-progress.md. Unified source
   selection/version catalog/migration and privileged combined qualification
   remain open. Not deployed; the full investigation is not complete.
+  A further confirmed correctness fix now refuses root MANIFEST.json starter
+  entries before clock start, including bad retained private stages at adoption/
+  Begin. Source/private bytes stay intact; nested names remain permitted. Signed
+  preparation/repair and legacy Begin regressions pass; fresh full native race/
+  resource suite (110.4s), 346 app tests, typecheck/build/static/vet pass. This is
+  earlier enforcement of the collector's existing reserved-name
+  rule, not automatic file cleanup or a catalog/grant implementation.
+  C2a0 additionally has a tested internal, unwired source inspector (safe pinned
+  traversal, observed mutation checks, per-tree entry/depth bounds, real same-
+  device mount refusal and 128 MiB streaming). No catalog installation/CLI,
+  published-version acknowledgement or all-reader version binding exists yet;
+  investigation and migration remain open. See template-grant-investigation.md.
   Evaluate starting empty, resetting to a specified template's starter files, and
   preserving saved work by copying a selected prior attempt's verified protected
   snapshot. Clarify what “fresh,” “reset” and “preserved” mean in both interfaces,

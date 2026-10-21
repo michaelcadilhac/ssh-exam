@@ -57,11 +57,17 @@ Edit /etc/exam-agent/agent.json for signature trust, callback origin, state, roo
 and approved account mapping. Original shells support /bin/bash, /bin/zsh and /bin/sh.
 The example account mapping is illustrative; root approval must resolve actual identities.
 
-Build a reviewed toolchain root at /srv/exam-workspace/rootfs, for example using debootstrap
+Only if deliberately using the legacy separate-rootfs mode, build a reviewed
+toolchain root at /srv/exam-workspace/rootfs, for example using debootstrap
 with the institution's package mirror, then install Bash/Zsh, coreutils, editors/compiler and
 ncurses-term. Include /usr/local/bin/exam-info. It must contain no host homes/secrets/control
 sockets, privileged hooks or future materials. Test chosen tools/TERM inside the actual sandbox.
-Do not copy the live host root. Version the rootfs and template installation inputs.
+Do not copy the live host root. Version the legacy rootfs and template installation
+inputs. Normal-filesystem mode below instead uses rootfs=/ and the original installed
+system, without building another root or reinstalling its packages.
+The generic config/agent.example.json still illustrates legacy-rootfs paths;
+install-host-filesystem explicitly proposes rootfs=/, host_filesystem=true and
+reviewed private-path masks. Its default remains a dry run, not deployment authority.
 
 ### Normal server filesystem (deployed student environment)
 
@@ -245,8 +251,11 @@ unsupported process layouts deny admission. Compilation alone does not validate 
 Prepare closes ordinary admission. Activation kills conflicting sessions and unregistered UID
 processes while preserving the verified gateway transport, requiring validated PAM placement.
 Independent PTYs run in root-controlled systemd scopes under exam.slice. bubblewrap isolates
-network/PID/mount/IPC/UTS, separate toolchain root, proc/dev/tmp, writable /work and read-only
-/materials. HOME is a read-only configuration snapshot at the student's usual `/home/...` path
+network/PID/mount/IPC/UTS and proc/dev/tmp, with writable /work and read-only
+/materials. Normal-filesystem mode uses the original server root and actual home
+read-only with the private-path masks described above. The following home snapshot
+description applies to legacy separate-rootfs mode: HOME is a read-only configuration
+snapshot at the student's usual `/home/...` path
 (or `/home/student` for other layouts). It preserves Bash/Zsh, Emacs/Vim/Nano, `.config`,
 `.local/share` and `.local/bin`, including safe internal dotfile links. Host sockets,
 SSH/GPG stores and unrelated home documents are not exposed. The original home and its

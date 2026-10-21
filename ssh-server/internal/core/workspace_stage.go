@@ -164,6 +164,9 @@ func copyPrivateTemplate(source, dest string, account Account, limits collection
 		defer dir.Close()
 		for _, entry := range entries {
 			path := filepath.Join(name, entry.Name())
+			if path == "MANIFEST.json" {
+				return errors.New("workspace template MANIFEST.json is reserved for protected collection metadata; correct the authored template and retry preflight before Begin; no clock has started")
+			}
 			if filepath.IsAbs(path) || path == ".." || strings.HasPrefix(path, "../") {
 				return errors.New("unsafe workspace template path")
 			}

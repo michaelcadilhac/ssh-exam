@@ -117,10 +117,16 @@ Students can use `cd "$EXAM_DIR"` if their personal shell setup changes director
 
 Explain exactly which files students should save and how they can compile/run/check
 them. Use the actual language and commands supported by the exam environment. A
-successful command in the server's ordinary shell does not prove that the isolated
-exam environment includes its dependencies. Production workloads normally have no
-external network access and a separate toolchain filesystem; the template itself
-cannot install packages or change that environment.
+successful command in the server's ordinary shell does not prove that it works
+with the student's isolation/permissions. Normal-filesystem mode
+(`host_filesystem: true`, `rootfs: /`) uses the server's installed programs,
+libraries, headers and public system files; it does not need a second package
+installation. Root and the student's actual home are read-only, other homes and
+private service/exam paths are hidden, capabilities are zero and external network
+access remains isolated. An explicitly configured legacy separate rootfs is a
+different mode and must contain its own dependencies. Validate inside the actual
+student namespace, not only ordinary SSH. The template cannot install packages
+or change either environment. See the class-server guide's normal-filesystem section.
 
 Include this notice, substituting the configured directory if it differs:
 

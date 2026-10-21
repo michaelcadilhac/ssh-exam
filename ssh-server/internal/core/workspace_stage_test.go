@@ -55,6 +55,71 @@ func assertUnstartedWorkspace(t *testing.T, e *Engine, id string) *Attempt {
 	return a
 }
 
+func TestWorkspaceRejectsReservedCollectionMetadataBeforeClock(t *testing.T) {
+	for _, kind := range []string{"file", "directory"} {
+		t.Run(kind, func(t *testing.T) {
+			e, template := workspaceFixture(t)
+			reserved := filepath.Join(template, "MANIFEST.json")
+			if kind == "file" {
+				if err := os.WriteFile(reserved, []byte("authored starter, do not discard"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.Mkdir(reserved, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			key := commandKeys(t, e)
+			e.Config.Accounts["student"] = Account{UID: os.Getuid(), GID: os.Getgid()}
+			cmd := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "prepare-workspace", Username: "student", Transport: "ssh-a", Body: Request{ID: finalID}}
+			if _, err := e.Command(signedCommand(key, cmd), "student", "ssh-a"); err == nil || !strings.Contains(err.Error(), "MANIFEST.json") {
+				t.Fatal("reserved starter was accepted or refusal was not actionable", err)
+			}
+			if a := assertUnstartedWorkspace(t, e, finalID); a.Workspace != nil {
+				t.Fatal("invalid starter got an accepted receipt")
+			}
+			if _, err := os.Lstat(reserved); err != nil {
+				t.Fatal("rejected source was modified", err)
+			}
+			// Explicit author repair in the synthetic fixture: nested names are not
+			// reserved. Retry stages without consuming an interval or altering source.
+			if err := os.Rename(reserved, filepath.Join(template, "src", "MANIFEST.json")); err != nil {
+				t.Fatal(err)
+			}
+			cmd.Nonce = Token()
+			if _, err := e.Command(signedCommand(key, cmd), "student", "ssh-a"); err != nil {
+				t.Fatal(err)
+			}
+			if a := assertUnstartedWorkspace(t, e, finalID); a.Workspace == nil {
+				t.Fatal("repaired preparation was not staged")
+			}
+		})
+	}
+}
+
+func TestLegacyReservedPrivateStageCannotBeAdoptedOrBegun(t *testing.T) {
+	e, _ := workspaceFixture(t)
+	if _, err := e.Call("prepare-workspace", Request{ID: finalID}); err != nil {
+		t.Fatal(err)
+	}
+	// Models retained pre-upgrade bytes permitted by the former copier; the
+	// directory identity/receipt still matches, so Begin must inspect this name.
+	reserved := filepath.Join(e.Config.Work, finalID, "workspace-ready", "work", "MANIFEST.json")
+	if err := os.WriteFile(reserved, []byte("retained legacy starter"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Call("prepare-workspace", Request{ID: finalID}); err == nil || !strings.Contains(err.Error(), "MANIFEST.json") {
+		t.Fatal("adopted uncollectable retained stage", err)
+	}
+	if err := e.WithState(func() error { return e.workspaceForBegin(e.state.Attempts[finalID]) }); err == nil || !strings.Contains(err.Error(), "MANIFEST.json") {
+		t.Fatal("Begin accepted uncollectable retained stage", err)
+	}
+	assertUnstartedWorkspace(t, e, finalID)
+	if data, err := os.ReadFile(reserved); err != nil || string(data) != "retained legacy starter" {
+		t.Fatal("legacy staged bytes were replaced", err)
+	}
+}
+
 func drainWorkspaceTask(t *testing.T, release chan struct{}, finished chan error, drained *bool) {
 	t.Helper()
 	if release != nil {
