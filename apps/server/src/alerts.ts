@@ -115,3 +115,14 @@ export function alertContext(a: Attempt) {
     `Local inspection: examctl info ${a.id}`,
   ];
 }
+
+export function signInAlertContext(username: string, exam: string) {
+  return [
+    `Student: ${username}`,
+    `Exam: ${exam}`,
+    "Attempt: no bound attempt (sign-in/preflight)",
+    `Observed: ${date(now())} (America/Chicago)`,
+    "Submission/account restriction: not assessed by this sign-in diagnostic; existing attempts and account holds are unchanged.",
+    `Dashboard: /admin; select exam ${JSON.stringify(exam)} and student ${JSON.stringify(username)} to inspect any existing attempt before taking recovery action.`,
+  ];
+}

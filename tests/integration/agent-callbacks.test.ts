@@ -147,6 +147,48 @@ it("accepts signed deadline completion without a browser while refusing archive 
     await t.close();
   }
 });
+it("reports current authenticated policy and qualified protection with quoted causes, deduplicating after restart", async () => {
+  const t = await setup();
+  try {
+    t.current().store.db.exec(
+      "UPDATE attempts SET access_state='UNKNOWN',policy_state='READY' WHERE id='a'",
+    );
+    Object.assign(t.remote, {
+      policy_state: "RESTORE_FAILED",
+      policy_error: 'unsafe "path"\nStudent: forged',
+      access_error: "collection refused until all writers are quiesced",
+    });
+    expect((await t.post(1)).statusCode).toBe(200);
+    const alerts = t
+      .current()
+      .store.db.prepare("SELECT subject,body FROM outbox ORDER BY rowid")
+      .all() as any[];
+    expect(alerts).toHaveLength(2);
+    for (const alert of alerts) {
+      expect(alert.body).toContain(
+        "Account restriction: HELD; policy: RESTORE_FAILED",
+      );
+      expect(alert.body).toContain("America/Chicago");
+      expect(alert.body).toContain("examctl info a");
+      expect(alert.body).not.toContain("\nStudent: forged");
+    }
+    expect(alerts[0].body).toContain(JSON.stringify(t.remote.policy_error));
+    expect(alerts[1].body).toContain(
+      "gateway has not verified its manifest yet",
+    );
+    expect(alerts[1].body).not.toContain("The submission is already secured.");
+    // A bare protected flag did not establish verification. The separately
+    // validated manifest later in the same callback is what secured this view.
+    expect(t.current().store.attempt("a").protected).toBe(1);
+    await t.restart();
+    expect((await t.post(2)).statusCode).toBe(200);
+    expect(
+      t.current().store.db.prepare("SELECT * FROM outbox").all(),
+    ).toHaveLength(2);
+  } finally {
+    await t.close();
+  }
+});
 it("rejects unsigned, tampered and wrongly scoped callbacks without a cookie bypass", async () => {
   const t = await setup();
   try {

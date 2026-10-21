@@ -527,6 +527,15 @@ Pausing deliberately disconnects student SSH, which can cancel the outstanding l
 
 SMTP recipients are administrator-configurable as an address list. Host-local OpenSMTPD may use a private Unix socket owned by the application UID, forwarded to a dedicated loopback SMTP listener; its administrative enqueue socket is not a raw SMTP endpoint. Verify actual recipient delivery and durable retry across an application restart.
 
+Actionable alerts identify the student/exam/attempt, observation time and timezone,
+original/current deadlines, confirmed protection and current account-policy status,
+with dashboard/local inspection guidance. Quote untrusted reasons and filenames.
+Use the newly authenticated policy state, not the preceding callback's state. A
+reported protected flag is not gateway-verified security until manifest validation.
+Unbound sign-in/host-key diagnostics explicitly leave existing submissions/holds
+unassessed and unchanged, give safe trusted-key checks, and never suggest bypassing
+host verification. Preserve secret-free diagnostics and credential cleanup.
+
 SMTP configuration may be unavailable during development, but production readiness must prominently warn until notifications are configured and tested. Email does not guarantee an immediate instructor response. Student instructions must say the clock continues while review is pending.
 
 ### 11.4 Incident and submission review

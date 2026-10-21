@@ -198,16 +198,14 @@ export class Lifecycle {
       const outbox = this.alert(
         `Preflight cleanup pending: ${a.username} (${a.exam})`,
         [
-          `Student: ${a.username}`,
-          `Exam: ${a.exam}`,
-          `Attempt: ${a.id}`,
+          ...alertContext(a),
           "",
           deferred
             ? "Signed cleanup confirmation has not arrived after the expected local preflight expiry and a two-minute confirmation grace period."
             : "The cancellation command or its confirmation failed.",
-          `Stage: ${stage}`,
-          `Reason: ${diagnostic.reason}`,
-          `Cause: ${diagnostic.cause}`,
+          `Stage: ${JSON.stringify(stage)}`,
+          `Reason: ${JSON.stringify(diagnostic.reason)}`,
+          `Cause: ${JSON.stringify(diagnostic.cause)}`,
           "The class-server watchdog expires and cleans up unstarted preflights locally, even without the student's browser or SSH connection.",
           "A missing SSH command connection is not evidence of a class-agent outage. Cleanup status remains unconfirmed until an authenticated agent report arrives.",
           "Inspect the class-server attempt, watchdog and callback-delivery status with examctl before resetting this preparation. Signing in again is not required for local expiry or cleanup.",
@@ -272,7 +270,7 @@ export class Lifecycle {
             b,
             "interruption",
             `Exam interrupted: ${a.username}`,
-            `${a.exam}: ${reason}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
+            `${a.exam}: ${JSON.stringify(reason)}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
             reason,
           );
       }
@@ -785,6 +783,32 @@ export class Lifecycle {
     }
   }
   syncAccess(id: string, remote: any) {
+    const state = ["HELD", "RELEASED", "OVERRIDDEN"].includes(
+      remote.access_state,
+    )
+      ? remote.access_state
+      : remote.start
+        ? "HELD"
+        : "UNKNOWN";
+    // Alert context must reflect the newly authenticated restriction/policy,
+    // not the stale state from before this callback. This never establishes
+    // submission protection: that still requires the verified manifest path.
+    this.store.db
+      .prepare(
+        "UPDATE attempts SET policy_state=?,policy_expires=?,policy_error=?,access_state=?,access_held_at=?,access_released_at=?,access_override=?,access_checked_at=?,access_error=? WHERE id=?",
+      )
+      .run(
+        remote.policy_state || null,
+        remote.policy_expires || null,
+        remote.policy_error || null,
+        state,
+        remote.access_held_at || remote.start || null,
+        remote.access_released_at || null,
+        remote.access_override || null,
+        now(),
+        remote.access_error || null,
+        id,
+      );
     const a = this.store.attempt(id);
     const identity = [
       `Student: ${a.username}`,
@@ -805,16 +829,6 @@ export class Lifecycle {
         remote.policy_error,
       );
     else this.alerts.resolve(id, "account-policy");
-    this.store.db
-      .prepare(
-        "UPDATE attempts SET policy_state=?,policy_expires=?,policy_error=? WHERE id=?",
-      )
-      .run(
-        remote.policy_state || null,
-        remote.policy_expires || null,
-        remote.policy_error || null,
-        id,
-      );
     if (remote.access_error)
       this.notifyAttempt(
         a,
@@ -823,36 +837,17 @@ export class Lifecycle {
         [
           ...identity,
           "",
-          (remote.protected && remote.state === "COMPLETED") ||
-          (a.protected && a.state === "COMPLETED")
+          a.protected
             ? "The submission is already secured. Ordinary account access has not yet been restored."
-            : "Submission protection or workload termination has not been confirmed. Ordinary account access remains restricted.",
+            : remote.protected
+              ? "The class agent reports a secured copy, but the gateway has not verified its manifest yet. Ordinary account access remains restricted."
+              : "Submission protection or workload termination has not been confirmed. Ordinary account access remains restricted.",
           `Restoration check: ${JSON.stringify(String(remote.access_error).replace("collection refused until all writers are quiesced", "account restoration blocked until all writers are quiesced"))}`,
           "The class server retries restoration; inspect its status if this persists.",
         ].join("\n"),
         remote.access_error,
       );
     else this.alerts.resolve(id, "access-release");
-    const state = ["HELD", "RELEASED", "OVERRIDDEN"].includes(
-      remote.access_state,
-    )
-      ? remote.access_state
-      : remote.start
-        ? "HELD"
-        : "UNKNOWN";
-    this.store.db
-      .prepare(
-        "UPDATE attempts SET access_state=?,access_held_at=?,access_released_at=?,access_override=?,access_checked_at=?,access_error=? WHERE id=?",
-      )
-      .run(
-        state,
-        remote.access_held_at || remote.start || null,
-        remote.access_released_at || null,
-        remote.access_override || null,
-        now(),
-        remote.access_error || null,
-        id,
-      );
   }
   async cancelPreflight(id: string, reason: string) {
     if (this.busy.has(id)) return;

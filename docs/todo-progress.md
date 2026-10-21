@@ -28,10 +28,10 @@ escalation. Generated screenshot changes must not become product changes.
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export implemented/tested locally; full management awaits C1/C2 |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
-| M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Pending |
-| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | Await proposal and decision; no implementation authorized yet |
-| D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | Await proposal and decision |
-| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | Await proposal and decision |
+| M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Local concurrency/load/compiler checks pass; broader privileged qualification and policy decisions remain open |
+| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | Concrete proposal presented; C1/C2 pending, investigation open |
+| D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | Concrete proposal presented; C3 pending, investigation open |
+| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | Concrete proposal and compiler measurements presented; C4 and workload-limit choice pending |
 
 Each implemented milestone gets documentation, focused regressions, proportional
 integration/build/race/browser checks, then a coherent local commit. Never label
@@ -88,6 +88,33 @@ active/completed screenshot-first review, zero unrequested replay reads, tab/pan
 slider retention, close/reopen, incremental refresh and network recovery. Generated
 documentation screenshots are excluded from the implementation commit. See
 review-on-demand.md; no recording/retention/security policy changed.
+
+Local commit 97a2c6c records M5. M6 adds a 16-attempt native concurrency regression
+with real protected archive IO, blocked/refused termination, independent renewal/
+cutoff and delayed signed TLS callbacks. Full native race checks and opt-in real
+GCC workload measurements pass. The corrected local load harness passes with 16
+ACTIVE synthetic students, 64 panes, 89 heartbeat acknowledgements, zero pending
+and zero errors. It now exits unsuccessfully on missing admissions/acknowledgements;
+the first run exposed a stale fixture rather than a production identity bug.
+See todo-local-qualification.md for exact observations and remaining shared-lock/
+privileged qualification gaps. todo-rollout-plan.md proposes additive migration,
+controlled verification, all-three-daemon consolidation and compatible rollback;
+none has been executed.
+
+Final M1 follow-up: policy/access alert context now uses current authenticated
+state and distinguishes reported from gateway-verified protection. Preflight,
+worker and host-key diagnostics have observed timezone/identity and safe next
+steps; untrusted reasons are quoted. New signed HTTP and real SSH regressions
+pass. One focused test initially mislabeled a reported hostname as a host role;
+the label/assertion were corrected, then all 296 tests in 50 files passed.
+Final typecheck, gateway/WASM build, native static build/vet, three-module race
+checks and the separate compiler measurement pass. The 52-test browser result
+covers the unchanged final review implementation. No command was found missing.
+
+Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
+implementation awaits C1–C4 in todo-design-decisions.md. Shared-lock isolation,
+every-boundary recovery repair and actual course workload sizing remain open;
+proposals and synthetic measurements are not completion evidence for them.
 
 ## Proposed rollout boundary
 

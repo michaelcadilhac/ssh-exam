@@ -9,6 +9,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import argon2 from "argon2";
 import { mailTransport } from "./mail.js";
+import { signInAlertContext } from "./alerts.js";
 import { z } from "zod";
 import {
   examSchema,
@@ -1925,11 +1926,9 @@ export async function createApp(
               ? store.attempt(owned[0])
               : (store.db
                   .prepare(
-                    "SELECT id,start FROM attempts WHERE exam=? AND username=? AND state IN ('PREPARING','ACTIVATING','ACTIVE','LOCKED') ORDER BY rowid DESC LIMIT 1",
+                    "SELECT * FROM attempts WHERE exam=? AND username=? AND state IN ('PREPARING','ACTIVATING','ACTIVE','LOCKED') ORDER BY rowid DESC LIMIT 1",
                   )
-                  .get(p.exam, p.username) as
-                  | Pick<Attempt, "id" | "start">
-                  | undefined);
+                  .get(p.exam, p.username) as Attempt | undefined);
             const event = randomUUID();
             const detail = JSON.stringify({ event, ...failure });
             store.audit(
@@ -1951,11 +1950,22 @@ export async function createApp(
             const reason = context?.start
               ? "Exam connection process failed. Recovery authorization and fresh SSH sign-in are required."
               : "SSH sign-in/preflight process failed. Sign in again; the exam clock has not started.";
-            life.alert(
-              "Exam connection failure: " + p.username,
-              `Student: ${p.username}\nExam: ${p.exam}\nAttempt: ${context?.id || "sign-in/preflight"}\n${reason}\nDiagnostic: ${detail}`,
-              { coalesce: false },
-            );
+            const subject = "Exam connection failure: " + p.username;
+            const body = `${reason}\nDiagnostic: ${detail}`;
+            if (context)
+              life.notifyAttempt(
+                context,
+                "connection-process",
+                subject,
+                body,
+                event,
+              );
+            else
+              life.alert(
+                subject,
+                [...signInAlertContext(p.username!, p.exam!), body].join("\n"),
+                { coalesce: false },
+              );
             if (
               owned &&
               ["ACTIVE", "LOCKED"].includes(store.attempt(owned[0]).state)
@@ -1977,7 +1987,12 @@ export async function createApp(
             store.audit("gateway", "ssh-diagnostic", host, detail);
             life.alert(
               "SSH host-key verification failed",
-              host + ": " + detail,
+              [
+                ...signInAlertContext(p.username!, p.exam!),
+                `Reported SSH host: ${JSON.stringify(host)}`,
+                `Diagnostic: ${JSON.stringify(detail)}`,
+                "The pinned SSH host identity was not verified; sign-in was refused. Verify the host key through trusted institutional administration before changing any pin. Do not bypass verification or reset an existing attempt.",
+              ].join("\n"),
             );
           };
           const held = store.db

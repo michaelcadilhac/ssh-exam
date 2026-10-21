@@ -29,6 +29,16 @@ are quoted. A verified archive with failed workload cleanup is described as
 secured work requiring termination/restoration recovery, not lost collection.
 Never recollect/replace a protected bundle to clear an alert.
 
+Policy/access alerts use the newly authenticated restriction and policy state,
+not the preceding callback's state. A class-agent protected flag alone is described
+as reported, not gateway-verified; only validated manifest processing establishes
+the latter. Preflight cleanup diagnostics also include this context and quoted
+causes. Worker failures use bound attempt context when available; otherwise the
+message explicitly says no attempt is bound and leaves existing holds untouched.
+Host-key diagnostics identify student/exam, observed time, reported host and safe
+trusted-key verification steps without requesting credentials or recommending a
+pin bypass. These notification improvements do not change enforcement.
+
 Every accepted review request updates the dashboard and records an audit entry.
 Each distinct trimmed message emails once per interruption generation. Duplicate
 clicks, reloads and retries retain useful requests without another email; changed

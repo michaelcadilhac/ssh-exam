@@ -293,11 +293,13 @@ This is a design investigation; agree on the proposal before implementation.
   for changed messages or reminders. Test double-clicks, reload, retries and a
   genuinely new interruption; do not prevent students from asking for help.
 
-- [ ] **Give every actionable alert enough context and accurate status.**
-  Local status: lifecycle failure messages now include identity, Chicago observed
-  time, deadlines, protection/restriction and inspection guidance. Verified
-  collection versus termination failures are distinguished. Remaining non-attempt
-  diagnostic paths and complete CLI guidance remain under review.
+- [x] **Give every actionable alert enough context and accurate status.**
+  Implemented/tested locally October 20; not deployed. Lifecycle/preflight/worker
+  failures carry identity, Chicago observed time, deadlines, verified protection,
+  current restriction/policy and inspection guidance. Unbound sign-in and host-key
+  diagnostics state what is unknown and give safe next steps. A reported secured
+  copy is not called gateway-verified before manifest validation; reasons are
+  quoted. Complete CLI management remains a separate open item above.
   In particular, “Collection requires recovery” still uses only an attempt UUID
   and raw errors. Include student, exam, attempt, event time with timezone,
   confirmed cause, collection/protection status, account restriction status and
@@ -434,6 +436,12 @@ This is a design investigation; agree on the proposal before implementation.
   process-name killing. Review documentation that still refers to only two gates.
 
 - [ ] **Broaden the multi-attempt stress and fault-injection coverage.**
+  Partial local qualification: 16 native attempts, four 4 MiB protected archives,
+  blocked/refused termination, 12 independent renewals/cutoff and 28 delayed signed
+  callbacks pass. A 16-student/64-pane application run includes measured heartbeat
+  acknowledgements. Shared state inspection/admission can still wait behind
+  collection; real privileged combined crash/admission qualification remains open.
+  See docs/todo-local-qualification.md; no production capacity claim is made.
   The shared cleanup blockage and independent renewal journal have fixes and
   regression tests. Test realistic simultaneous deadlines and larger archives,
   deliberately slow/hung termination, callback delays, reconnects and new
@@ -444,6 +452,11 @@ This is a design investigation; agree on the proposal before implementation.
   not a confirmed recurrence of the repaired blockage.
 
 - [ ] **Review collection limits against actual exam workloads.**
+  Investigated locally, policy decision still pending. Real GCC synthetic outputs
+  confirm that a small source can produce 40 MiB object/executable files, exceeding
+  both existing ceilings; collection fails closed without a partial protected
+  bundle. Actual course/debugger workload sizing and configurable ceilings remain
+  undecided. No limit has been raised or answer silently omitted.
   Collection currently has a 32 MiB per-file / 64 MiB total logical-size limit,
   10,000-entry limit and depth limit of 32 (`collection.go`). These are separate
   from the increased configurable monitoring-recording limit. Check whether normal

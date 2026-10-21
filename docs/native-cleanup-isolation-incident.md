@@ -189,14 +189,17 @@ countdown remained running after preparation.
 
 ## Completing the live handoff / rollback
 
-Do not stop either PTY-owning daemon during remaining exams. In a fully drained
-window (including preflights and unresolved collections), stop both temporary
+Do not stop any of the three PTY-owning daemons during remaining exams. In a fully drained
+window (including real preflights, pending timing changes and unresolved
+collection/access recovery), stop both temporary
 `exam-agent-live-upgrade` and `exam-agent-deferred-recovery` services, then restart
 the canonical `exam-agent` service.
 Its installed binary is already patched. Then remove the temporary units and the
 `live-preserve.conf` RuntimeDirectory-preservation drop-in, reload systemd and
 verify command admission, watchdog and public readiness. The temporary unit is
-not enabled for boot; normal boot uses the patched canonical daemon.
+not enabled for boot; normal boot uses the patched canonical daemon. The
+prospective local TODO rollout is documented in [todo-rollout-plan.md](todo-rollout-plan.md);
+that plan has not been executed and does not amend the deployment receipts above.
 
 Rollback likewise requires a fully drained window: restore the previous binary
 from the protected backup, remove the temporary handoff service and restart the

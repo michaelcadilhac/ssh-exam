@@ -215,11 +215,40 @@ it("emails a sign-in worker crash without claiming an unstarted exam needs instr
     expect(alert.subject).toBe("Exam connection failure: student");
     expect(alert.body).toContain("Exam: unused");
     expect(alert.body).toContain("exam clock has not started");
+    expect(alert.body).toContain("America/Chicago");
+    expect(alert.body).toContain("no bound attempt");
+    expect(alert.body).toContain("account holds are unchanged");
     expect(alert.body).not.toMatch(/Instructor authorization|shared-password/);
     expect(t.store.db.prepare("SELECT count(*) n FROM attempts").get()).toEqual(
       { n: 0 },
     );
     expect((await t.app.inject({ url: "/health/live" })).statusCode).toBe(200);
+  } finally {
+    await t.close();
+  }
+});
+
+it("gives host-key failures sign-in identity, observation time and safe next steps without requesting credentials", async () => {
+  const t = await setup();
+  try {
+    t.h.jump.pins = ["0".repeat(64)];
+    start(t.ws);
+    await until(() => t.messages.some((m) => m.type === "error"));
+    const alerts = t.store.db
+      .prepare("SELECT subject,body FROM outbox")
+      .all() as any[];
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].subject).toBe("SSH host-key verification failed");
+    expect(alerts[0].body).toContain("Student: student");
+    expect(alerts[0].body).toContain("Exam: unused");
+    expect(alerts[0].body).toContain("America/Chicago");
+    expect(alerts[0].body).toContain("Do not bypass verification");
+    expect(alerts[0].body).toContain(
+      `Reported SSH host: ${JSON.stringify(t.h.jump.host)}`,
+    );
+    expect(t.messages.some((m) => m.prompts?.length)).toBe(false);
+    expect(t.h.authCalls).toEqual({ jump: 0, class: 0 });
+    expect(alerts[0].body).not.toContain("shared-password");
   } finally {
     await t.close();
   }

@@ -86,7 +86,9 @@ it("logout logs the actual command failure, signs out and defers its contextual 
       )
       .get() as any;
     expect(email.subject).toBe("Preflight cleanup pending: alice (test)");
-    expect(email.body).toContain("Reason: SSH connection ended");
+    expect(email.body).toContain('Reason: "SSH connection ended"');
+    expect(email.body).toContain("America/Chicago");
+    expect(email.body).toContain(`examctl info ${id}`);
     expect(email.body).not.toContain("class agent unavailable");
     expect(email.next).toBeGreaterThan(Date.now() + 15 * 60 * 1000);
     expect(life.preparePreflightNotification(email.id)).toBe(false);
