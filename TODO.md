@@ -197,6 +197,13 @@ choices are still open. Approval is not a deployment or historical-record change
 
 ## Lockout policy change: retain authenticated SSH while the page remains open
 
+Local design status: C3 approved October 21—retain authenticated SSH and preserve
+shells/editor buffers through a verified freeze during policy lockouts. All work,
+including background writes, remains blocked; clock/deadline enforcement and
+fresh authentication after actual ownership/transport loss remain intact.
+Coordinated implementation and containment/liveness tests are still outstanding;
+the approval is not a production change or a completed investigation.
+
 - [ ] **Reflect instructor approval immediately on the paused student page.**
   The status endpoint already returns `authorization`, but the workspace status
   handler ignores it and continues showing generic instructor-review messaging

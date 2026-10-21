@@ -1,6 +1,6 @@
 # Local TODO implementation record
 
-Updated 2026-10-20 (America/Chicago). This is a local development record, not a
+Updated 2026-10-21 (America/Chicago). This is a local development record, not a
 deployment receipt. Production deferrals in TODO.md remain in force. Do not run
 production commands, change student data, restart services, or interrupt exams.
 Stop immediately if a command is not found. Preserve unrelated changes.
@@ -30,7 +30,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Local concurrency/load/compiler checks pass; broader privileged qualification and policy decisions remain open |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2 approved; implementation, migration, remaining policy defaults and investigation open |
-| D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | Concrete proposal presented; C3 pending, investigation open |
+| D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | Concrete proposal and compiler measurements presented; C4 and workload-limit choice pending |
 
 Each implemented milestone gets documentation, focused regressions, proportional
@@ -56,8 +56,15 @@ single-attempt policy/history/holds, and safely fence revisions against preparat
 and Begin. This is an approved design, not implementation/migration/deployment.
 Webcam/start-window defaults and repair compensation remain separate decisions.
 
-Pending investigation/decisions: webcam/start-window defaults;
-freeze-only versus terminate-workload retained transport; workspace grace/holds;
+Approved C3 (October 21): retain authenticated SSH and preserve shells/editor
+buffers through a verified workload freeze during policy lockouts. Input/channels/
+background writes remain forbidden; only current readiness and valid scoped
+continuation authorization permit thaw. Keep the running clock, independent
+deadline collection, focus grace and credential cleanup. Separate locked-page
+liveness from execution permission; actual ownership/transport loss may require
+fresh SSH. Failed freeze stays fail closed. This is not implemented or deployed.
+
+Pending investigation/decisions: webcam/start-window defaults; workspace grace/holds;
 collection size settings versus measured compiler/debugger workload.
 
 ## Verification and commits
@@ -72,9 +79,9 @@ Migration 012 is additive. See alert-episodes.md for SMTP's acceptance/commit
 boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
-questions (C1–C4) were initially presented without assuming approval. C1 and C2
-are now approved as recorded above; other choices and investigation remain open. No
-production access or deployment performed. Verification entries below describe
+questions (C1–C4) were initially presented without assuming approval. C1, C2 and
+C3 are now approved as recorded above; other choices and investigation remain open.
+No production access or deployment performed. Verification entries below describe
 the decisions and implementation state at their original milestones.
 
 Local commit f9f2232 records M1 and the plan/proposals. M2 evidence: 294 tests
@@ -128,7 +135,7 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation now has C1/C2 approval; other policy choices remain pending in
+implementation now has C1/C2/C3 approval; other policy choices remain pending in
 todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.

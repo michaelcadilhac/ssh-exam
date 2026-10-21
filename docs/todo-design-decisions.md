@@ -1,9 +1,9 @@
 # TODO architecture investigation and decisions
 
-2026-10-20, local source inspection and instructor decisions. **C1 and C2 are
-approved for local implementation; the other proposals remain pending. Nothing here is a
-deployment receipt.** Investigation remains open until decisions and acceptance
-evidence exist.
+Updated 2026-10-21, local source inspection and instructor decisions. **C1, C2 and
+C3 are approved for local implementation; the other proposals remain pending.
+Nothing here is a deployment receipt.** Investigation remains open until decisions
+and acceptance evidence exist.
 
 ## Present boundaries and CLI coverage
 
@@ -133,17 +133,29 @@ Today `Lifecycle.onPaused` closes the connection, native
 old transport. The requested policy explicitly supersedes that behavior, but
 retaining SSH alone cannot preserve buffers or prevent background file writes.
 
-**Decision C3:** recommend a retained-page pause that revokes pane/control work
-admission and confirms every recorded cgroup frozen. Preserve the shells/editor
-buffers while frozen, keep SSH/PTY supervisors and watchdog outside those cgroups,
+**Decision C3, approved by the instructor October 21:** retain authenticated SSH
+and preserve shells/editor buffers through a verified freeze during policy
+lockouts. Revoke pane/control work admission and confirm every student workload
+frozen; keeping the connection alive must never permit background writes.
+Preserve the shells/editor buffers while frozen, keep SSH/PTY supervisors and
+watchdog outside those cgroups,
 discard queued input and block new channels. Only signed generation/page/transport
-bound Continue after current readiness and instructor approval may thaw. Deadline
-cutoff/finalization still freezes/protects/terminates independently. Lease expiry,
-page loss/reload, actual SSH failure or restart retires ownership and follows fresh
-authentication. A bounded locked-page liveness protocol permits status/keepalive
-only, never work or a renewed execution lease. Failed freeze remains fail closed
-with explicit recovery. Alternative: retain SSH but terminate workloads, preserving
-saved files while losing buffers and opening new shells after approval.
+bound Continue after current readiness and valid continuation authorization under
+the attempt's policy may thaw. Reflect approval/expiry/revocation promptly on the
+same page without unlocking by message alone. The exam clock keeps running.
+Deadline cutoff/finalization still freezes/protects/terminates independently;
+unsaved buffers are not protected submissions and need not survive finalization.
+
+Use a separate bounded locked-page/transport liveness protocol permitting only
+status/keepalive, never work or renewed execution permission. Expiration of the
+old execution lease must revoke work, but must not alone force fresh SSH if the
+same locked page and retained transport remain demonstrably live. Page/ownership
+liveness loss, page closure/reload, actual SSH failure or restart retires retained
+ownership and can require fresh authentication. Never retain passwords or replay
+credentials. Failed freeze remains fail closed with explicit recovery. The
+alternative of routinely terminating viable shells during policy pauses is not
+selected. **Design approved only; coordinated implementation, containment tests
+and deployment remain outstanding.**
 
 Test background writers and detached/multiplexed channels at each pause/continue/
 deadline boundary, repeated lockouts and out-of-order authorization. UI approval

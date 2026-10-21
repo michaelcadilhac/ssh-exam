@@ -1368,6 +1368,32 @@ exchange, callback delivery/recovery and archive limits before marking those dep
 checks complete. Local simulated browser tests alone do not qualify privileged isolation.
 
 
+### Approved retained-SSH lockout design (October 21; implementation pending)
+
+The instructor approved retaining authenticated SSH and preserving shells/editor
+buffers through a verified freeze during policy lockouts. This supersedes the
+always-disconnect policy for viable transports on the same still-open page only
+after coherent native/worker/gateway/browser implementation and qualification.
+Block input/new panes/channels/exec/file transfer, discard queued input and confirm
+all student workloads frozen, including background writers. Keep trusted SSH/PTY
+supervisors and watchdog outside the frozen workloads. A failed freeze remains
+fail closed with explicit recovery, never an optimistic continuation.
+
+Only current capture/fullscreen/keyboard readiness plus valid generation/page/
+transport-bound continuation authorization under the attempt's policy may thaw.
+Show approval/expiry/revocation promptly without treating the message as work
+permission. Preserve focus grace, the running clock, original/current account
+restrictions and independent deadline collection; finishing never reopens work.
+Bound locked-page/transport liveness separately from execution leases: keepalive
+permits no work, and expiration of execution permission alone must not discard a
+demonstrably live retained lockout connection. Close/retire ownership on actual
+page closure/ownership expiry, logout/finish/deadline or transport loss; reload/
+crash/restart may require fresh authentication. Never retain/replay passwords.
+Buffers may survive a viable pause/continue, not finalization or actual process
+loss; protected submissions contain saved files only. Test hostile background
+writers/channels, repeated pauses, stale authorization, loss/rebind, deadlines and
+an unaffected second attempt before claiming implementation or deployment.
+
 ### Approved unified-grant design (October 20; implementation pending)
 
 Keep one ordinary attempt as the default. Explicit individual/bulk additional
