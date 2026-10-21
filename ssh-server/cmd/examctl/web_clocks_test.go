@@ -77,3 +77,30 @@ func TestClockResultRequiresEveryScopedTargetAndExplicitStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestClockPartialDiagnosticsRequireEveryTargetToPassValidationFirst(t *testing.T) {
+	body := map[string]any{"targets": []any{
+		map[string]any{"id": "a", "requestID": "one"},
+		map[string]any{"id": "b", "requestID": "two"},
+	}}
+	failed := map[string]any{"id": "a", "requestID": "one", "status": "failed", "confirmed": false}
+	pending := map[string]any{"id": "b", "requestID": "two", "status": "pending", "confirmed": false, "attempt": map[string]any{"id": "b"}}
+	raw, _ := json.Marshal(map[string]any{"results": []any{failed, pending}})
+	if _, partial := validateClockResult("clocks.batch", body, raw).(*clockPartialError); !partial {
+		t.Fatal("valid failed batch lost its printable diagnostics")
+	}
+	for _, patch := range []map[string]any{{"id": "unknown"}, {"requestID": "wrong"}, {"attempt": map[string]any{"id": "other"}}, {"confirmed": true}} {
+		wrong := map[string]any{}
+		for k, v := range pending {
+			wrong[k] = v
+		}
+		for k, v := range patch {
+			wrong[k] = v
+		}
+		raw, _ = json.Marshal(map[string]any{"results": []any{failed, wrong}})
+		err := validateClockResult("clocks.batch", body, raw)
+		if _, partial := err.(*clockPartialError); err == nil || partial {
+			t.Fatal("malformed companion target was printable as a partial batch", err)
+		}
+	}
+}

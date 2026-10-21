@@ -286,9 +286,19 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		fmt.Fprintln(os.Stderr, "For the same intent, repeat the same command/arguments with --request", request)
 		return 1
 	}
-	if err := validateMonitoringResult(operation, body, result.Result); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+	// Verify nested resource scope before ANY private output/file creation. A
+	// signed outer envelope authenticates the sender, not an accidental wrong
+	// target, cursor or intent inside its result.
+	var partialClock error
+	for _, validate := range []func(string, any, json.RawMessage) error{validateMonitoringResult, validateClockResult, validateInterruptionResult} {
+		if err := validate(operation, body, result.Result); err != nil {
+			if _, partial := err.(*clockPartialError); partial {
+				partialClock = err // All targets passed scope/status checks first.
+				continue
+			}
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 	}
 	if csvOutput != "" {
 		var value struct {
@@ -342,12 +352,8 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		fmt.Fprintln(os.Stderr, "Write confirmed management result:", err)
 		return 1
 	}
-	if err := validateClockResult(operation, body, result.Result); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	if err := validateInterruptionResult(operation, body, result.Result); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	if partialClock != nil {
+		fmt.Fprintln(os.Stderr, partialClock)
 		return 1
 	}
 	return 0

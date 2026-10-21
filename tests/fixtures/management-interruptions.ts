@@ -1,6 +1,7 @@
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
+import { InterruptionManagement } from "../../apps/server/src/interruption-management.js";
 
 // Real compiled namespace-root CLI/HTTPS/gateway; native attempt fixture is
 // synthetic. No host account, installed SSH/PAM or freeze qualification claim.
@@ -47,6 +48,29 @@ export async function qualifyInterruptionCLI(
   expect((await run(reviewArgs)).entries[0].message).toBe(
     "PRIVATE-CLI-REVIEW-TEXT",
   );
+  // A correctly signed gateway envelope is not sufficient if its nested
+  // resource scope is wrong. The CLI must refuse BEFORE printing private text.
+  const realReview = InterruptionManagement.prototype.review;
+  const wrongScope = vi
+    .spyOn(InterruptionManagement.prototype, "review")
+    .mockImplementationOnce(function (this: InterruptionManagement, ...args) {
+      const result = realReview.apply(this, args);
+      return {
+        ...result,
+        current: { ...result.current, id: "different-attempt" },
+      };
+    });
+  try {
+    await expect(
+      invoke("interruptions", ["review", id, "--section", "requests"]),
+    ).rejects.toMatchObject({
+      stdout: "",
+      stderr: expect.stringContaining("target mismatch"),
+    });
+    expect(wrongScope).toHaveBeenCalledOnce();
+  } finally {
+    wrongScope.mockRestore();
+  }
   const receipt = f.current.store.db
     .prepare("SELECT outcome FROM agent_management_requests WHERE request=?")
     .get(reviewID).outcome;

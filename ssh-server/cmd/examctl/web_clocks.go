@@ -23,6 +23,14 @@ type clockReplyItem struct {
 	} `json:"attempt"`
 }
 
+// A fully scoped, valid batch may still contain operational failures. Keep its
+// per-target diagnostics printable with exit1, unlike a malformed/unscoped reply.
+type clockPartialError struct{}
+
+func (*clockPartialError) Error() string {
+	return "some clock targets failed; inspect every result and retain each requestID for selected retries, never blindly add minutes again"
+}
+
 func validateClockResult(operation string, body any, raw json.RawMessage) error {
 	if !strings.HasPrefix(operation, "clocks.") || operation == "clocks.preview" {
 		return nil
@@ -69,7 +77,7 @@ func validateClockResult(operation string, body any, raw json.RawMessage) error 
 		failed = failed || item.Status == "failed"
 	}
 	if failed {
-		return errors.New("some clock targets failed; inspect every result and retain each requestID for selected retries, never blindly add minutes again")
+		return &clockPartialError{}
 	}
 	return nil
 }

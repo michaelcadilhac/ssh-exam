@@ -41,6 +41,20 @@ history. Current revision/generation accompany each page. Malformed/oversized
 stored entries refuse without including private fragments in errors. Per-string,
 row-count and UTF-8 response bounds apply before transport signing.
 
+Local CLI output-order follow-up: an executable compiled-CLI/TLS regression
+confirmed that a correctly signed but wrong nested review target was printed
+(including private student text) before exit1 reported the mismatch. All current
+monitoring/clock/interruption scope validators now run before any output/file
+creation. A refused scope emits no stdout. This is a defensive client correctness
+fix, not evidence that the shared gateway query returned another student's rows
+or a new authorization/retention policy. Fully validated partial clock batches
+still print every scoped result and exit1; malformed targets cannot use that
+diagnostic exception. No clocks, approvals, holds or protected copies change.
+The real compiled root-mapped CLI/TLS/restart regression passes with empty stdout
+on wrong scope. All350 application tests/65 files (74.0s), CLI race tests and
+fresh full native race/resource qualification (core118.8s, CLI3.2s) pass locally.
+No CLI/gateway response schema, authorization or production installation changed.
+
 ## Confirmed correctness fix and deliberate authorization
 
 Previously the web authorize endpoint accepted an empty body and selected the
