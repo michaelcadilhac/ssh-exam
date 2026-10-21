@@ -57,6 +57,15 @@ func TestSyntheticCompilerCollectionWorkloads(t *testing.T) {
 			} else if collectErr != nil {
 				t.Fatal(collectErr)
 			}
+			modern := &Attempt{ID: finalID, Exam: "synthetic-compiler", Username: "synthetic", Settings: Settings{CollectionFileMiB: DefaultCollectionFileMiB, CollectionTotalMiB: DefaultCollectionTotalMiB}}
+			modernDest := filepath.Join(t.TempDir(), "protected-modern")
+			if _, err := Collect(work, modernDest, modern); err != nil {
+				t.Fatal("approved limits rejected compiler workload", err)
+			}
+			m, err := ReadProtected(modernDest, modern)
+			if err != nil || len(m.Files) != 3 {
+				t.Fatal("modern compiled snapshot failed verification", err)
+			}
 			t.Logf("total_logical_bytes=%d collection_error=%v", total, collectErr)
 		})
 	}

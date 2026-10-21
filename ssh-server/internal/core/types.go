@@ -49,14 +49,16 @@ type Config struct {
 	GuardReport               string             `json:"guard_report"`
 }
 type Settings struct {
-	Name      string `json:"name"`
-	ID        string `json:"id"`
-	Duration  int64  `json:"duration"`
-	Webcam    bool   `json:"webcam"`
-	Template  string `json:"template"`
-	Terminals int    `json:"terminals"`
-	Earliest  int64  `json:"earliest"`
-	Latest    int64  `json:"latest"`
+	Name               string `json:"name"`
+	ID                 string `json:"id"`
+	Duration           int64  `json:"duration"`
+	Webcam             bool   `json:"webcam"`
+	Template           string `json:"template"`
+	Terminals          int    `json:"terminals"`
+	Earliest           int64  `json:"earliest"`
+	Latest             int64  `json:"latest"`
+	CollectionFileMiB  int64  `json:"collection_file_mib,omitempty"`
+	CollectionTotalMiB int64  `json:"collection_total_mib,omitempty"`
 }
 type ClockReset struct {
 	ExtendSeconds    int64  `json:"extend_seconds,omitempty"`

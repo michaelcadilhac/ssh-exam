@@ -53,6 +53,9 @@ Settings (no ad hoc database/JSON editing required):
 --duration-seconds N     60..21600; creation default 5400 (90 minutes)
 --webcam required|optional  creation default required
 --terminals N            1..4; creation default 4
+--collection-file-mib N   1..4096 MiB logical bytes/file; creation default 128
+--collection-total-mib N  1..16384 MiB logical bytes total; creation default 512
+                        total must be at least per-file; 1 MiB = 1048576 bytes
 --earliest RFC3339       earliest Begin, explicit date/time/zone; required on create
 --latest RFC3339         latest Begin, not latest finish; required on create
 --revision HASH          current 64-hex revision from show; required on update
@@ -63,6 +66,10 @@ refuses a stale revision; reload/show, review differences, then use a new intent
 Existing attempt settings, clocks, account restrictions and submissions remain
 unchanged. Template deployment is separate; definition creation does not install
 materials. Sandbox immutable policy defaults remain enforced in both interfaces.
+Collection limits apply to future settings snapshots; old attempts/archives retain
+their limits (legacy omitted snapshots mean 32/64 MiB). Entry/depth limits remain
+10000/32; no live disk quota or monitoring limit changes. Worker memory/runtime
+bounds do not auto-increase: qualify storage/time capacity before larger settings.
 
 JSON output names request, operation, confirmed and result. Confirmed means the
 authenticated gateway operation completed, not that any native action was performed.
@@ -119,6 +126,8 @@ func webMain(args []string) int {
 	duration := flags.Int64("duration-seconds", 5400, "future attempt seconds")
 	webcam := flags.String("webcam", "required", "required or optional")
 	terminals := flags.Int("terminals", 4, "terminal count")
+	collectionFile := flags.Int64("collection-file-mib", 128, "per-file logical MiB")
+	collectionTotal := flags.Int64("collection-total-mib", 512, "total logical MiB")
 	earliest := flags.String("earliest", "", "earliest Begin RFC3339")
 	latest := flags.String("latest", "", "latest Begin RFC3339")
 	revision := flags.String("revision", "", "current definition revision")
@@ -142,7 +151,7 @@ func webMain(args []string) int {
 	visited := map[string]bool{}
 	flags.Visit(func(f *flag.Flag) { visited[f.Name] = true })
 	mutatingFlag := false
-	for _, key := range []string{"name", "template", "duration-seconds", "webcam", "terminals", "earliest", "latest", "revision", "reason"} {
+	for _, key := range []string{"name", "template", "duration-seconds", "webcam", "terminals", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
 		mutatingFlag = mutatingFlag || visited[key]
 	}
 	switch words[1] {
@@ -190,13 +199,19 @@ func webMain(args []string) int {
 		if *duration < 60 || *duration > 21600 || *terminals < 1 || *terminals > 4 || (*webcam != "required" && *webcam != "optional") || (visited["reason"] && (len(strings.TrimSpace(*reason)) < 8 || len(*reason) > 1000)) {
 			return usage("invalid duration/terminal/webcam/reason; see documented ranges")
 		}
+		if *collectionFile < 1 || *collectionFile > 4096 || *collectionTotal < 1 || *collectionTotal > 16384 || ((create || (visited["collection-file-mib"] && visited["collection-total-mib"])) && *collectionTotal < *collectionFile) {
+			return usage("collection limits require file 1..4096 MiB, total 1..16384 MiB and total at least per-file; units are logical MiB")
+		}
 		settings := map[string]any{}
-		values := map[string]any{"name": *name, "template": *template, "duration-seconds": *duration, "webcam": *webcam == "required", "terminals": *terminals}
+		values := map[string]any{"name": *name, "template": *template, "duration-seconds": *duration, "webcam": *webcam == "required", "terminals": *terminals, "collection-file-mib": *collectionFile, "collection-total-mib": *collectionTotal}
 		for key, value := range values {
 			if create || visited[key] {
 				field := key
 				if key == "duration-seconds" {
 					field = "duration"
+				}
+				if key == "collection-file-mib" || key == "collection-total-mib" {
+					field = strings.ReplaceAll(key, "-", "_")
 				}
 				settings[field] = value
 			}

@@ -2,8 +2,10 @@
 
 October 21, 2026. Implemented/tested locally; **not deployed**. This addresses the
 C6 crash-failure domain, not the reported incident's unconfirmed original cause.
-Archive ceilings remain 32 MiB/file and 64 MiB total until the configurable-limit
-milestone is qualified. No workspaces, student records or production services were
+The following C6 increment adds configurable new 128/512 MiB snapshots with
+legacy 32/64 MiB preservation; see collection-limits.md for current local
+qualification, storage requirements and open release gates.
+No production workspaces, student records or services were
 changed. Full privileged SSH/PTY and worst-case workload qualification remain open.
 
 ## Runtime and durable boundaries
@@ -94,6 +96,12 @@ and `timeout` (about 2.14 s), actual ENOSPC/read-only tmpfs inside disposable us
 mount namespaces, unprivileged permission denial, preserved work/holds and safe
 retry. These test services use 64 MiB/2 seconds to trigger failure promptly; they
 qualify kernel enforcement mechanisms, not 256 MiB/120-second workload sizing.
+The subsequent disk-backed default-size test exercises actual 256 MiB/120-second
+workers with a 512 MiB incompressible archive and saved restore, concurrent
+healthy signed renewals and unchanged history. A memory-backed output OOM was
+also reproduced, motivating explicit new-admission storage refusal rather than
+weaker worker bounds. Live file-cache accounting reached the worker's memory
+ceiling on disk without failure; do not infer unlimited concurrent capacity.
 All privileged writer hooks in these child fixtures are explicitly simulated.
 No host account enrollment, production configuration or exam service was touched.
 

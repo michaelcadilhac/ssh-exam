@@ -84,6 +84,12 @@ test("lost definition reply preserves form and reuses the same revision/request 
     exact: true,
   });
   await dialog.getByLabel("Name", { exact: true }).fill("Edited midterm");
+  await expect(dialog.getByLabel("Maximum file (MiB)")).toHaveValue("128");
+  await expect(dialog.getByLabel("Maximum submission (MiB)")).toHaveValue(
+    "512",
+  );
+  await dialog.getByLabel("Maximum file (MiB)").fill("256");
+  await dialog.getByLabel("Maximum submission (MiB)").fill("1024");
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue(
@@ -99,6 +105,8 @@ test("lost definition reply preserves form and reuses the same revision/request 
     duration: 7200,
     webcam: false,
     terminals: 2,
+    collection_file_mib: 256,
+    collection_total_mib: 1024,
   });
 });
 

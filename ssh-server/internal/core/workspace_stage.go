@@ -51,6 +51,10 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 	if !ok || account.UID != a.UID {
 		return nil, errors.New("workspace account identity unavailable")
 	}
+	limits, err := limitsForSettings(a.Settings)
+	if err != nil {
+		return nil, err
+	}
 	if err := os.Mkdir(dest, 0700); err != nil {
 		return nil, err
 	}
@@ -65,7 +69,7 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 			return nil, errors.New("select one versioned workspace template")
 		}
 		var err error
-		contentHash, err = copyPrivateTemplate(filepath.Join(e.Config.Templates, source.Template, "work"), dest, account)
+		contentHash, err = copyPrivateTemplate(filepath.Join(e.Config.Templates, source.Template, "work"), dest, account, limits)
 		if err != nil {
 			return nil, err
 		}
@@ -110,10 +114,8 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 	return &WorkspaceReceipt{Version: 1, Attempt: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, SettingsHash: Hash(settings), Source: source, ContentHash: contentHash, PreparedAt: Millis(), WorkDevice: uint64(stat.Dev), WorkInode: stat.Ino}, nil
 }
 
-// Streaming, rooted copy. Bounds intentionally remain the current collection
-// ceilings until the per-exam compatible-limit milestone is qualified; a starter
-// tree must not itself guarantee an oversized/uncollectable eventual submission.
-func copyPrivateTemplate(source, dest string, account Account) (string, error) {
+// A starter tree must not itself guarantee an uncollectable eventual submission.
+func copyPrivateTemplate(source, dest string, account Account, limits collectionBounds) (string, error) {
 	info, err := os.Lstat(source)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return "", errors.New("workspace template must be a real directory")
@@ -192,13 +194,13 @@ func copyPrivateTemplate(source, dest string, account Account) (string, error) {
 			if !i.Mode().IsRegular() || stat.Nlink != 1 {
 				return errors.New("workspace template contains a link or special file")
 			}
-			if i.Size() > 32*1024*1024 {
+			if i.Size() > limits.File {
 				return fmt.Errorf("workspace template per-file size exceeded: %s", path)
 			}
-			total += i.Size()
-			if total > 64*1024*1024 {
+			if i.Size() > limits.Total-total {
 				return errors.New("workspace template total size exceeded")
 			}
+			total += i.Size()
 			in, err := root.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 			if err != nil {
 				return err

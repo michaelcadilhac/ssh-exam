@@ -35,6 +35,8 @@ it("signed SSH preflight retries a lost staging acknowledgment without consuming
         capabilities: ["private-workspace-staging"],
       };
     if (op === "prepare-attempt") {
+      expect(body.settings.collection_file_mib).toBe(128);
+      expect(body.settings.collection_total_mib).toBe(512);
       remote ??= { ...body, state: "PREPARING", start: 0, deadline: 0 };
       return { ...remote };
     }
@@ -76,19 +78,17 @@ it("signed SSH preflight retries a lost staging acknowledgment without consuming
   try {
     const origin = await app.listen({ host: "127.0.0.1", port: 0 });
     config.origin = origin;
-    store.db
-      .prepare("INSERT INTO exams VALUES('e',?)")
-      .run(
-        JSON.stringify({
-          id: "e",
-          duration: 5400,
-          webcam: false,
-          earliest: Date.now() - 60000,
-          latest: Date.now() + 600000,
-          template: "v1",
-          terminals: 4,
-        }),
-      );
+    store.db.prepare("INSERT INTO exams VALUES('e',?)").run(
+      JSON.stringify({
+        id: "e",
+        duration: 5400,
+        webcam: false,
+        earliest: Date.now() - 60000,
+        latest: Date.now() + 600000,
+        template: "v1",
+        terminals: 4,
+      }),
+    );
     store.db
       .prepare(
         "INSERT INTO enrollments(exam,username,uid) VALUES('e','student',0)",

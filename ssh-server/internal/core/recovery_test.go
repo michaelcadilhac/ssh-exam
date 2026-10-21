@@ -406,7 +406,7 @@ func TestRecoveryRejectsUnsafeArchiveEntriesWithoutPublishingWork(t *testing.T) 
 			f.Close()
 			// Exercise the extractor independently of the outer archive checksum:
 			// even imported, root-owned archive entries must obey the manifest.
-			manifest := &Manifest{Files: []FileEntry{{Path: "answer.txt", Size: 12, Hash: Hash([]byte("saved answer"))}}}
+			manifest := &Manifest{Attempt: e.state.Attempts[r.SourceAttempt], Files: []FileEntry{{Path: "answer.txt", Size: 12, Hash: Hash([]byte("saved answer"))}}}
 			base := filepath.Join(e.Config.Work, a.ID)
 			dest := filepath.Join(base, "work")
 			if err := os.MkdirAll(dest, 0700); err != nil {

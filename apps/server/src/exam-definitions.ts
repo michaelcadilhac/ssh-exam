@@ -131,7 +131,9 @@ export class ExamDefinitions {
     reason?: string,
   ) {
     const parsed = examSchema.parse(input);
-    const exam = isSandbox(parsed.id) ? sandboxExam(parsed.template) : parsed;
+    const exam = isSandbox(parsed.id)
+      ? sandboxExam(parsed.template, parsed)
+      : parsed;
     const why = reasonSchema.parse(reason ?? "Exam definition configuration");
     return this.store.db.transaction(() => {
       const prior = this.store.db

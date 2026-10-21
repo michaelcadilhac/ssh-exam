@@ -44,6 +44,7 @@ type Request struct {
 
 func (e *Engine) productionReady() (bool, []string) {
 	missing := []string{}
+	missing = append(missing, collectionStorageIssues(e.Config)...)
 	if err := collectionResourceBounds(); err != nil {
 		missing = append(missing, err.Error())
 	}
@@ -198,7 +199,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "private-workspace-staging", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "private-workspace-staging", "collection-limits-v1", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -258,6 +259,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			}
 			if !identifier.MatchString(r.Exam) || !identifier.MatchString(r.Settings.Template) || r.Settings.Duration < 60 || r.Settings.Duration > 21600 || r.Settings.Terminals < 1 || r.Settings.Terminals > 4 {
 				return errors.New("invalid exam settings")
+			}
+			if _, err := limitsForSettings(r.Settings); err != nil {
+				return err
 			}
 			a := &Attempt{BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", PreflightStartedAt: Millis(), Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
 			a.PolicyRequired = e.temporaryPolicy(a)

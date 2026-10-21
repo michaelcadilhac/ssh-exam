@@ -116,6 +116,17 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 // Extraction is deliberately separate from grant consumption. Private pre-Begin
 // staging must verify/copy saved files without claiming an interval or allowance.
 func (e *Engine) restoreRecoveryFiles(a *Attempt, r *RecoveryPreparation, manifest *Manifest, dest string) error {
+	if a == nil || r == nil || manifest == nil || manifest.Attempt == nil {
+		return errors.New("verified saved-source and target snapshots required")
+	}
+	sourceLimits, err := limitsForSettings(manifest.Attempt.Settings)
+	if err != nil {
+		return err
+	}
+	targetLimits, err := limitsForSettings(a.Settings)
+	if err != nil {
+		return err
+	}
 	archive, err := os.Open(filepath.Join(e.Config.State, "submissions", r.SourceAttempt, "submission.tar.gz"))
 	if err != nil {
 		return err
@@ -138,7 +149,7 @@ func (e *Engine) restoreRecoveryFiles(a *Attempt, r *RecoveryPreparation, manife
 	defer root.Close()
 	expected := make(map[string]FileEntry, len(manifest.Files))
 	for _, file := range manifest.Files {
-		if _, exists := expected[file.Path]; exists || file.Size < 0 || file.Size > 32*1024*1024 {
+		if _, exists := expected[file.Path]; exists || file.Size < 0 || file.Size > sourceLimits.File || file.Size > targetLimits.File || strings.Count(file.Path, "/") > 32 {
 			return errors.New("invalid recovery file manifest")
 		}
 		expected[file.Path] = file
@@ -166,10 +177,10 @@ func (e *Engine) restoreRecoveryFiles(a *Attempt, r *RecoveryPreparation, manife
 			continue
 		}
 		file, exists := expected[h.Name]
-		total += h.Size
-		if !exists || seen[h.Name] || h.Typeflag != tar.TypeReg || h.Size != file.Size || path.IsAbs(h.Name) || path.Clean(h.Name) != h.Name || h.Name == ".." || strings.HasPrefix(h.Name, "../") || total > 64*1024*1024 || len(seen) >= 10000 {
+		if !exists || seen[h.Name] || h.Typeflag != tar.TypeReg || h.Size != file.Size || path.IsAbs(h.Name) || path.Clean(h.Name) != h.Name || h.Name == ".." || strings.HasPrefix(h.Name, "../") || h.Size > sourceLimits.Total-total || h.Size > targetLimits.Total-total || len(seen) >= 10000 {
 			return fmt.Errorf("unsafe or unexpected recovery archive entry: %q", h.Name)
 		}
+		total += h.Size
 		if err := root.MkdirAll(path.Dir(h.Name), 0700); err != nil {
 			return err
 		}

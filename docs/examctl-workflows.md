@@ -19,6 +19,11 @@ semantics. Explicit gateway operation authorization defaults to none.
 Every current definition setting also has a create/update flag; updates require
 the current revision and preserve omitted fields, rather than resetting create
 defaults. See exam-definition-management.md for both interfaces and migration 014.
+Collection setting flags are `--collection-file-mib` (default 128) and
+`--collection-total-mib` (default 512), in logical MiB, not allocated/compressed
+size. Existing preparations/attempts/bundles keep their snapshots; absent legacy
+fields mean 32/64 MiB. See collection-limits.md before selecting larger values;
+worker resource/time bounds do not automatically grow with an allowance.
 `examctl web students help` now covers roster list/add/remove/settings and CSV
 preview/confirm/example/export with shared validation, inheritance, UID trust and
 historical snapshot rules. See roster-cli.md for units, limits and safe output.

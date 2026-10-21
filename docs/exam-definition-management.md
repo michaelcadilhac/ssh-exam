@@ -11,7 +11,11 @@ definition retirement, templates and unified grants remain incomplete.
 list/show to inspect definitions and revision hashes. Creation requires an exam
 ID, installed template name and explicit earliest/latest Begin instants in
 RFC3339 with zones. Defaults match web creation: name Programming exam, duration
-5400 seconds (90 minutes), webcam required and four terminals. Supported duration
+5400 seconds (90 minutes), webcam required, four terminals and collection limits
+128 MiB/file plus 512 MiB total logical contents. `--collection-file-mib` and
+`--collection-total-mib` configure those limits; see collection-limits.md for
+historical compatibility, storage requirements and unchanged worker bounds.
+Supported duration
 range is 60..21600 seconds; terminal count 1..4. These are future defaults, not
 current attempt-clock controls. Latest Begin is not latest finish.
 

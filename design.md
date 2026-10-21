@@ -1563,8 +1563,19 @@ claim follows from this approved design requirement. Native collection/verificat
 cleanup workers, short transactions and fatal-child/resource/disk regressions are
 now implemented/tested locally (docs/collection-worker-isolation.md). Private
 preflight work staging also uses that boundary (docs/private-workspace-staging.md).
-Larger limits, unified source/grant migration, other initialization and full
-privileged SSH/PTY/workload qualification remain open; nothing is deployed.
+The C6 limit increment now implements shared web/CLI settings, explicit new
+128/512 MiB snapshots and consistent collector/template/verification/restore
+bounds. Absent legacy fields retain 32/64 MiB and byte-compatible settings hashes;
+no historical bundle or interval is rewritten. Target/source mismatches refuse
+before Begin without consumption or false source-corruption claims. Validation
+ceilings (4096 MiB/file, 16384 MiB total) do not increase worker memory/runtime or
+certify that workload size. Known tmpfs/ramfs State/Work paths refuse new
+production admission after actual default-size output OOM at the 256 MiB worker
+bound; preserve old data and require a drained persistent-storage migration,
+never weakening recovery or resource limits. See docs/collection-limits.md for
+the live-disk default-size test, compiler evidence and final qualification status.
+Unified source/grant migration, other initialization and full privileged
+SSH/PTY/concurrent workload qualification remain open; nothing is deployed.
 
 ### Clock reset and recording-limit regression requirements
 

@@ -15,6 +15,9 @@ remain safety prerequisites. On October 21 the instructor approved C1–C8 and
 deployment to csc-sys after all required tests succeed, without another approval
 request. Require verified safe drain, backups and compatibility; never interrupt
 running exams. A local test result is not a deployment claim.
+The instructor subsequently revoked deployment authorization on October 21:
+**finish local development/testing only; do not deploy at the end.** All rollout,
+migration, rollback and temporary-agent consolidation steps remain proposals.
 
 ## Firm design policy: examctl is the complete management interface
 
@@ -508,7 +511,8 @@ the approval is not a production change or a completed investigation.
   ENOSPC/read-only regressions pass; healthy signed workflows and blocked-cleanup
   inspection remain available. See docs/collection-worker-isolation.md. Full
   privileged SSH/PTY and workload qualification, initialization isolation and
-  deployment remain open. Runtime archive limits are unchanged.
+  deployment remain open. The later C6 increment below adds new snapshot limits;
+  legacy historical limits remain unchanged.
   Required by C6 October 21 before enabling larger limits. Investigate the
   instructor-reported prior collection crash without assuming its exact cause.
   Run failure-prone per-attempt collection in supervised bounded OS workers,
@@ -546,14 +550,17 @@ the approval is not a production change or a completed investigation.
 - [ ] **Review collection limits against actual exam workloads.**
   Local policy C6 approved October 21: configurable per-exam defaults of 128 MiB
   per file and 512 MiB total; retain 10,000 entries/depth 32. Mandatory collection
-  crash isolation, implementation, storage/workload and concurrency qualification
-  remain open. Current runtime limits have not changed. Real GCC synthetic outputs
-  confirm that a small source can produce 40 MiB object/executable files, exceeding
-  both existing ceilings; collection fails closed without a partial protected
-  bundle. Actual course/debugger workload sizing and implementation remain open.
-  No limit has been raised or answer silently omitted.
-  Collection currently has a 32 MiB per-file / 64 MiB total logical-size limit,
-  10,000-entry limit and depth limit of 32 (`collection.go`). These are separate
+  crash isolation has a local bounded-worker implementation. The following local
+  C6 increment adds shared web/examctl configuration, frozen 128/512 MiB new
+  snapshots and legacy 32/64 MiB preservation across collector/verifier/restore.
+  Real GCC source/object/executable protection and a real 512 MiB high-entropy
+  disk-backed collection plus private restore pass with concurrent signed healthy
+  renewals. Actual tmpfs output OOM motivates new-admission storage refusal, not
+  weakened worker bounds. See docs/collection-limits.md and todo-progress.md for
+  final test status. Course/debugger sizing, concurrent worst-case storage and
+  privileged SSH/PAM/PTYS qualification remain open; no deployment is implied.
+  Original collection limits were 32 MiB per-file / 64 MiB total logical size,
+  10,000 entries and depth 32 (`collection.go`). These are separate
   from the increased configurable monitoring-recording limit. Check whether normal
   compiler/debugger outputs can exceed them, then decide on configuration and
   instructor-facing preparation checks. Preserve safe filesystem traversal and

@@ -1,7 +1,8 @@
 # Private preflight workspace staging
 
 Local implementation October 21, 2026; **not deployed**. This D1 increment is not
-the unified grant migration, version catalog or raised collection limits.
+the unified grant migration or version catalog. The later C6 settings increment
+is documented separately in collection-limits.md.
 
 ## Behavior and authority
 
@@ -13,8 +14,9 @@ outside shared state. Failure, death, hang or lost reply consumes neither time
 nor a legacy recovery marker. Worker completion never automatically starts an
 exam: a later explicit Begin is required.
 
-Starter copying is streaming, bounded to the current 32 MiB/file, 64 MiB total,
-10,000 entries and depth 32. Directory enumeration is bounded before allocation.
+Starter copying is streaming, bounded to the target's frozen collection limits
+(new defaults 128/512 MiB; legacy absent fields 32/64 MiB), 10,000 entries and
+depth 32. Directory enumeration is bounded before allocation.
 Links, special files, mount crossings and detected concurrent source edits fail
 closed. Ordinary modes and available nanosecond mtimes are preserved after
 ownership changes; privilege bits are stripped. Practice mounts only practice
@@ -81,7 +83,8 @@ child. Retry preserves original bytes; shared inspection/cancellation continues.
 Actual local synthetic SSH/gateway tests cover lost staging replies and stale-
 page Begin after handoff. Browser preflight/Begin fixtures now require staging.
 Privileged guards/writer checks in native unit fixtures are injected; this is
-not proof of installed host-root PAM/real student PTYs or 128/512 MiB workloads.
+not proof of installed host-root PAM/real student PTYs. The separate C6 large
+disk-backed worker test covers default-size I/O/restore, not privileged writers.
 
 Next: unified issuance/revise/revoke/consume authority; finite grant windows and
 effective webcam snapshots; selectable empty/versioned/saved sources; native-only

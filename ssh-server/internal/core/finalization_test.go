@@ -19,7 +19,7 @@ const finalID = "12345678-1234-1234-1234-123456789abc"
 
 func finalFixture(t *testing.T, state string, deadline int64) (*Engine, Config, string) {
 	t.Helper()
-	c := Config{State: t.TempDir(), Work: t.TempDir()}
+	c := Config{State: nativeFixtureDir(t), Work: nativeFixtureDir(t)}
 	e, err := New(c)
 	if err != nil {
 		t.Fatal(err)

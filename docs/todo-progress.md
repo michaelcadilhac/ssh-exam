@@ -1,11 +1,11 @@
 # Local TODO implementation record
 
 Updated 2026-10-21 (America/Chicago). This is a local development record, not a
-deployment receipt. October 21 authorization now permits deployment to csc-sys
-after all required tests succeed without another approval request. Require a
-verified drain, consistent private backups and compatibility; never interrupt
-exams, reset clocks or change student records as a shortcut. Other safety
-deferrals remain in force. No production cutover has yet been executed.
+deployment receipt. The instructor's latest October 21 instruction revokes the
+earlier conditional csc-sys deployment authorization: **do not deploy, including
+at the end of local work.** Provide a rollout/migration/rollback proposal only;
+do not execute temporary-agent consolidation. Never interrupt exams, reset clocks
+or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
 ## Baseline and method
@@ -41,7 +41,7 @@ escalation. Generated screenshot changes must not become product changes.
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
-| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved: manual cleanup/no grace and configurable 128/512 MiB defaults with crash isolation; implementation/qualification remain open |
+| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore implementation and default-size local worker test pass, full regression in progress; manual cleanup and privileged/concurrent sizing remain open |
 
 Each implemented milestone gets documentation, focused regressions, proportional
 integration/build/race/browser checks, then a coherent local commit. Never label
@@ -50,6 +50,45 @@ mean implemented and tested locally when explicitly qualified; deployed status i
 separate and remains **not deployed** throughout this work.
 
 ## Current native increment (October 21)
+
+C6 limits increment after local commit 1874c65 (D1b) now implements explicit
+128 MiB/file and 512 MiB total new defaults, shared web/CLI validation, frozen
+native snapshots and compatible legacy 32/64 MiB interpretation. No historical
+attempt/clock is migrated. Collector/verifier/private starter/saved restore agree;
+directory enumeration is bounded before allocation. Defensive nil refusal is
+paired with a repaired unsafe-archive fixture so tests still exercise traversal.
+The native capability and production gateway admission require matching versions.
+Full application suite passes: 306 tests/53 files; typecheck and 40 definition/
+admin/seven-timezone browser checks pass. Exact/exceeded logical limits, source/
+target mismatch without consumption or false corruption, immutable legacy
+settings encoding, historical holds/clocks and custom sandbox limits are covered.
+
+The real 512 MiB high-entropy disk-backed collection/restore passes under unchanged
+256 MiB/no-swap/32-task/120-second user-systemd workers: observed collection
+15.57s, 27 concurrent healthy signed renewals; restore 19 renewals; maximum
+acknowledgement 1.129s, unchanged healthy generation/deadline, exact file hashes,
+536,915,257-byte archive and no target interval/legacy-marker consumption. Live
+MemoryPeak samples reached 268,435,456 bytes in both workers without OOM. This
+includes reclaimable disk page cache and is not unlimited memory/capacity proof.
+Two earlier tmpfs runs actually OOM-killed only the worker at that bound; new
+production admission refuses known tmpfs/ramfs State/Work storage with preserve/
+drained-migration guidance. No existing data is moved/deleted. A slow-renewal test
+first included unflushed fixture creation; flushing setup before measurement
+corrected that contamination. Test-only RemainAfterExit instrumentation blocked
+systemd-run --wait; removed, using live peak samples instead. Do not present those
+failed test runs as successful qualification. Separate blocked-lock tests retain
+sub-second bounds; the real I/O test requires renewals below three seconds versus
+the 15-second execution lease. Full native race/resource/compiler/default-size,
+build/vet/static pass. All three Go-module race checks pass; the full native
+suite with actual worker/systemd/user-namespace/CLI/compiler/default-size opt-ins
+passes in 109.5s. Application/WASM build passes (existing large-bundle warning).
+All 28 browser interface/real synthetic SSH checks pass (3.8m), in addition to
+the 40 definition/admin/timezone checks. Final capability regression also rejects
+an otherwise-ready agent missing only collection-limits-v1. Generated screenshots
+are restored, not product edits. This C6 setting/compatibility/default-size
+increment is implemented/tested locally; Full
+privileged SSH/PAM/PTYS and simultaneous worst-case capacity remain open. See
+collection-limits.md. No deployment and no command-not-found.
 
 D1a is local commit b70ff78: private staging now precedes Begin.
 Full native race suite with opt-ins passes, including actual child death and

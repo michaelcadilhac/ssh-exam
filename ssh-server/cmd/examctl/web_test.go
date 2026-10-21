@@ -45,6 +45,28 @@ func TestWebCLIHelpAndSyntaxBeforeRootOrConfig(t *testing.T) {
 	}
 }
 
+func TestWebCollectionLimitsHelpAndSyntax(t *testing.T) {
+	output, code := cliProcess(t, "web", "exams", "update", "--help")
+	for _, required := range []string{"--collection-file-mib", "--collection-total-mib", "128", "512", "logical", "Existing attempt settings"} {
+		if code != 0 || !strings.Contains(output, required) {
+			t.Fatalf("missing limits guidance %q: %d %s", required, code, output)
+		}
+	}
+	for _, fields := range [][]string{
+		{"--collection-file-mib", "0"},
+		{"--collection-file-mib", "4097"},
+		{"--collection-total-mib", "16385"},
+		{"--collection-total-mib", "1.5"},
+		{"--collection-file-mib", "256", "--collection-total-mib", "128"},
+	} {
+		args := append([]string{"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64)}, fields...)
+		output, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(output, "web help") || strings.Contains(output, "Load root") {
+			t.Fatal("invalid limit syntax reached configuration/authority", code, output)
+		}
+	}
+}
+
 func TestRosterCLIHelpAndRefusalsAreDiscoverable(t *testing.T) {
 	for _, args := range [][]string{{"help", "students"}, {"web", "students", "help"}, {"web", "students", "add", "--help"}, {"--config", "/missing", "web", "students", "--help"}} {
 		output, code := cliProcess(t, args...)

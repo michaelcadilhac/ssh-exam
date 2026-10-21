@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  DEFAULT_COLLECTION_FILE_MIB,
+  DEFAULT_COLLECTION_TOTAL_MIB,
+  MAX_COLLECTION_FILE_MIB,
+  MAX_COLLECTION_TOTAL_MIB,
+} from "./collection-limits.js";
 export const username = z
   .string()
   .regex(
@@ -36,11 +42,25 @@ export const examConfiguration = z.object({
   webcam: z.boolean().default(true),
   terminals: z.number().int().min(1).max(4).default(4),
   template: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  collection_file_mib: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_COLLECTION_FILE_MIB)
+    .default(DEFAULT_COLLECTION_FILE_MIB),
+  collection_total_mib: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_COLLECTION_TOTAL_MIB)
+    .default(DEFAULT_COLLECTION_TOTAL_MIB),
 });
-export const examSchema = examConfiguration.refine(
-  (e) => e.latest > e.earliest,
-  "Invalid start window",
-);
+export const examSchema = examConfiguration
+  .refine((e) => e.latest > e.earliest, "Invalid start window")
+  .refine(
+    (e) => e.collection_total_mib >= e.collection_file_mib,
+    "Collection total must be at least the per-file limit",
+  );
 export type Exam = z.infer<typeof examSchema>;
 export type AccessState = "UNKNOWN" | "HELD" | "RELEASED" | "OVERRIDDEN";
 export type State =

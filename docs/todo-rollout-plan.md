@@ -1,12 +1,13 @@
 # Proposed TODO rollout, migration and rollback
 
-**Not executed. Deployment to csc-sys authorized October 21 after required tests
-succeed. Verified safe drain, private backups and compatibility remain mandatory.**
-This is a handoff plan for the commits in todo-progress.md. The new csc-sys cutover
-authorization does not permit exam interruption, student-record edits or unsafe
-cleanup. Establish actual target topology and mixed-version compatibility before
-changing services. Current incident receipts remain historical evidence only;
-temporary-service consolidation has not been executed.
+**Proposal only; not executed. The instructor's latest October 21 instruction
+revokes the earlier conditional csc-sys deployment authorization. Do not deploy
+at the end of this work or execute temporary-service consolidation.**
+This is a handoff plan for the local commits in todo-progress.md. Any future
+separately authorized rollout requires a verified safe drain, private backups,
+actual topology and mixed-version compatibility. Never interrupt exams, edit
+student records or perform unsafe cleanup. Incident receipts are historical
+evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
@@ -32,10 +33,10 @@ C3 retained SSH with a verified freeze and C4 manual workspace cleanup with no
 grace period are also design-approved as of October 21, but unimplemented/
 unqualified and outside this release. C5 also approves new grant webcam/Begin
 policy, including windows outside the exam default; it is not implemented or a
-retroactive production grant change. C6 now approves configurable 128/512 MiB
-defaults with unchanged entry/depth limits and mandatory collection crash
-isolation; implementation/fault/storage qualification are pending and outside
-this release. C7 selects explicit new-attempt recovery from verified saved work
+retroactive production grant change. C6 now has a local configurable 128/512 MiB
+implementation and real default-size worker/restore qualification; full
+privileged/concurrent storage qualification remains an open release gate (see
+collection-limits.md). C7 selects explicit new-attempt recovery from verified saved work
 with instructor-chosen allowances, no automatic refunds or reopening completed
 attempts; implementation/qualification remain pending. C8 approves deleting only
 unused definitions and archiving definitions with history, preserving attempts
@@ -105,6 +106,21 @@ deadlines and holds do not change on import/settings/removal. Consumed-preview
 retry after expiry is intentionally accepted as a no-op, not new admission.
 See roster-cli.md. Enrollment and native/unified grants remain distinct until
 the approved migration; do not claim definition retirement is safe yet.
+
+C6 requires matching gateway/native capability `collection-limits-v1` before new
+admission. New preparations explicitly freeze both limits; legacy absent native
+fields remain 32/64 MiB and old private receipt hashes stay unchanged. Do not
+migrate historical settings or rewrite protected archives. Validate the private
+State/Work mount layout: new production admission refuses tmpfs/ramfs, after a
+real default-size tmpfs worker OOM. Any required storage move must be separately
+planned after drain, with private consistent copies, exact checksums/ownership,
+mount verification and reversible configuration; never move live student work.
+Do not raise worker limits to hide storage accounting. Qualify real privileged
+writers, simultaneous worst-case files/archives/restores, disk latency and free
+space before inclusion. Old binaries may discard the new settings fields on
+save and enforce old archive caps; prohibit mixed writers and downgrade only
+when every remaining snapshot/bundle is demonstrably compatible, otherwise
+preserve current state and repair forward. No storage move/deployment is executed.
 
 Install matching gateway, connection-worker/browser receipt code and native
 artifacts in the drained window. Native authenticated renewal refusals now carry

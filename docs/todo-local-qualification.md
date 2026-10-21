@@ -9,7 +9,9 @@ worker/short-transaction implementation and actual fatal-child, user-systemd
 OOM/runtime, permission and isolated ENOSPC/read-only tests. See
 [collection-worker-isolation.md](collection-worker-isolation.md). Earlier timing
 figures below remain historical; full privileged SSH/PTY/workload qualification
-is still open. No production deployment or higher runtime limits are implied.
+is still open. The following C6 increment adds compatible configurable limits
+and a real default-size disk-backed worker/restore test (collection-limits.md).
+No production deployment is implied.
 
 ## Concurrent deadlines, cleanup and delayed callbacks
 
@@ -61,7 +63,8 @@ The older tracked load-report.json remains an explicitly historical measurement.
 
 ## Compiler output versus collection limits
 
-Current hard-coded limits remain 32 MiB/file, 64 MiB total logical bytes, 10,000
+At the time of the October 20 measurement, hard-coded limits were 32 MiB/file,
+64 MiB total logical bytes, 10,000
 entries (including directories), and nesting depth 32. Recording quota is separate.
 Opt-in `EXAM_COMPILER_WORKLOADS=1 go test -race ./internal/core -run
 TestSyntheticCompilerCollectionWorkloads -count=1 -v` invokes the real local GCC
@@ -87,7 +90,14 @@ discoverable `examctl` preparation checks, storage reservations and worst-case
 cutoff/collection/backlog tests remain necessary. The instructor also requires
 fatal collection-worker crash isolation; returned-error/blocked-hook tests above
 are not evidence of that. Retain fail-closed traversal and explicit repair on
-exceeded limits. No runtime limit or deletion policy changed locally.
+exceeded limits. That paragraph records the earlier milestone, not current
+source status. The October 21 C6 increment now tests both interpretations: legacy
+snapshots still refuse the roughly 84 MB compiler tree; new 128/512 MiB snapshots
+protect all three files. Real 512 MiB high-entropy disk-backed collection and
+private saved restore pass under unchanged bounded user-systemd workers with
+concurrent signed renewals. See collection-limits.md and current todo-progress.md
+for evidence, tmpfs OOM/admission refusal and remaining privileged/concurrency/
+capacity gates. No deletion or production policy changed.
 
 ## Final automated checks for this local increment
 

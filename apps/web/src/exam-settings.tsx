@@ -2,6 +2,12 @@ import React, { useState, useRef } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import {
+  DEFAULT_COLLECTION_FILE_MIB,
+  DEFAULT_COLLECTION_TOTAL_MIB,
+  MAX_COLLECTION_FILE_MIB,
+  MAX_COLLECTION_TOTAL_MIB,
+} from "../../../packages/protocol/collection-limits.js";
 export function ExamSettings({
   initial,
   onClose,
@@ -18,6 +24,8 @@ export function ExamSettings({
     duration: 5400,
     webcam: true,
     terminals: 4,
+    collection_file_mib: DEFAULT_COLLECTION_FILE_MIB,
+    collection_total_mib: DEFAULT_COLLECTION_TOTAL_MIB,
     earliest: Date.now() - 60000,
     latest: Date.now() + 7 * 86400000,
     ...initial,
@@ -179,7 +187,54 @@ export function ExamSettings({
           />{" "}
           Default webcam requirement
         </label>
-        <p>Attempts already prepared keep their settings.</p>
+        <fieldset className="admin-form-group">
+          <legend>Protected collection limits</legend>
+          <div className="admin-form-grid">
+            <label>
+              Maximum file (MiB)
+              <input
+                required
+                type="number"
+                min={1}
+                max={MAX_COLLECTION_FILE_MIB}
+                disabled={busy}
+                value={form.collection_file_mib}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    collection_file_mib: Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Maximum submission (MiB)
+              <input
+                required
+                type="number"
+                min={form.collection_file_mib}
+                max={MAX_COLLECTION_TOTAL_MIB}
+                disabled={busy}
+                value={form.collection_total_mib}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    collection_total_mib: Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+          </div>
+          <small>
+            Logical saved-file sizes; 1 MiB = 1,048,576 bytes. Entry/depth
+            limits remain 10,000/32. These are not live disk quotas or
+            monitoring limits. Qualify storage/runtime capacity before raising
+            them.
+          </small>
+        </fieldset>
+        <p>
+          Attempts already prepared keep their settings and collection limits.
+        </p>
         {error && (
           <p role="alert" className="warn">
             {error}

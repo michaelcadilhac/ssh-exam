@@ -34,6 +34,13 @@ type Manifest struct {
 // Collect reads only through an os.Root and opens regular files O_NOFOLLOW. Its caller must
 // have verified every writer is frozen; the protected destination is never student accessible.
 func Collect(source, dest string, a *Attempt) (string, error) {
+	if a == nil {
+		return "", errors.New("collection attempt snapshot required")
+	}
+	limits, err := limitsForSettings(a.Settings)
+	if err != nil {
+		return "", err
+	}
 	if _, err := os.Lstat(dest); err == nil {
 		manifest, err := ReadProtected(dest, a)
 		if err != nil {
@@ -86,16 +93,16 @@ func Collect(source, dest string, a *Attempt) (string, error) {
 		if err != nil {
 			return err
 		}
-		entries, err := dir.ReadDir(-1)
+		entries, err := dir.ReadDir(10001 - count)
 		dir.Close()
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return err
 		}
+		if len(entries)+count > 10000 {
+			return errors.New("submission file-count limit exceeded")
+		}
+		count += len(entries)
 		for _, entry := range entries {
-			count++
-			if count > 10000 {
-				return errors.New("submission file-count limit exceeded")
-			}
 			p := filepath.ToSlash(filepath.Join(name, entry.Name()))
 			if p == "MANIFEST.json" {
 				return errors.New("MANIFEST.json is reserved for protected collection metadata")
@@ -128,14 +135,14 @@ func Collect(source, dest string, a *Attempt) (string, error) {
 			if st.Nlink != 1 {
 				return fmt.Errorf("hardlinked regular file rejected: %s", p)
 			}
-			if i.Size() > 32*1024*1024 {
+			if i.Size() > limits.File {
 				return fmt.Errorf("per-file logical size exceeded: %s", p)
 			}
-			total += i.Size()
-			if total > 64*1024*1024 {
+			if i.Size() > limits.Total-total {
 				return errors.New("submission total logical size exceeded")
 			}
-			file, err := root.OpenFile(p, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+			total += i.Size()
+			file, err := root.OpenFile(p, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 			if err != nil {
 				return err
 			}
@@ -259,6 +266,13 @@ func syncDirectory(path string) error {
 // ReadProtected verifies a published bundle before recovery can adopt it. A damaged existing
 // bundle fails closed; it is never overwritten with a fresh view of mutable student work.
 func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
+	if a == nil {
+		return nil, errors.New("protected attempt snapshot required")
+	}
+	limits, err := limitsForSettings(a.Settings)
+	if err != nil {
+		return nil, err
+	}
 	info, err := os.Lstat(dest)
 	if err != nil {
 		return nil, err
@@ -302,6 +316,15 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 	if !protectedIdentity(m.Attempt, a) {
 		return nil, errors.New("protected manifest identity mismatch")
 	}
+	var total int64
+	seen := map[string]bool{}
+	for _, file := range m.Files {
+		if file.Size < 0 || file.Size > limits.File || file.Size > limits.Total-total || seen[file.Path] || strings.Count(file.Path, "/") > 32 {
+			return nil, errors.New("protected manifest exceeds snapshotted collection bounds or repeats a path")
+		}
+		total += file.Size
+		seen[file.Path] = true
+	}
 	sidecar, err := read("archive.sha256")
 	if err != nil {
 		return nil, err
@@ -312,7 +335,7 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 	}
 	defer f.Close()
 	i, err := f.Stat()
-	if err != nil || !i.Mode().IsRegular() || i.Size() > 128*1024*1024 {
+	if err != nil || !i.Mode().IsRegular() || i.Size() > limits.Total+64*mib {
 		return nil, errors.New("invalid protected archive")
 	}
 	h := sha256.New()

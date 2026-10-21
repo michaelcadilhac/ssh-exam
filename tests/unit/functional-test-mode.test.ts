@@ -142,6 +142,7 @@ it("production accepts a qualified administrator sandbox and keeps ordinary rost
         "clock-reset",
         "deadline-timing-check",
         "private-workspace-staging",
+        "collection-limits-v1",
       ],
     };
     store.db
@@ -152,20 +153,18 @@ it("production accepts a qualified administrator sandbox and keeps ordinary rost
         JSON.stringify({ health, accounts: { admin: 1001, student: 1002 } }),
       );
     expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(200);
-    store.db
-      .prepare("UPDATE agent_snapshot SET payload=?")
-      .run(
+    for (const missing of ["private-workspace-staging", "collection-limits-v1"]) {
+      store.db.prepare("UPDATE agent_snapshot SET payload=?").run(
         JSON.stringify({
           health: {
             ...health,
-            capabilities: health.capabilities.filter(
-              (cap) => cap !== "private-workspace-staging",
-            ),
+            capabilities: health.capabilities.filter((cap) => cap !== missing),
           },
           accounts: { admin: 1001, student: 1002 },
         }),
       );
-    expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(503);
+      expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(503);
+    }
     store.db
       .prepare("UPDATE agent_snapshot SET payload=?")
       .run(

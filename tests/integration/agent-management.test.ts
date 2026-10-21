@@ -321,6 +321,10 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         "optional",
         "--terminals",
         "2",
+        "--collection-file-mib",
+        "256",
+        "--collection-total-mib",
+        "1024",
         "--reason",
         "Create via supported flags",
       ];
@@ -334,6 +338,8 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
             duration: 7200,
             webcam: false,
             terminals: 2,
+            collection_file_mib: 256,
+            collection_total_mib: 1024,
             earliest: Date.parse("2026-10-22T09:00:00-05:00"),
           },
         },
@@ -593,6 +599,8 @@ it("shares revision-checked definition writes across web and root CLI without re
       duration: 7200,
       webcam: false,
       terminals: 2,
+      collection_file_mib: 128,
+      collection_total_mib: 512,
     };
     const created = f.unpack(
       await f.post(

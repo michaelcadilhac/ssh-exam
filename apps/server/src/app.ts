@@ -10,6 +10,7 @@ import path from "node:path";
 import argon2 from "argon2";
 import { mailTransport } from "./mail.js";
 import { signInAlertContext } from "./alerts.js";
+import { collectionSettings } from "../../../packages/protocol/collection-limits.js";
 import { z } from "zod";
 import {
   examSchema,
@@ -511,6 +512,7 @@ export async function createApp(
               "clock-reset",
               "deadline-timing-check",
               "private-workspace-staging",
+              "collection-limits-v1",
             ].every((cap) => h.capabilities?.includes(cap))));
       if (!ready) reply.code(503);
       return {
@@ -770,6 +772,7 @@ export async function createApp(
         "clock-reset",
         "deadline-timing-check",
         "private-workspace-staging",
+        "collection-limits-v1",
       ].every((cap) => h.capabilities?.includes(cap))
     )
       throw Error(
@@ -807,11 +810,20 @@ export async function createApp(
       ? JSON.parse(previous.settings)
       : {
           ...exam,
+          ...collectionSettings(exam),
           duration: enrollment.duration ?? exam.duration,
           webcam:
             enrollment.webcam === null ? exam.webcam : !!enrollment.webcam,
         };
-    if (isSandbox(s.exam)) Object.assign(settings, sandboxExam(exam.template));
+    if (isSandbox(s.exam)) {
+      const {
+        collection_file_mib: _file,
+        collection_total_mib: _total,
+        ...policy
+      } = sandboxExam(settings.template, settings);
+      // Preserve even legacy preparation limit snapshots and template choice.
+      Object.assign(settings, policy);
+    }
     if (!previous)
       store.db
         .prepare(
