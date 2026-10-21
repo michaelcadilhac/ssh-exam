@@ -234,6 +234,18 @@ export function registerAgentManagement(
                   b.reason,
                 ),
               };
+            } else if (
+              r.operation === "monitoring.purges" ||
+              r.operation === "monitoring.purge"
+            ) {
+              return {
+                ok: true,
+                status: 200,
+                result:
+                  r.operation === "monitoring.purges"
+                    ? monitoringReads.purges(r.body, actor)
+                    : monitoringReads.purge(r.body, actor),
+              };
             } else if (r.operation === "monitoring.delete") {
               return {
                 ok: true,
@@ -394,24 +406,26 @@ export function registerAgentManagement(
             confirmed: result.ok,
             operation: r.operation,
             target:
-              r.operation.startsWith("attempts.") ||
-              r.operation.startsWith("clocks.") ||
-              r.operation.startsWith("interruptions.") ||
-              r.operation.startsWith("monitoring.")
-                ? attemptShow.safeParse({
-                    id: (r.body as { id?: unknown } | null)?.id,
-                  }).data?.id ||
-                  studentManagement.safeParse(r.body).data?.exam ||
-                  "clocks"
-                : r.operation.startsWith("alerts.")
-                  ? z
-                      .string()
-                      .uuid()
-                      .safeParse((r.body as { id?: unknown } | null)?.id)
-                      .data || "notifications"
-                  : r.operation === "exams.show"
-                    ? examShowRequest.safeParse(r.body).data?.id
-                    : "exams",
+              r.operation === "monitoring.purges"
+                ? "monitoring-purges"
+                : r.operation.startsWith("attempts.") ||
+                    r.operation.startsWith("clocks.") ||
+                    r.operation.startsWith("interruptions.") ||
+                    r.operation.startsWith("monitoring.")
+                  ? attemptShow.safeParse({
+                      id: (r.body as { id?: unknown } | null)?.id,
+                    }).data?.id ||
+                    studentManagement.safeParse(r.body).data?.exam ||
+                    "clocks"
+                  : r.operation.startsWith("alerts.")
+                    ? z
+                        .string()
+                        .uuid()
+                        .safeParse((r.body as { id?: unknown } | null)?.id)
+                        .data || "notifications"
+                    : r.operation === "exams.show"
+                      ? examShowRequest.safeParse(r.body).data?.id
+                      : "exams",
           }),
         );
         store.db
@@ -429,7 +443,11 @@ export function registerAgentManagement(
       if (
         outcome.ok &&
         r.operation.startsWith("monitoring.") &&
-        r.operation !== "monitoring.delete"
+        ![
+          "monitoring.delete",
+          "monitoring.purges",
+          "monitoring.purge",
+        ].includes(r.operation)
       ) {
         try {
           response = {

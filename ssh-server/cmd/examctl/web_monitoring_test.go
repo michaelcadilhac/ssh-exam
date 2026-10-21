@@ -30,11 +30,46 @@ func TestMonitoringHelpAndSyntaxWithoutConfiguration(t *testing.T) {
 		{"web", "monitoring", "show", "a", "--reason", "Not a read flag"},
 		{"web", "monitoring", "delete", "a", "--confirm", "student", "--revision", strings.Repeat("a", 64), "--reason", "short"},
 		{"web", "monitoring", "delete", "a", "--confirm", "student", "--revision", strings.Repeat("a", 64), "--reason", "Reviewed removal", "--output", "private"},
+		{"web", "monitoring", "purge-status"},
+		{"web", "monitoring", "purges", "a"},
+		{"web", "monitoring", "purges", "--status", "not-verified"},
+		{"web", "monitoring", "purges", "--limit", "101"},
+		{"web", "monitoring", "purges", "--after", "../private"},
+		{"web", "monitoring", "purge-status", "a", "--status", "retry"},
 	} {
 		out, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(out, "help") || strings.Contains(out, "Load root") {
 			t.Fatal("bad syntax reached authority", code, out)
 		}
+	}
+}
+
+func TestPurgeInventoryReplyScope(t *testing.T) {
+	body := map[string]any{"limit": 1, "after": "a", "status": "retry"}
+	value := map[string]any{"entries": []any{map[string]any{"id": "b", "status": "retry"}}, "next": "b", "observed": 1}
+	raw, _ := json.Marshal(value)
+	if err := validateMonitoringResult("monitoring.purges", body, raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, patch := range []map[string]any{{"observed": nil}, {"next": "c"}, {"entries": []any{map[string]any{"id": "a", "status": "retry"}}}, {"entries": []any{map[string]any{"id": "b", "status": "pending"}}}} {
+		wrong := map[string]any{}
+		for k, v := range value {
+			wrong[k] = v
+		}
+		for k, v := range patch {
+			wrong[k] = v
+		}
+		raw, _ = json.Marshal(wrong)
+		if validateMonitoringResult("monitoring.purges", body, raw) == nil {
+			t.Fatal("accepted invalid inventory", wrong)
+		}
+	}
+	single := json.RawMessage(`{"id":"a","deleted":0,"observed":1,"attempt":null,"job":{"status":"not-verified"}}`)
+	if err := validateMonitoringResult("monitoring.purge", map[string]any{"id": "a"}, single); err != nil {
+		t.Fatal(err)
+	}
+	if validateMonitoringResult("monitoring.purge", map[string]any{"id": "b"}, single) == nil {
+		t.Fatal("accepted wrong job")
 	}
 }
 

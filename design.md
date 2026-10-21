@@ -1470,6 +1470,15 @@ than silently refreshing the review and preserves exact lost-reply retries.
 No new delete permission is implied by read authorization. Full export and
 retired-job management remain open; this candidate is not deployed.
 
+C1gb4 now adds shared bounded purge inventory and `web monitoring purges` /
+`purge-status ATTEMPT` metadata-only CLI reads, including tombstones/jobs whose
+cancelled preparation row was retired. Defaults50/max100, exclusive ID cursors
+and indexed stored-state filters (additive019). Administrator HTTP reads are
+no-store; signed root request outcomes deliberately cache labeled metadata
+snapshots, unlike transient private-media reads. NEW requests obtain fresh job
+metadata, never a new filesystem proof. Reads do not delete/requeue/reset backoff
+or alter historical authority. Whole-media export remains open, not deployed.
+
 All legacy full-image/thumbnail and aggregate review readers also honor deletion
 tombstones if older monitoring files/metadata are restored. Refuse media before
 file IO; hide restored frame/terminal/incident metadata while retaining independent

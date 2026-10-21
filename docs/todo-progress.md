@@ -8,6 +8,62 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+C1gb4 final audit fix and combined qualification: **all84 combined browser checks
+pass (10.6m)** on the frozen gateway/UI; all nine generated documentation screenshots
+are restored. The root-only inventory request resource-label regression now passes
+in the final full **346/64 app repeat (71.8s)**. Request audit rows correctly retain
+their request UUID target; the resource label is in detail.target. The first
+regression inspected the wrong column; the corrected detail-field test was proved
+failing against the old fallback, then passing with monitoring-purges. Typecheck/
+build pass with unchanged UI hashes, static build/vet/race compatibility pass.
+This closes the bounded inventory/audit increment locally, not full management,
+immutable catalog/grants, retained SSH or workspace deletion. Migration019 and all
+other candidate migrations remain LOCAL ONLY. No production changes or missing
+command. Next: source/version catalog foundation while awaiting the newly asked
+legacy-unused-enrollment migration choice; never claim that proposal is implemented.
+
+New consequential migration question sent asynchronously: legacy unused
+enrollments have no original settings/enrollment timestamp, so choose reviewed
+bulk issuance at eventual migration using current effective settings/unchanged
+windows/selected immutable version, or explicit selected reissuance before those
+legacy rows become available. New enrollment/import issuance remains approved;
+preparations/started snapshots/history are not rewritten. Independent immutable
+catalog investigation continues; details/source findings in template-grant-
+investigation.md. No answer assumed and no production migration performed.
+
+C1gb4 final-review finding: the generic root management audit target fallback
+labels targetless monitoring.purges as "clocks". The service's own purge audit is
+correct, but the request audit also needs a precise monitoring-purges target.
+Add an actual compiled CLI regression, then correct the scoped gateway label after
+the currently frozen combined browser run; do not commit the milestone with this
+known discrepancy. This changes no authority or UI policy. Other read inventory
+qualification above remains evidence, not proof the final-review bug is fixed.
+
+C1gb4 final targeted qualification: full app **346/64 (72.4s)**, actual compiled
+CLI/TLS/restart/pagination/snapshot-versus-fresh requests and two dedicated unit/
+authenticated HTTP inventory tests pass. Typecheck/build/static native build/vet
+and race compatibility pass (CLI3.6s; unchanged native enforcement uses valid
+cache; prior fresh108.1s remains scoped to C1gb3). UI assets remain
+index-BUxRZ6XW.js/index-CHDebkQt.css with the passing31-check admin result. A fresh
+combined84-browser run is underway on the frozen gateway/UI candidate. The first
+inventory CLI test incorrectly assumed no earlier restart-created retry jobs;
+corrected to page actual IDs and preserve all backlog, not erase it. Migration019
+adds only the stored-status index. This closes retired-job read workflows locally,
+not whole-media export, grant/catalog migration or deployment. No missing command,
+production record/config/service change, push or deployment.
+
+C1gb4 candidate now adds shared bounded `web monitoring purges` list/filter/ID
+pagination and `purge-status ATTEMPT`, including durable tombstones after preparation
+retirement. Default 50/max100, metadata only; unfiltered pages include unbackfilled
+legacy tombstones, while stored-state filters use additive migration019's index.
+These read-only management outcomes are explicitly timestamped metadata snapshots
+(NEW request for fresh status), not private-media caches or new FS verification.
+Authenticated no-store HTTP/role/bounds tests, unit epoch-zero/orphan/index tests
+and CLI help/syntax/reply checks pass. Actual compiled CLI/TLS/restart/cached-versus-
+fresh status is under qualification. No purge/reset/delete control is added, no
+production change or missing command. Full app/native/build and unchanged-UI
+compatibility repeats remain before commit.
+
 Final C1gb3: **344 app tests/62 files (73.8s)** and all **31 admin/monitoring browser
 checks (2.1m)** pass, including desktop/mobile exact lost-reply retries and stale
 review refusal. Actual compiled CLI/TLS/restart/new-parent child retries/default
@@ -325,7 +381,7 @@ escalation. Generated screenshot changes must not become product changes.
 | C1e: attempts and current clocks | C1a + existing clock policy | Shared atomic staging, bounded private-safe inspection, single/bulk/reset-default workflows, exact amount/revision/child retry fences, honest pending/native status; compiled CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 313 app tests, all three Go-module race checks, static build/vet/typecheck/build, 46 admin/alert/definition/timezone and 28 interface/real synthetic SSH browser checks; not deployed |
 | C1f: interruption review and authorization | C1a + current continuation policy | Shared generation/review-counter/reason fence, unchanged expiry/SSH/readiness, atomic audit/intent, private retention-safe review, exact retries/pagination; actual CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 320 app tests, native race/build/vet/typecheck/build and 81 browser checks together; not deployed |
 | C1ga: bounded monitoring inspection/replay | C1a + tombstone correctness | Shared web/root summary and watermark pages, bounded complete-event replay, transient receipts, deletion/restart rechecks and validated private outputs; actual CLI/TLS/HTTP/unit/native race/build/browser | Implemented/tested locally: 327 application tests, native race/resource/compiler/default-size opt-ins (107.3s), static build/vet/typecheck/build and all 81 combined browser checks (10.5m). Not deployed |
-| C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Durable isolated jobs and shared reviewed CLI/web deletion locally pass: 344 app/31 browser/real HTTP-SSH faults/compiled CLI/TLS and fresh native race108.1s. Retired-job inventory and full export remain open |
+| C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Durable isolated jobs/shared reviewed deletion/retired-job reads pass locally: 346 app/31 unchanged-UI browser/real HTTP-SSH faults/compiled CLI-TLS/race-build. Combined84-browser repeat running; full export remains open |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |

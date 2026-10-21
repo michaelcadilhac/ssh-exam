@@ -49,6 +49,15 @@ database over newer deletion records or infer physical completion from acceptanc
 Full media export/retired-job inventory and aggregate capacity remain open. This
 does not authorize production schema changes, deployment or service consolidation.
 
+C1gb4 adds additive019's status index and metadata-only purge inventory through
+shared administrator HTTP and root CLI. Explicitly authorize monitoring.purges/
+monitoring.purge only where needed; private-media read permissions do not imply
+those new reads. Preserve tombstones/jobs even after attempt retirement. Retain
+metadata request snapshots and use NEW request IDs for fresh status; none is a
+secure-erasure receipt. A compatible rollback may leave the additive index but
+must coordinate older configuration allowlists/gateway/CLI and keep all ledgers.
+No production migration or operation was executed.
+
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,
 without retaining/retrying credentials or bypassing approval/holds. No schema

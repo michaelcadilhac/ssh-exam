@@ -3,6 +3,22 @@ import { attemptReference } from "./clock-management.js";
 import { username } from "./index.js";
 
 export const monitoringShow = z.object({ id: attemptReference }).strict();
+export const purgeStatus = z.enum([
+  "not-verified",
+  "pending",
+  "running",
+  "retry",
+  "verified-absent",
+]);
+export const monitoringPurges = z
+  .object({
+    limit: z.number().int().min(1).max(100).default(50),
+    after: attemptReference.optional(),
+    status: z
+      .enum(["pending", "running", "retry", "verified-absent"])
+      .optional(),
+  })
+  .strict();
 export const monitoringDelete = monitoringShow.extend({
   confirm: username,
   revision: z.string().regex(/^[a-f0-9]{64}$/),

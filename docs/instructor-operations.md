@@ -139,8 +139,10 @@ were still open at C1gb2. Local C1gb3 now adds the same reviewed deletion workfl
 to CLI and web review: ended eligibility, named student, exact review revision,
 audited reason and stable intent. Start with `examctl web monitoring show ATTEMPT`
 and `examctl web monitoring help`. Exact retries do not requeue/reset backoff;
-fresh show reads physical status. Full media export and retired-preparation job
-inventory remain outstanding. Not deployed.
+fresh show reads physical status. Local C1gb4 adds `web monitoring purges` and
+`purge-status ATTEMPT` for bounded job inventory even after preflight retirement.
+These are read-only metadata snapshots; use NEW request IDs for fresh status,
+not fresh filesystem proof. Full media export remains outstanding. Not deployed.
 
 Submissions are automatic: saved files are collected at expiration or irreversible Finish exam.
 Archives remain in root-private storage on the SSH server. The webserver receives signed

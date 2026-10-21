@@ -6,6 +6,8 @@ import {
   monitoringReplay,
   parseMonitoring,
   monitoringDelete,
+  monitoringShow,
+  monitoringPurges,
 } from "../../../packages/protocol/monitoring-management.js";
 
 const refuse = (message: string, statusCode = 409): never => {
@@ -19,6 +21,89 @@ export class MonitoringManagement {
     private store: Store,
     private monitoring: Monitoring,
   ) {}
+
+  private inventoryRead<T>(read: () => T): T {
+    try {
+      return read();
+    } catch (error) {
+      if ((error as any)?.statusCode) throw error;
+      return refuse(
+        "Purge metadata unavailable; preserve tombstones/jobs and inspect private database/storage diagnostics. Use a NEW --request for a fresh inventory retry",
+        503,
+      );
+    }
+  }
+
+  purge(input: unknown, actor: string) {
+    const { id } = monitoringShow.parse(input);
+    return this.inventoryRead(() => {
+      const tombstone = this.store.db
+        .prepare("SELECT deleted FROM tombstones WHERE attempt=?")
+        .get(id) as any;
+      if (!tombstone)
+        return refuse(
+          `No durable monitoring deletion record; inspect examctl web monitoring show ${id}`,
+          404,
+        );
+      const attempt =
+        this.store.db
+          .prepare(
+            "SELECT id,exam,username,state,ended FROM attempts WHERE id=?",
+          )
+          .get(id) ?? null;
+      this.store.audit(actor, "view-monitoring-purge", id);
+      return {
+        id,
+        deleted: tombstone.deleted,
+        attempt,
+        job: monitoringPurgeStatus(this.store, id),
+        observed: now(),
+        note: "Metadata snapshot, not a new filesystem verification. Use a NEW --request for fresh status. A retired preparation may have no attempt row; keep its tombstone/job",
+      };
+    });
+  }
+
+  purges(input: unknown, actor: string) {
+    const b = monitoringPurges.parse(input);
+    return this.inventoryRead(() => {
+      const fields = `SELECT t.attempt id,t.deleted,COALESCE(p.status,'not-verified') status,p.updated,p.verified,p.next,p.error,p.tries,
+      a.exam,a.username,a.state `;
+      const rows = (
+        b.status
+          ? this.store.db
+              .prepare(
+                fields +
+                  `FROM monitoring_purges p JOIN tombstones t ON t.attempt=p.attempt LEFT JOIN attempts a ON a.id=t.attempt
+        WHERE p.status=? AND p.attempt>? ORDER BY p.attempt LIMIT ?`,
+              )
+              .all(b.status, b.after ?? "", b.limit + 1)
+          : this.store.db
+              .prepare(
+                fields +
+                  `FROM tombstones t LEFT JOIN monitoring_purges p ON p.attempt=t.attempt LEFT JOIN attempts a ON a.id=t.attempt
+        WHERE t.attempt>? ORDER BY t.attempt LIMIT ?`,
+              )
+              .all(b.after ?? "", b.limit + 1)
+      ) as any[];
+      const entries = rows.slice(0, b.limit);
+      this.store.audit(
+        actor,
+        "list-monitoring-purges",
+        "monitoring",
+        JSON.stringify({
+          after: b.after ?? null,
+          limit: b.limit,
+          status: b.status ?? null,
+        }),
+      );
+      return {
+        entries,
+        next: rows.length > b.limit ? entries.at(-1)!.id : null,
+        observed: now(),
+        note: "Bounded live metadata inventory, not a stable export or fresh filesystem proof. New/changed rows may require restarting the list. Use NEW --request IDs for fresh pages; purge-status ATTEMPT inspects even retired preparation jobs",
+      };
+    });
+  }
 
   deletionReview(id: string) {
     const a = this.attempt(id, false);

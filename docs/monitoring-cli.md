@@ -2,7 +2,8 @@
 
 October 21, 2026. C1ga reads, C1gb2 durable isolated purge/status and C1gb3 reviewed
 deletion are implemented/tested locally; **not deployed**. This is not complete
-monitoring management: full export and retired-job inventory remain open. Existing
+monitoring management: full export remains open. C1gb4 adds the read-only purge
+inventory below, including retired preflights. Existing
 60-day monitoring retention and independent protected-submission retention are
 unchanged.
 
@@ -119,7 +120,56 @@ through consistent backups/rollback. An old gateway lacks the shared contract;
 old boolean-only UI must reload. Do not roll back to synchronous purge or discard
 newer deletion records. No deployment or production migration has occurred.
 
+## Purge job inventory (C1gb4 local candidate)
+
+```sh
+sudo examctl web monitoring purges --limit 50
+sudo examctl web monitoring purges --status retry --limit 50
+sudo examctl web monitoring purges --after LAST_ATTEMPT --limit 50
+sudo examctl web monitoring purge-status ATTEMPT
+```
+
+These are read-only metadata commands, not instructions to delete anything.
+They require separate monitoring.purges/monitoring.purge operation authorization.
+List defaults to 50/max100 and returns an exclusive attempt-ID next cursor. Its
+--after is an ID, unlike the numeric frame-list cursor. Unfiltered pages include
+legacy tombstones awaiting job backfill (not-verified); stored-state filters are
+pending/running/retry/verified-absent. Migration 019 adds the filter index. A
+retired preparation's attempt metadata is null, not a reason to erase its durable
+deletion/job. purge-status reads that ledger/job even when ordinary attempt show
+no longer has an attempt row. Missing deletion records refuse, never authorize
+filesystem removal or reconstruct historical authority.
+
+The same bounded no-store administrator HTTP readers are available under
+/api/admin/monitoring/purges and /api/admin/monitoring/purges/ATTEMPT. Payloads
+contain whitelisted identity/status/timestamps/error codes, never monitoring text,
+private paths, files or protected submission contents. Database/audit failures
+refuse with private-diagnostic/retry guidance, not raw exceptions.
+
+Unlike private-media reads, these metadata-only management request outcomes ARE
+cached snapshots. Use a NEW --request for fresh status or each next page. An
+observed timestamp is not new filesystem verification; inspect the job's verified
+time/status and preserve tombstones. Live statuses/new IDs may move while paging;
+restart a list when needed. Busy/retry jobs remain owned by durable scheduling,
+and these reads never requeue/reset backoff or alter clocks/holds/history.
+
 ## Verification and future rollout
+
+Final combined qualification: all84 administrator/real synthetic SSH/fault/
+closure/timezone browser checks pass together (10.6m). Subsequent root-only
+inventory audit-label fix passes the final full346/64 application repeat (71.8s),
+including actual compiled CLI/TLS. Resource labels live in audit detail.target;
+the request UUID remains the row target. The corrected regression was proved
+failing against the old fallback, then passing. Typecheck/build/static native
+build/vet/race compatibility pass; UI hashes unchanged. No production deployment.
+
+C1gb4 inventory qualification: 346 app tests/64 files (72.4s), actual compiled
+CLI/TLS/restart/pagination/cached-versus-fresh metadata, bounded authenticated
+no-store HTTP, retired epoch-zero tombstone and index/privacy/failure tests pass.
+Typecheck/build/static native build/vet/race compatibility pass. UI assets are
+unchanged from C1gb3's31 admin/browser checks. Combined84-browser qualification
+is tracked in todo-progress.md; not claimed complete here. The first inventory
+fixture assumed an empty global retry backlog; it now preserves/pages real IDs.
 
 C1gb3 final local qualification: 344 application tests/62 files (73.8s), actual
 compiled CLI/TLS/restart/new-parent child retries/default-deny/audit and all 31

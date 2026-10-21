@@ -134,6 +134,73 @@ export async function qualifyMonitoringCLI(
     stderr: expect.stringContaining("complete event"),
   });
   expect(f.current.store.attempt(id)).toEqual(before);
+  f.current.store.db.transaction(() => {
+    f.current.store.db
+      .prepare("INSERT INTO tombstones VALUES('retired-preflight',0)")
+      .run();
+    f.current.store.db
+      .prepare(
+        "INSERT INTO monitoring_purges(attempt,status,next,updated,error) VALUES('retired-preflight','retry',?,1,'permission')",
+      )
+      .run(Date.now() + 3600000);
+  })();
+  const purgeRequest = randomUUID();
+  // Earlier restart tests may retain other legitimately interrupted purge jobs.
+  // Page past their actual IDs rather than assuming a globally empty backlog.
+  const priorCursor = f.current.store.db
+    .prepare(
+      "SELECT MAX(attempt) cursor FROM tombstones WHERE attempt!='retired-preflight'",
+    )
+    .get().cursor;
+  const inventory = await run([
+    "purges",
+    "--status",
+    "retry",
+    "--limit",
+    "1",
+    "--after",
+    priorCursor,
+    "--request",
+    purgeRequest,
+  ]);
+  expect(inventory.entries).toHaveLength(1);
+  expect(inventory.entries[0]).toMatchObject({
+    id: "retired-preflight",
+    status: "retry",
+    username: null,
+    deleted: 0,
+  });
+  await f.restart();
+  expect(await run(["purge-status", "retired-preflight"])).toMatchObject({
+    id: "retired-preflight",
+    deleted: 0,
+    attempt: null,
+    job: { status: "retry", error: "permission" },
+  });
+  f.current.store.db
+    .prepare(
+      "UPDATE monitoring_purges SET status='pending',error=NULL WHERE attempt='retired-preflight'",
+    )
+    .run();
+  expect(
+    await run([
+      "purges",
+      "--status",
+      "retry",
+      "--limit",
+      "1",
+      "--after",
+      priorCursor,
+      "--request",
+      purgeRequest,
+    ]),
+  ).toEqual(inventory);
+  expect(
+    (await run(["purges", "--status", "retry"])).entries.some(
+      (e: any) => e.id === "retired-preflight",
+    ),
+  ).toBe(false);
+  expect(f.current.store.attempt(id)).toEqual(before);
   const deletion = (await run(["show", id])).deletionReview;
   const intent = randomUUID(),
     parent = randomUUID();
@@ -205,6 +272,22 @@ export async function qualifyMonitoringCLI(
     },
     { timeout: 5000, interval: 100 },
   );
+  let page = await run(["purges", "--limit", "1"]);
+  const seen: string[] = [];
+  for (let n = 0; n < 10; n++) {
+    seen.push(...page.entries.map((e: any) => e.id));
+    if (!page.next) break;
+    page = await run(["purges", "--limit", "1", "--after", page.next]);
+  }
+  expect(new Set(seen).size).toBe(seen.length);
+  expect(seen).toContain("retired-preflight");
+  expect(
+    f.current.store.db
+      .prepare(
+        "SELECT count(*) n FROM audit WHERE action='management-monitoring.purges' AND json_extract(detail,'$.target')!='monitoring-purges'",
+      )
+      .get(),
+  ).toEqual({ n: 0 });
   expect(f.current.store.attempt(id)).toEqual(before);
   expect(
     JSON.stringify(

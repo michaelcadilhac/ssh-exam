@@ -45,6 +45,7 @@ import { MonitoringManagement } from "./monitoring-management.js";
 import {
   monitoringList,
   monitoringShow,
+  monitoringPurges,
 } from "../../../packages/protocol/monitoring-management.js";
 import { ClockControl } from "./clock-control.js";
 import { InterruptionManagement } from "./interruption-management.js";
@@ -1482,6 +1483,29 @@ export async function createApp(
       receipt,
       s.username,
     );
+  });
+  app.get("/api/admin/monitoring/purges", async (req: any) => {
+    const s = principal(req, "admin");
+    const query = z
+      .object({
+        limit: z
+          .string()
+          .regex(/^[1-9][0-9]*$/)
+          .transform(Number)
+          .optional(),
+        after: z.string().optional(),
+        status: z.string().optional(),
+      })
+      .strict()
+      .parse(req.query);
+    return monitoringManagement.purges(
+      monitoringPurges.parse(query),
+      s.username,
+    );
+  });
+  app.get("/api/admin/monitoring/purges/:id", async (req: any) => {
+    const s = principal(req, "admin");
+    return monitoringManagement.purge({ id: req.params.id }, s.username);
   });
   app.get("/api/admin/attempts/:id/monitoring/entries", async (req: any) => {
     const s = principal(req, "admin");

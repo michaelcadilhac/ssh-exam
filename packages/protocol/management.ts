@@ -32,6 +32,8 @@ export const managementOperations = [
   "monitoring.list",
   "monitoring.replay",
   "monitoring.delete",
+  "monitoring.purges",
+  "monitoring.purge",
 ] as const;
 export const managementRequest = z
   .object({

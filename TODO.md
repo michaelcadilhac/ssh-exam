@@ -462,6 +462,16 @@ the approval is not a production change or a completed investigation.
   pass. Whole-media export/retired-job inventory and wider management remain open;
   nothing is deployed.
 
+  C1gb4 adds read-only `web monitoring purges` and `purge-status ATTEMPT`, with
+  shared bounded authenticated HTTP inventory, ID pagination, stored-status
+  filters and visibility after preparation retirement. Metadata-only management
+  outcomes are labeled snapshots; NEW requests get fresh status, not filesystem
+  verification. 346 app tests/64 files, compiled CLI/TLS/restart, unit/HTTP/privacy/
+  index and native race/build/typecheck checks pass locally. All84 combined browser
+  checks pass (10.6m); the final root inventory audit-label regression/full346
+  repeat also passes. Whole-media
+  export and broader management remain open. Migration019 is local only.
+
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires
   real contact/preparation evidence and unset start/deadline fields. Regression

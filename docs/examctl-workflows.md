@@ -46,12 +46,15 @@ freeze or automatic resume is implemented by gateway approval.
 terminal metadata and one-batch terminal replay. Private reads cache metadata
 receipts only, recheck deletion and validate scope before printing/saving. Explicit
 output is a new 0600 file or stdout, not a complete media export. See monitoring-cli.md
-for byte cursors, privacy, offline limits and qualification; full media export,
-local C1gb2/3 add isolated durable purge/status and shared reviewed
+for byte cursors, privacy, offline limits and qualification. Local C1gb2/3 add
+isolated durable purge/status and shared reviewed
 `web monitoring delete ATTEMPT --confirm USERNAME --revision HASH --reason TEXT`.
 Use show's deletionReview, retain the request/child intent for lost replies and
-inspect fresh physical status separately. Full export/retired-job inventory
-remain open; see monitoring-purge-isolation.md and monitoring-cli.md.
+inspect fresh physical status separately. Local C1gb4 adds bounded `purges`
+list/filter/pagination and read-only `purge-status ATTEMPT`, including retired
+preparation jobs. These metadata outcomes are snapshots: NEW request for fresh
+status, never a filesystem proof. Full export remains open; see
+monitoring-purge-isolation.md and monitoring-cli.md.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native
