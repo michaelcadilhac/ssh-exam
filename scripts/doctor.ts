@@ -2,6 +2,7 @@ import { loadConfig } from "../packages/config/index.js";
 import { Store } from "../apps/server/src/db.js";
 import { Agent } from "../apps/server/src/agent.js";
 import { statSync, statfsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 const config = loadConfig();
 let failed = false;
 const check = (name: string, ok: boolean, detail = "") => {
@@ -12,6 +13,17 @@ check(
   "Exactly one gateway required",
   true,
   "Do not run multiple independent workers",
+);
+const flock = spawnSync("/usr/bin/flock", ["--version"], {
+  timeout: 1000,
+  encoding: "utf8",
+});
+check(
+  "Isolated monitoring purge runtime",
+  process.platform === "linux" &&
+    flock.status === 0 &&
+    flock.stdout.startsWith("flock from util-linux"),
+  "Linux/procfs and util-linux /usr/bin/flock required; preserve tombstones if unavailable. No synchronous purge fallback",
 );
 check(
   "Pinned SSH host keys",

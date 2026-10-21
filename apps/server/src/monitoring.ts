@@ -17,6 +17,7 @@ import {
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { Store, hash, now, type Attempt } from "./db.js";
+import { enqueueMonitoringPurge } from "./monitoring-purge-jobs.js";
 export class Monitoring {
   private inflight = 0;
   private instance = randomUUID();
@@ -276,9 +277,11 @@ export class Monitoring {
     }
   }
   delete(id: string, actor: string) {
+    if (typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(id))
+      throw Error("Invalid monitoring target; use an attempt ID");
     this.store.db.transaction(() => {
-      this.store.db
-        .prepare("INSERT OR REPLACE INTO tombstones VALUES(?,?)")
+      const first = this.store.db
+        .prepare("INSERT OR IGNORE INTO tombstones VALUES(?,?)")
         .run(id, now());
       this.store.db
         .prepare("DELETE FROM attempt_interruptions WHERE attempt=?")
@@ -290,19 +293,16 @@ export class Monitoring {
           "UPDATE incidents SET events='[]',message=NULL WHERE attempt=?",
         )
         .run(id);
-      this.store.audit(actor, "delete-monitoring", id);
+      enqueueMonitoringPurge(this.store, id);
+      if (first.changes) this.store.audit(actor, "delete-monitoring", id);
     })();
-    rmSync(`${this.store.dir}/monitoring/${id}`, {
-      recursive: true,
-      force: true,
-    });
   }
   cleanup() {
     const attempted = new Set<string>(),
       failed = new Set<string>();
     const rows = this.store.db
       .prepare(
-        "SELECT id FROM attempts WHERE ended IS NOT NULL AND ended<? AND id NOT IN (SELECT attempt FROM tombstones)",
+        "SELECT id FROM attempts WHERE ended IS NOT NULL AND ended<? AND id NOT IN (SELECT attempt FROM tombstones) ORDER BY ended,id LIMIT 100",
       )
       .all(now() - 60 * 86400000) as any[];
     for (const r of rows) {
@@ -313,22 +313,12 @@ export class Monitoring {
         failed.add(r.id);
       }
     }
-    for (const r of this.store.db
-      .prepare("SELECT attempt FROM tombstones")
-      .all() as any[])
-      if (!attempted.has(r.attempt)) {
-        try {
-          rmSync(`${this.store.dir}/monitoring/${r.attempt}`, {
-            recursive: true,
-            force: true,
-          });
-        } catch {
-          failed.add(r.attempt);
-        }
-      }
-    // For committed deletions, tombstones make failed-purge bytes inaccessible and remain the
-    // durable retry inventory across restarts. Report only bounded metadata,
-    // never arbitrary filesystem exception text or private monitoring content.
-    return { failed: failed.size };
+    // Filesystem removal happens only in the separately supervised OS worker.
+    // Bounded metadata batches let callers continue an existing backlog promptly.
+    return {
+      failed: failed.size,
+      considered: attempted.size,
+      more: rows.length === 100,
+    };
   }
 }

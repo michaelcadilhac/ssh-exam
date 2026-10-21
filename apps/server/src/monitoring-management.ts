@@ -1,5 +1,6 @@
 import { now, type Store } from "./db.js";
 import type { Monitoring } from "./monitoring.js";
+import { monitoringPurgeStatus } from "./monitoring-purge-jobs.js";
 import {
   monitoringList,
   monitoringReplay,
@@ -119,8 +120,7 @@ export class MonitoringManagement {
         current: a,
         frames: a.monitoringDeleted !== null ? [] : frames,
         terminals: a.monitoringDeleted !== null ? 0 : terminals,
-        physicalPurge:
-          "not verified by this metadata read; inspect retention failure logs",
+        physicalPurge: monitoringPurgeStatus(this.store, b.id),
         serverNow: now(),
         retention,
       };

@@ -8,6 +8,31 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Final C1gb2 qualification: **341 app tests/61 files (72.0s)**, actual compiled
+CLI/TLS/status, typecheck and application/WASM build pass. **All 28 administrator/
+monitoring browser checks pass (2.0m)**, including retry/verified-absence status
+and independent protected-submission review. Native race compatibility passes
+(CLI 3.3s; unchanged core cache; preceding uncached 107.3s remains correctly scoped).
+The UI status increment builds index-CU3NgkSN.js/index-CHDebkQt.css. This closes the
+durable isolated purge caller/job increment locally, not shared reviewed deletion
+or full management. Broader combined 81-browser qualification remains the earlier
+run, not a fresh claim for these changed assets. No deployment or missing command.
+
+C1gb2 local candidate now wires durable purge jobs into existing manual/retention/
+preflight-retirement callers. Migration 017 has no attempt FK; atomic first-time
+tombstone/scrub/enqueue performs no FS IO. Indexed bounded backfill/retention,
+owned worker backoff, restart/late-reply fences and unrecorded result-write retry
+preserve deletion and history. CLI show/web review distinguish logical deletion
+from current-directory verified absence, with private safe guidance. Focused 24
+monitoring checks passed; final full app **341/61 (72.0s)** includes actual compiled
+root CLI/TLS/restart/status and five job tests, eight process tests and a real
+HTTP/SSH/PTY/signed-renewal nine-fault integration. Typecheck/build pass; 28 admin/
+monitoring browser checks are running. A temporary path-helper naming collision,
+synchronous-test assumptions and synthetic hold/pane fixture mistakes were caught
+and fixed before the passing repeat; none of those runs was claimed as passing.
+CLI shared delete/whole export/reviewed intents and retired-job inventory remain
+open. No production change, deployment, push or missing command.
+
 C1gb1 lock follow-up: a persistent validated private inode and no-fork flock now
 serialize real workers across coordinators until actual process exit. Seven
 focused process checks pass (including busy/death/retry and unsafe lock inodes),
@@ -275,7 +300,7 @@ escalation. Generated screenshot changes must not become product changes.
 | C1e: attempts and current clocks | C1a + existing clock policy | Shared atomic staging, bounded private-safe inspection, single/bulk/reset-default workflows, exact amount/revision/child retry fences, honest pending/native status; compiled CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 313 app tests, all three Go-module race checks, static build/vet/typecheck/build, 46 admin/alert/definition/timezone and 28 interface/real synthetic SSH browser checks; not deployed |
 | C1f: interruption review and authorization | C1a + current continuation policy | Shared generation/review-counter/reason fence, unchanged expiry/SSH/readiness, atomic audit/intent, private retention-safe review, exact retries/pagination; actual CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 320 app tests, native race/build/vet/typecheck/build and 81 browser checks together; not deployed |
 | C1ga: bounded monitoring inspection/replay | C1a + tombstone correctness | Shared web/root summary and watermark pages, bounded complete-event replay, transient receipts, deletion/restart rechecks and validated private outputs; actual CLI/TLS/HTTP/unit/native race/build/browser | Implemented/tested locally: 327 application tests, native race/resource/compiler/default-size opt-ins (107.3s), static build/vet/typecheck/build and all 81 combined browser checks (10.5m). Not deployed |
-| C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Unwired bounded process boundary and persistent cross-coordinator lock locally tested; durable jobs, removal of synchronous callers and shared CLI/web deletion still pending |
+| C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Durable isolated jobs/all recursive callers removed; 341 app/28 browser/real HTTP-SSH faults/CLI status locally pass. Shared reviewed CLI/web delete intents, retired-job inventory and full export remain open |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |

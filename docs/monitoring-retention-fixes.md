@@ -69,3 +69,11 @@ retention-consistent restore or compatible reader. No rollout is authorized.
 The internal isolated purge boundary in monitoring-purge-isolation.md remains
 unwired: existing synchronous purge, full CLI export/shared deletion intents and
 durable scheduling still need implementation/qualification.
+
+Subsequent local C1gb2 supersedes that unwired status: deletion, retention and
+preflight retirement now enqueue durable OS-worker jobs without recursive purge
+in the HTTP/lifecycle process. First deletion time is preserved and CLI show/web
+review expose separate physical status. See monitoring-purge-isolation.md and
+todo-progress.md for current validation/migration 017 and remaining shared CLI
+deletion/export work. The historical synchronous failure evidence above is not
+the current candidate's deletion contract; production remains unchanged.

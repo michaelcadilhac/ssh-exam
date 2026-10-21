@@ -3,7 +3,9 @@
 October 21, 2026. C1ga is implemented/tested locally;
 **not deployed**. This is metadata/terminal replay, not complete monitoring
 management. Whole-media export, shared deletion intents/confirmation and durable
-bounded OS-worker physical purge remain separate milestones. Existing 60-day
+bounded OS-worker physical purge were separate milestones at C1ga. The subsequent
+local C1gb2 candidate now provides durable isolated purge and metadata status;
+CLI deletion/full export and shared reviewed intents remain open. Existing 60-day
 monitoring retention and protected-submission retention are unchanged.
 
 ## Supported workflow
@@ -24,7 +26,9 @@ sudo examctl web monitoring replay ATTEMPT PANE --offset 0 --output ./replay-bat
 
 Use attempt IDs from `examctl web attempts list EXAM`, not an exam ID; pane UUIDs
 come from the terminals list. Show is gateway metadata/counts, not fresh native
-protection verification or proof of physical purge. Use native `manifest` and
+protection verification. C1gb2 physicalPurge distinguishes pending/running/retry
+from verified-absent at a recorded time for the current private directory only,
+not backups or secure disk erasure. Use native `manifest` and
 `export` for protected submissions; monitoring reads never modify clocks, holds,
 continuation approval, protected bytes or receipts.
 

@@ -38,7 +38,12 @@ not a complete media export. '-' streams NDJSON to stdout; NEW_FILE is created
 exclusively with mode 0600, never overwritten. A failed write may leave partial
 output. Review nextOffset/availableBytes in JSON when collecting multiple batches.
 Use a private terminal/destination; output contains sensitive student monitoring.
-Whole-media export, deletion confirmation and isolated physical purge remain pending.
+Show includes logical deletion and pending/running/retry/verified-absent physical
+purge metadata. Verified-absent is timestamped current-directory absence, not
+backup removal or secure disk erasure. Automatic isolated retries preserve tombstones;
+inspect storage/permissions and worker diagnostics on failure. Never remove locks
+or deletion records to bypass busy. Whole-media export/shared deletion intents
+and the CLI delete workflow remain pending.
 
 Common flags: --config FILE (default /etc/exam-agent/agent.json), --request UUID.
 Read results are transient: durable retries contain metadata only, never monitoring

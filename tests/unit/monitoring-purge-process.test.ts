@@ -15,6 +15,7 @@ import {
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
+import { relative } from "node:path";
 import { Store } from "../../apps/server/src/db.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import { MonitoringPurgeProcess } from "../../apps/server/src/monitoring-purge-process.js";
@@ -43,6 +44,25 @@ function fixture() {
     },
   };
 }
+
+it.skipIf(process.platform !== "linux")(
+  "resolves configured relative data paths without bypassing independent removal verification",
+  async () => {
+    const f = fixture();
+    const original = f.store.dir;
+    const dir = f.target("deleted");
+    f.store.dir = relative(process.cwd(), original);
+    const worker = new MonitoringPurgeProcess(f.store);
+    try {
+      await expect(worker.run("deleted")).resolves.toEqual({ removed: 1 });
+      expect(existsSync(dir)).toBe(false);
+    } finally {
+      await worker.close();
+      f.store.dir = original;
+      f.close();
+    }
+  },
+);
 
 it.skipIf(process.platform !== "linux")(
   "purges only a tombstoned pinned private flat directory, without following links or opening FIFOs",

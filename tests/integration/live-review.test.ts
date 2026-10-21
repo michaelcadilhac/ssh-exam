@@ -1,4 +1,4 @@
-import { it, expect } from "vitest";
+import { it, expect, vi } from "vitest";
 import { createApp } from "../../apps/server/src/app.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import {
@@ -149,6 +149,9 @@ it("serves incremental recordings only to instructors and validates cursor and r
         .prepare("SELECT count(*) n FROM recordings WHERE attempt=?")
         .get(id),
     ).toEqual({ n: 1 });
+    store.db
+      .prepare("UPDATE attempts SET state='COMPLETED',ended=? WHERE id=?")
+      .run(Date.now(), id);
     m.delete(id, "instructor");
     expect(
       (await app.inject({ url: url + "?offset=0", headers })).statusCode,
@@ -160,6 +163,15 @@ it("serves incremental recordings only to instructors and validates cursor and r
       (await app.inject({ url: summary, headers })).json().current
         .monitoringDeleted,
     ).toBeTypeOf("number");
+    await vi.waitFor(
+      async () => {
+        expect(
+          (await app.inject({ url: summary, headers })).json().physicalPurge
+            .status,
+        ).toBe("verified-absent");
+      },
+      { timeout: 5000, interval: 100 },
+    );
     // A backup/failed migration may restore older metadata/bytes while keeping
     // the durable deletion ledger. No legacy review/media endpoint may bypass it.
     const image = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

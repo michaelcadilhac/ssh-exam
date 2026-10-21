@@ -100,6 +100,11 @@ async function fixture(page: Page, large = false) {
     lostAuthorization: false,
     authorizationReplies: new Map<string, any>(),
     media: {
+      monitoringDeleted: false,
+      physicalPurge: {
+        status: "not-verified",
+        verified: null as number | null,
+      },
       frames: [] as any[],
       terminals: [] as any[],
       manifest: { checksum: "fixture-checksum" },
@@ -214,6 +219,15 @@ async function fixture(page: Page, large = false) {
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
       state.calls.push({ path, body });
+      if (path.endsWith("/delete-monitoring")) {
+        state.media.monitoringDeleted = true;
+        state.media.physicalPurge.status = "retry";
+        return json({
+          ok: true,
+          logicalDeleted: true,
+          physicalPurge: state.media.physicalPurge,
+        });
+      }
       if (path.endsWith("/authorize")) {
         const prior = state.authorizationReplies.get(body.requestID);
         if (prior) return json(prior);
@@ -804,6 +818,13 @@ test("monitoring deletion requires named confirmation and leaves submission revi
   expect(s.calls).toHaveLength(1);
   expect(s.calls[0].path).toContain("/delete-monitoring");
   expect(s.calls[0].body).toEqual({ confirm: true });
+  await expect(dialog).toContainText("Physical purge: retry");
+  await expect(dialog).toContainText("deletion remains in force");
+  s.media.physicalPurge = { status: "verified-absent", verified: Date.now() };
+  await expect(dialog).toContainText("Physical purge: verified-absent", {
+    timeout: 10000,
+  });
+  await expect(dialog).toContainText("backups have separate retention");
   await dialog.getByRole("button", { name: "Submission", exact: true }).click();
   await expect(dialog).toContainText("Submission secured");
   await expect(dialog).toContainText(

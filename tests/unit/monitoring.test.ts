@@ -14,9 +14,11 @@ import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { Store } from "../../apps/server/src/db.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
-it("never resurrects deleted monitoring from late legacy callbacks or orphan replay files", () => {
+import { MonitoringPurgeJobs } from "../../apps/server/src/monitoring-purge-jobs.js";
+it("never resurrects deleted monitoring from late legacy callbacks or orphan replay files", async () => {
   const s = new Store(mkdtempSync(tmpdir() + "/exam-tombstone-")),
-    m = new Monitoring(s);
+    m = new Monitoring(s),
+    jobs = new MonitoringPurgeJobs(s);
   try {
     s.db.exec(
       "INSERT INTO exams VALUES('e','{}');INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline) VALUES('a','e','student',1001,'COMPLETED','{}',100,200,200)",
@@ -29,6 +31,8 @@ it("never resurrects deleted monitoring from late legacy callbacks or orphan rep
     expect(
       s.db.prepare("SELECT * FROM recordings WHERE attempt='a'").all(),
     ).toEqual([]);
+    expect(existsSync(`${s.dir}/monitoring/a`)).toBe(true); // Logical deletion does no filesystem IO.
+    await jobs.kick();
     expect(existsSync(`${s.dir}/monitoring/a`)).toBe(false);
     expect(s.attempt("a")).toEqual(authority);
     expect(readFileSync(`${s.dir}/receipts/a.manifest.json`, "utf8")).toBe(
@@ -43,15 +47,17 @@ it("never resurrects deleted monitoring from late legacy callbacks or orphan rep
     writeFileSync(`${fs}/pane.ndjson`, '{"event":"output","data":"private"}\n');
     expect(() => sibling.replay("a", "pane", 0)).toThrow("deleted");
   } finally {
+    await jobs.close();
     s.close();
     rmSync(s.dir, { recursive: true, force: true });
   }
 });
 it.skipIf(process.getuid?.() === 0)(
   "retention survives a real purge permission failure, continues other attempts and retries durable tombstones",
-  () => {
+  async () => {
     const s = new Store(mkdtempSync(tmpdir() + "/exam-retention-failure-")),
-      m = new Monitoring(s);
+      m = new Monitoring(s),
+      jobs = new MonitoringPurgeJobs(s);
     try {
       s.db.exec("INSERT INTO exams VALUES('e','{}')");
       for (const id of ["a", "b"]) {
@@ -68,11 +74,27 @@ it.skipIf(process.getuid?.() === 0)(
         s.db.prepare("SELECT attempt FROM tombstones ORDER BY attempt").all(),
       ).toEqual([{ attempt: "a" }, { attempt: "b" }]);
       expect(existsSync(`${s.dir}/monitoring/a/pane.ndjson`)).toBe(true);
+      await jobs.kick(); // a fails in a real OS worker.
+      const failure = s.db
+        .prepare(
+          "SELECT status,next,error FROM monitoring_purges WHERE attempt='a'",
+        )
+        .get() as any;
+      expect(failure.status).toBe("retry");
+      expect(failure.error).toBe("permission");
+      expect(failure.next).toBeGreaterThan(Date.now());
+      await jobs.kick(); // b still makes progress, not stopped by a's failure.
       expect(existsSync(`${s.dir}/monitoring/b`)).toBe(false);
       chmodSync(`${s.dir}/monitoring/a`, 0o700);
       expect(m.cleanup().failed).toBe(0);
+      // Advance this synthetic job's due time, not the host/application clock.
+      s.db
+        .prepare("UPDATE monitoring_purges SET next=0 WHERE attempt='a'")
+        .run();
+      await jobs.kick();
       expect(existsSync(`${s.dir}/monitoring/a`)).toBe(false);
     } finally {
+      await jobs.close();
       if (existsSync(`${s.dir}/monitoring/a`))
         chmodSync(`${s.dir}/monitoring/a`, 0o700);
       s.close();
@@ -82,7 +104,8 @@ it.skipIf(process.getuid?.() === 0)(
 );
 it("validates images, rejects conflicting duplicates, and deletes monitoring without submissions", async () => {
   const s = new Store(mkdtempSync(tmpdir() + "/exam-media-")),
-    m = new Monitoring(s);
+    m = new Monitoring(s),
+    jobs = new MonitoringPurgeJobs(s);
   try {
     s.db.prepare("INSERT INTO exams VALUES(?,?)").run("exam", "{}");
     s.db
@@ -129,17 +152,21 @@ it("validates images, rejects conflicting duplicates, and deletes monitoring wit
     ).rejects.toThrow();
     writeFileSync(`${s.dir}/submissions/attempt.tar.gz`, "protected");
     m.delete(a.id, "admin");
+    expect(existsSync(`${s.dir}/monitoring/attempt`)).toBe(true);
+    await jobs.kick();
     expect(existsSync(`${s.dir}/monitoring/attempt`)).toBe(false);
     expect(existsSync(`${s.dir}/submissions/attempt.tar.gz`)).toBe(true);
     await expect(m.frame(a, frame, "page")).rejects.toThrow("deleted");
   } finally {
+    await jobs.close();
     s.close();
     rmSync(s.dir, { recursive: true, force: true });
   }
 });
-it("receives trusted terminal batches idempotently, rejects conflicts, and honors monitoring tombstones", () => {
+it("receives trusted terminal batches idempotently, rejects conflicts, and honors monitoring tombstones", async () => {
   const s = new Store(mkdtempSync(tmpdir() + "/exam-record-batch-")),
-    m = new Monitoring(s);
+    m = new Monitoring(s),
+    jobs = new MonitoringPurgeJobs(s);
   try {
     s.db.exec(
       `INSERT INTO exams VALUES('e','{}');INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES('a','e','student',1001,'ACTIVE','{}')`,
@@ -169,8 +196,10 @@ it("receives trusted terminal batches idempotently, rejects conflicts, and honor
     expect(() => m.receiveRecording("a", "pane", 999999, next)).toThrow("gap");
     m.delete("a", "instructor");
     m.receiveRecording("a", "pane", 0, first);
+    await jobs.kick();
     expect(existsSync(`${s.dir}/monitoring/a/pane.ndjson`)).toBe(false);
   } finally {
+    await jobs.close();
     s.close();
     rmSync(s.dir, { recursive: true, force: true });
   }

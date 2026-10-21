@@ -235,3 +235,18 @@ worker count. The heap cap does not count native allocations, and these processe
 the host/container. Linux workers raise their OOM score above the HTTP supervisor. A worker
 crash/hang is an attempt-local interruption and durable email, not a webserver restart. Check
 the configured SMTP recipients in `smtp.to`; no recipient is hard-coded in the worker.
+
+## Candidate monitoring purge runtime (not deployed)
+
+Local C1gb2 adds migration 017 and one supervised purge worker, not another HTTP
+instance. Require Linux/procfs and util-linux /usr/bin/flock (explicitly installed
+in the candidate image and checked by doctor). Preserve private numeric ownership
+and the persistent 0600 monitoring-purge.lock inode; never unlink it to bypass a
+surviving worker. The worker has a 32 MiB V8 heap cap, not a hard RSS/cgroup limit;
+include it in aggregate container/SSH capacity qualification. No synchronous
+fallback is allowed. Jobs survive retired preparations, retry safely and expose
+honest logical deletion versus timestamped current-directory absence. Backups
+retain both tombstones and jobs, without resurrecting monitoring. A separately
+authorized rollout/rollback must drain old/new purgers and preserve that ledger;
+an older gateway loses isolation and status. See monitoring-purge-isolation.md and
+todo-rollout-plan.md. No production change or migration is authorized here.

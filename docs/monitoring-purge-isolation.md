@@ -1,10 +1,10 @@
-# Monitoring purge process foundation — not yet wired
+# Isolated monitoring purge and durable jobs
 
-October 21, 2026. Local internal implementation/tests only; **not deployed and
-not connected to production deletion/retention callers yet**. Monitoring.delete
-and hourly cleanup still perform their existing synchronous purge. This boundary
-does not complete C1gb, expose a new CLI workflow or fix blocking until durable
-scheduling/shared interfaces are implemented and qualified.
+October 21, 2026. **Candidate local implementation, not deployed.** C1gb2 connects
+manual deletion, 60-day retention and unstarted-preparation cleanup to durable
+jobs and isolated workers. No recursive filesystem purge remains in those HTTP/
+lifecycle callers. This is not complete C1gb: shared reviewed/idempotent deletion
+intents, CLI delete/full export and broader qualification remain open.
 
 MonitoringPurgeProcess requires a durable tombstone, validates the target and
 runs one owned OS child per supervisor instance. A persistent private single-link
@@ -47,17 +47,59 @@ heap exhaustion, hang/timeout, wrong/oversized replies, success-then-failed exit
 unknown fields and well-formed forged success are also refused;
 permission denial/retry; redirected roots/targets, subdirectory and real FIFO;
 tombstone/busy/shutdown scope, protected bytes and healthy retry. Parent pulses
-continue during faults. This is not real gateway SSH/CLI/job qualification.
-Typecheck/build pass; the preceding full working-tree app suite passed 332/59
-(66.4s); the cross-process lock repeat is recorded in todo-progress.md.
-Unchanged browser assets have C1ga's combined 81-check evidence.
-No production purge child is launched.
+continue during faults. The lock follow-up passed full app 334/59 (66.3s),
+typecheck/build; its browser assets were unchanged. A later path-normalization
+repeat caught a Promise resolver/path-helper name collision before qualification;
+the helper is now unambiguously named and real success/forged-success tests pass.
+No production purge child has been launched.
 
-Next: durable metadata-only jobs/restart claims/status, atomic logical deletion
-and enqueue, bounded backlog/retry/backoff, remove all production/preflight/
-retirement synchronous purge callers, and shared explicitly reviewed/audited/
-idempotent web/examctl deletion with honest pending-versus-physical-complete status.
-Jobs must survive deleted cancelled-preflight rows, like tombstones; no attempt
-foreign-key cascade. Test actual gateway/healthy SSH during fatal/hung purge,
-coordinator restart/lost reply, storage faults, stale confirmation and unchanged
-protected history/holds. No grace, retention, account or clock policy change.
+## Durable scheduling and operator status
+
+Migration 017 adds metadata-only monitoring_purges without an attempt foreign key:
+retiring a confirmed cancelled preparation does not retire its deletion job.
+Logical deletion atomically preserves the first tombstone time, scrubs monitoring
+rows/text and enqueues; a failed enqueue rolls the entire transaction back. It
+does no filesystem IO. Callbacks/replay/media remain tombstone-fenced immediately.
+No old clock, original hold, protected submission or receipt is changed.
+
+One scheduler launches at most one owned worker. Restart requeues unconfirmed
+running claims; a surviving old worker keeps its kernel lock, and owner UUIDs
+fence late replies. Worker/DB result failures leave durable retry metadata, never
+an erasure receipt. Result-write failure is retried by that exact coordinator
+claim on the next pass; it cannot overwrite a newer owner. Stable error codes
+and redacted diagnostics contain no media, exception paths or worker stderr.
+Busy retries after five seconds; other failures back off from ten seconds up to
+one hour. The regular scheduler ticks once per second; retention/backfill batches
+are at most 100 rows, with an indexed ledger cursor advanced only after commit.
+Old ended attempts are tombstoned after the unchanged 60 days; a backlog continues
+in bounded batches. No grace or automatic workspace/submission deletion is added.
+
+`examctl web monitoring show ATTEMPT` and web review expose pending/running/retry/
+verified-absent status, timestamps and safe retry guidance. Logical deletion is
+not physical completion. Verified-absent means only that the current private
+monitoring directory was absent at that timestamp, not secure disk erasure or
+removal from backups/mail/audit. Successful jobs are rechecked hourly so restored
+orphan files do not remain merely because an old job was marked done. Keep the
+entire ledger and job table in consistent backups; never erase or replace locks
+to bypass a failure. Fix permissions/capacity through normal operator procedures;
+automatic retry resumes. Unexpected nested directories fail closed, not recursive
+traversal. Retired-attempt job inventory CLI and shared manual retry remain open.
+
+Focused tests cover real SQLite reopen, retired rows, transaction rollback,
+backfill bounds, first timestamp, failed result writes and stale live-worker
+ownership. Real HTTP/session + SSH/PTY + signed-control traffic survives nine
+actual worker faults; a new pane remains usable and original healthy authority/
+protected bytes remain unchanged. Older synchronous HTTP test assumptions and
+synthetic hold/pane IDs were corrected before passing; no safeguards were relaxed.
+Full app/CLI-TLS/typecheck/build/browser repeats are tracked in todo-progress.md.
+Final C1gb2 repeat: 341 app tests/61 files (72.0s), actual compiled CLI/TLS status,
+typecheck/build and all 28 administrator/monitoring browser checks (2.0m) pass.
+Native race compatibility passes (CLI 3.3s; unchanged core cache). The broader
+81-browser result predates the changed status UI; it is not a fresh combined run.
+
+Runtime needs Linux/procfs and /usr/bin/flock (util-linux, explicit in Dockerfile
+and doctor). Missing runtime fails purge closed; there is no synchronous fallback.
+Do not downgrade to recursive synchronous deletion during active exams. Preserve
+017, jobs and tombstones across a future separately authorized drained rollback;
+an old gateway loses isolation/status and can block on IO. No migration, rollout
+or temporary-agent consolidation has been executed.

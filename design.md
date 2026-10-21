@@ -1449,8 +1449,16 @@ signed scope/cursors before private CLI output; explicit batch files are exclusi
 0600, never a claim of complete media export. Browser replay shares validation/
 audit and no-store. The legacy no-offset reader refuses oversized/partial batches
 with incremental guidance, never an unbounded read. No clock/hold/submission or
-60-day policy change. Full export/shared deletion intents/isolated physical purge
-remain open. See docs/monitoring-cli.md for local qualification and rollback;
+60-day policy change. Full export/shared deletion intents remain open.
+Local C1gb2 adds additive migration 017 durable purge jobs, atomic tombstone/
+metadata scrub/enqueue and separately supervised Linux workers rather than
+recursive purge in HTTP, retention or cancelled-preparation retirement. Jobs
+survive retired attempt rows; persistent inode locks and claim UUIDs fence old
+workers/replies. Bounded backlog, backoff and result-write/restart recovery keep
+logical deletion separate from timestamped physical absence. CLI summary and web
+review expose the same job status; no secure-erasure/backup guarantee is implied.
+This is local candidate work, not deployed or complete deletion management. See
+docs/monitoring-purge-isolation.md and docs/monitoring-cli.md for qualification and rollback;
 nothing is deployed.
 
 All legacy full-image/thumbnail and aggregate review readers also honor deletion

@@ -442,6 +442,16 @@ the approval is not a production change or a completed investigation.
   compatibility pass. The isolated purge process boundary has focused fatal/
   hang/heap/permission/link tests but is still unwired; see
   docs/monitoring-purge-isolation.md. Physical purge and shared deletion remain open.
+  C1gb2 now connects the local candidate to durable isolated purge jobs for manual,
+  retention and preflight-retirement callers; no recursive purge in those request/
+  lifecycle paths. First tombstone/enqueue are atomic; jobs survive retired rows,
+  retry with bounded backoff and fence old workers/results. CLI show/web review
+  distinguish logical deletion from timestamped current-directory absence. Full
+  341 app tests/61 files, actual CLI/TLS/status and real HTTP/SSH/PTY nine-fault
+  regression pass; all 28 admin/monitoring browser checks, typecheck/build and
+  native race compatibility pass. Shared reviewed deletion intents,
+  CLI delete/full export/retired-job inventory and qualification remain open.
+  No migration was applied to production and nothing is deployed.
 
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires

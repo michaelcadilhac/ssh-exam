@@ -128,8 +128,14 @@ Local C1ga (not deployed) adds `examctl web monitoring help`: shared summary,
 bounded frame/terminal metadata pages and byte-cursor terminal replay. Explicit
 private output saves one batch, not all monitoring; all retries recheck deletion
 and store metadata only in permanent request records. Current browser replay uses
-the same bounded reader. See monitoring-cli.md; full media export/shared deletion
-intents and isolated physical purge remain outstanding.
+the same bounded reader. Local C1gb2 now queues isolated physical purge without
+blocking deletion/retention/preflight retirement on filesystem work. Web review
+and CLI show distinguish immediate logical deletion from pending/running/retry
+and timestamped verified-absent status. This verifies only the current private
+directory, not backups or secure erasure. Keep deletion records/locks; diagnose
+storage/permissions and allow durable automatic retry. See monitoring-cli.md and
+monitoring-purge-isolation.md; full media export/shared deletion intents/CLI delete
+and retired-preparation job inventory remain outstanding. Not deployed.
 
 Submissions are automatic: saved files are collected at expiration or irreversible Finish exam.
 Archives remain in root-private storage on the SSH server. The webserver receives signed

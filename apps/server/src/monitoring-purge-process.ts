@@ -3,6 +3,7 @@ import { existsSync, constants, openSync, fstatSync, closeSync } from "node:fs";
 import { lstat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
+import { resolve as resolvePath } from "node:path";
 import type { Store } from "./db.js";
 
 export class MonitoringPurgeError extends Error {
@@ -47,7 +48,7 @@ export class MonitoringPurgeProcess {
         version: 1,
         id,
         nonce,
-        root: `${this.store.dir}/monitoring`,
+        root: resolvePath(this.store.dir, "monitoring"),
       }) + "\n";
     if (Buffer.byteLength(request) > 4096)
       throw new MonitoringPurgeError("request-limit");
@@ -173,7 +174,7 @@ export class MonitoringPurgeProcess {
           // Verify the private root and absence independently, asynchronously;
           // do not block the HTTP event loop on storage or trust a forged success.
           void (async () => {
-            const root = `${this.store.dir}/monitoring`;
+            const root = resolvePath(this.store.dir, "monitoring");
             const info = await lstat(root);
             if (
               !info.isDirectory() ||

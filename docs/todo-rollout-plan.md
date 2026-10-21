@@ -25,8 +25,18 @@ The restored-orphan read follow-up makes all legacy media/aggregate review honor
 retained tombstones even with older restored bytes/rows. Protected manifest access
 remains independent. No migration/policy change; a downgrade loses these guards,
 so restore consistent files/ledger only after drain or retain a compatible reader.
-The purge process foundation is still unwired and does not change production
-deletion behavior or authorize running purges; see monitoring-purge-isolation.md.
+C1gb2 now wires the candidate purge foundation into deletion/retention/lifecycle
+callers with additive migration 017. Preserve job rows, first tombstone times and
+the persistent monitoring-purge.lock inode in consistent private backups. Validate
+Linux/procfs/util-linux, single-gateway topology, private storage and aggregate
+memory/IO capacity before any separately authorized rollout. Jobs may outlive
+retired preparation rows; never cascade/delete them to clear pending status.
+Verification is timestamped current-directory absence, not backup/secure erasure.
+An older gateway loses isolation/status and resumes synchronous recursive purge;
+rollback requires drain and a compatible ledger/job-preserving plan, never an old
+DB snapshot over newer deletion records. CLI delete/shared intents/full export
+remain open. No migration or purge was executed on production; see
+monitoring-purge-isolation.md.
 
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,

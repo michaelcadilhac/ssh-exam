@@ -82,7 +82,19 @@ it.skipIf(process.getuid?.() === 0)(
           headers: { cookie: `session=${session.token}` },
         });
       expect((await request()).json().username).toBe("healthy");
-      expect(logs).toContain("monitoring-retention-incomplete");
+      await vi.waitFor(
+        () => {
+          expect(
+            running!.store.db
+              .prepare(
+                "SELECT status,error FROM monitoring_purges WHERE attempt='old'",
+              )
+              .get(),
+          ).toEqual({ status: "retry", error: "permission" });
+        },
+        { timeout: 3000, interval: 20 },
+      );
+      expect(logs).toContain("monitoring-purge-incomplete");
       const cleanupSpy = vi
         .spyOn(Monitoring.prototype, "cleanup")
         .mockImplementationOnce(() => {

@@ -640,6 +640,15 @@ export function AdminReview({
                     Monitoring is deleted after 60 days. Submissions have
                     separate retention.
                   </p>
+                  {media.monitoringDeleted && (
+                    <p role="status">
+                      Monitoring access is deleted. Physical purge:{" "}
+                      {media.physicalPurge?.status || "not verified"}.
+                      {media.physicalPurge?.status === "verified-absent"
+                        ? " The current private monitoring directory was verified absent; backups have separate retention."
+                        : " Removal is pending or needs retry; deletion remains in force."}
+                    </p>
+                  )}
                   {!deleting ? (
                     <button
                       className="danger"

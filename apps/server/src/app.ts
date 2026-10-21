@@ -37,6 +37,10 @@ import {
 } from "./connection-process.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
+import {
+  MonitoringPurgeJobs,
+  monitoringPurgeStatus,
+} from "./monitoring-purge-jobs.js";
 import { MonitoringManagement } from "./monitoring-management.js";
 import {
   monitoringList,
@@ -62,9 +66,16 @@ export async function createApp(
   options: {
     logStream?: Writable;
     connectionWorkerEntry?: URL;
+    purgeWorkerEntry?: URL;
+    purgeTimeoutMs?: number;
     onConnection?: (connection: IsolatedConnection) => void;
   } = {},
 ) {
+  if (
+    (options.purgeWorkerEntry || options.purgeTimeoutMs !== undefined) &&
+    config.mode !== "development"
+  )
+    throw Error("Purge worker test overrides require development mode");
   if (config.loginOnly && config.mode !== "development")
     throw Error("Login-only testing requires development mode");
   if (config.functionalTest && config.mode !== "development")
@@ -103,6 +114,15 @@ export async function createApp(
     agent = new Agent(config.agent, store),
     monitoring = new Monitoring(store, config.terminalRecordingLimitMiB),
     life = new Lifecycle(store, agent, monitoring);
+  const purges = new MonitoringPurgeJobs(store, {
+    entry: options.purgeWorkerEntry,
+    timeoutMs: options.purgeTimeoutMs,
+    onFailure: (code) =>
+      app.log.warn(
+        { event: "monitoring-purge-incomplete", code },
+        "Monitoring physical purge unverified; deletion remains in force and durable retry is scheduled",
+      ),
+  });
   life.onPreflightFailure = (details) =>
     app.log.warn(details, "Preflight cleanup failed");
   const clocks = new ClockControl(store, agent, life);
@@ -1413,7 +1433,12 @@ export async function createApp(
     if ((req.body as any)?.confirm !== true)
       throw Error("Confirmation required");
     monitoring.delete(a.id, s.username);
-    return { ok: true };
+    void purges.kick();
+    return {
+      ok: true,
+      logicalDeleted: true,
+      physicalPurge: monitoringPurgeStatus(store, a.id),
+    };
   });
   app.get("/api/admin/attempts/:id/recordings", async (req: any) => {
     const s = principal(req, "admin");
@@ -1428,6 +1453,7 @@ export async function createApp(
         ? JSON.parse(readFileSync(manifestPath, "utf8"))
         : null,
       monitoringDeleted,
+      physicalPurge: monitoringPurgeStatus(store, req.params.id),
       frames: monitoringDeleted
         ? []
         : store.db
@@ -2366,13 +2392,15 @@ export async function createApp(
   const tick = setInterval(() => {
     if (!config.loginOnly) void life.tick().catch(() => {});
   }, 1000);
+  let retentionBacklog = false;
   const cleanupMonitoring = () => {
     try {
       const result = monitoring.cleanup();
+      retentionBacklog = result.more;
       if (result.failed)
         app.log.warn(
           { event: "monitoring-retention-incomplete", failed: result.failed },
-          "Monitoring file purge incomplete; tombstones retained for retry",
+          "Monitoring logical retention incomplete; preserve records for retry",
         );
     } catch {
       // Even a database/inventory failure must not escape an interval callback
@@ -2385,6 +2413,11 @@ export async function createApp(
   };
   const cleanup = setInterval(cleanupMonitoring, 3600000);
   cleanupMonitoring();
+  const purgeTick = setInterval(() => {
+    if (retentionBacklog) cleanupMonitoring();
+    void purges.kick();
+  }, 1000);
+  void purges.kick();
   const housekeeping = setInterval(() => {
     for (const [key, a] of authAttempts)
       if (now() - a.at > 60000) authAttempts.delete(key);
@@ -2486,7 +2519,9 @@ export async function createApp(
     for (const client of wss.clients) client.terminate();
   });
   app.addHook("onClose", async () => {
-    for (const t of [tick, cleanup, housekeeping, mail]) clearInterval(t);
+    for (const t of [tick, cleanup, housekeeping, mail, purgeTick])
+      clearInterval(t);
+    await purges.close();
     for (const a of store.db
       .prepare("SELECT id FROM attempts WHERE state='ACTIVE'")
       .all() as any[])

@@ -1,4 +1,4 @@
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import {
   existsSync,
@@ -47,6 +47,10 @@ export async function qualifyMonitoringCLI(
     frames: [{ source: "screen", count: 2 }],
   });
   expect(JSON.stringify(shown)).not.toContain("PRIVATE");
+  expect(shown.physicalPurge).toEqual({
+    status: "not-verified",
+    verified: null,
+  });
   const first = await run(["list", id, "--section", "frames", "--limit", "1"]);
   expect(first.entries).toHaveLength(1);
   expect(JSON.stringify(first)).not.toContain("PRIVATE");
@@ -134,6 +138,15 @@ export async function qualifyMonitoringCLI(
   expect(existsSync(missing)).toBe(false);
   expect((await run(["show", id])).current.monitoringDeleted).toBeTypeOf(
     "number",
+  );
+  await vi.waitFor(
+    async () => {
+      const status = (await run(["show", id])).physicalPurge;
+      expect(status.status).toBe("verified-absent");
+      expect(status.verified).toBeTypeOf("number");
+      expect(status.scope).toContain("not backup");
+    },
+    { timeout: 5000, interval: 100 },
   );
   expect(f.current.store.attempt(id)).toEqual(before);
   expect(
