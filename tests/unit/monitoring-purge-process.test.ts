@@ -9,6 +9,9 @@ import {
   symlinkSync,
   chmodSync,
   renameSync,
+  linkSync,
+  readlinkSync,
+  statSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -64,6 +67,74 @@ it.skipIf(process.platform !== "linux")(
       ).toEqual([{ attempt: "deleted" }]);
     } finally {
       await process.close();
+      f.close();
+    }
+  },
+);
+
+it.skipIf(process.platform !== "linux")(
+  "holds a persistent cross-coordinator lock through the exact worker lifetime and releases it on death",
+  async () => {
+    const f = fixture();
+    const first = new MonitoringPurgeProcess(f.store, {
+      entry: new URL("../fixtures/faulting-purge-worker.ts", import.meta.url),
+      timeoutMs: 5000,
+    });
+    const second = new MonitoringPurgeProcess(f.store);
+    try {
+      f.target("hang");
+      const other = f.target("other");
+      const pending = first.run("hang").catch((error) => error);
+      // Wait for no-fork flock to exec the fault worker, proving lock acquisition.
+      const limit = Date.now() + 2000;
+      while (readlinkSync(`/proc/${first.pid}/exe`) !== process.execPath) {
+        if (Date.now() >= limit) throw Error("purge worker did not start");
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      await expect(second.run("other")).rejects.toMatchObject({ code: "busy" });
+      expect(readFileSync(`${other}/record.ndjson`, "utf8")).toBe(
+        "PRIVATE-MONITORING\n",
+      );
+      const lock = `${f.store.dir}/monitoring-purge.lock`;
+      const { ino, mode } = statSync(lock);
+      expect(mode & 0o777).toBe(0o600);
+      await first.close();
+      expect((await pending).code).toBe("worker-exit");
+      await expect(second.run("other")).resolves.toEqual({ removed: 1 });
+      await expect(second.run("hang")).resolves.toEqual({ removed: 1 });
+      expect(statSync(lock).ino).toBe(ino);
+    } finally {
+      await first.close();
+      await second.close();
+      f.close();
+    }
+  },
+);
+
+it.skipIf(process.platform !== "linux")(
+  "refuses redirected, shared, public and special lock inodes without spawning a worker",
+  async () => {
+    const f = fixture(),
+      worker = new MonitoringPurgeProcess(f.store);
+    const lock = `${f.store.dir}/monitoring-purge.lock`;
+    try {
+      f.target("deleted");
+      for (const make of [
+        () => symlinkSync(f.protectedPath, lock),
+        () => linkSync(f.protectedPath, lock),
+        () => writeFileSync(lock, "", { mode: 0o644 }),
+        () => execFileSync("mkfifo", [lock]),
+      ]) {
+        make();
+        await expect(worker.run("deleted")).rejects.toMatchObject({
+          code: "unsafe-lock",
+        });
+        expect(worker.pid).toBeUndefined();
+        rmSync(lock);
+      }
+      await expect(worker.run("deleted")).resolves.toEqual({ removed: 1 });
+    } finally {
+      await worker.close();
       f.close();
     }
   },

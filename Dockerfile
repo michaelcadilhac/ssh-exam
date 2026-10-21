@@ -15,6 +15,7 @@ COPY packages packages
 COPY scripts/bootstrap-admin.ts scripts/doctor.ts scripts/
 RUN npx vite build --config apps/web/vite.config.ts && npx tsc -p tsconfig.server.json && npm prune --omit=dev
 FROM node:26.11.1-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567
+RUN apt-get update && apt-get install -y --no-install-recommends util-linux && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 exam && useradd --uid 10001 --gid 10001 --no-create-home exam
 ENV NODE_ENV=production
 WORKDIR /app

@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, constants, openSync, fstatSync, closeSync } from "node:fs";
 import { lstat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
@@ -51,25 +51,61 @@ export class MonitoringPurgeProcess {
       }) + "\n";
     if (Buffer.byteLength(request) > 4096)
       throw new MonitoringPurgeError("request-limit");
-    const child = spawn(
-      process.execPath,
-      [
-        "--max-old-space-size=32",
-        "--v8-pool-size=1",
-        "--unhandled-rejections=strict",
-        ...(entry.pathname.endsWith(".ts") ? ["--import", "tsx"] : []),
-        fileURLToPath(entry),
-      ],
-      {
-        env: {
-          PATH: process.env.PATH,
-          LANG: "C.UTF-8",
-          UV_THREADPOOL_SIZE: "1",
+    // One persistent inode across coordinators/restarts. Never unlink this lock.
+    // Open and validate ourselves, then let no-fork flock lock the pinned inode;
+    // the worker inherits the lock until actual exit, including parent death.
+    let lock: number;
+    try {
+      lock = openSync(
+        `${this.store.dir}/monitoring-purge.lock`,
+        constants.O_CREAT |
+          constants.O_RDWR |
+          constants.O_NOFOLLOW |
+          constants.O_NONBLOCK,
+        0o600,
+      );
+    } catch {
+      throw new MonitoringPurgeError("unsafe-lock");
+    }
+    let child: ChildProcessWithoutNullStreams;
+    try {
+      const info = fstatSync(lock);
+      if (
+        !info.isFile() ||
+        info.nlink !== 1 ||
+        info.uid !== process.geteuid?.() ||
+        (info.mode & 0o077) !== 0
+      )
+        throw new MonitoringPurgeError("unsafe-lock");
+      child = spawn(
+        "/usr/bin/flock",
+        [
+          "--exclusive",
+          "--nonblock",
+          "--no-fork",
+          "--conflict-exit-code",
+          "75",
+          "/proc/self/fd/3",
+          process.execPath,
+          "--max-old-space-size=32",
+          "--v8-pool-size=1",
+          "--unhandled-rejections=strict",
+          ...(entry.pathname.endsWith(".ts") ? ["--import", "tsx"] : []),
+          fileURLToPath(entry),
+        ],
+        {
+          env: {
+            PATH: process.env.PATH,
+            LANG: "C.UTF-8",
+            UV_THREADPOOL_SIZE: "1",
+          },
+          // stdout is a small framed result; never inherit worker logs or secrets.
+          stdio: ["pipe", "pipe", "pipe", lock],
         },
-        // stdout is a small framed result; never inherit worker logs or secrets.
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    );
+      ) as ChildProcessWithoutNullStreams; // First three descriptors are always pipes.
+    } finally {
+      closeSync(lock);
+    }
     child.stderr.resume(); // Discard even fatal-runtime/private exception text.
     let output = Buffer.alloc(0),
       failure: string | undefined;
@@ -94,7 +130,11 @@ export class MonitoringPurgeProcess {
         clearTimeout(timer);
         child.stdin.destroy();
         if (failure || code !== 0 || signal)
-          return reject(new MonitoringPurgeError(failure ?? "worker-exit"));
+          return reject(
+            new MonitoringPurgeError(
+              failure ?? (code === 75 ? "busy" : "worker-exit"),
+            ),
+          );
         try {
           const value = JSON.parse(output.toString("utf8"));
           if (

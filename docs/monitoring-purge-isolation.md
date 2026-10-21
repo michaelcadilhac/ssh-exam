@@ -7,7 +7,15 @@ does not complete C1gb, expose a new CLI workflow or fix blocking until durable
 scheduling/shared interfaces are implemented and qualified.
 
 MonitoringPurgeProcess requires a durable tombstone, validates the target and
-runs one owned OS child per supervisor instance. Request/reply bounds are 4/8 KiB,
+runs one owned OS child per supervisor instance. A persistent private single-link
+0600 monitoring-purge.lock inode also serializes workers across coordinators.
+The parent validates a no-follow descriptor, then /usr/bin/flock --no-fork locks
+that pinned inode via /proc/self/fd/3 and execs Node. The actual worker retains the
+kernel lock until exit, even if its coordinator dies; never unlink/replace the
+lock to bypass busy. Conflict refuses without starting another Node worker.
+The runtime image explicitly includes util-linux; no production package was
+installed. This assumes local filesystem flock semantics, not a distributed/NFS
+lease or support for multiple independent gateways. Request/reply bounds are 4/8 KiB,
 binding version, target and fresh nonce. Success needs an exact reply plus clean
 exit and an independent asynchronous private-root/target-absence check. A forged
 successful reply with retained files refuses. Stderr/fatal/private exceptions are discarded; only allowlisted error codes
@@ -32,14 +40,17 @@ Busy refuses overlap and retains its slot until process close. These ordinary
 process bounds cannot promise termination of uninterruptible kernel IO or survival
 of arbitrary shared OS/storage failures. No fatal catch-and-continue handler.
 
-Five focused tests pass (about five seconds): actual SIGKILL/uncaught exception,
+Seven focused tests pass (about five seconds): cross-coordinator busy/death/retry,
+private lock inode persistence and redirected/shared/public/FIFO lock refusals;
+actual SIGKILL/uncaught exception,
 heap exhaustion, hang/timeout, wrong/oversized replies, success-then-failed exit;
 unknown fields and well-formed forged success are also refused;
 permission denial/retry; redirected roots/targets, subdirectory and real FIFO;
 tombstone/busy/shutdown scope, protected bytes and healthy retry. Parent pulses
 continue during faults. This is not real gateway SSH/CLI/job qualification.
-Typecheck/build pass; full working-tree app suite passes 332/59 (66.4s), including
-these five tests. Unchanged browser assets have C1ga's combined 81-check evidence.
+Typecheck/build pass; the preceding full working-tree app suite passed 332/59
+(66.4s); the cross-process lock repeat is recorded in todo-progress.md.
+Unchanged browser assets have C1ga's combined 81-check evidence.
 No production purge child is launched.
 
 Next: durable metadata-only jobs/restart claims/status, atomic logical deletion

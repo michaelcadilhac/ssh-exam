@@ -8,6 +8,17 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+C1gb1 lock follow-up: a persistent validated private inode and no-fork flock now
+serialize real workers across coordinators until actual process exit. Seven
+focused process checks pass (including busy/death/retry and unsafe lock inodes),
+full app **334/59 (66.3s)**, typecheck and application/WASM build pass. Browser
+assets and native binaries are unchanged; existing browser/native evidence remains
+scoped to them. The restricted sandbox's flock probe did not exec its child;
+the outside-sandbox probe and real fault tests passed. util-linux is explicit in
+the candidate runtime Dockerfile, not installed on production. Still unwired:
+durable jobs, removal of synchronous callers and shared CLI/web deletion remain
+open. No missing command, push, rollout or deployment.
+
 October 21 decision refinement: the instructor selected enrollment/import, not
 first preflight, for initial ordinary grant issuance and the saved settings copy.
 Later defaults require explicit unused-grant revisions. This is unrelated to the
