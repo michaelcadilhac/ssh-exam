@@ -76,6 +76,10 @@ An administrator should be able to discover and finish a workflow using
   after audit, tested through compiled CLI/TLS, HTTP and 40 browser checks.
   This closes configuration writes, not retirement or full management. Native-only
   legacy recovery grants must become visible/migrated before safe C8 archival.
+  C1c adds shared roster/CSV list/add/remove/settings/preview/confirm/export/example
+  workflows, tested through actual compiled CLI/TLS, 302 application tests,
+  native race/build and 28 browser interface/SSH checks. No caller UID is trusted,
+  no active snapshot/clock/hold changes, and consumed previews retry after expiry.
   Local status: all currently supported native commands have process-tested help,
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.

@@ -81,9 +81,29 @@ Examples:
 
 Exit status: 0 authenticated result, 1 refusal/operational failure, 2 syntax error.
 Unknown/unverified replies never imply success; retain the request ID for retry.`)
+	fmt.Fprintln(out, "\nRoster/CSV workflows: examctl web students help (list/add/remove/settings/import-preview/import-confirm/export/example).")
+}
+
+func webCategory(args []string) string {
+	for i := 0; i < len(args); i++ {
+		if takesValue(args[i]) {
+			if !strings.Contains(args[i], "=") {
+				i++
+			}
+			continue
+		}
+		if strings.HasPrefix(args[i], "-") {
+			continue
+		}
+		return args[i]
+	}
+	return ""
 }
 
 func webMain(args []string) int {
+	if webCategory(args) == "students" {
+		return webStudentsMain(args)
+	}
 	if _, requested := helpRequest(args); requested {
 		webHelp(os.Stdout)
 		return 0
@@ -207,24 +227,66 @@ func webMain(args []string) int {
 	default:
 		return usage("unsupported exam workflow")
 	}
+	return executeWeb(*config, *request, operation, body, "")
+}
+
+// CSV output is requested only after an authenticated gateway result. An empty
+// output path keeps JSON; '-' streams CSV; a filename is exclusive/private.
+func executeWeb(config, request, operation string, body any, csvOutput string) int {
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "Run examctl as root on the class server with its existing agent identity; see examctl web help")
 		return 1
 	}
-	c, err := core.LoadConfig(*config)
+	c, err := core.LoadConfig(config)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Load root agent configuration:", err)
 		return 1
 	}
-	if *request == "" {
-		*request = core.ManagementID()
+	if request == "" {
+		request = core.ManagementID()
 	}
-	fmt.Fprintln(os.Stderr, "Management request ID:", *request)
-	result, err := core.ManagementCall(c, operation, body, *request)
+	fmt.Fprintln(os.Stderr, "Management request ID:", request)
+	result, err := core.ManagementCall(c, operation, body, request)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, "For the same intent, repeat the same command/arguments with --request", *request)
+		fmt.Fprintln(os.Stderr, "For the same intent, repeat the same command/arguments with --request", request)
 		return 1
+	}
+	if csvOutput != "" {
+		var value struct {
+			Format string `json:"format"`
+			Text   string `json:"text"`
+		}
+		if json.Unmarshal(result.Result, &value) != nil || value.Format != "csv" || value.Text == "" {
+			fmt.Fprintln(os.Stderr, "Confirmed reply lacks a CSV result; do not treat export as complete")
+			return 1
+		}
+		var out io.Writer = os.Stdout
+		var file *os.File
+		if csvOutput != "-" {
+			file, err = os.OpenFile(csvOutput, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Create a new private CSV output (never overwrite):", err)
+				return 1
+			}
+			defer file.Close()
+			out = file
+		}
+		_, err = io.WriteString(out, value.Text)
+		if err == nil && file != nil {
+			err = file.Sync()
+		}
+		if file != nil {
+			closeErr := file.Close()
+			if err == nil {
+				err = closeErr
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "CSV write incomplete; inspect any partial output before retrying:", err)
+			return 1
+		}
+		return 0
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 		fmt.Fprintln(os.Stderr, "Write confirmed management result:", err)

@@ -1363,6 +1363,14 @@ overwrites. Browser retry retains the same form intent. Retirement, complete
 management and production qualification remain open; see docs/agent-management.md
 and docs/exam-definition-management.md. This is not a deployment claim.
 
+C1c also shares roster/CSV validation, inheritance, trusted-UID resolution,
+preview/confirmation and snapshot rules through RosterManagement and
+`examctl web students`. File/stdin import, list/add/remove/settings and safe
+CSV export/example have discoverable help and actual CLI/HTTP/browser tests.
+CSV parsing yields outside SQLite. Consumed previews remain idempotent after
+expiry; expired unused previews do not reopen. See docs/roster-cli.md. Grants,
+clock/review/monitoring/alert/template/config/admin coverage remain pending.
+
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 
 `examctl agent start|stop|restart|status` manages only the shared SSH gate service. Start/restart also ensure the independent watchdog and reconciliation timer are running. Stop leaves both running and closes student gate access; it is not a way to cancel deadlines. Do not reset state, kill the watchdog, change account shells or restore access as an exam stop mechanism.

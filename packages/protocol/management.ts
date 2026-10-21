@@ -6,6 +6,14 @@ export const managementOperations = [
   "exams.show",
   "exams.create",
   "exams.update",
+  "students.list",
+  "students.add",
+  "students.remove",
+  "students.settings",
+  "students.import-preview",
+  "students.import-confirm",
+  "students.export",
+  "students.example",
 ] as const;
 export const managementRequest = z
   .object({
@@ -48,5 +56,20 @@ export const examUpdateRequest = z
     changes: z.record(z.string(), z.unknown()),
     reason: z.string().trim().min(8).max(1000).optional(),
     revision: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+
+export const managementExam = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
+export const studentManagement = z
+  .object({ exam: managementExam })
+  .passthrough();
+export const studentListRequest = z
+  .object({
+    exam: managementExam,
+    limit: z.number().int().min(1).max(200).default(100),
+    after: z
+      .string()
+      .regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,31}$/)
+      .optional(),
   })
   .strict();

@@ -45,6 +45,31 @@ func TestWebCLIHelpAndSyntaxBeforeRootOrConfig(t *testing.T) {
 	}
 }
 
+func TestRosterCLIHelpAndRefusalsAreDiscoverable(t *testing.T) {
+	for _, args := range [][]string{{"help", "students"}, {"web", "students", "help"}, {"web", "students", "add", "--help"}, {"--config", "/missing", "web", "students", "--help"}} {
+		output, code := cliProcess(t, args...)
+		for _, required := range []string{"Usage:", "import-preview", "import-confirm", "--confirm", "duration-minutes", "inherit", "UID", "historical", "Exit status:"} {
+			if code != 0 || !strings.Contains(output, required) {
+				t.Fatalf("missing %q: %d %s", required, code, output)
+			}
+		}
+	}
+	for _, args := range [][]string{{"web", "students"}, {"web", "students", "unknown", "exam"}, {"web", "students", "remove", "exam", "student"}, {"web", "students", "remove", "exam", "student", "--confirm", "other"}, {"web", "students", "settings", "exam", "student"}, {"web", "students", "add", "exam", "student", "--duration-minutes", "0"}, {"web", "students", "add", "exam", "student", "--webcam", "yes"}, {"web", "students", "import-preview", "exam"}, {"web", "students", "import-confirm", "exam", "not-uuid"}, {"web", "students", "export", "exam", "--webcam", "inherit"}} {
+		output, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(output, "students help") || strings.Contains(output, "Load root") {
+			t.Fatal("unactionable roster syntax", code, output)
+		}
+	}
+	if os.Getuid() != 0 {
+		for _, args := range [][]string{{"web", "students", "add", "exam", "help"}, {"web", "students", "import-preview", "exam", "--file", "help"}} {
+			output, code := cliProcess(t, args...)
+			if code != 1 || !strings.Contains(output, "root on the class server") {
+				t.Fatal("value named help or nonroot path misparsed", code, output)
+			}
+		}
+	}
+}
+
 func TestWebCLIRealHTTPSInRootUserNamespace(t *testing.T) {
 	if os.Getenv("EXAM_MANAGEMENT_USERNS") != "1" {
 		t.Skip("set EXAM_MANAGEMENT_USERNS=1 for actual root-mapped CLI HTTPS tests without host root")
@@ -100,7 +125,7 @@ func TestWebCLIRealHTTPSInRootUserNamespace(t *testing.T) {
 			w.WriteHeader(307)
 			return
 		case "oversized":
-			_, _ = w.Write(make([]byte, 2*1024*1024+1))
+			_, _ = w.Write(make([]byte, 16*1024*1024+1))
 			return
 		}
 		reply := map[string]any{"version": 1, "purpose": "ssh-exam-management/v1", "audience": "class", "request": r["request"], "nonce": r["nonce"], "operation": r["operation"], "at": time.Now().UnixMilli(), "ok": true, "status": 200, "result": map[string]any{"exam": map[string]any{"id": "midterm"}, "revision": strings.Repeat("a", 64)}}

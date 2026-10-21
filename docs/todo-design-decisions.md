@@ -19,8 +19,8 @@ signed definition list/show/create/update; retirement/full coverage remain pendi
 | --- | --- | --- |
 | Exam ID/name/template, start window, future duration/webcam/terminal limit | Shared ExamDefinitions web/root service | Local list/show/create/update with all setting flags, revisions, stable partial updates and durable retry; tested, not deployed |
 | Exam definition deletion | Neither interface has a supported workflow | Missing; add explicit `exams delete` only after dependency/hold/history policy; never alias submission deletion |
-| Single enrollment, removal, future duration/webcam | roster add/remove/settings endpoints | Missing; `web students add/remove/settings`, same schemas and bulk transaction |
-| CSV preview/confirm/export/example | roster import-preview/import-confirm/export/example | Missing; `web students import --preview`, confirm stored preview ID, export/example; retain exact active snapshots |
+| Single enrollment, removal, future duration/webcam | Shared RosterManagement web/root service | Local `web students list/add/remove/settings`, same inheritance/UID trust/sandbox and atomic batch rules; tested, not deployed |
+| CSV preview/confirm/export/example | Shared RosterManagement web/root service | Local `web students import-preview/import-confirm/export/example`; retain active snapshots, stale-preview/consumption checks and safe output; tested, not deployed |
 | Dashboard/filter/history/working status | exam dashboard and attempt list endpoints | Missing; `web attempts list/show`, show pending versus confirmed clock changes and stale data |
 | Reset current clock / add minutes, individual/bulk | reset-clock and attempts/clocks endpoints | Missing; `web attempts clock reset/extend`, explicit revision and durable request ID; native reset operation exists but no CLI wrapper |
 | Review interruption / authorize continuation | recordings metadata, dashboard and authorize endpoint | Missing; `web interruptions list/show/authorize`, generation-bound and five-minute/deadline bounded; no root bypass |

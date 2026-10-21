@@ -97,6 +97,14 @@ retirement is not enabled: native-only legacy grant dependencies need migration/
 visibility first. No C8 history deletion or grant cancellation is authorized by
 configuration writes.
 
+C1c adds shared roster/CSV CLI workflows without another schema migration.
+Authorize only required students.* operations and preserve preview consumption,
+UID-verification and management-request records. Existing active snapshots,
+deadlines and holds do not change on import/settings/removal. Consumed-preview
+retry after expiry is intentionally accepted as a no-op, not new admission.
+See roster-cli.md. Enrollment and native/unified grants remain distinct until
+the approved migration; do not claim definition retirement is safe yet.
+
 Install matching gateway, connection-worker/browser receipt code and native
 artifacts in the drained window. Native authenticated renewal refusals now carry
 state without granting execution; older workers may lose this diagnostic detail.

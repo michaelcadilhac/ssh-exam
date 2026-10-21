@@ -8,6 +8,20 @@ export type RosterRow = {
   webcam?: boolean | null;
   duration?: number | null;
 };
+export class RosterUsernameError extends Error {
+  constructor(
+    public location: string,
+    value: string,
+    public explanation: string,
+  ) {
+    super(
+      `${location}: invalid username ${JSON.stringify(value)}. ${explanation}`,
+    );
+  }
+  safeMessage() {
+    return `${this.location}: invalid username. ${this.explanation}`;
+  }
+}
 export function parseRoster(
   text: string,
   mode: "csv" | "lines" = "csv",
@@ -36,8 +50,10 @@ export function parseRoster(
 function parseUsername(value: string, location: string): string {
   const result = username.safeParse(value);
   if (!result.success)
-    throw Error(
-      `${location}: invalid username ${JSON.stringify(value)}. ${result.error.issues[0].message}`,
+    throw new RosterUsernameError(
+      location,
+      value,
+      result.error.issues[0].message,
     );
   return result.data;
 }

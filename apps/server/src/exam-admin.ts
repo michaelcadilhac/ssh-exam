@@ -10,6 +10,7 @@ import {
   needsAttention,
 } from "../../../packages/protocol/admin.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import { RosterManagement } from "./roster-management.js";
 
 export function registerExamAdmin(
   app: FastifyInstance,
@@ -129,68 +130,11 @@ export function registerExamAdmin(
   });
   app.post("/api/admin/exams/:exam/roster/settings", async (req: any) => {
     const actor = principal(req, "admin");
-    findExam(req.params.exam);
-    const b = z
-      .object({
-        usernames: z.array(username).min(1).max(1000),
-        duration: z
-          .number()
-          .int()
-          .min(60)
-          .max(21600)
-          .multipleOf(60)
-          .nullable()
-          .optional(),
-        webcam: z.boolean().nullable().optional(),
-      })
-      .refine(
-        (b) => b.duration !== undefined || b.webcam !== undefined,
-        "Choose a setting to change",
-      )
-      .parse(req.body);
-    if (new Set(b.usernames).size !== b.usernames.length)
-      throw Error("Duplicate student selection");
-    if (
-      isSandbox(req.params.exam) &&
-      b.duration !== undefined &&
-      b.duration !== null &&
-      b.duration !== 300
-    )
-      throw Error("Sandbox attempts always start with five minutes");
-    store.db.transaction(() => {
-      for (const name of b.usernames) {
-        const r = store.db
-          .prepare(
-            "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
-          )
-          .get(req.params.exam, name) as any;
-        if (!r)
-          throw Error(
-            `${name} is no longer enrolled; refresh the student list`,
-          );
-        store.db
-          .prepare(
-            "UPDATE enrollments SET duration=?,webcam=? WHERE exam=? AND username=?",
-          )
-          .run(
-            b.duration === undefined ? r.duration : b.duration,
-            b.webcam === undefined
-              ? r.webcam
-              : b.webcam === null
-                ? null
-                : Number(b.webcam),
-            req.params.exam,
-            name,
-          );
-      }
-      store.audit(
-        actor.username,
-        "student-settings",
-        req.params.exam,
-        JSON.stringify(b),
-      );
-    })();
-    return { updated: b.usernames.length };
+    return new RosterManagement(store, describe).settings(
+      req.params.exam,
+      req.body,
+      actor.username,
+    );
   });
   app.post("/api/admin/exams/:exam/attempts/clocks", async (req: any) => {
     const actor = principal(req, "admin");

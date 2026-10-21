@@ -1,7 +1,7 @@
 # Root examctl gateway management — local foundation
 
 October 21, 2026. C1 foundation implemented/tested locally; **not deployed**.
-Exam-definition list/show/create/update are implemented. Full management,
+Exam-definition configuration and roster/CSV workflows are implemented. Full management,
 unified grants and definition retirement are still pending; this is not CLI
 completeness or production qualification.
 
@@ -42,6 +42,8 @@ named authorization, not a generic HTTP/command proxy.
 Writes require separately authorizing `exams.create`/`exams.update`. See
 [exam-definition-management.md](exam-definition-management.md) for shared web/CLI
 revision checks, all setting flags, partial updates and browser retry semantics.
+`examctl web students help` covers shared roster and CSV workflows; see
+roster-cli.md. These require separate named students.* operation authorization.
 
 ## Request, audit and retry contract
 

@@ -19,6 +19,9 @@ semantics. Explicit gateway operation authorization defaults to none.
 Every current definition setting also has a create/update flag; updates require
 the current revision and preserve omitted fields, rather than resetting create
 defaults. See exam-definition-management.md for both interfaces and migration 014.
+`examctl web students help` now covers roster list/add/remove/settings and CSV
+preview/confirm/example/export with shared validation, inheritance, UID trust and
+historical snapshot rules. See roster-cli.md for units, limits and safe output.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native

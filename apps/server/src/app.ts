@@ -17,7 +17,6 @@ import {
   readinessMessage,
   messageSchema,
   authMessage,
-  username as usernameSchema,
 } from "../../../packages/protocol/index.js";
 import {
   productionReadinessIssues,
@@ -38,7 +37,7 @@ import { registerAgentManagement } from "./agent-management.js";
 import { ExamDefinitions } from "./exam-definitions.js";
 import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
-import { parseRosterAsync, exportRoster } from "./roster.js";
+import { RosterManagement } from "./roster-management.js";
 import { isSandbox, sandboxExam } from "../../../packages/protocol/sandbox.js";
 import {
   PREFLIGHT_TIMEOUT_MS,
@@ -302,7 +301,7 @@ export async function createApp(
           : err.message,
     });
   });
-  registerAgentManagement(app, store, agent, config);
+  registerAgentManagement(app, store, agent, config, (a) => describeAttempt(a));
   app.addContentTypeParser(
     "application/vnd.ssh-exam-event",
     { parseAs: "buffer" },
@@ -1240,237 +1239,44 @@ export async function createApp(
     };
   };
   registerExamAdmin(app, store, agent, clocks, principal, describeAttempt);
+  const roster = new RosterManagement(store, describeAttempt);
   app.get("/api/admin/exams/:exam/roster", async (req: any) => {
     principal(req, "admin");
-    return store.db
-      .prepare(
-        "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? ORDER BY username",
-      )
-      .all(req.params.exam)
-      .map((row: any) => {
-        const a = store.db
-          .prepare(
-            "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY state IN ('ACTIVE','LOCKED','PREPARING') DESC,rowid DESC LIMIT 1",
-          )
-          .get(req.params.exam, row.username);
-        return { ...row, attempt: a ? describeAttempt(a) : null };
-      });
+    return roster.list(req.params.exam);
   });
   app.post("/api/admin/exams/:exam/roster/add", async (req: any) => {
-    const s = principal(req, "admin");
-    const b = z
-      .object({
-        username: usernameSchema,
-        webcam: z.boolean().nullable().default(null),
-        duration: z
-          .number()
-          .int()
-          .min(60)
-          .max(21600)
-          .multipleOf(60)
-          .nullable()
-          .default(null),
-      })
-      .parse(req.body);
-    if (
-      !store.db.prepare("SELECT 1 FROM exams WHERE id=?").get(req.params.exam)
-    )
-      throw Error("Exam not found");
-    if (isSandbox(req.params.exam) && b.duration !== null && b.duration !== 300)
-      throw Error("Sandbox attempts always start with five minutes");
-    store.db.transaction(() => {
-      if (
-        store.db
-          .prepare("SELECT 1 FROM enrollments WHERE exam=? AND username=?")
-          .get(req.params.exam, b.username)
-      )
-        throw Error("Student is already enrolled in this exam");
-      store.db
-        .prepare(
-          "INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?)",
-        )
-        .run(
-          req.params.exam,
-          b.username,
-          b.webcam === null ? null : Number(b.webcam),
-          b.duration,
-          0, // Unresolved until verified over this student's authenticated SSH transport.
-        );
-      store.audit(s.username, "enroll-student", req.params.exam, b.username);
-    })();
-    return { ok: true };
+    const actor = principal(req, "admin");
+    return roster.add(req.params.exam, req.body, actor.username);
   });
   app.post("/api/admin/exams/:exam/roster/remove", async (req: any) => {
-    const s = principal(req, "admin");
-    const b = z
-      .object({ username: usernameSchema, confirm: z.literal(true) })
-      .parse(req.body);
-    store.db.transaction(() => {
-      store.db
-        .prepare("DELETE FROM enrollments WHERE exam=? AND username=?")
-        .run(req.params.exam, b.username);
-      store.audit(s.username, "remove-enrollment", req.params.exam, b.username);
-    })();
-    return { ok: true };
+    const actor = principal(req, "admin");
+    return roster.remove(req.params.exam, req.body, actor.username);
   });
   app.post("/api/admin/exams/:exam/roster/import-preview", async (req: any) => {
-    principal(req, "admin");
-    const b = z
-      .object({
-        text: z.string(),
-        mode: z.enum(["csv", "lines"]).default("csv"),
-      })
-      .parse(req.body);
-    const rows = await parseRosterAsync(b.text, b.mode);
-    if (
-      isSandbox(req.params.exam) &&
-      rows.some(
-        (r) =>
-          r.duration !== undefined && r.duration !== null && r.duration !== 300,
-      )
-    )
-      throw Error("Sandbox attempts always start with five minutes");
-    if (
-      !store.db.prepare("SELECT 1 FROM exams WHERE id=?").get(req.params.exam)
-    )
-      throw Error("Exam not found");
-    const existing = new Map(
-      (
-        store.db
-          .prepare(
-            "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=?",
-          )
-          .all(req.params.exam) as any[]
-      ).map((r) => [r.username, r]),
-    );
-    const result = rows.map((r, index) => ({
-      ...r,
-      uid: existing.get(r.username)?.uid ?? 0,
-      action: !existing.has(r.username)
-        ? "add"
-        : [
-              ["webcam", r.webcam],
-              ["duration", r.duration],
-            ].some(
-              ([k, v]) =>
-                v !== undefined &&
-                (k === "webcam" && v !== null ? Number(v) : v) !==
-                  existing.get(r.username)[k as string],
-            )
-          ? "update"
-          : "unchanged",
-      activeAttempt: !!store.db
-        .prepare(
-          "SELECT 1 FROM attempts WHERE exam=? AND username=? AND state IN ('PREPARING','ACTIVE','LOCKED','FINALIZING')",
-        )
-        .get(req.params.exam, r.username),
-      rowNumber: index + 2,
-      previous: existing.get(r.username) || null,
-    }));
-    const id = randomUUID();
-    store.db
-      .prepare("INSERT INTO previews(id,exam,rows,created) VALUES(?,?,?,?)")
-      .run(
-        id,
-        req.params.exam,
-        JSON.stringify({ rows: result, checksum: hash(b.text) }),
-        now(),
-      );
-    return {
-      id,
-      total: result.length,
-      rows: result,
-      checksum: hash(b.text),
-      summary: {
-        added: result.filter((r) => r.action === "add").length,
-        changed: result.filter((r) => r.action === "update").length,
-        unchanged: result.filter((r) => r.action === "unchanged").length,
-      },
-    };
+    const actor = principal(req, "admin");
+    return roster.preview(req.params.exam, req.body, actor.username);
   });
   app.post("/api/admin/exams/:exam/roster/import-confirm", async (req: any) => {
-    const s = principal(req, "admin");
+    const actor = principal(req, "admin");
     const { id } = z.object({ id: z.string().uuid() }).parse(req.body);
-    const p = store.db
-      .prepare("SELECT * FROM previews WHERE id=? AND exam=?")
-      .get(id, req.params.exam) as any;
-    if (!p || now() - p.created > 600000) throw Error("Preview expired");
-    if (p.consumed) return { ok: true };
-    const imported = JSON.parse(p.rows);
-    const rows = Array.isArray(imported) ? imported : imported.rows;
-    store.db.transaction(() => {
-      for (const r of rows) {
-        const prev = store.db
-          .prepare(
-            "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
-          )
-          .get(p.exam, r.username) as any;
-        if (JSON.stringify(prev || null) !== JSON.stringify(r.previous || null))
-          throw Error("Roster changed since preview; validate again");
-        store.db
-          .prepare(
-            "INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?) ON CONFLICT(exam,username) DO UPDATE SET webcam=excluded.webcam,duration=excluded.duration,uid=excluded.uid",
-          )
-          .run(
-            p.exam,
-            r.username,
-            r.webcam === undefined
-              ? (prev?.webcam ?? null)
-              : r.webcam === null
-                ? null
-                : Number(r.webcam),
-            r.duration === undefined ? (prev?.duration ?? null) : r.duration,
-            prev?.uid ?? 0,
-          );
-      }
-      store.db.prepare("UPDATE previews SET consumed=1 WHERE id=?").run(id);
-      store.audit(
-        s.username,
-        "roster-import",
-        p.exam,
-        JSON.stringify({
-          rows: rows.length,
-          checksum: imported.checksum || null,
-          activeSnapshotsUnchanged: true,
-        }),
-      );
-    })();
-    return { ok: true };
+    return roster.confirm(req.params.exam, id, actor.username);
   });
   app.get("/api/admin/exams/:exam/roster/example", async (req: any, reply) => {
     principal(req, "admin");
-    if (
-      !store.db.prepare("SELECT 1 FROM exams WHERE id=?").get(req.params.exam)
-    )
-      throw Error("Exam not found");
     return reply
       .type("text/csv")
       .header(
         "Content-Disposition",
         'attachment; filename="example-roster.csv"',
       )
-      .send(
-        exportRoster([
-          { username: "student01", webcam: null, duration: null },
-          { username: "student02", webcam: true, duration: null },
-          { username: "student03", webcam: false, duration: null },
-        ]),
-      );
+      .send(roster.example(req.params.exam));
   });
   app.get("/api/admin/exams/:exam/roster/export", async (req: any, reply) => {
     principal(req, "admin");
     return reply
       .type("text/csv")
       .header("Content-Disposition", 'attachment; filename="roster.csv"')
-      .send(
-        exportRoster(
-          store.db
-            .prepare(
-              "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=?",
-            )
-            .all(req.params.exam),
-        ),
-      );
+      .send(roster.export(req.params.exam));
   });
   app.get("/api/admin/attempts", async (req: any) => {
     principal(req, "admin");

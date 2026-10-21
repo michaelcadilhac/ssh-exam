@@ -77,7 +77,12 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		return result, errors.New("run examctl as root on the class server using its existing agent identity; browser administration keeps its normal login")
 	}
-	if !attemptID.MatchString(requestID) || (operation != "exams.list" && operation != "exams.show" && operation != "exams.create" && operation != "exams.update") {
+	allowed := false
+	switch operation {
+	case "exams.list", "exams.show", "exams.create", "exams.update", "students.list", "students.add", "students.remove", "students.settings", "students.import-preview", "students.import-confirm", "students.export", "students.example":
+		allowed = true
+	}
+	if !attemptID.MatchString(requestID) || !allowed {
 		return result, errors.New("invalid management request ID or unsupported operation; run examctl web help")
 	}
 	u, err := url.Parse(c.CallbackURL)
@@ -96,7 +101,7 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	issued, nonce := Millis(), Token()
 	payload, err := json.Marshal(map[string]any{"version": 1, "purpose": managementPurpose, "audience": strings.TrimSuffix(c.CallbackURL, "/"),
 		"agent": c.AgentID, "actor": "agent-root", "request": requestID, "nonce": nonce, "issued": issued, "expires": issued + 30000, "operation": operation, "body": body})
-	if err != nil || len(payload) > 1024*1024 {
+	if err != nil || len(payload) > 12*1024*1024 {
 		return result, errors.New("management request exceeds its encoding/size limit")
 	}
 	e := &Engine{Config: c}
@@ -117,8 +122,8 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 		return result, fmt.Errorf("gateway reply unavailable; outcome not confirmed; retry with --request %s: %w", requestID, err)
 	}
 	defer response.Body.Close()
-	b, err := io.ReadAll(io.LimitReader(response.Body, 2*1024*1024+1))
-	if err != nil || len(b) > 2*1024*1024 || response.StatusCode != 200 {
+	b, err := io.ReadAll(io.LimitReader(response.Body, 16*1024*1024+1))
+	if err != nil || len(b) > 16*1024*1024 || response.StatusCode != 200 {
 		return result, fmt.Errorf("gateway returned an unavailable/unverified management reply (HTTP %d); inspect HTTPS connectivity, matching callback origin/agent identity, clock synchronization, pinned keys and managementOperations authorization; retry the same --request %s", response.StatusCode, requestID)
 	}
 	var frame SignedFrame

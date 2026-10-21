@@ -1,4 +1,5 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import * as rosterParser from "../../apps/server/src/roster.js";
 import {
   generateKeyPairSync,
   randomBytes,
@@ -19,7 +20,10 @@ import https from "node:https";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { createApp } from "../../apps/server/src/app.js";
-import { managementPurpose } from "../../packages/protocol/management.js";
+import {
+  managementPurpose,
+  managementOperations,
+} from "../../packages/protocol/management.js";
 
 async function setup() {
   const dir = mkdtempSync(tmpdir() + "/management-");
@@ -253,7 +257,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       f.current.store.db
         .prepare("INSERT INTO exams VALUES(?,?)")
         .run("midterm", JSON.stringify({ id: "midterm", name: "Original" }));
-      const cli = (args: string[]) =>
+      const invoke = (category: string, args: string[]) =>
         run(
           "/usr/bin/unshare",
           [
@@ -263,11 +267,13 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
             "--config",
             configPath,
             "web",
-            "exams",
+            category,
             ...args,
           ],
           { timeout: 20000 },
         );
+      const cli = (args: string[]) => invoke("exams", args);
+      const students = (args: string[]) => invoke("students", args);
       const id = randomUUID();
       const first = JSON.parse(
         (await cli(["show", "midterm", "--request", id])).stdout,
@@ -366,6 +372,90 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         code: 1,
         stderr: expect.stringContaining("already exists"),
       });
+      f.config.agent.managementOperations = [...managementOperations];
+      expect(
+        JSON.parse(
+          (
+            await students([
+              "add",
+              "cli-exam",
+              "learner01",
+              "--duration-minutes",
+              "120",
+              "--webcam",
+              "optional",
+            ])
+          ).stdout,
+        ).result.ok,
+      ).toBe(true);
+      const roster = JSON.parse(
+        (await students(["list", "cli-exam", "--limit", "1"])).stdout,
+      ).result;
+      expect(roster.students[0]).toMatchObject({
+        username: "learner01",
+        duration: 7200,
+        webcam: 0,
+        uid: 0,
+      });
+      expect(
+        JSON.parse(
+          (
+            await students([
+              "settings",
+              "cli-exam",
+              "learner01",
+              "--webcam",
+              "inherit",
+            ])
+          ).stdout,
+        ).result.updated,
+      ).toBe(1);
+      const csv = f.dir + "/roster.csv";
+      writeFileSync(csv, "username\nlearner01\nlearner02\n");
+      const preview = JSON.parse(
+        (await students(["import-preview", "cli-exam", "--file", csv])).stdout,
+      ).result;
+      expect(preview.summary).toEqual({ added: 1, changed: 0, unchanged: 1 });
+      expect(
+        JSON.parse(
+          (await students(["import-confirm", "cli-exam", preview.id])).stdout,
+        ).result.ok,
+      ).toBe(true);
+      f.current.store.db
+        .prepare("UPDATE previews SET created=0 WHERE id=?")
+        .run(preview.id);
+      expect(
+        JSON.parse(
+          (await students(["import-confirm", "cli-exam", preview.id])).stdout,
+        ).result.ok,
+      ).toBe(true);
+      expect((await students(["example", "cli-exam"])).stdout).toContain(
+        "username,require_webcam,duration_minutes",
+      );
+      const destination = f.dir + "/export.csv";
+      await students(["export", "cli-exam", "--output", destination]);
+      const exported = readFileSync(destination, "utf8");
+      expect(exported).toContain("learner01,inherit,120");
+      await expect(
+        students(["export", "cli-exam", "--output", destination]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("never overwrite"),
+      });
+      expect(readFileSync(destination, "utf8")).toBe(exported);
+      expect(
+        JSON.parse(
+          (
+            await students([
+              "remove",
+              "cli-exam",
+              "learner02",
+              "--confirm",
+              "learner02",
+            ])
+          ).stdout,
+        ).result.ok,
+      ).toBe(true);
       f.config.agent.managementOperations = [];
       await expect(cli(["show", "midterm"])).rejects.toMatchObject({
         code: 1,
@@ -631,6 +721,216 @@ it("shares revision-checked definition writes across web and root CLI without re
       ).result.exam.name,
     ).toBe("Root edit");
   } finally {
+    await f.close();
+  }
+});
+
+it("shares roster/CSV validation, inheritance, verified UID and snapshot fences with root management without holding SQLite during parsing", async () => {
+  const f = await setup();
+  const originalParser = rosterParser.parseRosterAsync;
+  const parser = vi
+    .spyOn(rosterParser, "parseRosterAsync")
+    .mockImplementation(async (...args) => {
+      expect(f.current.store.db.inTransaction).toBe(false);
+      return originalParser(...args);
+    });
+  try {
+    f.config.agent.managementOperations = [...managementOperations];
+    const root = async (operation: string, body: object, request?: string) =>
+      f.unpack(
+        await f.post(
+          f.request({ operation, body, ...(request ? { request } : {}) }),
+        ),
+      );
+    const exam = {
+      id: "roster",
+      name: "Roster",
+      template: "v1",
+      earliest: Date.now() - 1000,
+      latest: Date.now() + 3600000,
+      duration: 5400,
+      webcam: true,
+      terminals: 4,
+    };
+    expect((await root("exams.create", { exam })).ok).toBe(true);
+    const addedID = randomUUID();
+    expect(
+      (
+        await root(
+          "students.add",
+          {
+            exam: "roster",
+            username: "learner01",
+            duration: 7200,
+            webcam: false,
+            uid: 29999,
+          },
+          addedID,
+        )
+      ).ok,
+    ).toBe(true);
+    expect(
+      (
+        await root(
+          "students.add",
+          {
+            exam: "roster",
+            username: "learner01",
+            duration: 7200,
+            webcam: false,
+            uid: 29999,
+          },
+          addedID,
+        )
+      ).ok,
+    ).toBe(true);
+    expect(
+      f.current.store.db
+        .prepare("SELECT uid FROM enrollments WHERE exam='roster'")
+        .get(),
+    ).toEqual({ uid: 0 });
+    f.current.store.db
+      .prepare(
+        "UPDATE enrollments SET uid=29999 WHERE exam='roster' AND username='learner01'",
+      )
+      .run();
+    f.current.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,access_state) VALUES('active-roster','roster','learner01',29999,'ACTIVE',?,100,200,200,'HELD')",
+      )
+      .run(JSON.stringify(exam));
+    const snapshot = f.current.store.attempt("active-roster");
+    const preview = await root("students.import-preview", {
+      exam: "roster",
+      text: "username\nlearner01\nlearner02\n",
+    });
+    expect(preview.result.rows[0]).toMatchObject({
+      username: "learner01",
+      uid: 29999,
+      activeAttempt: true,
+      previous: { duration: 7200, webcam: 0 },
+    });
+    expect(
+      (
+        await root("students.import-confirm", {
+          exam: "roster",
+          id: preview.result.id,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      f.current.store.db
+        .prepare(
+          "SELECT duration,webcam,uid FROM enrollments WHERE exam='roster' AND username='learner01'",
+        )
+        .get(),
+    ).toEqual({ duration: 7200, webcam: 0, uid: 29999 });
+    const inherited = await root("students.import-preview", {
+      exam: "roster",
+      text: "username,require_webcam,duration_minutes\nlearner01,inherit,\n",
+    });
+    expect(
+      (
+        await root("students.import-confirm", {
+          exam: "roster",
+          id: inherited.result.id,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      f.current.store.db
+        .prepare(
+          "SELECT duration,webcam,uid FROM enrollments WHERE exam='roster' AND username='learner01'",
+        )
+        .get(),
+    ).toEqual({ duration: null, webcam: null, uid: 29999 });
+    const stale = await root("students.import-preview", {
+      exam: "roster",
+      text: "username,require_webcam\nlearner01,true\n",
+    });
+    await root("students.settings", {
+      exam: "roster",
+      usernames: ["learner01"],
+      duration: 3600,
+    });
+    expect(
+      (
+        await root("students.import-confirm", {
+          exam: "roster",
+          id: stale.result.id,
+        })
+      ).error,
+    ).toContain("changed since preview");
+    const failedBatch = await root("students.settings", {
+      exam: "roster",
+      usernames: ["learner01", "absent"],
+      duration: 1800,
+    });
+    expect(failedBatch.ok).toBe(false);
+    expect(
+      f.current.store.db
+        .prepare(
+          "SELECT duration FROM enrollments WHERE exam='roster' AND username='learner01'",
+        )
+        .get(),
+    ).toEqual({ duration: 3600 });
+    expect(
+      (
+        await root("students.settings", {
+          exam: "roster",
+          usernames: ["learner01", "learner01"],
+          webcam: true,
+        })
+      ).error,
+    ).toContain("Duplicate");
+    expect(
+      (
+        await root("students.add", {
+          exam: "sandbox",
+          username: "learner03",
+          duration: 600,
+        })
+      ).error,
+    ).toContain("five minutes");
+    const secretLike =
+      "SensitiveInputThatMustNotBeEchoedBeyondThirtyTwoCharacters";
+    const badID = randomUUID();
+    const rejected = await root(
+      "students.import-preview",
+      { exam: "roster", mode: "lines", text: secretLike },
+      badID,
+    );
+    expect(rejected.error).toContain("Line 1: invalid username");
+    expect(rejected.error).not.toContain(secretLike);
+    expect(
+      f.current.store.db
+        .prepare(
+          "SELECT outcome FROM agent_management_requests WHERE request=?",
+        )
+        .get(badID),
+    ).toEqual({ outcome: expect.not.stringContaining(secretLike) });
+    const page = await root("students.list", { exam: "roster", limit: 1 });
+    expect(page.result.next).toBe("learner01");
+    const next = await root("students.list", {
+      exam: "roster",
+      after: page.result.next,
+    });
+    expect(next.result.students.map((s: any) => s.username)).toEqual([
+      "learner02",
+    ]);
+    expect(
+      (
+        await root("students.remove", {
+          exam: "roster",
+          username: "learner02",
+          confirm: true,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(f.current.store.attempt("active-roster")).toEqual(snapshot);
+    expect(parser).toHaveBeenCalled();
+  } finally {
+    parser.mockRestore();
     await f.close();
   }
 });

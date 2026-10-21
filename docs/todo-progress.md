@@ -32,6 +32,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
 | C1a: root-agent management foundation | approved C1 | Explicit named authorization/purpose/audience; persistent replay/idempotency across restart; root-machine audit and pinned HTTPS replies; actual examctl/gateway list/show workflows, help/refusals and no native/student mutation | Implemented/tested locally; mutations/full coverage and deployment pending |
 | C1b: shared definition configuration | C1a | Shared web/CLI create/update for every definition field, stale/missing revision refusal, partial preservation, durable web/root retry and historical immutability; actual CLI/HTTP/browser/build/native race tests | Implemented/tested locally; not deployed |
+| C1c: roster/CSV management parity | C1b | Shared web/CLI list/add/remove/settings, CSV preview/confirm/example/export; same inheritance, sandbox, UID-verification, active-snapshot, stale-preview/idempotency rules; actual CLI/HTTP/browser/race/build tests | Implemented/tested locally: 302 application tests, native race/build/typecheck/vet, 28 browser roster/interface/SSH checks; not deployed |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
@@ -92,6 +93,30 @@ files pass with actual compiled CLI/gateway TLS create/update/restart coverage;
 all 40 browser retry/conflict, admin and seven-timezone checks pass, as do full
 native race checks with opt-ins, build/typecheck/vet/static build. No production
 deployment is implied; see exam-definition-management.md.
+Local commit f208a4c records C1b. Next: extract roster/CSV services without
+weakening unresolved UID=0 (only trusted student SSH resolves identity), explicit
+inheritance, sandbox duration, preview conflict/consumption and history/snapshot
+preservation. Parse large CSV outside management SQLite transactions; do not
+introduce a generic admin-route proxy. Further clock/review/alert/monitoring/admin/
+template/config workflows remain in the coverage inventory. Do not persist fast
+plaintext-password fingerprints when later adding administrator credential
+operations; design their secret handling before implementation.
+
+C1c: RosterManagement now owns web/root roster/CSV operations;
+`web students` exposes every current workflow with inheritance/minute units,
+named removal confirmation, bounded file/stdin preview, confirm, pagination and
+exclusive private CSV outputs. Pure async CSV parsing runs outside SQLite; the
+management transaction repeats authorization/freshness before publication.
+Request/reply bounds now cover the existing 10 MiB import workflow (12 MiB signed
+requests, 16 MiB reply envelopes). Already-consumed previews confirm idempotently
+even after expiry; unused expired previews still refuse. Root validation receipts
+omit raw invalid-username values while preserving row/reason; browser diagnostics
+remain compatible. Actual compiled CLI/gateway tests cover all roster operations,
+verified UID preservation/no trust in caller-supplied UIDs, active snapshots, stale imports,
+atomic failed batches, safe outputs and restart/idempotency. All 302/51 application
+tests pass and native race/build/typecheck/vet pass; all 28 browser roster/
+interface/SSH-cleanup checks pass. Generated screenshots were restored. See
+roster-cli.md; no production changes occurred.
 Source review found legacy recovery grants only in root native JSON, invisible
 to a gateway-only archive check. Complete their unified migration/visibility
 before claiming C8 can retire definitions without stranding unused grants.
