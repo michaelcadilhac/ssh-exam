@@ -1,7 +1,7 @@
 # TODO architecture investigation and decisions
 
-2026-10-20, local source inspection and instructor decisions. **C1 is approved for
-local implementation; the other proposals remain pending. Nothing here is a
+2026-10-20, local source inspection and instructor decisions. **C1 and C2 are
+approved for local implementation; the other proposals remain pending. Nothing here is a
 deployment receipt.** Investigation remains open until decisions and acceptance
 evidence exist.
 
@@ -73,7 +73,8 @@ timing. Dashboard already groups retained history and numbers sandbox attempts.
 Recovery is a separate exam plus one-use root JSON, checked at preparation and
 activation; a consumption marker and committed start fence reuse across crashes.
 
-Propose an explicit grant record with UUID, exam/student/UID, attempt allowance,
+Approved C2 model: an explicit grant record with UUID, exam/student/UID, attempt
+allowance,
 source choice, source attempt/checksum or template version, not-before/latest-start,
 webcam/terminal snapshot, actor/reason, revision, and unused/claimed/revoked state.
 Grant availability is distinct from PREPARING and consumes no time. Default exam
@@ -88,14 +89,24 @@ omissions shown for explicit review. Only available ordinary file metadata is
 restored; no buffers/processes/ACLs or invented directory metadata. Material
 template selection is independent of saved-file initialization and time allowance.
 
-**Decision C2:** recommend freezing duration, webcam, material/template version,
-source and an explicitly chosen finite start window at grant issuance. Later
-enrollment edits affect future grants; edits to an unused grant require an audited
-revision. Alternative: resolve enrollment defaults at Begin, which makes a pending
-grant's displayed allowance/monitoring mutable. Exact compensation and a new full
-90 minutes are separate allowance modes; neither depends on the file source.
-Preserve current individual webcam settings unless the instructor deliberately
-changes the grant. No production recovery window/enrollment changes are implied.
+**Decision C2, approved by the instructor October 20:** use the unified grant
+model with settings fixed at issuance and explicit, audited revisions for unused
+grants. Snapshot duration, webcam/terminal settings, material/template version,
+workspace source and the selected start window; later enrollment/default edits
+must not silently change an issued grant. A revision/revocation must fence any
+in-progress preparation and race safely with Begin. Once consumed, the grant's
+snapshot/history cannot be rewritten. Exact compensation and a new full 90 minutes
+are separate allowance modes; neither depends on file source. The earlier
+alternative of resolving mutable enrollment defaults at Begin is not selected.
+
+Verify/stage the source privately before committing Begin; no writable exam work
+or time consumption is exposed during waiting/preflight. Failed/abandoned preflight
+does not consume the grant, and retries/concurrent claims cannot create extra
+attempts. Maintain the default single-attempt policy and all prior account holds.
+Exact webcam/start-window defaults and repair compensation remain separate open
+policy choices; fixing selected values does not choose their defaults. No
+production recovery window/enrollment changes are implied. **Design approved;
+implementation, migration and crash/race qualification remain outstanding.**
 
 The second-midterm use case becomes a bulk grant on the **same exam**: 5400 seconds,
 saved source selected per student from their secured first attempt, explicit
@@ -161,4 +172,6 @@ read-only staging before Begin for new grants, then short atomic publication wit
 write-ahead initialization state. Existing interrupted starts need a repair command
 that first diagnoses which boundary committed, refuses student changes, and records
 time compensation separately. Implementing that transaction and compensation
-policy requires agreement and crash/fault tests, not ad hoc file replacement.
+policy requires further investigation and crash/fault tests, not ad hoc file
+replacement. C1/C2 now approve the authority/unified model and pre-Begin staging;
+explicit repair compensation policy is still pending.

@@ -26,10 +26,10 @@ escalation. Generated screenshot changes must not become product changes.
 | M1: durable alert episodes and notification correctness | baseline | Distinct attempts/causes never merge; unchanged failures deduplicate after delivery/retry/restart; resolution/recurrence work; review requests remain audited; editor lock-only omissions are silent; actionable status/context. Regression and SMTP integration tests, typecheck/build | Core implemented/tested locally; C1 approved, explicit CLI reminder implementation pending |
 | M2: renewal races and preparation housekeeping | M1 | Normal expiry has no new interruption; intentional actions survive delayed renewal results; stale replies cannot affect replacement ownership; never-contacted reservations do not generate cleanup; uncertain committed starts retained. Real WS/callback regressions and full integration suite | Implemented/tested locally; not deployed |
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
-| M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1 approved, implementation pending and grant policy awaits C2 |
+| M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Local concurrency/load/compiler checks pass; broader privileged qualification and policy decisions remain open |
-| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1 approved; concrete grant proposal/C2 pending, investigation open |
+| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2 approved; implementation, migration, remaining policy defaults and investigation open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | Concrete proposal presented; C3 pending, investigation open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | Concrete proposal and compiler measurements presented; C4 and workload-limit choice pending |
 
@@ -49,7 +49,14 @@ signature. See todo-design-decisions.md for required shared validation and repla
 idempotency/conflict safeguards. Local commits remain authorized without further
 approval requests.
 
-Pending investigation/decisions: grant snapshot/default policy and start window;
+Approved C2 (October 20): unified grants with settings fixed at issuance and
+explicit audited revisions for unused grants. Stage verified sources privately
+before Begin, consume once with the new committed interval, preserve default
+single-attempt policy/history/holds, and safely fence revisions against preparation
+and Begin. This is an approved design, not implementation/migration/deployment.
+Webcam/start-window defaults and repair compensation remain separate decisions.
+
+Pending investigation/decisions: webcam/start-window defaults;
 freeze-only versus terminate-workload retained transport; workspace grace/holds;
 collection size settings versus measured compiler/debugger workload.
 
@@ -65,8 +72,8 @@ Migration 012 is additive. See alert-episodes.md for SMTP's acceptance/commit
 boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
-questions (C1–C4) were initially presented without assuming approval. C1 is now
-approved as recorded above; other choices and investigation remain open. No
+questions (C1–C4) were initially presented without assuming approval. C1 and C2
+are now approved as recorded above; other choices and investigation remain open. No
 production access or deployment performed. Verification entries below describe
 the decisions and implementation state at their original milestones.
 
@@ -121,7 +128,7 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation now has C1 approval; other policy choices remain pending in
+implementation now has C1/C2 approval; other policy choices remain pending in
 todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.

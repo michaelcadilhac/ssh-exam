@@ -1368,6 +1368,29 @@ exchange, callback delivery/recovery and archive limits before marking those dep
 checks complete. Local simulated browser tests alone do not qualify privileged isolation.
 
 
+### Approved unified-grant design (October 20; implementation pending)
+
+Keep one ordinary attempt as the default. Explicit individual/bulk additional
+grants under the same exam choose an allowance independently of empty, versioned
+template or verified protected-source workspace initialization. Each attempt gets
+separate writable work and immutable submission/history. Fix grant settings at
+issuance: duration, monitoring/terminal settings, material/source version and
+selected start window. Later default/enrollment edits do not silently change an
+issued grant. Unused grants may be explicitly revised/revoked with audit and
+revision checks that fence preparation and race safely with Begin.
+
+Verify/stage sources privately before Begin; waiting and preflight expose no
+writable exam work and consume no allowance. Begin atomically consumes one grant
+and commits the new authoritative interval; abandon/retry/restart/concurrent claims
+cannot consume extra grants or reset clocks. Preserve prior protected sources,
+attempt identities/timing, normal account holds and explicit emergency-override
+separation. A second full 90-minute attempt copied from the student's first
+protected submission is a general grant, not a special recovery exam or a rewrite
+of the original interval. Provide matching web/CLI workflows and preserve existing
+recovery grants until migration and rollback are proven. Exact webcam/start-window
+defaults and repair compensation remain separate pending policy choices. This
+approval does not implement, deploy or complete the investigation.
+
 ### Clock reset and recording-limit regression requirements
 
 Cover active resets without losing SSH/panes, live dashboard countdown and presence, default-filled/cancelable reset dialogs, disconnected requests and webserver/agent restart persistence, concurrent resets and stale completion callbacks, original deadline access holds after shortened clocks, extension races with cutoff, signed timing request/response scope/replay/signature failures, freeze/defer during webserver outages, subsequent verified collection, and no idle timing polling. Exercise persistent shared recording quotas across panes/restarts, data beyond the old 64 MiB boundary, signed batch retry accounting and image exclusion. These policies supersede earlier prose that treated every collection deadline as immutable or promised packaging while timing verification is unavailable.

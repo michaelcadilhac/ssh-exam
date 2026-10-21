@@ -14,8 +14,10 @@ on-demand secondary terminal replay. The editor-lock notification suppression is
 an intentional requested policy change; omissions remain in manifests. All other
 security/timing/recording/retention restrictions remain in force.
 
-Do not bundle unapproved unified grants, retained SSH, cleanup/limit policies or
-full authenticated management into this release. Their investigation is open.
+Do not bundle unfinished unified grants or full authenticated management into
+this release: C1/C2 are design-approved, not implemented/qualified release artifacts.
+Retained SSH and cleanup/limit policy decisions are still pending. Investigation
+remains open.
 No new root API/listener, account override, historical attempt transfer or automatic
 workspace deletion is part of these changes. CLI management remains incomplete;
 see examctl-workflows.md and todo-design-decisions.md for honest coverage.

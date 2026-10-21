@@ -63,7 +63,8 @@ An administrator should be able to discover and finish a workflow using
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.
   C1 now approves existing agent authentication for root-run gateway management;
-  its implementation and C2 grant decisions remain pending, so this item is open.
+  C2 also approves unified fixed-at-issuance grants. Implementation, qualification
+  and the remaining policy defaults are pending, so this item is open.
   The current help is insufficient. Provide a clear command overview, consistent
   grouping/naming, command-specific help and examples for normal use and recovery.
   Explain identifiers, target selection, time units/timezones, privilege needs,
@@ -104,6 +105,11 @@ an exam can have multiple explicitly allowed attempts, each with its own timing,
 workspace initialization and immutable submission. A recovery should be expressible
 through that model without requiring a separate exam or another special agent path.
 This is a design investigation; agree on the proposal before implementation.
+
+Local design status: C2 is approved October 20—unified grants with settings fixed
+at issuance and explicit audited revisions for unused grants. Implementation,
+migration, crash/race qualification and remaining webcam/window/repair policy
+choices are still open. Approval is not a deployment or historical-record change.
 
 - [ ] **Map the present model and its restrictions.**
   Review exam definitions, enrollment, attempt uniqueness, sandbox repeatability,
