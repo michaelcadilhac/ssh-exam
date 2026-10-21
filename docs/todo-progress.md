@@ -28,10 +28,11 @@ escalation. Generated screenshot changes must not become product changes.
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
-| M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Local concurrency/load/compiler checks pass; broader privileged qualification and policy decisions remain open |
+| M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Earlier synthetic checks pass; C6 now requires collection OS-worker crash isolation and real fatal/hung-job multi-attempt qualification, not yet implemented |
+| M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Approved C6 requirement; next native correctness priority, not implemented |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5 approved; implementation, migration, remaining repair policy and investigation open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
-| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4 approved: manual cleanup/no grace with safety checks; implementation and C6 limit policy remain open |
+| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved: manual cleanup/no grace and configurable 128/512 MiB defaults with crash isolation; implementation/qualification remain open |
 
 Each implemented milestone gets documentation, focused regressions, proportional
 integration/build/race/browser checks, then a coherent local commit. Never label
@@ -81,9 +82,24 @@ holds. Latest Begin is not latest finish and does not shorten a started interval
 No existing production windows, webcam snapshots or records were changed.
 Implementation/migration and interface/native regressions remain outstanding.
 
-Pending C6–C8: collection size limits and actual workloads, explicit repair
-compensation, and exam-definition archival/deletion. See todo-design-decisions.md.
-No approval is inferred from C1–C5 for these choices.
+Approved C6 (October 21): configurable per-exam collection defaults of 128 MiB/file
+and 512 MiB total, retaining 10,000 entries/depth 32. Explicit mandatory acceptance:
+a collection crash/hang must not crash the shared agent, disrupt healthy PTY/SSH
+ownership or lock out other students. Implement supervised bounded per-attempt OS
+workers and short fenced state commits; preserve independent renewals/cutoff and
+all writer/protection/access checks. Test actual fatal worker/resource/disk/hang
+failures with another active attempt and admission/reconnect, not only returned
+errors. The instructor's reported earlier crash is recorded as motivation, not an
+unverified diagnosis. Code/limits are not changed or deployed by this approval.
+
+Pending C7–C8: explicit repair compensation and exam-definition archival/deletion.
+See todo-design-decisions.md. Actual workload/storage and privileged crash
+qualification also remain open; approval is not implementation/test evidence.
+
+Implementation order update: investigate/isolate native collection failure before
+enabling higher collection ceilings. CLI authentication/shared management work can
+proceed independently; larger workloads must not amplify the unresolved crash/
+shared-lock failure domain. The current discussion records decisions only.
 
 ## Verification and commits
 
@@ -98,7 +114,7 @@ boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
 questions (C1–C4) were initially presented without assuming approval. All four
-are now approved as recorded above, as is C5; C6–C8 and investigation remain open.
+are now approved as recorded above, as are C5/C6; C7/C8 and investigation remain open.
 No production access or deployment performed. Verification entries below describe
 the decisions and implementation state at their original milestones.
 
@@ -153,7 +169,7 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation now has C1–C5 approval; other policy choices remain pending in
+implementation now has C1–C6 approval; other policy choices remain pending in
 todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.

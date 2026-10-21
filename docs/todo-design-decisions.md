@@ -1,6 +1,6 @@
 # TODO architecture investigation and decisions
 
-Updated 2026-10-21, local source inspection and instructor decisions. **C1–C5 are
+Updated 2026-10-21, local source inspection and instructor decisions. **C1–C6 are
 approved for local implementation; the other proposals remain pending.
 Nothing here is a deployment receipt.** Investigation remains open until decisions
 and acceptance evidence exist.
@@ -185,10 +185,10 @@ Historical orphans need separate supported inspection/proof, not blanket deletio
 **Design approved; implementation/race/repair tests remain pending. No existing
 workspace has been deleted.**
 
-Current collection limits (32 MiB/file, 64 MiB total, 10k entries, depth 32) remain
-unchanged pending synthetic compiler/debugger measurements and an instructor
-choice. Recording limits are unrelated. Source sizes/omissions should be shown
-before authorizing a saved-work grant; no silent regular-file omission.
+Current implemented collection limits (32 MiB/file, 64 MiB total, 10k entries,
+depth 32) remain unchanged until the approved C6 implementation below is qualified.
+Recording limits are unrelated. Source sizes/omissions should be shown before
+authorizing a saved-work grant; no silent regular-file omission.
 
 Recovery currently commits ACTIVATING/start before extraction. A failure must not
 reset markers or overwrite a possibly changed workspace. Recommend verified
@@ -225,14 +225,51 @@ windows never changes existing production grants, attempts, deadlines or webcam
 snapshots. **Design approved, not implemented or deployed; add web/CLI and native
 regressions for a second attempt after the default exam window has closed.**
 
-## Additional policy questions C6–C8 (pending)
+## Collection limits and crash containment (C6 approved)
 
-These remaining questions have not been approved by approval of C1–C5.
+**Decision C6, approved by the instructor October 21:** configurable per-exam
+collection limits, defaulting to 128 MiB per file and 512 MiB total logical regular
+file contents. Keep 10,000 entries and depth 32 unchanged. Provide matching audited
+web/CLI configuration, effective-limit inspection and preparation checks. Capture
+effective limits with grant/attempt/bundle identity so defaults do not silently
+change an issued grant or make historical protected sources unreadable. Collector,
+verifier and saved-work restoration must agree on the applicable limits; preserve
+all immutable sources/history and legacy compatibility. Exceeded limits fail
+closed with actionable diagnostics and retained work, never omitted saved answers
+or a falsely successful/partial protected bundle. Actual workload/storage and
+concurrent-deadline qualification remain required before any deployment.
 
-- C6: propose configurable per-exam collection limits, initially 128 MiB/file and
-  512 MiB total subject to storage/stress verification, versus current 32/64 MiB;
-  retain 10,000 entries/depth 32. Actual compiler/debugger/core-dump/dataset needs
-  and the chosen limits remain undecided.
+The instructor additionally requires collection failure isolation, reporting a
+prior collection crash that crashed the agent and locked out all users. Treat
+prevention as a mandatory acceptance criterion; do not assume the already-tested
+shared-lock/renewal repair proves process-crash containment or establishes the
+reported incident's exact cause.
+
+Run failure-prone per-attempt collection/verification/cleanup work in supervised,
+resource-bounded OS workers, with durable attempt/job identity, atomic protected
+publication and independently verified results. Merely catching returned errors
+or using an in-process goroutine is insufficient for fatal crash/OOM isolation.
+Do not hold the shared state lock while waiting for workers, compression, IO,
+termination or callbacks. Use short durable state transitions, per-attempt
+ownership/version fences and safe policy-lock ordering. Keep shared gate/PTY
+bridges, signed renewals, watchdog/cutoff, management/admission and callback
+coordination independent of one failed/hung job. A worker failure affects only
+its target, remains visible/recoverable and cannot authorize work, reset clocks,
+replace protected bundles, release restrictions or kill a healthy student's
+connection.
+
+Required fault evidence includes real collection-worker panic/abrupt exit/SIGKILL,
+bounded memory/resource failure, hangs, disk/permission errors, malformed results,
+restart/publication recovery, simultaneous larger collections, delayed callbacks
+and another healthy active attempt plus new admission/reconnect. Verify stable
+shared-agent/PTY ownership, continued heartbeat/lease acknowledgements, unchanged
+healthy deadlines/generations, independent cutoff and protected source integrity.
+**Approved requirements only; no limits or isolation code have changed yet.**
+
+## Additional policy questions C7–C8 (pending)
+
+These remaining questions have not been approved by approval of C1–C6.
+
 - C7: recommend no automatic time refund during repair. Diagnose safely; any
   credit/new grant is separately explicit and audited. Never reset consumption
   markers, overwrite student changes or rewrite historical timing.

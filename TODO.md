@@ -462,7 +462,21 @@ the approval is not a production change or a completed investigation.
   Check that obsolete incident helper processes have exited; do not use broad
   process-name killing. Review documentation that still refers to only two gates.
 
+- [ ] **Isolate collection failure from the shared agent and other students.**
+  Required by C6 October 21 before enabling larger limits. Investigate the
+  instructor-reported prior collection crash without assuming its exact cause.
+  Run failure-prone per-attempt collection in supervised bounded OS workers,
+  outside long shared-state-lock transactions. Preserve protected publication,
+  writer checks, original/current deadlines and account restrictions. Inject real
+  worker panic/exit/SIGKILL/resource/disk/hang failures while another attempt and
+  admission/reconnect stay healthy; prove the shared agent/PTYs do not crash or
+  create unrelated lockouts. This is an open implementation/qualification item,
+  not covered by tests that only return an error from a mocked writer operation.
+
 - [ ] **Broaden the multi-attempt stress and fault-injection coverage.**
+  C6 now additionally requires actual collection-worker crash/hang/resource/disk
+  fault containment: the earlier returned-error/blocked-hook regressions do not
+  prove that a fatal collection crash cannot kill the shared agent or lock others.
   Partial local qualification: 16 native attempts, four 4 MiB protected archives,
   blocked/refused termination, 12 independent renewals/cutoff and 28 delayed signed
   callbacks pass. A 16-student/64-pane application run includes measured heartbeat
@@ -479,11 +493,14 @@ the approval is not a production change or a completed investigation.
   not a confirmed recurrence of the repaired blockage.
 
 - [ ] **Review collection limits against actual exam workloads.**
-  Investigated locally, policy decision still pending. Real GCC synthetic outputs
+  Local policy C6 approved October 21: configurable per-exam defaults of 128 MiB
+  per file and 512 MiB total; retain 10,000 entries/depth 32. Mandatory collection
+  crash isolation, implementation, storage/workload and concurrency qualification
+  remain open. Current runtime limits have not changed. Real GCC synthetic outputs
   confirm that a small source can produce 40 MiB object/executable files, exceeding
   both existing ceilings; collection fails closed without a partial protected
-  bundle. Actual course/debugger workload sizing and configurable ceilings remain
-  undecided. No limit has been raised or answer silently omitted.
+  bundle. Actual course/debugger workload sizing and implementation remain open.
+  No limit has been raised or answer silently omitted.
   Collection currently has a 32 MiB per-file / 64 MiB total logical-size limit,
   10,000-entry limit and depth limit of 32 (`collection.go`). These are separate
   from the increased configurable monitoring-recording limit. Check whether normal

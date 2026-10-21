@@ -73,11 +73,14 @@ possible compiler-generated file, not evidence that actual course solutions need
 they were not measured here. Sparse logical-size rejection remains in the normal
 regression suite. No answer is silently dropped to satisfy a limit.
 
-Decision still required: measure the instructor's actual compiler/debugger tasks,
-then choose per-exam validated ceilings and a discoverable `examctl` template/work
-preparation check. Raising limits also needs free-space reservations and measured
-worst-case cutoff/collection/backlog behavior. Retain fail-closed traversal and
-explicit repair on exceeded limits. No limit or deletion policy changed locally.
+C6 subsequently approved configurable per-exam defaults of 128 MiB/file and
+512 MiB total, with unchanged entry/depth limits. These measurements predate that
+implementation and do not qualify the new ceilings. Actual workload checks,
+discoverable `examctl` preparation checks, storage reservations and worst-case
+cutoff/collection/backlog tests remain necessary. The instructor also requires
+fatal collection-worker crash isolation; returned-error/blocked-hook tests above
+are not evidence of that. Retain fail-closed traversal and explicit repair on
+exceeded limits. No runtime limit or deletion policy changed locally.
 
 ## Final automated checks for this local increment
 

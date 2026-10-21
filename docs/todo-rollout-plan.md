@@ -20,8 +20,11 @@ C3 retained SSH with a verified freeze and C4 manual workspace cleanup with no
 grace period are also design-approved as of October 21, but unimplemented/
 unqualified and outside this release. C5 also approves new grant webcam/Begin
 policy, including windows outside the exam default; it is not implemented or a
-retroactive production grant change. Limit/other policy decisions and
-investigation remain open. C4 does not authorize deleting existing workspaces now.
+retroactive production grant change. C6 now approves configurable 128/512 MiB
+defaults with unchanged entry/depth limits and mandatory collection crash
+isolation; implementation/fault/storage qualification are pending and outside
+this release. Other policy decisions and investigation remain open. C4 does not
+authorize deleting existing workspaces now.
 No new root API/listener, account override, historical attempt transfer or automatic
 workspace deletion is part of these changes. CLI management remains incomplete;
 see examctl-workflows.md and todo-design-decisions.md for honest coverage.

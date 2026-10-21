@@ -1460,6 +1460,39 @@ refusal and keep holds effective across restarts and cleanup races. This approve
 policy supersedes the earlier proposed 14-day grace; implementation/qualification
 and any actual production cleanup remain outstanding.
 
+### Approved collection limits and crash isolation (October 21; implementation pending)
+
+Use configurable per-exam defaults of 128 MiB per regular file and 512 MiB total
+logical regular-file contents; retain 10,000 entries and depth 32. Share web/CLI
+validation/audit and show effective limits/preparation checks. Snapshot applicable
+limits with grants/attempts/bundles; collector, verification and restoration must
+agree without rewriting or invalidating historical protected sources. Limit
+failure must retain recoverable work and accurate status, not silently omit
+answers or publish partial success. These are collection bounds, not monitoring
+recording limits or live-workspace quotas. Size storage and qualify worst-case
+concurrent collection before claiming the higher defaults deployable.
+
+A collection failure must not crash the shared agent or lock out healthy students.
+Use supervised resource-bounded per-attempt OS collection workers; in-process
+goroutines/error catching do not provide fatal crash/OOM containment. Keep the
+shared gate/PTY owners, lease/cutoff/watchdog, admission/management and callback
+coordination independent of a failed/hung worker. Never wait for workers,
+compression, IO, systemd termination or network under the shared state lock.
+Replace long global collection transactions with short durable commits plus
+per-attempt job/ownership/revision fences and safe lock ordering. Preserve all
+writer quiescence checks, deadline/account restrictions, atomic protected bundle
+publication, independently verified results, retry/one-use history and explicit
+repair. Failure must not recollect/replace an already protected bundle.
+
+Test real worker panic/exit/SIGKILL, bounded resource failure, hangs, disk and
+permission errors, malformed/truncated results and coordinator/worker restarts
+around publication. Exercise simultaneous larger jobs, callback delay, a second
+healthy active attempt, admission/reconnect and independent expiry. Assert stable
+shared-agent/PTY ownership, uninterrupted healthy monitoring and unchanged
+healthy generations/deadlines. Existing two-attempt/synthetic blocking tests are
+not sufficient evidence of fatal-crash isolation. No implementation/deployment
+claim follows from this approved design requirement.
+
 ### Clock reset and recording-limit regression requirements
 
 Cover active resets without losing SSH/panes, live dashboard countdown and presence, default-filled/cancelable reset dialogs, disconnected requests and webserver/agent restart persistence, concurrent resets and stale completion callbacks, original deadline access holds after shortened clocks, extension races with cutoff, signed timing request/response scope/replay/signature failures, freeze/defer during webserver outages, subsequent verified collection, and no idle timing polling. Exercise persistent shared recording quotas across panes/restarts, data beyond the old 64 MiB boundary, signed batch retry accounting and image exclusion. These policies supersede earlier prose that treated every collection deadline as immutable or promised packaging while timing verification is unavailable.
