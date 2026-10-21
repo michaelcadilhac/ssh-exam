@@ -4,9 +4,13 @@ import (
 	"examworkspace/agent/internal/core"
 	"flag"
 	"log"
+	"os"
 )
 
 func main() {
+	if core.CollectionWorkerMain(os.Args[1:]) {
+		return
+	}
 	configPath := flag.String("config", "/etc/exam-agent/agent.json", "configuration")
 	watch := flag.Bool("watchdog", false, "independent deadline watchdog")
 	once := flag.Bool("reconcile", false, "reconcile once")

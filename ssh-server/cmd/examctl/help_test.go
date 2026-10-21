@@ -71,3 +71,12 @@ func TestInvalidCLIUsagePointsToRelevantHelpBeforeRootOrConfiguration(t *testing
 		t.Fatal(output)
 	}
 }
+
+func TestCollectionDiagnosisIsDiscoverableWithoutConfiguration(t *testing.T) {
+	output, code := cliProcess(t, "help", "collection")
+	for _, required := range []string{"FINALIZING", "pending", "COLLECTION_FAILED", "exam-collection.slice", "256 MiB", "120-second", "examctl retry", "account restrictions", "Exit status:"} {
+		if code != 0 || !strings.Contains(output, required) {
+			t.Fatalf("missing collection diagnosis %q: %s", required, output)
+		}
+	}
+}

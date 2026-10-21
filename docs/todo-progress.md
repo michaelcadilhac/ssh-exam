@@ -31,8 +31,8 @@ escalation. Generated screenshot changes must not become product changes.
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
-| M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Earlier synthetic checks pass; C6 now requires collection OS-worker crash isolation and real fatal/hung-job multi-attempt qualification, not yet implemented |
-| M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Approved C6 requirement; next native correctness priority, not implemented |
+| M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
+| M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native worker/short-transaction implementation and fatal-child, actual user-systemd OOM/runtime, permission/user-namespace ENOSPC/read-only regressions pass locally; privileged SSH/PTY/workload gates remain open |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved: manual cleanup/no grace and configurable 128/512 MiB defaults with crash isolation; implementation/qualification remain open |
@@ -42,6 +42,29 @@ integration/build/race/browser checks, then a coherent local commit. Never label
 an investigation finished solely because a proposal exists. TODO checkboxes only
 mean implemented and tested locally when explicitly qualified; deployed status is
 separate and remains **not deployed** throughout this work.
+
+## Current native increment (October 21)
+
+C8/deployment scope recorded in local commit 807d3af. M6a now implements separate
+bounded OS workers, persistent per-attempt/slot locks, short fenced protection/
+completion commits and isolated manifest/export/access verification. Healthy
+signed renewals/admissions/registration and ordinary state inspection remain
+available during fatal/hung collection. Real child panic/exit/SIGKILL, malformed
+replies, address-space/file limits, publication-before-state and protected-before-
+cleanup death/retry pass. Actual local user-systemd OOM/runtime and isolated tmpfs
+ENOSPC/read-only plus unprivileged permission faults pass; source/holds survive
+and retry completes. One failed cutoff no longer suppresses other collections.
+See collection-worker-isolation.md for architecture, commands and honest limits.
+
+Full native race suite with both opt-ins passes; application 296/50 unit/integration
+tests, typecheck/build, native CGO-free build/vet and other Go-module race checks
+pass. All 52 Chromium admin/interface/real synthetic SSH-cleanup tests pass (5.1m);
+generated screenshots were restored to their clean baseline. No missing command
+has occurred. User-systemd and user namespaces are available; local Docker daemon
+is absent and sudo requires a password. Do not infer installed root/PAM/real PTY
+qualification from test writer hooks. Continue approved independent work while
+privileged qualification remains a rollout gate. No production contact/cutover,
+workspace deletion, archive limit increase or service consolidation has occurred.
 
 ## Decision log
 

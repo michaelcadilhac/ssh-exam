@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 )
 
@@ -37,6 +38,7 @@ func (e *Engine) verifyRelease(a *Attempt) error {
 		return errors.New("submission and workload termination must be secured before access release")
 	}
 	if _, err := ReadProtected(filepath.Join(e.Config.State, "submissions", a.ID), a); err != nil {
+		e.invalidateManifestReceipt(a, err)
 		return err
 	}
 	if err := e.terminate(a); err != nil {
@@ -116,8 +118,26 @@ func (e *Engine) overrideSecuredAccess(id, reason string) (any, error) {
 	if len(reason) < 8 || len(reason) > 1000 {
 		return nil, errors.New("a concrete emergency reason (8–1000 characters) is required")
 	}
+	lock, err := e.attemptCollectionLock(id)
+	if err != nil {
+		return nil, err
+	}
+	defer lock.Close()
+	var snapshot Attempt
+	if err := e.WithState(func() error {
+		a, err := e.Find(id)
+		if err == nil {
+			snapshot = *a
+		}
+		return err
+	}); err != nil {
+		return nil, err
+	}
+	if err := e.collectionRun("check-release", id); err != nil {
+		return nil, err
+	}
 	var result *Attempt
-	err := e.WithState(func() error {
+	err = e.WithState(func() error {
 		a, err := e.Find(id)
 		if err != nil {
 			return err
@@ -125,8 +145,8 @@ func (e *Engine) overrideSecuredAccess(id, reason string) (any, error) {
 		if a.Start == 0 {
 			return errors.New("only started attempts have an interval hold")
 		}
-		if err = e.verifyRelease(a); err != nil {
-			return err
+		if !collectionFence(a, &snapshot) || !reflect.DeepEqual(a.Units, snapshot.Units) || !reflect.DeepEqual(a.DeniedSSHTransports, snapshot.DeniedSSHTransports) || a.AccessState != snapshot.AccessState || a.PolicyGeneration != snapshot.PolicyGeneration || a.PolicyState != snapshot.PolicyState {
+			return errors.New("access changed during emergency verification; inspect and retry with the same explicit reason")
 		}
 		original := a.OriginalDeadline
 		if original == 0 {

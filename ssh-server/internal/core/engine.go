@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -43,6 +44,9 @@ type Request struct {
 
 func (e *Engine) productionReady() (bool, []string) {
 	missing := []string{}
+	if err := collectionResourceBounds(); err != nil {
+		missing = append(missing, err.Error())
+	}
 	if !setupCapabilitiesAvailable() {
 		missing = append(missing, "root launcher requires SETUID, SETGID and SETPCAP setup capabilities")
 	}
@@ -140,8 +144,26 @@ func boot() string {
 	return strings.TrimSpace(string(b))
 }
 func (e *Engine) Call(op string, r Request) (any, error) {
+	if op == "inspect-attempt" || op == "submission-status" || op == "delete-submission" {
+		if err := e.reconcileAccessOutside(r.ID); err != nil {
+			return nil, err
+		}
+	}
+	if op == "delete-submission" {
+		lock, err := e.attemptCollectionLock(r.ID)
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+	}
 	var result any
 	err := e.WithState(func() error { var err error; result, err = e.callLocked(op, r); return err })
+	if err == nil && op == "finalize-attempt" {
+		return e.finishCollection(r.ID)
+	}
+	if err == nil && op == "submission-manifest" {
+		return e.verifiedManifest(r.ID)
+	}
 	return result, err
 }
 func (e *Engine) callLocked(op string, r Request) (any, error) {
@@ -248,12 +270,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if !a.Protected {
 				return errors.New("protected submission unavailable")
 			}
-			manifest, err := ReadProtected(filepath.Join(e.Config.State, "submissions", a.ID), a)
-			if err != nil {
-				return err
-			}
-			manifest.Attempt = publicAttempt(manifest.Attempt)
-			result = manifest
+			result = a // Verify in an isolated worker after authorization commits.
 		case "inspect-attempt", "reconcile-operation", "submission-status":
 			result = a
 		case "activate-attempt":
@@ -412,7 +429,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if a.Start == 0 {
 				return errors.New("attempt not started")
 			}
-			err = e.finalize(a, r.Reason)
+			err = e.beginFinalization(a, r.Reason)
 			result = a
 		case "delete-submission":
 			if a.State != "COMPLETED" || accessHeld(a) {
@@ -422,6 +439,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return err
 			}
 			a.Protected = false
+			delete(e.state.ManifestReceipts, a.ID)
 			e.Audit(op, a.ID)
 			result = a
 		case "cancel-attempt":
@@ -658,7 +676,16 @@ func (e *Engine) freeze(a *Attempt, frozen bool) error {
 	return err
 }
 func (e *Engine) Tick() error {
-	return e.WithState(func() error {
+	// Independent cutoff freezes every due attempt before any archive work.
+	// It does not acquire the global state lock or wait for a collection worker.
+	if err := e.Cutoff(); err != nil {
+		// Cutoff already attempted every due workload. One failed scope must
+		// not suppress other students' collection or lease reconciliation;
+		// each collector independently repeats the verified writer barrier.
+		log.Printf("deadline cutoff needs recovery: %v", err)
+	}
+	var jobs []string
+	err := e.WithState(func() error {
 		// Cancellation must close practice shells even when their browser/old
 		// entry process disappeared. No started attempt is cancelled here.
 		for _, a := range e.state.Attempts {
@@ -680,30 +707,17 @@ func (e *Engine) Tick() error {
 				}
 			}
 		}
-		// Revoke/freeze ALL expired workloads before spending time compressing any archive.
+		// Revoke ALL expired admissions before scheduling any archive work.
 		for _, a := range e.state.Attempts {
 			if a.Start > 0 && a.State != "COMPLETED" && a.State != "CANCELLED_BEFORE_START" && expired(a) {
 				if e.timingRequired(a) {
-					if err := e.quiesce(a); err != nil {
-						a.Errors = appendError(a.Errors, err.Error())
-					}
 					continue
 				}
 				if a.Boot != boot() {
 					a.Units = []string{}
 				}
-				if a.State != "FINALIZING" && a.State != "COLLECTION_FAILED" {
-					a.Reason = "expiration"
-				}
-				a.State = "FINALIZING"
-				if a.Ended == 0 {
-					a.Ended = a.Deadline
-				}
-				if err := e.quiesce(a); err != nil {
-					a.State = "COLLECTION_FAILED"
-					a.Errors = appendError(a.Errors, err.Error())
-				} else if a.CompletedAt == 0 {
-					a.CompletedAt = Millis()
+				if err := e.beginFinalization(a, "expiration"); err != nil {
+					return err
 				}
 			}
 		}
@@ -745,9 +759,10 @@ func (e *Engine) Tick() error {
 				continue
 			}
 			if isExpired || a.State == "FINALIZING" || a.State == "COLLECTION_FAILED" {
-				if err := e.finalize(a, "expiration"); err != nil {
-					e.Audit("collection-failed", a.ID)
+				if err := e.beginFinalization(a, "expiration"); err != nil {
+					return err
 				}
+				jobs = append(jobs, a.ID)
 				continue
 			}
 			// Another attempt's cleanup may have taken time since this state
@@ -775,6 +790,30 @@ func (e *Engine) Tick() error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	// Workers serialize per attempt, not across students. A hung/failed job
+	// cannot delay another due job or management/admission state reads.
+	var workers sync.WaitGroup
+	pending := make(chan string, len(jobs))
+	for _, id := range jobs {
+		pending <- id
+	}
+	close(pending)
+	for range 2 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for id := range pending {
+				if err := e.collectionRun("finalize", id); err != nil && !errors.Is(err, errCollectionPending) {
+					log.Printf("collection worker failed attempt=%s: %v", id, err)
+				}
+			}
+		}()
+	}
+	workers.Wait()
+	return e.reconcileAccessOutside("")
 }
 
 // Cutoff reads atomically committed state without taking the collection lock. It only

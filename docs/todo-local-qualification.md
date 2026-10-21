@@ -4,6 +4,13 @@ All results below use synthetic local accounts and temporary storage. Nothing in
 this report is a production deployment, capacity certification or real cgroup/
 PAM/institutional MFA signoff. Historical production receipts are unchanged.
 
+October 21 follow-up: the shared-lock bottleneck described below has a local
+worker/short-transaction implementation and actual fatal-child, user-systemd
+OOM/runtime, permission and isolated ENOSPC/read-only tests. See
+[collection-worker-isolation.md](collection-worker-isolation.md). Earlier timing
+figures below remain historical; full privileged SSH/PTY/workload qualification
+is still open. No production deployment or higher runtime limits are implied.
+
 ## Concurrent deadlines, cleanup and delayed callbacks
 
 `TestConcurrentDeadlinesSlowCleanupAndCallbackBacklog` runs 16 native attempts:

@@ -475,6 +475,13 @@ the approval is not a production change or a completed investigation.
   process-name killing. Review documentation that still refers to only two gates.
 
 - [ ] **Isolate collection failure from the shared agent and other students.**
+  Partial local implementation October 21: supervised bounded native workers,
+  per-attempt locks, short fenced protection/cleanup commits and isolated export/
+  release checks. Actual fatal child, systemd OOM/runtime, permission and isolated
+  ENOSPC/read-only regressions pass; healthy signed workflows and blocked-cleanup
+  inspection remain available. See docs/collection-worker-isolation.md. Full
+  privileged SSH/PTY and workload qualification, initialization isolation and
+  deployment remain open. Runtime archive limits are unchanged.
   Required by C6 October 21 before enabling larger limits. Investigate the
   instructor-reported prior collection crash without assuming its exact cause.
   Run failure-prone per-attempt collection in supervised bounded OS workers,
@@ -492,14 +499,19 @@ the approval is not a production change or a completed investigation.
   Partial local qualification: 16 native attempts, four 4 MiB protected archives,
   blocked/refused termination, 12 independent renewals/cutoff and 28 delayed signed
   callbacks pass. A 16-student/64-pane application run includes measured heartbeat
-  acknowledgements. Shared state inspection/admission can still wait behind
-  collection; real privileged combined crash/admission qualification remains open.
+  acknowledgements. In that earlier baseline shared state inspection/admission
+  waited behind collection; the October 21 worker increment now requires a
+  nonblocking inspection regression. Real privileged combined crash/admission
+  qualification remains open.
   See docs/todo-local-qualification.md; no production capacity claim is made.
   The shared cleanup blockage and independent renewal journal have fixes and
   regression tests. Test realistic simultaneous deadlines and larger archives,
   deliberately slow/hung termination, callback delays, reconnects and new
   admissions together. Measure lease age, web heartbeat acknowledgement latency,
-  state-lock wait, watchdog cutoff latency and callback backlog. Investigate any
+  state-lock wait, watchdog cutoff latency and callback backlog. The October 21
+  worker increment removes collection's long shared transaction and adds actual
+  process/resource/disk faults; do not mistake the earlier waiting test below for
+  current code behavior. Investigate any
   remaining long critical sections without weakening writer checks, deadlines,
   monitoring authorization or per-attempt isolation. This is additional assurance,
   not a confirmed recurrence of the repaired blockage.

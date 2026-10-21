@@ -133,6 +133,7 @@ type Attempt struct {
 	AccessOverride          string               `json:"access_override,omitempty"`
 	AccessError             string               `json:"access_error,omitempty"`
 	DeniedSSHTransports     []DeniedSSHTransport `json:"denied_ssh_transports,omitempty"`
+	CollectionJob           string               `json:"collection_job,omitempty"`
 }
 type DeniedSSHTransport struct {
 	Identity string `json:"identity"`
@@ -158,6 +159,7 @@ type State struct {
 	Exports          map[string]bool       `json:"exports,omitempty"`
 	ExportPauses     map[string]string     `json:"export_pauses,omitempty"`
 	RecordingOffsets map[string]int64      `json:"recording_offsets,omitempty"`
+	ManifestReceipts map[string]string     `json:"manifest_receipts,omitempty"`
 }
 type Engine struct {
 	accountMu       sync.RWMutex
@@ -171,7 +173,14 @@ type Engine struct {
 	quiesce         func(*Attempt) error
 	terminate       func(*Attempt) error
 	cutoff          func(*Attempt) error
+	collectionRun   func(string, string) error
+	workerCommand   func(string) []string
+	workerTimeout   time.Duration
 }
+
+// Tests replace this factory in test-only code. There is no configuration or
+// environment switch that can disable production process/resource isolation.
+var collectionRunner = func(e *Engine) func(string, string) error { return e.runCollectionProcess }
 
 var identifier = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 var attemptID = regexp.MustCompile(`^[a-f0-9-]{36}$`)
@@ -300,6 +309,7 @@ func New(c Config) (*Engine, error) {
 	e.quiesce = e.quiesceWriters
 	e.terminate = e.terminateWriters
 	e.cutoff = func(a *Attempt) error { return e.freeze(a, true) }
+	e.collectionRun = collectionRunner(e)
 	return e, nil
 }
 func (e *Engine) WithState(fn func() error) error {
@@ -346,7 +356,6 @@ func (e *Engine) WithState(fn func() error) error {
 			a.AccessState = "HELD"
 			a.AccessHeldAt = a.Start
 		}
-		e.reconcileAccess(a)
 	}
 	err = fn()
 	if saveErr := e.save(); err == nil {

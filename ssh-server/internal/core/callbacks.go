@@ -41,6 +41,7 @@ func publicAttempt(a *Attempt) *Attempt {
 	v.Lease = 0
 	v.Units = nil
 	v.DeniedSSHTransports = nil
+	v.CollectionJob = ""
 	return &v
 }
 
@@ -65,11 +66,12 @@ func (e *Engine) queueChanges() error {
 		}
 		var manifest *Manifest
 		if a.Protected {
-			manifest, err = ReadProtected(filepath.Join(e.Config.State, "submissions", id), a)
-			if err == nil {
-				manifest.Attempt = publicAttempt(manifest.Attempt)
-			} else {
-				manifest = nil
+			// Only a worker that verified the immutable bytes may install this
+			// receipt. Never hash/compress an archive while saving shared state.
+			if m, err := e.manifestReceipt(a); err == nil {
+				v := *m
+				v.Attempt = publicAttempt(m.Attempt)
+				manifest = &v
 			}
 		}
 		e.state.Sequence++

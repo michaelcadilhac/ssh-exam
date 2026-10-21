@@ -43,6 +43,9 @@ func serviceCommands(action string) ([][]string, error) {
 	return append(commands, []string{action, "exam-agent.service"}), nil
 }
 func main() {
+	if core.CollectionWorkerMain(os.Args[1:]) {
+		return
+	}
 	topic, help := helpRequest(os.Args[1:])
 	if help {
 		if !printHelp(os.Stdout, topic) {

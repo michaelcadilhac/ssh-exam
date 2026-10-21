@@ -7,9 +7,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 )
 
 func (e *Engine) List(active bool, exam string) ([]*Attempt, error) {
+	if err := e.reconcileAccessOutside(""); err != nil {
+		return nil, err
+	}
 	result := []*Attempt{}
 	err := e.WithState(func() error {
 		for _, a := range e.state.Attempts {
@@ -29,23 +33,28 @@ func (e *Engine) List(active bool, exam string) ([]*Attempt, error) {
 	return result, err
 }
 
-// Open a verified immutable archive under the state lock, but copy its bytes
-// outside the lock so a slow operator destination cannot block enforcement.
+// Verify in a bounded worker, then open/audit the same immutable receipt under
+// the attempt + short state locks. Slow hashing/copying never holds shared state.
 func (e *Engine) OpenExport(id string) (*os.File, error) {
+	if err := e.collectionRun("manifest", id); err != nil {
+		return nil, err
+	}
+	lock, err := e.attemptCollectionLock(id)
+	if err != nil {
+		return nil, err
+	}
+	defer lock.Close()
 	var archive *os.File
-	err := e.WithState(func() error {
+	err = e.WithState(func() error {
 		a, err := e.Find(id)
 		if err != nil {
 			return err
 		}
-		if !a.Protected {
+		if !a.Protected || len(e.state.ManifestReceipts[id]) != 64 {
 			return errors.New("protected submission unavailable")
 		}
 		dir := filepath.Join(e.Config.State, "submissions", id)
-		if _, err := ReadProtected(dir, a); err != nil {
-			return err
-		}
-		archive, err = os.Open(filepath.Join(dir, "submission.tar.gz"))
+		archive, err = os.OpenFile(filepath.Join(dir, "submission.tar.gz"), os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 		if err != nil {
 			return err
 		}
@@ -82,6 +91,18 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 	if !ok {
 		return nil, errors.New("unsupported administrator operation")
 	}
+	if op == "info" || op == "delete" {
+		if err := e.reconcileAccessOutside(id); err != nil {
+			return nil, err
+		}
+	}
+	if op == "delete" {
+		lock, err := e.attemptCollectionLock(id)
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+	}
 	var result any
 	err := e.WithState(func() error {
 		if _, err := e.Find(id); err != nil {
@@ -106,6 +127,12 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 		result, err = e.callLocked(operation, Request{ID: id, Reason: "administrator: " + reason})
 		return err
 	})
+	if err == nil && operation == "finalize-attempt" {
+		result, err = e.finishCollection(id)
+	}
+	if err == nil && operation == "submission-manifest" {
+		result, err = e.verifiedManifest(id)
+	}
 	if err == nil && (op == "cancel" || op == "stop" || op == "finish") {
 		err = e.reconcilePolicies(id)
 		if err == nil {
@@ -121,17 +148,22 @@ func (e *Engine) ExportDelivery(id string, paused *bool, reason string) (any, er
 	if paused != nil && !*paused {
 		return nil, errors.New("archive exports are disabled; submissions remain on this SSH server")
 	}
+	if err := e.collectionRun("manifest", id); err != nil {
+		return nil, err
+	}
+	lock, err := e.attemptCollectionLock(id)
+	if err != nil {
+		return nil, err
+	}
+	defer lock.Close()
 	var result any
-	err := e.WithState(func() error {
+	err = e.WithState(func() error {
 		a, err := e.Find(id)
 		if err != nil {
 			return err
 		}
 		if !a.Protected {
 			return errors.New("protected submission unavailable")
-		}
-		if _, err = ReadProtected(filepath.Join(e.Config.State, "submissions", id), a); err != nil {
-			return err
 		}
 		if paused != nil {
 			if len(strings.TrimSpace(reason)) < 8 {

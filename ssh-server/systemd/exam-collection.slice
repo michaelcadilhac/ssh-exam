@@ -1,0 +1,12 @@
+[Unit]
+Description=Bounded exam collection workers (separate from student workloads and SSH gate)
+
+[Slice]
+MemoryAccounting=yes
+MemoryMax=512M
+MemorySwapMax=0
+TasksMax=96
+
+# Per-worker services additionally enforce 256M, 32 tasks and a 120s runtime.
+# Two persistent worker slots bound heavy work across all agent/CLI processes.
+# No agent, watchdog, reconciler or student PTY owner belongs in this slice.

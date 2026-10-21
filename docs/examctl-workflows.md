@@ -1,6 +1,6 @@
 # Current examctl workflows
 
-Local source update October 20, 2026; **not deployed**. Full web-management
+Local source update October 21, 2026; **not deployed**. Full web-management
 coverage is not implemented yet; see the explicit inventory/decisions in
 [todo-design-decisions.md](todo-design-decisions.md). The firm requirement is that
 every supported management action has a supported CLI workflow, sharing authority,
@@ -52,6 +52,16 @@ Read each command's own help for prerequisites and examples. Release cannot be
 made eligible by changing a deadline, deleting a marker or removing enforcement.
 Every remaining writer/restoration failure must be reconciled. Native offline
 state is authoritative locally; it does not claim the gateway received a callback.
+
+`examctl help collection` explains supervised workers, bounded resources, pending
+versus failed/protected status and repair commands. Stop/finish/retry can return
+FINALIZING when a worker is busy; this is pending, never completion. Verification,
+collection, termination/cleanup and release checks run outside the shared state
+lock. Install the supplied bounded exam-collection.slice before enabling the new
+production agent/watchdog/CLI; missing bounds fail closed. Do not mix old global-
+lock finalizers with new per-attempt workers. See
+[collection-worker-isolation.md](collection-worker-isolation.md) for exact limits,
+safe cutover/rollback and remaining privileged qualification.
 
 Protected retrieval is local, verified and durably audited before bytes are read
 out. Export copies outside the global state lock, so a slow destination does not

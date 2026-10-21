@@ -183,19 +183,18 @@ func TestConcurrentDeadlinesSlowCleanupAndCallbackBacklog(t *testing.T) {
 			t.Fatal("healthy attempt cut off")
 		}
 	}
-	// Ordinary state inspection still waits for finalization's shared lock. Record
-	// this known bottleneck explicitly; do not confuse isolated leases with a
-	// guarantee that all management/admission operations are nonblocking.
+	// Management/admission state must now remain available during termination,
+	// not merely the independent renewal/cutoff journals.
+	var stateWait time.Duration
 	select {
-	case <-inspectDone:
-		t.Fatal("fixture did not hold the shared collection lock")
-	case <-time.After(100 * time.Millisecond):
+	case stateWait = <-inspectDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("slow cleanup held the shared state lock")
 	}
 	releaseCleanup.Do(func() { close(release) })
 	if err = <-tickDone; err != nil {
 		t.Fatal(err)
 	}
-	stateWait := <-inspectDone
 	state, err := readStateSnapshot(e.Config.State)
 	if err != nil {
 		t.Fatal(err)

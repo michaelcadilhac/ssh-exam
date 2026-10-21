@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -23,12 +22,13 @@ type FileEntry struct {
 	Hash string `json:"sha256"`
 }
 type Manifest struct {
-	Attempt   *Attempt    `json:"attempt"`
-	Files     []FileEntry `json:"files"`
-	Omissions []string    `json:"omissions"`
-	Collected int64       `json:"collected"`
-	Secured   int64       `json:"secured"`
-	Checksum  string      `json:"checksum,omitempty"`
+	Attempt      *Attempt    `json:"attempt"`
+	Files        []FileEntry `json:"files"`
+	Omissions    []string    `json:"omissions"`
+	Collected    int64       `json:"collected"`
+	Secured      int64       `json:"secured"`
+	Checksum     string      `json:"checksum,omitempty"`
+	metadataHash string
 }
 
 // Collect reads only through an os.Root and opens regular files O_NOFOLLOW. Its caller must
@@ -281,7 +281,11 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 		if err != nil || !i.Mode().IsRegular() {
 			return nil, errors.New("invalid protected metadata")
 		}
-		return io.ReadAll(io.LimitReader(f, 4*1024*1024))
+		b, err := io.ReadAll(io.LimitReader(f, 4*1024*1024+1))
+		if len(b) > 4*1024*1024 {
+			return nil, errors.New("protected metadata limit exceeded")
+		}
+		return b, err
 	}
 	b, err := read("manifest.json")
 	if err != nil {
@@ -291,7 +295,11 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 	if err = json.Unmarshal(b, &m); err != nil {
 		return nil, err
 	}
-	if m.Attempt == nil || m.Attempt.ID != a.ID || m.Attempt.Exam != a.Exam || m.Attempt.Username != a.Username || m.Attempt.UID != a.UID || m.Attempt.Deadline != a.Deadline || m.Attempt.Start != a.Start || m.Attempt.Settings != a.Settings || m.Attempt.OriginalDeadline != a.OriginalDeadline || m.Attempt.ClockRevision != a.ClockRevision || !reflect.DeepEqual(m.Attempt.ClockResets, a.ClockResets) {
+	if len(m.Files)+len(m.Omissions) > 10000 {
+		return nil, errors.New("protected manifest entry limit exceeded")
+	}
+	m.metadataHash = Hash(b)
+	if !protectedIdentity(m.Attempt, a) {
 		return nil, errors.New("protected manifest identity mismatch")
 	}
 	sidecar, err := read("archive.sha256")
@@ -318,6 +326,10 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 	m.Checksum = sum
 	return &m, nil
 }
+
+func protectedIdentity(x, a *Attempt) bool {
+	return x != nil && a != nil && x.ID == a.ID && x.Exam == a.Exam && x.Username == a.Username && x.UID == a.UID && x.Deadline == a.Deadline && x.Start == a.Start && x.Settings == a.Settings && x.OriginalDeadline == a.OriginalDeadline && x.ClockRevision == a.ClockRevision && reflect.DeepEqual(x.ClockResets, a.ClockResets)
+}
 func appendError(errors []string, message string) []string {
 	for _, existing := range errors {
 		if existing == message {
@@ -327,7 +339,9 @@ func appendError(errors []string, message string) []string {
 	return append(errors, message)
 }
 
-func (e *Engine) finalize(a *Attempt, reason string) error {
+// Called only in a short state transaction. No filesystem collection, systemd
+// waits or worker waits are allowed here. The caller runs the durable job later.
+func (e *Engine) beginFinalization(a *Attempt, reason string) error {
 	if expired(a) && e.timingRequired(a) {
 		return errors.New("collection pending: deadline timing verification required")
 	}
@@ -339,6 +353,9 @@ func (e *Engine) finalize(a *Attempt, reason string) error {
 		reason = "administrator termination"
 	}
 	previous := a.State
+	if a.CollectionJob == "" || previous == "COLLECTION_FAILED" {
+		a.CollectionJob = Token()
+	}
 	if a.Deadline > 0 && expired(a) {
 		reason = "expiration"
 	}
@@ -354,65 +371,5 @@ func (e *Engine) finalize(a *Attempt, reason string) error {
 	if previous != "FINALIZING" && previous != "COLLECTION_FAILED" {
 		a.Reason = reason
 	}
-	if err := e.save(); err != nil {
-		return err
-	}
-	fail := func(err error) error {
-		a.State = "COLLECTION_FAILED"
-		a.Errors = appendError(a.Errors, err.Error())
-		e.Audit("collection-failed", a.ID)
-		log.Printf("protected collection failed for attempt %s: %v", a.ID, err)
-		return err
-	}
-	dest := filepath.Join(e.Config.State, "submissions", a.ID)
-	// A bundle can be committed before state.json is updated. Adopt it without reading work.
-	if _, err := os.Lstat(dest); err == nil {
-		m, err := ReadProtected(dest, a)
-		if err != nil {
-			return fail(err)
-		}
-		a.Checksum = m.Checksum
-		a.Protected = true
-		a.CollectedAt = m.Collected
-		a.SecuredAt = m.Secured
-		a.CompletedAt = m.Attempt.CompletedAt
-		a.Ended = m.Attempt.Ended
-		a.Reason = m.Attempt.Reason
-	} else if !os.IsNotExist(err) {
-		return fail(err)
-	} else if a.Protected {
-		return fail(errors.New("recorded protected archive missing; recollection forbidden"))
-	}
-	if !a.Protected {
-		if err := e.quiesce(a); err != nil {
-			return fail(err)
-		}
-		if a.CompletedAt == 0 {
-			a.CompletedAt = Millis()
-		}
-		if _, err := Collect(filepath.Join(e.Config.Work, a.ID, "work"), dest, a); err != nil {
-			return fail(err)
-		}
-		m, err := ReadProtected(dest, a)
-		if err != nil {
-			return fail(err)
-		}
-		a.Checksum = m.Checksum
-		a.CollectedAt = m.Collected
-		a.SecuredAt = m.Secured
-		a.Protected = true
-		if err = e.save(); err != nil {
-			return fail(err)
-		}
-	}
-	if err := e.terminate(a); err != nil {
-		return fail(err)
-	}
-	a.Units = []string{}
-	if err := e.cleanupTemporary(a); err != nil {
-		return fail(err)
-	}
-	a.State = "COMPLETED"
-	e.Audit("protected-collection-complete", a.ID)
 	return nil
 }

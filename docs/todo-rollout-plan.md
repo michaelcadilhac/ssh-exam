@@ -17,6 +17,15 @@ on-demand secondary terminal replay. The editor-lock notification suppression is
 an intentional requested policy change; omissions remain in manifests. All other
 security/timing/recording/retention restrictions remain in force.
 
+October 21 native increment adds process-isolated collection, manifest/export/
+access verification and short fenced state commits; see
+collection-worker-isolation.md. Before including it, qualify privileged SSH/PTY
+and workload behavior, install the bounded exam-collection.slice and coordinate
+all native finalizers. Old/new finalizers must not run together: old code does
+not honor the new per-attempt locks. Preserve state/archives, drain every old
+collector and end all worker jobs before cutover or rollback. This does not raise
+archive ceilings or implement grants/retained SSH/manual cleanup by itself.
+
 Do not bundle unfinished unified grants or full authenticated management into
 this release: C1/C2 are design-approved, not implemented/qualified release artifacts.
 C3 retained SSH with a verified freeze and C4 manual workspace cleanup with no

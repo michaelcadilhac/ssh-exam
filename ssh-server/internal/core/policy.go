@@ -214,6 +214,9 @@ func (e *Engine) acknowledgeUnappliedCancellation(a *Attempt) {
 // restore authorization from committed attempt state before changing the account.
 func (e *Engine) ReconcilePolicies() error { return e.reconcilePolicies("") }
 func (e *Engine) reconcilePolicies(only string) error {
+	if err := e.reconcileAccessOutside(only); err != nil {
+		return err
+	}
 	if !e.Config.TemporaryAccountPolicy {
 		return nil
 	}

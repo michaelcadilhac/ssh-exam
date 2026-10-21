@@ -842,7 +842,7 @@ The manifest must include clock revision/reset history and both original/current
 
 The **archive checksum is computed after the archive is complete** and stored beside it, in application metadata, and in the receipt. Do not try to put an archive's own checksum inside itself. A manifest inside the archive can contain per-file hashes; the external manifest may additionally reference the completed archive checksum.
 
-Serialize finalization across agent, watchdog, CLI and reconciliation processes with the persistent state lock. Build archive, manifest and checksum in a private staging directory, flush files and directories, then atomically publish the complete nonempty bundle. If a crash occurs after publication but before state persistence, verify and adopt the bundle without reading the working directory. Never overwrite a published submission, even if live files later change. Incomplete, damaged or mismatched existing artifacts require recovery and must not be silently replaced. Verify manifest identity and checksum in signed status receipts before reporting secured collection. Keep archives on the class server under its separate retention policy. There is no web archive-transfer queue or download endpoint. Local `examctl export` verifies the protected copy before writing bytes to an administrator's chosen output.
+Serialize finalization across agent, watchdog, CLI and reconciliation processes with per-attempt persistent job locks and short fenced state transactions. Run bulk collection, archive verification, writer termination and cleanup in supervised OS workers outside the shared state lock and PTY-owning process. Bound individual and aggregate resources; a fatal/hung worker must not kill the gate or block other students' admissions/renewals/cutoffs. Build archive, manifest and checksum in a private staging directory, flush files and directories, then atomically publish the complete nonempty bundle. If a crash occurs after publication but before state persistence, verify and adopt the bundle without reading the working directory. Never overwrite a published submission, even if live files later change. Incomplete, damaged or mismatched existing artifacts require recovery and must not be silently replaced. Verify manifest identity and checksum in signed status receipts before reporting secured collection. Keep archives on the class server under its separate retention policy. There is no web archive-transfer queue or download endpoint. Local `examctl export` verifies the protected copy before writing bytes to an administrator's chosen output. See docs/collection-worker-isolation.md for local implementation, compatibility and remaining qualification gates.
 
 Distinguish collection pending/failed, submission secured, and secured work whose workload cleanup still requires recovery. Delayed receipt delivery does not mean collection failed; never declare success without verified protected-copy metadata. Persist errors on the class server; retry signed metadata callbacks after outages and queue instructor alerts. Status delivery never recollects the working tree. Keep archives and immutable collection receipts outside the separate 60-day monitoring deletion policy.
 
@@ -1493,7 +1493,7 @@ refusal and keep holds effective across restarts and cleanup races. This approve
 policy supersedes the earlier proposed 14-day grace; implementation/qualification
 and any actual production cleanup remain outstanding.
 
-### Approved collection limits and crash isolation (October 21; implementation pending)
+### Approved collection limits and crash isolation (October 21; partial local implementation)
 
 Use configurable per-exam defaults of 128 MiB per regular file and 512 MiB total
 logical regular-file contents; retain 10,000 entries and depth 32. Share web/CLI
@@ -1524,7 +1524,11 @@ healthy active attempt, admission/reconnect and independent expiry. Assert stabl
 shared-agent/PTY ownership, uninterrupted healthy monitoring and unchanged
 healthy generations/deadlines. Existing two-attempt/synthetic blocking tests are
 not sufficient evidence of fatal-crash isolation. No implementation/deployment
-claim follows from this approved design requirement.
+claim follows from this approved design requirement. Native collection/verification/
+cleanup workers, short transactions and fatal-child/resource/disk regressions are
+now implemented/tested locally (docs/collection-worker-isolation.md). Larger limits,
+initialization isolation, full privileged SSH/PTY and workload qualification remain
+open; nothing is deployed by these local results.
 
 ### Clock reset and recording-limit regression requirements
 

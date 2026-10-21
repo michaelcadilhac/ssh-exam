@@ -287,5 +287,11 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if err == nil && setup != "" {
 		return e.prepareAccountPolicy(setup)
 	}
+	if err == nil && cmd.Op == "finalize-attempt" {
+		return e.finishCollection(cmd.Body.ID)
+	}
+	if err == nil && cmd.Op == "submission-manifest" {
+		return e.verifiedManifest(cmd.Body.ID)
+	}
 	return result, err
 }
