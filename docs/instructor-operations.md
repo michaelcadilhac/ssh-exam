@@ -100,6 +100,15 @@ replay position. Recording refreshes fetch only new events; they do not restart 
 Refresh and inline retry remain available after a network failure. The timing summary stays available across review sections: preflight opened, exam started/ended, elapsed/time taken, current deadline and connection/terminal status. Expand **Timing and monitoring details** for preflight duration, original deadline, configured duration/webcam, last browser contact, clock-change dates/actor and attempt ID. Elapsed exam time includes pauses because the clock continues; it stops at the recorded effective end or current cutoff. Historical preflight dates that were never recorded say **Not recorded**. Activity lists incidents
 and student messages for that attempt. **Authorize resume** grants the paused attempt one fresh-SSH recovery before
 its deadline; sandbox grants authorization automatically. Approval does not grant time.
+In the local C1f implementation (not deployed), **Authorize resume** first opens
+confirmation for the reviewed generation/revision and an audited reason. Polling
+cannot silently authorize a replacement or changed student request. After a lost
+reply, retry the unchanged confirmation; it cannot extend expiry. Expiry remains
+five minutes or the current deadline, whichever comes first. Fresh SSH/current
+monitoring and Continue are still required; retained-buffer freeze is not enabled.
+`examctl web interruptions help` exposes the same review/authorization workflow
+using the root agent identity. See interruption-management.md for private read
+retention, revisions and compatibility. Existing deployed behavior is unchanged.
 The review stays current even if its attempt no longer matches the roster filter.
 
 Submission distinguishes collection pending/failed from a verified protected copy. It

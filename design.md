@@ -1555,7 +1555,7 @@ workspace cleanup and monitoring retention. Expose the same audited, revision-
 checked workflows in web administration and examctl. Approval is not evidence of
 implementation, migration or deployment.
 
-### Approved private-workspace cleanup design (October 21; implementation pending)
+### Approved private-workspace cleanup design (October 21; partial local implementation)
 
 Provide manual-only workspace inspection, dry-run, cleanup and administrator
 hold/release controls through examctl. There is no mandatory retention grace and
@@ -1574,8 +1574,22 @@ live work folders. Cleanup does not release account restrictions, alter deadline
 or change protected-submission/60-day monitoring retention. Historical orphan
 cleanup requires supported inspection/proof, not blanket deletion. Explain each
 refusal and keep holds effective across restarts and cleanup races. This approved
-policy supersedes the earlier proposed 14-day grace; implementation/qualification
-and any actual production cleanup remain outstanding.
+policy supersedes the earlier proposed 14-day grace; full cleanup implementation,
+privileged qualification and any actual production cleanup remain outstanding.
+
+C4a implements local `examctl workspaces list/show/hold/release-hold` metadata and
+audited optimistic hold revisions. Candidate metadata never grants eligibility:
+archive_verified/eligible stay false and no workspace deletion command is enabled.
+Private hold records live separately from state.json so older unrelated saves
+cannot discard them. Independent initialized/known markers detect record/directory
+loss; unsafe/malformed/missing known metadata fails closed. Atomic no-replace
+marker and record publication, returning/fsynced intent audit and per-attempt
+fences preserve holds on failure. Special-file opens are nonblocking. A busy
+control is explicitly NOT accepted/queued; lost/stale retries cannot silently
+clear a newer hold. Original/current intervals, access, archives, grants, saved
+work and monitoring do not change. This is partial local implementation, not
+proof that any folder can be deleted. See docs/workspace-retention.md for tested
+boundaries and the remaining cross-namespace/process-use/crash-cleanup work.
 
 ### Approved collection limits and crash isolation (October 21; partial local implementation)
 

@@ -58,6 +58,9 @@ func main() {
 	if args, ok := webArguments(os.Args[1:]); ok {
 		os.Exit(webMain(args))
 	}
+	if webCategory(os.Args[1:]) == "workspaces" {
+		os.Exit(workspacesMain(os.Args[1:]))
+	}
 	topic, help := helpRequest(os.Args[1:])
 	if help {
 		if !printHelp(os.Stdout, topic) {

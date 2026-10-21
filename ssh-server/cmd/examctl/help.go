@@ -79,6 +79,10 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "workspaces" {
+		workspacesHelp(w)
+		return true
+	}
 	if topic == "interruptions" {
 		webInterruptionsHelp(w)
 		return true
@@ -123,6 +127,7 @@ func printHelp(w io.Writer, topic string) bool {
 	}
 	if topic == "" {
 		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM] (offline inspection, not unified grant issuance).")
+		fmt.Fprintln(w, "Workspace retention metadata/holds: workspaces list/show/hold/release-hold; use examctl help workspaces (no deletion enabled).")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")
 		fmt.Fprintln(w, "Gateway roster/CSV: web students; use examctl web students help.")
 		fmt.Fprintln(w, "Gateway email delivery/manual reminders: web alerts; use examctl web alerts help.")

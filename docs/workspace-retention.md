@@ -1,9 +1,63 @@
-# Manual private workspace retention — investigation
+# Manual private workspace retention — investigation and local controls
 
-October 21, 2026. C4 policy is approved; the implementation and qualification below
-are **not complete**. No cleanup command or production deletion is introduced by
-this proposal. Latest instruction: keep all development/testing local; do not
+October 21, 2026. C4 policy is approved; complete cleanup and its qualification
+are **not complete**. C4a metadata/hold controls are implemented/tested locally;
+there is no cleanup command or production deletion. Latest instruction: keep all development/testing local; do not
 deploy or consolidate services.
+
+## C4a supported local metadata/hold workflow
+
+```sh
+examctl help workspaces
+sudo examctl workspaces list --exam midterm --limit 50
+sudo examctl workspaces show ATTEMPT
+sudo examctl info ATTEMPT
+sudo examctl workspaces hold ATTEMPT --revision 0 --reason 'Retain workspace for explicit investigation'
+sudo examctl workspaces release-hold ATTEMPT --revision 1 --reason 'Investigation complete; fresh usage proof still required'
+```
+
+These are real/effective-root local commands, usable offline from the gateway,
+not an additional agent API. List pages known native attempts (100 default,
+maximum 200, exclusive ID cursor); unknown/orphan folders remain preserved and
+are not enumerated or eligible. Show reports bounded metadata, exact configured
+UUID path, decimal-string device/inode identity, current/original interval,
+recorded protection, hold and obvious blockers. It does not recursively read saved
+work, verify archives, terminate units, release accounts or delete anything.
+
+`candidate=true` is only a metadata observation. **eligible=false and
+archive_verified=false always remain explicit in C4a**, even if the native
+record contains a protected checksum. A protected COLLECTION_FAILED attempt,
+active/preparing work, unsafe parent, missing publication or unresolved access
+error is not a candidate. Releasing a hold does not certify eligibility. There
+is no deletion command, automatic retention job or grace period.
+
+Hold controls require the current integer hold revision (not clock revision or
+definition hash) and 8..1000 UTF-8 bytes of operator reason. They use the same
+nonblocking per-attempt fence as finalization/staging, returning/fsynced intent
+audit before record publication, private atomic/fsynced record writes and exact
+identity/revision validation. The reason is permanent operator evidence; do not
+copy private student messages. Actual root UIDs are recorded, not a claimed human
+from SUDO_USER. A stale/lost-reply retry cannot clear a later hold: inspect fresh
+show, review, then explicitly choose a new revision. No silent revision adoption.
+
+Metadata lives in State/workspace-retention/ATTEMPT.json, not a new state.json
+field which older unrelated writers could discard. A root-level initialized
+marker and per-attempt known markers detect lost record/directory data. Missing
+known metadata, wrong identity, bad JSON, unsafe permissions/owner, links/special
+files or marker corruption refuse; they never imply release. Markers publish by
+atomic no-replace rename, not a visible partial file. Opens are nonblocking so a
+FIFO cannot strand inspection/control. Incomplete marker publication with an
+otherwise intact valid record remains visibly blocked and can be repaired by a
+deliberate reviewed control. Actual loss/corruption needs a consistent verified
+private backup; do not erase markers/JSON to manufacture an unheld state.
+
+Back up all retention records/markers with native state/audit. Preserve them on
+rollback and do not interpret resilience to an older state.json save as permission
+to mix old/new native finalizers. Workspace holds affect workspace retention,
+not clock/account authority or independent protected-submission retention. The
+current native commands do not delete old work, so an older binary cannot be
+used as a supported workspace-cleanup bypass. No install/migration/deletion has
+been performed. Full local evidence is recorded in todo-progress.md.
 
 ## Confirmed implementation boundaries
 
@@ -38,15 +92,22 @@ returning, fsynced audit path, not assumptions from the gateway SQLite services.
 Heavy verification/inspection/deletion must stay outside the shared state lock
 and outside gate/PTY owners, under the existing bounded OS-worker boundary.
 
+C4a inspection/control refuses a busy per-attempt job immediately and explicitly
+says a hold change was **not accepted or queued**. Reusing the generic collection
+pending error would falsely imply a retained request; focused core and actual CLI
+regressions verify that no record/revision changes and unrelated state remains
+responsive. Recorded start/end, policy/access state and bounded errors are shown
+alongside original/current deadlines so legacy/failed-state blockers are visible.
+
 ## Dependency-ordered implementation increments
 
-1. C4a inspection/holds: discoverable root examctl workspace list/show and explicit
+1. C4a inspection/holds (implemented/tested locally): discoverable root examctl workspaces list/show and explicit
    audited hold/release controls with optimistic revisions. Bounded metadata
    inventory, exact configured UUID target/inode identity, no link following,
    retained ordinary/current deadlines, independent submission/grant identity.
    Distinguish recorded facts/candidate eligibility from fresh worker proof.
    Unknown/orphan/unsafe folders stay preserved and clearly refused. No deletion
-   in this increment; do not advertise a proposal or an archive anchor as full
+   in this increment; do not advertise metadata or an archive anchor as full
    cleanup qualification.
 2. C4b fresh dry-run proof: bounded protected archive verification plus current
    state/holds, confirmed empty attempt cgroups/student writers, mount namespace

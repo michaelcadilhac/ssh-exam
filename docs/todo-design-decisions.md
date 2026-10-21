@@ -27,6 +27,7 @@ signed definition list/show/create/update; retirement/full coverage remain pendi
 | Review interruption / authorize continuation | Shared InterruptionManagement browser/root service | Local `web interruptions show/review/authorize`, generation plus conditional monotonic review counter, audited reason/intent, original expiry and retention-safe transient private reads; 320 app/81 combined browser checks, actual CLI/TLS and native race pass, not deployed |
 | Finish/pause/cancel/retry one attempt | Native admin operations | Existing `stop/finish/pause/cancel/retry`; improve help and state guidance |
 | Inspect/reconcile original/current account restriction | Native state/helper journal | Existing `info/reconcile`; improve actionable release/deletion diagnostics |
+| Workspace retention metadata / holds / cleanup | Native private per-attempt controls | Local `workspaces list/show/hold/release-hold`, audited hold revision and missing-record fail-closed markers; actual CLI/native race/app/build pass. No fresh eligibility proof, unknown-orphan cleanup or deletion is enabled; not deployed |
 | Root emergency release | Native OverrideAccess | Existing `override-access`; retain secured-copy/termination/audit prerequisites; never suggest automatically |
 | Protected manifest/export/delete | Native protected bundle | Existing `manifest/export/delete`; rename discovery as submission operations while retaining aliases; add export audit and explicit output safety |
 | Recovery grants | Incident JSON and separate enrollment helpers | Missing; `grants create/validate/list/show/revoke` coordinated with unified model; cannot silently synchronize offline edits |
@@ -186,8 +187,9 @@ consumption history, receipts and audit. Later saved-work attempts restore from
 the protected source, not the old workspace. Cleanup does not release account
 restrictions, change deadlines or alter submission/60-day monitoring retention.
 Historical orphans need separate supported inspection/proof, not blanket deletion.
-**Design approved; implementation/race/repair tests remain pending. No existing
-workspace has been deleted.**
+**C4a metadata/hold controls are implemented/tested locally;
+fresh eligibility, actual cleanup, unknown-orphan recovery and privileged race/
+repair qualification remain pending. No existing workspace has been deleted.**
 
 Current implemented collection limits (32 MiB/file, 64 MiB total, 10k entries,
 depth 32) remain unchanged until the approved C6 implementation below is qualified.

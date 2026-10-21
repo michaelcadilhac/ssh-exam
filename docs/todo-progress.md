@@ -44,6 +44,7 @@ escalation. Generated screenshot changes must not become product changes.
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore, default-size worker and full local regression pass in 7ef7ac5; manual cleanup and privileged/concurrent sizing remain open |
+| C4a: workspace metadata and operator holds | C4 + D1a fences | Known-attempt inventory, exact private identity, separate durable hold revisions/loss markers, audit failure and stale/busy refusals, no eligibility/deletion claim; actual CLI/native race/build | Implemented/tested locally: actual namespace-root CLI/help, frozen full native race/resource/compiler/default-size opt-ins, static build/vet, 320 app tests and unchanged typechecked/built browser assets. Fresh proof/cleanup remain open; not deployed |
 
 Each implemented milestone gets documentation, focused regressions, proportional
 integration/build/race/browser checks, then a coherent local commit. Never label
@@ -163,13 +164,40 @@ implemented/tested locally, not deployed. Generated baseline screenshots are
 restored rather than committed. Full management/grants/retained SSH/manual
 cleanup and privileged installed-host qualification remain open.
 
-C4 source investigation is now recorded in workspace-retention.md. Confirmed:
+C1f is local commit 65e3b25. C4 source investigation is now recorded in workspace-retention.md. Confirmed:
 finalization retains old work; COMPLETED drops recorded units; existing release
 verification can terminate and is not a dry run; saved-work grants depend on the
 archive, not old work; WithState is not a rollback transaction and native Audit
 is best effort. Proposed ordered increments are safe inventory/holds, isolated
 fresh archive/mount/process-use proof, then explicit exact-target crash-retry
 cleanup. No cleanup implementation/deletion or completed investigation is claimed.
+
+C4a is now under local implementation/qualification: actual native `workspaces
+list/show/hold/release-hold` and process-tested help/syntax, private separately
+persisted hold revisions/identity, fsynced operator intent audit, atomic record/
+loss-marker publication, malformed/missing metadata refusal and nonblocking
+special-file opens. Metadata candidates explicitly remain ineligible/unverified;
+no recursive deletion command or worker proof is exposed. Initial focused native
+race/actual namespace-root CLI tests pass, including lost/stale control, old
+state writers, missing metadata, corruption/links/audit failure and unchanged
+saved work/deadlines/access. The full app suite repeats 320/56 (62.2s), including
+actual web management CLI/TLS. Full native race with resource/compiler/default-
+size/namespace opt-ins and static build/vet are running on the frozen increment.
+No C4b/c mount/process-use proof or cleanup completion is claimed; no deployment
+or production/student data change and no command-not-found.
+
+Final C4a qualification: frozen full native race passes with worker/user-systemd/
+user-namespace/actual CLI/compiler/default-size opt-ins (113.2s), including the
+final busy-not-queued and FIFO/missing-marker regressions. Actual root-mapped CLI
+tests cover list/show/hold/release, stale/busy/audit failures, old state writers
+and missing hold records with unchanged answer bytes and original/current holds.
+All three Go-module race checks, static build/vet, typecheck and application/WASM
+build pass. Application suite passes 320 tests/56 files (62.2s). This increment
+changes no gateway/browser code; built browser asset hashes remain the exact
+C1f assets exercised by its combined 81-check run. No fresh browser result is
+claimed for C4a. Generated screenshot baselines remain unchanged. Inspection/
+hold controls are implemented/tested locally; actual cleanup/eligibility and
+privileged installed-host qualification remain open and nothing is deployed.
 
 C6 is local commit 7ef7ac5. M1/C1d alert management now adds shared metadata-only
 web/root list/show/test and explicit audited reminders, migration 015, stable

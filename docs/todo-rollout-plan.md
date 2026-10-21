@@ -42,6 +42,17 @@ attempts; implementation/qualification remain pending. C8 approves deleting only
 unused definitions and archiving definitions with history, preserving attempts
 and submissions; implementation/investigation remain open. C4 does not
 authorize deleting existing workspaces now.
+
+C4a adds local known-attempt workspace metadata and audited revision-fenced hold/
+release controls only. No fresh worker eligibility proof or deletion is enabled.
+Preserve State/workspace-retention, workspace-retention.initialized and every
+workspace-retention-ATTEMPT.known marker together with state/audit in private
+consistent backups and any separately authorized rollback. Missing known data
+fails closed, never implicitly released. Older unrelated state.json saves do not
+discard these files; this does not authorize mixing native finalizers. No folder
+is removed on upgrade, downgrade, hold release or deadline expiry. C4b/c proof/
+cleanup, unknown-orphan workflow and privileged qualification remain open. See
+workspace-retention.md; all rollout/deletion execution remains unperformed.
 No new root API/listener, account override, historical attempt transfer or automatic
 workspace deletion is part of these changes. CLI management remains incomplete;
 see examctl-workflows.md and todo-design-decisions.md for honest coverage.

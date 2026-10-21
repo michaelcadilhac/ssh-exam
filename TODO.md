@@ -496,6 +496,12 @@ the approval is not a production change or a completed investigation.
   cannot stand in for a dry run; other-namespace mounts/process use need fresh
   proof. Saved-work grants depend on the archive, not the retained live folder.
   Investigation is not marked complete merely because a proposal exists.
+  C4a now implements local `workspaces list/show/hold/release-hold`, bounded known-
+  attempt metadata, audited hold revisions and metadata-loss fail-closed markers.
+  Actual CLI, full native race/resource/compiler/default-size opt-ins, 320 app
+  tests and static build/vet/typecheck/build pass; full qualification is in
+  docs/todo-progress.md. Candidate is not eligibility: no fresh archive/usage
+  proof or workspace deletion command is enabled. Full C4 remains open.
   Original attempt work folders currently remain indefinitely even after the
   protected submission is secured. Decide on retention/grace periods and an
   explicit eligibility rule before implementing deletion. A secured archive alone

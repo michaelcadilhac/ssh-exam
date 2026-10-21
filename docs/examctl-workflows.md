@@ -68,6 +68,11 @@ read-only dry run.
 
 Resources have separate workflows:
 
+- `workspaces list/show/hold/release-hold`: local bounded known-attempt metadata
+  and audited revision-fenced workspace holds. Candidate is not eligibility;
+  no archive/writer/mount-use proof or deletion command is enabled. Missing known
+  metadata fails closed, not released. See workspace-retention.md; original/
+  current access restrictions and protected submissions do not change.
 - `recovery-grants [--exam EXAM]`: read-only native legacy authorization catalog,
   consumed/uncertain history and recorded source state. Not new grant issuance
   or fresh archive verification. Source deletion refuses pending dependencies;
