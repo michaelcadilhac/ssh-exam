@@ -174,6 +174,37 @@ status must use current generation/server time and never unlock by itself. This
 requires coherent native, worker, gateway and browser changes; do not ship one
 layer claiming the new policy alone. Keep the existing focus grace.
 
+October21 additional source investigation (still open): both bridgePTY in pty.go
+and bridgeRecordedPTY in terminal_recording.go currently forward input with
+unconditional io.Copy into the inner PTY. They are outside the frozen workload
+scope. That is compatible with today's terminate-on-pause path, but simply
+removing terminate/Connection.close would allow locked-period input to queue for
+a later thaw. C3 therefore needs a server-enforced input-revocation/barrier and
+queued-input discard protocol for BOTH bridges, not a browser disableStdin flag.
+Scope membership/freezer confirmation and channel/exec/transfer refusal must be
+acknowledged before a retained pause is reported safe; late input/admission and
+old generations must not cross the thaw boundary.
+
+A mere mutex around raw forwarding also cannot identify old-generation bytes
+delayed upstream in SSH/TTY buffers. Design the complete input epoch/admission
+protocol and test delayed old frames as well as local queues before wiring a
+barrier. Do not hold a global state lock across a potentially blocking PTY write,
+introduce an unbounded input queue or retain credentials. Capability/version
+negotiation must refuse mixed bridges that lack the fence. This also reinforces
+the verified-drain gate for canonical/temporary agent consolidation; no such
+cutover or new input protocol is authorized for production by this source review.
+
+quiesceWriters additionally changes workspace ownership/mode for final collection;
+it is not a drop-in pause implementation. A retained-pause barrier must verify
+all writers without making the eventual student workspace inaccessible or
+misusing collection/protection state. Lifecycle.onPaused, workspace state messages,
+execution-lease expiry and resume transport checks remain coordinated dependencies.
+Next proposed increment is an internal input-gate/barrier primitive with actual
+PTY tests for queued input, freeze/continue races and shell/editor survival, then
+separate authenticated locked liveness and coherent native/gateway/browser wiring.
+No retained SSH behavior, new liveness authority or thaw path is implemented by
+this investigation, and the larger item must remain unchecked.
+
 ## Workspace cleanup, limits and recovery repair
 
 **Decision C4, approved by the instructor October 21:** manual workspace cleanup

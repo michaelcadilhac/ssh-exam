@@ -1458,6 +1458,13 @@ signed scope/cursors before private CLI output; explicit batch files are exclusi
 audit and no-store. The legacy no-offset reader refuses oversized/partial batches
 with incremental guidance, never an unbounded read. No clock/hold/submission or
 60-day policy change. Full export/shared deletion intents remain open.
+
+The root client must validate nested resource scope before any stdout or output
+file creation, not only before returning its exit status. An authenticated signed
+outer envelope cannot justify printing a mismatched private review. Clock batch
+diagnostics are printable with exit1 only after every target/intent/status passes
+validation; distinguish a valid partial operational failure from a malformed
+reply. This adds no gateway mutation or new permission.
 Local C1gb2 adds additive migration 017 durable purge jobs, atomic tombstone/
 metadata scrub/enqueue and separately supervised Linux workers rather than
 recursive purge in HTTP, retention or cancelled-preparation retirement. Jobs
@@ -1493,6 +1500,17 @@ file IO; hide restored frame/terminal/incident metadata while retaining independ
 protected manifest access. A retained deletion record must not be bypassed by an
 older reader path. See docs/monitoring-retention-fixes.md for the failing/passing
 HTTP regression and local follow-up verification; this adds no retention policy.
+
+Local monitoring image reads additionally pin private owned root/attempt
+descriptors and refuse no-follow/nonblocking leaf opens unless regular,
+single-link and owned. Original reads keep the existing 1,500,000-byte upload
+ceiling and verify the persisted capture hash; legacy thumbnails have a 2 MiB read
+bound but no independent stored hash/provenance claim. At most 16 async reads are
+active; bounded descriptor IO replaces unbounded synchronous readFileSync.
+Observed size/time/link changes refuse. Recheck tombstones synchronously after
+all async descriptor cleanup and immediately before sending private bytes. Safe
+503 reason codes guide storage diagnosis without raw paths/errors. This is NOT
+an OS/process fault sandbox, secure erasure or a new retention/clock/hold policy.
 
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 

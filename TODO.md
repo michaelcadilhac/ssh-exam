@@ -100,6 +100,12 @@ An administrator should be able to discover and finish a workflow using
   tests, native race/build and 81 combined browser checks pass locally. See
   docs/interruption-management.md. Other management gaps remain open; no local
   increment is a deployment claim.
+
+  A later actual CLI/TLS regression confirmed wrong nested private-review scope
+  was printed before rejection. Local validators now precede output; valid fully
+  scoped partial clock diagnostics retain their JSON/exit1 contract. Dedicated
+  actual root CLI/TLS/restart and companion-target unit regressions pass locally,
+  including the full350 application tests. No new management policy/deployment.
   Local status: all currently supported native commands have process-tested help,
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.
@@ -185,6 +191,13 @@ Existing enrollment migration and implementation remain outstanding.
   mutable template paths after starter staging. Immutable catalog and all-reader
   version binding are prerequisites for fixed-at-issuance grants; source map,
   ordered increments and acceptance are in docs/template-grant-investigation.md.
+
+  C2a1 adds an internal, still-unwired exclusive private-copy primitive with
+  independent copied-byte/source verification, metadata preservation and flushes.
+  Focused race tests include 128 MiB streaming, actual child SIGKILL/fresh retry,
+  mutation and same-device source bind-alias refusal. Worker/pool, immutable
+  publication/owned crash cleanup, supported CLI and all-reader binding remain
+  unimplemented. No installed source or student path changed; not deployed.
   This is an ongoing investigation, not an implemented catalog/grant migration.
   October 21 local increment: ordinary/legacy-saved work stages privately in
   bounded OS workers before Begin, without clock/marker consumption. Exact
@@ -483,6 +496,16 @@ the approval is not a production change or a completed investigation.
   checks pass (10.6m); the final root inventory audit-label regression/full346
   repeat also passes. Whole-media
   export and broader management remain open. Migration019 is local only.
+
+  A new authenticated regression confirmed stored image symlinks could expose
+  unrelated protected-fixture bytes. Local bounded async pinned/no-follow reads
+  now reject links/special files/oversize/altered originals and recheck tombstones
+  immediately before response publication. A separate deletion race regression
+  was proved failing without that last fence. Four HTTP regressions include real
+  FIFO images plus healthy concurrent HTTP in a disposable child server. Full350
+  application tests, 84 browser-SSH checks, build and typecheck pass; this adds no
+  CLI capability/retention change and
+  does not complete media export or OS-level read fault isolation. Not deployed.
 
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires

@@ -58,6 +58,27 @@ secure-erasure receipt. A compatible rollback may leave the additive index but
 must coordinate older configuration allowlists/gateway/CLI and keep all ledgers.
 No production migration or operation was executed.
 
+The local image-read follow-up needs no schema or configuration migration. Check
+Linux/procfs and existing private monitoring directory ownership/modes; verify
+normal full/thumbnail review, links/FIFOs/oversize refusal and deletion races in
+the isolated candidate. An older reader loses these protections; retain a
+compatible reader rather than restoring private bytes/clearing tombstones to
+make errors disappear. Original upload bounds stay 1,500,000 bytes; thumbnail read
+bounds are 2 MiB. This is bounded async IO, not worker/hardware-failure isolation.
+No production permission edits, rollout or deployment are performed here.
+
+The root CLI output-order follow-up needs no migration or new permission. Pair
+normal gateway/CLI versions, retain exact request/child intents and require
+nested target/intent/status validation before output. Only fully validated partial
+clock batches print scoped JSON with exit1; malformed/private mismatches emit no
+stdout. Older CLI rollback loses this defensive ordering; it must not justify
+acting on a mismatched review. The collection measurement correction changes only
+test assertions to inspect live kernel controls, not worker limits; account for
+kernel/whole-host headroom rather than advertising an exact peak-byte guarantee.
+C2a0/a1 remain unwired primitives, not installed template/version/grant management.
+Future publication/migration and coherent retained-SSH changes require their
+separate acceptance gates before becoming release scope.
+
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,
 without retaining/retrying credentials or bypassing approval/holds. No schema
