@@ -1,7 +1,9 @@
 # TODO architecture investigation and decisions
 
-2026-10-20, local source inspection. **Proposal, not an implemented or deployed
-policy.** Investigation remains open until decisions and acceptance evidence exist.
+2026-10-20, local source inspection and instructor decisions. **C1 is approved for
+local implementation; the other proposals remain pending. Nothing here is a
+deployment receipt.** Investigation remains open until decisions and acceptance
+evidence exist.
 
 ## Present boundaries and CLI coverage
 
@@ -31,19 +33,33 @@ manage gateway-owned state.
 | Alert test/outbox/desktop sound | notifications/test, attempt feed, browser preferences | Missing; `web alerts test/list/show`; desktop permission/sound are browser-local and must be described as such |
 | Agent lifecycle/readiness/accounts | Native health/accounts and systemctl | Existing `agent start/stop/restart/status`, `health/accounts`; diagnose callbacks/leases/policy without stopping independent watchdog |
 | Relevant system config/trust/retention | Root configuration/install scripts | Missing; `config show/validate`, redacted values, staged/apply distinction; service-affecting apply requires drain |
-| Administrator creation/sign-out | web administrator endpoint / bootstrap script | Missing; `web administrators add`, login/logout/session inspection; securely prompted credentials |
+| Administrator creation/sign-out | web administrator endpoint / bootstrap script | Missing; agent-authenticated administrator management for root CLI; existing browser login/logout remain separate, with no saved browser session needed by root CLI |
 | Incident transfers/compensation/approval refresh | Protected one-off scripts | Unsupported; do not port mutable transfers as a new general operation. Unified new-attempt grants express saved-work/time authorization; preserve old attempt identity/history |
 
-Proposed complete web workflow: examctl calls the existing authenticated HTTPS
-administrator API as an administrator, including Origin/CSRF and the same
-validation/audit/concurrency checks. Store only an expiring session in an
-owner-only local file; prompt for passwords without echo and never save them.
-Native commands remain root-only and usable offline. CLI login/help need not be
-root. Refuse insecure HTTP except explicit loopback development. No new
-webserver-to-agent control API, root SSH credential or disconnected SQL editor.
-Pending web intent is confirmed only by a signed native result. A separate scoped
-CLI-token design is an alternative requiring a new credential lifecycle and
-revocation/audit surface. **Decision C1: reuse admin sessions or add tokens.**
+**Decision C1, approved by the instructor October 20:** root-run examctl on the
+class server will reuse the existing root-owned agent identity for authenticated
+outbound HTTPS management, with explicit authorization and auditing. This
+supersedes the earlier administrator-session recommendation; neither browser
+session storage nor a separate CLI token is required for this workflow. Remote
+non-root CLI login is not part of this approval.
+
+The existing agent authenticates status/recording callbacks and timing requests;
+it does not yet authorize general gateway administration. Add explicit management
+operations with purpose/audience/scope checks, bounded freshness, persistent
+request/replay/idempotency records and revision conflict handling. A valid ordinary
+callback signature must not implicitly become permission for arbitrary management.
+Reuse the web administration's shared validation, authority, transaction and audit
+rules rather than introducing independent state edits. Audit the authenticated
+agent/root identity, operation/targets/reason and confirmed versus pending result.
+Do not claim verified human attribution from caller-supplied names or environment.
+
+Native operations remain root-only and usable offline; help remains available
+without root. Web-owned operations need the webserver and must report outages or
+pending native confirmation honestly. Keep HTTPS verification and protected key
+handling, no new webserver-to-agent control API, student credentials, generic
+command polling or disconnected SQL/JSON editor. Browser administrators continue
+using their existing session/Origin/CSRF checks. **Approved design only: management
+protocol/CLI implementation and qualification are still outstanding.**
 
 ## Unified attempts and workspace initialization
 

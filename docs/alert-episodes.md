@@ -19,8 +19,8 @@ message but before the sent status commits can still redeliver that same ID.
 This mechanism prevents duplicate callback/reconciliation enqueueing; it cannot
 promise exactly-once delivery by arbitrary mail servers. Delivery failures and
 attempt failures remain distinct. Reminders/escalation are not automatic; the
-supported management workflow still needs the CLI authority decision in the
-design investigation before adding explicit escalation controls.
+supported management workflow still needs implementation of the C1-approved
+agent-authenticated root CLI path before adding explicit escalation controls.
 
 Failure messages include student, exam, attempt, observed time in America/Chicago,
 original/current deadlines, verified protection status, account restriction state,

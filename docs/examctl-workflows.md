@@ -5,8 +5,12 @@ coverage is not implemented yet; see the explicit inventory/decisions in
 [todo-design-decisions.md](todo-design-decisions.md). The firm requirement is that
 every supported management action has a supported CLI workflow, sharing authority,
 validation, audit, revisions and idempotency with the web interface. No ad hoc
-SQL/JSON edit or incident script is a supported replacement. Authentication for
-gateway-owned CLI workflows remains decision C1.
+SQL/JSON edit or incident script is a supported replacement. Decision C1 is now
+approved: root-run examctl on the class server will use the existing agent
+authentication for outbound gateway management, with explicit operation
+authorization and auditing. That management protocol and CLI are not implemented
+yet. No browser-session login or extra CLI credential is required by the approved
+design; browser administration keeps its current authentication.
 
 Start with `examctl help`, then `examctl help COMMAND` or `COMMAND --help`.
 Help runs without root or installed configuration. Unknown commands, missing or

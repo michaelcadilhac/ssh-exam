@@ -62,7 +62,8 @@ An administrator should be able to discover and finish a workflow using
   Local status: all currently supported native commands have process-tested help,
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.
-  Help for full gateway/grant management awaits C1/C2; item remains open.
+  C1 now approves existing agent authentication for root-run gateway management;
+  its implementation and C2 grant decisions remain pending, so this item is open.
   The current help is insufficient. Provide a clear command overview, consistent
   grouping/naming, command-specific help and examples for normal use and recovery.
   Explain identifiers, target selection, time units/timezones, privilege needs,
@@ -243,8 +244,9 @@ This is a design investigation; agree on the proposal before implementation.
 - [ ] **Deduplicate failure emails across delivery, retries and restarts.**
   Local status (October 20): persistent episodes, resolution/recurrence, distinct
   causes/generations and SMTP retry/restart regressions implemented and tested.
-  Explicit operator escalation/reminder workflow still awaits the CLI authority
-  decision; this item remains open for that supported management capability.
+  CLI authority is now approved (C1: existing agent identity for root-run examctl).
+  Explicit operator escalation/reminder implementation is still pending; this
+  item remains open for that supported management capability.
   `Lifecycle.alert()` in `apps/server/src/lifecycle.ts` only coalesces recently
   pending messages. Once sent, the same unchanged failure can generate another
   email on every callback/reconciliation. The incident produced 14 collection

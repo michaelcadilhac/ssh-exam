@@ -23,13 +23,13 @@ escalation. Generated screenshot changes must not become product changes.
 | Milestone | Dependencies | Acceptance criteria and required verification | Status |
 | --- | --- | --- | --- |
 | M0: inventory and proposals | baseline | Map web/native/incident operations to CLI; map attempt/initialization/lock boundaries; present decisions with migration and acceptance cases | Investigating |
-| M1: durable alert episodes and notification correctness | baseline | Distinct attempts/causes never merge; unchanged failures deduplicate after delivery/retry/restart; resolution/recurrence work; review requests remain audited; editor lock-only omissions are silent; actionable status/context. Regression and SMTP integration tests, typecheck/build | Core implemented/tested locally; explicit CLI reminder awaits C1 |
+| M1: durable alert episodes and notification correctness | baseline | Distinct attempts/causes never merge; unchanged failures deduplicate after delivery/retry/restart; resolution/recurrence work; review requests remain audited; editor lock-only omissions are silent; actionable status/context. Regression and SMTP integration tests, typecheck/build | Core implemented/tested locally; C1 approved, explicit CLI reminder implementation pending |
 | M2: renewal races and preparation housekeeping | M1 | Normal expiry has no new interruption; intentional actions survive delayed renewal results; stale replies cannot affect replacement ownership; never-contacted reservations do not generate cleanup; uncertain committed starts retained. Real WS/callback regressions and full integration suite | Implemented/tested locally; not deployed |
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
-| M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export implemented/tested locally; full management awaits C1/C2 |
+| M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1 approved, implementation pending and grant policy awaits C2 |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Local concurrency/load/compiler checks pass; broader privileged qualification and policy decisions remain open |
-| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | Concrete proposal presented; C1/C2 pending, investigation open |
+| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1 approved; concrete grant proposal/C2 pending, investigation open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | Concrete proposal presented; C3 pending, investigation open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | Concrete proposal and compiler measurements presented; C4 and workload-limit choice pending |
 
@@ -41,8 +41,15 @@ separate and remains **not deployed** throughout this work.
 
 ## Decision log
 
-Pending investigation: authenticated examctl access to web-owned state without a
-new webserver-to-agent API; grant snapshot/default policy and start window;
+Approved C1 (October 20): root-run examctl on the class server reuses existing
+agent authentication for outbound management, with explicit authorization and
+auditing. This replaces the earlier browser-session recommendation. It is not
+implemented or deployed yet; human attribution is not inferred from a root/agent
+signature. See todo-design-decisions.md for required shared validation and replay/
+idempotency/conflict safeguards. Local commits remain authorized without further
+approval requests.
+
+Pending investigation/decisions: grant snapshot/default policy and start window;
 freeze-only versus terminate-workload retained transport; workspace grace/holds;
 collection size settings versus measured compiler/debugger workload.
 
@@ -58,8 +65,10 @@ Migration 012 is additive. See alert-episodes.md for SMTP's acceptance/commit
 boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
-questions (C1–C4) have been presented; none is assumed approved. Investigation
-remains open. No production access or deployment performed.
+questions (C1–C4) were initially presented without assuming approval. C1 is now
+approved as recorded above; other choices and investigation remain open. No
+production access or deployment performed. Verification entries below describe
+the decisions and implementation state at their original milestones.
 
 Local commit f9f2232 records M1 and the plan/proposals. M2 evidence: 294 tests
 pass (50 files); typecheck/build and full native race suite pass. Real SSH →
@@ -112,7 +121,8 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation awaits C1–C4 in todo-design-decisions.md. Shared-lock isolation,
+implementation now has C1 approval; other policy choices remain pending in
+todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.
 
