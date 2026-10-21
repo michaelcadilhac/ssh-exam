@@ -11,6 +11,12 @@ import {
 } from "../../../packages/protocol/admin.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { RosterManagement } from "./roster-management.js";
+import { AttemptManagement } from "./attempt-management.js";
+import {
+  ClockManagement,
+  assertClockCapabilities,
+} from "./clock-management.js";
+import { clockBatchBody } from "../../../packages/protocol/clock-management.js";
 
 export function registerExamAdmin(
   app: FastifyInstance,
@@ -20,6 +26,8 @@ export function registerExamAdmin(
   principal: (req: any, role: string) => any,
   describe: (a: any) => any,
 ) {
+  const attempts = new AttemptManagement(store, clocks, describe);
+  const clockManagement = new ClockManagement(store, clocks, attempts);
   const findExam = (id: string) => {
     const row = store.db
       .prepare("SELECT config FROM exams WHERE id=?")
@@ -138,81 +146,12 @@ export function registerExamAdmin(
   });
   app.post("/api/admin/exams/:exam/attempts/clocks", async (req: any) => {
     const actor = principal(req, "admin");
-    const exam = findExam(req.params.exam);
-    const b = z
-      .object({
-        action: z.enum(["reset", "extend"]),
-        minutes: z.number().int().min(1).max(360).optional(),
-        targets: z
-          .array(
-            z.object({
-              id: z.string().uuid(),
-              revision: z.number().int().min(0),
-              requestID: z.string().uuid(),
-            }),
-          )
-          .min(1)
-          .max(100),
-      })
-      .parse(req.body);
-    if (b.action === "extend" && b.minutes === undefined)
-      throw Error("Enter minutes to add");
-    if (new Set(b.targets.map((t) => t.id)).size !== b.targets.length)
-      throw Error("Duplicate attempt selection");
-    for (const t of b.targets)
-      if (store.attempt(t.id).exam !== req.params.exam)
-        throw Object.assign(Error("Attempt is not in the selected exam"), {
-          statusCode: 403,
-        });
+    const b = clockBatchBody.parse(req.body);
     const health = await agent.call("health");
-    if (
-      !health.fixture &&
-      ![
-        "clock-reset",
-        "deadline-timing-check",
-        ...(b.action === "extend" ? ["clock-extend"] : []),
-      ].every((c) => health.capabilities?.includes(c))
-    )
-      throw Error("Update the class-server agent before changing clocks");
-    const results = [];
-    // Persist each request before returning; existing SSH heartbeat delivery and
-    // the signed deadline check apply it even after this HTTP request ends.
-    for (const t of b.targets) {
-      try {
-        const attempt = store.attempt(t.id);
-        const row = store.db
-          .prepare(
-            "SELECT duration FROM enrollments WHERE exam=? AND username=?",
-          )
-          .get(req.params.exam, attempt.username) as any;
-        const minutes =
-          b.action === "extend"
-            ? b.minutes!
-            : (isSandbox(req.params.exam)
-                ? 300
-                : (row?.duration ?? exam.duration)) / 60;
-        const result = await clocks.reset(
-          t.id,
-          minutes,
-          actor.username,
-          t.revision,
-          t.requestID,
-          true,
-          b.action === "extend",
-        );
-        results.push({
-          id: t.id,
-          status: result.confirmed ? "confirmed" : "pending",
-          ...result,
-        });
-      } catch (error) {
-        results.push({
-          id: t.id,
-          status: "failed",
-          error: (error as Error).message,
-        });
-      }
-    }
-    return { results };
+    assertClockCapabilities(health, b.action === "extend");
+    return clockManagement.batch(
+      { ...b, exam: req.params.exam },
+      actor.username,
+    );
   });
 }

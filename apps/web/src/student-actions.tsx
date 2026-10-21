@@ -73,6 +73,9 @@ export function StudentActions({
                   id: a.id,
                   revision: a.clock_revision || 0,
                   requestID: a.requestID,
+                  ...(op.kind === "reset"
+                    ? { expectedSeconds: a.allowance * 60 }
+                    : {}),
                 })),
               });
               setResults(r.results);

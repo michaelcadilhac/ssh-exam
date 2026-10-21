@@ -260,7 +260,14 @@ it("bulk clock actions are durable, per-attempt, additive, retry-safe and scoped
       (
         await t.post("attempts/clocks", {
           action: "reset",
-          targets: [{ id: t.ids[3], revision: 0, requestID: randomUUID() }],
+          targets: [
+            {
+              id: t.ids[3],
+              revision: 0,
+              requestID: randomUUID(),
+              expectedSeconds: 5400,
+            },
+          ],
         })
       ).statusCode,
     ).toBe(403);
@@ -269,7 +276,14 @@ it("bulk clock actions are durable, per-attempt, additive, retry-safe and scoped
       (
         await t.post("attempts/clocks", {
           action: "reset",
-          targets: [{ ...target, requestID: randomUUID(), revision: 1 }],
+          targets: [
+            {
+              ...target,
+              requestID: randomUUID(),
+              revision: 1,
+              expectedSeconds: 5400,
+            },
+          ],
         })
       ).json().results[0].status,
     ).toBe("failed");
@@ -283,10 +297,68 @@ it("reset uses each student's future configured allowance with exam-default fall
     await t.post("roster/settings", { usernames: ["alice"], duration: 7200 });
     const result = await t.post("attempts/clocks", {
       action: "reset",
-      targets: [{ id: t.ids[0], revision: 0, requestID: randomUUID() }],
+      targets: [
+        {
+          id: t.ids[0],
+          revision: 0,
+          requestID: randomUUID(),
+          expectedSeconds: 7200,
+        },
+      ],
     });
     expect(result.json().results[0].pending.remaining_seconds).toBe(7200);
     expect(result.json().results[0].pending.extend_seconds).toBeUndefined();
+  } finally {
+    await t.close();
+  }
+});
+
+it("default reset refuses a changed displayed allowance but retries an already-issued amount after later edits", async () => {
+  const t = await setup();
+  try {
+    const target = {
+      id: t.ids[0],
+      revision: 0,
+      requestID: randomUUID(),
+      expectedSeconds: 5400,
+    };
+    await t.post("roster/settings", { usernames: ["alice"], duration: 7200 });
+    const refused = await t.post("attempts/clocks", {
+      action: "reset",
+      targets: [target],
+    });
+    expect(refused.json().results[0]).toMatchObject({
+      status: "failed",
+      error: expect.stringContaining("Default allowance changed"),
+    });
+    expect(
+      t.store.db.prepare("SELECT count(*) n FROM clock_reset_requests").get(),
+    ).toEqual({ n: 0 });
+    const reviewed = {
+      ...target,
+      requestID: randomUUID(),
+      expectedSeconds: 7200,
+    };
+    const accepted = (
+      await t.post("attempts/clocks", { action: "reset", targets: [reviewed] })
+    ).json().results[0];
+    await t.post("roster/settings", { usernames: ["alice"], duration: 8100 });
+    const retry = (
+      await t.post("attempts/clocks", { action: "reset", targets: [reviewed] })
+    ).json().results[0];
+    expect(retry).toEqual(accepted);
+    expect(retry.pending.remaining_seconds).toBe(7200);
+    expect(t.store.attempt(target.id).deadline).toBe(t.deadline);
+    expect(
+      (
+        await t.post("attempts/clocks", {
+          action: "reset",
+          targets: [
+            { ...target, requestID: randomUUID(), expectedSeconds: undefined },
+          ],
+        })
+      ).statusCode,
+    ).toBe(400);
   } finally {
     await t.close();
   }

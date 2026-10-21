@@ -554,6 +554,66 @@ test("partial clock failures stay reviewable and retries reuse the same request 
   expect(s.calls).toHaveLength(2);
   expect(s.calls[0].body).toEqual(s.calls[1].body);
 });
+
+test("default reset keeps the displayed allowance fixed across background roster changes", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Actions for amy attempt 2", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Reset clock", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Reset clock", exact: true });
+  await expect(dialog.locator(".admin-target-list")).toContainText(
+    "90 minutes",
+  );
+  const updated = page.waitForResponse(
+    async (response) => {
+      if (
+        !new URL(response.url()).pathname.endsWith("/alpha/dashboard") ||
+        !response.ok()
+      )
+        return false;
+      const body = await response.json();
+      return body.students?.some(
+        (row: any) =>
+          row.username === "amy" && row.enrollment?.duration === 7200,
+      );
+    },
+    { timeout: 10000 },
+  );
+  s.rows[0].enrollment.duration = 7200;
+  await updated;
+  let sent: any;
+  await page.route(
+    "**/api/admin/exams/alpha/attempts/clocks",
+    async (route) => {
+      sent = route.request().postDataJSON();
+      return route.fulfill({
+        json: {
+          results: sent.targets.map((t: any) => ({
+            id: t.id,
+            status: t.expectedSeconds === 5400 ? "failed" : "pending",
+            error:
+              "Default allowance changed after review; close and review again",
+          })),
+        },
+      });
+    },
+  );
+  await dialog
+    .getByRole("button", { name: "Apply reset", exact: true })
+    .click();
+  await expect(dialog).toContainText("Default allowance changed");
+  expect(sent.targets[0].expectedSeconds).toBe(5400);
+  await expect(dialog.locator(".admin-target-list")).toContainText(
+    "90 minutes",
+  );
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+});
 test("monitoring deletion requires named confirmation and leaves submission review available", async ({
   page,
 }) => {
@@ -1407,12 +1467,32 @@ for (const width of [1280, 390])
       path: info.outputPath(`interruptions-${width}.png`),
       fullPage: true,
     });
+    // Observe the real five-second poll. A synthetic focus event has no
+    // refresh handler; a five-second assertion deadline races that same timer.
+    const refreshed = page.waitForResponse(
+      async (response) => {
+        if (
+          !new URL(response.url()).pathname.endsWith("/alpha/dashboard") ||
+          !response.ok()
+        )
+          return false;
+        const body = await response.json();
+        return body.students?.some((row: any) =>
+          row.attempts?.some(
+            (entry: any) =>
+              entry.id === a.id &&
+              entry.interruptions?.[1]?.outcome === "resumed",
+          ),
+        );
+      },
+      { timeout: 10000 },
+    );
     a.interruptions[1].ended = now + 1000;
     a.interruptions[1].outcome = "resumed";
     a.interruptions[1].authorizations[0].used_at = now + 1000;
     a.state = "ACTIVE";
     a.working = true;
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshed;
     await expect(history).not.toContainText("Awaiting resume");
     await expect(history).toContainText("11s · Resumed");
     await expect(button).toHaveAttribute("aria-expanded", "true");

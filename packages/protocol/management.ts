@@ -18,6 +18,13 @@ export const managementOperations = [
   "alerts.show",
   "alerts.test",
   "alerts.remind",
+  "attempts.list",
+  "attempts.show",
+  "clocks.show",
+  "clocks.reset",
+  "clocks.extend",
+  "clocks.batch",
+  "clocks.preview",
 ] as const;
 export const managementRequest = z
   .object({

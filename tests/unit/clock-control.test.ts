@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -76,6 +76,24 @@ function setup(connected = true) {
   const clocks = new ClockControl(store, agent, life);
   return { store, life, clocks, calls, remote: () => remote };
 }
+it("uses the same pre-deadline acceptance instant for eligibility and native request", () => {
+  const f = setup(false);
+  const at = Date.now();
+  f.store.db
+    .prepare("UPDATE attempts SET deadline=? WHERE id='a'")
+    .run(at + 1000);
+  const clock = vi
+    .spyOn(Date, "now")
+    .mockReturnValueOnce(at)
+    .mockReturnValue(at + 2000);
+  try {
+    const request = f.clocks.stage("a", 10, "instructor", 0);
+    expect(request.requested_at).toBe(at);
+    expect(request.requested_at).toBeLessThan(request.deadline);
+  } finally {
+    clock.mockRestore();
+  }
+});
 it("resets a live clock without logout, records instructor and retains the original interval", async () => {
   const f = setup();
   let changed = 0,

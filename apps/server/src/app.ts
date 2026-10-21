@@ -38,6 +38,7 @@ import {
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { ClockControl } from "./clock-control.js";
+import { assertClockCapabilities } from "./clock-management.js";
 import { registerExamAdmin } from "./exam-admin.js";
 import { registerAgentManagement } from "./agent-management.js";
 import { ExamDefinitions } from "./exam-definitions.js";
@@ -308,7 +309,14 @@ export async function createApp(
           : err.message,
     });
   });
-  registerAgentManagement(app, store, agent, config, (a) => describeAttempt(a));
+  registerAgentManagement(
+    app,
+    store,
+    agent,
+    config,
+    (a) => describeAttempt(a),
+    clocks,
+  );
   app.addContentTypeParser(
     "application/vnd.ssh-exam-event",
     { parseAs: "buffer" },
@@ -1369,13 +1377,7 @@ export async function createApp(
       })
       .parse(req.body);
     const health = await agent.call("health");
-    if (
-      !health.fixture &&
-      !["clock-reset", "deadline-timing-check"].every((cap) =>
-        health.capabilities?.includes(cap),
-      )
-    )
-      throw Error("Update the class-server agent before resetting clocks");
+    assertClockCapabilities(health, false);
     return clocks.reset(
       req.params.id,
       body.minutes,

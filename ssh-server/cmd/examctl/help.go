@@ -79,6 +79,14 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "attempts" {
+		webAttemptsHelp(w)
+		return true
+	}
+	if topic == "clocks" {
+		webClocksHelp(w)
+		return true
+	}
 	if topic == "alerts" {
 		webAlertsHelp(w)
 		return true
@@ -96,7 +104,7 @@ func printHelp(w io.Writer, topic string) bool {
 		return true
 	}
 	if topic == "management" {
-		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nSigned root-agent workflows cover definitions, roster/CSV and alert inspection/test/manual reminders: use examctl web help, examctl web students help and examctl web alerts help. Explicit gateway operation authorization is required. Definition retirement, current clock edits, interruption authorization, monitoring, unified grants, templates/config and administrator management remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for current web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
+		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nSigned root-agent workflows cover definitions, roster/CSV, alert inspection/test/manual reminders, bounded attempt inspection and current individual/bulk clock changes: use examctl web help and web students/alerts/attempts/clocks help. Explicit gateway operation authorization is required. Clock acceptance is not native confirmation; inspect each intent and native info. Definition retirement, interruption authorization, monitoring, unified grants, templates/config and administrator management remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for remaining web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
 		return true
 	}
 	if topic != "" {

@@ -1379,7 +1379,7 @@ preview/confirmation and snapshot rules through RosterManagement and
 CSV export/example have discoverable help and actual CLI/HTTP/browser tests.
 CSV parsing yields outside SQLite. Consumed previews remain idempotent after
 expiry; expired unused previews do not reopen. See docs/roster-cli.md. Grants,
-clock/review/monitoring/template/config/admin coverage remain pending. M1/C1d
+review/monitoring/template/config/admin coverage remain pending. M1/C1d
 now implements shared web/CLI notification metadata list/show/test and explicit
 manual reminders (`examctl web alerts help`), not automatic escalation. A reminder
 requires an unresolved current episode, reviewed revision, no pending original/
@@ -1394,6 +1394,22 @@ bodies/student review or monitoring text. Browser polling cannot silently adopt
 a newer revision under edited/retried input. Desktop permission and sound stay
 browser-local. See docs/alert-management.md for verified local evidence and
 rollback limits; nothing is deployed.
+
+C1e now shares synchronous clock-intent staging and explicit single/bulk workflows
+with bounded gateway attempt/intent inspection through `examctl web attempts` and
+`examctl web clocks`. Delivery uses existing authenticated SSH/timing reconciliation,
+outside management SQLite transactions. Gateway acceptance is distinct from native
+application; retries retain exact child identities and amounts, report partial
+failures and never silently add time twice. One captured acceptance instant fences
+eligibility and signed timestamps against the old deadline. Default-reset dialogs
+and CLI previews capture each reviewed allowance: changed defaults refuse a new
+intent, while an already-issued intent keeps its original amount. Old clients
+without reviewed amounts must reload; matching gateway/browser assets are required.
+These are explicit existing manual clock controls, not automatic outage refunds,
+reopening, new grants or authority to alter original holds/protected history.
+Permanent inspection outcomes exclude page/session secrets, student review/media
+and unbounded history. See docs/attempt-clock-management.md and the local test
+record; full management and production qualification remain open.
 
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 

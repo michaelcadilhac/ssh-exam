@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import * as rosterParser from "../../apps/server/src/roster.js";
+import { qualifyClockCLI } from "../fixtures/management-clocks.js";
 import {
   generateKeyPairSync,
   randomBytes,
@@ -141,6 +142,13 @@ it("requires explicit root-agent management purpose, audience, freshness, pinned
       "alerts.show",
       "alerts.test",
       "alerts.remind",
+      "attempts.list",
+      "attempts.show",
+      "clocks.show",
+      "clocks.preview",
+      "clocks.reset",
+      "clocks.extend",
+      "clocks.batch",
     ]) {
       expect(
         f.unpack(await f.post(f.request({ operation, body: {} }))).status,
@@ -552,6 +560,11 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
             .all(),
         ),
       ).not.toContain("PRIVATE NOTICE BODY");
+      expect(
+        f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
+      ).toEqual({ n: 0 });
+      delete f.config.smtp;
+      await qualifyClockCLI(f, invoke);
       f.config.agent.managementOperations = [];
       await expect(cli(["show", "midterm"])).rejects.toMatchObject({
         code: 1,
@@ -560,7 +573,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       expect(existsSync(f.dir + "/unused-native-state")).toBe(false);
       expect(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
-      ).toEqual({ n: 0 });
+      ).toEqual({ n: 4 });
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));

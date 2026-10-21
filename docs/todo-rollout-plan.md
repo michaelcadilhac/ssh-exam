@@ -100,6 +100,17 @@ episode resolution; quiesce mail delivery and reconcile pending reminders with
 compatible tooling before any separately authorized downgrade. Do not erase
 rows or reset tries to force resend. See alert-management.md; no rollout executed.
 
+C1e adds attempt/clock CLI metadata and shared synchronous clock staging, without
+a schema migration or alternate native control route. Keep migration 007/013
+requests, actor/target IDs, revisions and original/current intervals through
+rollout/rollback. Matching browser/gateway are essential: default resets now bind
+the displayed/reviewed allowance and reject stale or missing amounts. Old clients
+must reload; an old gateway could discard the new expectedSeconds and recompute
+another amount. Do not downgrade with new confirmations or pending intents unless
+the amount/retry/deadline fences remain verified. No automatic refund, completion
+reopen, hold release or old-history rewrite. Qualify signed pending delivery and
+partial retries, not just root queue acceptance. See attempt-clock-management.md.
+
 C1b adds shared conditional definition create/update and migration 014's browser
 intent ledger. Preserve both intent ledgers on rollback. Older settings clients
 must reload to obtain revisions; unversioned overwrites now refuse instead of

@@ -20,6 +20,17 @@ import {
   type RosterRow,
 } from "./roster.js";
 import { z } from "zod";
+import { ClockControl } from "./clock-control.js";
+import {
+  ClockManagement,
+  assertClockCapabilities,
+} from "./clock-management.js";
+import { AttemptManagement } from "./attempt-management.js";
+import {
+  attemptShow,
+  clockBatch,
+  clockSingle,
+} from "../../../packages/protocol/clock-management.js";
 import {
   AlertManagement,
   alertPage,
@@ -39,10 +50,16 @@ export function registerAgentManagement(
   agent: Agent,
   config: Config,
   describe: (a: any) => any = (a) => a,
+  clocks?: ClockControl,
 ) {
   const definitions = new ExamDefinitions(store);
   const roster = new RosterManagement(store, describe);
   const alerts = new AlertManagement(store, () => !!config.smtp);
+  const attempts = clocks
+    ? new AttemptManagement(store, clocks, describe)
+    : null;
+  const clockManagement =
+    clocks && attempts ? new ClockManagement(store, clocks, attempts) : null;
   app.addContentTypeParser(
     "application/vnd.ssh-exam-management",
     { parseAs: "buffer" },
@@ -206,6 +223,49 @@ export function registerAgentManagement(
                   b.reason,
                 ),
               };
+            } else if (
+              r.operation.startsWith("attempts.") ||
+              r.operation.startsWith("clocks.")
+            ) {
+              if (!attempts || !clockManagement)
+                throw Error(
+                  "Clock management is unavailable; inspect gateway configuration",
+                );
+              let value: unknown;
+              switch (r.operation) {
+                case "attempts.list":
+                  value = attempts.page(r.body);
+                  break;
+                case "attempts.show":
+                  value = attempts.show(attemptShow.parse(r.body).id);
+                  break;
+                case "clocks.show":
+                  value = clockManagement.show(r.body);
+                  break;
+                case "clocks.preview":
+                  value = clockManagement.preview(r.body);
+                  break;
+                case "clocks.reset":
+                case "clocks.extend": {
+                  const b = clockSingle.parse(r.body);
+                  const extend = r.operation === "clocks.extend";
+                  assertClockCapabilities(agent.configurationHealth(), extend);
+                  value = clockManagement.single(b, actor, extend);
+                  break;
+                }
+                case "clocks.batch": {
+                  const b = clockBatch.parse(r.body);
+                  assertClockCapabilities(
+                    agent.configurationHealth(),
+                    b.action === "extend",
+                  );
+                  value = clockManagement.batch(b, actor);
+                  break;
+                }
+                default:
+                  throw Error("Unsupported attempt/clock management operation");
+              }
+              return { ok: true, status: 200, result: value };
             } else if (r.operation.startsWith("alerts.")) {
               let value: unknown;
               switch (r.operation) {
@@ -294,15 +354,23 @@ export function registerAgentManagement(
           JSON.stringify({
             confirmed: result.ok,
             operation: r.operation,
-            target: r.operation.startsWith("alerts.")
-              ? z
-                  .string()
-                  .uuid()
-                  .safeParse((r.body as { id?: unknown } | null)?.id).data ||
-                "notifications"
-              : r.operation === "exams.show"
-                ? examShowRequest.safeParse(r.body).data?.id
-                : "exams",
+            target:
+              r.operation.startsWith("attempts.") ||
+              r.operation.startsWith("clocks.")
+                ? attemptShow.safeParse({
+                    id: (r.body as { id?: unknown } | null)?.id,
+                  }).data?.id ||
+                  studentManagement.safeParse(r.body).data?.exam ||
+                  "clocks"
+                : r.operation.startsWith("alerts.")
+                  ? z
+                      .string()
+                      .uuid()
+                      .safeParse((r.body as { id?: unknown } | null)?.id)
+                      .data || "notifications"
+                  : r.operation === "exams.show"
+                    ? examShowRequest.safeParse(r.body).data?.id
+                    : "exams",
           }),
         );
         store.db

@@ -22,18 +22,19 @@ export class ClockControl {
     if (request && this.agent.connected(this.store.attempt(id).username))
       this.life.acceptRemote(await this.agent.call("reset-clock", request));
   }
-  async reset(
+  // Synchronous durable intent only; safe within a management transaction. No
+  // SSH, health/network wait or native confirmation is performed here.
+  stage(
     id: string,
     minutes: number,
     actor: string,
     revision: number,
     requestID: string = randomUUID(),
-    deferDelivery = false,
     extend = false,
   ) {
     if (!Number.isInteger(minutes) || minutes < 1 || minutes > 360)
       throw Error("Enter 1–360 minutes remaining");
-    const request = this.store.db.transaction(() => {
+    return this.store.db.transaction(() => {
       const a = this.store.attempt(id);
       const existing = this.store.db
         .prepare("SELECT body,status FROM clock_reset_requests WHERE id=?")
@@ -54,11 +55,15 @@ export class ClockControl {
           throw Error("Conflicting clock reset retry");
         return body;
       }
+      // One acceptance instant must fence BOTH eligibility and the signed body.
+      // Crossing the old deadline between two Date.now calls otherwise records
+      // an intent the native agent can never legally apply.
+      const requestedAt = now();
       if (
         !["ACTIVE", "LOCKED"].includes(a.state) ||
         !a.start ||
         !a.deadline ||
-        a.deadline <= now() ||
+        a.deadline <= requestedAt ||
         a.protected
       )
         throw Error(
@@ -74,7 +79,7 @@ export class ClockControl {
         id,
         reset_id: requestID,
         actor,
-        requested_at: now(),
+        requested_at: requestedAt,
         remaining_seconds: extend ? 0 : minutes * 60,
         ...(extend ? { extend_seconds: minutes * 60 } : {}),
         deadline: a.deadline,
@@ -93,6 +98,24 @@ export class ClockControl {
       );
       return body;
     })();
+  }
+  result(id: string) {
+    return {
+      confirmed: !this.pending(id),
+      attempt: this.store.attempt(id),
+      pending: this.pending(id),
+    };
+  }
+  async reset(
+    id: string,
+    minutes: number,
+    actor: string,
+    revision: number,
+    requestID: string = randomUUID(),
+    deferDelivery = false,
+    extend = false,
+  ) {
+    this.stage(id, minutes, actor, revision, requestID, extend);
     // Delivery failure is explicitly pending. The root agent will obtain this
     // durable request during its outbound check before deadline collection.
     if (
@@ -107,10 +130,6 @@ export class ClockControl {
         /* Keep the exact request for signed callback/deadline recovery. */
       }
     }
-    return {
-      confirmed: !this.pending(id),
-      attempt: this.store.attempt(id),
-      pending: this.pending(id),
-    };
+    return this.result(id);
   }
 }

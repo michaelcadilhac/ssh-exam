@@ -33,6 +33,7 @@ escalation. Generated screenshot changes must not become product changes.
 | C1a: root-agent management foundation | approved C1 | Explicit named authorization/purpose/audience; persistent replay/idempotency across restart; root-machine audit and pinned HTTPS replies; actual examctl/gateway list/show workflows, help/refusals and no native/student mutation | Implemented/tested locally; mutations/full coverage and deployment pending |
 | C1b: shared definition configuration | C1a | Shared web/CLI create/update for every definition field, stale/missing revision refusal, partial preservation, durable web/root retry and historical immutability; actual CLI/HTTP/browser/build/native race tests | Implemented/tested locally; not deployed |
 | C1c: roster/CSV management parity | C1b | Shared web/CLI list/add/remove/settings, CSV preview/confirm/example/export; same inheritance, sandbox, UID-verification, active-snapshot, stale-preview/idempotency rules; actual CLI/HTTP/browser/race/build tests | Implemented/tested locally: 302 application tests, native race/build/typecheck/vet, 28 browser roster/interface/SSH checks; not deployed |
+| C1e: attempts and current clocks | C1a + existing clock policy | Shared atomic staging, bounded private-safe inspection, single/bulk/reset-default workflows, exact amount/revision/child retry fences, honest pending/native status; compiled CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 313 app tests, all three Go-module race checks, static build/vet/typecheck/build, 46 admin/alert/definition/timezone and 28 interface/real synthetic SSH browser checks; not deployed |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
@@ -41,7 +42,7 @@ escalation. Generated screenshot changes must not become product changes.
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
-| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore implementation and default-size local worker test pass, full regression in progress; manual cleanup and privileged/concurrent sizing remain open |
+| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore, default-size worker and full local regression pass in 7ef7ac5; manual cleanup and privileged/concurrent sizing remain open |
 
 Each implemented milestone gets documentation, focused regressions, proportional
 integration/build/race/browser checks, then a coherent local commit. Never label
@@ -50,6 +51,66 @@ mean implemented and tested locally when explicitly qualified; deployed status i
 separate and remains **not deployed** throughout this work.
 
 ## Current native increment (October 21)
+
+M1/C1d is local commit a2aa155. Next C1e plan (existing C1 authority and existing
+clock semantics, no new policy approval needed): add bounded/redacted gateway
+attempt and clock-intent inspection plus supported individual/bulk root clock
+workflows. Extract synchronous ClockControl staging shared by browser/root; never
+await native SSH/health/network inside management SQLite transactions. Persist
+exact revision/request identities, preserve original intervals/access holds and
+refuse completed/expired/protected attempts. Root acknowledgements must distinguish
+gateway acceptance from pending versus native-confirmed application; fresh reads
+and native info diagnose lost replies. Bulk retries keep each child request ID and
+report partial failures without silently adding minutes twice. Existing signed
+SSH heartbeat/deadline-timing delivery remains the only native control path.
+Acceptance: compiled CLI/local TLS create/read/reset/extend/default-batch and
+restart/partial-conflict tests; shared HTTP/browser workflows; no page/session/
+monitoring payload in persistent management reads; unchanged native deadlines,
+holds, SSH ownership and failure isolation; full app/race/build/browser checks.
+This increment is implemented/tested locally, not deployed; evidence follows.
+
+C1e source/tests now implement that plan plus two confirmed clock fences: one
+captured acceptance instant prevents eligibility/body timestamps crossing the
+old deadline, and default-reset targets carry the allowance reviewed in the web
+dialog/CLI preview. A changed default refuses a new intent; an already-issued
+intent retains its old amount on retry after later edits. Old clients missing
+reviewed amounts must reload. Native clocks/original holds are unchanged until
+authenticated application reports, and no root wait runs inside SQLite.
+25 focused app/HTTP/actual compiled CLI-to-TLS tests pass; helper reports are
+explicitly synthetic, including signed callback/timing application, not privileged
+host-root/PAM proof. The full application suite passes all 313 tests/55 files,
+native race with the worker/namespace/CLI/default-size opt-ins and typecheck pass.
+The first browser group passed 45/46: an existing interruption-history test raced
+the five-second polling interval against a five-second assertion limit; its error
+snapshot already contained the resumed state. Both that check and the new default
+refresh check now synchronize on the actual updated dashboard response, then
+assert rendered state; runtime polling/enforcement is unchanged. Repeating all
+46 browser admin/alert/definition/timezone checks now pass (2.7m). A frozen full
+application repeat passes 313 tests/55 files (61.7s); native full race with all
+worker/systemd/namespace/compiler/default-size opt-ins, static build/vet and
+typecheck/build pass. All 28 interface/real synthetic SSH browser checks also pass
+(3.8m), including active resets with live terminals and preserved original holds.
+All three Go-module race checks pass. Generated screenshots are restored, not
+product changes. C1e is locally qualified; unified grants/freeze/cleanup and full
+management remain open. No deployment or command-not-found.
+See attempt-clock-management.md. No deployment.
+
+Next C1f investigation confirms that the existing authorize endpoint accepts an
+empty body and reads the current generation at submission, rather than fencing
+the interruption the instructor reviewed. Additional reasons/student requests
+can also change while a lock keeps the same generation. Plan: a shared bounded
+review/authorization service, exact generation plus monotonic review revision,
+audited reason and durable retry with the original five-minute/deadline expiry.
+New reason/review/authorization/state changes must invalidate stale review, never
+silently authorize the replacement; retries cannot extend/replace permission.
+For private CLI review, persist only scoped metadata receipts in management
+outcomes. Re-read bounded current history after authorization checks, refuse a
+changed receipt/tombstone, and never replay deleted student text from a cache.
+No new listener, native control path or relaxed monitoring/SSH policy. Acceptance:
+actual root CLI/TLS/restart/retention workflows, HTTP authority and same-generation
+change/expiry/rollback tests, browser confirmation/lost-reply/stale/mobile checks,
+full app/native race/build/typecheck and browser interface/SSH qualification.
+This is implementation planning, not a completed investigation or deployed fix.
 
 C6 is local commit 7ef7ac5. M1/C1d alert management now adds shared metadata-only
 web/root list/show/test and explicit audited reminders, migration 015, stable

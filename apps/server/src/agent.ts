@@ -127,4 +127,13 @@ export class Agent {
   close() {
     this.sessions.clear();
   }
+  // Already authenticated callback configuration, not a fresh native probe.
+  // Kept synchronous so management never awaits SSH/network inside SQLite.
+  configurationHealth() {
+    const row = this.store?.db
+      .prepare("SELECT payload FROM agent_snapshot WHERE agent=?")
+      .get(this.config.id) as { payload: string } | undefined;
+    if (!row) throw Error("Class agent has not reported its configuration");
+    return JSON.parse(row.payload).health;
+  }
 }

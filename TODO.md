@@ -83,6 +83,14 @@ An administrator should be able to discover and finish a workflow using
   workflows, tested through actual compiled CLI/TLS, 302 application tests,
   native race/build and 28 browser interface/SSH checks. No caller UID is trusted,
   no active snapshot/clock/hold changes, and consumed previews retry after expiry.
+  C1d adds shared alert metadata/test/explicit audited reminders without automatic
+  escalation. C1e adds bounded attempt/clock-intent inspection, individual reset/
+  extension and explicit bulk/default-allowance workflows. Gateway acceptance is
+  distinguished from native application; retries preserve each intent. Confirmed
+  timestamp/default-allowance races are fixed, with matching web/CLI fences and
+  regression tests. See docs/attempt-clock-management.md for local qualification.
+  Interruption review/authorization and the other management gaps remain open;
+  no local increment is a deployment claim.
   Local status: all currently supported native commands have process-tested help,
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.

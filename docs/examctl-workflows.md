@@ -31,6 +31,11 @@ historical snapshot rules. See roster-cli.md for units, limits and safe output.
 test and explicit revision/reason-fenced manual reminders. Queued is not sent;
 desktop permission/sound are browser-local. See alert-management.md. No automatic
 escalation or original episode/retry reset is introduced.
+`examctl web attempts help` and `examctl web clocks help` now describe bounded
+gateway inspection, individual reset/extend, default-allowance preview and explicit
+bulk clock requests. Native application may remain pending; outer gateway
+confirmation is not an effective deadline. Reviewed default amounts and per-target
+request IDs fence edits/retries. See attempt-clock-management.md and final progress.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native
