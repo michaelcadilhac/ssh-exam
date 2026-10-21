@@ -27,7 +27,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M2: renewal races and preparation housekeeping | M1 | Normal expiry has no new interruption; intentional actions survive delayed renewal results; stale replies cannot affect replacement ownership; never-contacted reservations do not generate cleanup; uncertain committed starts retained. Real WS/callback regressions and full integration suite | Implemented/tested locally; not deployed |
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export implemented/tested locally; full management awaits C1/C2 |
-| M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Pending |
+| M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Pending |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | Await proposal and decision; no implementation authorized yet |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | Await proposal and decision |
@@ -81,6 +81,13 @@ subprocess help/usage checks for all current commands and immutable, durably
 audited protected exports with audit-write failure. Full web-owned management,
 explicit alert escalation and recovery grant/repair workflows remain C1/C2
 dependent; no claim of complete CLI coverage is made.
+
+Local commit a3f87df records M4. M5 typecheck/build and 52 Chromium checks pass
+(admin redesign, real browser SSH interface and SSH cleanup suites). Tests cover
+active/completed screenshot-first review, zero unrequested replay reads, tab/pane/
+slider retention, close/reopen, incremental refresh and network recovery. Generated
+documentation screenshots are excluded from the implementation commit. See
+review-on-demand.md; no recording/retention/security policy changed.
 
 ## Proposed rollout boundary
 

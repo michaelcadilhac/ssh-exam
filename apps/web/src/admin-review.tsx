@@ -33,9 +33,16 @@ function accessDescription(a: any) {
   return "The server access restriction has not started.";
 }
 // One request at a time; reconnecting or returning to the page refreshes immediately.
-function useReviewRefresh(load: (signal: AbortSignal) => Promise<void>) {
+function useReviewRefresh(
+  load: (signal: AbortSignal) => Promise<void>,
+  enabled = true,
+) {
   const refresh = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
+    if (!enabled) {
+      refresh.current = null;
+      return;
+    }
     const controller = new AbortController();
     let pending: Promise<void> | null = null;
     const run = () => {
@@ -61,17 +68,19 @@ function useReviewRefresh(load: (signal: AbortSignal) => Promise<void>) {
       window.removeEventListener("online", update);
       window.removeEventListener("focus", update);
     };
-  }, [load]);
+  }, [load, enabled]);
   return useCallback(() => refresh.current?.() || Promise.resolve(), []);
 }
 function Replay({
   id,
   pane,
   positions,
+  active,
 }: {
   id: string;
   pane: string;
   positions: Map<string, number>;
+  active: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null),
     terminal = useRef<Terminal | null>(null),
@@ -128,7 +137,7 @@ function Replay({
     },
     [id, pane],
   );
-  const refresh = useReviewRefresh(load);
+  const refresh = useReviewRefresh(load, active);
   useEffect(() => {
     const t = terminal.current;
     if (!t || !length) return;
@@ -211,6 +220,7 @@ export function AdminReview({
     [notice, setNotice] = useState("");
   const [pane, setPane] = useState(""),
     [deleting, setDeleting] = useState(false);
+  const [replayOpen, setReplayOpen] = useState(false);
   const positions = useRef(new Map<string, number>());
   const fetchMonitoring = useCallback(
     async (signal: AbortSignal) => {
@@ -498,28 +508,39 @@ export function AdminReview({
               </div>
               {!!media.terminals.length && (
                 <div className="review-selectors">
-                  <label>
-                    Terminal replay
-                    <select
-                      value={pane}
-                      onChange={(e) => setPane(e.target.value)}
-                    >
-                      <option value="">Choose a terminal</option>
-                      {media.terminals.map((r: any, i: number) => (
-                        <option key={r.pane} value={r.pane}>
-                          Terminal {i + 1}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <button
+                    aria-expanded={replayOpen}
+                    onClick={() => setReplayOpen(!replayOpen)}
+                  >
+                    {replayOpen
+                      ? "Close terminal replay"
+                      : "Open terminal replay"}
+                  </button>
+                  {replayOpen && (
+                    <label>
+                      Terminal replay
+                      <select
+                        value={pane}
+                        onChange={(e) => setPane(e.target.value)}
+                      >
+                        <option value="">Choose a terminal</option>
+                        {media.terminals.map((r: any, i: number) => (
+                          <option key={r.pane} value={r.pane}>
+                            Terminal {i + 1}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
               )}
-              {pane && (
+              {pane && replayOpen && (
                 <Replay
                   key={pane}
                   id={a.id}
                   pane={pane}
                   positions={positions.current}
+                  active={section === "Monitoring"}
                 />
               )}
               {!!a.ended && (

@@ -174,7 +174,11 @@ This is a design investigation; agree on the proposal before implementation.
 
 ## Instructor review interface
 
-- [ ] **Make screenshots the primary review interface; terminal replay is secondary.**
+- [x] **Make screenshots the primary review interface; terminal replay is secondary.**
+  Implemented/tested locally October 20; not deployed. Replay requires explicit
+  opening and pane selection, stops reads when closed/hidden, and preserves
+  positions. Active/completed and live refresh browser regressions pass. Recording,
+  retention and authorization are unchanged.
   Lead attempt review with screen captures and, when required, webcam captures,
   using the existing timeline sliders and live mode. Make terminal replay an
   explicitly opened, on-demand tool for investigating a particular interval or

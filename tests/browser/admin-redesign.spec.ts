@@ -672,7 +672,12 @@ test("open review updates images, activity and incremental replay without moving
     name: "Terminal replay",
     exact: true,
   });
+  await expect(terminal).toHaveCount(0);
+  expect(s.replayOffsets).toHaveLength(0);
   await timeline.fill("0");
+  await dialog
+    .getByRole("button", { name: "Open terminal replay", exact: true })
+    .click();
   await terminal.selectOption(pane);
   const slider = dialog.locator(".admin-replay input[type=range]");
   await expect(slider).toHaveAttribute("max", "2");
@@ -708,11 +713,12 @@ test("open review updates images, activity and incremental replay without moving
     dialog.getByRole("button", { name: /^Activity/ }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(dialog).toContainText("New activity");
+  expect(s.replayOffsets).toHaveLength(originalOffset);
+  await dialog.getByRole("button", { name: "Monitoring", exact: true }).click();
   await expect
     .poll(() => s.replayOffsets.length)
     .toBeGreaterThan(originalOffset);
   expect(s.replayOffsets.slice(1).every((offset) => offset > 0)).toBe(true);
-  await dialog.getByRole("button", { name: "Monitoring", exact: true }).click();
   await expect(dialog.getByAltText("Screen capture for amy")).toHaveAttribute(
     "src",
     "/api/admin/media/screen-old",
@@ -770,6 +776,9 @@ test("automatic review refresh recovers after network failure and stops when clo
     .click();
   const dialog = page.getByRole("dialog");
   await dialog
+    .getByRole("button", { name: "Open terminal replay", exact: true })
+    .click();
+  await dialog
     .getByRole("combobox", { name: "Terminal replay", exact: true })
     .selectOption(pane);
   await expect(dialog.getByRole("slider")).toHaveAttribute("max", "1");
@@ -798,6 +807,72 @@ test("automatic review refresh recovers after network failure and stops when clo
   expect(s.reviewCalls).toBe(calls);
   expect(s.replayOffsets).toHaveLength(replayCalls);
 });
+
+for (const ended of [false, true]) {
+  test(`screenshots lead ${ended ? "completed" : "active"} review; replay opens on demand and preserves position when closed`, async ({
+    page,
+  }) => {
+    const s = await fixture(page);
+    const pane = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const a = s.rows[0].attempts[0];
+    if (ended)
+      Object.assign(a, {
+        state: "COMPLETED",
+        ended: Date.now(),
+        protected: 1,
+        working: false,
+      });
+    s.media.frames.push({
+      id: "screen",
+      source: "screen",
+      captured: Date.now(),
+      received: Date.now(),
+    });
+    s.media.terminals.push({ pane });
+    s.replayEvents.push(
+      { at: Date.now(), event: "open" },
+      { at: Date.now(), event: "output", data: "b2s=" },
+    );
+    await page
+      .getByRole("rowgroup", { name: "amy", exact: true })
+      .getByRole("button", { name: "Review", exact: true })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByAltText("Screen capture for amy")).toBeVisible();
+    await expect(
+      dialog.getByRole("combobox", { name: "Terminal replay", exact: true }),
+    ).toHaveCount(0);
+    expect(s.replayOffsets).toHaveLength(0);
+    await dialog
+      .getByRole("button", { name: "Refresh monitoring", exact: true })
+      .click();
+    expect(s.replayOffsets).toHaveLength(0);
+    await dialog
+      .getByRole("button", { name: "Open terminal replay", exact: true })
+      .click();
+    await dialog
+      .getByRole("combobox", { name: "Terminal replay", exact: true })
+      .selectOption(pane);
+    const slider = dialog.locator(".admin-replay input[type=range]");
+    await expect(slider).toHaveAttribute("max", "1");
+    await slider.fill("1");
+    await dialog
+      .getByRole("button", { name: "Close terminal replay", exact: true })
+      .click();
+    await expect(slider).toHaveCount(0);
+    const reads = s.replayOffsets.length;
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await page.waitForTimeout(200);
+    expect(s.replayOffsets).toHaveLength(reads);
+    await dialog
+      .getByRole("button", { name: "Open terminal replay", exact: true })
+      .click();
+    await expect(slider).toHaveAttribute("max", "1");
+    await expect(slider).toHaveValue("1");
+    await expect(dialog.getByAltText("Screen capture for amy")).toBeVisible();
+  });
+}
 
 test("slow review polling does not overlap and closing cancels an outstanding refresh", async ({
   page,

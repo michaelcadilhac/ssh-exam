@@ -1397,6 +1397,12 @@ filter. Ignore replies from closed/replaced reviews.
 
 Review separates Monitoring, Activity and Submission. Keep image history/replay,
 incident messages and authorization available, with in-dialog loading/errors/retry.
+Screen captures and required webcam captures are the primary Monitoring view.
+Terminal replay is secondary: explicitly open it and choose a pane before loading
+recording events. Closing replay stops its reads; switching away from Monitoring
+pauses reads without discarding replay state. Preserve the selected review tab,
+independent capture sliders/live mode, pane and replay position across refreshes.
+This changes presentation/loading only, not recording, retention or authorization.
 Focus Close review when opening; authorization requires a deliberate action. Expose
 collection pending/failure separately from verified security, and retain original/current
 deadlines, account holds, access-recovery details, checksums and manifest inspection.
