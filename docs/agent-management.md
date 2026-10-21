@@ -3,7 +3,9 @@
 October 21, 2026. C1 foundation implemented/tested locally; **not deployed**.
 Exam-definition configuration, roster/CSV and alert inspection/test/manual-reminder
 workflows are implemented locally. See alert-management.md for its validation,
-metadata-only outcomes and migration 015. Full management,
+metadata-only outcomes and migration 015. Attempt/clock workflows are in
+attempt-clock-management.md; interruption review/authorization, migration 016 and
+private read receipts are in interruption-management.md. Full management,
 unified grants and definition retirement are still pending; this is not CLI
 completeness or production qualification.
 
@@ -67,6 +69,10 @@ command/arguments and `--request UUID`; each invocation signs a fresh nonce. The
 same ID/arguments return the original cached outcome across gateway restart.
 Different arguments with the same ID conflict. An exact nonce replay is refused.
 This applies to reads too: use a new ID (the default) for a refreshed snapshot.
+The explicit privacy exception is interruptions.review: only its scoped metadata
+receipt is cached. A retry re-reads unchanged retained history after revision and
+tombstone checks, or refuses changed/deleted data; it never returns private text
+from permanent outcomes. See interruption-management.md for paginated review.
 List is bounded/paginated (default 100, maximum 200); returned config revision
 hashes fence conditional updates. Stable partial-update bodies retain exact
 request-ID retry semantics without reconstructing intent from newer defaults.

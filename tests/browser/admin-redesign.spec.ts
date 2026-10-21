@@ -22,6 +22,7 @@ function makeAttempt(
     original_deadline: Date.now() + 300000,
     clock_revision: 0,
     generation: 1,
+    continuation_revision: 0,
     attempt_number: 1,
     protected: 0,
     ended: ["COMPLETED", "COLLECTION_FAILED"].includes(state)
@@ -96,6 +97,8 @@ async function fixture(page: Page, large = false) {
     replayOffsets: [] as number[],
     replayEvents: [] as any[],
     failReplay: false,
+    lostAuthorization: false,
+    authorizationReplies: new Map<string, any>(),
     media: {
       frames: [] as any[],
       terminals: [] as any[],
@@ -211,6 +214,38 @@ async function fixture(page: Page, large = false) {
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
       state.calls.push({ path, body });
+      if (path.endsWith("/authorize")) {
+        const prior = state.authorizationReplies.get(body.requestID);
+        if (prior) return json(prior);
+        const a = state.rows
+          .flatMap((s) => s.attempts)
+          .find((a) => path.includes(a.id));
+        if (
+          a.generation !== body.generation ||
+          a.continuation_revision !== body.revision
+        )
+          return json(
+            {
+              error:
+                "Interruption changed after review; cancel, review current interruption and use a new intent",
+            },
+            409,
+          );
+        const result = {
+          id: a.id,
+          generation: a.generation,
+          expires: Math.min(a.deadline, Date.now() + 300000),
+          execution: false,
+          status: "authorized",
+        };
+        a.continuation_revision++;
+        state.authorizationReplies.set(body.requestID, result);
+        if (state.lostAuthorization) {
+          state.lostAuthorization = false;
+          return route.abort("failed");
+        }
+        return json(result);
+      }
       if (path.endsWith("/roster/settings")) {
         if (state.failSettings)
           return json({ error: "Settings could not be saved" }, 503);
@@ -420,6 +455,13 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
   await dialog
     .getByRole("button", { name: "Authorize resume", exact: true })
     .click();
+  expect(s.calls).toHaveLength(0);
+  await dialog
+    .getByRole("textbox", { name: /^Authorization reason/ })
+    .fill("Reviewed monitoring interruption");
+  await dialog
+    .getByRole("button", { name: "Confirm authorization", exact: true })
+    .click();
   await expect(dialog).toContainText("Resume authorized");
   expect(
     await dialog
@@ -460,6 +502,118 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
   await expect(pending).not.toContainText("Submission secured");
   await expect(pending.getByRole("link", { name: /Download/ })).toHaveCount(0);
 });
+for (const width of [1280, 430])
+  test(`continuation confirmation preserves exact intent after a lost reply at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const s = await fixture(page);
+    const bob = s.rows[1].attempts[0];
+    await page
+      .getByRole("rowgroup", { name: "bob", exact: true })
+      .getByRole("button", { name: "Review", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "bob · Attempt 1",
+      exact: true,
+    });
+    await dialog
+      .getByRole("button", { name: "Authorize resume", exact: true })
+      .click();
+    const reason = dialog.getByRole("textbox", {
+      name: /^Authorization reason/,
+    });
+    await expect(reason).toBeFocused();
+    await reason.fill("Reviewed screen-sharing restoration");
+    s.lostAuthorization = true;
+    await dialog
+      .getByRole("button", { name: "Confirm authorization", exact: true })
+      .click();
+    await expect(dialog.getByRole("alert")).toContainText(/fetch|network/i);
+    expect(s.calls).toHaveLength(1);
+    const original = s.calls[0].body;
+    expect(original).toMatchObject({
+      generation: 1,
+      revision: 0,
+      reason: "Reviewed screen-sharing restoration",
+    });
+    await page.waitForResponse(
+      async (r) =>
+        r.url().includes("/dashboard") &&
+        (await r.json()).students?.some(
+          (s: any) =>
+            s.username === "bob" &&
+            s.attempts[0].continuation_revision === bob.continuation_revision,
+        ),
+      { timeout: 10000 },
+    );
+    await expect(reason).toHaveValue(original.reason);
+    if (width === 430)
+      await page.screenshot({
+        path: "/tmp/ssh-exam-interruption-confirmation-mobile.png",
+        fullPage: true,
+      });
+    await dialog
+      .getByRole("button", { name: "Confirm authorization", exact: true })
+      .click();
+    await expect(dialog).toContainText("Resume authorized until");
+    expect(s.calls[1].body).toEqual(original);
+    expect(s.authorizationReplies.size).toBe(1);
+    expect(bob.state).toBe("LOCKED");
+  });
+
+test("continuation confirmation cannot silently adopt a new generation or same-generation review revision", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  const bob = s.rows[1].attempts[0];
+  await page
+    .getByRole("rowgroup", { name: "bob", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "bob · Attempt 1",
+    exact: true,
+  });
+  for (const changeGeneration of [false, true]) {
+    await dialog
+      .getByRole("button", { name: "Authorize resume", exact: true })
+      .click();
+    const reason = dialog.getByRole("textbox", {
+      name: /^Authorization reason/,
+    });
+    await reason.fill("Reviewed original interruption");
+    const selectedRevision = bob.continuation_revision;
+    bob.continuation_revision++;
+    if (changeGeneration) bob.generation++;
+    await page.waitForResponse(
+      async (r) =>
+        r.url().includes("/dashboard") &&
+        (await r.json()).students?.some(
+          (s: any) =>
+            s.username === "bob" &&
+            s.attempts[0].continuation_revision === bob.continuation_revision,
+        ),
+      { timeout: 10000 },
+    );
+    await dialog
+      .getByRole("button", { name: "Confirm authorization", exact: true })
+      .click();
+    await expect(dialog.getByRole("alert")).toContainText(
+      "Interruption changed after review",
+    );
+    expect(s.calls.at(-1)!.body.revision).toBe(selectedRevision);
+    expect(s.authorizationReplies.size).toBe(0);
+    await expect(reason).toHaveValue("Reviewed original interruption");
+    await dialog
+      .getByRole("button", { name: "Cancel authorization", exact: true })
+      .click();
+    await expect(
+      dialog.getByRole("button", { name: "Authorize resume", exact: true }),
+    ).toBeFocused();
+  }
+});
+
 test("monitoring errors stay inside review and retry without an empty or wrong screen", async ({
   page,
 }) => {

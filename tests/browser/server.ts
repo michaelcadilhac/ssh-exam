@@ -22,6 +22,10 @@ const timezoneAccounts = Object.fromEntries(
 // Independent identities prevent other specs' unfinished sandbox runs from
 // turning cleanup tests' fresh sign-in into an unrelated recovery flow.
 const cleanupAccounts = { cleanup01: 10013, cleanup02: 10014 };
+// Fault-isolation intentionally leaves paused accounts held. Never reuse those
+// identities in another spec's fresh sandbox preflight.
+const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
+const closureAccounts = { closure01: 10017, closure02: 10018 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -106,6 +110,8 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     const users: Record<string, number> = {
       ...timezoneAccounts,
       ...cleanupAccounts,
+      ...isolationAccounts,
+      ...closureAccounts,
       policytest01: 12001,
       student01: 10001,
       student02: 10002,
@@ -297,6 +303,8 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
     accounts: {
       ...timezoneAccounts,
       ...cleanupAccounts,
+      ...isolationAccounts,
+      ...closureAccounts,
       policytest01: 12001,
       student01: 10001,
       student02: 10002,
@@ -406,10 +414,10 @@ store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("reload", "student11", null, null, null, 10011);
 for (const [id, username, uid] of [
-  ["closure", "student07", 10007],
-  ["reload-opening", "student06", 10006],
-  ["isolation-a", "student08", 10008],
-  ["isolation-b", "student09", 10009],
+  ["closure", "closure01", 10017],
+  ["reload-opening", "closure02", 10018],
+  ["isolation-a", "isolation01", 10015],
+  ["isolation-b", "isolation02", 10016],
   ["preflight-limit", "student04", 10004],
 ] as const) {
   store.db

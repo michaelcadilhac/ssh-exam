@@ -13,6 +13,7 @@ it("fences explicit reminders, keeps automatic episodes stable and cancels obsol
     store.db.exec(
       "INSERT INTO exams VALUES('e','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings,generation,start,deadline,original_deadline,access_state) VALUES('a','e','synthetic',1001,'LOCKED','{}',2,1,9000000000000,9000000000000,'HELD');",
     );
+    store.interruptions.pause(store.attempt("a"), "Synthetic interruption");
     const before = store.attempt("a");
     let alerts = new Alerts(store);
     let service = new AlertManagement(store, () => true);
@@ -100,11 +101,17 @@ it("fences explicit reminders, keeps automatic episodes stable and cancels obsol
       },
       "teacher",
     );
+    expect(store.attempt("a")).toEqual(before);
     store.db.prepare("UPDATE attempts SET generation=3 WHERE id='a'").run();
     expect(service.prepareForDelivery(queued.outbox)).toBe(false);
     expect(service.show(queued.outbox).status).toBe("cancelled");
     store.db.prepare("UPDATE attempts SET generation=2 WHERE id='a'").run();
-    expect(store.attempt("a")).toEqual(before);
+    // The two deliberate generation changes invalidate interruption review;
+    // alert processing itself preserves every attempt field/counter.
+    expect(store.attempt("a")).toEqual({
+      ...before,
+      continuation_revision: before.continuation_revision + 2,
+    });
     expect(
       store.db.prepare("SELECT result FROM alert_management_requests").all(),
     ).not.toEqual([]);

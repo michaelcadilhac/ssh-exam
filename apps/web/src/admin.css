@@ -1,4 +1,35 @@
 /* Instructor workspace. Student exam and sign-in styling is unchanged. */
+.continuation-confirmation {
+  min-width: 0;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid #3a536e;
+  border-radius: 8px;
+  background: #111d2d;
+}
+.continuation-confirmation legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.continuation-confirmation p {
+  margin: 8px 0 14px;
+}
+.continuation-confirmation small {
+  color: #a6b9cf;
+}
+.continuation-confirmation textarea {
+  width: 100%;
+  min-height: 76px;
+}
+.continuation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.continuation-actions .primary:hover:not(:disabled) {
+  background: #86e5d4;
+  color: #08231f;
+}
 .admin.admin-redesign {
   max-width: 1440px;
   padding: 24px 32px 40px;

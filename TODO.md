@@ -89,8 +89,13 @@ An administrator should be able to discover and finish a workflow using
   distinguished from native application; retries preserve each intent. Confirmed
   timestamp/default-allowance races are fixed, with matching web/CLI fences and
   regression tests. See docs/attempt-clock-management.md for local qualification.
-  Interruption review/authorization and the other management gaps remain open;
-  no local increment is a deployment claim.
+  C1f adds private paginated interruption review/current approval inspection and
+  shared audited authorization. Exact generation plus monotonic review revision
+  fixes stale/new-reason approval races; retries preserve original expiry and
+  private metadata receipts cannot replay deleted monitoring text. All 320 app
+  tests, native race/build and 81 combined browser checks pass locally. See
+  docs/interruption-management.md. Other management gaps remain open; no local
+  increment is a deployment claim.
   Local status: all currently supported native commands have process-tested help,
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.
@@ -486,6 +491,11 @@ the approval is not a production change or a completed investigation.
   termination, no mounts/use/repair dependencies, holds, dry-run and audited
   exact-target concurrency checks remain required. No automatic deletion or
   cleanup of existing folders has been performed; implementation/tests remain open.
+  October 21 source investigation/ordered safety increments are recorded in
+  docs/workspace-retention.md. Existing release verification can terminate and
+  cannot stand in for a dry run; other-namespace mounts/process use need fresh
+  proof. Saved-work grants depend on the archive, not the retained live folder.
+  Investigation is not marked complete merely because a proposal exists.
   Original attempt work folders currently remain indefinitely even after the
   protected submission is secured. Decide on retention/grace periods and an
   explicit eligibility rule before implementing deletion. A secured archive alone

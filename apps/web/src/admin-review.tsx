@@ -221,6 +221,14 @@ export function AdminReview({
   const [pane, setPane] = useState(""),
     [deleting, setDeleting] = useState(false);
   const [replayOpen, setReplayOpen] = useState(false);
+  const [authorization, setAuthorization] = useState<{
+    id: string;
+    generation: number;
+    revision: number;
+    requestID: string;
+    reason: string;
+  } | null>(null);
+  const authorizeButton = useRef<HTMLButtonElement>(null);
   const positions = useRef(new Map<string, number>());
   const fetchMonitoring = useCallback(
     async (signal: AbortSignal) => {
@@ -313,13 +321,23 @@ export function AdminReview({
         <div className="review-heading-actions">
           {a.state === "LOCKED" && (
             <button
+              ref={authorizeButton}
               className="primary"
-              disabled={busy || stale || a.deadline <= clock || !!a.protected}
+              disabled={
+                busy ||
+                stale ||
+                !!authorization ||
+                a.deadline <= clock ||
+                !!a.protected ||
+                !Number.isSafeInteger(a.continuation_revision)
+              }
               onClick={() =>
-                void run(async () => {
-                  await api(`/admin/attempts/${a.id}/authorize`, {});
-                  await onChanged();
-                  return "Resume authorized. The student must reconnect and restore monitoring.";
+                setAuthorization({
+                  id: a.id,
+                  generation: a.generation,
+                  revision: a.continuation_revision,
+                  requestID: crypto.randomUUID(),
+                  reason: "",
                 })
               }
             >
@@ -334,6 +352,78 @@ export function AdminReview({
           </button>
         </div>
       </div>
+      {authorization && (
+        <fieldset
+          className="continuation-confirmation"
+          disabled={busy}
+          aria-label="Confirm continuation authorization"
+        >
+          <legend>
+            Authorize {a.username} · generation {authorization.generation}
+          </legend>
+          <p>
+            Reviewed revision {authorization.revision}, fixed despite background
+            updates. Approval lasts at most five minutes or until the deadline.
+            The clock continues; fresh SSH and monitoring are still required.
+          </p>
+          <label>
+            Authorization reason
+            <small>
+              Permanently audited. Do not copy private student messages.
+            </small>
+            <textarea
+              autoFocus
+              maxLength={1000}
+              value={authorization.reason}
+              onChange={(e) =>
+                setAuthorization({
+                  ...authorization,
+                  reason: e.target.value,
+                  requestID: crypto.randomUUID(),
+                })
+              }
+            />
+          </label>
+          {error && (
+            <p className="warn" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="continuation-actions">
+            <button
+              className="primary"
+              disabled={
+                stale ||
+                authorization.reason.trim().length < 8 ||
+                a.deadline <= clock
+              }
+              onClick={() =>
+                void run(async () => {
+                  const { id, ...body } = authorization;
+                  const result = await api(
+                    `/admin/attempts/${id}/authorize`,
+                    body,
+                  );
+                  setAuthorization(null);
+                  await onChanged();
+                  return `Resume authorized until ${chicago(result.expires)}. The student must reconnect and restore monitoring.`;
+                })
+              }
+            >
+              Confirm authorization
+            </button>
+            <button
+              onClick={() => {
+                setAuthorization(null);
+                setError("");
+                setTimeout(() => authorizeButton.current?.focus(), 0);
+              }}
+            >
+              Cancel authorization
+            </button>
+          </div>
+        </fieldset>
+      )}
       {a.reason && <p className="review-reason">{a.reason}</p>}
       {(a.access_error || a.policy_error) && (
         <p className="warn" role="alert">
@@ -458,9 +548,9 @@ export function AdminReview({
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      {(error || refreshError) && (
+      {((!authorization && error) || refreshError) && (
         <p className="warn" role="alert">
-          {error || refreshError}{" "}
+          {(!authorization && error) || refreshError}{" "}
           <button disabled={busy} onClick={() => void load()}>
             Retry monitoring
           </button>

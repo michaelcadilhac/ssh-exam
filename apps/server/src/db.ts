@@ -22,6 +22,7 @@ export interface Attempt {
   clock_resets: string;
   ended: number | null;
   generation: number;
+  continuation_revision: number;
   page_hash: string | null;
   last_contact: number | null;
   focus_lost_at: number | null;
@@ -122,6 +123,10 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=15").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/015.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=16").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/016.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

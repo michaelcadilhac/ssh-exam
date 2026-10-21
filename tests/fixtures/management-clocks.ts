@@ -58,6 +58,14 @@ export async function qualifyClockCLI(
       start,
     ),
   );
+  // Real locked records already carry interruption history. Seed it before
+  // taking the unchanged-state snapshot so restart recovery need not repair this
+  // intentionally synthetic fixture and advance its new review fence.
+  for (const id of ids.filter((_, n) => n !== 2))
+    f.current.store.interruptions.pause(
+      f.current.store.attempt(id),
+      "Synthetic interruption",
+    );
   const beforeB = f.current.store.attempt(ids[1]);
   let sequence = 0;
   const postSigned = async (path: string, body: unknown) => {

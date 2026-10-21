@@ -1411,6 +1411,25 @@ Permanent inspection outcomes exclude page/session secrets, student review/media
 and unbounded history. See docs/attempt-clock-management.md and the local test
 record; full management and production qualification remain open.
 
+C1f now shares interruption review/authorization through `examctl web interruptions`
+and the administrator interface. Migration 016's conditional monotonic review
+counter fences both generation replacement and changed reasons/student requests
+inside one generation. Confirm the exact reviewed generation/counter and audited
+reason; polling cannot silently adopt newer selection. Grant/history/audit/intent
+commit is atomic without network waits. Exact retries retain the original expiry
+and cannot replace later approvals; deliberately new reviewed intents can renew
+under existing rules. Expiry remains five minutes or the current deadline,
+whichever is earlier. Approval alone never executes/thaws, reopens, resets clocks
+or releases holds; existing fresh SSH/page/readiness/native Continue checks remain.
+Private signed CLI review persists only metadata receipts in permanent management
+outcomes. Every initial/retried private read rechecks current revision/tombstones;
+changed/deleted monitoring refuses rather than replaying cached student text.
+Following a page cursor binds the original review revision, preventing omission of
+changed earlier history. Existing operational audit retention is unchanged. Match
+gateway/browser/CLI, reload old empty-body clients and preserve request records/
+counters/tombstones on rollback. See docs/interruption-management.md for local
+qualification and limitations. C3 retained SSH/buffer freeze remains open.
+
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 
 `examctl agent start|stop|restart|status` manages only the shared SSH gate service. Start/restart also ensure the independent watchdog and reconciliation timer are running. Stop leaves both running and closes student gate access; it is not a way to cancel deadlines. Do not reset state, kill the watchdog, change account shells or restore access as an exam stop mechanism.

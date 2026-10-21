@@ -25,6 +25,9 @@ export const managementOperations = [
   "clocks.extend",
   "clocks.batch",
   "clocks.preview",
+  "interruptions.show",
+  "interruptions.review",
+  "interruptions.authorize",
 ] as const;
 export const managementRequest = z
   .object({

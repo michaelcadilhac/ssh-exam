@@ -35,9 +35,20 @@ async function echo(page: Page, word: string) {
   );
 }
 async function restore(page: Page, admin: Page, headers: any, id: string) {
+  const selected = await (
+    await admin.request.get(`/api/admin/attempts/${id}/interruption`)
+  ).json();
   const grant = await admin.request.post(
     `/api/admin/attempts/${id}/authorize`,
-    { headers, data: {} },
+    {
+      headers,
+      data: {
+        generation: selected.generation,
+        revision: selected.revision,
+        requestID: crypto.randomUUID(),
+        reason: "Reviewed synthetic worker interruption",
+      },
+    },
   );
   expect(grant.ok()).toBe(true);
   const history = async () =>
@@ -58,7 +69,7 @@ async function restore(page: Page, admin: Page, headers: any, id: string) {
   await page
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
-  await signIn(page, "isolation-a", "student08");
+  await signIn(page, "isolation-a", "isolation01");
   await page
     .getByRole("button", {
       name: "Restore page after instructor authorization",
@@ -99,8 +110,8 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
   const runtime = async () =>
     (await admin.request.get(origin + "/api/fixture/runtime")).json();
   try {
-    const originalA = await begin(alice, "isolation-a", "student08");
-    const originalB = await begin(bob, "isolation-b", "student09");
+    const originalA = await begin(alice, "isolation-a", "isolation01");
+    const originalB = await begin(bob, "isolation-b", "isolation02");
     const login = await admin.request.post(origin + "/api/admin/login", {
       headers: { origin },
       data: { username: "instructor", password: "fixture-password" },
@@ -108,7 +119,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
     const headers = { origin, "x-csrf-token": (await login.json()).csrf };
     const initial = await runtime();
     const bobPid = initial.workers.find(
-      (w: any) => w.username === "student09",
+      (w: any) => w.username === "isolation02",
     ).pid;
     expect(bobPid).not.toBe(initial.pid);
     await echo(alice, "saved");
@@ -131,7 +142,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
         });
       const crashed = await admin.request.post(origin + "/api/fixture/fault", {
         headers,
-        data: { username: "student08", fault },
+        data: { username: "isolation01", fault },
       });
       expect(crashed.ok(), await crashed.text()).toBe(true);
       const crashedPid = (await crashed.json()).pid;
@@ -142,7 +153,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
       const data = await runtime();
       expect(data.pid).toBe(initial.pid);
       expect(
-        data.workers.find((w: any) => w.username === "student09").pid,
+        data.workers.find((w: any) => w.username === "isolation02").pid,
       ).toBe(bobPid);
       expect(data.workers.some((w: any) => w.pid === crashedPid)).toBe(false);
       await expect
@@ -168,11 +179,11 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
         "Instructor authorization required",
       );
       const alerts = data.outbox.filter(
-        (m: any) => m.subject === "Exam connection failure: student08",
+        (m: any) => m.subject === "Exam connection failure: isolation01",
       );
       expect(alerts).toHaveLength(index + 1);
       expect(alerts[index].body).toContain("Exam: isolation-a");
-      expect(alerts[index].body).toContain("Student: student08");
+      expect(alerts[index].body).toContain("Student: isolation01");
       expect(alerts[index].body).toContain(`Attempt: ${originalA.id}`);
       expect(JSON.stringify(data.outbox)).not.toMatch(
         /synthetic-private-secret|terminal contents|shared-password|Class agent unavailable/,
@@ -182,7 +193,8 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
           .poll(
             async () =>
               (await runtime()).outbox.find(
-                (m: any) => m.subject === "Exam connection failure: student08",
+                (m: any) =>
+                  m.subject === "Exam connection failure: isolation01",
               )?.tries,
             { timeout: 10000 },
           )
@@ -196,7 +208,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
         .poll(
           async () =>
             (await runtime()).emails.filter((m: string) =>
-              m.includes("Subject: Exam connection failure: student08"),
+              m.includes("Subject: Exam connection failure: isolation01"),
             ).length,
           { timeout: 12000 },
         )
@@ -220,7 +232,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
     expect(final.pid).toBe(initial.pid);
     expect(
       final.emails.filter((m: string) =>
-        m.includes("Subject: Exam connection failure: student08"),
+        m.includes("Subject: Exam connection failure: isolation01"),
       ),
     ).toHaveLength(5);
     expect(JSON.stringify(final.emails)).not.toContain(

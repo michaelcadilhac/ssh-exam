@@ -36,6 +36,12 @@ gateway inspection, individual reset/extend, default-allowance preview and expli
 bulk clock requests. Native application may remain pending; outer gateway
 confirmation is not an effective deadline. Reviewed default amounts and per-target
 request IDs fence edits/retries. See attempt-clock-management.md and final progress.
+`examctl web interruptions help` covers private paginated history/student requests,
+current approval inspection and reviewed generation/revision/reason-fenced
+authorization. Exact retries retain expiry; private read caches contain metadata
+receipts only and cannot replay deleted monitoring. See interruption-management.md.
+Existing fresh SSH/readiness/Continue checks remain mandatory; no retained-buffer
+freeze or automatic resume is implemented by gateway approval.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native
@@ -117,5 +123,6 @@ has been executed as part of this local development.
 Process-level tests invoke the actual CLI entry point for every command's help,
 usage errors, target/reason restrictions and unavailable configuration. Native
 tests verify protected export, immutable bytes and refusal when audit persistence
-fails. Full create/import/grant/clock/authorize workflows and real root-host
+fails. Create/import/clock/authorize workflows now have actual CLI/gateway tests;
+unified-grant workflows and real root-host
 qualification remain pending; this document does not imply CLI completeness.

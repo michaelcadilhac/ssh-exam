@@ -26,6 +26,7 @@ import {
   assertClockCapabilities,
 } from "./clock-management.js";
 import { AttemptManagement } from "./attempt-management.js";
+import { InterruptionManagement } from "./interruption-management.js";
 import {
   attemptShow,
   clockBatch,
@@ -55,6 +56,7 @@ export function registerAgentManagement(
   const definitions = new ExamDefinitions(store);
   const roster = new RosterManagement(store, describe);
   const alerts = new AlertManagement(store, () => !!config.smtp);
+  const interruptions = new InterruptionManagement(store);
   const attempts = clocks
     ? new AttemptManagement(store, clocks, describe)
     : null;
@@ -223,6 +225,22 @@ export function registerAgentManagement(
                   b.reason,
                 ),
               };
+            } else if (r.operation.startsWith("interruptions.")) {
+              let value: unknown;
+              switch (r.operation) {
+                case "interruptions.show":
+                  value = interruptions.show(r.body);
+                  break;
+                case "interruptions.review":
+                  value = interruptions.receipt(r.body);
+                  break;
+                case "interruptions.authorize":
+                  value = interruptions.authorize(r.body, actor);
+                  break;
+                default:
+                  throw Error("Unsupported interruption management operation");
+              }
+              return { ok: true, status: 200, result: value };
             } else if (
               r.operation.startsWith("attempts.") ||
               r.operation.startsWith("clocks.")
@@ -356,7 +374,8 @@ export function registerAgentManagement(
             operation: r.operation,
             target:
               r.operation.startsWith("attempts.") ||
-              r.operation.startsWith("clocks.")
+              r.operation.startsWith("clocks.") ||
+              r.operation.startsWith("interruptions.")
                 ? attemptShow.safeParse({
                     id: (r.body as { id?: unknown } | null)?.id,
                   }).data?.id ||
@@ -384,6 +403,25 @@ export function registerAgentManagement(
           );
         return result;
       })();
+      let response = outcome;
+      if (outcome.ok && r.operation === "interruptions.review") {
+        try {
+          response = {
+            ...outcome,
+            result: interruptions.review(
+              r.body,
+              outcome.result as { generation: number; revision: number },
+              actor,
+            ),
+          };
+        } catch (error) {
+          response = {
+            ok: false,
+            status: (error as any).statusCode || 409,
+            error: (error as Error).message.slice(0, 1500),
+          };
+        }
+      }
       // Sign after the durable transaction. A lost HTTP/signing reply is recovered
       // with the same request ID, not by executing an intent twice.
       return agent.signTiming({
@@ -394,7 +432,7 @@ export function registerAgentManagement(
         nonce: r.nonce,
         operation: r.operation,
         at: now(),
-        ...outcome,
+        ...response,
       });
     },
   );

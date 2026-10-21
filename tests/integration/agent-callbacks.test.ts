@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -301,7 +302,12 @@ it("instructor approval needs no student connection and the stop endpoint is rem
       method: "POST",
       url: "/api/admin/attempts/a/authorize",
       headers,
-      payload: {},
+      payload: {
+        generation: t.current().store.attempt("a").generation,
+        revision: t.current().store.attempt("a").continuation_revision,
+        requestID: randomUUID(),
+        reason: "Reviewed synthetic interruption",
+      },
     });
     expect(response.statusCode).toBe(200);
     expect(

@@ -38,6 +38,7 @@ import {
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { ClockControl } from "./clock-control.js";
+import { InterruptionManagement } from "./interruption-management.js";
 import { assertClockCapabilities } from "./clock-management.js";
 import { registerExamAdmin } from "./exam-admin.js";
 import { registerAgentManagement } from "./agent-management.js";
@@ -100,6 +101,7 @@ export async function createApp(
   life.onPreflightFailure = (details) =>
     app.log.warn(details, "Preflight cleanup failed");
   const clocks = new ClockControl(store, agent, life);
+  const interruptionManagement = new InterruptionManagement(store);
   const alertManagement = new AlertManagement(store, () => !!config.smtp);
   const authAttempts = new Map<string, { at: number; count: number }>();
   store.db
@@ -1388,25 +1390,14 @@ export async function createApp(
   });
   app.post("/api/admin/attempts/:id/authorize", async (req: any) => {
     const s = principal(req, "admin");
-    const a = store.attempt(req.params.id);
-    z.object({}).parse(req.body);
-    if (a.state !== "LOCKED" || !a.deadline || a.deadline <= now())
-      throw Error("Attempt cannot continue");
-    const expires = Math.min(a.deadline, now() + 300000);
-    store.db.transaction(() => {
-      store.db
-        .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
-        .run(a.id, a.generation, expires);
-      store.interruptions.authorize(a, s.username, expires);
-      store.audit(s.username, "authorize-continuation", a.id);
-      store.audit(
-        s.username,
-        "authorized-authentication-gap",
-        a.id,
-        String(a.generation),
-      );
-    })();
-    return { expires };
+    return interruptionManagement.authorize(
+      { ...req.body, id: req.params.id },
+      s.username,
+    );
+  });
+  app.get("/api/admin/attempts/:id/interruption", async (req: any) => {
+    principal(req, "admin");
+    return interruptionManagement.show({ id: req.params.id });
   });
   app.post("/api/admin/attempts/:id/delete-monitoring", async (req: any) => {
     const s = principal(req, "admin");

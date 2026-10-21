@@ -1206,7 +1206,12 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
       `/api/admin/attempts/${attempt.id}/authorize`,
       {
         headers: { origin: "http://localhost:3100", "x-csrf-token": csrf },
-        data: {},
+        data: {
+          generation: attempt.generation,
+          revision: attempt.continuation_revision,
+          requestID: crypto.randomUUID(),
+          reason: "Reviewed synthetic monitoring interruption",
+        },
       },
     );
     expect(approved.ok()).toBe(true);
@@ -2056,11 +2061,19 @@ test("active page reload requires one instructor grant and fresh SSH before rest
     });
     expect(login.ok()).toBe(true);
     const { csrf } = await login.json();
+    const selectedInterruption = await (
+      await admin.get(`/api/admin/attempts/${original.id}/interruption`)
+    ).json();
     expect(
       (
         await admin.post(`/api/admin/attempts/${original.id}/authorize`, {
           headers: { "X-CSRF-Token": csrf },
-          data: {},
+          data: {
+            generation: selectedInterruption.generation,
+            revision: selectedInterruption.revision,
+            requestID: crypto.randomUUID(),
+            reason: "Reviewed synthetic page reload",
+          },
         })
       ).ok(),
     ).toBe(true);

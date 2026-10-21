@@ -111,6 +111,18 @@ the amount/retry/deadline fences remain verified. No automatic refund, completio
 reopen, hold release or old-history rewrite. Qualify signed pending delivery and
 partial retries, not just root queue acceptance. See attempt-clock-management.md.
 
+C1f adds shared interruption review/authorization and migration 016's conditional
+review counters/successful intent ledger, not new SSH execution permission. Keep
+matching gateway/browser/CLI, counters/triggers, 013/016 receipts and tombstones.
+Old empty-body approval clients must reload. Private read receipts contain only
+metadata; retries re-read unchanged retained data or refuse, never replay deleted
+text. An older gateway cannot uphold the reviewed-generation/counter fence, even
+with the triggers retained. Quiesce authorization/admission and live clients
+before any separately authorized downgrade, or repair forward; do not overwrite
+newer approvals/deadlines/deletion tombstones with an old DB backup. See
+interruption-management.md. Retained-SSH C3 and deployment remain unimplemented/
+unexecuted respectively; approval alone never thaws native work.
+
 C1b adds shared conditional definition create/update and migration 014's browser
 intent ledger. Preserve both intent ledgers on rollback. Older settings clients
 must reload to obtain revisions; unversioned overwrites now refuse instead of

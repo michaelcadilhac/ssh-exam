@@ -67,13 +67,86 @@ it("dashboard exposes only the selected exam's interruption approvals, and appro
     const pause = result.students[0].attempts[0].interruptions[0];
     expect(pause.events[0].reason).toBe("Screen sharing ended");
     expect(pause.authorizations).toEqual([]);
+    const selected = {
+      generation: store.attempt(id).generation,
+      revision: store.attempt(id).continuation_revision,
+      requestID: randomUUID(),
+      reason: "Reviewed screen-sharing interruption",
+    };
+    const authorizeURL = `/api/admin/attempts/${id}/authorize`;
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: authorizeURL,
+          headers,
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: authorizeURL,
+          headers: { ...headers, "x-csrf-token": "wrong" },
+          payload: selected,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: authorizeURL,
+          headers: {
+            ...headers,
+            cookie: `session=${student.token}`,
+            "x-csrf-token": student.csrf,
+          },
+          payload: selected,
+        })
+      ).statusCode,
+    ).toBe(401);
+    // New student text while still in the same lock generation invalidates review.
+    store.db
+      .prepare(
+        "UPDATE incidents SET message='New request',review_at=? WHERE attempt=?",
+      )
+      .run(Date.now(), id);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: authorizeURL,
+          headers,
+          payload: selected,
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(store.db.prepare("SELECT * FROM continuations").all()).toEqual([]);
+    const approvedIntent = {
+      ...selected,
+      revision: store.attempt(id).continuation_revision,
+      requestID: randomUUID(),
+    };
     const approval = await app.inject({
       method: "POST",
       url: `/api/admin/attempts/${id}/authorize`,
       headers,
-      payload: {},
+      payload: approvedIntent,
     });
     expect(approval.statusCode).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: authorizeURL,
+          headers,
+          payload: approvedIntent,
+        })
+      ).json(),
+    ).toEqual(approval.json());
     result = (await app.inject({ url: url + `?review=${id}`, headers })).json();
     const entry = result.reviewAttempt.interruptions[0];
     expect(entry.authorizations[0]).toMatchObject({

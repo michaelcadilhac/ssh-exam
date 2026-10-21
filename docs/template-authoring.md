@@ -35,7 +35,10 @@ digits, underscores or hyphens: `^[a-zA-Z0-9_-]{1,64}$`.
 | `work/` | A fresh writable copy in the configured exam directory, normally `/work`. All terminal panes for that attempt share it. |
 | `materials/` | A read-only directory mounted at `/materials` during the timed exam. |
 
-Starter work is copied once when the attempt activates. Opening additional terminals
+The local D1a implementation stages starter work privately during preflight, then
+publishes it once at Begin; it is not deployed. Existing deployed activation may
+copy at Begin. Neither workflow starts the clock during preflight or exposes
+private starter work early. See private-workspace-staging.md. Opening additional terminals
 or resuming an attempt does not reset the files. Practice terminals do not receive
 exam starters or materials. Files in a template do not automatically run, and a
 questions file does not automatically open. An optional `materials/WELCOME.txt`
@@ -152,10 +155,17 @@ recording limits**:
 
 | Limit | Value |
 | --- | --- |
-| One regular file | 32 MiB logical size |
-| Total regular-file content | 64 MiB logical size |
+| One regular file | New local default 128 MiB logical size; legacy snapshots 32 MiB |
+| Total regular-file content | New local default 512 MiB logical size; legacy snapshots 64 MiB |
 | Traversed directory entries | 10,000 |
 | Directory nesting | 32 levels |
+
+The C6 limits implementation is tested locally, **not deployed**. Each new exam
+can explicitly configure its limits; issued/prepared settings and legacy bundles
+retain their own bounds. Do not assume deployed exams received the new defaults.
+See collection-limits.md for settings flags, frozen snapshots, process isolation
+and remaining privileged/concurrent storage qualification. These are collection/
+starter logical limits, not an increase in worker memory/time or live disk quotas.
 
 Leave room for student-created output and binaries; do not require huge datasets or
 build trees. Do not require symlinked output: collection omits symlinks and special

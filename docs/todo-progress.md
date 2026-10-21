@@ -34,6 +34,7 @@ escalation. Generated screenshot changes must not become product changes.
 | C1b: shared definition configuration | C1a | Shared web/CLI create/update for every definition field, stale/missing revision refusal, partial preservation, durable web/root retry and historical immutability; actual CLI/HTTP/browser/build/native race tests | Implemented/tested locally; not deployed |
 | C1c: roster/CSV management parity | C1b | Shared web/CLI list/add/remove/settings, CSV preview/confirm/example/export; same inheritance, sandbox, UID-verification, active-snapshot, stale-preview/idempotency rules; actual CLI/HTTP/browser/race/build tests | Implemented/tested locally: 302 application tests, native race/build/typecheck/vet, 28 browser roster/interface/SSH checks; not deployed |
 | C1e: attempts and current clocks | C1a + existing clock policy | Shared atomic staging, bounded private-safe inspection, single/bulk/reset-default workflows, exact amount/revision/child retry fences, honest pending/native status; compiled CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 313 app tests, all three Go-module race checks, static build/vet/typecheck/build, 46 admin/alert/definition/timezone and 28 interface/real synthetic SSH browser checks; not deployed |
+| C1f: interruption review and authorization | C1a + current continuation policy | Shared generation/review-counter/reason fence, unchanged expiry/SSH/readiness, atomic audit/intent, private retention-safe review, exact retries/pagination; actual CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 320 app tests, native race/build/vet/typecheck/build and 81 browser checks together; not deployed |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
@@ -52,7 +53,7 @@ separate and remains **not deployed** throughout this work.
 
 ## Current native increment (October 21)
 
-M1/C1d is local commit a2aa155. Next C1e plan (existing C1 authority and existing
+M1/C1d is local commit a2aa155; C1e is local commit d23aa9a. C1e plan (existing C1 authority and existing
 clock semantics, no new policy approval needed): add bounded/redacted gateway
 attempt and clock-intent inspection plus supported individual/bulk root clock
 workflows. Extract synchronous ClockControl staging shared by browser/root; never
@@ -111,6 +112,64 @@ actual root CLI/TLS/restart/retention workflows, HTTP authority and same-generat
 change/expiry/rollback tests, browser confirmation/lost-reply/stale/mobile checks,
 full app/native race/build/typecheck and browser interface/SSH qualification.
 This is implementation planning, not a completed investigation or deployed fix.
+
+C1f now implements the shared review/authorization service, migration 016's
+conditional monotonic counters and successful intent ledger, CLI help/workflows
+and fixed-selection browser confirmation. Private read outcomes persist only a
+metadata receipt; fresh/retried reads enforce tombstones/current revision before
+returning bounded text. Pagination also binds the first page's review counter.
+Deliberately renewed approvals remain supported; exact retries cannot renew or
+overwrite them. Existing fresh SSH/monitoring Continue policy remains unchanged.
+20 focused unit/HTTP/actual compiled CLI-to-TLS tests pass, including restart and
+deleted-history replay refusal. Initial fixture failures (missing UUID import,
+synthetic locked records lacking history before a restart snapshot) were fixed
+without weakening assertions. Native process help found a missing explicit
+"transient" explanation; help now names it and native CLI race passes. Four
+focused browser deliberate/lost-reply/stale/mobile checks pass. The first mobile
+screenshot exposed a dense/default fieldset and low-contrast hover; the scoped
+confirmation is now compact/styled, with errors next to the input and a readable
+hover. The full application repeat passes 320 tests/56 files (62.1s); two initial
+test assumptions were corrected: generation changes intentionally advance review
+counters, and each incident needs a distinct generation. Assertions still verify
+that alert handling changes no attempt authority/counter by itself. All 49 admin/
+alert/definition/timezone browser checks pass (3.1m). Native full race with the
+worker/systemd/namespace/compiler/default-size opt-ins, static build/vet and
+typecheck/build pass. The extended 32 interface/real synthetic SSH/worker-fault/
+browser-abandonment checks are running; the five-recovery healthy-sibling fault
+workflow and actual browser-close/reload recovery already pass. See
+interruption-management.md; implementation is not yet marked fully qualified or
+deployed. No production changes or command-not-found.
+
+The first combined 32-check run exposed fixture isolation, not an admission bug:
+fault tests deliberately left student08/09 paused/held, and browser-closure tests
+left student06/07 held; later interface cases reused those synthetic identities.
+Correct global UID restrictions refused the unrelated fresh sign-ins. Three
+checks failed; the identified local Playwright process was stopped gracefully
+(23 passed, one interrupted, five not run). No production process/exam was
+touched. Fault and closure workflows now have distinct fixture-only accounts/
+UIDs; no holds, deadlines or enforcement were cleared to make tests pass.
+Repeating all 81 selected browser checks together on one fresh isolated fixture
+to prove the cross-file workflow, rather than claiming the failed run passed.
+
+Final C1f qualification: **all 81 selected browser checks pass together (10.7m)**
+after the fixture identity fix, including all 32 extended interface/real synthetic
+SSH/worker-fault/browser-abandonment checks. The combined run preserves every
+restriction; no test bypasses held UIDs or clears a protected/history record to
+obtain a fresh sign-in. Mobile confirmation screenshots were inspected after the
+scoped style/error/contrast fix. Full application repeat passes 320/56; native
+full race/resource opt-ins, static build/vet and typecheck/build pass. Matching
+gateway/browser/CLI and migration 016 rollback cautions are documented. C1f is
+implemented/tested locally, not deployed. Generated baseline screenshots are
+restored rather than committed. Full management/grants/retained SSH/manual
+cleanup and privileged installed-host qualification remain open.
+
+C4 source investigation is now recorded in workspace-retention.md. Confirmed:
+finalization retains old work; COMPLETED drops recorded units; existing release
+verification can terminate and is not a dry run; saved-work grants depend on the
+archive, not old work; WithState is not a rollback transaction and native Audit
+is best effort. Proposed ordered increments are safe inventory/holds, isolated
+fresh archive/mount/process-use proof, then explicit exact-target crash-retry
+cleanup. No cleanup implementation/deletion or completed investigation is claimed.
 
 C6 is local commit 7ef7ac5. M1/C1d alert management now adds shared metadata-only
 web/root list/show/test and explicit audited reminders, migration 015, stable

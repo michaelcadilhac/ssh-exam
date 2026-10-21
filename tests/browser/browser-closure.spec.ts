@@ -81,9 +81,20 @@ async function restore(
   exam: string,
   user: string,
 ) {
+  const selected = await (
+    await request.get(`/api/admin/attempts/${original.id}/interruption`)
+  ).json();
   const grant = await request.post(
     `/api/admin/attempts/${original.id}/authorize`,
-    { headers, data: {} },
+    {
+      headers,
+      data: {
+        generation: selected.generation,
+        revision: selected.revision,
+        requestID: crypto.randomUUID(),
+        reason: "Reviewed synthetic browser closure",
+      },
+    },
   );
   expect(grant.ok()).toBe(true);
   await page.reload();
@@ -181,7 +192,7 @@ test.describe.serial("browser abandonment and recovery", () => {
       });
     });
     try {
-      const original = await begin(page, "closure", "student07");
+      const original = await begin(page, "closure", "closure01");
       await type(page, "save preserved closure answer");
       await expect(
         page.locator(".winbox").last().locator(".xterm-rows"),
@@ -229,7 +240,7 @@ test.describe.serial("browser abandonment and recovery", () => {
       await deny(page);
       await onlyScreens(page, ["empty", "loading", "summary"]);
       await oldControlRejected(page, token);
-      await restore(page, request, headers, original, "closure", "student07");
+      await restore(page, request, headers, original, "closure", "closure01");
       await oldControlRejected(page, token);
       await type(page, "cat");
       await expect(page.locator(".xterm-rows")).toContainText(
@@ -302,7 +313,7 @@ test.describe.serial("browser abandonment and recovery", () => {
         server.send(message);
       });
     });
-    const original = await begin(page, "reload-opening", "student06");
+    const original = await begin(page, "reload-opening", "closure02");
     await type(page, "save preserved reload answer");
     await expect(
       page.locator(".winbox").last().locator(".xterm-rows"),
@@ -337,7 +348,7 @@ test.describe.serial("browser abandonment and recovery", () => {
       headers,
       original,
       "reload-opening",
-      "student06",
+      "closure02",
     );
     await type(page, "cat");
     await expect(page.locator(".xterm-rows")).toContainText(
@@ -359,7 +370,7 @@ test.describe.serial("browser abandonment and recovery", () => {
       protected: 1,
     });
     await page.getByLabel("Exam ID", { exact: true }).fill("reload-opening");
-    await page.getByLabel("Enrolled username").fill("student06");
+    await page.getByLabel("Enrolled username").fill("closure02");
     await page
       .getByRole("button", { name: "Start SSH sign-in", exact: true })
       .click();

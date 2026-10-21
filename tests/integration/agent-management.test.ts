@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import * as rosterParser from "../../apps/server/src/roster.js";
 import { qualifyClockCLI } from "../fixtures/management-clocks.js";
+import { qualifyInterruptionCLI } from "../fixtures/management-interruptions.js";
 import {
   generateKeyPairSync,
   randomBytes,
@@ -149,6 +150,9 @@ it("requires explicit root-agent management purpose, audience, freshness, pinned
       "clocks.reset",
       "clocks.extend",
       "clocks.batch",
+      "interruptions.show",
+      "interruptions.review",
+      "interruptions.authorize",
     ]) {
       expect(
         f.unpack(await f.post(f.request({ operation, body: {} }))).status,
@@ -565,6 +569,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       ).toEqual({ n: 0 });
       delete f.config.smtp;
       await qualifyClockCLI(f, invoke);
+      await qualifyInterruptionCLI(f, invoke);
       f.config.agent.managementOperations = [];
       await expect(cli(["show", "midterm"])).rejects.toMatchObject({
         code: 1,
