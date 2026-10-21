@@ -103,6 +103,16 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 		}
 		defer lock.Close()
 	}
+	if op == "delete" {
+		lock, err := e.recoveryCatalogLock()
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+		if err := e.verifySubmissionDeletion(id); err != nil {
+			return nil, err
+		}
+	}
 	var result any
 	err := e.WithState(func() error {
 		if _, err := e.Find(id); err != nil {

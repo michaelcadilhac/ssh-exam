@@ -163,6 +163,16 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 		}
 		defer lock.Close()
 	}
+	if op == "delete-submission" {
+		lock, err := e.recoveryCatalogLock()
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+		if err := e.verifySubmissionDeletion(r.ID); err != nil {
+			return nil, err
+		}
+	}
 	var result any
 	err := e.WithState(func() error { var err error; result, err = e.callLocked(op, r); return err })
 	if err == nil && op == "activate-attempt" {
@@ -420,8 +430,8 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			err = e.beginFinalization(a, r.Reason)
 			result = a
 		case "delete-submission":
-			if a.State != "COMPLETED" || accessHeld(a) {
-				return errors.New("submission cannot be deleted until the account restriction is released")
+			if err := submissionDeleteEligible(a); err != nil {
+				return err
 			}
 			if err = os.RemoveAll(filepath.Join(e.Config.State, "submissions", a.ID)); err != nil {
 				return err

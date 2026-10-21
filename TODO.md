@@ -135,6 +135,11 @@ allowances and no automatic refunds/reopening. Approval is not a
 deployment or historical-record change.
 
 - [ ] **Map the present model and its restrictions.**
+  October 21 local D1b increment exposes native-only legacy authorizations through
+  `examctl recovery-grants` and blocks dependency-blind source deletion, including
+  uncertain consumption and unfinished restored attempts. Tests/status are in
+  docs/legacy-recovery-dependencies.md and docs/todo-progress.md. This does not
+  migrate authorities or make C8 retirement safe; those remain open/not deployed.
   Review exam definitions, enrollment, attempt uniqueness, sandbox repeatability,
   interruption continuation and the new recovery entitlements. Identify where
   “one attempt” is enforced in schemas, admission, SSH/account policy, callbacks

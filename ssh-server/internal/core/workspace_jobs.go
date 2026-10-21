@@ -262,6 +262,13 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64) (any, error)
 	if err := e.activationPrepare(snapshot); err != nil {
 		return nil, err
 	}
+	if snapshot.Workspace != nil && snapshot.Workspace.Source.Kind == "saved" {
+		lock, err := e.recoveryCatalogLock()
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+	}
 	var result any
 	err = e.WithState(func() error {
 		a, err := e.Find(snapshot.ID)
@@ -370,6 +377,11 @@ func (e *Engine) repairWorkspace(id string) (any, error) {
 		return nil, err
 	}
 	defer lock.Close()
+	catalogLock, err := e.recoveryCatalogLock()
+	if err != nil {
+		return nil, err
+	}
+	defer catalogLock.Close()
 	var result any
 	err = e.WithState(func() error {
 		a, err := e.Find(id)

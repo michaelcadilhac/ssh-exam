@@ -39,6 +39,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native worker/short-transaction implementation and fatal-child, actual user-systemd OOM/runtime, permission/user-namespace ENOSPC/read-only regressions pass locally; privileged SSH/PTY/workload gates remain open |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
+| D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved: manual cleanup/no grace and configurable 128/512 MiB defaults with crash isolation; implementation/qualification remain open |
 
@@ -50,7 +51,7 @@ separate and remains **not deployed** throughout this work.
 
 ## Current native increment (October 21)
 
-D1a in progress after local commit 35ec5c4: private staging now precedes Begin.
+D1a is local commit b70ff78: private staging now precedes Begin.
 Full native race suite with opt-ins passes, including actual child death and
 resource/runtime failure/retry. Focused tests cover source immutability/metadata,
 cancellation/owner/settings/expiry, signed Begin freshness, UID admission fencing
@@ -66,6 +67,20 @@ were restored to baseline, not committed as product changes. See
 private-workspace-staging.md. Unified grants, legacy migration/source dependency
 fences, raised limits, retained SSH and complete management remain actionable.
 Nothing deployed; no command-not-found has occurred.
+
+D1b in progress: confirmed native source-deletion dependency gap now has bounded
+read-only `recovery-grants` inspection and isolated deletion checks. Unused,
+uncertain and unfinished saved-work dependencies refuse; completed consumed
+history remains immutable and does not force retaining sources forever. Actual
+staging/Begin/collection/deletion, child/source/history preservation, malformed/
+unsafe/uncertain metadata, worker-protocol refusal and catalog/Begin locks pass
+focused regressions. The real root-mapped CLI lists/filters without state writes
+and gives actionable held-source refusal. Full native race/resource/CLI suite
+passes (35.5s), as do CGO-free build/vet and diff checks. Application/browser
+evidence is unchanged from b70ff78; this increment changes no web/Node behavior.
+Existing manual root issuers must be quiesced; catalog inspection
+does not complete unified authority/migration or enable C8 retirement. See
+legacy-recovery-dependencies.md. No production changes.
 
 C8/deployment scope recorded in local commit 807d3af. M6a now implements separate
 bounded OS workers, persistent per-attempt/slot locks, short fenced protection/

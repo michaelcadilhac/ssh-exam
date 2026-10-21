@@ -128,6 +128,14 @@ home/application initialization, legacy grant catalog/source dependency fences
 and privileged real-SSH/workload gates remain open; do not deploy this increment
 merely because unit tests passed.
 
+D1b source-deletion guards and `recovery-grants` add no schema conversion and
+delete nothing on install. Preserve catalogs/markers; quiesce manual legacy
+issuers and coordinate every native writer because old code ignores catalog/
+attempt locks and source dependencies. Do not downgrade source-deletion behavior
+while outstanding saved-work authorities exist. Catalog visibility is not the
+authoritative unified migration needed for C8 retirement. See
+legacy-recovery-dependencies.md for qualification and constraints.
+
 ## Consolidate all three agent listeners (proposal only)
 
 The canonical `exam-agent`, `exam-agent-live-upgrade` and

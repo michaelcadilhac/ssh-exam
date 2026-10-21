@@ -56,7 +56,7 @@ func TestEverySupportedCommandHasDiscoverableProcessHelp(t *testing.T) {
 }
 
 func TestInvalidCLIUsagePointsToRelevantHelpBeforeRootOrConfiguration(t *testing.T) {
-	for _, args := range [][]string{{"unknown"}, {"delete"}, {"stop", "ATTEMPT"}, {"workspace-prepare"}, {"workspace-repair", "ATTEMPT"}, {"agent", "shutdown"}, {"info", "one", "two"}, {"list", "--wrong-flag"}, {"info", "id", "--output", "file"}} {
+	for _, args := range [][]string{{"unknown"}, {"delete"}, {"stop", "ATTEMPT"}, {"workspace-prepare"}, {"workspace-repair", "ATTEMPT"}, {"recovery-grants", "unexpected-target"}, {"recovery-grants", "--active"}, {"agent", "shutdown"}, {"info", "one", "two"}, {"list", "--wrong-flag"}, {"info", "id", "--output", "file"}} {
 		output, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(output, "help") || strings.Contains(output, "Cannot load") {
 			t.Fatalf("misleading syntax result %d: %s", code, output)

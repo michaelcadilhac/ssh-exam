@@ -94,8 +94,8 @@ func main() {
 		invalid = "provide --reason with a concrete audited administrator reason of at least 8 characters"
 	} else if *output != "" && op != "export" {
 		invalid = "--output is only supported by export"
-	} else if (*active || *exam != "") && op != "list" && op != "info" {
-		invalid = "--exam and --active filter only list/info; they do not constrain mutations by UUID"
+	} else if (*active && op != "list" && op != "info") || (*exam != "" && op != "list" && op != "info" && op != "recovery-grants") {
+		invalid = "--active filters only list/info; --exam also filters recovery-grants, never mutations by UUID"
 	} else if op == "info" && *exam != "" && flags.Arg(1) != "" {
 		invalid = "choose info ATTEMPT or list --exam EXAM; do not combine an attempt target and exam filter"
 	}
@@ -177,6 +177,8 @@ func main() {
 		result, err = e.Call("health", core.Request{})
 	case "accounts":
 		result = c.Accounts
+	case "recovery-grants":
+		result, err = e.RecoveryGrants(*exam)
 	case "reconcile":
 		err = e.RefreshExpiredTiming()
 		if tickErr := e.Tick(); err == nil {

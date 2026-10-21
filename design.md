@@ -1445,6 +1445,13 @@ recovery grants until migration and rollback are proven. C5 below approves webca
 start-window policy; C7 below selects new-attempt outage recovery. This
 approval does not implement, deploy or complete the investigation.
 
+Local native `recovery-grants` inspection and source-deletion dependency checks
+now make legacy authorities visible without converting them. Unused/uncertain
+records and unfinished restored attempts retain their protected source;
+consumption/deletion share persistent catalog locks. See
+docs/legacy-recovery-dependencies.md. Arbitrary old root writers must be quiesced;
+this is not unified issuance/migration or C8 retirement and is not deployed.
+
 ### Approved grant webcam/Begin-window policy (October 21; implementation pending)
 
 At issuance preserve the student's current effective webcam requirement (exam

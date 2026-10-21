@@ -49,7 +49,7 @@ func collectionFence(a, snapshot *Attempt) bool {
 // death cannot allow overlapping collectors or mutable-work recollection.
 func (e *Engine) runCollectionJob(action, id string) error {
 	var err error
-	if action != "check-release" {
+	if action != "check-release" && action != "check-delete" {
 		lock, lockErr := e.attemptCollectionLock(id)
 		if lockErr != nil {
 			return lockErr
@@ -101,6 +101,11 @@ func (e *Engine) runCollectionJob(action, id string) error {
 	// e.state is a private, loaded snapshot in this worker, including the trusted
 	// SSH registrations used by writer verification. No shared-state lock is held.
 	switch action {
+	case "check-delete":
+		if err := submissionDeleteEligible(&snapshot); err != nil {
+			return err
+		}
+		return e.checkSubmissionDependencies(&snapshot)
 	case "workspace-prepare":
 		return e.stageWorkspace(&snapshot)
 	case "finalize":

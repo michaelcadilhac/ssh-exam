@@ -81,7 +81,7 @@ func runCollectionWorkerWith(in io.Reader, out io.Writer, newEngine func(Config)
 	if err := decodeWorkerFrame(in, 8*1024*1024, &request); err != nil {
 		return err
 	}
-	if request.Version != 1 || len(request.Nonce) != 64 || !attemptID.MatchString(request.ID) || (request.Action != "finalize" && request.Action != "manifest" && request.Action != "release" && request.Action != "check-release" && request.Action != "workspace-prepare") || !filepath.IsAbs(request.Config.State) || !filepath.IsAbs(request.Config.Work) {
+	if request.Version != 1 || len(request.Nonce) != 64 || !attemptID.MatchString(request.ID) || (request.Action != "finalize" && request.Action != "manifest" && request.Action != "release" && request.Action != "check-release" && request.Action != "check-delete" && request.Action != "workspace-prepare") || !filepath.IsAbs(request.Config.State) || !filepath.IsAbs(request.Config.Work) {
 		return errors.New("invalid collection worker request")
 	}
 	e, err := newEngine(request.Config)

@@ -14,6 +14,7 @@ type guide struct {
 }
 
 var guides = map[string]guide{
+	"recovery-grants":   {"recovery-grants [--exam EXAM]", "Inspect native-only legacy saved-work authorizations and their one-use history as JSON.", "Read-only bounded catalog inspection, offline from the gateway; not unified grant issuance/revision/revoke and not an archive integrity check. Disposition unused means no recorded start/marker; consumed identifies a matching committed interval; uncertain requires preserving markers/history for diagnosis. source_recorded_protected is metadata, not fresh hash verification: use manifest SOURCE for that. Unused/uncertain grants and unfinished dependent attempts block source submission deletion. Completed consumed history never reopens. Malformed/unknown files fail closed; never remove markers to force deletion. Root must serialize all legacy catalog edits with the supported workflows; old ad hoc writers are not safe concurrent management.", "examctl recovery-grants\nexamctl recovery-grants --exam midterm\nexamctl info SOURCE-ATTEMPT\nexamctl manifest SOURCE-ATTEMPT", false, false},
 	"workspace-prepare": {"workspace-prepare ATTEMPT", "Verify and stage a private workspace for an unstarted preparation without consuming time or saved-work allowance.", "Normally run automatically in student preflight. Uses the bounded collection worker pool and freezes this preparation's starter/saved files privately. Practice cannot see the staged tree; only an explicit, monitored Begin publishes it. Refuses changed/cancelled/expired preparations, damaged sources and unexpected live work. Retrying adopts the same verified private receipt after a crash; it does not overwrite work. This does not issue a new attempt grant or reset its 15-minute preflight timer.", "examctl info ATTEMPT\nexamctl workspace-prepare ATTEMPT\nexamctl info ATTEMPT", true, false},
 	"workspace-repair":  {"workspace-repair ATTEMPT --reason REASON", "Finish interrupted publication of an already committed workspace so it can be protected by collection.", "Only ACTIVATING/COLLECTION_FAILED with an exact staged receipt and original interval. Never restarts time, recopies changed source, overwrites edits or reopens the attempt. Result remains COLLECTION_FAILED with no execution lease; inspect, then explicitly retry collection. Unstarted preparation failures use workspace-prepare instead. Preserve all private staging directories until diagnosis; no automatic cleanup.", "examctl info ATTEMPT\nexamctl workspace-repair ATTEMPT --reason 'Corrected filesystem issue after interrupted publication'\nexamctl retry ATTEMPT --reason 'Publication repaired; secure the original interval'\nexamctl manifest ATTEMPT", true, true},
 	"list":              {"list [--active] [--exam EXAM] [--json]", "List native attempt records; --active means started and unfinished, not merely connected.", "Default: all native attempts. Exam IDs are definitions, attempt IDs are UUIDs. Text deadlines use RFC3339 UTC; --json includes authoritative fields. Works offline from the gateway.", "examctl list --active\nexamctl list --exam midterm --json", false, false},
@@ -43,6 +44,9 @@ func init() {
 	g.usage = "finish ATTEMPT --reason REASON"
 	g.summary = "Alias of stop: irreversibly finish and collect one started attempt."
 	guides["finish"] = g
+	deletion := guides["delete"]
+	deletion.restrictions += " Unused/uncertain legacy saved-work authorizations and unfinished dependent attempts also block deletion. Verification runs in a bounded worker while source/catalog locks fence native consumption. Inspect examctl recovery-grants first; do not remove grants/markers or invent history to bypass a refusal."
+	guides["delete"] = deletion
 }
 
 func helpRequest(args []string) (string, bool) {
@@ -102,6 +106,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprint(w, "Usage: examctl help [COMMAND] | sudo examctl [FLAGS] COMMAND [TARGET]\n\nInspect:       list, info, health, accounts\nAttempts:      start, pause, stop (finish), cancel, retry\nWorkspace:     workspace-prepare, workspace-repair\nSubmissions:   manifest, export, delete\nAccess:        reconcile, override-access\nAgent:         agent start|stop|restart|status\nCompatibility: export-status, pause-export, resume-export (disabled)\n\nCommon workflow: list -> info ATTEMPT -> diagnose -> reconcile -> info\nSubmission deletion is separate from exam-definition deletion and account release.\nRead examctl help COMMAND before mutations; examctl help management describes remaining coverage gaps.\nUse examctl help collection for worker/resource/pending-state recovery.\n\n")
 	}
 	if topic == "" {
+		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM] (offline inspection, not unified grant issuance).")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")
 		fmt.Fprintln(w, "Gateway roster/CSV: web students; use examctl web students help.")
 	}
@@ -116,6 +121,7 @@ func printRefusal(w io.Writer, op, id, config string, e *core.Engine) {
 	}
 	if op == "delete" {
 		fmt.Fprintln(w, "Target operation: delete a protected submission, not an exam definition or attempt history.")
+		fmt.Fprintf(w, "Inspect saved-work dependencies: %s recovery-grants\nUnused/uncertain authorizations and unfinished dependent attempts must retain their source. Never remove grant/consumed markers or rewrite history to force deletion.\n", prefix)
 	}
 	if e != nil && id != "" {
 		rows, err := e.List(false, "")

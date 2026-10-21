@@ -48,6 +48,10 @@ read-only dry run.
 
 Resources have separate workflows:
 
+- `recovery-grants [--exam EXAM]`: read-only native legacy authorization catalog,
+  consumed/uncertain history and recorded source state. Not new grant issuance
+  or fresh archive verification. Source deletion refuses pending dependencies;
+  see legacy-recovery-dependencies.md for exact safety/compatibility boundaries.
 - `workspace-prepare ATTEMPT`: private pre-Begin staging without time/allowance
   consumption; normally automatic in preflight. `workspace-repair` completes an
   interrupted committed publication without reopening/resetting time, followed
