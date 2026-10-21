@@ -63,6 +63,29 @@ todo-progress.md; bounded worker/CLI installation, publication/crash recovery,
 all-reader binding and catalog acknowledgement remain unimplemented. Do not
 mark the catalog investigation complete from this primitive or the proposal below.
 
+C2a1 now also implements an **internal, unwired private-copy primitive**, not
+catalog publication or a CLI operation. It creates only a fresh directory beneath
+an owned0700 pinned parent, refuses existing targets and physical source overlap
+(including same-device bind aliases), streams into exclusive single-link files,
+preserves ordinary modes and second+nsec mtimes, and independently inspects its
+own copied bytes. Source reinspection rejects observed changes after copying.
+File/directory/parent flushes precede a successful return. Failure or actual child
+death leaves private unpublished staging, never a ready marker or a replacement
+for a previous version; explicit retry requires a fresh target. Only a later
+worker-owned lifecycle may remove its own failed staging. No source is deleted.
+
+Focused source/copy race tests pass (6.4s), including 128 MiB streaming, actual
+SIGKILL/retry, private-copy/source mutation, untouched existing destinations and
+real bind-alias refusal in a private user/mount namespace. The first fixture used
+Go test subdirectories without explicit 0700; corrected the fixture, not the
+private-parent guard. This still needs a separately bounded worker/pool, owned
+staging crash cleanup, durable catalog manifest/publication, list/show/validate/
+install CLI, resource/disk/runtime fault qualification and all-reader binding.
+Fresh full native race/resource/namespace/compiler/default-size qualification
+passes (core112.5s, CLI3.0s); static build and vet pass. No student path, issued
+grant, installed template or production record changed. This is not qualification
+of an OS template worker/catalog/CLI that has not been implemented.
+
 Further October 21 source findings (investigation remains open):
 
 - Enrollment rows retain current duration/webcam overrides, but no issuance or
