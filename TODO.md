@@ -18,6 +18,10 @@ running exams. A local test result is not a deployment claim.
 The instructor subsequently revoked deployment authorization on October 21:
 **finish local development/testing only; do not deploy at the end.** All rollout,
 migration, rollback and temporary-agent consolidation steps remain proposals.
+The instructor subsequently authorized isolated qualification on csc-sys only
+when it does not modify the current installation or interrupt exams. The October
+21 nspawn smoke test passed with a disposable overlay/private network; it is not
+full privileged qualification or deployment authorization.
 
 ## Firm design policy: examctl is the complete management interface
 
@@ -537,6 +541,11 @@ the approval is not a production change or a completed investigation.
   release checks. Actual fatal child, systemd OOM/runtime, permission and isolated
   ENOSPC/read-only regressions pass; healthy signed workflows and blocked-cleanup
   inspection remain available. See docs/collection-worker-isolation.md. Full
+  October 21 Q1 also passes 39 strict real SSH/PAM/cgroup/staging/watchdog/repair
+  assertions in a bounded disposable csc-sys guest overlay, with host/base
+  preservation checks. See docs/isolated-native-qualification.md. This is not
+  real worker-death/healthy-PTY or simultaneous default-size qualification; those
+  gates remain open and no installation was changed. Full
   privileged SSH/PTY and workload qualification, initialization isolation and
   deployment remain open. The later C6 increment below adds new snapshot limits;
   legacy historical limits remain unchanged.

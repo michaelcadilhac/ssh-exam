@@ -83,7 +83,23 @@ class Connection:
             self.transport=self.command('register',{'exam':'qualification','handoff':grant['id']})['transport']
             denied(run([*self.ssh,target,'echo BYPASS']),'consumed handoff certificate cannot authenticate another transport')
             assert info(id)['start']==0,'Setup consumed exam time'
-        if activate:self.command('activate-attempt',{'id':id})
+        if activate:
+            # Matching candidates require private staging before Begin. This
+            # signed workflow must not consume time or publish writable /work.
+            self.command('prepare-workspace',{'id':id})
+            staged=info(id)
+            assert not staged['start'] and not staged['deadline'] and not staged.get('original_deadline'), 'Staging consumed exam time'
+            base=pathlib.Path(config['work'])/id
+            assert not (base/'work').exists(), 'Staging exposed live work'
+            receipt=json.loads((base/'workspace-ready/receipt.json').read_text())
+            assert receipt['attempt']==id and receipt['uid']==account.pw_uid
+            assert base.stat().st_mode&0o077==0 and (base/'workspace-ready').stat().st_mode&0o077==0
+            staged_inode=(base/'workspace-ready/work').stat().st_ino
+            self.command('activate-attempt',{'id':id})
+            begun=info(id)
+            assert begun['deadline']-begun['start']==60000 and begun['original_deadline']==begun['deadline']
+            assert (base/'work').stat().st_ino==staged_inode, 'Begin did not publish the exact staged directory'
+            ok('private staging consumes no time; Begin publishes exact work and full allowance')
         return id
     def pane(self,id):
         token=self.command('issue-channel-admission',{'id':id,'username':a.username,'transport':self.transport,'pane':str(uuid.uuid4()),'purpose':'exam'})['token']

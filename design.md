@@ -1639,6 +1639,12 @@ never weakening recovery or resource limits. See docs/collection-limits.md for
 the live-disk default-size test, compiler evidence and final qualification status.
 Unified source/grant migration, other initialization and full privileged
 SSH/PTY/concurrent workload qualification remain open; nothing is deployed.
+October 21 Q1 qualifies ordinary staging, strict SSH/PAM/cgroup route enforcement,
+watchdog collection, failed-collection holds and explicit repair in a bounded
+disposable guest overlay (39 assertions), without changing the installed host or
+guest base. See docs/isolated-native-qualification.md. Real worker death alongside
+a healthy privileged PTY, cleanup namespace proof and concurrent sizing remain
+open; this is not C3/C4 completion or deployment authorization.
 
 ### Clock reset and recording-limit regression requirements
 

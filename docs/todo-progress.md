@@ -8,6 +8,40 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+October 21 qualification scope update: the instructor permits csc-sys tests that
+do not change the current installation or interrupt exams. The earlier attempt
+stopped immediately when systemd-nspawn was missing; after installation by the
+operator, version 255 and a resource-bounded disposable-overlay/private-network
+shell smoke test passed. Its process/scope exited and neither guest-base nor host
+probe remained. The shared authenticated SSH connection and noninteractive sudo
+work. These facts do not qualify the full native enforcement or authorize a
+deployment, production restart, account/configuration change or consolidation.
+
+Next ordered qualification increment: update the fixture-only Linux harness for
+mandatory private staging and zero-clock/one-use fences; run candidate binaries
+in a volatile overlay of the existing private guest, with private networking and
+an aggregate bounded transient test unit. Preserve the guest base and live host
+state/configuration/binaries. Required acceptance: real SSH/PAM/cgroup collection,
+handoff/cancellation/restart/hold restoration, private staging before Begin, exact
+protected checksums and clean container exit, followed by native race/build and
+test-harness regressions. Do not treat old fixture assertions or the smoke test
+as evidence that candidate qualification passed. Independently continue confirmed
+monitoring tombstone/retention failure investigation and remaining CLI coverage.
+
+Q1 qualification is now complete for its deliberately narrow scope: **39 actual
+private-guest assertions pass** (three handoff, two setup and 34 strict main),
+including ordinary staging/Begin inode and zero-clock fences, real SSH/PAM/cgroups,
+writer termination, protected early finish, original holds, watchdog collection,
+failure/restart/explicit repair and exact account restoration. The container
+exited and installed binaries/config/host attempt authority plus guest-base
+preservation checks passed. Earlier failed fixture runs are recorded honestly in
+isolated-native-qualification.md, not counted as passes. All 39 local Python
+checks pass; fresh native race/resource/compiler/default-size opt-ins pass (core
+105.1s), all three Go-module race checks, static build and vet pass. No production
+changes/deployment or command-not-found. Next Q2: kill a real bounded collection
+worker while another real synthetic SSH PTY/signed renewal remains healthy;
+cross-namespace cleanup and full concurrent sizing remain separate open gates.
+
 ## Baseline and method
 
 The working tree was clean when work resumed. TODO.md and design.md have been
