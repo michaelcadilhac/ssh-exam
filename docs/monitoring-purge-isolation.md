@@ -3,8 +3,9 @@
 October 21, 2026. **Candidate local implementation, not deployed.** C1gb2 connects
 manual deletion, 60-day retention and unstarted-preparation cleanup to durable
 jobs and isolated workers. No recursive filesystem purge remains in those HTTP/
-lifecycle callers. This is not complete C1gb: shared reviewed/idempotent deletion
-intents, CLI delete/full export and broader qualification remain open.
+lifecycle callers. The subsequent C1gb3 increment now supplies shared reviewed/
+idempotent web/root deletion intents; see monitoring-cli.md. Full export,
+retired-job inventory and broader capacity qualification remain open.
 
 MonitoringPurgeProcess requires a durable tombstone, validates the target and
 runs one owned OS child per supervisor instance. A persistent private single-link

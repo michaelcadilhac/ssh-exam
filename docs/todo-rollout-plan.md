@@ -38,6 +38,17 @@ DB snapshot over newer deletion records. CLI delete/shared intents/full export
 remain open. No migration or purge was executed on production; see
 monitoring-purge-isolation.md.
 
+C1gb3 adds additive migration 018 metadata-only deletion intent receipts and
+shared reviewed web/root deletion. Pair gateway/browser/native CLI, explicitly
+authorize monitoring.delete separately from reads, and retain 018 receipts with
+017 jobs/tombstones. Boolean-only old web clients refuse and must reload; older
+CLI/gateway do not support this workflow. Exact retries/new-parent child retries
+must not requeue or reset backoff. A failed parent result remains durable; inspect
+current status before a deliberate new parent/intent. Do not roll back to an old
+database over newer deletion records or infer physical completion from acceptance.
+Full media export/retired-job inventory and aggregate capacity remain open. This
+does not authorize production schema changes, deployment or service consolidation.
+
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,
 without retaining/retrying credentials or bypassing approval/holds. No schema

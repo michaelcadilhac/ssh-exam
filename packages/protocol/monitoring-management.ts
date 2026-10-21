@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { attemptReference } from "./clock-management.js";
+import { username } from "./index.js";
 
 export const monitoringShow = z.object({ id: attemptReference }).strict();
+export const monitoringDelete = monitoringShow.extend({
+  confirm: username,
+  revision: z.string().regex(/^[a-f0-9]{64}$/),
+  requestID: z.string().uuid(),
+  reason: z.string().trim().min(8).max(1000),
+});
 export const monitoringList = monitoringShow
   .extend({
     section: z.enum(["frames", "terminals"]).default("frames"),

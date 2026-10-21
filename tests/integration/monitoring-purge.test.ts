@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { Writable } from "node:stream";
+import { randomUUID } from "node:crypto";
 import { createApp } from "../../apps/server/src/app.js";
 import { IsolatedConnection } from "../../apps/server/src/connection-process.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
@@ -115,14 +116,59 @@ it("actual fatal/hung purge jobs leave authenticated HTTP and an existing real S
         )
         .run(id, id, Date.now());
       media.record(id, recordedPane, { note: "PRIVATE-MONITORING-BYTES" });
+      const review = (
+        await app.inject({
+          url: `/api/admin/attempts/${id}/monitoring`,
+          headers,
+        })
+      ).json().deletionReview;
+      const deletionBody = {
+        confirm: review.confirm,
+        revision: review.revision,
+        requestID: randomUUID(),
+        reason: "Qualify isolated purge failure",
+      };
+      if (id === "panic") {
+        const student = store.session("student", "healthy", "e");
+        for (const [requestHeaders, status] of [
+          [{ origin: config.origin }, 401],
+          [
+            {
+              cookie: `session=${student.token}`,
+              origin: config.origin,
+              "x-csrf-token": student.csrf,
+            },
+            401,
+          ],
+          [{ cookie: headers.cookie, origin: config.origin }, 403],
+          [{ ...headers, origin: "http://untrusted.invalid" }, 403],
+        ] as const) {
+          expect(
+            (
+              await app.inject({
+                method: "POST",
+                url: `/api/admin/attempts/${id}/delete-monitoring`,
+                headers: requestHeaders,
+                payload: deletionBody,
+              })
+            ).statusCode,
+          ).toBe(status);
+        }
+        expect(
+          store.db.prepare("SELECT * FROM tombstones WHERE attempt=?").get(id),
+        ).toBeUndefined();
+      }
       const reply = await app.inject({
         method: "POST",
         url: `/api/admin/attempts/${id}/delete-monitoring`,
         headers,
-        payload: { confirm: true },
+        payload: deletionBody,
       });
       expect(reply.statusCode).toBe(200);
-      expect(reply.json()).toMatchObject({ ok: true, logicalDeleted: true });
+      expect(reply.json()).toMatchObject({
+        status: "logical-deletion-accepted",
+        logicalDeleted: true,
+      });
       expect(
         (
           await app.inject({

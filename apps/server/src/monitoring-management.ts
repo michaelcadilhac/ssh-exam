@@ -1,10 +1,11 @@
-import { now, type Store } from "./db.js";
+import { hash, now, type Store } from "./db.js";
 import type { Monitoring } from "./monitoring.js";
 import { monitoringPurgeStatus } from "./monitoring-purge-jobs.js";
 import {
   monitoringList,
   monitoringReplay,
   parseMonitoring,
+  monitoringDelete,
 } from "../../../packages/protocol/monitoring-management.js";
 
 const refuse = (message: string, statusCode = 409): never => {
@@ -18,6 +19,91 @@ export class MonitoringManagement {
     private store: Store,
     private monitoring: Monitoring,
   ) {}
+
+  deletionReview(id: string) {
+    const a = this.attempt(id, false);
+    const revision = (
+      this.store.db
+        .prepare("SELECT continuation_revision FROM attempts WHERE id=?")
+        .get(id) as any
+    ).continuation_revision;
+    return {
+      id,
+      confirm: a.username,
+      revision: hash(JSON.stringify({ ...a, revision })),
+      eligible: a.ended !== null,
+      consequence:
+        "Deletes all monitoring and rejects future late callbacks for this attempt. Protected submissions, receipts, clocks and account restrictions are unchanged. Physical purge is separate and asynchronous",
+    };
+  }
+
+  delete(input: unknown, actor: string) {
+    if ((input as any)?.confirm === true)
+      return refuse(
+        "Deletion requires a named target, reviewed revision, reason and intent. Reload web review or use examctl web monitoring show ATTEMPT then delete --confirm USERNAME --revision HASH --reason TEXT",
+        400,
+      );
+    const b = monitoringDelete.parse(input),
+      fingerprint = hash(JSON.stringify(b));
+    try {
+      return this.store.db.transaction(() => {
+        const prior = this.store.db
+          .prepare(
+            "SELECT fingerprint,result FROM monitoring_deletion_requests WHERE actor=? AND request=?",
+          )
+          .get(actor, b.requestID) as any;
+        if (prior) {
+          if (prior.fingerprint !== fingerprint)
+            return refuse(
+              "Deletion intent conflicts with different arguments; inspect monitoring show and deliberately review a new intent",
+            );
+          return JSON.parse(prior.result);
+        }
+        const review = this.deletionReview(b.id);
+        if (b.confirm !== review.confirm)
+          return refuse(
+            `Named confirmation does not match this attempt; use examctl web monitoring show ${b.id} and confirm the displayed student`,
+          );
+        if (b.revision !== review.revision)
+          return refuse(
+            `Monitoring deletion target changed after review; cancel, run examctl web monitoring show ${b.id} and deliberately use a NEW request/intent with the current deletionReview.revision`,
+          );
+        if (!review.eligible)
+          return refuse(
+            `Monitoring cannot be deleted before this attempt ends (current state ${this.store.attempt(b.id).state}). Inspect examctl web attempts show ${b.id}; deleting monitoring does not Finish, release access or collect saved files`,
+          );
+        this.monitoring.delete(b.id, actor);
+        const result = {
+          id: b.id,
+          requestID: b.requestID,
+          status: "logical-deletion-accepted",
+          logicalDeleted: true,
+          physicalPurge: "pending-verification",
+          note: `Accepted intent, not a current physical-erasure receipt. Use examctl web monitoring show ${b.id} for fresh job status; protected submissions and account holds are unchanged`,
+        };
+        this.store.audit(
+          actor,
+          "monitoring-delete-intent",
+          b.id,
+          JSON.stringify({
+            requestID: b.requestID,
+            revision: b.revision,
+            reason: b.reason,
+          }),
+        );
+        this.store.db
+          .prepare("INSERT INTO monitoring_deletion_requests VALUES(?,?,?,?,?)")
+          .run(actor, b.requestID, fingerprint, JSON.stringify(result), now());
+        return result;
+      })();
+    } catch (error) {
+      if ((error as any)?.statusCode) throw error;
+      return refuse(
+        "Deletion result is not confirmed; preserve the intent and arguments, inspect fresh monitoring status and private database/storage diagnostics. Retry the same intent (CLI: NEW --request, SAME --intent). Do not remove deletion records",
+        503,
+      );
+    }
+  }
 
   private attempt(id: string, requireRetained = true) {
     const a = this.store.db
@@ -121,6 +207,7 @@ export class MonitoringManagement {
         frames: a.monitoringDeleted !== null ? [] : frames,
         terminals: a.monitoringDeleted !== null ? 0 : terminals,
         physicalPurge: monitoringPurgeStatus(this.store, b.id),
+        deletionReview: this.deletionReview(b.id),
         serverNow: now(),
         retention,
       };

@@ -1458,8 +1458,17 @@ workers/replies. Bounded backlog, backoff and result-write/restart recovery keep
 logical deletion separate from timestamped physical absence. CLI summary and web
 review expose the same job status; no secure-erasure/backup guarantee is implied.
 This is local candidate work, not deployed or complete deletion management. See
-docs/monitoring-purge-isolation.md and docs/monitoring-cli.md for qualification and rollback;
-nothing is deployed.
+docs/monitoring-purge-isolation.md and docs/monitoring-cli.md for qualification and rollback.
+
+Local C1gb3 adds shared web/root monitoring.delete, requiring ended eligibility,
+named student, exact reviewed revision, audited reason and stable child intent.
+Migration 018 retains metadata-only intent receipts. Exact parent/child retries
+do not requeue or reset purge backoff, including restart/new-parent retries;
+acceptance is not physical completion. Failed intent persistence rolls back the
+tombstone, scrub, queue and audit together. Browser confirmation captures rather
+than silently refreshing the review and preserves exact lost-reply retries.
+No new delete permission is implied by read authorization. Full export and
+retired-job management remain open; this candidate is not deployed.
 
 All legacy full-image/thumbnail and aggregate review readers also honor deletion
 tombstones if older monitoring files/metadata are restored. Refuse media before

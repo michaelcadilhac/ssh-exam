@@ -218,8 +218,15 @@ export function AdminReview({
   const [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
-  const [pane, setPane] = useState(""),
-    [deleting, setDeleting] = useState(false);
+  const [pane, setPane] = useState("");
+  const [deleting, setDeleting] = useState<{
+    id: string;
+    confirm: string;
+    revision: string;
+    requestID: string;
+    reason: string;
+    sent: boolean;
+  } | null>(null);
   const [replayOpen, setReplayOpen] = useState(false);
   const [authorization, setAuthorization] = useState<{
     id: string;
@@ -652,8 +659,21 @@ export function AdminReview({
                   {!deleting ? (
                     <button
                       className="danger"
-                      disabled={busy}
-                      onClick={() => setDeleting(true)}
+                      disabled={
+                        busy ||
+                        media.monitoringDeleted ||
+                        !media.deletionReview?.eligible
+                      }
+                      onClick={() =>
+                        setDeleting({
+                          id: a.id,
+                          confirm: media.deletionReview.confirm,
+                          revision: media.deletionReview.revision,
+                          requestID: crypto.randomUUID(),
+                          reason: "",
+                          sent: false,
+                        })
+                      }
                     >
                       Delete monitoring…
                     </button>
@@ -663,24 +683,50 @@ export function AdminReview({
                         Permanently delete monitoring for {a.username}, attempt{" "}
                         {a.attempt_number || 1}? The submission is kept.
                       </p>
+                      <p>
+                        Access is deleted immediately; physical removal is
+                        queued and verified separately. Late callbacks are
+                        rejected. Clocks and account restrictions do not change.
+                      </p>
+                      <label>
+                        Monitoring deletion reason
+                        <textarea
+                          value={deleting.reason}
+                          disabled={busy || deleting.sent}
+                          minLength={8}
+                          maxLength={1000}
+                          onChange={(e) =>
+                            setDeleting({ ...deleting, reason: e.target.value })
+                          }
+                        />
+                      </label>
+                      {deleting.sent && (
+                        <p>
+                          Retry keeps this exact intent and reason. For a
+                          different action, cancel and inspect current status
+                          first.
+                        </p>
+                      )}
                       <div className="actions">
                         <button
                           disabled={busy}
-                          onClick={() => setDeleting(false)}
+                          onClick={() => setDeleting(null)}
                         >
                           Cancel deletion
                         </button>
                         <button
                           className="danger"
-                          disabled={busy}
+                          disabled={busy || deleting.reason.trim().length < 8}
                           onClick={() =>
                             void run(async () => {
+                              const { sent: _sent, ...intent } = deleting;
+                              setDeleting({ ...deleting, sent: true });
                               await api(
                                 `/admin/attempts/${a.id}/delete-monitoring`,
-                                { confirm: true },
+                                intent,
                               );
                               setPane("");
-                              setDeleting(false);
+                              setDeleting(null);
                               await load();
                               await onChanged();
                             })

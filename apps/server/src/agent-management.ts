@@ -234,6 +234,12 @@ export function registerAgentManagement(
                   b.reason,
                 ),
               };
+            } else if (r.operation === "monitoring.delete") {
+              return {
+                ok: true,
+                status: 200,
+                result: monitoringReads.delete(r.body, actor),
+              };
             } else if (r.operation.startsWith("monitoring.")) {
               return {
                 ok: true,
@@ -420,7 +426,11 @@ export function registerAgentManagement(
         return result;
       })();
       let response = outcome;
-      if (outcome.ok && r.operation.startsWith("monitoring.")) {
+      if (
+        outcome.ok &&
+        r.operation.startsWith("monitoring.") &&
+        r.operation !== "monitoring.delete"
+      ) {
         try {
           response = {
             ...outcome,

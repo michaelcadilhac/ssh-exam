@@ -23,6 +23,14 @@ export async function qualifyMonitoringCLI(
       "SELECT id FROM attempts WHERE exam='clock-exam' AND username='clock03'",
     )
     .get().id;
+  // The clock-only fixture marks this synthetic row COMPLETED without an end
+  // timestamp. Supply its truthful fixture completion before reviewing deletion;
+  // never relax the shared ended-at eligibility rule to make a test pass.
+  f.current.store.db
+    .prepare(
+      "UPDATE attempts SET ended=MIN(deadline,?) WHERE id=? AND state='COMPLETED' AND ended IS NULL",
+    )
+    .run(Date.now(), id);
   const before = f.current.store.attempt(id);
   const pane = randomUUID(),
     peer = randomUUID();
@@ -126,8 +134,57 @@ export async function qualifyMonitoringCLI(
     stderr: expect.stringContaining("complete event"),
   });
   expect(f.current.store.attempt(id)).toEqual(before);
-  media.delete(id, "fixture-retention");
+  const deletion = (await run(["show", id])).deletionReview;
+  const intent = randomUUID(),
+    parent = randomUUID();
+  const deleteArgs = [
+    "delete",
+    id,
+    "--confirm",
+    deletion.confirm,
+    "--revision",
+    deletion.revision,
+    "--reason",
+    "Reviewed synthetic monitoring deletion",
+    "--intent",
+    intent,
+    "--request",
+    parent,
+  ];
+  await expect(
+    invoke("monitoring", [...deleteArgs, "--confirm", "wrong-student"]),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("confirmation"),
+  });
+  // A failed parent ID is durable too. Use a new parent for corrected arguments.
+  deleteArgs[deleteArgs.length - 1] = randomUUID();
+  const accepted = await run(deleteArgs);
+  expect(accepted).toMatchObject({
+    id,
+    requestID: intent,
+    status: "logical-deletion-accepted",
+    logicalDeleted: true,
+    physicalPurge: "pending-verification",
+  });
   await f.restart();
+  expect(await run(deleteArgs)).toEqual(accepted);
+  deleteArgs[deleteArgs.length - 1] = randomUUID();
+  expect(await run(deleteArgs)).toEqual(accepted); // New parent, same audited child intent.
+  expect(
+    f.current.store.db
+      .prepare(
+        "SELECT count(*) n FROM monitoring_deletion_requests WHERE request=?",
+      )
+      .get(intent),
+  ).toEqual({ n: 1 });
+  expect(
+    f.current.store.db
+      .prepare(
+        "SELECT count(*) n FROM audit WHERE action='monitoring-delete-intent' AND target=?",
+      )
+      .get(id),
+  ).toEqual({ n: 1 });
   const missing = `${f.dir}/deleted-replay.ndjson`;
   await expect(
     invoke("monitoring", [...args, "--output", missing]),

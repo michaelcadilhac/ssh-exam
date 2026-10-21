@@ -135,7 +135,12 @@ and timestamped verified-absent status. This verifies only the current private
 directory, not backups or secure erasure. Keep deletion records/locks; diagnose
 storage/permissions and allow durable automatic retry. See monitoring-cli.md and
 monitoring-purge-isolation.md; full media export/shared deletion intents/CLI delete
-and retired-preparation job inventory remain outstanding. Not deployed.
+were still open at C1gb2. Local C1gb3 now adds the same reviewed deletion workflow
+to CLI and web review: ended eligibility, named student, exact review revision,
+audited reason and stable intent. Start with `examctl web monitoring show ATTEMPT`
+and `examctl web monitoring help`. Exact retries do not requeue/reset backoff;
+fresh show reads physical status. Full media export and retired-preparation job
+inventory remain outstanding. Not deployed.
 
 Submissions are automatic: saved files are collected at expiration or irreversible Finish exam.
 Archives remain in root-private storage on the SSH server. The webserver receives signed

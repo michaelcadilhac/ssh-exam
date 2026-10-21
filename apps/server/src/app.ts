@@ -1428,17 +1428,12 @@ export async function createApp(
   });
   app.post("/api/admin/attempts/:id/delete-monitoring", async (req: any) => {
     const s = principal(req, "admin");
-    const a = store.attempt(req.params.id);
-    if (!a.ended) throw Error("Delete monitoring only after attempt ends");
-    if ((req.body as any)?.confirm !== true)
-      throw Error("Confirmation required");
-    monitoring.delete(a.id, s.username);
+    const result = monitoringManagement.delete(
+      { ...req.body, id: req.params.id },
+      s.username,
+    );
     void purges.kick();
-    return {
-      ok: true,
-      logicalDeleted: true,
-      physicalPurge: monitoringPurgeStatus(store, a.id),
-    };
+    return result;
   });
   app.get("/api/admin/attempts/:id/recordings", async (req: any) => {
     const s = principal(req, "admin");
@@ -1454,6 +1449,7 @@ export async function createApp(
         : null,
       monitoringDeleted,
       physicalPurge: monitoringPurgeStatus(store, req.params.id),
+      deletionReview: monitoringManagement.deletionReview(req.params.id),
       frames: monitoringDeleted
         ? []
         : store.db

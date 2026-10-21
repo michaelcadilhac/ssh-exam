@@ -157,6 +157,7 @@ it("requires explicit root-agent management purpose, audience, freshness, pinned
       "monitoring.show",
       "monitoring.list",
       "monitoring.replay",
+      "monitoring.delete",
     ]) {
       expect(
         f.unpack(await f.post(f.request({ operation, body: {} }))).status,

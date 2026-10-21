@@ -452,6 +452,15 @@ the approval is not a production change or a completed investigation.
   native race compatibility pass. Shared reviewed deletion intents,
   CLI delete/full export/retired-job inventory and qualification remain open.
   No migration was applied to production and nothing is deployed.
+  C1gb3 adds shared named/revision/reason/intent-fenced ended-only deletion and
+  `examctl web monitoring delete`, with metadata-only durable retry receipts.
+  Exact retries/new-parent child intents do not reset purge backoff. Browser
+  confirmation captures the review and preserves sent intent after lost replies.
+  Focused shared/HTTP/real SSH tests, compiled CLI/TLS/restart, all 344 app tests/62
+  files and all 31 admin/monitoring browser checks pass. Fresh native race/resource/
+  compiler/default-size checks pass (108.1s core), static build/vet/typecheck/build
+  pass. Whole-media export/retired-job inventory and wider management remain open;
+  nothing is deployed.
 
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires

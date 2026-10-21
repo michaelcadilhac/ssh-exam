@@ -1,19 +1,18 @@
 # Bounded monitoring inspection and replay
 
-October 21, 2026. C1ga is implemented/tested locally;
-**not deployed**. This is metadata/terminal replay, not complete monitoring
-management. Whole-media export, shared deletion intents/confirmation and durable
-bounded OS-worker physical purge were separate milestones at C1ga. The subsequent
-local C1gb2 candidate now provides durable isolated purge and metadata status;
-CLI deletion/full export and shared reviewed intents remain open. Existing 60-day
-monitoring retention and protected-submission retention are unchanged.
+October 21, 2026. C1ga reads, C1gb2 durable isolated purge/status and C1gb3 reviewed
+deletion are implemented/tested locally; **not deployed**. This is not complete
+monitoring management: full export and retired-job inventory remain open. Existing
+60-day monitoring retention and independent protected-submission retention are
+unchanged.
 
 ## Supported workflow
 
 Start with `examctl web monitoring help`; help and syntax need no root/config.
 Actual requests use root's existing Ed25519 agent identity, verified outbound
 HTTPS and explicit default-deny `monitoring.show`, `monitoring.list` and
-`monitoring.replay` operation authorization. No new listener, credential or
+`monitoring.replay` read authorization, plus separate `monitoring.delete` for
+deletion. No new listener, credential or
 student authentication is introduced. Browser role/Origin/CSRF remain unchanged.
 
 ```sh
@@ -22,6 +21,7 @@ sudo examctl web monitoring list ATTEMPT --section frames --limit 50
 sudo examctl web monitoring list ATTEMPT --section terminals
 sudo examctl web monitoring replay ATTEMPT PANE --offset 0
 sudo examctl web monitoring replay ATTEMPT PANE --offset 0 --output ./replay-batch.ndjson
+sudo examctl web monitoring delete ATTEMPT --confirm USERNAME --revision HASH --reason 'Reviewed retention request'
 ```
 
 Use attempt IDs from `examctl web attempts list EXAM`, not an exam ID; pane UUIDs
@@ -85,7 +85,53 @@ retention; do not put student text into operator reasons. Deletion does not clai
 that physical purge succeeded: failed purges remain tombstoned for retry. See
 [monitoring-retention-fixes.md](monitoring-retention-fixes.md).
 
+## Reviewed deletion (C1gb3 local candidate)
+
+First run show and review the displayed student, attempt and deletionReview.
+Only an ended attempt is eligible. Use its exact confirm username and revision
+hash (not a clock/definition revision), with an operator reason of 8–1000
+characters. Do not paste student monitoring or credentials into reasons. Web
+review uses the same service, named confirmation, reason and captured revision.
+Later polling cannot silently replace the reviewed target. Old boolean-only
+clients refuse with reload/current-workflow guidance.
+
+Deletion atomically records an audited metadata-only child intent, preserves the
+first tombstone, scrubs review metadata and queues isolated purge. It permanently
+blocks late callbacks. It never finishes an active attempt, releases account
+restrictions, changes clocks or deletes protected submissions/receipts. A stale
+review, wrong username or unfinished attempt refuses with inspection guidance.
+
+Keep the printed --request UUID for a lost reply; --intent defaults to it.
+An exact parent retry returns the original acceptance. To retry that same child
+under a NEW parent, explicitly retain --intent and all original arguments. The
+child record prevents requeue/resetting backoff even after restart or a new parent.
+A cached acceptance is not current physical completion: use fresh show for job
+status. Changed arguments under an existing intent refuse. After a confirmed
+failure, inspect status/review and deliberately use a new intent for a new action;
+a transient transactional failure can retry the same child under a new parent.
+Browser retry keeps the exact sent reason/intent; cancellation requires reviewing
+current metadata before a different request.
+
+Migration 018 is additive and contains no media or attempt FK/cascade. Gateway
+and native CLI must explicitly authorize monitoring.delete; read authorization
+does not imply deletion authority. Preserve intent records, jobs and tombstones
+through consistent backups/rollback. An old gateway lacks the shared contract;
+old boolean-only UI must reload. Do not roll back to synchronous purge or discard
+newer deletion records. No deployment or production migration has occurred.
+
 ## Verification and future rollout
+
+C1gb3 final local qualification: 344 application tests/62 files (73.8s), actual
+compiled CLI/TLS/restart/new-parent child retries/default-deny/audit and all 31
+administrator/monitoring browser checks (2.1m) pass. Named/unfinished/stale refusal,
+intent-write transaction rollback, private error redaction, exact retry without
+job backoff reset and unchanged protected authority pass. Actual HTTP role/CSRF/
+Origin checks and nine real purge faults beside healthy SSH/PTY/signed control
+pass. Fresh full native race/resource/namespace/compiler/default-size opt-ins pass
+(core108.1s); static build/vet/typecheck/build pass. UI index-BUxRZ6XW.js. The first
+CLI run refused a synthetic COMPLETED row without ended-at; the fixture was fixed,
+not eligibility. Prior 81-combined-browser evidence below predates this changed
+UI and is not a new combined claim.
 
 Focused unit/HTTP and actual compiled namespace-root CLI/local-TLS tests pass,
 including paging, UTF-8 byte offsets, restart, transient receipts, appended data,
@@ -106,7 +152,8 @@ restored, not product changes. This is not complete monitoring management.
 Full application/native race/build/browser repeats are recorded in todo-progress.md
 when complete; no production qualification is inferred from these fixtures.
 
-No schema migration. A future separately authorized rollout must pair gateway/
+C1ga required no schema migration; C1gb2/3 add 017/018. A future separately
+authorized rollout must pair gateway/
 CLI and deliberately authorize only needed named read operations after safe
 drain/backup. Older CLIs lack these workflows; old gateways refuse the operations.
 Keep management receipts/tombstones across rollback. Downgrading restores the old

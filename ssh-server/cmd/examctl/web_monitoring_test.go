@@ -26,10 +26,36 @@ func TestMonitoringHelpAndSyntaxWithoutConfiguration(t *testing.T) {
 		{"web", "monitoring", "replay", "a", "pane", "--offset", "-1"},
 		{"web", "monitoring", "replay", "a", "pane", "--offset", "9007199254740992"},
 		{"web", "monitoring", "replay", "a", "pane", "--output="},
+		{"web", "monitoring", "delete", "a"},
+		{"web", "monitoring", "show", "a", "--reason", "Not a read flag"},
+		{"web", "monitoring", "delete", "a", "--confirm", "student", "--revision", strings.Repeat("a", 64), "--reason", "short"},
+		{"web", "monitoring", "delete", "a", "--confirm", "student", "--revision", strings.Repeat("a", 64), "--reason", "Reviewed removal", "--output", "private"},
 	} {
 		out, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(out, "help") || strings.Contains(out, "Load root") {
 			t.Fatal("bad syntax reached authority", code, out)
+		}
+	}
+}
+
+func TestMonitoringDeletionReplyScope(t *testing.T) {
+	body := map[string]any{"id": "a", "requestID": "intent"}
+	value := map[string]any{"id": "a", "requestID": "intent", "status": "logical-deletion-accepted", "logicalDeleted": true, "physicalPurge": "pending-verification"}
+	raw, _ := json.Marshal(value)
+	if err := validateMonitoringResult("monitoring.delete", body, raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, patch := range []map[string]any{{"id": "other"}, {"requestID": "other"}, {"status": "removed"}, {"logicalDeleted": false}, {"logicalDeleted": nil}, {"physicalPurge": "complete"}} {
+		wrong := map[string]any{}
+		for k, v := range value {
+			wrong[k] = v
+		}
+		for k, v := range patch {
+			wrong[k] = v
+		}
+		raw, _ := json.Marshal(wrong)
+		if validateMonitoringResult("monitoring.delete", body, raw) == nil {
+			t.Fatal("accepted invalid deletion receipt", wrong)
 		}
 	}
 }

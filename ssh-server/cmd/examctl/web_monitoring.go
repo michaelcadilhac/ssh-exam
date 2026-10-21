@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"examworkspace/agent/internal/core"
 	"flag"
 	"fmt"
 	"io"
@@ -15,9 +16,10 @@ func webMonitoringHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl web monitoring show ATTEMPT
        sudo examctl web monitoring list ATTEMPT [--section frames|terminals --limit N --after N --through N]
        sudo examctl web monitoring replay ATTEMPT PANE [--offset N --output NEW_FILE|-]
+       sudo examctl web monitoring delete ATTEMPT --confirm USERNAME --revision HASH --reason TEXT [--intent UUID]
 
 Read gateway monitoring through existing root-agent signed outbound HTTPS.
-Explicit monitoring.show/list/replay managementOperations authorization is required;
+Explicit monitoring.show/list/replay/delete managementOperations authorization is required;
 default is denied. No student credentials or inbound agent control API.
 show returns counts, retention and attempt metadata, not fresh native protection.
 list returns metadata only: default frames, 50 entries, range 1..200. Choose
@@ -42,8 +44,19 @@ Show includes logical deletion and pending/running/retry/verified-absent physica
 purge metadata. Verified-absent is timestamped current-directory absence, not
 backup removal or secure disk erasure. Automatic isolated retries preserve tombstones;
 inspect storage/permissions and worker diagnostics on failure. Never remove locks
-or deletion records to bypass busy. Whole-media export/shared deletion intents
-and the CLI delete workflow remain pending.
+or deletion records to bypass busy. Whole-media export and retired-job inventory
+remain pending.
+
+delete permanently blocks monitoring access/late callbacks ONLY after the attempt
+ends; it never deletes a protected submission, changes clocks, grants time or
+releases account access. First run show, review deletionReview and confirm the
+displayed USERNAME with its exact deletionReview.revision HASH (not a clock
+revision). --reason is an audited 8..1000-character operator explanation, not
+student monitoring text. Changes after review refuse; review a new intent.
+Deletion is logical acceptance plus asynchronous purge, NOT physical completion.
+Keep the original --request UUID for lost-reply retries; --intent defaults to it.
+Retain --intent under a new parent to retry the SAME child intent. Exact retries
+do not requeue/reset backoff or delete anything new. Fresh show reads job status.
 
 Common flags: --config FILE (default /etc/exam-agent/agent.json), --request UUID.
 Read results are transient: durable retries contain metadata only, never monitoring
@@ -60,9 +73,10 @@ Examples:
   sudo examctl web monitoring list ATTEMPT --section terminals
   sudo examctl web monitoring replay ATTEMPT PANE --offset 0
   sudo examctl web monitoring replay ATTEMPT PANE --offset 0 --output ./replay-batch.ndjson
+  sudo examctl web monitoring delete ATTEMPT --confirm student01 --revision HASH --reason 'Reviewed monitoring retention request'
   sudo examctl manifest ATTEMPT
 
-Exit status: 0 authenticated read, 1 refusal/operational failure, 2 invalid syntax.
+Exit status: 0 authenticated result/accepted deletion, 1 refusal/operational failure, 2 invalid syntax.
 Help requires no root/configuration. Read access is audited under agent/root.`)
 }
 
@@ -81,6 +95,10 @@ func webMonitoringMain(args []string) int {
 	through := f.Int64("through", 0, "first page watermark")
 	offset := f.Int64("offset", 0, "complete-event byte cursor")
 	output := f.String("output", "", "one replay batch to NEW_FILE or -")
+	confirm := f.String("confirm", "", "reviewed student username")
+	revision := f.String("revision", "", "reviewed deletion hash")
+	reason := f.String("reason", "", "audited reason")
+	intent := f.String("intent", "", "deletion child UUID")
 	usage := func(message string) int {
 		fmt.Fprintln(os.Stderr, message+"; run examctl web monitoring help")
 		return 2
@@ -97,12 +115,15 @@ func webMonitoringMain(args []string) int {
 	if len(w) < 3 || w[0] != "monitoring" || !ref.MatchString(w[2]) {
 		return usage("choose show/list ATTEMPT or replay ATTEMPT PANE")
 	}
-	if *request != "" && !managementUUID.MatchString(*request) {
-		return usage("--request must be a UUID")
+	if (*request != "" && !managementUUID.MatchString(*request)) || (*intent != "" && !managementUUID.MatchString(*intent)) {
+		return usage("request/intent must be UUIDs")
 	}
 	seen := map[string]bool{}
 	f.Visit(func(flag *flag.Flag) { seen[flag.Name] = true })
 	b := map[string]any{"id": w[2]}
+	if w[1] != "delete" && (seen["confirm"] || seen["revision"] || seen["reason"] || seen["intent"]) {
+		return usage("read workflow forbids deletion flags")
+	}
 	switch w[1] {
 	case "show":
 		if len(w) != 3 || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] || seen["output"] {
@@ -121,6 +142,18 @@ func webMonitoringMain(args []string) int {
 			return usage("replay needs ATTEMPT PANE and a nonnegative safe --offset byte cursor; only optional --output NEW_FILE|- and common flags")
 		}
 		b["pane"], b["offset"] = w[3], *offset
+	case "delete":
+		why := strings.TrimSpace(*reason)
+		if len(w) != 3 || !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,31}$`).MatchString(*confirm) || !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(*revision) || len([]rune(why)) < 8 || len([]rune(why)) > 1000 || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] || seen["output"] {
+			return usage("delete needs reviewed --confirm USERNAME --revision HASH and --reason 8..1000 characters, without read/output flags; first run monitoring show ATTEMPT")
+		}
+		if *request == "" {
+			*request = core.ManagementID()
+		}
+		if *intent == "" {
+			*intent = *request
+		}
+		b["confirm"], b["revision"], b["reason"], b["requestID"] = *confirm, *revision, why, *intent
 	default:
 		return usage("unknown monitoring workflow")
 	}
@@ -135,10 +168,10 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 	}
 	encoded, _ := json.Marshal(body)
 	var input struct {
-		ID, Pane, Section string
-		Offset, After     int64
-		Through           *int64
-		Limit             int
+		ID, Pane, Section, RequestID string
+		Offset, After                int64
+		Through                      *int64
+		Limit                        int
 	}
 	var result struct {
 		ID, Pane, Section, Format          string
@@ -149,6 +182,9 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 		More                               *bool
 		Entries                            []struct{ Cursor int64 }
 		Current                            struct{ ID string }
+		RequestID, Status                  string
+		LogicalDeleted                     *bool
+		PhysicalPurge                      json.RawMessage
 	}
 	invalid := errors.New("monitoring reply scope/cursor mismatch; no private output written; inspect fresh monitoring metadata")
 	if json.Unmarshal(encoded, &input) != nil || json.Unmarshal(raw, &result) != nil || result.ID != input.ID {
@@ -156,6 +192,10 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 	}
 	safe := func(n int64) bool { return n >= 0 && n <= 9007199254740991 }
 	switch operation {
+	case "monitoring.delete":
+		if result.RequestID != input.RequestID || result.Status != "logical-deletion-accepted" || result.LogicalDeleted == nil || !*result.LogicalDeleted || string(result.PhysicalPurge) != `"pending-verification"` {
+			return invalid
+		}
 	case "monitoring.show":
 		if result.Current.ID != input.ID {
 			return invalid

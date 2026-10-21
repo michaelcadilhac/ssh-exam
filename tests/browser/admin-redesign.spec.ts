@@ -99,6 +99,9 @@ async function fixture(page: Page, large = false) {
     failReplay: false,
     lostAuthorization: false,
     authorizationReplies: new Map<string, any>(),
+    monitoringRevision: "a".repeat(64),
+    lostDeletion: false,
+    deletionReplies: new Map<string, any>(),
     media: {
       monitoringDeleted: false,
       physicalPurge: {
@@ -214,19 +217,47 @@ async function fixture(page: Page, large = false) {
       if (state.reviewDelay) await state.reviewDelay;
       if (state.failReview)
         return json({ error: "Monitoring unavailable" }, 503);
-      return json(state.media);
+      const a = state.rows
+        .flatMap((s) => s.attempts)
+        .find((a) => path.includes(a.id));
+      return json({
+        ...state.media,
+        deletionReview: {
+          id: a.id,
+          confirm: a.username,
+          revision: state.monitoringRevision,
+          eligible: !!a.ended,
+        },
+      });
     }
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
       state.calls.push({ path, body });
       if (path.endsWith("/delete-monitoring")) {
+        if (state.deletionReplies.has(body.requestID))
+          return json(state.deletionReplies.get(body.requestID));
+        if (body.revision !== state.monitoringRevision)
+          return json(
+            {
+              error:
+                "Monitoring deletion target changed after review; cancel and review a NEW intent",
+            },
+            409,
+          );
         state.media.monitoringDeleted = true;
         state.media.physicalPurge.status = "retry";
-        return json({
+        state.monitoringRevision = "b".repeat(64);
+        const result = {
           ok: true,
           logicalDeleted: true,
           physicalPurge: state.media.physicalPurge,
-        });
+        };
+        state.deletionReplies.set(body.requestID, result);
+        if (state.lostDeletion) {
+          state.lostDeletion = false;
+          return route.abort("failed");
+        }
+        return json(result);
       }
       if (path.endsWith("/authorize")) {
         const prior = state.authorizationReplies.get(body.requestID);
@@ -809,6 +840,15 @@ test("monitoring deletion requires named confirmation and leaves submission revi
   await dialog
     .getByRole("button", { name: "Delete monitoring…", exact: true })
     .click();
+  await expect(
+    dialog.getByRole("button", {
+      name: "Permanently delete monitoring",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await dialog
+    .getByLabel("Monitoring deletion reason")
+    .fill("Reviewed retention request");
   await dialog
     .getByRole("button", { name: "Permanently delete monitoring", exact: true })
     .click();
@@ -817,7 +857,12 @@ test("monitoring deletion requires named confirmation and leaves submission revi
   ).toHaveCount(0);
   expect(s.calls).toHaveLength(1);
   expect(s.calls[0].path).toContain("/delete-monitoring");
-  expect(s.calls[0].body).toEqual({ confirm: true });
+  expect(s.calls[0].body).toMatchObject({
+    confirm: "amy",
+    revision: "a".repeat(64),
+    reason: "Reviewed retention request",
+    requestID: expect.any(String),
+  });
   await expect(dialog).toContainText("Physical purge: retry");
   await expect(dialog).toContainText("deletion remains in force");
   s.media.physicalPurge = { status: "verified-absent", verified: Date.now() };
@@ -830,6 +875,109 @@ test("monitoring deletion requires named confirmation and leaves submission revi
   await expect(dialog).toContainText(
     "Submissions are retained on the SSH server",
   );
+});
+
+for (const width of [1280, 390])
+  test(`monitoring deletion keeps its reviewed intent after lost reply at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const s = await fixture(page);
+    await page
+      .getByRole("rowgroup", { name: "amy", exact: true })
+      .getByRole("button", { name: "Review", exact: true })
+      .nth(1)
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "amy · Attempt 1",
+      exact: true,
+    });
+    await dialog.getByText("Monitoring retention", { exact: true }).click();
+    await dialog
+      .getByRole("button", { name: "Delete monitoring…", exact: true })
+      .click();
+    await dialog
+      .getByLabel("Monitoring deletion reason")
+      .fill("Reviewed immutable deletion intent");
+    s.lostDeletion = true;
+    await dialog
+      .getByRole("button", {
+        name: "Permanently delete monitoring",
+        exact: true,
+      })
+      .click();
+    await expect(
+      dialog.getByText("Retry keeps this exact intent and reason.", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await expect(dialog.getByRole("alert")).toBeVisible();
+    await expect(
+      dialog.getByLabel("Monitoring deletion reason"),
+    ).toBeDisabled();
+    const original = s.calls[0].body;
+    await dialog
+      .getByRole("button", {
+        name: "Permanently delete monitoring",
+        exact: true,
+      })
+      .click();
+    await expect(
+      dialog.getByRole("group", { name: "Confirm monitoring deletion" }),
+    ).toHaveCount(0);
+    expect(s.calls).toHaveLength(2);
+    expect(s.calls[1].body).toEqual(original);
+    expect(s.deletionReplies.size).toBe(1);
+    await expect(dialog).toContainText("Physical purge: retry");
+  });
+
+test("monitoring deletion refuses a changed review without silently adopting it", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .nth(1)
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "amy · Attempt 1",
+    exact: true,
+  });
+  await dialog.getByText("Monitoring retention", { exact: true }).click();
+  await dialog
+    .getByRole("button", { name: "Delete monitoring…", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Monitoring deletion reason")
+    .fill("Reviewed original deletion target");
+  s.monitoringRevision = "c".repeat(64);
+  await dialog
+    .getByRole("button", { name: "Refresh monitoring", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Permanently delete monitoring", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText("changed after review");
+  expect(s.calls[0].body.revision).toBe("a".repeat(64));
+  expect(s.media.monitoringDeleted).toBe(false);
+  await dialog
+    .getByRole("button", { name: "Cancel deletion", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Delete monitoring…", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Monitoring deletion reason")
+    .fill("Reviewed changed deletion target");
+  await dialog
+    .getByRole("button", { name: "Permanently delete monitoring", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("group", { name: "Confirm monitoring deletion" }),
+  ).toHaveCount(0);
+  expect(s.calls[1].body.revision).toBe("c".repeat(64));
+  expect(s.calls[1].body.requestID).not.toBe(s.calls[0].body.requestID);
 });
 
 test("editing an exam focuses an editable field and fits a narrow dialog", async ({
