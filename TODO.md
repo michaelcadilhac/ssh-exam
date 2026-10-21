@@ -11,7 +11,10 @@ individual incident records out of repository documentation.
 Local implementation is authorized separately as of October 20. Progress,
 dependency order, acceptance tests and decisions are tracked in
 [`docs/todo-progress.md`](docs/todo-progress.md). All production deferrals above
-remain in force. A local implementation/test result is never a deployment claim.
+remain safety prerequisites. On October 21 the instructor approved C1–C8 and
+deployment to csc-sys after all required tests succeed, without another approval
+request. Require verified safe drain, backups and compatibility; never interrupt
+running exams. A local test result is not a deployment claim.
 
 ## Firm design policy: examctl is the complete management interface
 
@@ -52,6 +55,9 @@ An administrator should be able to discover and finish a workflow using
 ## examctl completeness and usability work
 
 - [ ] **Audit command coverage against the complete management policy above.**
+  C8 approved October 21: delete only unused exam definitions; archive those with
+  history, preserving attempts/submissions. No cascade deletion or silent grant
+  cancellation. CLI/web implementation and qualification remain outstanding.
   Inventory every web-admin action and setting, native operation and current
   incident-script workflow. Map each to a supported CLI command; record and fill
   all gaps. Include bulk operations and inspection of confirmed versus pending

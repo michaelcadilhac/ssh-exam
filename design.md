@@ -1459,6 +1459,18 @@ Expose matching idempotent audited web/examctl source/grant workflows with hones
 pending/confirmed status. Technical source repair and crash qualification remain
 required; this approved policy is not implemented or deployed.
 
+### Approved exam-definition retirement (October 21; implementation pending)
+
+Delete only unused exam definitions. Archive definitions with history, preserving
+attempts, submissions, grants and audit records without cascading deletion.
+Archiving must not strand active/preparing attempts or silently revoke unused
+grants; refuse with actionable guidance when those dependencies prevent it.
+Unarchiving restores visibility, not consumed allowances or expired windows.
+Definition retirement is separate from protected-submission deletion, manual
+workspace cleanup and monitoring retention. Expose the same audited, revision-
+checked workflows in web administration and examctl. Approval is not evidence of
+implementation, migration or deployment.
+
 ### Approved private-workspace cleanup design (October 21; implementation pending)
 
 Provide manual-only workspace inspection, dry-run, cleanup and administrator

@@ -1,9 +1,12 @@
 # Proposed TODO rollout, migration and rollback
 
-**Not executed. Requires separate production authorization and an agreed drain.**
-This is a handoff plan for the local commits in todo-progress.md. It does not
-authorize production commands, configuration changes, student-record edits or
-exam interruption. Current incident receipts remain historical evidence only.
+**Not executed. Deployment to csc-sys authorized October 21 after required tests
+succeed. Verified safe drain, private backups and compatibility remain mandatory.**
+This is a handoff plan for the commits in todo-progress.md. The new csc-sys cutover
+authorization does not permit exam interruption, student-record edits or unsafe
+cleanup. Establish actual target topology and mixed-version compatibility before
+changing services. Current incident receipts remain historical evidence only;
+temporary-service consolidation has not been executed.
 
 ## Release scope and gates
 
@@ -25,8 +28,9 @@ defaults with unchanged entry/depth limits and mandatory collection crash
 isolation; implementation/fault/storage qualification are pending and outside
 this release. C7 selects explicit new-attempt recovery from verified saved work
 with instructor-chosen allowances, no automatic refunds or reopening completed
-attempts; implementation/qualification remain pending. C8 and investigation
-remain open. C4 does not
+attempts; implementation/qualification remain pending. C8 approves deleting only
+unused definitions and archiving definitions with history, preserving attempts
+and submissions; implementation/investigation remain open. C4 does not
 authorize deleting existing workspaces now.
 No new root API/listener, account override, historical attempt transfer or automatic
 workspace deletion is part of these changes. CLI management remains incomplete;

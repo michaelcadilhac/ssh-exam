@@ -1,8 +1,9 @@
 # TODO architecture investigation and decisions
 
-Updated 2026-10-21, local source inspection and instructor decisions. **C1–C7 are
-approved for local implementation; the other proposals remain pending.
-Nothing here is a deployment receipt.** Investigation remains open until decisions
+Updated 2026-10-21, local source inspection and instructor decisions. **C1–C8 are
+approved for implementation. Deployment to csc-sys is authorized after successful
+tests and verified safe drain; nothing here is a deployment receipt.**
+Investigation remains open until decisions
 and acceptance evidence exist.
 
 ## Present boundaries and CLI coverage
@@ -291,10 +292,25 @@ source/authorization state. Preparation failure before Begin consumes no allowan
 and needs no refund. **Design approved; supported source recovery and new-grant
 implementation/qualification are still pending. No student records were changed.**
 
-## Remaining policy question C8 (pending)
+## Exam definition retirement (C8 approved)
 
-This remaining question is not approved by approval of C1–C7.
+**Decision C8, approved by the instructor October 21:** permanently delete only
+unused exam definitions; archive definitions with history, preserving attempts
+and submissions. No deletion cascade through grants, attempts, protected sources,
+receipts or audit. Preview exact resource/dependencies and audit confirmation.
+Archive must not strand active preparations/attempts or silently cancel grants;
+refuse with actionable inspection/resolution guidance where necessary. Unarchive
+restores visibility, not completed attempts, elapsed windows or consumed grants.
+Keep native submission deletion and manual workspace cleanup distinct, with their
+own safety/retention rules. Monitoring retention is unchanged. Matching web/CLI
+workflows and conflict/retry tests remain outstanding.
 
-- C8: recommend archiving exam definitions with history, allowing permanent
-  deletion only for unused definitions. Protected submission deletion remains a
-  separate targeted retention operation; no cascade through attempt history.
+## Implementation/deployment authorization (October 21)
+
+The instructor resumed TODO under all eight decisions and authorized deployment
+to csc-sys after all required tests succeed, without another approval request.
+This supersedes the blanket local-only deployment deferral for that target, not
+the prohibition on interrupting exams, weakening safeguards or changing student
+records as a shortcut. Verify drain, backups, artifacts and compatibility before
+cutover. No production change or temporary-service consolidation is recorded as
+having happened. Resolve the actual gateway/agent host boundary before deployment.

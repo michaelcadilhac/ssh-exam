@@ -1,8 +1,11 @@
 # Local TODO implementation record
 
 Updated 2026-10-21 (America/Chicago). This is a local development record, not a
-deployment receipt. Production deferrals in TODO.md remain in force. Do not run
-production commands, change student data, restart services, or interrupt exams.
+deployment receipt. October 21 authorization now permits deployment to csc-sys
+after all required tests succeed without another approval request. Require a
+verified drain, consistent private backups and compatibility; never interrupt
+exams, reset clocks or change student records as a shortcut. Other safety
+deferrals remain in force. No production cutover has yet been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
 ## Baseline and method
@@ -101,15 +104,20 @@ and start the new allowance only at Begin. Existing ordinary manual clock contro
 remain available but are not a separate crash repair/refund system. Technical
 source recovery still needs implementation and failure tests; no records changed.
 
-Only C8 exam-definition archival/deletion remains undecided among the eight
-questions. See todo-design-decisions.md. Actual workload/storage, source-recovery
+Approved C8 (October 21): delete only unused exam definitions; archive definitions
+with history while preserving attempts/submissions and distinct retention rules.
+All eight choices are approved and implementation is resumed. See
+todo-design-decisions.md. Actual workload/storage, source-recovery
 and privileged crash qualification remain open; approval is not implementation/
 test evidence.
 
 Implementation order update: investigate/isolate native collection failure before
 enabling higher collection ceilings. CLI authentication/shared management work can
 proceed independently; larger workloads must not amplify the unresolved crash/
-shared-lock failure domain. The current discussion records decisions only.
+shared-lock failure domain. Current implementation order: M6a process-isolated
+collection/short transactions; C6 compatible limits and C4 manual cleanup; C1
+shared authenticated management; C2/C5/C7 grants/private initialization and C8
+retirement; C3 coordinated retained SSH/UI; full qualification and safe rollout.
 
 ## Verification and commits
 
@@ -124,7 +132,8 @@ boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
 questions (C1–C4) were initially presented without assuming approval. All four
-are now approved as recorded above, as are C5–C7; C8 and investigation remain open.
+are now approved as recorded above, as are C5–C8; implementation/investigation
+remain open.
 No production access or deployment performed. Verification entries below describe
 the decisions and implementation state at their original milestones.
 
@@ -179,7 +188,7 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation now has C1–C7 approval; C8 remains pending in
+implementation now has C1–C8 approval, recorded in
 todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.
