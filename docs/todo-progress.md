@@ -30,7 +30,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Earlier synthetic checks pass; C6 now requires collection OS-worker crash isolation and real fatal/hung-job multi-attempt qualification, not yet implemented |
 | M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Approved C6 requirement; next native correctness priority, not implemented |
-| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5 approved; implementation, migration, remaining repair policy and investigation open |
+| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved: manual cleanup/no grace and configurable 128/512 MiB defaults with crash isolation; implementation/qualification remain open |
 
@@ -55,8 +55,8 @@ explicit audited revisions for unused grants. Stage verified sources privately
 before Begin, consume once with the new committed interval, preserve default
 single-attempt policy/history/holds, and safely fence revisions against preparation
 and Begin. This is an approved design, not implementation/migration/deployment.
-Webcam/start-window policy is now approved separately in C5; repair compensation
-remains pending.
+Webcam/start-window policy is approved separately in C5; C7 selects explicit new
+attempts for crash recovery rather than automatic refunds/old-attempt reopening.
 
 Approved C3 (October 21): retain authenticated SSH and preserve shells/editor
 buffers through a verified workload freeze during policy lockouts. Input/channels/
@@ -92,9 +92,19 @@ failures with another active attempt and admission/reconnect, not only returned
 errors. The instructor's reported earlier crash is recorded as motivation, not an
 unverified diagnosis. Code/limits are not changed or deployed by this approval.
 
-Pending C7–C8: explicit repair compensation and exam-definition archival/deletion.
-See todo-design-decisions.md. Actual workload/storage and privileged crash
-qualification also remain open; approval is not implementation/test evidence.
+Approved C7 (October 21): outage recovery uses explicitly authorized new attempts
+from verified saved work, with an instructor-chosen allowance. No automatic
+refunds or reopening completed attempts. Secure old saved work first if collection
+failed; otherwise use the existing immutable protected snapshot. Copy into a
+separate workspace, preserve all original history/markers and prior account holds,
+and start the new allowance only at Begin. Existing ordinary manual clock controls
+remain available but are not a separate crash repair/refund system. Technical
+source recovery still needs implementation and failure tests; no records changed.
+
+Only C8 exam-definition archival/deletion remains undecided among the eight
+questions. See todo-design-decisions.md. Actual workload/storage, source-recovery
+and privileged crash qualification remain open; approval is not implementation/
+test evidence.
 
 Implementation order update: investigate/isolate native collection failure before
 enabling higher collection ceilings. CLI authentication/shared management work can
@@ -114,7 +124,7 @@ boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
 questions (C1–C4) were initially presented without assuming approval. All four
-are now approved as recorded above, as are C5/C6; C7/C8 and investigation remain open.
+are now approved as recorded above, as are C5–C7; C8 and investigation remain open.
 No production access or deployment performed. Verification entries below describe
 the decisions and implementation state at their original milestones.
 
@@ -169,7 +179,7 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation now has C1–C6 approval; other policy choices remain pending in
+implementation now has C1–C7 approval; C8 remains pending in
 todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.

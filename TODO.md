@@ -109,7 +109,8 @@ This is a design investigation; agree on the proposal before implementation.
 Local design status: C2 is approved October 20—unified grants with settings fixed
 at issuance and explicit audited revisions for unused grants. Implementation,
 migration and crash/race qualification are still open. C5 now approves webcam/
-window policy; repair compensation remains undecided. Approval is not a
+window policy; C7 selects new-attempt outage recovery with instructor-chosen
+allowances and no automatic refunds/reopening. Approval is not a
 deployment or historical-record change.
 
 - [ ] **Map the present model and its restrictions.**
@@ -377,6 +378,11 @@ the approval is not a production change or a completed investigation.
   repair path that preserves the original archive, audit and one-use history.
 
 - [ ] **Extend recovery restoration crash/failure tests and repair procedures.**
+  C7 approved October 21: recovery uses explicit new attempts from verified saved
+  work with instructor-chosen allowances; no automatic refunds or reopening
+  completed attempts. Preserve and safely secure the old work/history first;
+  technical source recovery is still required, but a separate old-clock repair/
+  compensation mechanism is not the selected workflow.
   Investigated; still open. Local restart regressions now cover published work
   before/after initialized-marker persistence and refusal to overwrite later
   student edits. Full process-death/disk-error qualification and a supported

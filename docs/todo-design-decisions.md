@@ -1,6 +1,6 @@
 # TODO architecture investigation and decisions
 
-Updated 2026-10-21, local source inspection and instructor decisions. **C1–C6 are
+Updated 2026-10-21, local source inspection and instructor decisions. **C1–C7 are
 approved for local implementation; the other proposals remain pending.
 Nothing here is a deployment receipt.** Investigation remains open until decisions
 and acceptance evidence exist.
@@ -103,8 +103,8 @@ Verify/stage the source privately before committing Begin; no writable exam work
 or time consumption is exposed during waiting/preflight. Failed/abandoned preflight
 does not consume the grant, and retries/concurrent claims cannot create extra
 attempts. Maintain the default single-attempt policy and all prior account holds.
-Webcam/start-window policy is now approved separately in C5; repair compensation
-remains open. No
+Webcam/start-window policy is approved separately in C5; C7 selects explicit new
+attempts for crash recovery, with no automatic refunds. No
 production recovery window/enrollment changes are implied. **Design approved;
 implementation, migration and crash/race qualification remain outstanding.**
 
@@ -191,14 +191,12 @@ Recording limits are unrelated. Source sizes/omissions should be shown before
 authorizing a saved-work grant; no silent regular-file omission.
 
 Recovery currently commits ACTIVATING/start before extraction. A failure must not
-reset markers or overwrite a possibly changed workspace. Recommend verified
-read-only staging before Begin for new grants, then short atomic publication with
-write-ahead initialization state. Existing interrupted starts need a repair command
-that first diagnoses which boundary committed, refuses student changes, and records
-time compensation separately. Implementing that transaction and compensation
-policy requires further investigation and crash/fault tests, not ad hoc file
-replacement. C1/C2 now approve the authority/unified model and pre-Begin staging;
-explicit repair compensation policy is still pending.
+reset markers or overwrite a possibly changed workspace. C1/C2 approve verified
+private staging before Begin for new grants, then short atomic publication with
+write-ahead initialization state. Technical diagnosis/source recovery still needs
+crash/fault tests and supported commands, not ad hoc file replacement. C7 below
+selects explicit new-attempt grants for outage recovery rather than a separate
+repair-and-refund workflow that changes or reopens the original interval.
 
 ## Grant monitoring and Begin windows (C5 approved)
 
@@ -266,13 +264,37 @@ shared-agent/PTY ownership, continued heartbeat/lease acknowledgements, unchange
 healthy deadlines/generations, independent cutoff and protected source integrity.
 **Approved requirements only; no limits or isolation code have changed yet.**
 
-## Additional policy questions C7–C8 (pending)
+## Outage recovery allowance (C7 approved)
 
-These remaining questions have not been approved by approval of C1–C6.
+**Decision C7, approved by the instructor October 21:** recover through explicitly
+authorized new attempts from verified saved work, with an allowance chosen by the
+instructor. No automatic refunds and no reopening completed attempts. This
+supersedes the earlier suggestion of a dedicated repair/time-credit workflow for
+the original attempt; ordinary explicit instructor clock controls remain, but
+are not the selected outage-recovery mechanism.
 
-- C7: recommend no automatic time refund during repair. Diagnose safely; any
-  credit/new grant is separately explicit and audited. Never reset consumption
-  markers, overwrite student changes or rewrite historical timing.
+If a protected submission already exists, use that exact immutable verified
+source. If collection did not complete, first diagnose, quiesce/terminate writers
+and secure/verify the old saved workspace through the supported collection path;
+never substitute an unsafe live directory or overwrite an existing protected
+bundle. Each new attempt receives a separate writable copy and starts its chosen
+allowance only at Begin, under the C2/C5 grant settings/window. Saved files are
+restorable, not process memory/editor buffers lost in a crash.
+
+Keep original attempt identity/timing, submissions, markers, failures and audit
+history. No reset of consumption markers, implicit additional grant, repeated
+refund on callback/retry, automatic source substitution or access-hold override.
+Normal prior restriction/termination/restoration eligibility still applies; an
+emergency override remains a separate specifically authorized operation. Native
+and web/CLI grant retries must be idempotent and show pending versus confirmed
+source/authorization state. Preparation failure before Begin consumes no allowance
+and needs no refund. **Design approved; supported source recovery and new-grant
+implementation/qualification are still pending. No student records were changed.**
+
+## Remaining policy question C8 (pending)
+
+This remaining question is not approved by approval of C1–C7.
+
 - C8: recommend archiving exam definitions with history, allowing permanent
   deletion only for unused definitions. Protected submission deletion remains a
   separate targeted retention operation; no cascade through attempt history.

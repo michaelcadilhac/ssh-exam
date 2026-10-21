@@ -23,7 +23,10 @@ policy, including windows outside the exam default; it is not implemented or a
 retroactive production grant change. C6 now approves configurable 128/512 MiB
 defaults with unchanged entry/depth limits and mandatory collection crash
 isolation; implementation/fault/storage qualification are pending and outside
-this release. Other policy decisions and investigation remain open. C4 does not
+this release. C7 selects explicit new-attempt recovery from verified saved work
+with instructor-chosen allowances, no automatic refunds or reopening completed
+attempts; implementation/qualification remain pending. C8 and investigation
+remain open. C4 does not
 authorize deleting existing workspaces now.
 No new root API/listener, account override, historical attempt transfer or automatic
 workspace deletion is part of these changes. CLI management remains incomplete;

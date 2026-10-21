@@ -28,10 +28,12 @@ qualification of every boundary.
 The larger ACTIVATING transaction remains under investigation. Never reset a
 consumption marker/interval or retry extraction over student changes. Inspect
 `examctl info ATTEMPT` and `examctl manifest SOURCE`; preserve workspace/staging,
-root grants/markers, state and verified source for explicit repair. A supported
-repair/time-credit workflow remains unimplemented. C1/C2 now approve agent-based
-management authority and unified grants with private pre-Begin staging; repair
-compensation policy and full initialization failure qualification remain pending.
+root grants/markers, state and verified source for safe diagnosis/source recovery.
+C1/C2 approve agent-based management authority and unified grants with private
+pre-Begin staging. C7 selects explicitly authorized new attempts from verified
+saved work with instructor-chosen allowances, not automatic refunds or reopening
+completed attempts. Source recovery/new-grant implementation and full initialization
+failure qualification remain pending; existing manual clock controls are separate.
 
 Deploy in an authorized drained window. No protected-archive migration is needed.
 Rollback retains all intervals, grants/markers, restored work and protected copies;

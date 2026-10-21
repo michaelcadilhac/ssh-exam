@@ -1414,7 +1414,7 @@ separation. A second full 90-minute attempt copied from the student's first
 protected submission is a general grant, not a special recovery exam or a rewrite
 of the original interval. Provide matching web/CLI workflows and preserve existing
 recovery grants until migration and rollback are proven. C5 below approves webcam/
-start-window policy; repair compensation remains pending. This
+start-window policy; C7 below selects new-attempt outage recovery. This
 approval does not implement, deploy or complete the investigation.
 
 ### Approved grant webcam/Begin-window policy (October 21; implementation pending)
@@ -1437,6 +1437,27 @@ committed interval is unaffected by the start window closing or defaults changin
 Keep current production grants/attempts and their windows/monitoring unchanged
 until a separately approved migration. Require matching web/CLI and signed native
 tests for a second attempt outside the ordinary exam window before claiming done.
+
+### Approved outage-recovery workflow (October 21; implementation pending)
+
+Outage recovery uses an explicitly authorized new attempt from verified saved
+work, with an allowance chosen by the instructor. Do not refund automatically or
+reopen completed attempts. This is the C2 grant model, not a separate old-clock
+repair/time-compensation system. Preserve ordinary explicit instructor clock
+controls independently; they are not the default outage-recovery workflow.
+
+Use the existing immutable protected snapshot if present. If collection failed,
+first safely recover/quiesce/terminate writers and secure/verify the saved work
+through the supported collector; never use an unverified live folder or replace
+a published protected bundle. Restore a verified copy into the new attempt's own
+workspace, preserve original timing/history/markers/source linkage, and consume
+the new grant/start its fixed allowance only at Begin. No automatic source
+substitution, consumption reset or implicit extra grant. Prior account holds and
+normal termination/restoration eligibility remain; emergency release is separate.
+Preparation failure before Begin consumes no exam allowance and needs no refund.
+Expose matching idempotent audited web/examctl source/grant workflows with honest
+pending/confirmed status. Technical source repair and crash qualification remain
+required; this approved policy is not implemented or deployed.
 
 ### Approved private-workspace cleanup design (October 21; implementation pending)
 
