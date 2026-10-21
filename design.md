@@ -1379,7 +1379,21 @@ preview/confirmation and snapshot rules through RosterManagement and
 CSV export/example have discoverable help and actual CLI/HTTP/browser tests.
 CSV parsing yields outside SQLite. Consumed previews remain idempotent after
 expiry; expired unused previews do not reopen. See docs/roster-cli.md. Grants,
-clock/review/monitoring/alert/template/config/admin coverage remain pending.
+clock/review/monitoring/template/config/admin coverage remain pending. M1/C1d
+now implements shared web/CLI notification metadata list/show/test and explicit
+manual reminders (`examctl web alerts help`), not automatic escalation. A reminder
+requires an unresolved current episode, reviewed revision, no pending original/
+reminder and audited reason. Preserve automatic deduplication and the original
+outbox/retry history; a reminder is a separately labelled message, never access,
+continuation or clock authority. Resolution cancels unsent reminders, with a final
+pre-SMTP obsolete-generation/state check. Queue acknowledgement is not delivery;
+SMTP acceptance cannot guarantee recipient reading or exactly-once delivery.
+Migration 015 preserves reminder linkage and successful browser intent IDs.
+Read/intent outcome caches contain bounded operational metadata, never raw mail
+bodies/student review or monitoring text. Browser polling cannot silently adopt
+a newer revision under edited/retried input. Desktop permission and sound stay
+browser-local. See docs/alert-management.md for verified local evidence and
+rollback limits; nothing is deployed.
 
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 

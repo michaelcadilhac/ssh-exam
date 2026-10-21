@@ -82,9 +82,9 @@ export class Alerts {
           .run(now(), row.id);
         this.store.db
           .prepare(
-            "UPDATE outbox SET status='cancelled' WHERE id=? AND status='pending'",
+            "UPDATE outbox SET status='cancelled' WHERE status='pending' AND (id=? OR id IN (SELECT outbox FROM alert_reminders WHERE episode=?))",
           )
-          .run(row.outbox);
+          .run(row.outbox, row.id);
         this.store.audit("gateway", "alert-episode-resolved", attempt, row.id);
       }
     })();

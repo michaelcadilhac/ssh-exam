@@ -136,6 +136,19 @@ it("requires explicit root-agent management purpose, audience, freshness, pinned
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
     }
     expect((await f.post(f.request(), true)).statusCode).toBe(403);
+    for (const operation of [
+      "alerts.list",
+      "alerts.show",
+      "alerts.test",
+      "alerts.remind",
+    ]) {
+      expect(
+        f.unpack(await f.post(f.request({ operation, body: {} }))).status,
+      ).toBe(403);
+    }
+    expect(
+      f.current.store.db.prepare("SELECT count(*) n FROM outbox").get(),
+    ).toEqual({ n: 0 });
     expect(
       f.current.store.db
         .prepare("SELECT count(*) n FROM agent_management_requests")
@@ -462,6 +475,83 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           ).stdout,
         ).result.ok,
       ).toBe(true);
+      f.config.agent.managementOperations = [...managementOperations];
+      const alertsCLI = async (args: string[]) =>
+        JSON.parse((await invoke("alerts", args)).stdout);
+      expect((await alertsCLI(["list"])).result.alerts).toEqual([]);
+      await expect(alertsCLI(["test"])).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("SMTP is not configured"),
+      });
+      // Only a synthetic local delivery configuration; actual SMTP delivery and
+      // retry/restart are separately exercised in alert-delivery.test.ts.
+      f.config.smtp = {
+        socket: f.dir + "/synthetic-not-listening.sock",
+        from: "exam@example.edu",
+        to: ["teacher@example.edu"],
+      };
+      const notice = f.current.life.alert(
+        "Synthetic CLI failure",
+        "PRIVATE NOTICE BODY NOT FOR MANAGEMENT CACHE",
+        {
+          key: {
+            attempt: "synthetic-native-history",
+            event: "collection-failure",
+            generation: 0,
+            cause: "test-cause",
+          },
+        },
+      );
+      f.current.store.db
+        .prepare("UPDATE outbox SET status='sent' WHERE id=?")
+        .run(notice);
+      const shown = (await alertsCLI(["show", notice])).result;
+      expect(shown).toMatchObject({ status: "sent", remindable: true });
+      expect(JSON.stringify(shown)).not.toContain("PRIVATE NOTICE BODY");
+      const reminderRequest = randomUUID();
+      const reminderArgs = [
+        "remind",
+        shown.episode.id,
+        "--revision",
+        shown.episode.revision,
+        "--reason",
+        "Explicit synthetic operator follow-up",
+        "--request",
+        reminderRequest,
+      ];
+      const queued = (await alertsCLI(reminderArgs)).result;
+      expect(queued).toMatchObject({ queued: true, delivered: false });
+      await f.restart();
+      expect((await alertsCLI(reminderArgs)).result).toEqual(queued);
+      const testRequest = randomUUID();
+      const tested = (await alertsCLI(["test", "--request", testRequest]))
+        .result;
+      expect(
+        (await alertsCLI(["test", "--request", testRequest])).result,
+      ).toEqual(tested);
+      expect((await alertsCLI(["show", tested.outbox])).result).toMatchObject({
+        status: "pending",
+        episode: null,
+      });
+      expect(
+        (await alertsCLI(["list", "--status", "pending"])).result.alerts.map(
+          (a: any) => a.id,
+        ),
+      ).toEqual(expect.arrayContaining([tested.outbox, queued.outbox]));
+      expect(
+        f.current.store.db
+          .prepare("SELECT count(*) n FROM alert_reminders")
+          .get(),
+      ).toEqual({ n: 1 });
+      expect(
+        JSON.stringify(
+          f.current.store.db
+            .prepare(
+              "SELECT outcome FROM agent_management_requests WHERE outcome LIKE '%outbox%'",
+            )
+            .all(),
+        ),
+      ).not.toContain("PRIVATE NOTICE BODY");
       f.config.agent.managementOperations = [];
       await expect(cli(["show", "midterm"])).rejects.toMatchObject({
         code: 1,

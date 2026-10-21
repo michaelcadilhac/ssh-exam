@@ -27,6 +27,10 @@ worker resource/time bounds do not automatically grow with an allowance.
 `examctl web students help` now covers roster list/add/remove/settings and CSV
 preview/confirm/example/export with shared validation, inheritance, UID trust and
 historical snapshot rules. See roster-cli.md for units, limits and safe output.
+`examctl web alerts help` covers shared delivery metadata, exact outbox inspection,
+test and explicit revision/reason-fenced manual reminders. Queued is not sent;
+desktop permission/sound are browser-local. See alert-management.md. No automatic
+escalation or original episode/retry reset is introduced.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native

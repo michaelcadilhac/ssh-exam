@@ -90,6 +90,16 @@ listener. See agent-management.md. Verify actual gateway topology/scope before
 coordinating a gateway cutover; csc-sys authorization alone is not silently
 expanded to deploying on another host. This is not complete management or grants.
 
+M1/C1d adds shared notification metadata/test/manual-reminder workflows and
+migration 015's reminder linkage/successful browser-intent records. Authorize
+only required alerts.* operations; preserve episode/outbox/intent/audit history.
+Queue acknowledgement is not delivery. No automatic reminders, recipient
+overrides or exam permissions are introduced. Reload old browser clients because
+test now requires a request ID. An older gateway cannot cancel new reminders on
+episode resolution; quiesce mail delivery and reconcile pending reminders with
+compatible tooling before any separately authorized downgrade. Do not erase
+rows or reset tries to force resend. See alert-management.md; no rollout executed.
+
 C1b adds shared conditional definition create/update and migration 014's browser
 intent ledger. Preserve both intent ledgers on rollback. Older settings clients
 must reload to obtain revisions; unversioned overwrites now refuse instead of

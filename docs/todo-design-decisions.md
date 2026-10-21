@@ -1,8 +1,9 @@
 # TODO architecture investigation and decisions
 
 Updated 2026-10-21, local source inspection and instructor decisions. **C1–C8 are
-approved for implementation. Deployment to csc-sys is authorized after successful
-tests and verified safe drain; nothing here is a deployment receipt.**
+approved for local implementation. The instructor subsequently revoked the
+conditional deployment authorization: do not deploy or execute service
+consolidation at the end of this work. Nothing here is a deployment receipt.**
 Investigation remains open until decisions
 and acceptance evidence exist.
 
@@ -17,7 +18,7 @@ signed definition list/show/create/update; retirement/full coverage remain pendi
 
 | Supported operation / setting | Present interface | CLI status and proposed workflow |
 | --- | --- | --- |
-| Exam ID/name/template, start window, future duration/webcam/terminal limit | Shared ExamDefinitions web/root service | Local list/show/create/update with all setting flags, revisions, stable partial updates and durable retry; tested, not deployed |
+| Exam ID/name/template, start window, future duration/webcam/terminal/collection limits | Shared ExamDefinitions web/root service | Local list/show/create/update with all setting flags, revisions, stable partial updates and durable retry; tested, not deployed |
 | Exam definition deletion | Neither interface has a supported workflow | Missing; add explicit `exams delete` only after dependency/hold/history policy; never alias submission deletion |
 | Single enrollment, removal, future duration/webcam | Shared RosterManagement web/root service | Local `web students list/add/remove/settings`, same inheritance/UID trust/sandbox and atomic batch rules; tested, not deployed |
 | CSV preview/confirm/export/example | Shared RosterManagement web/root service | Local `web students import-preview/import-confirm/export/example`; retain active snapshots, stale-preview/consumption checks and safe output; tested, not deployed |
@@ -31,7 +32,7 @@ signed definition list/show/create/update; retirement/full coverage remain pendi
 | Recovery grants | Incident JSON and separate enrollment helpers | Missing; `grants create/validate/list/show/revoke` coordinated with unified model; cannot silently synchronize offline edits |
 | Template install/version/inspection | Native filesystem/operator procedure | Missing; `templates list/show/validate/install`; version/freeze sources, root traversal checks |
 | Monitoring metadata/replay/media/deletion | recordings/media/delete-monitoring endpoints; native retention | Missing; `web monitoring list/export/delete`, named confirmation/tombstones, separate from submissions |
-| Alert test/outbox/desktop sound | notifications/test, attempt feed, browser preferences | Missing; `web alerts test/list/show`; desktop permission/sound are browser-local and must be described as such |
+| Alert test/outbox/manual reminders/desktop sound | Shared AlertManagement web/root service and browser-local preferences | Local `web alerts list/show/test/remind`, metadata-only inspection, stable intent/revision, explicit reason and no automatic reminders; 309 app tests, CLI/TLS/SMTP and 31 browser checks pass. Desktop permission/sound remain browser-local |
 | Agent lifecycle/readiness/accounts | Native health/accounts and systemctl | Existing `agent start/stop/restart/status`, `health/accounts`; diagnose callbacks/leases/policy without stopping independent watchdog |
 | Relevant system config/trust/retention | Root configuration/install scripts | Missing; `config show/validate`, redacted values, staged/apply distinction; service-affecting apply requires drain |
 | Administrator creation/sign-out | web administrator endpoint / bootstrap script | Missing; agent-authenticated administrator management for root CLI; existing browser login/logout remain separate, with no saved browser session needed by root CLI |

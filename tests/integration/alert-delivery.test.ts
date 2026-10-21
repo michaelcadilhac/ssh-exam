@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
 import { Writable } from "node:stream";
+import { randomUUID } from "node:crypto";
 import { createApp } from "../../apps/server/src/app.js";
 import { smtpFixture } from "../fixtures/smtp.js";
 
@@ -98,9 +99,134 @@ it("retries a contextual failure through real SMTP after restart without enqueui
     expect(
       fixture.store.db.prepare("SELECT count(*) AS n FROM outbox").get(),
     ).toEqual({ n: 1 });
+    const admin = fixture.store.session("admin", "teacher", null);
+    const student = fixture.store.session("student", "alice", "e");
+    const headers = {
+      cookie: `session=${admin.token}`,
+      origin: config.origin,
+      "x-csrf-token": admin.csrf,
+    };
+    expect(
+      (await fixture.app.inject({ url: "/api/admin/notifications" }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await fixture.app.inject({
+          url: "/api/admin/notifications",
+          headers: { cookie: `session=${student.token}` },
+        })
+      ).statusCode,
+    ).toBe(401);
+    const show = await fixture.app.inject({
+      url: `/api/admin/notifications/${first.id}`,
+      headers,
+    });
+    expect(show.json()).toMatchObject({ status: "sent", remindable: true });
+    expect(show.json()).not.toHaveProperty("body");
+    const episode = show.json().episode;
+    const requestID = randomUUID();
+    const payload = {
+      requestID,
+      revision: episode.revision,
+      reason: "Explicit instructor SMTP follow-up",
+    };
+    const remind = () =>
+      fixture.app.inject({
+        method: "POST",
+        url: `/api/admin/notifications/${episode.id}/remind`,
+        headers,
+        payload,
+      });
+    expect(
+      (
+        await fixture.app.inject({
+          method: "POST",
+          url: `/api/admin/notifications/${episode.id}/remind`,
+          headers: { cookie: headers.cookie },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(403);
+    smtp.reject(true);
+    const reply = await remind();
+    expect(reply.statusCode).toBe(200);
+    const manual = reply.json();
+    expect(manual).toMatchObject({ queued: true, delivered: false });
+    expect((await remind()).json()).toEqual(manual);
+    expect(
+      (
+        await fixture.app.inject({
+          method: "POST",
+          url: `/api/admin/notifications/${episode.id}/remind`,
+          headers,
+          payload: { ...payload, requestID: randomUUID() },
+        })
+      ).statusCode,
+    ).toBe(409);
+    await waitFor(
+      () =>
+        (
+          fixture.store.db
+            .prepare("SELECT tries FROM outbox WHERE id=?")
+            .get(manual.outbox) as any
+        ).tries === 1,
+    );
+    expect(smtp.messages).toHaveLength(1);
+    await fixture.app.close();
+    fixture = await createApp(config, options);
+    expect((await remind()).json()).toEqual(manual);
+    fixture.store.db
+      .prepare("UPDATE outbox SET next=? WHERE id=?")
+      .run(Date.now() - 1, manual.outbox);
+    smtp.reject(false);
+    await waitFor(
+      () =>
+        (
+          fixture.store.db
+            .prepare("SELECT status FROM outbox WHERE id=?")
+            .get(manual.outbox) as any
+        ).status === "sent",
+    );
+    expect(smtp.messages).toHaveLength(2);
+    expect(smtp.messages[1]).toContain(
+      `Message-ID: <${manual.outbox}@ssh-exam.local>`,
+    );
+    expect(smtp.messages[1]).toContain("Explicit manual operator reminder");
+    expect(smtp.messages[1]).toContain("not a fresh native verification");
+    expect(smtp.messages[1]).toContain("Student: alice");
+    expect(
+      fixture.store.db.prepare("SELECT count(*) n FROM alert_episodes").get(),
+    ).toEqual({ n: 1 });
+    expect(
+      fixture.store.db.prepare("SELECT count(*) n FROM alert_reminders").get(),
+    ).toEqual({ n: 1 });
+    fixture.life.acceptRemote(remote);
+    expect(
+      fixture.store.db.prepare("SELECT count(*) n FROM outbox").get(),
+    ).toEqual({ n: 2 });
+    const testPayload = { requestID: randomUUID() };
+    const testMail = async () =>
+      fixture.app.inject({
+        method: "POST",
+        url: "/api/admin/notifications/test",
+        headers,
+        payload: testPayload,
+      });
+    const tested = (await testMail()).json();
+    expect(tested).toMatchObject({ queued: true, delivered: false });
+    expect((await testMail()).json()).toEqual(tested);
+    const listed = (
+      await fixture.app.inject({
+        url: "/api/admin/notifications?status=pending&limit=1",
+        headers,
+      })
+    ).json();
+    expect(listed.alerts[0].id).toBe(tested.outbox);
+    expect(listed.alerts[0]).not.toHaveProperty("body");
   } finally {
     await fixture.app.close();
     await smtp.close();
     rmSync(data, { recursive: true, force: true });
   }
-}, 25000);
+}, 40000);

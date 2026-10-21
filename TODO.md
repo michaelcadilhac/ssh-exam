@@ -292,12 +292,15 @@ the approval is not a production change or a completed investigation.
 
 ## Confirmed alerting issues
 
-- [ ] **Deduplicate failure emails across delivery, retries and restarts.**
+- [x] **Deduplicate failure emails across delivery, retries and restarts.**
   Local status (October 20): persistent episodes, resolution/recurrence, distinct
   causes/generations and SMTP retry/restart regressions implemented and tested.
   CLI authority is now approved (C1: existing agent identity for root-run examctl).
-  Explicit operator escalation/reminder implementation is still pending; this
-  item remains open for that supported management capability.
+  October 21 M1/C1d now adds shared web/examctl delivery metadata, test and explicit
+  audited revision-fenced reminders, with unchanged automatic deduplication and
+  cancellation of obsolete unsent reminders. 309 application tests, actual CLI/
+  gateway TLS and SMTP retry/restart, native race/build and 31 alert/definition/
+  admin browser checks pass locally. See docs/alert-management.md; not deployed.
   `Lifecycle.alert()` in `apps/server/src/lifecycle.ts` only coalesces recently
   pending messages. Once sent, the same unchanged failure can generate another
   email on every callback/reconciliation. The incident produced 14 collection

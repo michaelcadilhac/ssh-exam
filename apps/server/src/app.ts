@@ -10,6 +10,11 @@ import path from "node:path";
 import argon2 from "argon2";
 import { mailTransport } from "./mail.js";
 import { signInAlertContext } from "./alerts.js";
+import {
+  AlertManagement,
+  alertPage,
+  alertReminder,
+} from "./alert-management.js";
 import { collectionSettings } from "../../../packages/protocol/collection-limits.js";
 import { z } from "zod";
 import {
@@ -94,6 +99,7 @@ export async function createApp(
   life.onPreflightFailure = (details) =>
     app.log.warn(details, "Preflight cleanup failed");
   const clocks = new ClockControl(store, agent, life);
+  const alertManagement = new AlertManagement(store, () => !!config.smtp);
   const authAttempts = new Map<string, { at: number; count: number }>();
   store.db
     .prepare("INSERT OR IGNORE INTO exams VALUES(?,?)")
@@ -1468,13 +1474,48 @@ export async function createApp(
         ),
       );
   });
-  app.post("/api/admin/notifications/test", async (req) => {
+  app.get("/api/admin/notifications", async (req) => {
     principal(req, "admin");
-    life.alert(
-      "SSH Exam notification test",
-      "Test notification. Sign in to the instructor dashboard to review delivery status.",
+    const q = alertPage
+      .extend({ limit: z.coerce.number().int().min(1).max(200).default(50) })
+      .parse(req.query);
+    return alertManagement.page(q);
+  });
+  app.get("/api/admin/notifications/:id", async (req: any) => {
+    principal(req, "admin");
+    return alertManagement.show(req.params.id);
+  });
+  app.post("/api/admin/notifications/test", async (req) => {
+    const s = principal(req, "admin");
+    const b = z
+      .object({ requestID: z.string().uuid() })
+      .strict()
+      .parse(req.body);
+    return alertManagement.withRequest(
+      s.username,
+      b.requestID,
+      { operation: "test" },
+      () => alertManagement.test(s.username),
     );
-    return { queued: true };
+  });
+  app.post("/api/admin/notifications/:id/remind", async (req: any) => {
+    const s = principal(req, "admin");
+    const b = z
+      .object({
+        requestID: z.string().uuid(),
+        revision: z.string(),
+        reason: z.string(),
+      })
+      .strict()
+      .parse(req.body);
+    const intent = alertReminder.parse({
+      id: req.params.id,
+      revision: b.revision,
+      reason: b.reason,
+    });
+    return alertManagement.withRequest(s.username, b.requestID, intent, () =>
+      alertManagement.remind(intent, s.username),
+    );
   });
   const wss = new WebSocketServer({
     noServer: true,
@@ -2303,7 +2344,11 @@ export async function createApp(
         .all(now()) as any[];
       for (const r of rows)
         try {
-          if (!life.preparePreflightNotification(r.id)) continue;
+          if (
+            !alertManagement.prepareForDelivery(r.id) ||
+            !life.preparePreflightNotification(r.id)
+          )
+            continue;
           const transport = mailTransport(smtp);
           try {
             await transport.sendMail({

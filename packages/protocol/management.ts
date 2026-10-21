@@ -14,6 +14,10 @@ export const managementOperations = [
   "students.import-confirm",
   "students.export",
   "students.example",
+  "alerts.list",
+  "alerts.show",
+  "alerts.test",
+  "alerts.remind",
 ] as const;
 export const managementRequest = z
   .object({

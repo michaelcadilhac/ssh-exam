@@ -1,7 +1,9 @@
 # Root examctl gateway management — local foundation
 
 October 21, 2026. C1 foundation implemented/tested locally; **not deployed**.
-Exam-definition configuration and roster/CSV workflows are implemented. Full management,
+Exam-definition configuration, roster/CSV and alert inspection/test/manual-reminder
+workflows are implemented locally. See alert-management.md for its validation,
+metadata-only outcomes and migration 015. Full management,
 unified grants and definition retirement are still pending; this is not CLI
 completeness or production qualification.
 

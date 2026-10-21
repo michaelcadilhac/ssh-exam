@@ -79,7 +79,7 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	}
 	allowed := false
 	switch operation {
-	case "exams.list", "exams.show", "exams.create", "exams.update", "students.list", "students.add", "students.remove", "students.settings", "students.import-preview", "students.import-confirm", "students.export", "students.example":
+	case "exams.list", "exams.show", "exams.create", "exams.update", "students.list", "students.add", "students.remove", "students.settings", "students.import-preview", "students.import-confirm", "students.export", "students.example", "alerts.list", "alerts.show", "alerts.test", "alerts.remind":
 		allowed = true
 	}
 	if !attemptID.MatchString(requestID) || !allowed {

@@ -20,6 +20,12 @@ import {
   type RosterRow,
 } from "./roster.js";
 import { z } from "zod";
+import {
+  AlertManagement,
+  alertPage,
+  alertShow,
+  alertTest,
+} from "./alert-management.js";
 
 type Outcome =
   | { ok: true; status: 200; result: unknown }
@@ -36,6 +42,7 @@ export function registerAgentManagement(
 ) {
   const definitions = new ExamDefinitions(store);
   const roster = new RosterManagement(store, describe);
+  const alerts = new AlertManagement(store, () => !!config.smtp);
   app.addContentTypeParser(
     "application/vnd.ssh-exam-management",
     { parseAs: "buffer" },
@@ -199,6 +206,26 @@ export function registerAgentManagement(
                   b.reason,
                 ),
               };
+            } else if (r.operation.startsWith("alerts.")) {
+              let value: unknown;
+              switch (r.operation) {
+                case "alerts.list":
+                  value = alerts.page(alertPage.parse(r.body));
+                  break;
+                case "alerts.show":
+                  value = alerts.show(alertShow.parse(r.body).id);
+                  break;
+                case "alerts.test":
+                  alertTest.parse(r.body);
+                  value = alerts.test(actor);
+                  break;
+                case "alerts.remind":
+                  value = alerts.remind(r.body, actor);
+                  break;
+                default:
+                  throw Error("Unsupported alert management operation");
+              }
+              return { ok: true, status: 200, result: value };
             } else {
               const b = studentManagement.parse(r.body);
               let value: unknown;
@@ -267,8 +294,13 @@ export function registerAgentManagement(
           JSON.stringify({
             confirmed: result.ok,
             operation: r.operation,
-            target:
-              r.operation === "exams.show"
+            target: r.operation.startsWith("alerts.")
+              ? z
+                  .string()
+                  .uuid()
+                  .safeParse((r.body as { id?: unknown } | null)?.id).data ||
+                "notifications"
+              : r.operation === "exams.show"
                 ? examShowRequest.safeParse(r.body).data?.id
                 : "exams",
           }),

@@ -26,7 +26,7 @@ escalation. Generated screenshot changes must not become product changes.
 | Milestone | Dependencies | Acceptance criteria and required verification | Status |
 | --- | --- | --- | --- |
 | M0: inventory and proposals | baseline | Map web/native/incident operations to CLI; map attempt/initialization/lock boundaries; present decisions with migration and acceptance cases | Investigating |
-| M1: durable alert episodes and notification correctness | baseline | Distinct attempts/causes never merge; unchanged failures deduplicate after delivery/retry/restart; resolution/recurrence work; review requests remain audited; editor lock-only omissions are silent; actionable status/context. Regression and SMTP integration tests, typecheck/build | Core implemented/tested locally; C1 approved, explicit CLI reminder implementation pending |
+| M1: durable alert episodes and notification correctness | baseline + approved C1 | Distinct attempts/causes never merge; unchanged failures deduplicate after delivery/retry/restart; resolution/recurrence and manual web/CLI reminders work; review requests remain audited; editor lock-only omissions are silent; actionable status/context. Regression, actual CLI/TLS/SMTP/browser, native race/build | Implemented/tested locally, including explicit manual reminders; not deployed |
 | M2: renewal races and preparation housekeeping | M1 | Normal expiry has no new interruption; intentional actions survive delayed renewal results; stale replies cannot affect replacement ownership; never-contacted reservations do not generate cleanup; uncertain committed starts retained. Real WS/callback regressions and full integration suite | Implemented/tested locally; not deployed |
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
@@ -50,6 +50,28 @@ mean implemented and tested locally when explicitly qualified; deployed status i
 separate and remains **not deployed** throughout this work.
 
 ## Current native increment (October 21)
+
+C6 is local commit 7ef7ac5. M1/C1d alert management now adds shared metadata-only
+web/root list/show/test and explicit audited reminders, migration 015, stable
+browser request IDs and episode revisions, cancellation of obsolete unsent
+reminders and unchanged automatic episode deduplication. Original retries and
+exam clocks/holds/continuation do not change. Actual compiled CLI/gateway TLS
+workflows pass; browser-authenticated HTTP plus real SMTP rejection/retry/restart
+pass after correcting synthetic test ordering and the existing role-refusal
+status expectation. Four initial browser lost-reply/stale/mobile checks pass;
+an exact outbox lookup workflow is added. All 31 new-alert/definition/admin
+browser checks pass (1.6m), as do native race, static build/vet and typecheck.
+The added bounded-history regression found that a pending reminder with an older
+timestamp could sit outside the displayed ten and be overlooked. Eligibility now
+checks all linked pending rows through indexed SQL independently of the bounded
+display; the focused regression passes. The frozen full application suite then
+passes all 309 tests/54 files (60.6s), including actual CLI/gateway TLS and SMTP
+rejection/restart/retry. Final build/typecheck/static native build/vet and native
+race CLI suite pass; all three Go-module race checks remain green (unchanged
+core/relay/browser modules reuse valid cache from C6 qualification). M1/C1d is
+implemented/tested locally. No automatic reminders, deployment or production
+changes. Full management and architectural grants/freeze/cleanup remain open.
+See alert-management.md. No production changes and no command-not-found.
 
 C6 limits increment after local commit 1874c65 (D1b) now implements explicit
 128 MiB/file and 512 MiB total new defaults, shared web/CLI validation, frozen

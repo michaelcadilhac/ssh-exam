@@ -11,6 +11,7 @@ import { AdminMenu } from "./admin-menu.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
 import { InterruptionHistory } from "./interruption-history.js";
 import { AdminReview } from "./admin-review.js";
+import { AlertDelivery } from "./alert-delivery.js";
 import {
   attemptStatus,
   attemptElapsed,
@@ -76,9 +77,7 @@ export function Admin({
   const [selected, setSelected] = useState<any>(null),
     [sound, setSound] = useState(false),
     [signingOut, setSigningOut] = useState(false);
-  const [alertsError, setAlertsError] = useState(""),
-    [alertsNotice, setAlertsNotice] = useState(""),
-    [alertsBusy, setAlertsBusy] = useState(false);
+  const [alertsError, setAlertsError] = useState("");
   const [permission, setPermission] = useState(
     typeof Notification === "undefined"
       ? "unavailable"
@@ -334,7 +333,6 @@ export function Admin({
               label: "Alerts",
               onSelect: () => {
                 setAlertsError("");
-                setAlertsNotice("");
                 setAlerts(true);
               },
             },
@@ -1090,7 +1088,6 @@ export function Admin({
               {alertsError}
             </p>
           )}
-          {alertsNotice && <p role="status">{alertsNotice}</p>}
           <p>
             Desktop alerts:{" "}
             {permission === "unavailable"
@@ -1121,25 +1118,7 @@ export function Admin({
             />{" "}
             Attention sound
           </label>
-          <button
-            disabled={alertsBusy}
-            onClick={async () => {
-              if (alertsBusy) return;
-              setAlertsBusy(true);
-              setAlertsError("");
-              setAlertsNotice("");
-              try {
-                await api("/admin/notifications/test", {});
-                setAlertsNotice("Test email queued.");
-              } catch (e) {
-                setAlertsError((e as Error).message);
-              } finally {
-                setAlertsBusy(false);
-              }
-            }}
-          >
-            Test email alert
-          </button>
+          <AlertDelivery />
           <div className="actions">
             <button onClick={() => setAlerts(false)}>Close</button>
           </div>
