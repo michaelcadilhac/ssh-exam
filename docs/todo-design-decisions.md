@@ -1,7 +1,7 @@
 # TODO architecture investigation and decisions
 
-Updated 2026-10-21, local source inspection and instructor decisions. **C1, C2 and
-C3 are approved for local implementation; the other proposals remain pending.
+Updated 2026-10-21, local source inspection and instructor decisions. **C1–C4 are
+approved for local implementation; the other proposals remain pending.
 Nothing here is a deployment receipt.** Investigation remains open until decisions
 and acceptance evidence exist.
 
@@ -165,13 +165,25 @@ layer claiming the new policy alone. Keep the existing focus grace.
 
 ## Workspace cleanup, limits and recovery repair
 
-**Decision C4:** recommend manual-only `workspace cleanup --dry-run` initially,
-with a 14-day minimum grace after secured collection and explicit administrator
-holds. Automated deletion should require a separately enabled policy. Eligibility
-also requires verified bundle/manifest, no writers/mounts/initialization or recovery
-use and no administrator hold. Never delete protected sources/audit/receipts or
-release access through cleanup. Alternative: automatic cleanup after a selected
-grace period, adding scheduler and race/hold requirements before enablement.
+**Decision C4, approved by the instructor October 21:** manual workspace cleanup
+with **no grace period**. This supersedes the earlier 14-day suggestion; retaining
+a duplicate workspace after all safety checks is not a functional requirement.
+No automatic deletion is authorized. Provide supported inspection, dry-run,
+explicit cleanup and hold/release workflows with audit and actionable refusals.
+
+Cleanup can become eligible immediately after verified protected bundle/manifest
+integrity, confirmed termination of all writers, no active mounts/use or
+initialization/recovery/repair dependency, and no administrator hold. Archive
+creation alone is insufficient: termination can fail after protection succeeds.
+Recheck eligibility and exact target ownership under concurrency fences at the
+actual deletion, not only during dry-run. Never delete active/paused/needed
+preparations or collection-failed work. Preserve protected sources, grants,
+consumption history, receipts and audit. Later saved-work attempts restore from
+the protected source, not the old workspace. Cleanup does not release account
+restrictions, change deadlines or alter submission/60-day monitoring retention.
+Historical orphans need separate supported inspection/proof, not blanket deletion.
+**Design approved; implementation/race/repair tests remain pending. No existing
+workspace has been deleted.**
 
 Current collection limits (32 MiB/file, 64 MiB total, 10k entries, depth 32) remain
 unchanged pending synthetic compiler/debugger measurements and an instructor
@@ -187,3 +199,23 @@ time compensation separately. Implementing that transaction and compensation
 policy requires further investigation and crash/fault tests, not ad hoc file
 replacement. C1/C2 now approve the authority/unified model and pre-Begin staging;
 explicit repair compensation policy is still pending.
+
+## Additional policy questions C5–C8 (pending)
+
+These are the remaining questions presented in the eight-question walkthrough;
+they have not been approved by approval of C1–C4.
+
+- C5: recommend preserving each student's current effective webcam requirement
+  unless explicitly overridden, and requiring explicit finite earliest/latest
+  Begin times for new grants. Snapshot the chosen values under C2. Existing
+  production grants/windows are not changed by choosing future defaults.
+- C6: propose configurable per-exam collection limits, initially 128 MiB/file and
+  512 MiB total subject to storage/stress verification, versus current 32/64 MiB;
+  retain 10,000 entries/depth 32. Actual compiler/debugger/core-dump/dataset needs
+  and the chosen limits remain undecided.
+- C7: recommend no automatic time refund during repair. Diagnose safely; any
+  credit/new grant is separately explicit and audited. Never reset consumption
+  markers, overwrite student changes or rewrite historical timing.
+- C8: recommend archiving exam definitions with history, allowing permanent
+  deletion only for unused definitions. Protected submission deletion remains a
+  separate targeted retention operation; no cascade through attempt history.

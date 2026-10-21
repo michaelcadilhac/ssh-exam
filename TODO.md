@@ -421,6 +421,11 @@ the approval is not a production change or a completed investigation.
 ## Maintenance and further validation
 
 - [ ] **Define and implement private workspace cleanup after secured collection.**
+  Local design status: C4 approved October 21—manual cleanup with no grace period,
+  superseding the earlier 14-day proposal. Verified archive/manifest, confirmed
+  termination, no mounts/use/repair dependencies, holds, dry-run and audited
+  exact-target concurrency checks remain required. No automatic deletion or
+  cleanup of existing folders has been performed; implementation/tests remain open.
   Original attempt work folders currently remain indefinitely even after the
   protected submission is secured. Decide on retention/grace periods and an
   explicit eligibility rule before implementing deletion. A secured archive alone

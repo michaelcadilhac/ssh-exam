@@ -16,9 +16,10 @@ security/timing/recording/retention restrictions remain in force.
 
 Do not bundle unfinished unified grants or full authenticated management into
 this release: C1/C2 are design-approved, not implemented/qualified release artifacts.
-C3 retained SSH with a verified freeze is also design-approved as of October 21,
-but unimplemented/unqualified and outside this release. Cleanup/limit policy
-decisions and investigation remain open.
+C3 retained SSH with a verified freeze and C4 manual workspace cleanup with no
+grace period are also design-approved as of October 21, but unimplemented/
+unqualified and outside this release. Limit/other policy decisions and
+investigation remain open. C4 does not authorize deleting existing workspaces now.
 No new root API/listener, account override, historical attempt transfer or automatic
 workspace deletion is part of these changes. CLI management remains incomplete;
 see examctl-workflows.md and todo-design-decisions.md for honest coverage.

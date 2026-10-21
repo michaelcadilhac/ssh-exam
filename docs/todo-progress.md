@@ -31,7 +31,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Local concurrency/load/compiler checks pass; broader privileged qualification and policy decisions remain open |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2 approved; implementation, migration, remaining policy defaults and investigation open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
-| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | Concrete proposal and compiler measurements presented; C4 and workload-limit choice pending |
+| D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4 approved: manual cleanup/no grace with safety checks; implementation and C6 limit policy remain open |
 
 Each implemented milestone gets documentation, focused regressions, proportional
 integration/build/race/browser checks, then a coherent local commit. Never label
@@ -64,8 +64,16 @@ deadline collection, focus grace and credential cleanup. Separate locked-page
 liveness from execution permission; actual ownership/transport loss may require
 fresh SSH. Failed freeze stays fail closed. This is not implemented or deployed.
 
-Pending investigation/decisions: webcam/start-window defaults; workspace grace/holds;
-collection size settings versus measured compiler/debugger workload.
+Approved C4 (October 21): manual workspace cleanup with no grace period; no
+automatic deletion. Retain verification, writer/mount/use/dependency checks,
+explicit holds, dry-run, exact-target concurrency fences and audit. Preserve all
+protected submissions/history/grants, account restrictions/deadlines and separate
+monitoring retention. The earlier 14-day recommendation is superseded. No cleanup
+has been implemented or performed.
+
+Pending C5–C8: webcam/start-window defaults, collection size limits and actual
+workloads, explicit repair compensation, and exam-definition archival/deletion.
+See todo-design-decisions.md. No approval is inferred from C1–C4 for these choices.
 
 ## Verification and commits
 
@@ -79,8 +87,8 @@ Migration 012 is additive. See alert-episodes.md for SMTP's acceptance/commit
 boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
-questions (C1–C4) were initially presented without assuming approval. C1, C2 and
-C3 are now approved as recorded above; other choices and investigation remain open.
+questions (C1–C4) were initially presented without assuming approval. All four
+are now approved as recorded above; C5–C8 and investigation remain open.
 No production access or deployment performed. Verification entries below describe
 the decisions and implementation state at their original milestones.
 
@@ -135,7 +143,7 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation now has C1/C2/C3 approval; other policy choices remain pending in
+implementation now has C1–C4 approval; other policy choices remain pending in
 todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.

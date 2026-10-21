@@ -1417,6 +1417,28 @@ recovery grants until migration and rollback are proven. Exact webcam/start-wind
 defaults and repair compensation remain separate pending policy choices. This
 approval does not implement, deploy or complete the investigation.
 
+### Approved private-workspace cleanup design (October 21; implementation pending)
+
+Provide manual-only workspace inspection, dry-run, cleanup and administrator
+hold/release controls through examctl. There is no mandatory retention grace and
+no automatic deletion: eligibility may begin immediately after protected bundle/
+manifest verification, confirmed termination of every writer, no mounts/active
+use/initialization/recovery/repair dependency, and no explicit hold. A secured
+archive alone is insufficient if workload termination failed. Recheck all safety
+conditions and exact target identity under concurrency fences before removal;
+use safe traversal without following student-controlled links and make partial
+cleanup/restart retries recoverable. Active/paused/needed preparations and
+collection-failed work must never be removed to simplify recovery.
+
+Preserve protected submissions/checksums, grants/one-use history, receipts and
+audit; new saved-work attempts use verified protected copies rather than retained
+live work folders. Cleanup does not release account restrictions, alter deadlines
+or change protected-submission/60-day monitoring retention. Historical orphan
+cleanup requires supported inspection/proof, not blanket deletion. Explain each
+refusal and keep holds effective across restarts and cleanup races. This approved
+policy supersedes the earlier proposed 14-day grace; implementation/qualification
+and any actual production cleanup remain outstanding.
+
 ### Clock reset and recording-limit regression requirements
 
 Cover active resets without losing SSH/panes, live dashboard countdown and presence, default-filled/cancelable reset dialogs, disconnected requests and webserver/agent restart persistence, concurrent resets and stale completion callbacks, original deadline access holds after shortened clocks, extension races with cutoff, signed timing request/response scope/replay/signature failures, freeze/defer during webserver outages, subsequent verified collection, and no idle timing polling. Exercise persistent shared recording quotas across panes/restarts, data beyond the old 64 MiB boundary, signed batch retry accounting and image exclusion. These policies supersede earlier prose that treated every collection deadline as immutable or promised packaging while timing verification is unavailable.
