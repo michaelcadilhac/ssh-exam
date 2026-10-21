@@ -1,5 +1,10 @@
 # Native class-server installation
 
+Local pending CLI update: [examctl workflows](../docs/examctl-workflows.md)
+documents command-specific help, actionable refusals and private non-overwriting
+exports. Full gateway-management coverage is still under investigation; this is
+not a deployment receipt. Use `examctl help` to discover current commands.
+
 This directory independently installs the compiled account gate, root SSH command agent, independent
 watchdog/reconciliation timer, collector and root tools. Target: Debian 12/13, Linux systemd/
 cgroup v2, OpenSSH privilege separation and bubblewrap. **Privileged installation remains

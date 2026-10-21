@@ -1,0 +1,73 @@
+package main
+
+import (
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+)
+
+func TestCLIEntry(t *testing.T) {
+	if os.Getenv("EXAMCTL_TEST_ENTRY") != "1" {
+		return
+	}
+	for i, arg := range os.Args {
+		if arg == "--" {
+			os.Args = append([]string{"examctl"}, os.Args[i+1:]...)
+			main()
+			os.Exit(0)
+		}
+	}
+	os.Exit(99)
+}
+
+func cliProcess(t *testing.T, args ...string) (string, int) {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(executable, append([]string{"-test.run=^TestCLIEntry$", "--"}, args...)...)
+	command.Env = append(os.Environ(), "EXAMCTL_TEST_ENTRY=1", "GORACE=atexit_sleep_ms=0")
+	output, err := command.CombinedOutput()
+	if err == nil {
+		return string(output), 0
+	}
+	if status, ok := err.(*exec.ExitError); ok {
+		return string(output), status.ExitCode()
+	}
+	t.Fatal(err)
+	return "", -1
+}
+
+func TestEverySupportedCommandHasDiscoverableProcessHelp(t *testing.T) {
+	for topic := range guides {
+		t.Run(topic, func(t *testing.T) {
+			for _, args := range [][]string{{"help", topic}, {topic, "--config", "/missing/configuration", "--help"}} {
+				output, code := cliProcess(t, args...)
+				for _, required := range []string{"Usage:", "Examples", "Exit status:", "--config", "root", "Offline"} {
+					if code != 0 || !strings.Contains(output, required) {
+						t.Fatalf("help failed (%d), missing %q: %s", code, required, output)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestInvalidCLIUsagePointsToRelevantHelpBeforeRootOrConfiguration(t *testing.T) {
+	for _, args := range [][]string{{"unknown"}, {"delete"}, {"stop", "ATTEMPT"}, {"agent", "shutdown"}, {"info", "one", "two"}, {"list", "--wrong-flag"}, {"info", "id", "--output", "file"}} {
+		output, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(output, "help") || strings.Contains(output, "Cannot load") {
+			t.Fatalf("misleading syntax result %d: %s", code, output)
+		}
+	}
+	output, code := cliProcess(t, "help", "delete")
+	if code != 0 || !strings.Contains(output, "not the exam definition") || !strings.Contains(strings.ToLower(output), "emergency") {
+		t.Fatal(output)
+	}
+	output, code = cliProcess(t, "help", "management")
+	if code != 0 || !strings.Contains(output, "do not yet satisfy full coverage") {
+		t.Fatal(output)
+	}
+}

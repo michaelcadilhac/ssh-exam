@@ -59,6 +59,10 @@ An administrator should be able to discover and finish a workflow using
   this firm policy into the canonical design and operator documentation.
 
 - [ ] **Redesign help around discoverable management workflows.**
+  Local status: all currently supported native commands have process-tested help,
+  examples, defaults, restrictions, units and exit-code guidance without requiring
+  root/configuration. Unknown syntax and target/reason/filter misuse point to help.
+  Help for full gateway/grant management awaits C1/C2; item remains open.
   The current help is insufficient. Provide a clear command overview, consistent
   grouping/naming, command-specific help and examples for normal use and recovery.
   Explain identifiers, target selection, time units/timezones, privilege needs,
@@ -67,6 +71,10 @@ An administrator should be able to discover and finish a workflow using
   failure. Review the CLI as a first-time administrator with no repository context.
 
 - [ ] **Make refusal messages actionable, especially deletion and access release.**
+  Local status: CLI refusals show target type, attempt/account, original/current
+  deadlines, protection/policy/writer errors and exact inspection/reconciliation
+  commands. Emergency release remains separate and conditional. Broader web/CLI
+  parity and complete end-to-end management qualification remain open.
   “Submission cannot be deleted until the account restriction is released” is
   insufficient by itself. Explain whether the target is an exam or a submission,
   which attempt/account blocks the operation, the original/current deadlines,

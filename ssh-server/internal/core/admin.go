@@ -28,6 +28,51 @@ func (e *Engine) List(active bool, exam string) ([]*Attempt, error) {
 	})
 	return result, err
 }
+
+// Open a verified immutable archive under the state lock, but copy its bytes
+// outside the lock so a slow operator destination cannot block enforcement.
+func (e *Engine) OpenExport(id string) (*os.File, error) {
+	var archive *os.File
+	err := e.WithState(func() error {
+		a, err := e.Find(id)
+		if err != nil {
+			return err
+		}
+		if !a.Protected {
+			return errors.New("protected submission unavailable")
+		}
+		dir := filepath.Join(e.Config.State, "submissions", id)
+		if _, err := ReadProtected(dir, a); err != nil {
+			return err
+		}
+		archive, err = os.Open(filepath.Join(dir, "submission.tar.gz"))
+		if err != nil {
+			return err
+		}
+		event, err := json.Marshal(map[string]any{"at": Millis(), "action": "administrator-export", "attempt": id, "checksum": a.Checksum, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER")})
+		if err != nil {
+			return err
+		}
+		f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			return err
+		}
+		_, err = f.Write(append(event, '\n'))
+		if err == nil {
+			err = f.Sync()
+		}
+		closeErr := f.Close()
+		if err != nil {
+			return err
+		}
+		return closeErr
+	})
+	if err != nil && archive != nil {
+		archive.Close()
+		archive = nil
+	}
+	return archive, err
+}
 func (e *Engine) Admin(op, id, reason string) (any, error) {
 	if (op == "pause" || op == "stop" || op == "finish" || op == "start" || op == "cancel" || op == "retry" || op == "delete") && len(strings.TrimSpace(reason)) < 8 {
 		return nil, errors.New("provide --reason with a concrete administrator reason (at least 8 characters)")

@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -23,7 +22,7 @@ func ordered(args []string) []string {
 		arg := args[i]
 		if strings.HasPrefix(arg, "-") {
 			flags = append(flags, arg)
-			if (arg == "--config" || arg == "-config" || arg == "--reason" || arg == "-reason" || arg == "--exam" || arg == "-exam") && i+1 < len(args) {
+			if (arg == "--config" || arg == "-config" || arg == "--reason" || arg == "-reason" || arg == "--exam" || arg == "-exam" || arg == "--output" || arg == "-output") && i+1 < len(args) {
 				i++
 				flags = append(flags, args[i])
 			}
@@ -44,23 +43,61 @@ func serviceCommands(action string) ([][]string, error) {
 	return append(commands, []string{action, "exam-agent.service"}), nil
 }
 func main() {
+	topic, help := helpRequest(os.Args[1:])
+	if help {
+		if !printHelp(os.Stdout, topic) {
+			os.Exit(2)
+		}
+		return
+	}
 	flags := flag.NewFlagSet("examctl", flag.ExitOnError)
 	p := flags.String("config", "/etc/exam-agent/agent.json", "configuration")
 	reason := flags.String("reason", "", "audited administrator reason")
 	active := flags.Bool("active", false, "list only started unfinished attempts")
 	exam := flags.String("exam", "", "filter list by exam ID")
 	asJSON := flags.Bool("json", false, "machine-readable list")
+	output := flags.String("output", "", "create a new private export file; never overwrite")
 	flags.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Usage: sudo examctl [flags] list|info|start|pause|stop|finish|cancel|retry|manifest|export|export-status|pause-export|resume-export|delete|override-access|health|accounts|reconcile|agent [ATTEMPT or ACTION]\nagent ACTION: start, stop, restart, status (deadline watchdog stays running)")
-		flags.PrintDefaults()
+		printHelp(os.Stderr, topic)
 	}
 	flags.Parse(ordered(os.Args[1:]))
-	if os.Geteuid() != 0 {
-		log.Fatal("root-only administrative CLI")
-	}
 	op := "list"
 	if flags.NArg() > 0 {
 		op = flags.Arg(0)
+	}
+	g, known := guides[op]
+	invalid := ""
+	if !known {
+		invalid = fmt.Sprintf("unknown command %q; run examctl help", op)
+	} else if flags.NArg() > 2 {
+		invalid = "unexpected extra targets; select exactly one attempt UUID or use list --exam"
+	} else if g.target && flags.Arg(1) == "" && !(op == "info" && *exam != "") {
+		invalid = "missing target; use an attempt UUID from examctl list (agent requires an action)"
+	} else if !g.target && flags.Arg(1) != "" {
+		invalid = "this command takes no target; see command help"
+	} else if g.reason && len(strings.TrimSpace(*reason)) < 8 {
+		invalid = "provide --reason with a concrete audited administrator reason of at least 8 characters"
+	} else if *output != "" && op != "export" {
+		invalid = "--output is only supported by export"
+	} else if (*active || *exam != "") && op != "list" && op != "info" {
+		invalid = "--exam and --active filter only list/info; they do not constrain mutations by UUID"
+	} else if op == "info" && *exam != "" && flags.Arg(1) != "" {
+		invalid = "choose info ATTEMPT or list --exam EXAM; do not combine an attempt target and exam filter"
+	}
+	if invalid != "" {
+		fmt.Fprintln(os.Stderr, invalid)
+		printHelp(os.Stderr, op)
+		os.Exit(2)
+	}
+	if op == "agent" {
+		if _, err := serviceCommands(flags.Arg(1)); err != nil {
+			fmt.Fprintln(os.Stderr, "agent requires start, stop, restart or status; see examctl help agent")
+			os.Exit(2)
+		}
+	}
+	if os.Geteuid() != 0 {
+		fmt.Fprintln(os.Stderr, "Native operations require root. Run sudo examctl with the same arguments; examctl help is available without privilege.")
+		os.Exit(1)
 	}
 	if op == "agent" {
 		action := flags.Arg(1)
@@ -83,7 +120,8 @@ func main() {
 	}
 	c, err := core.LoadConfig(*p)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "Cannot load root configuration %q: %v\nUse --config FILE for an installed configuration; examctl help explains defaults.\n", *p, err)
+		os.Exit(1)
 	}
 	e, err := core.New(c)
 	if err != nil {
@@ -91,6 +129,11 @@ func main() {
 	}
 	var result any
 	id := flags.Arg(1)
+	fail := func(err error) {
+		fmt.Fprintf(os.Stderr, "examctl %s: %v\n", op, err)
+		printRefusal(os.Stderr, op, id, *p, e)
+		os.Exit(1)
+	}
 	switch op {
 	case "list":
 		var attempts []*core.Attempt
@@ -136,34 +179,42 @@ func main() {
 		paused := op == "pause-export"
 		result, err = e.ExportDelivery(id, &paused, *reason)
 	case "export":
-		var value any
-		value, err = e.Call("submission-status", core.Request{ID: id})
-		if err != nil {
-			break
-		}
-		a := value.(*core.Attempt)
-		if !a.Protected {
-			log.Fatal("protected submission unavailable")
-		}
-		if _, err = core.ReadProtected(filepath.Join(c.State, "submissions", id), a); err != nil {
-			break
-		}
 		var f *os.File
-		f, err = os.Open(filepath.Join(c.State, "submissions", id, "submission.tar.gz"))
+		f, err = e.OpenExport(id)
 		if err != nil {
 			break
 		}
 		defer f.Close()
-		_, err = io.Copy(os.Stdout, f)
+		var destination io.Writer = os.Stdout
+		var exportFile *os.File
+		if *output != "" {
+			file, createErr := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+			if createErr != nil {
+				fail(fmt.Errorf("create new export %q (existing files are never overwritten): %w", *output, createErr))
+			}
+			defer file.Close()
+			exportFile = file
+			destination = file
+		}
+		_, err = io.Copy(destination, f)
+		if err == nil && exportFile != nil {
+			err = exportFile.Sync()
+		}
+		if exportFile != nil {
+			closeErr := exportFile.Close()
+			if err == nil {
+				err = closeErr
+			}
+		}
 		if err != nil {
-			log.Fatal(err)
+			fail(fmt.Errorf("export incomplete; inspect any partial destination before retry: %w", err))
 		}
 		return
 	default:
 		result, err = e.Admin(op, id, *reason)
 	}
 	if err != nil {
-		log.Fatal(err)
+		fail(err)
 	}
 	json.NewEncoder(os.Stdout).Encode(result)
 }
