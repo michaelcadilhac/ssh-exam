@@ -2284,8 +2284,25 @@ export async function createApp(
   const tick = setInterval(() => {
     if (!config.loginOnly) void life.tick().catch(() => {});
   }, 1000);
-  const cleanup = setInterval(() => monitoring.cleanup(), 3600000);
-  monitoring.cleanup();
+  const cleanupMonitoring = () => {
+    try {
+      const result = monitoring.cleanup();
+      if (result.failed)
+        app.log.warn(
+          { event: "monitoring-retention-incomplete", failed: result.failed },
+          "Monitoring file purge incomplete; tombstones retained for retry",
+        );
+    } catch {
+      // Even a database/inventory failure must not escape an interval callback
+      // and take unrelated SSH/monitoring sessions down with the gateway.
+      app.log.error(
+        { event: "monitoring-retention-unavailable" },
+        "Monitoring retention unavailable; preserve data and retry",
+      );
+    }
+  };
+  const cleanup = setInterval(cleanupMonitoring, 3600000);
+  cleanupMonitoring();
   const housekeeping = setInterval(() => {
     for (const [key, a] of authAttempts)
       if (now() - a.at > 60000) authAttempts.delete(key);

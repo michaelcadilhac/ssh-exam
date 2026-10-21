@@ -42,6 +42,34 @@ changes/deployment or command-not-found. Next Q2: kill a real bounded collection
 worker while another real synthetic SSH PTY/signed renewal remains healthy;
 cross-namespace cleanup and full concurrent sizing remain separate open gates.
 
+Monitoring correctness increment: two failing regressions confirmed deleted
+legacy recording resurrection and real purge permission failure escaping
+retention/stopping other attempts. All recording paths now obey tombstones;
+bounded replay refuses retained orphan bytes. Retention contains per-attempt
+failures, startup/interval exceptions are contained/redacted, and durable deletion
+records remain for retry. Seven focused regressions, including actual authenticated
+HTTP/session/health availability under purge/inventory failure, pass. Full app
+suite passes 323/57 (62.2s), typecheck/build and fresh native race/resource/compiler/
+default-size opt-ins pass (105.1s); all three Go-module race/static build/vet pass.
+Combined 81-check browser qualification is running. No new management capability,
+policy change, isolated purge claim or deployment; see monitoring-retention-fixes.md.
+
+Final monitoring correctness qualification: all **81 combined browser checks pass
+(10.5m)** with the fixed gateway, including monitoring deletion, real synthetic
+SSH, worker failures, browser closure/recovery and seven timezones. App 323/57,
+typecheck/build, fresh full native race/resource/compiler/default-size opt-ins
+(105.1s), static build/vet and all three Go-module race checks pass. Generated
+screenshots are restored. This closes the two confirmed correctness bugs locally,
+not complete monitoring management, isolated purge or deployment.
+
+Q1 is local commit f6a4459. Q2 implementation is under separate qualification:
+two synthetic guest identities/real PTYs, continuous signed healthy renewals,
+exact collector-unit/pidfd SIGKILL, target-only failure/hold/interval checks,
+healthy admission/owners/clock fences, explicit byte-verified retry and ordinary
+release. The initial peer authorization path and relative output-directory
+fixture errors were corrected, not counted as passes. Native product binaries
+are unchanged from Q1; no current installation or real identity is modified.
+
 ## Baseline and method
 
 The working tree was clean when work resumed. TODO.md and design.md have been

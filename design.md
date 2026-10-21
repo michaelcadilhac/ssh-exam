@@ -484,6 +484,16 @@ Delete screen images, webcam images, thumbnails, terminal recordings, and associ
 
 Deletion must cover originals, derived assets, exports cached by the application, and any duplicate application-managed copies. Document backup expiry and deletion tombstones so restoring a backup does not silently resurrect expired recordings. Do not promise physical secure erasure from arbitrary backup media or SSDs.
 
+All image/native/legacy recording writers and replay reads must honor durable
+tombstones; late transport callbacks cannot recreate deleted monitoring. Contain
+each retention failure so later attempts continue, and contain startup/interval
+inventory errors so a purge failure cannot terminate the gateway. Report bounded
+failure metadata without private exception text; retain committed tombstones for
+physical-purge retry without claiming erasure. October 21 local regressions cover
+real purge permission failure, late callbacks and authenticated HTTP availability
+(docs/monitoring-retention-fixes.md). This is not isolated/nonblocking purge or
+complete monitoring CLI implementation, and no retention policy changes.
+
 Keep submission archives and minimal grading/attempt metadata under their separate retention controls. Make this distinction explicit in the dashboard and privacy notice. Monitoring cleanup must not delete a submission by accident. Manual submission deletion is a separately labeled destructive operation.
 
 ## 11. Instructor dashboard, alerts, and recovery

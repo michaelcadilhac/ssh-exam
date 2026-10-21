@@ -399,6 +399,15 @@ the approval is not a production change or a completed investigation.
 
 ## Preflight and recovery correctness
 
+- [ ] **Complete monitoring management and resilient physical purge.**
+  October 21 local correctness increment prevents late legacy callbacks from
+  recreating tombstoned recordings and contains retention permission/inventory
+  failures instead of crashing the gateway or blocking later attempts. Seven
+  focused regressions, 323 application tests/57 files, native race/build and all
+  81 combined browser checks pass. See docs/monitoring-retention-fixes.md. This does not complete
+  supported CLI export/deletion, shared retry/confirmation or isolated/nonblocking
+  physical purge; those remain open and nothing is deployed.
+
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires
   real contact/preparation evidence and unset start/deadline fields. Regression
@@ -540,7 +549,7 @@ the approval is not a production change or a completed investigation.
   per-attempt locks, short fenced protection/cleanup commits and isolated export/
   release checks. Actual fatal child, systemd OOM/runtime, permission and isolated
   ENOSPC/read-only regressions pass; healthy signed workflows and blocked-cleanup
-  inspection remain available. See docs/collection-worker-isolation.md. Full
+  inspection remain available. See docs/collection-worker-isolation.md.
   October 21 Q1 also passes 39 strict real SSH/PAM/cgroup/staging/watchdog/repair
   assertions in a bounded disposable csc-sys guest overlay, with host/base
   preservation checks. See docs/isolated-native-qualification.md. This is not

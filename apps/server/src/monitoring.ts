@@ -143,6 +143,12 @@ export class Monitoring {
       throw Error("Terminal recording size limit reached");
   }
   record(a: string, pane: string, event: object) {
+    // Late legacy transport callbacks must obey the same durable deletion
+    // fence as signed native batches; deletion must never recreate recordings.
+    if (
+      this.store.db.prepare("SELECT 1 FROM tombstones WHERE attempt=?").get(a)
+    )
+      return;
     const dir = `${this.store.dir}/monitoring/${a}`;
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     const path = `${dir}/${pane}.ndjson`;
@@ -224,6 +230,15 @@ export class Monitoring {
         .run(randomUUID(), a, pane, now());
   }
   replay(attempt: string, pane: string, offset: number) {
+    if (
+      this.store.db
+        .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
+        .get(attempt)
+    )
+      throw Object.assign(
+        Error("Monitoring deleted; retained files cannot be replayed"),
+        { statusCode: 410 },
+      );
     if (!Number.isSafeInteger(offset) || offset < 0)
       throw Error("Invalid recording offset");
     const fd = openSync(
@@ -278,18 +293,37 @@ export class Monitoring {
     });
   }
   cleanup() {
+    const attempted = new Set<string>(),
+      failed = new Set<string>();
     const rows = this.store.db
       .prepare(
         "SELECT id FROM attempts WHERE ended IS NOT NULL AND ended<? AND id NOT IN (SELECT attempt FROM tombstones)",
       )
       .all(now() - 60 * 86400000) as any[];
-    for (const r of rows) this.delete(r.id, "retention");
+    for (const r of rows) {
+      attempted.add(r.id);
+      try {
+        this.delete(r.id, "retention");
+      } catch {
+        failed.add(r.id);
+      }
+    }
     for (const r of this.store.db
       .prepare("SELECT attempt FROM tombstones")
       .all() as any[])
-      rmSync(`${this.store.dir}/monitoring/${r.attempt}`, {
-        recursive: true,
-        force: true,
-      });
+      if (!attempted.has(r.attempt)) {
+        try {
+          rmSync(`${this.store.dir}/monitoring/${r.attempt}`, {
+            recursive: true,
+            force: true,
+          });
+        } catch {
+          failed.add(r.attempt);
+        }
+      }
+    // For committed deletions, tombstones make failed-purge bytes inaccessible and remain the
+    // durable retry inventory across restarts. Report only bounded metadata,
+    // never arbitrary filesystem exception text or private monitoring content.
+    return { failed: failed.size };
   }
 }

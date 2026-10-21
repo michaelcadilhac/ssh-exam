@@ -1,17 +1,85 @@
 import { it, expect } from "vitest";
 import {
   mkdtempSync,
+  mkdirSync,
   rmSync,
   existsSync,
   writeFileSync,
   readFileSync,
   truncateSync,
   statSync,
+  chmodSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import sharp from "sharp";
 import { Store } from "../../apps/server/src/db.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
+it("never resurrects deleted monitoring from late legacy callbacks or orphan replay files", () => {
+  const s = new Store(mkdtempSync(tmpdir() + "/exam-tombstone-")),
+    m = new Monitoring(s);
+  try {
+    s.db.exec(
+      "INSERT INTO exams VALUES('e','{}');INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline) VALUES('a','e','student',1001,'COMPLETED','{}',100,200,200)",
+    );
+    m.record("a", "pane", { event: "open" });
+    writeFileSync(`${s.dir}/receipts/a.manifest.json`, "immutable receipt");
+    const authority = s.attempt("a");
+    m.delete("a", "instructor");
+    m.record("a", "pane", { event: "output", data: "cHJpdmF0ZQ==" });
+    expect(
+      s.db.prepare("SELECT * FROM recordings WHERE attempt='a'").all(),
+    ).toEqual([]);
+    expect(existsSync(`${s.dir}/monitoring/a`)).toBe(false);
+    expect(s.attempt("a")).toEqual(authority);
+    expect(readFileSync(`${s.dir}/receipts/a.manifest.json`, "utf8")).toBe(
+      "immutable receipt",
+    );
+    // A physical purge may have failed or await retry. Tombstones must still
+    // prevent direct replay of any retained bytes, even without a DB row.
+    const sibling = new Monitoring(s);
+    const fs = `${s.dir}/monitoring/a`;
+    // Create an orphan only as synthetic failed-purge evidence.
+    mkdirSync(fs, { mode: 0o700 });
+    writeFileSync(`${fs}/pane.ndjson`, '{"event":"output","data":"private"}\n');
+    expect(() => sibling.replay("a", "pane", 0)).toThrow("deleted");
+  } finally {
+    s.close();
+    rmSync(s.dir, { recursive: true, force: true });
+  }
+});
+it.skipIf(process.getuid?.() === 0)(
+  "retention survives a real purge permission failure, continues other attempts and retries durable tombstones",
+  () => {
+    const s = new Store(mkdtempSync(tmpdir() + "/exam-retention-failure-")),
+      m = new Monitoring(s);
+    try {
+      s.db.exec("INSERT INTO exams VALUES('e','{}')");
+      for (const id of ["a", "b"]) {
+        s.db
+          .prepare(
+            "INSERT INTO attempts(id,exam,username,uid,state,settings,ended) VALUES(?,'e',?,1001,'COMPLETED','{}',?)",
+          )
+          .run(id, id, Date.now() - 61 * 86400000);
+        m.record(id, "pane", { event: "open" });
+      }
+      chmodSync(`${s.dir}/monitoring/a`, 0o500);
+      expect(() => m.cleanup()).not.toThrow();
+      expect(
+        s.db.prepare("SELECT attempt FROM tombstones ORDER BY attempt").all(),
+      ).toEqual([{ attempt: "a" }, { attempt: "b" }]);
+      expect(existsSync(`${s.dir}/monitoring/a/pane.ndjson`)).toBe(true);
+      expect(existsSync(`${s.dir}/monitoring/b`)).toBe(false);
+      chmodSync(`${s.dir}/monitoring/a`, 0o700);
+      expect(m.cleanup().failed).toBe(0);
+      expect(existsSync(`${s.dir}/monitoring/a`)).toBe(false);
+    } finally {
+      if (existsSync(`${s.dir}/monitoring/a`))
+        chmodSync(`${s.dir}/monitoring/a`, 0o700);
+      s.close();
+      rmSync(s.dir, { recursive: true, force: true });
+    }
+  },
+);
 it("validates images, rejects conflicting duplicates, and deletes monitoring without submissions", async () => {
   const s = new Store(mkdtempSync(tmpdir() + "/exam-media-")),
     m = new Monitoring(s);

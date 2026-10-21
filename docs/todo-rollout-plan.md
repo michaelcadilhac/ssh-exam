@@ -11,6 +11,16 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+October 21 monitoring correctness increment adds no schema/policy change: late
+legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
+bytes, and startup/hourly retention failures are contained/redacted so they cannot
+crash the gateway or skip other attempts. Physical purge failure is not an erasure
+receipt; keep tombstones for retry. Drain all old transports before any future
+downgrade to a writer that can recreate deleted files, and preserve deletion
+records/retention through every backup restore. An older gateway also loses the
+retention-error containment. Full monitoring CLI/shared intents/isolated purge
+remain open. See monitoring-retention-fixes.md; no rollout is executed.
+
 Candidate local changes: durable alert episodes/editor-lock notification policy;
 renewal/deadline/admin-action races; unopened-preflight cleanup; recovery ordinary
 file modes/available mtimes; native examctl help/refusals/audited exports; and
