@@ -92,6 +92,7 @@ Unknown/unverified replies never imply success; retain the request ID for retry.
 	fmt.Fprintln(out, "Alert inspection/test/manual reminders: examctl web alerts help (list/show/test/remind).")
 	fmt.Fprintln(out, "Gateway attempt/clock workflows: examctl web attempts help; examctl web clocks help.")
 	fmt.Fprintln(out, "Interruption review/authorization: examctl web interruptions help.")
+	fmt.Fprintln(out, "Private monitoring metadata/replay: examctl web monitoring help.")
 }
 
 func webCategory(args []string) string {
@@ -111,6 +112,9 @@ func webCategory(args []string) string {
 }
 
 func webMain(args []string) int {
+	if webCategory(args) == "monitoring" {
+		return webMonitoringMain(args)
+	}
 	if webCategory(args) == "interruptions" {
 		return webInterruptionsMain(args)
 	}
@@ -282,12 +286,20 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		fmt.Fprintln(os.Stderr, "For the same intent, repeat the same command/arguments with --request", request)
 		return 1
 	}
+	if err := validateMonitoringResult(operation, body, result.Result); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	if csvOutput != "" {
 		var value struct {
 			Format string `json:"format"`
 			Text   string `json:"text"`
 		}
-		if json.Unmarshal(result.Result, &value) != nil || value.Format != "csv" || value.Text == "" {
+		format, label := "csv", "CSV"
+		if operation == "monitoring.replay" {
+			format, label = "ndjson", "replay batch"
+		}
+		if json.Unmarshal(result.Result, &value) != nil || value.Format != format || (format == "csv" && value.Text == "") {
 			fmt.Fprintln(os.Stderr, "Confirmed reply lacks a CSV result; do not treat export as complete")
 			return 1
 		}
@@ -296,7 +308,7 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		if csvOutput != "-" {
 			file, err = os.OpenFile(csvOutput, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Create a new private CSV output (never overwrite):", err)
+				fmt.Fprintln(os.Stderr, "Create a new private "+label+" output (never overwrite):", err)
 				return 1
 			}
 			defer file.Close()
@@ -313,8 +325,16 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 			}
 		}
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "CSV write incomplete; inspect any partial output before retrying:", err)
+			fmt.Fprintln(os.Stderr, label+" write incomplete; inspect any partial output before retrying:", err)
 			return 1
+		}
+		if format == "ndjson" {
+			var progress struct {
+				NextOffset, AvailableBytes int64
+				More                       bool
+			}
+			_ = json.Unmarshal(result.Result, &progress)
+			fmt.Fprintf(os.Stderr, "One replay batch only: nextOffset=%d availableBytes=%d more=%t; use replay --offset %d for the next read (JSON shows progress).\n", progress.NextOffset, progress.AvailableBytes, progress.More, progress.NextOffset)
 		}
 		return 0
 	}

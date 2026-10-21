@@ -79,6 +79,10 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "monitoring" {
+		webMonitoringHelp(w)
+		return true
+	}
 	if topic == "workspaces" {
 		workspacesHelp(w)
 		return true
@@ -132,6 +136,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprintln(w, "Gateway roster/CSV: web students; use examctl web students help.")
 		fmt.Fprintln(w, "Gateway email delivery/manual reminders: web alerts; use examctl web alerts help.")
 		fmt.Fprintln(w, "Gateway attempts/clocks/interruption review: web attempts/clocks/interruptions; use each topic's help.")
+		fmt.Fprintln(w, "Gateway private monitoring metadata/replay: web monitoring; use examctl web monitoring help.")
 	}
 	fmt.Fprint(w, "Global flags (before or after command):\n  --config FILE  root configuration; default /etc/exam-agent/agent.json\n  --reason TEXT  concrete audited administrator reason (at least 8 characters)\n  --exam EXAM    exam-ID filter for list (also legacy info --exam)\n  --active       only started unfinished attempts in list\n  --json         list as JSON; other inspection/mutation results already use JSON\n  --output FILE  export to a new private file instead of binary stdout\n  --help         command help, available without root/configuration\n\nAll actual native operations require root and use the same state/locks as the watchdog.\nExit status: 0 success, 1 refusal/operational failure, 2 invalid syntax.\nMachine timestamps are UTC Unix milliseconds; native durations are seconds.\nOffline native state is authoritative locally; it does not prove gateway synchronization.\n")
 	return true

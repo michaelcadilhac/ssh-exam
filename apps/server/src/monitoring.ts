@@ -1,4 +1,5 @@
 import {
+  constants,
   mkdirSync,
   writeFileSync,
   renameSync,
@@ -243,10 +244,13 @@ export class Monitoring {
       throw Error("Invalid recording offset");
     const fd = openSync(
       `${this.store.dir}/monitoring/${attempt}/${pane}.ndjson`,
-      "r",
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
     );
     try {
-      const size = fstatSync(fd).size;
+      const info = fstatSync(fd);
+      if (!info.isFile() || info.nlink !== 1)
+        throw Error("Recording must be a regular private file");
+      const size = info.size;
       if (offset > size) throw Error("Recording offset exceeds available data");
       if (offset) {
         const previous = Buffer.alloc(1);
@@ -263,6 +267,7 @@ export class Monitoring {
       return {
         text: bytes.subarray(0, complete).toString("utf8"),
         nextOffset,
+        availableBytes: size,
         // A partial last event will be retried on the next refresh.
         more: count === 1024 * 1024 && nextOffset < size,
       };

@@ -111,6 +111,73 @@ function checkStored(dir: string, password: string) {
     else expect(readFileSync(file).includes(Buffer.from(password))).toBe(false);
   }
 }
+it("explains the unchanged five-sign-in window without blaming credentials, starting work or retaining answers", async () => {
+  const t = await setup({ mfaDelayMs: 10 });
+  const sockets: WebSocket[] = [];
+  const clock = vi.spyOn(Date, "now");
+  const connect = async () => {
+    const response = await t.app.inject({
+      method: "POST",
+      url: "/api/auth/start",
+      headers: { origin: t.origin },
+      payload: {},
+    });
+    expect(response.statusCode).toBe(200);
+    const cookie = String(response.headers["set-cookie"]).split(";")[0];
+    const ws = new WebSocket(
+      t.origin.replace("http:", "ws:") + "/api/auth/dialogue",
+      { headers: { origin: t.origin, cookie } },
+    );
+    sockets.push(ws);
+    const messages: any[] = [];
+    ws.on("message", (data) => messages.push(JSON.parse(data.toString())));
+    await new Promise<void>((resolve, reject) => {
+      ws.once("open", resolve);
+      ws.once("error", reject);
+    });
+    start(ws);
+    await until(() =>
+      messages.some((m) => m.type === "error" || m.prompts?.length),
+    );
+    return { ws, messages };
+  };
+  try {
+    const window = Date.now();
+    // The original unopened socket does not count; count actual start packets.
+    for (let n = 0; n < 5; n++) {
+      const a = await connect();
+      expect(a.messages.some((m) => m.prompts?.length)).toBe(true);
+      a.ws.send(JSON.stringify({ v: 1, type: "cancel" }));
+    }
+    const limited = await connect();
+    const message = limited.messages.find((m) => m.type === "error").error;
+    expect(message).toMatch(
+      /Too many SSH sign-in attempts.*Wait [1-6]?[0-9] seconds/,
+    );
+    expect(message).toContain("existing exam clock continues");
+    expect(message).not.toMatch(/password|challenge approval/i);
+    expect(limited.messages.some((m) => m.prompts?.length)).toBe(false);
+    expect(
+      t.store.db
+        .prepare(
+          "SELECT detail FROM audit WHERE action='student-sign-in-failed' ORDER BY rowid DESC LIMIT 1",
+        )
+        .get(),
+    ).toEqual({ detail: "rate-limit" });
+    // Advance only this isolated gateway's wall clock past the existing window.
+    // No production clock, limit, account restriction or credential is changed.
+    clock.mockReturnValue(window + 61000);
+    const next = await connect();
+    expect(next.messages.some((m) => m.prompts?.length)).toBe(true);
+    next.ws.send(JSON.stringify({ v: 1, type: "cancel" }));
+    expect(t.h.authCalls).toEqual({ jump: 0, class: 0 });
+    expect(t.store.db.prepare("SELECT * FROM attempts").all()).toEqual([]);
+  } finally {
+    clock.mockRestore();
+    for (const ws of sockets) ws.terminate();
+    await t.close();
+  }
+}, 20000);
 it.each([false, true])(
   "keeps HTTP/WS logs, audit, persistence and public errors secret-free (rejected=%s)",
   async (rejected) => {

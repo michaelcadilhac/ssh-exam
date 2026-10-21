@@ -28,6 +28,9 @@ export const managementOperations = [
   "interruptions.show",
   "interruptions.review",
   "interruptions.authorize",
+  "monitoring.show",
+  "monitoring.list",
+  "monitoring.replay",
 ] as const;
 export const managementRequest = z
   .object({

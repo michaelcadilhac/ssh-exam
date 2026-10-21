@@ -27,6 +27,8 @@ import {
 } from "./clock-management.js";
 import { AttemptManagement } from "./attempt-management.js";
 import { InterruptionManagement } from "./interruption-management.js";
+import { MonitoringManagement } from "./monitoring-management.js";
+import { Monitoring } from "./monitoring.js";
 import {
   attemptShow,
   clockBatch,
@@ -52,11 +54,18 @@ export function registerAgentManagement(
   config: Config,
   describe: (a: any) => any = (a) => a,
   clocks?: ClockControl,
+  monitoring?: MonitoringManagement,
 ) {
   const definitions = new ExamDefinitions(store);
   const roster = new RosterManagement(store, describe);
   const alerts = new AlertManagement(store, () => !!config.smtp);
   const interruptions = new InterruptionManagement(store);
+  const monitoringReads =
+    monitoring ??
+    new MonitoringManagement(
+      store,
+      new Monitoring(store, config.terminalRecordingLimitMiB),
+    );
   const attempts = clocks
     ? new AttemptManagement(store, clocks, describe)
     : null;
@@ -225,6 +234,12 @@ export function registerAgentManagement(
                   b.reason,
                 ),
               };
+            } else if (r.operation.startsWith("monitoring.")) {
+              return {
+                ok: true,
+                status: 200,
+                result: monitoringReads.receipt(r.operation, r.body),
+              };
             } else if (r.operation.startsWith("interruptions.")) {
               let value: unknown;
               switch (r.operation) {
@@ -375,7 +390,8 @@ export function registerAgentManagement(
             target:
               r.operation.startsWith("attempts.") ||
               r.operation.startsWith("clocks.") ||
-              r.operation.startsWith("interruptions.")
+              r.operation.startsWith("interruptions.") ||
+              r.operation.startsWith("monitoring.")
                 ? attemptShow.safeParse({
                     id: (r.body as { id?: unknown } | null)?.id,
                   }).data?.id ||
@@ -404,6 +420,25 @@ export function registerAgentManagement(
         return result;
       })();
       let response = outcome;
+      if (outcome.ok && r.operation.startsWith("monitoring.")) {
+        try {
+          response = {
+            ...outcome,
+            result: monitoringReads.read(
+              r.operation,
+              r.body,
+              outcome.result,
+              actor,
+            ),
+          };
+        } catch (error) {
+          response = {
+            ok: false,
+            status: (error as any).statusCode || 409,
+            error: (error as Error).message.slice(0, 1500),
+          };
+        }
+      }
       if (outcome.ok && r.operation === "interruptions.review") {
         try {
           response = {

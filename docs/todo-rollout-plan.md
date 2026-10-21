@@ -21,6 +21,19 @@ records/retention through every backup restore. An older gateway also loses the
 retention-error containment. Full monitoring CLI/shared intents/isolated purge
 remain open. See monitoring-retention-fixes.md; no rollout is executed.
 
+The sign-in message correction leaves the existing five-starts/account/exam/
+60-second limiter unchanged. It reports a bounded wait and continuing clock,
+without retaining/retrying credentials or bypassing approval/holds. No schema
+migration or policy change; old gateway rollback loses this diagnosis only.
+
+C1ga adds shared bounded monitoring metadata/replay and transient read receipts,
+without a schema migration. Pair gateway/CLI and explicitly authorize only needed
+monitoring.show/list/replay operations; default is none. Keep tombstones/request
+metadata through rollback. Current browser already uses incremental replay; the
+legacy no-offset route now refuses oversized/partial batches with reload/cursor
+guidance. An older gateway loses these bounds. Full export/shared deletion intents/
+isolated purge remain open; see monitoring-cli.md. This is a future proposal only.
+
 Candidate local changes: durable alert episodes/editor-lock notification policy;
 renewal/deadline/admin-action races; unopened-preflight cleanup; recovery ordinary
 file modes/available mtimes; native examctl help/refusals/audited exports; and

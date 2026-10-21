@@ -42,6 +42,12 @@ authorization. Exact retries retain expiry; private read caches contain metadata
 receipts only and cannot replay deleted monitoring. See interruption-management.md.
 Existing fresh SSH/readiness/Continue checks remain mandatory; no retained-buffer
 freeze or automatic resume is implemented by gateway approval.
+`examctl web monitoring help` adds shared bounded summary, watermark-paged frame/
+terminal metadata and one-batch terminal replay. Private reads cache metadata
+receipts only, recheck deletion and validate scope before printing/saving. Explicit
+output is a new 0600 file or stdout, not a complete media export. See monitoring-cli.md
+for byte cursors, privacy, offline limits and qualification; full media export,
+shared deletion intents and isolated purge remain open.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native

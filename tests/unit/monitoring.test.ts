@@ -235,6 +235,7 @@ it("reads bounded replay batches with byte cursors and waits for incomplete even
     expect(m.replay("a", "pane", first.nextOffset)).toEqual({
       text: "",
       nextOffset: first.nextOffset,
+      availableBytes: first.availableBytes,
       more: false,
     });
     m.record("a", "pane", { event: "output", data: "bmV3" });
@@ -253,6 +254,7 @@ it("reads bounded replay batches with byte cursors and waits for incomplete even
     expect(m.replay("a", "pane", 0)).toEqual({
       text: "",
       nextOffset: 0,
+      availableBytes: Buffer.byteLength('{"event":"open"}'),
       more: false,
     });
     writeFileSync(path, '{"event":"open"}\n');

@@ -175,6 +175,11 @@ deployment or historical-record change.
   default single-attempt policy until deliberately changed.
 
 - [ ] **Define clear `/work` initialization choices.**
+  October 21 further source investigation confirms materials/welcome still read
+  mutable template paths after starter staging. Immutable catalog and all-reader
+  version binding are prerequisites for fixed-at-issuance grants; source map,
+  ordered increments and acceptance are in docs/template-grant-investigation.md.
+  This is an ongoing investigation, not an implemented catalog/grant migration.
   October 21 local increment: ordinary/legacy-saved work stages privately in
   bounded OS workers before Begin, without clock/marker consumption. Exact
   receipt/source/owner fences, atomic no-replace publication and explicit
@@ -399,6 +404,15 @@ the approval is not a production change or a completed investigation.
 
 ## Preflight and recovery correctness
 
+- [x] **Explain SSH sign-in rate limits without blaming credentials.**
+  Confirmed during local combined browser qualification: the sixth fresh sign-in
+  inside the existing five-attempt/60-second window showed a generic password/
+  MFA error. Local implementation now reports the remaining wait and continuing
+  clock, audits a bounded rate-limit stage and keeps the limit/credential cleanup
+  unchanged. Real WebSocket regression, full 327-test app suite and all 81 combined
+  browser checks pass. The fault fixture waits out the original
+  window instead of disabling/resetting enforcement. Not deployed.
+
 - [ ] **Complete monitoring management and resilient physical purge.**
   October 21 local correctness increment prevents late legacy callbacks from
   recreating tombstoned recordings and contains retention permission/inventory
@@ -407,6 +421,13 @@ the approval is not a production change or a completed investigation.
   81 combined browser checks pass. See docs/monitoring-retention-fixes.md. This does not complete
   supported CLI export/deletion, shared retry/confirmation or isolated/nonblocking
   physical purge; those remain open and nothing is deployed.
+  C1ga now implements shared bounded web/root summary, watermark-paged frame/
+  terminal metadata and one-batch replay with transient receipts and private
+  output validation. Focused actual CLI/TLS/restart/deletion/output and shared
+  HTTP/unit regressions, all 327 app tests, native race/resource/build and all
+  81 combined browser checks pass locally. See
+  docs/monitoring-cli.md. Whole media export/shared deletion intents/isolated
+  purge remain open; this is not a complete-management/deployment claim.
 
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires

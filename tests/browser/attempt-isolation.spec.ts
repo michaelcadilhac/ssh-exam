@@ -111,6 +111,9 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
     (await admin.request.get(origin + "/api/fixture/runtime")).json();
   try {
     const originalA = await begin(alice, "isolation-a", "isolation01");
+    // Begin completed after the first start packet: this is a conservative
+    // lower bound for waiting out that server-side authentication window.
+    const authenticationWindowStarted = Date.now();
     const originalB = await begin(bob, "isolation-b", "isolation02");
     const login = await admin.request.post(origin + "/api/admin/login", {
       headers: { origin },
@@ -213,6 +216,17 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
           { timeout: 12000 },
         )
         .toBe(index + 1);
+      // Initial login plus five recoveries exceed the real five-sign-ins/minute
+      // protection if this fixture runs quickly. Do not disable/reset that limit
+      // or retry cached credentials: wait for the original window before the
+      // sixth deliberate sign-in. All fault/healthy-work assertions still run.
+      if (index === 4)
+        await expect
+          .poll(() => Date.now() - authenticationWindowStarted, {
+            timeout: 65000,
+            intervals: [1000],
+          })
+          .toBeGreaterThanOrEqual(61000);
       await restore(alice, admin, headers, originalA.id);
       const resumed = (
         await (await alice.request.get("/api/student/exam")).json()

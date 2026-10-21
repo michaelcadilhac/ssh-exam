@@ -110,7 +110,73 @@ workflows, shared admin/student/CSRF HTTP boundaries, unit bounds/pagination and
 privacy regressions, full app/native race/build/browser checks. Whole media export,
 shared audited deletion intents and durable bounded OS-worker physical purge are
 subsequent increments, not claimed complete by metadata/replay. Existing sync
-retention fixes remain e44d20c, not process-isolated/nonblocking purge proof.
+physical purge remains unchanged in this read milestone; retention fixes remain
+e44d20c, not process-isolated/nonblocking purge proof.
+
+Q2 normal-filesystem/healthy-PTY qualification is local commit cb33f24. C1ga now
+implements shared web/root monitoring show/list/replay with bounded whitelisted
+metadata, append-watermark paging, same-descriptor replay sizes, regular/no-follow/
+nonblocking leaf checks and transient metadata-only retry receipts. Every read
+rechecks tombstones; signed target/pane/cursor/byte counts are validated before
+private CLI output. Explicit 0600 output is one batch, never whole-media export.
+The old no-offset web route refuses oversized/partial batches with incremental
+guidance. Shared roles/no-store/CSRF and independent clocks/holds/receipts remain.
+The first actual CLI test found the native named-operation allowlist omission;
+fixed before the passing 16 focused tests. Full app passes **326 tests/58 files
+(62.9s)**, including actual compiled CLI/local TLS/restart/deletion/output tests.
+Fresh full native race with worker/user-systemd/namespace/CLI/compiler/default-size
+opt-ins passes (**107.3s core**); static build/vet, all three Go-module race checks,
+typecheck and app/WASM build pass. Browser assets are unchanged from C1f but all
+81 combined checks are being repeated against this gateway. See monitoring-cli.md.
+No whole-media export/shared deletion/isolated purge completion or deployment is
+claimed. No missing command after resumption.
+
+C2 dependency investigation continues during C1ga browser qualification. Source
+confirms D1a freezes starter work at preflight, while normal/admin workload mounts
+and welcome still resolve mutable Templates/Settings.Template/materials. Fixed-at-
+issuance settings require an immutable catalog/all-reader binding before unified
+issuance. Removing ordinary_exam_once alone is unsafe; account_busy/original-hold
+triggers must remain. Source map, ordered increments and acceptance are recorded
+in template-grant-investigation.md. No catalog/grant implementation, migration or
+completed investigation is claimed. C2/C5/C7 policy is already approved.
+
+The first C1ga combined browser repeat exposed a timing-dependent fixture issue:
+after five actual worker faults, the sixth deliberately fresh sign-in occurred
+inside the existing five-attempt/60-second window. Five fault emails and four
+successful continuations plus the gateway's pre-identity refusals confirm the
+sequence. No crash-isolation/deadline protection was relaxed. The test now waits
+for the original window before its sixth sign-in. The related confirmed message
+bug is corrected: rate limiting reports the wait/continuing clock rather than
+blaming passwords, and audits a bounded rate-limit stage. A real WebSocket
+regression checks first-five admission, sixth refusal and post-window eligibility
+without credentials/native work. Full qualification will be repeated; the failed
+combined run is not reported as passing.
+
+C1gb process-boundary work has started **unwired** in monitoring-purge-process.ts
+and monitoring-purge-worker.ts. The parent requires a durable tombstone and permits
+one owned child at a time; minimal environment, 32 MiB V8 heap (not hard RSS),
+bounded request/reply, timeout, exact reply/exit scope and EOF/owned-child shutdown.
+The Linux child pins root/target directory descriptors, only unlinks flat entries,
+never follows links/opens FIFO contents or recursively traverses subdirectories,
+and redacts IO failures. Initial real process death/heap/hang/protocol/permission/
+link/FIFO/retry tests pass. This does **not** remove current synchronous purge:
+durable job scheduling/restart claims, all production/lifecycle callers, shared
+audited web/CLI deletion intents/status and full healthy-workflow qualification
+remain to implement. No new deletion workflow is exposed or deployed by these
+internal files. Keep this separate from the frozen C1ga validation/commit.
+
+Final C1ga/message qualification: **all 81 combined browser checks pass together
+(10.5m)** on the fresh gateway after fixture pacing. All five worker faults and
+recoveries, unaffected healthy SSH, monitoring review/deletion, closure recovery
+and seven timezones pass with the five-sign-in limit intact. Full app **327/58
+(64.7s)**, actual CLI/TLS/restart/private output/deletion and real WebSocket limit
+regressions pass. Native full fresh race/resource/namespace/compiler/default-size
+opt-ins pass (107.3s), all three Go modules' race checks, static build/vet,
+typecheck and app/WASM build pass. Final FIFO/no-writer replay test also passes.
+Unchanged browser assets are index-Clle9fMk.js/index-CHDebkQt.css; generated nine
+baseline screenshots are restored. This closes C1ga and the misleading rate-limit
+diagnosis locally, not full monitoring export/deletion/purge, grants, retained SSH,
+workspace cleanup or deployment. The earlier 80/81 run remains a failed run.
 
 ## Baseline and method
 
@@ -139,13 +205,17 @@ escalation. Generated screenshot changes must not become product changes.
 | C1c: roster/CSV management parity | C1b | Shared web/CLI list/add/remove/settings, CSV preview/confirm/example/export; same inheritance, sandbox, UID-verification, active-snapshot, stale-preview/idempotency rules; actual CLI/HTTP/browser/race/build tests | Implemented/tested locally: 302 application tests, native race/build/typecheck/vet, 28 browser roster/interface/SSH checks; not deployed |
 | C1e: attempts and current clocks | C1a + existing clock policy | Shared atomic staging, bounded private-safe inspection, single/bulk/reset-default workflows, exact amount/revision/child retry fences, honest pending/native status; compiled CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 313 app tests, all three Go-module race checks, static build/vet/typecheck/build, 46 admin/alert/definition/timezone and 28 interface/real synthetic SSH browser checks; not deployed |
 | C1f: interruption review and authorization | C1a + current continuation policy | Shared generation/review-counter/reason fence, unchanged expiry/SSH/readiness, atomic audit/intent, private retention-safe review, exact retries/pagination; actual CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 320 app tests, native race/build/vet/typecheck/build and 81 browser checks together; not deployed |
+| C1ga: bounded monitoring inspection/replay | C1a + tombstone correctness | Shared web/root summary and watermark pages, bounded complete-event replay, transient receipts, deletion/restart rechecks and validated private outputs; actual CLI/TLS/HTTP/unit/native race/build/browser | Implemented/tested locally: 327 application tests, native race/resource/compiler/default-size opt-ins (107.3s), static build/vet/typecheck/build and all 81 combined browser checks (10.5m). Not deployed |
+| C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Investigating synchronous purge/caller/retirement boundaries; no new deletion or worker implementation yet |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
-| M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native worker/short-transaction implementation and fatal-child, actual user-systemd OOM/runtime, permission/user-namespace ENOSPC/read-only regressions pass locally; privileged SSH/PTY/workload gates remain open |
+| M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native implementation/fatal/resource/disk/race passes locally; Q2 now passes actual worker SIGKILL with healthy privileged SSH/PTY/admission/renewals in a normal-root disposable guest. Worst-case concurrent workload/initialization/cleanup qualification remains open |
+| Q2: representative privileged guest crash/enforcement | M6a + D1a + explicit isolated-host test scope | Normal-root software/private mounts, real root-controlled SSH/PAM/cgroups/watchdog, exact collector pidfd kill, unaffected healthy PTY/admission/owners/clocks, byte-verified retry, ordinary holds/release and unchanged installed host/base | Implemented/tested in cb33f24: 11 crash/private-root assertions plus all 39 enforcement assertions; 40 Python checks. Disposable fixture only, not installation/default-size capacity certification |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
+| D1c: immutable template/material versions | D1a + C2 fixed issuance | Supported native catalog/CLI, atomic bounded worker installation, all-reader exact version binding and authenticated metadata visibility; mutation/crash/restart/practice confidentiality/CLI/race/integration tests | Source investigation confirms mutable materials/welcome gap; ordering/acceptance in template-grant-investigation.md. Not implemented or completed investigation |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore, default-size worker and full local regression pass in 7ef7ac5; manual cleanup and privileged/concurrent sizing remain open |
 | C4a: workspace metadata and operator holds | C4 + D1a fences | Known-attempt inventory, exact private identity, separate durable hold revisions/loss markers, audit failure and stale/busy refusals, no eligibility/deletion claim; actual CLI/native race/build | Implemented/tested locally: actual namespace-root CLI/help, frozen full native race/resource/compiler/default-size opt-ins, static build/vet, 320 app tests and unchanged typechecked/built browser assets. Fresh proof/cleanup remain open; not deployed |

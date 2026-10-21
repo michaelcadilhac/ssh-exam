@@ -1440,6 +1440,19 @@ gateway/browser/CLI, reload old empty-body clients and preserve request records/
 counters/tombstones on rollback. See docs/interruption-management.md for local
 qualification and limitations. C3 retained SSH/buffer freeze remains open.
 
+C1ga adds a shared bounded monitoring reader and root `web monitoring show/list/
+replay` workflow. All monitoring reads retain only scoped metadata receipts in
+permanent outcomes and recheck deletion on every initial/retried private read.
+Append-order inventory watermarks fence pagination; replay uses complete-event
+byte cursors, a 1 MiB limit and same-descriptor size/regular-file checks. Validate
+signed scope/cursors before private CLI output; explicit batch files are exclusive
+0600, never a claim of complete media export. Browser replay shares validation/
+audit and no-store. The legacy no-offset reader refuses oversized/partial batches
+with incremental guidance, never an unbounded read. No clock/hold/submission or
+60-day policy change. Full export/shared deletion intents/isolated physical purge
+remain open. See docs/monitoring-cli.md for local qualification and rollback;
+nothing is deployed.
+
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 
 `examctl agent start|stop|restart|status` manages only the shared SSH gate service. Start/restart also ensure the independent watchdog and reconciliation timer are running. Stop leaves both running and closes student gate access; it is not a way to cancel deadlines. Do not reset state, kill the watchdog, change account shells or restore access as an exam stop mechanism.

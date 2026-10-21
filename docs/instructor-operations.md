@@ -3,6 +3,13 @@
 Bootstrap the initial administrator interactively and visit /admin. **Add administrator**
 creates additional accounts with the same permissions. Sign out is in the header.
 
+Local pending upgrade: the unchanged ordinary-exam SSH sign-in limit is five
+starts per account/exam within 60 seconds. A refusal now gives the remaining wait
+instead of blaming passwords/MFA; an existing attempt's clock and holds continue.
+Wait, then deliberately sign in again—do not retain/retry credentials automatically
+or reset restrictions to work around the limit. This message correction is not
+deployed and does not change instructor authorization requirements.
+
 First select an exam in the top bar. The exam toolbar contains **Exam settings** and
 **Add student**; **New exam** remains beside the exam picker. Global **Administration**
 contains **Alerts**, **Add administrator** and **Sign out**. Notification setup and SMTP
@@ -116,6 +123,13 @@ shows collection/execution/protection timestamps, file and omission counts/reaso
 archive downloads are offered. Monitoring deletion requires explicit confirmation naming
 the student and attempt and keeps the submission. Client reports are evidence, not
 misconduct scores. Administrative actions and sensitive recording access remain audited.
+
+Local C1ga (not deployed) adds `examctl web monitoring help`: shared summary,
+bounded frame/terminal metadata pages and byte-cursor terminal replay. Explicit
+private output saves one batch, not all monitoring; all retries recheck deletion
+and store metadata only in permanent request records. Current browser replay uses
+the same bounded reader. See monitoring-cli.md; full media export/shared deletion
+intents and isolated physical purge remain outstanding.
 
 Submissions are automatic: saved files are collected at expiration or irreversible Finish exam.
 Archives remain in root-private storage on the SSH server. The webserver receives signed

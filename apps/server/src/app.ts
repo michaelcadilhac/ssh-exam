@@ -37,6 +37,11 @@ import {
 } from "./connection-process.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
+import { MonitoringManagement } from "./monitoring-management.js";
+import {
+  monitoringList,
+  monitoringShow,
+} from "../../../packages/protocol/monitoring-management.js";
 import { ClockControl } from "./clock-control.js";
 import { InterruptionManagement } from "./interruption-management.js";
 import { assertClockCapabilities } from "./clock-management.js";
@@ -101,6 +106,7 @@ export async function createApp(
   life.onPreflightFailure = (details) =>
     app.log.warn(details, "Preflight cleanup failed");
   const clocks = new ClockControl(store, agent, life);
+  const monitoringManagement = new MonitoringManagement(store, monitoring);
   const interruptionManagement = new InterruptionManagement(store);
   const alertManagement = new AlertManagement(store, () => !!config.smtp);
   const authAttempts = new Map<string, { at: number; count: number }>();
@@ -318,6 +324,7 @@ export async function createApp(
     config,
     (a) => describeAttempt(a),
     clocks,
+    monitoringManagement,
   );
   app.addContentTypeParser(
     "application/vnd.ssh-exam-event",
@@ -1431,26 +1438,66 @@ export async function createApp(
         .all(req.params.id),
     };
   });
+  app.get("/api/admin/attempts/:id/monitoring", async (req: any) => {
+    const s = principal(req, "admin");
+    const body = monitoringShow.parse({ id: req.params.id });
+    const receipt = monitoringManagement.receipt("monitoring.show", body);
+    return monitoringManagement.read(
+      "monitoring.show",
+      body,
+      receipt,
+      s.username,
+    );
+  });
+  app.get("/api/admin/attempts/:id/monitoring/entries", async (req: any) => {
+    const s = principal(req, "admin");
+    const integer = z
+      .string()
+      .regex(/^(0|[1-9][0-9]*)$/)
+      .transform(Number);
+    const query = z
+      .object({
+        section: z.enum(["frames", "terminals"]).optional(),
+        limit: integer.optional(),
+        after: integer.optional(),
+        through: integer.optional(),
+      })
+      .strict()
+      .parse(req.query);
+    const body = monitoringList.parse({ ...query, id: req.params.id });
+    const receipt = monitoringManagement.receipt("monitoring.list", body);
+    return monitoringManagement.read(
+      "monitoring.list",
+      body,
+      receipt,
+      s.username,
+    );
+  });
   app.get("/api/admin/attempts/:id/recordings/:pane", async (req: any) => {
     const s = principal(req, "admin");
     z.string().uuid().parse(req.params.pane);
-    const r = store.db
-      .prepare("SELECT * FROM recordings WHERE attempt=? AND pane=?")
-      .get(req.params.id, req.params.pane);
-    if (!r) throw Error("Recording unavailable");
-    store.audit(s.username, "terminal-replay", req.params.id);
-    if (req.query.offset !== undefined) {
-      const offset = z
-        .string()
-        .regex(/^(0|[1-9][0-9]*)$/)
-        .transform(Number)
-        .parse(req.query.offset);
-      return monitoring.replay(req.params.id, req.params.pane, offset);
-    }
-    return readFileSync(
-      `${store.dir}/monitoring/${req.params.id}/${req.params.pane}.ndjson`,
-      "utf8",
-    );
+    const offset =
+      req.query.offset !== undefined
+        ? z
+            .string()
+            .regex(/^(0|[1-9][0-9]*)$/)
+            .transform(Number)
+            .parse(req.query.offset)
+        : 0;
+    const body = { id: req.params.id, pane: req.params.pane, offset };
+    const receipt = monitoringManagement.receipt("monitoring.replay", body);
+    const result = monitoringManagement.read(
+      "monitoring.replay",
+      body,
+      receipt,
+      s.username,
+    ) as any;
+    if (req.query.offset !== undefined) return result;
+    if (result.nextOffset !== result.availableBytes)
+      throw Error(
+        "Recording exceeds a complete replay batch; reload the review interface or use ?offset=0 and follow nextOffset",
+      );
+    return result.text;
   });
   app.get("/api/admin/media/:id", async (req: any, reply) => {
     const s = principal(req, "admin");
@@ -1731,7 +1778,18 @@ export async function createApp(
           const key = m.exam + ":" + m.username;
           const previous = authAttempts.get(key);
           if (!isSandbox(m.exam) && previous && now() - previous.at < 60000) {
-            if (previous.count >= 5) throw Error("Authentication rate limit");
+            if (previous.count >= 5) {
+              const seconds = Math.max(
+                1,
+                Math.ceil((previous.at + 60000 - now()) / 1000),
+              );
+              throw Object.assign(
+                signInError(
+                  `Too many SSH sign-in attempts for this exam and account. Wait ${seconds} seconds before trying again. No new exam was started; an existing exam clock continues.`,
+                ),
+                { authenticationStage: "rate-limit" },
+              );
+            }
             previous.count++;
           } else authAttempts.set(key, { at: now(), count: 1 });
           if (!config.loginOnly && isSandbox(m.exam)) {
@@ -1956,9 +2014,10 @@ export async function createApp(
               p.username || "gateway",
               "student-sign-in-failed",
               p.exam || "",
-              (e as Error & { authenticationStage?: string })
-                .authenticationStage === "exam-admission"
-                ? "exam-admission"
+              ["exam-admission", "rate-limit"].includes(
+                (e as any).authenticationStage,
+              )
+                ? (e as any).authenticationStage
                 : "authentication-or-eligibility",
             );
           send(ws, {
