@@ -113,6 +113,10 @@ not a collection-worker error. Local root sudo requires a password; do not claim
 installed root/PAM/real SSH-writer qualification from these unprivileged tests.
 Private preflight work copying/restoration now uses this boundary too; see
 private-workspace-staging.md for actual staging-death/resource/Begin races and
-safe repair. Combined real privileged PTY survival, larger concurrency/storage
-sizing, other initialization, interrupted cleanup and full end-to-end release/CLI
+safe repair. Q2 now passes real collector SIGKILL alongside an unaffected actual
+privileged SSH PTY, fresh pane admission and signed renewals in a disposable
+normal-filesystem guest; explicit retry verifies all original target bytes and
+both original holds/deadlines survive. The 39-assertion enforcement repeat also
+passes, with unchanged installed host/base. See isolated-native-qualification.md.
+Larger concurrency/storage sizing, other initialization, interrupted cleanup and full end-to-end release/CLI
 qualification remain release gates. Continue independent approved work meanwhile.

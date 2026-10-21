@@ -1652,9 +1652,14 @@ SSH/PTY/concurrent workload qualification remain open; nothing is deployed.
 October 21 Q1 qualifies ordinary staging, strict SSH/PAM/cgroup route enforcement,
 watchdog collection, failed-collection holds and explicit repair in a bounded
 disposable guest overlay (39 assertions), without changing the installed host or
-guest base. See docs/isolated-native-qualification.md. Real worker death alongside
-a healthy privileged PTY, cleanup namespace proof and concurrent sizing remain
-open; this is not C3/C4 completion or deployment authorization.
+guest base. Q2 now repeats all 39 in normal-filesystem mode and passes 11
+additional real collector-SIGKILL/healthy privileged PTY, signed renewal,
+fresh-pane admission and explicit byte-verified retry assertions. Public software
+remains available from the same root with read-only root/home, private endpoints
+and zero student capabilities. See docs/isolated-native-qualification.md for
+exact scope/artifact/evidence. Cleanup namespace proof, saved-source/every-boundary
+recovery and concurrent sizing remain open; these disposable-guest results are
+not C3/C4 completion, installed qualification or deployment authorization.
 
 ### Clock reset and recording-limit regression requirements
 

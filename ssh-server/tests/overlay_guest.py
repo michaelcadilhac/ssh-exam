@@ -5,14 +5,102 @@ import os
 from pathlib import Path
 import pwd
 import shutil
+import stat
 import subprocess
+import tempfile
 import traceback
 
 INPUT = Path('/run/ssh-exam-qualification-input')
 OUTPUT = Path('/run/ssh-exam-qualification-output')
 REQUIRED = ('python3', 'systemctl', 'ssh', 'ssh-keygen', 'sftp', 'crontab',
             'su', 'bwrap', 'setpriv', 'systemd-run', 'sshd', 'usermod',
-            'gpasswd', 'loginctl', 'sudo', 'nohup', 'sleep', 'ln', 'mkfifo')
+            'gpasswd', 'loginctl', 'sudo', 'nohup', 'sleep', 'ln', 'mkfifo', 'useradd')
+
+
+def normal_filesystem_settings(config, sockets):
+    """Match the production model, using ONLY this disposable guest's root."""
+    hidden = set(config.get('host_filesystem_hidden_paths', []))
+    if config['work'].startswith('/srv/exam-workspace/'):
+        hidden.add('/srv/exam-workspace')
+    # Same security rule as install-host-filesystem: named service endpoints
+    # outside private runtime/home mounts need explicit data-directory masks,
+    # never a tool allowlist or a hidden program/configuration directory.
+    for socket in sockets:
+        path = Path(socket)
+        if not path.is_absolute():
+            continue
+        if any(path.is_relative_to(base) for base in ('/run', '/tmp', '/var/tmp', '/home', '/root')):
+            continue
+        parent = path.parent
+        if not parent.is_relative_to('/var') or parent == Path('/var'):
+            raise RuntimeError('Review unexpected guest service socket before normal-filesystem qualification')
+        hidden.add(str(parent))
+    return {**config, 'host_filesystem': True, 'rootfs': '/',
+            'host_filesystem_hidden_paths': sorted(hidden)}
+
+
+def prepare_normal_filesystem(config):
+    state = json.loads((Path(config['state']) / 'state.json').read_text())
+    assert all(a['state'] in ('COMPLETED', 'CANCELLED_BEFORE_START')
+               and a.get('access_state') != 'HELD'
+               and a.get('policy_state', 'NORMAL') == 'NORMAL'
+               for a in state['attempts'].values()), 'Guest configuration requires an idle fixture'
+    # These calls are inside pinned private namespaces; never stop a host unit.
+    units = ('exam-reconcile.timer', 'exam-reconcile.service',
+             'exam-agent.service', 'exam-deadline-watchdog.service')
+    restart = []
+    for unit in units:
+        loaded = subprocess.run(['systemctl', 'show', unit, '--property=LoadState', '--value'],
+                                capture_output=True, text=True, check=True, timeout=10)
+        if loaded.stdout.strip() != 'loaded':
+            continue
+        active = subprocess.run(['systemctl', 'is-active', '--quiet', unit], timeout=10)
+        if active.returncode == 0 and unit != 'exam-reconcile.service':
+            restart.append(unit)
+        subprocess.run(['systemctl', 'stop', unit], check=True, timeout=30)
+    sockets = []
+    for line in Path('/proc/net/unix').read_text().splitlines():
+        fields = line.split()
+        if len(fields) >= 8 and fields[7].startswith('/'):
+            sockets.append(str(Path(' '.join(fields[7:])).resolve()))
+    proposed = normal_filesystem_settings(config, sockets)
+    for directory in ('/work', '/materials', '/home/student'):
+        path = Path(directory)
+        path.mkdir(mode=0o755, exist_ok=True)
+        assert path.is_dir() and not path.is_symlink(), 'Unsafe guest mount destination'
+    path = Path('/etc/exam-agent/agent.json')
+    descriptor, temporary = tempfile.mkstemp(prefix='.qualification-config-', dir=path.parent)
+    try:
+        with os.fdopen(descriptor, 'w') as stream:
+            json.dump(proposed, stream)
+            stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+    # Inventory public commands from the SAME root that students will receive.
+    # It is test material, not an allowlist, and cannot modify installed software.
+    inventory = []
+    for directory in ('/usr/bin', '/usr/sbin', '/usr/local/bin', '/usr/local/sbin',
+                      '/usr/games', '/usr/local/games'):
+        parent = Path(directory)
+        if not parent.is_dir():
+            continue
+        for entry in parent.iterdir():
+            try:
+                info = entry.stat()
+                if stat.S_ISREG(info.st_mode) and info.st_mode & 0o001:
+                    inventory.append(str(entry))
+                    assert len(inventory) <= 20000, 'Guest command inventory exceeds bounds'
+            except FileNotFoundError:
+                continue
+    starter = Path(config['templates']) / 'qualification/work'
+    assert starter.is_dir() and not starter.is_symlink()
+    (starter / 'qualification-command-inventory.txt').write_text('\n'.join(sorted(inventory)) + '\n')
+    subprocess.run(['systemctl', 'start', *reversed(restart)], check=True, timeout=45)
+    print('NORMAL_FILESYSTEM_FIXTURE_READY public_commands=' + str(len(inventory)), flush=True)
+    return proposed
 
 
 def main():
@@ -36,12 +124,30 @@ def main():
         if not shutil.which(command):
             print('COMMAND_NOT_FOUND: ' + command, flush=True)
             return 127
+    config = prepare_normal_filesystem(config)
     # Commands execute only in the network/PID/mount namespace of this overlay.
-    for flags in (['--handoff-only'], ['--setup-only'], []):
+    profiles = (['--handoff-only'], ['--setup-only'], [])
+    if settings.get('profile', 'enforcement') == 'worker-isolation':
+        peer, uid = 'examqpeer', 29979
+        for entry in pwd.getpwall():
+            assert entry.pw_name != peer and entry.pw_uid != uid, 'Synthetic peer identity already exists'
+        # Clone only the disposable guest account's local authentication policy,
+        # never any host/directory identity or production credentials.
+        shadow = next(line.split(':')[1] for line in Path('/etc/shadow').read_text().splitlines() if line.startswith(username + ':'))
+        subprocess.run(['useradd', '--create-home', '--uid', str(uid), '--shell', '/bin/bash', '--password', shadow, peer], check=True, timeout=15)
+        # This prepared fixture's sshd deliberately reads root-owned keys here,
+        # not ~/.ssh. Copy only the synthetic fixture's public authorization.
+        authorized = Path('/etc/ssh/qualification-keys') / peer
+        assert not authorized.exists(), 'Synthetic peer authorization already exists'
+        authorized.write_bytes((authorized.parent / username).read_bytes())
+        authorized.chmod(0o644)
+        profiles = (['--worker-isolation', '--peer', peer],)
+    for flags in profiles:
         command = ['/usr/bin/python3', str(INPUT / 'linux_qualification.py'),
                    '--username', username, *flags]
         result = subprocess.run(command, timeout=660)
         if result.returncode:
+            subprocess.run(['systemctl', '--no-pager', 'status', 'ssh.service', 'exam-agent.service'], timeout=15)
             return result.returncode
     state = json.loads((Path(config['state']) / 'state.json').read_text())
     assert all(a['state'] in ('COMPLETED', 'CANCELLED_BEFORE_START')

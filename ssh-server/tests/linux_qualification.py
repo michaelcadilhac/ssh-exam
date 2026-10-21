@@ -3,13 +3,15 @@
 Requires its preinstalled agent, isolated work/rootfs and root-only test signing key.
 Never run against a real student's state or home. Refuses non-fixture guard reports.
 """
-import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil
+import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil, signal, threading, shlex
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--username',default='mcadilha')
 parser.add_argument('--handoff-only',action='store_true',help='Verify automatic SSH handoff and cancel without starting time')
 parser.add_argument('--setup-only',action='store_true',help='Focused temporary setup, lingering and offline-expiry recovery')
+parser.add_argument('--worker-isolation',action='store_true',help='Real collection-worker death alongside another live SSH PTY; private overlay only')
+parser.add_argument('--peer',help='Separate synthetic guest account for worker isolation')
 parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
 parser.add_argument('--gateway-key',default='/etc/exam-agent/gateway.key')
@@ -33,11 +35,11 @@ def root(*args):
     p=run(list(args)); assert p.returncode==0,(args,p.stderr);return p.stdout
 
 def info(id): return json.loads(root('examctl','info',id))
-def wait_for(fn,timeout=70):
+def wait_for(fn,timeout=70,interval=.5):
     end=time.monotonic()+timeout
     while time.monotonic()<end:
         if fn(): return
-        time.sleep(.5)
+        time.sleep(interval)
     raise AssertionError('Timed out waiting for durable state')
 
 def agent_ready():
@@ -47,28 +49,31 @@ def agent_ready():
     finally:s.close()
 
 class Connection:
-    def __init__(self,keyfile=None,certificate=None):
+    def __init__(self,keyfile=None,certificate=None,username=None):
+        self.username=username or a.username
+        self.target=self.username+'@127.0.0.1'
         self.ssh=[*ssh]
         if keyfile:self.ssh[self.ssh.index('-i')+1]=keyfile
         if certificate:self.ssh+=['-o','CertificateFile='+certificate]
         self.keydir=None
         self.socket='/root/qualification-'+uuid.uuid4().hex
         self.transport=''
-        p=run([*self.ssh,'-M','-S',self.socket,'-fN',target]);assert p.returncode==0,p.stderr
+        p=run([*self.ssh,'-M','-S',self.socket,'-fN',self.target]);assert p.returncode==0,p.stderr
     def close(self):
-        run([*self.ssh,'-S',self.socket,'-O','exit',target])
+        run([*self.ssh,'-S',self.socket,'-O','exit',self.target])
         if self.keydir:shutil.rmtree(self.keydir,ignore_errors=True);self.keydir=None
-    def raw(self,command,**kw): return run([*self.ssh,'-S',self.socket,target,command],**kw)
+    def raw(self,command,**kw): return run([*self.ssh,'-S',self.socket,self.target,command],**kw)
     def command(self,op,body=None):
-        payload=json.dumps({'audience':config['agent_id'],'nonce':str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':a.username,'transport':self.transport,'op':op,'body':body or {}},separators=(',',':')).encode()
+        payload=json.dumps({'audience':config['agent_id'],'nonce':str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':self.username,'transport':self.transport,'op':op,'body':body or {}},separators=(',',':')).encode()
         frame=json.dumps({'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(key.sign(payload)).decode()})+'\n'
         p=self.raw('exam-control',input=frame); assert p.returncode==0,(p.stdout,p.stderr)
         value=json.loads(p.stdout)
         if 'error' in value: raise RuntimeError(value['error'])
         return value['result']
-    def start(self,activate=True):
+    def start(self,activate=True,duration=60):
+        account=pwd.getpwnam(self.username)
         self.transport=self.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
-        self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':a.username,'transport':self.transport,'settings':{'duration':60,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
+        self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':self.username,'transport':self.transport,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
         if temporary:
             self.command('prepare-account-policy',{'id':id})
             try:self.command('activate-attempt',{'id':id});raise AssertionError('Bootstrap started exam')
@@ -77,11 +82,11 @@ class Connection:
             keyfile=directory+'/key';root('/usr/bin/ssh-keygen','-q','-t','ed25519','-N','','-f',keyfile)
             grant=self.command('issue-ssh-handoff',{'id':id,'public_key':pathlib.Path(keyfile+'.pub').read_text()})
             certfile=directory+'/key-cert.pub';pathlib.Path(certfile).write_text(grant['certificate']+'\n')
-            denied(run([*ssh[:ssh.index('-i')+1],keyfile,*ssh[ssh.index('-i')+2:],'-o','CertificateFile='+certfile,target,'echo BYPASS']),'handoff certificate cannot launch an ordinary command')
+            denied(run([*ssh[:ssh.index('-i')+1],keyfile,*ssh[ssh.index('-i')+2:],'-o','CertificateFile='+certfile,self.target,'echo BYPASS']),'handoff certificate cannot launch an ordinary command')
             self.close()
-            fresh=Connection(keyfile,certfile);self.socket=fresh.socket;self.ssh=fresh.ssh;self.keydir=directory;self.transport=""
+            fresh=Connection(keyfile,certfile,self.username);self.socket=fresh.socket;self.ssh=fresh.ssh;self.keydir=directory;self.transport=""
             self.transport=self.command('register',{'exam':'qualification','handoff':grant['id']})['transport']
-            denied(run([*self.ssh,target,'echo BYPASS']),'consumed handoff certificate cannot authenticate another transport')
+            denied(run([*self.ssh,self.target,'echo BYPASS']),'consumed handoff certificate cannot authenticate another transport')
             assert info(id)['start']==0,'Setup consumed exam time'
         if activate:
             # Matching candidates require private staging before Begin. This
@@ -97,13 +102,13 @@ class Connection:
             staged_inode=(base/'workspace-ready/work').stat().st_ino
             self.command('activate-attempt',{'id':id})
             begun=info(id)
-            assert begun['deadline']-begun['start']==60000 and begun['original_deadline']==begun['deadline']
+            assert begun['deadline']-begun['start']==duration*1000 and begun['original_deadline']==begun['deadline']
             assert (base/'work').stat().st_ino==staged_inode, 'Begin did not publish the exact staged directory'
             ok('private staging consumes no time; Begin publishes exact work and full allowance')
         return id
     def pane(self,id):
-        token=self.command('issue-channel-admission',{'id':id,'username':a.username,'transport':self.transport,'pane':str(uuid.uuid4()),'purpose':'exam'})['token']
-        p=subprocess.Popen([*self.ssh,'-S',self.socket,'-tt',target,'exam-gateway'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        token=self.command('issue-channel-admission',{'id':id,'username':self.username,'transport':self.transport,'pane':str(uuid.uuid4()),'purpose':'exam'})['token']
+        p=subprocess.Popen([*self.ssh,'-S',self.socket,'-tt',self.target,'exam-gateway'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         read_until(p,b'EXAM-GATE/1');p.stdin.write((json.dumps({'token':token})+'\n').encode());p.stdin.flush();read_until(p,b'EXAM-READY');return p
 
 def read_until(p,needle,timeout=15):
@@ -113,6 +118,7 @@ def read_until(p,needle,timeout=15):
             data=os.read(p.stdout.fileno(),65536)
             if not data: break
             output+=data
+            if b'COMMAND_NOT_FOUND:' in output: raise RuntimeError(output.decode(errors='replace'))
             if needle in output:return output
     raise AssertionError(('Terminal marker missing',needle,output[-2000:]))
 def denied(p,label):
@@ -159,6 +165,119 @@ def normal_access(label):
     ok(label)
 
 wait_for(agent_ready,40)
+
+if a.worker_isolation:
+    assert temporary and a.peer and a.peer!=a.username
+    assert pathlib.Path('/run/ssh-exam-qualification-input/run.json').is_file(), 'Private overlay only'
+    healthy=Connection(username=a.peer); target_connection=Connection()
+    stop=threading.Event(); acknowledgements=[]; failures=[]; thread=None
+    worker=None; worker_output=tempfile.TemporaryFile()
+    def renew(id):
+        while not stop.is_set():
+            began=time.monotonic()
+            try:
+                healthy.command('renew-execution-lease',{'id':id})
+                acknowledgements.append(time.monotonic()-began)
+            except Exception as error:
+                failures.append(str(error));return
+            stop.wait(.5)
+    try:
+        healthy_id=healthy.start(duration=120); healthy_pane=healthy.pane(healthy_id)
+        before=info(healthy_id)
+        thread=threading.Thread(target=renew,args=(healthy_id,),daemon=True);thread.start()
+        target_id=target_connection.start();target_pane=target_connection.pane(target_id)
+        target_work=pathlib.Path(config['work'])/target_id/'work'
+        assert config.get('host_filesystem') is True and config['rootfs']=='/', 'Normal filesystem required, not a minimal rootfs'
+        target_pane.stdin.write(b"while IFS= read -r path; do if ! test -x \"$path\"; then printf 'COMMAND_%s: %s\\n' NOT_FOUND \"$path\"; break; fi; done < /work/qualification-command-inventory.txt; printf 'PUBLIC_%s\\n' INVENTORY_CHECKED\n");target_pane.stdin.flush()
+        read_until(target_pane,b'PUBLIC_INVENTORY_CHECKED',10)
+        target_pane.stdin.write(b"command -v python3 >/dev/null 2>&1 && printf 'STUDENT_%s\\n' PYTHON_OK || printf 'COMMAND_%s: python3\\n' NOT_FOUND\n");target_pane.stdin.flush()
+        read_until(target_pane,b'STUDENT_PYTHON_OK',5)
+        security_check='''import os,pathlib,ssl,sqlite3,ctypes
+status=dict(line.split(':',1) for line in pathlib.Path('/proc/self/status').read_text().splitlines() if ':' in line)
+assert all(int(status[k],16)==0 for k in ('CapInh','CapPrm','CapEff','CapBnd','CapAmb'))
+assert int(status['NoNewPrivs'])==1
+assert os.statvfs('/').f_flag & os.ST_RDONLY
+assert os.statvfs(os.environ['HOME']).f_flag & os.ST_RDONLY
+for hidden in ('/etc/exam-agent/agent.json','/var/lib/exam-agent/state.json','/run/systemd/private','/sys/fs/cgroup/cgroup.controllers','/srv/exam-workspace/rootfs'):
+ assert not pathlib.Path(hidden).exists()
+print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
+'''
+        target_pane.stdin.write(('python3 -c '+shlex.quote(security_check)+'\n').encode());target_pane.stdin.flush()
+        read_until(target_pane,b'NORMAL_STUDENT_SECURITY_OK',5)
+        ok('normal-root public commands/Python libraries remain available; root/home are read-only, private endpoints hidden and student capabilities zero')
+        # Real student-side bounded incompressible output keeps the collector
+        # alive long enough to identify and kill its actual supervised process.
+        target_connection.command('renew-execution-lease',{'id':target_id})
+        target_pane.stdin.write(b"cd /work && python3 -c 'import os,pathlib; [(pathlib.Path(\"fault-%d.bin\"%i).write_bytes(os.urandom(10*1024*1024))) for i in range(4)]; pathlib.Path(\"fault-ready\").write_text(\"ready\")'\n");target_pane.stdin.flush()
+        wait_for(lambda:(target_work/'fault-ready').is_file(),20)
+        original=info(target_id)
+        owners=root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
+        worker=subprocess.Popen(['examctl','stop',target_id,'--reason','Disposable qualification injects isolated collection worker death'],stdout=worker_output,stderr=subprocess.STDOUT)
+        found=[]
+        def collector():
+            if worker.poll() is not None:
+                worker.wait(timeout=5);worker_output.seek(0);output=worker_output.read(16384).decode(errors='replace')
+                try:
+                    result=json.loads(output)
+                    detail=json.dumps({name:result.get(name) for name in ('state','protected','reason')})
+                except ValueError:detail='non-JSON CLI refusal (private output not copied into diagnostics)'
+                raise AssertionError('Collection command exited before worker detection: '+detail)
+            for process in pathlib.Path('/proc').iterdir():
+                if not process.name.isdigit() or int(process.name)<2:continue
+                try:
+                    argv=(process/'cmdline').read_bytes().split(b'\0')
+                    if b'--collection-worker' not in argv:continue
+                    units=[part for line in (process/'cgroup').read_text().splitlines() for part in line.split('/') if part.startswith('exam-collection-'+target_id+'-') and part.endswith('.service')]
+                    if len(units)!=1:continue
+                    unit=units[0];pid=int(process.name)
+                    # PID namespace is private to the disposable guest; also
+                    # pin a pidfd so signal delivery cannot hit a reused PID.
+                    descriptor=os.pidfd_open(pid)
+                    if b'--collection-worker' not in (process/'cmdline').read_bytes().split(b'\0') or unit not in (process/'cgroup').read_text():
+                        os.close(descriptor);continue
+                    found.append((unit,descriptor));return True
+                except (FileNotFoundError,ProcessLookupError):continue
+            return False
+        wait_for(collector,10,interval=.01)
+        unit,descriptor=found[0]
+        try:signal.pidfd_send_signal(descriptor,signal.SIGKILL)
+        finally:os.close(descriptor)
+        worker.communicate(timeout=30)
+        assert worker.returncode!=0,'Killed collection worker was falsely reported successful'
+        failed=info(target_id)
+        assert failed['state']=='COLLECTION_FAILED' and failed['access_state']=='HELD'
+        assert failed['start']==original['start'] and failed['deadline']==original['deadline'] and failed['original_deadline']==original['original_deadline']
+        ok('real supervised collection-worker SIGKILL fails only its target and preserves its original hold/interval')
+        healthy_pane.stdin.write(b"printf ISOLATION_LIVE > /work/healthy-proof; printf 'PTY_AFTER_%s\\n' WORKER_FAULT\n");healthy_pane.stdin.flush()
+        read_until(healthy_pane,b'PTY_AFTER_WORKER_FAULT',10)
+        assert (pathlib.Path(config['work'])/healthy_id/'work/healthy-proof').read_text()=='ISOLATION_LIVE'
+        extra=healthy.pane(healthy_id)
+        extra.stdin.write(b"printf 'FRESH_%s\\n' ADMISSION\n");extra.stdin.flush();read_until(extra,b'FRESH_ADMISSION',10)
+        assert owners==root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
+        current=info(healthy_id)
+        assert current['state']=='ACTIVE' and current['generation']==before['generation'] and current['deadline']==before['deadline'] and current['original_deadline']==before['original_deadline']
+        assert healthy_pane.poll() is None and not failures and len(acknowledgements)>=3 and max(acknowledgements)<5
+        ok('healthy real PTY, fresh channel admission and signed renewals survive with unchanged owners/generation/deadlines')
+        root('examctl','retry',target_id,'--reason','Disposable qualification retries exact worker-death target')
+        _,archive,checksum=secure(target_id)
+        with tarfile.open(archive) as bundle:
+            for i in range(4):
+                name='fault-%d.bin'%i
+                assert hashlib.sha256(bundle.extractfile(name).read()).digest()==hashlib.sha256((target_work/name).read_bytes()).digest()
+        ok('explicit retry protects all original target bytes after real worker death')
+        stop.set();thread.join(timeout=10);assert not thread.is_alive() and not failures
+        healthy.command('finalize-attempt',{'id':healthy_id});secure(healthy_id)
+        wait_for(lambda:info(target_id)['access_state']=='RELEASED' and info(healthy_id)['access_state']=='RELEASED',150)
+        assert secure(target_id)[2]==checksum
+        ok('both synthetic accounts restore only after their unchanged deadlines and verified protection')
+        print(json.dumps({'passed':passed,'count':len(passed),'renewals':len(acknowledgements),'max_renewal_seconds':max(acknowledgements),'worker_isolation':True}),flush=True)
+    finally:
+        stop.set()
+        if thread:thread.join(timeout=10)
+        if worker and worker.poll() is None:worker.terminate();worker.wait(timeout=10)
+        worker_output.close()
+        healthy.close();target_connection.close()
+    raise SystemExit(0)
 
 if a.handoff_only:
     assert temporary

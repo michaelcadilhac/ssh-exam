@@ -223,7 +223,7 @@ def run_locked(args):
             target = inputs / name
             target.write_bytes(source_bytes[name])
             target.chmod(mode)
-        (inputs / 'run.json').write_text(json.dumps({'username': args.username, 'unit': unit}))
+        (inputs / 'run.json').write_text(json.dumps({'username': args.username, 'unit': unit, 'profile': args.profile}))
         (inputs / 'test.service').write_text(UNIT)
         command = candidate_command(unit, guest, inputs, output)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
@@ -281,6 +281,7 @@ if __name__ == '__main__':
     parser.add_argument('--guest', type=Path, required=True)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--username', default='examq')
+    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):

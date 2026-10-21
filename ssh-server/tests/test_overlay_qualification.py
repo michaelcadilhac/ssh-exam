@@ -12,6 +12,9 @@ from unittest import mock
 spec = importlib.util.spec_from_file_location('overlay', Path(__file__).with_name('overlay_qualification.py'))
 overlay = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(overlay)
+guest_spec = importlib.util.spec_from_file_location('overlay_guest', Path(__file__).with_name('overlay_guest.py'))
+guest = importlib.util.module_from_spec(guest_spec)
+guest_spec.loader.exec_module(guest)
 
 
 class OverlayTests(unittest.TestCase):
@@ -52,6 +55,22 @@ class OverlayTests(unittest.TestCase):
                         {'state': 'COMPLETED', 'policy_state': 'RESTORE_FAILED'}):
             with self.subTest(attempt=attempt), self.assertRaisesRegex(RuntimeError, 'live/unresolved'):
                 overlay.authority(self.state(attempt))
+
+    def test_guest_uses_normal_root_not_a_second_minimal_install(self):
+        original = {'rootfs': '/legacy/rootfs', 'work': '/srv/exam-workspace/work',
+                    'state': '/var/lib/exam-agent', 'host_filesystem_hidden_paths': ['/var/private'],
+                    'callback_url': 'https://127.0.0.1:9444', 'accounts': {}}
+        proposed = guest.normal_filesystem_settings(original, ['/run/dbus/system_bus_socket',
+                     '/home/examq/.private.sock', '/var/lib/service/control.sock', '@abstract'])
+        self.assertIs(proposed['host_filesystem'], True)
+        self.assertEqual(proposed['rootfs'], '/')
+        self.assertEqual(proposed['host_filesystem_hidden_paths'], ['/srv/exam-workspace', '/var/lib/service', '/var/private'])
+        self.assertEqual(proposed['callback_url'], original['callback_url'])
+        self.assertEqual(original['rootfs'], '/legacy/rootfs')
+        self.assertNotIn('host_filesystem', original)
+        for path in ('/usr/bin/control.sock', '/etc/control.sock', '/var/control.sock'):
+            with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, 'unexpected guest service socket'):
+                guest.normal_filesystem_settings(original, [path])
 
     def test_preservation_tracks_authority_not_background_delivery_timestamps(self):
         attempt = {'state': 'COMPLETED', 'deadline': 1234, 'original_deadline': 5678,

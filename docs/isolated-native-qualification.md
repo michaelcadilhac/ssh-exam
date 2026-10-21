@@ -97,11 +97,53 @@ and guest-base preservation checks passed. Private evidence is in
 45e39c6c48c5ccc7965505d36ead76b8dbbfe8f640ecf3a3f900fc38d3a5f833
 (native product source 7fdad62; no installed binary changed).
 
-All 39 local Python safety/policy/helper checks pass (24 test_*.py plus 15
-installation-checker tests); new directory-lock/no-setuid/filter regressions
-cover the final runner safety additions. This rootfs is a volatile small-work
-fixture, not persistent-disk/default-size capacity certification.
-Real collection-worker death while another real privileged PTY continues,
-cross-namespace cleanup proof, saved restore, concurrent worst-case capacity and
-institutional student MFA remain separate gates. No claim here enables C3
+That initial Q1 run used the base fixture's legacy minimal rootfs. A later Q2
+run stopped as instructed when Python was absent **inside that student rootfs**.
+Python was already installed in both the guest OS and production; production
+already uses host_filesystem=true/rootfs=/. This was a fixture setup mistake,
+not a production package gap. No individual-tool allowlist/install is required.
+
+## Q2: normal filesystem and real worker death
+
+The guest wrapper now changes **only its disposable overlay** to the deployed
+normal-filesystem model: rootfs=/, all public installed software/readable system
+files, read-only root and real home, writable private /work/application state,
+and private endpoint/work-base masks. It briefly stops/restarts only guest test
+services around this overlay-only configuration change. It inventories public
+executables in the same guest root, not a separate minimal toolchain image.
+The base guest's packages are not identical to production: **629** public
+executables are checked, not the historical production inventory of 2,152.
+
+Use the runner's `--profile worker-isolation` for two synthetic guest accounts
+and actual SSH PTYs. The fixture kills only the exact supervised collector PID
+after checking its argv, test unit and pidfd identity. No production fault switch
+or process-name kill is introduced. The target must retain COLLECTION_FAILED,
+its original interval and hold. A second student must retain live terminal IO,
+fresh pane admission, signed renewals, owners/generation/current/original deadlines.
+Explicit retry verifies every original byte in four 10 MiB random files against
+the protected archive. Both accounts restore only at their unchanged deadlines.
+
+The final Q2 run **passes all 11 assertions**, including real Python with SSL,
+SQLite and ctypes libraries, the public command inventory, read-only root/home,
+hidden agent/state/control endpoints, zero student capabilities and no-new-privileges.
+There were 23 healthy renewals; maximum acknowledgement was **0.084501 seconds**.
+Container exit and host/base preservation checks passed. Private evidence:
+/var/tmp/ssh-exam-overlay-ld_bqclt. A preceding ten-assertion run also passed;
+the final repeat adds the explicit filesystem/capability checks.
+
+The full `--profile enforcement` then **passes all 39 assertions again in
+normal-filesystem mode**, with successful container exit and unchanged installed
+binaries/config/host authority/base. Evidence: /var/tmp/ssh-exam-overlay-6e8srork.
+Earlier peer-key and collector-observer fixture failures were not counted as
+passes. The collector can finish in about 130 ms; a 10 ms bounded observer replaced
+the original 500 ms polling so fault injection actually hits the real worker.
+An initial relative-path hypothesis was not a confirmed product defect.
+
+All **40** local Python safety/policy/helper checks pass (25 test_*.py plus 15
+installation-checker tests), including normal-root configuration/mask regression.
+Native binaries remain the Q1 artifact above; only test harness/setup changed.
+This closes the narrow real worker-death/healthy privileged PTY qualification gate,
+not persistent-disk/default-size/concurrent capacity certification. Cross-namespace
+cleanup proof, saved restore/each-boundary crash qualification, worst-case capacity
+and institutional student MFA remain separate gates. No claim here enables C3
 retained-buffer freeze, C4 deletion or deployment.

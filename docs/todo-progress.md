@@ -66,9 +66,51 @@ Q1 is local commit f6a4459. Q2 implementation is under separate qualification:
 two synthetic guest identities/real PTYs, continuous signed healthy renewals,
 exact collector-unit/pidfd SIGKILL, target-only failure/hold/interval checks,
 healthy admission/owners/clock fences, explicit byte-verified retry and ordinary
-release. The initial peer authorization path and relative output-directory
-fixture errors were corrected, not counted as passes. Native product binaries
+release. The initial peer authorization path and collector-observer fixture
+errors were corrected, not counted as passes. A relative-path hypothesis was not
+a confirmed product defect. Native product binaries
 are unchanged from Q1; no current installation or real identity is modified.
+
+Q2 stopped as instructed when python3 was missing in the fixture's **legacy
+minimal student rootfs**, not in the guest OS or csc-sys production environment.
+Read-only diagnosis confirms production host_filesystem=true/rootfs=/ and Python
+present; the old guest config selected /srv/exam-workspace/rootfs instead. This
+was a representative-fixture setup mistake, not a missing production dependency
+or a request for the operator to install individual tools. On resumption, prepare
+only the disposable overlay with normal-filesystem mode, private endpoint masks,
+same-root public-command inventory and read-only real homes before repeating Q2
+and the enforcement profile. Keep the original guest base/host untouched. Prior
+Q1 legacy-rootfs evidence remains valid only for its documented narrow scope;
+normal-filesystem qualification and real worker-death results remain pending.
+
+Q2 final local/test-host qualification now passes: the disposable overlay uses
+normal-filesystem mode, not the old minimal rootfs. All 11 crash/healthy-PTY/
+private-filesystem assertions pass with 629 same-root public commands, Python
+SSL/SQLite/ctypes, read-only root/home, hidden endpoints and zero capabilities.
+A real collector SIGKILL affects only its target; explicit retry protects all
+40 MiB of original random files, and both accounts retain their original holds/
+deadlines until normal release. Healthy signed renewals: 23; maximum 0.084501s.
+Evidence: /var/tmp/ssh-exam-overlay-ld_bqclt. Full enforcement repeat in normal
+mode passes all 39 assertions; evidence: /var/tmp/ssh-exam-overlay-6e8srork.
+Both containers exited and all installed binary/config/host-authority/base
+preservation checks passed. Forty local Python tests pass. Native product is
+unchanged from Q1 (7fdad62 artifact); these are fixture improvements, not deployed
+software. This closes the narrow real worker-death/healthy privileged PTY gate;
+cross-namespace cleanup, saved-source/every-boundary recovery and concurrent
+default-size capacity remain open. No missing command occurred after resumption.
+
+C1g ordered management increment: first add shared bounded monitoring summary,
+append-order frame/terminal metadata pages and terminal replay to web/root CLI.
+Private replies must never be persisted in permanent management outcomes; retain
+only scoped metadata receipts and recheck tombstones on every initial/retried
+read. Fence list pagination to an explicit row watermark, validate reply target/
+pane/offset before output, and preserve current clocks/holds/submission receipts.
+Acceptance: actual compiled CLI/local TLS/restart/deletion and output-file/error
+workflows, shared admin/student/CSRF HTTP boundaries, unit bounds/pagination and
+privacy regressions, full app/native race/build/browser checks. Whole media export,
+shared audited deletion intents and durable bounded OS-worker physical purge are
+subsequent increments, not claimed complete by metadata/replay. Existing sync
+retention fixes remain e44d20c, not process-isolated/nonblocking purge proof.
 
 ## Baseline and method
 

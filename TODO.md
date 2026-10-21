@@ -553,9 +553,11 @@ the approval is not a production change or a completed investigation.
   October 21 Q1 also passes 39 strict real SSH/PAM/cgroup/staging/watchdog/repair
   assertions in a bounded disposable csc-sys guest overlay, with host/base
   preservation checks. See docs/isolated-native-qualification.md. This is not
-  real worker-death/healthy-PTY or simultaneous default-size qualification; those
-  gates remain open and no installation was changed. Full
-  privileged SSH/PTY and workload qualification, initialization isolation and
+  simultaneous default-size qualification. Q2 now repeats all 39 in normal-root
+  mode and passes 11 real collector-death/healthy-PTY/admission/renewal/private-root
+  assertions with exact retry and unchanged holds/deadlines. Host/base preservation
+  passes; no installation was changed. Cross-namespace cleanup, saved-source/
+  every-boundary recovery and concurrent workload qualification, initialization isolation and
   deployment remain open. The later C6 increment below adds new snapshot limits;
   legacy historical limits remain unchanged.
   Required by C6 October 21 before enabling larger limits. Investigate the
@@ -577,8 +579,9 @@ the approval is not a production change or a completed investigation.
   callbacks pass. A 16-student/64-pane application run includes measured heartbeat
   acknowledgements. In that earlier baseline shared state inspection/admission
   waited behind collection; the October 21 worker increment now requires a
-  nonblocking inspection regression. Real privileged combined crash/admission
-  qualification remains open.
+  nonblocking inspection regression. Q2's two-account real privileged combined
+  crash/PTY/admission qualification now passes; worst-case simultaneous workloads
+  and larger concurrency remain open, not inferred from that narrow result.
   See docs/todo-local-qualification.md; no production capacity claim is made.
   The shared cleanup blockage and independent renewal journal have fixes and
   regression tests. Test realistic simultaneous deadlines and larger archives,
@@ -603,7 +606,8 @@ the approval is not a production change or a completed investigation.
   renewals. Actual tmpfs output OOM motivates new-admission storage refusal, not
   weakened worker bounds. See docs/collection-limits.md and todo-progress.md for
   final test status. Course/debugger sizing, concurrent worst-case storage and
-  privileged SSH/PAM/PTYS qualification remain open; no deployment is implied.
+  worst-case privileged workload qualification remain open. Q2's narrow real
+  SSH/PAM/PTY/fatal-collector tests pass; no capacity/deployment claim is implied.
   Original collection limits were 32 MiB per-file / 64 MiB total logical size,
   10,000 entries and depth 32 (`collection.go`). These are separate
   from the increased configurable monitoring-recording limit. Check whether normal
