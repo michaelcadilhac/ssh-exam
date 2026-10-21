@@ -27,18 +27,20 @@ export const username = z
       ].includes(v.toLowerCase()),
     "Privileged/service account forbidden",
   );
-export const examSchema = z
-  .object({
-    id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
-    name: z.string().min(1).max(120),
-    earliest: z.number().int(),
-    latest: z.number().int(),
-    duration: z.number().int().min(60).max(21600).default(5400),
-    webcam: z.boolean().default(true),
-    terminals: z.number().int().min(1).max(4).default(4),
-    template: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
-  })
-  .refine((e) => e.latest > e.earliest, "Invalid start window");
+export const examConfiguration = z.object({
+  id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  name: z.string().min(1).max(120),
+  earliest: z.number().int(),
+  latest: z.number().int(),
+  duration: z.number().int().min(60).max(21600).default(5400),
+  webcam: z.boolean().default(true),
+  terminals: z.number().int().min(1).max(4).default(4),
+  template: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+});
+export const examSchema = examConfiguration.refine(
+  (e) => e.latest > e.earliest,
+  "Invalid start window",
+);
 export type Exam = z.infer<typeof examSchema>;
 export type AccessState = "UNKNOWN" | "HELD" | "RELEASED" | "OVERRIDDEN";
 export type State =

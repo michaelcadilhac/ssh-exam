@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 export const managementPurpose = "ssh-exam-management/v1";
-export const managementOperations = ["exams.list", "exams.show"] as const;
+export const managementOperations = [
+  "exams.list",
+  "exams.show",
+  "exams.create",
+  "exams.update",
+] as const;
 export const managementRequest = z
   .object({
     version: z.literal(1),
@@ -29,5 +34,19 @@ export const examListRequest = z
 export const examShowRequest = z
   .object({
     id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  })
+  .strict();
+export const examCreateRequest = z
+  .object({
+    exam: z.record(z.string(), z.unknown()),
+    reason: z.string().trim().min(8).max(1000).optional(),
+  })
+  .strict();
+export const examUpdateRequest = z
+  .object({
+    id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    changes: z.record(z.string(), z.unknown()),
+    reason: z.string().trim().min(8).max(1000).optional(),
+    revision: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict();

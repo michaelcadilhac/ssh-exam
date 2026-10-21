@@ -77,7 +77,7 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		return result, errors.New("run examctl as root on the class server using its existing agent identity; browser administration keeps its normal login")
 	}
-	if !attemptID.MatchString(requestID) || (operation != "exams.list" && operation != "exams.show") {
+	if !attemptID.MatchString(requestID) || (operation != "exams.list" && operation != "exams.show" && operation != "exams.create" && operation != "exams.update") {
 		return result, errors.New("invalid management request ID or unsupported operation; run examctl web help")
 	}
 	u, err := url.Parse(c.CallbackURL)

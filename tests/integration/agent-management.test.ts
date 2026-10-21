@@ -292,6 +292,80 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       expect(
         JSON.parse((await cli(["list", "--limit", "1"])).stdout).result.next,
       ).toBe("midterm");
+      f.config.agent.managementOperations = [
+        "exams.list",
+        "exams.show",
+        "exams.create",
+        "exams.update",
+      ];
+      const creation = [
+        "create",
+        "cli-exam",
+        "--name",
+        "CLI exam",
+        "--template",
+        "v1",
+        "--earliest",
+        "2026-10-22T09:00:00-05:00",
+        "--latest",
+        "2026-10-22T09:30:00-05:00",
+        "--duration-seconds",
+        "7200",
+        "--webcam",
+        "optional",
+        "--terminals",
+        "2",
+        "--reason",
+        "Create via supported flags",
+      ];
+      const made = JSON.parse((await cli(creation)).stdout);
+      expect(made).toMatchObject({
+        operation: "exams.create",
+        confirmed: true,
+        result: {
+          exam: {
+            id: "cli-exam",
+            duration: 7200,
+            webcam: false,
+            terminals: 2,
+            earliest: Date.parse("2026-10-22T09:00:00-05:00"),
+          },
+        },
+      });
+      const updateID = randomUUID();
+      const update = [
+        "--name",
+        "help",
+        "update",
+        "cli-exam",
+        "--revision",
+        made.result.revision,
+        "--request",
+        updateID,
+      ];
+      const edited = JSON.parse((await cli(update)).stdout);
+      expect(edited.result.exam).toEqual({ ...made.result.exam, name: "help" });
+      await f.restart();
+      expect(JSON.parse((await cli(update)).stdout).result).toEqual(
+        edited.result,
+      );
+      await expect(
+        cli([
+          "update",
+          "cli-exam",
+          "--revision",
+          made.result.revision,
+          "--duration-seconds",
+          "5400",
+        ]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("changed"),
+      });
+      await expect(cli(creation)).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("already exists"),
+      });
       f.config.agent.managementOperations = [];
       await expect(cli(["show", "midterm"])).rejects.toMatchObject({
         code: 1,
@@ -406,6 +480,156 @@ it("paginates definitions, refuses invalid/missing targets and does not change s
     expect(
       f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
     ).toEqual({ n: 0 });
+  } finally {
+    await f.close();
+  }
+});
+
+it("shares revision-checked definition writes across web and root CLI without resetting omitted settings or historical attempts", async () => {
+  const f = await setup();
+  try {
+    f.config.agent.managementOperations = [
+      "exams.list",
+      "exams.show",
+      "exams.create",
+      "exams.update",
+    ];
+    const exam = {
+      id: "programming",
+      name: "Programming",
+      template: "v1",
+      earliest: Date.now() - 1000,
+      latest: Date.now() + 3600000,
+      duration: 7200,
+      webcam: false,
+      terminals: 2,
+    };
+    const created = f.unpack(
+      await f.post(
+        f.request({
+          operation: "exams.create",
+          body: { exam, reason: "Create synthetic definition" },
+        }),
+      ),
+    );
+    expect(created.ok).toBe(true);
+    const session = f.current.store.session("admin", "instructor", null);
+    const headers = {
+      cookie: `session=${session.token}`,
+      origin: f.config.origin,
+      "x-csrf-token": session.csrf,
+    };
+    const web = (body: object) =>
+      f.current.app.inject({
+        method: "POST",
+        url: "/api/admin/exams",
+        headers,
+        payload: body,
+      });
+    const list = await f.current.app.inject({
+      url: "/api/admin/exams",
+      headers,
+    });
+    expect(list.json()).toContainEqual({
+      ...exam,
+      revision: created.result.revision,
+    });
+    const snapshot = JSON.stringify(exam);
+    f.current.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,access_state) VALUES('history','programming','synthetic',29999,'COMPLETED',?,100,200,200,1,'RELEASED')",
+      )
+      .run(snapshot);
+    const oldAttempt = f.current.store.attempt("history");
+    const webIntent = {
+      ...exam,
+      name: "Web edit",
+      revision: created.result.revision,
+      requestID: randomUUID(),
+    };
+    const changed = await web(webIntent);
+    expect(changed.statusCode).toBe(200);
+    const revision = changed.json().revision;
+    expect(revision).not.toBe(created.result.revision);
+    const stale = f.unpack(
+      await f.post(
+        f.request({
+          operation: "exams.update",
+          body: {
+            id: exam.id,
+            changes: { name: "Stale root edit" },
+            revision: created.result.revision,
+          },
+        }),
+      ),
+    );
+    expect(stale.status).toBe(409);
+    expect(stale.error).toContain("reload");
+    const intent = f.request({
+      operation: "exams.update",
+      body: {
+        id: exam.id,
+        changes: { name: "Root edit" },
+        revision,
+        reason: "Change the display name",
+      },
+    });
+    const updated = f.unpack(await f.post(intent));
+    expect(updated.result.exam).toEqual({ ...exam, name: "Root edit" });
+    expect(
+      f.unpack(
+        await f.post(
+          f.request({
+            request: intent.request,
+            operation: intent.operation,
+            body: intent.body,
+          }),
+        ),
+      ).result,
+    ).toEqual(updated.result);
+    expect(
+      (await web({ ...exam, revision, name: "Stale web edit" })).statusCode,
+    ).toBe(409);
+    expect(
+      (await web({ ...exam, name: "Unversioned overwrite" })).statusCode,
+    ).toBe(409);
+    const invalid = f.unpack(
+      await f.post(
+        f.request({
+          operation: "exams.update",
+          body: {
+            id: exam.id,
+            changes: { duration: 59 },
+            revision: updated.result.revision,
+          },
+        }),
+      ),
+    );
+    expect(invalid.status).toBe(400);
+    const duplicate = f.unpack(
+      await f.post(f.request({ operation: "exams.create", body: { exam } })),
+    );
+    expect(duplicate.status).toBe(409);
+    expect(f.current.store.attempt("history")).toEqual(oldAttempt);
+    await f.restart();
+    const retriedWeb = await web(webIntent);
+    expect(retriedWeb.statusCode).toBe(200);
+    expect(retriedWeb.json()).toEqual(changed.json());
+    expect(
+      (await web({ ...webIntent, name: "Different intent" })).statusCode,
+    ).toBe(409);
+    expect(
+      f.current.store.db
+        .prepare("SELECT count(*) n FROM audit WHERE action='configure-exam'")
+        .get(),
+    ).toEqual({ n: 3 });
+    expect(
+      f.unpack(
+        await f.post(
+          f.request({ operation: "exams.show", body: { id: exam.id } }),
+        ),
+      ).result.exam.name,
+    ).toBe("Root edit");
   } finally {
     await f.close();
   }

@@ -69,7 +69,13 @@ An administrator should be able to discover and finish a workflow using
   are tested locally, including the compiled CLI against the real gateway over
   isolated local TLS/restart. Default-deny named operation authorization, replay/
   idempotent request records, pinned reply validation and machine/root audit are
-  implemented. Mutations, complete CLI/web parity and deployment remain open.
+  implemented. Further management capabilities, complete CLI/web parity and
+  deployment remain open.
+  C1b now adds shared web/CLI create/update for all current definition settings,
+  revision conflicts, partial preservation, durable browser retry and before/
+  after audit, tested through compiled CLI/TLS, HTTP and 40 browser checks.
+  This closes configuration writes, not retirement or full management. Native-only
+  legacy recovery grants must become visible/migrated before safe C8 archival.
   Local status: all currently supported native commands have process-tested help,
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.

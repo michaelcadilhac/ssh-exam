@@ -47,11 +47,15 @@ func helpRequest(args []string) (string, bool) {
 	var words []string
 	requested := false
 	for i := 0; i < len(args); i++ {
+		if takesValue(args[i]) {
+			if !strings.Contains(args[i], "=") {
+				i++
+			}
+			continue
+		}
 		switch args[i] {
 		case "--help", "-help", "-h":
 			requested = true
-		case "--config", "-config", "--reason", "-reason", "--exam", "-exam", "--output", "-output":
-			i++
 		default:
 			if !strings.HasPrefix(args[i], "-") {
 				words = append(words, args[i])
@@ -78,7 +82,7 @@ func printHelp(w io.Writer, topic string) bool {
 		return true
 	}
 	if topic == "management" {
-		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nThe signed root-agent foundation supports exam definition list/show: use examctl web help. Explicit gateway operation authorization is required. Enrollment/CSV, exam mutations, current clock edits, interruption authorization, monitoring/alerts and unified grants remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for current web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
+		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nThe signed root-agent foundation supports exam definition list/show/create/update: use examctl web help. Explicit gateway operation authorization is required. Definition retirement, enrollment/CSV, current clock edits, interruption authorization, monitoring/alerts and unified grants remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for current web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
 		return true
 	}
 	if topic != "" {
@@ -92,7 +96,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprint(w, "Usage: examctl help [COMMAND] | sudo examctl [FLAGS] COMMAND [TARGET]\n\nInspect:       list, info, health, accounts\nAttempts:      start, pause, stop (finish), cancel, retry\nSubmissions:   manifest, export, delete\nAccess:        reconcile, override-access\nAgent:         agent start|stop|restart|status\nCompatibility: export-status, pause-export, resume-export (disabled)\n\nCommon workflow: list -> info ATTEMPT -> diagnose -> reconcile -> info\nSubmission deletion is separate from exam-definition deletion and account release.\nRead examctl help COMMAND before mutations; examctl help management describes remaining coverage gaps.\nUse examctl help collection for worker/resource/pending-state recovery.\n\n")
 	}
 	if topic == "" {
-		fmt.Fprintln(w, "Gateway definitions: web exams list/show; use examctl web help (root agent identity, explicit gateway authorization).")
+		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")
 	}
 	fmt.Fprint(w, "Global flags (before or after command):\n  --config FILE  root configuration; default /etc/exam-agent/agent.json\n  --reason TEXT  concrete audited administrator reason (at least 8 characters)\n  --exam EXAM    exam-ID filter for list (also legacy info --exam)\n  --active       only started unfinished attempts in list\n  --json         list as JSON; other inspection/mutation results already use JSON\n  --output FILE  export to a new private file instead of binary stdout\n  --help         command help, available without root/configuration\n\nAll actual native operations require root and use the same state/locks as the watchdog.\nExit status: 0 success, 1 refusal/operational failure, 2 invalid syntax.\nMachine timestamps are UTC Unix milliseconds; native durations are seconds.\nOffline native state is authoritative locally; it does not prove gateway synchronization.\n")
 	return true

@@ -5,9 +5,12 @@ import {
   managementRequest,
   examListRequest,
   examShowRequest,
+  examCreateRequest,
+  examUpdateRequest,
 } from "../../../packages/protocol/management.js";
 import { hash, now, type Store } from "./db.js";
 import type { Agent } from "./agent.js";
+import { ExamDefinitions } from "./exam-definitions.js";
 
 type Outcome =
   | { ok: true; status: 200; result: unknown }
@@ -21,6 +24,7 @@ export function registerAgentManagement(
   agent: Agent,
   config: Config,
 ) {
+  const definitions = new ExamDefinitions(store);
   app.addContentTypeParser(
     "application/vnd.ssh-exam-management",
     { parseAs: "buffer" },
@@ -121,48 +125,41 @@ export function registerAgentManagement(
         result = store.db.transaction((): Outcome => {
           if (r.operation === "exams.list") {
             const b = examListRequest.parse(r.body);
-            const rows = store.db
-              .prepare(
-                "SELECT id,config FROM exams WHERE id>? ORDER BY id LIMIT ?",
-              )
-              .all(b.after || "", b.limit + 1) as {
-              id: string;
-              config: string;
-            }[];
-            const page = rows.slice(0, b.limit);
             return {
               ok: true,
               status: 200,
-              result: {
-                exams: page.map((row) => ({
-                  exam: JSON.parse(row.config),
-                  revision: hash(row.config),
-                })),
-                next: rows.length > b.limit ? page.at(-1)!.id : null,
-              },
+              result: definitions.page(b.after || "", b.limit),
+            };
+          } else if (r.operation === "exams.show") {
+            const b = examShowRequest.parse(r.body);
+            return { ok: true, status: 200, result: definitions.show(b.id) };
+          } else if (r.operation === "exams.create") {
+            const b = examCreateRequest.parse(r.body);
+            return {
+              ok: true,
+              status: 200,
+              result: definitions.create(b.exam, actor, b.reason),
             };
           } else {
-            const b = examShowRequest.parse(r.body);
-            const row = store.db
-              .prepare("SELECT config FROM exams WHERE id=?")
-              .get(b.id) as { config: string } | undefined;
-            return row
-              ? {
-                  ok: true,
-                  status: 200,
-                  result: {
-                    exam: JSON.parse(row.config),
-                    revision: hash(row.config),
-                  },
-                }
-              : refusal(
-                  "Exam definition not found; use examctl web exams list",
-                  404,
-                );
+            const b = examUpdateRequest.parse(r.body);
+            return {
+              ok: true,
+              status: 200,
+              result: definitions.update(
+                b.id,
+                b.changes,
+                b.revision,
+                actor,
+                b.reason,
+              ),
+            };
           }
         })();
       } catch (error) {
-        result = refusal((error as Error).message.slice(0, 1500), 400);
+        result = refusal(
+          (error as Error).message.slice(0, 1500),
+          (error as Error & { statusCode?: number }).statusCode || 400,
+        );
       }
       store.audit(
         actor,

@@ -29,14 +29,14 @@ func TestWebCLIHelpAndSyntaxBeforeRootOrConfig(t *testing.T) {
 			}
 		}
 	}
-	for _, args := range [][]string{{"web"}, {"web", "unknown"}, {"web", "exams", "show"}, {"web", "exams", "list", "--limit", "201"}, {"web", "exams", "show", "midterm", "--after", "exam"}, {"web", "exams", "show", "midterm", "--request", "bad"}, {"web", "exams", "list", "EXTRA"}} {
+	for _, args := range [][]string{{"web"}, {"web", "unknown"}, {"web", "exams", "show"}, {"web", "exams", "list", "--limit", "201"}, {"web", "exams", "show", "midterm", "--after", "exam"}, {"web", "exams", "show", "midterm", "--request", "bad"}, {"web", "exams", "list", "EXTRA"}, {"web", "exams", "create", "exam"}, {"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64)}, {"web", "exams", "update", "exam", "--revision", "stale", "--name", "Exam"}, {"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--earliest", "2026-10-22T09:00"}} {
 		output, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(output, "web help") || strings.Contains(output, "Load root") {
 			t.Fatalf("wrong syntax response: %d %s", code, output)
 		}
 	}
 	if os.Getuid() != 0 {
-		for _, args := range [][]string{{"web", "exams", "list", "--config", "/missing"}, {"web", "exams", "show", "help"}, {"web", "exams", "list", "--after", "help"}} {
+		for _, args := range [][]string{{"web", "exams", "list", "--config", "/missing"}, {"web", "exams", "show", "help"}, {"web", "exams", "list", "--after", "help"}, {"--name", "help", "web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64)}} {
 			output, code := cliProcess(t, args...)
 			if code != 1 || !strings.Contains(output, "root on the class server") {
 				t.Fatal(code, output)

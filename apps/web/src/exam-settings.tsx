@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
@@ -24,6 +24,7 @@ export function ExamSettings({
   });
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const intent = useRef({ fingerprint: "", requestID: "" });
   const dateValue = (n: number) =>
     new Date(n - new Date(n).getTimezoneOffset() * 60000)
       .toISOString()
@@ -43,7 +44,13 @@ export function ExamSettings({
           setBusy(true);
           setError("");
           try {
-            const result = await api("/admin/exams", form);
+            const fingerprint = JSON.stringify(form);
+            if (intent.current.fingerprint !== fingerprint)
+              intent.current = { fingerprint, requestID: crypto.randomUUID() };
+            const result = await api("/admin/exams", {
+              ...form,
+              requestID: intent.current.requestID,
+            });
             onSaved(result);
           } catch (e) {
             setError((e as Error).message);

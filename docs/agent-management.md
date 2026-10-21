@@ -1,7 +1,7 @@
 # Root examctl gateway management — local foundation
 
 October 21, 2026. C1 foundation implemented/tested locally; **not deployed**.
-Only exam-definition list/show are implemented. Mutations, full management,
+Exam-definition list/show/create/update are implemented. Full management,
 unified grants and definition retirement are still pending; this is not CLI
 completeness or production qualification.
 
@@ -13,6 +13,8 @@ Use `examctl help web` / `examctl web help`, then:
 sudo examctl web exams list --limit 100
 sudo examctl web exams list --after midterm
 sudo examctl web exams show midterm
+sudo examctl web exams create midterm --name 'Midterm' --template v1 --earliest '2026-10-22T09:00:00-05:00' --latest '2026-10-22T09:30:00-05:00'
+sudo examctl web exams update midterm --revision HASH-FROM-SHOW --duration-seconds 7200
 ```
 
 These use the existing root agent configuration, Ed25519 callback key, pinned
@@ -37,6 +39,10 @@ Browser role/Origin/CSRF protections are unchanged. Login-only mode refuses exam
 management. Future operations require shared web/CLI validation and independent
 named authorization, not a generic HTTP/command proxy.
 
+Writes require separately authorizing `exams.create`/`exams.update`. See
+[exam-definition-management.md](exam-definition-management.md) for shared web/CLI
+revision checks, all setting flags, partial updates and browser retry semantics.
+
 ## Request, audit and retry contract
 
 Requests bind version, management purpose, exact gateway origin audience, agent,
@@ -58,13 +64,14 @@ same ID/arguments return the original cached outcome across gateway restart.
 Different arguments with the same ID conflict. An exact nonce replay is refused.
 This applies to reads too: use a new ID (the default) for a refreshed snapshot.
 List is bounded/paginated (default 100, maximum 200); returned config revision
-hashes prepare for later conditional mutations, which are not yet implemented.
+hashes fence conditional updates. Stable partial-update bodies retain exact
+request-ID retry semantics without reconstructing intent from newer defaults.
 
 Replies bind the same request/nonce/operation and agent audience under the pinned
 gateway signature. The native client checks scope, freshness and size before
 printing confirmed JSON. Signed refusals explain authorization/argument problems;
 unknown/lost/unverified replies retain the request ID and never claim success.
-`confirmed` means an authenticated gateway read, not native execution or access
+`confirmed` means an authenticated gateway operation, not native execution or access
 release. Native offline inspection/reconciliation remains a separate workflow.
 
 Audit attribution is `agent:AGENT:root`, not verified human identity. Do not trust
@@ -91,7 +98,7 @@ Reproduce opt-in interface tests with `EXAM_MANAGEMENT_USERNS=1 npm test --
 --silent true tests/integration/agent-management.test.ts` from the repository,
 and `EXAM_MANAGEMENT_USERNS=1 go test -race ./cmd/examctl` from ssh-server.
 Local Go/unshare/OpenSSL and synthetic keys/certificates only; no production
-contact. The complete application suite passes 300 tests in 51 files with this
+contact during these tests. The complete application suite passes 301 tests in 51 files with this
 opt-in, and the native race suite passes with all local fault/CLI opt-ins enabled.
 
 Migration 013 is additive and does not alter exam definitions, enrollments,
@@ -101,3 +108,7 @@ supported operations after safe drain/backup; old gateways return no supported
 management route. The documented gateway is on marco and the native agent on
 csc-sys: verify actual topology and deployment scope before a coordinated cutover.
 No deployment to another host is silently inferred from csc-sys authorization.
+
+Later read-only deployment inspection attempts through the configured jump and
+direct csc-sys routes timed out, without an authenticated session. No production
+configuration/service/data was changed; access is not yet verified.

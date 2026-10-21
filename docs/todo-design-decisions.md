@@ -13,11 +13,11 @@ monitoring and the outbox. Native root state owns committed intervals, admission
 workspaces, protected archives, policy restoration and the recovery JSON grants.
 Signed commands travel over student SSH; signed callbacks/timing checks travel
 outbound to the gateway. Keep this architecture. Local examctl now supports
-signed definition list/show; gateway mutations/full coverage remain pending.
+signed definition list/show/create/update; retirement/full coverage remain pending.
 
 | Supported operation / setting | Present interface | CLI status and proposed workflow |
 | --- | --- | --- |
-| Exam ID/name/template, start window, future duration/webcam/terminal limit | POST /api/admin/exams (upsert) | Missing; `examctl web exams list/show/create/update`, conditional revision to prevent lost edits |
+| Exam ID/name/template, start window, future duration/webcam/terminal limit | Shared ExamDefinitions web/root service | Local list/show/create/update with all setting flags, revisions, stable partial updates and durable retry; tested, not deployed |
 | Exam definition deletion | Neither interface has a supported workflow | Missing; add explicit `exams delete` only after dependency/hold/history policy; never alias submission deletion |
 | Single enrollment, removal, future duration/webcam | roster add/remove/settings endpoints | Missing; `web students add/remove/settings`, same schemas and bulk transaction |
 | CSV preview/confirm/export/example | roster import-preview/import-confirm/export/example | Missing; `web students import --preview`, confirm stored preview ID, export/example; retain exact active snapshots |
@@ -60,8 +60,9 @@ pending native confirmation honestly. Keep HTTPS verification and protected key
 handling, no new webserver-to-agent control API, student credentials, generic
 command polling or disconnected SQL/JSON editor. Browser administrators continue
 using their existing session/Origin/CSRF checks. **Partial implementation: management
-protocol/read-only CLI foundation is tested locally (agent-management.md);
-mutations/full coverage and production qualification remain outstanding.**
+protocol and definition reads/configuration CLI are tested locally
+(agent-management.md, exam-definition-management.md); retirement/full coverage
+and production qualification remain outstanding.**
 
 ## Unified attempts and workspace initialization
 

@@ -16,13 +16,22 @@ import (
 )
 
 // Accept global flags before or after the subcommand.
+func takesValue(arg string) bool {
+	name := strings.TrimLeft(strings.SplitN(arg, "=", 2)[0], "-")
+	switch name {
+	case "config", "reason", "exam", "output", "request", "limit", "after", "name", "template", "duration-seconds", "webcam", "terminals", "earliest", "latest", "revision":
+		return strings.HasPrefix(arg, "-")
+	}
+	return false
+}
+
 func ordered(args []string) []string {
 	var flags, positionals []string
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if strings.HasPrefix(arg, "-") {
 			flags = append(flags, arg)
-			if (arg == "--config" || arg == "-config" || arg == "--reason" || arg == "-reason" || arg == "--exam" || arg == "-exam" || arg == "--output" || arg == "-output" || arg == "--request" || arg == "--limit" || arg == "--after") && i+1 < len(args) {
+			if takesValue(arg) && !strings.Contains(arg, "=") && i+1 < len(args) {
 				i++
 				flags = append(flags, args[i])
 			}

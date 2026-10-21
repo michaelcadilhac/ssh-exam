@@ -88,6 +88,15 @@ listener. See agent-management.md. Verify actual gateway topology/scope before
 coordinating a gateway cutover; csc-sys authorization alone is not silently
 expanded to deploying on another host. This is not complete management or grants.
 
+C1b adds shared conditional definition create/update and migration 014's browser
+intent ledger. Preserve both intent ledgers on rollback. Older settings clients
+must reload to obtain revisions; unversioned overwrites now refuse instead of
+silently replacing newer settings. Partial CLI updates preserve omitted values;
+no historical attempt/default-clock rewrite is part of migration. Definition
+retirement is not enabled: native-only legacy grant dependencies need migration/
+visibility first. No C8 history deletion or grant cancellation is authorized by
+configuration writes.
+
 Install matching gateway, connection-worker/browser receipt code and native
 artifacts in the drained window. Native authenticated renewal refusals now carry
 state without granting execution; older workers may lose this diagnostic detail.

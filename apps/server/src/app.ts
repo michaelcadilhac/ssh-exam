@@ -35,6 +35,7 @@ import { Monitoring } from "./monitoring.js";
 import { ClockControl } from "./clock-control.js";
 import { registerExamAdmin } from "./exam-admin.js";
 import { registerAgentManagement } from "./agent-management.js";
+import { ExamDefinitions } from "./exam-definitions.js";
 import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { parseRosterAsync, exportRoster } from "./roster.js";
@@ -1189,22 +1190,40 @@ export async function createApp(
   });
   app.get("/api/admin/exams", async (req) => {
     principal(req, "admin");
-    return store.db
-      .prepare("SELECT config FROM exams ORDER BY (id='sandbox'),rowid")
-      .all()
-      .map((r: any) => JSON.parse(r.config));
+    return new ExamDefinitions(store).all();
   });
   app.post("/api/admin/exams", async (req) => {
-    const s = principal(req, "admin"),
-      parsed = examSchema.parse(req.body),
-      e = isSandbox(parsed.id) ? sandboxExam(parsed.template) : parsed;
-    store.db
-      .prepare(
-        "INSERT INTO exams VALUES(?,?) ON CONFLICT(id) DO UPDATE SET config=excluded.config",
-      )
-      .run(e.id, JSON.stringify(e));
-    store.audit(s.username, "configure-exam", e.id);
-    return e;
+    const s = principal(req, "admin");
+    const body = z
+      .object({
+        revision: z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .optional(),
+        reason: z.string().optional(),
+        requestID: z.string().uuid().optional(),
+      })
+      .passthrough()
+      .parse(req.body);
+    const definitions = new ExamDefinitions(store);
+    const { requestID, ...intent } = body;
+    const result = definitions.withRequest(s.username, requestID, intent, () =>
+      body.revision
+        ? definitions.update(
+            String(body.id),
+            Object.fromEntries(
+              Object.entries(body).filter(
+                ([key]) =>
+                  !["id", "revision", "reason", "requestID"].includes(key),
+              ),
+            ),
+            body.revision,
+            s.username,
+            body.reason,
+          )
+        : definitions.create(body, s.username, body.reason),
+    );
+    return { ...result.exam, revision: result.revision };
   });
   const describeAttempt = (a: any) => {
     const conn = attemptConnections.get(a.id);

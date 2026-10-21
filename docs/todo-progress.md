@@ -31,7 +31,8 @@ escalation. Generated screenshot changes must not become product changes.
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
 | C1a: root-agent management foundation | approved C1 | Explicit named authorization/purpose/audience; persistent replay/idempotency across restart; root-machine audit and pinned HTTPS replies; actual examctl/gateway list/show workflows, help/refusals and no native/student mutation | Implemented/tested locally; mutations/full coverage and deployment pending |
-| C1b/C8: shared definition management | C1a + approved C8 | Shared web/CLI create/update revision checks, previews, unused-only delete/history archive, safe admission/grant dependencies, conflict/retry/browser/native CLI tests | Next independent management increment; not implemented |
+| C1b: shared definition configuration | C1a | Shared web/CLI create/update for every definition field, stale/missing revision refusal, partial preservation, durable web/root retry and historical immutability; actual CLI/HTTP/browser/build/native race tests | Implemented/tested locally; not deployed |
+| C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
 | M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native worker/short-transaction implementation and fatal-child, actual user-systemd OOM/runtime, permission/user-namespace ENOSPC/read-only regressions pass locally; privileged SSH/PTY/workload gates remain open |
@@ -80,6 +81,31 @@ plus build/typecheck/vet/static build. See agent-management.md. This is a read-o
 foundation, not full management. Browser 52/52 evidence above is the preceding
 worker milestone; no new browser UI changed in C1a. Continue shared definition
 mutations/retirement and remaining approved increments; no production contact.
+
+C1a is local commit 6cd9a1e. C1b: a shared definition reader/writer replaces
+browser upsert. Flag-driven `web exams create/update` supports every current
+definition field, explicit RFC3339 windows, conditional revision and partial
+patches that preserve omitted settings. Browser forms retain request IDs on lost
+replies; migration 014 stores successful browser definition intents. Historical
+attempt settings/deadlines/holds are not changed. All 301 application tests / 51
+files pass with actual compiled CLI/gateway TLS create/update/restart coverage;
+all 40 browser retry/conflict, admin and seven-timezone checks pass, as do full
+native race checks with opt-ins, build/typecheck/vet/static build. No production
+deployment is implied; see exam-definition-management.md.
+Source review found legacy recovery grants only in root native JSON, invisible
+to a gateway-only archive check. Complete their unified migration/visibility
+before claiming C8 can retire definitions without stranding unused grants.
+
+Deployment access check: only non-mutating SSH service-status inspection was
+attempted. The configured csc-sys jump route timed out during banner exchange;
+one direct-route attempt also timed out on port 22. No authenticated remote
+session, service/configuration change or student-record access occurred. Local
+SSH config was inspected without printing key/proxy-command contents. Do not
+claim deployment access verified, change host-key policy or repeatedly retry
+credentials. Continue independent local work; a functioning route is a rollout
+prerequisite. Browser assets must finish building before starting the static
+test server: the first C1b run's two new tests saw an old bundle; both pass with
+a fresh server/current build, and the full 40-test group passes.
 
 ## Decision log
 

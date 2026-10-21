@@ -1,0 +1,86 @@
+# Shared definition configuration — local implementation
+
+October 21, 2026. Implemented/tested locally; **not deployed**. C1b supports all
+current exam-definition settings in web administration and root examctl through
+the same ExamDefinitions validation/transaction/audit service. Full management,
+definition retirement, templates and unified grants remain incomplete.
+
+## CLI workflow
+
+`examctl help web` documents every flag, default, unit, range and refusal. Use
+list/show to inspect definitions and revision hashes. Creation requires an exam
+ID, installed template name and explicit earliest/latest Begin instants in
+RFC3339 with zones. Defaults match web creation: name Programming exam, duration
+5400 seconds (90 minutes), webcam required and four terminals. Supported duration
+range is 60..21600 seconds; terminal count 1..4. These are future defaults, not
+current attempt-clock controls. Latest Begin is not latest finish.
+
+```sh
+sudo examctl web exams create midterm --name 'Midterm' --template v1 --earliest '2026-10-22T09:00:00-05:00' --latest '2026-10-22T09:30:00-05:00' --webcam optional
+sudo examctl web exams show midterm
+sudo examctl web exams update midterm --revision HASH-FROM-SHOW --duration-seconds 7200 --terminals 2 --reason 'Approved future default change'
+```
+
+All definition fields have supported flags; operators do not need ad hoc scripts
+or direct database/authoritative JSON edits. Template installation is separate;
+creating a definition does not install material. Root authorization explicitly
+names exams.create/update in gateway managementOperations (default deny). The
+existing agent-key purpose/audience/replay/reply contract remains in force; see
+agent-management.md. Browser session/Origin/CSRF checks are unchanged.
+
+## Concurrency, partial updates and retry
+
+Creation never silently upserts an existing ID. Updates require the revision of
+the configuration the operator reviewed. A stale or missing revision refuses
+overwrite with reload/review/new-intent guidance. Old browser clients must reload
+to obtain current revision metadata. The browser captures the revision when its
+form opens; background polling cannot silently adopt a newer revision under
+unsaved edits.
+
+CLI updates send only named settings. The server validates and merges those
+fields within the revision-fenced transaction, then validates the full result.
+Create-time schema defaults never reset omitted duration/webcam/terminal values.
+The resulting stable partial-update body can be retried after the first write
+changed the revision: the same root request ID returns its original outcome
+before reexecuting a mutation. Different arguments with that ID conflict; use a
+new request ID after reviewing/correcting a stale or failed intent.
+
+Browser settings similarly retain one UUID for the same form after network loss,
+and generate a new UUID after edited input. Migration 014 adds a small successful
+definition-intent ledger, keyed by authenticated actor/request, committed with the
+configuration and audit. A retry across restart returns the original result and
+does not duplicate the configuration write. No request IDs are stored as exam
+settings. Preserve this table through backup/rollback; do not clear it as part of
+monitoring retention. Invalid/conflicting mutations roll back, not partially save.
+
+Audit records authenticated actor, target, reason/purpose and before/after
+configuration/revisions. The default purpose is exam-definition configuration;
+it is not fabricated human attribution. Root attribution remains agent:ID:root.
+Sandbox fixed policy is normalized through the same service as before. Updating
+definitions never rewrites historical attempt settings, current/original
+deadlines, access restrictions, protected submissions, receipts or grants.
+
+## Evidence and remaining work
+
+All 301 application tests in 51 files pass with actual compiled CLI-to-gateway
+TLS create/update, explicit-zone conversion, partial preservation, stale refusal
+and gateway-restart retry. Authenticated web/root regressions preserve historical
+attempt snapshots and refuse unversioned overwrites. Native race checks with all
+local fault/CLI opt-ins, typecheck, static native build/vet and app/WASM build pass.
+All 40 Chromium definition retry/conflict, admin and seven-timezone workflows
+pass. The first new tests exposed an old served bundle; a completed build plus
+fresh server fixed the test setup, then the full group passed. Do not rebuild
+assets concurrently with a static browser fixture.
+
+Only synthetic local state/accounts/keys were used. Read-only SSH topology checks
+via the configured jump and direct csc-sys routes timed out before authentication.
+No production record, configuration or service was changed. Safe drain, matching
+artifacts, backups, privileged qualification and working deployment access remain
+release gates. Do not run old global-lock native writers with new job workers.
+
+C8 retirement is deliberately not claimed here: source inspection confirms legacy
+unused recovery grants exist only in root native JSON. A gateway-only dependency
+count cannot safely conclude there are no such grants. Complete unified grant
+migration/visibility and admission/Begin fences before implementing safe archive/
+unused-only deletion. Preserve the legacy files/consumption markers/history while
+that work continues; do not strand them or silently cancel authorizations.
