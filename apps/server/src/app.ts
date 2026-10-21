@@ -37,6 +37,7 @@ import {
 } from "./connection-process.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
+import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
 import {
   MonitoringPurgeJobs,
   monitoringPurgeStatus,
@@ -115,6 +116,7 @@ export async function createApp(
     agent = new Agent(config.agent, store),
     monitoring = new Monitoring(store, config.terminalRecordingLimitMiB),
     life = new Lifecycle(store, agent, monitoring);
+  const media = new MonitoringMedia(store);
   const purges = new MonitoringPurgeJobs(store, {
     entry: options.purgeWorkerEntry,
     timeoutMs: options.purgeTimeoutMs,
@@ -334,7 +336,9 @@ export async function createApp(
     reply.code(status).send({
       error:
         status >= 500
-          ? "Operation failed; consult operator diagnostics"
+          ? error instanceof MonitoringMediaError
+            ? error.message
+            : "Operation failed; consult operator diagnostics"
           : err.message,
     });
   });
@@ -1559,29 +1563,32 @@ export async function createApp(
   });
   app.get("/api/admin/media/:id", async (req: any, reply) => {
     const s = principal(req, "admin");
-    const f = store.db
-      .prepare("SELECT * FROM frames WHERE id=?")
-      .get(req.params.id) as any;
-    if (!f) throw Error("Media unavailable");
-    if (
-      store.db
-        .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
-        .get(f.attempt)
-    )
-      throw Object.assign(
-        Error(
-          "Monitoring was deleted; restored orphan files cannot be viewed. Protected submissions have independent retention",
-        ),
-        { statusCode: 410 },
+    const query = z
+      .object({ thumbnail: z.enum(["0", "1"]).optional() })
+      .strict()
+      .parse(req.query);
+    try {
+      const image = await media.read(
+        req.params.id,
+        query.thumbnail === "1",
+        s.username,
       );
-    store.audit(s.username, "view-media", f.attempt);
-    return reply
-      .type("image/jpeg")
-      .send(
-        readFileSync(
-          `${store.dir}/monitoring/${f.attempt}/${f.id}${req.query.thumbnail === "1" ? ".thumb" : ""}.jpg`,
-        ),
-      );
+      // Closing descriptors and resuming this continuation both yield to other
+      // requests. Fence deletion again immediately before publishing private bytes.
+      media.assertRetained(image.attempt);
+      return reply.type("image/jpeg").send(image.data);
+    } catch (error) {
+      if (error instanceof MonitoringMediaError)
+        app.log.warn(
+          {
+            event: "monitoring-media-unavailable",
+            reason: error.reason,
+            id: req.params.id,
+          },
+          "Monitoring image read refused; inspect private storage without altering deletion records",
+        );
+      throw error;
+    }
   });
   app.get("/api/admin/notifications", async (req) => {
     principal(req, "admin");

@@ -77,3 +77,41 @@ review expose separate physical status. See monitoring-purge-isolation.md and
 todo-progress.md for current validation/migration 017 and remaining shared CLI
 deletion/export work. The historical synchronous failure evidence above is not
 the current candidate's deletion contract; production remains unchanged.
+
+## Bounded no-follow image reads (local candidate)
+
+An authenticated regression returned unrelated protected-fixture contents when
+the stored image leaf was a symlink. The existing route now uses async pinned
+private-directory descriptors, no-follow/nonblocking opens, regular-file/owner/
+single-link checks and fixed allocation/stream bounds. Originals are limited to
+the existing upload ceiling (1,500,000 bytes) and checked against the stored
+capture hash. Thumbnails are limited to 2 MiB; legacy rows have no thumbnail hash,
+so do not infer cryptographic thumbnail provenance. Observed descriptor changes
+refuse rather than serving mixed bytes. No path-following fallback exists.
+
+Sixteen active reads are admitted; capacity exhaustion returns 503/retry guidance.
+This bounds active file reads, not all HTTP/network memory, kernel IO latency or
+hardware faults. It is not a process/OS sandbox. No image decoder runs during
+review reads. Existing upload decoding remains a distinct boundary.
+
+Retention can commit while file descriptors are closed asynchronously, or before
+the route resumes. The final synchronous response check therefore follows every
+await; no await separates that check from sending bytes. A real HTTP regression
+returns 200 with the fence removed and 410 with it present. Existing protected
+submissions, clocks, account holds and deletion records remain unchanged.
+
+For 503 `monitoring-media-unavailable`, inspect the safe reason code (unsafe-path,
+unsafe-directory, not-regular, linked, size, changed, digest, storage or capacity).
+Refresh review and inspect private storage/permissions; never remove tombstones
+or replace protected files to satisfy an image request. Raw paths/errors are not
+returned/logged. Missing frame IDs are 404; tombstoned restored rows are 410.
+Strict thumbnail queries accept only 0/1. Both endpoints retain admin authorization,
+audit and no-store. Full media CLI/export remains open; no new management action
+is introduced by this existing-route hardening. No schema/deployment change.
+
+Final local verification: all four new authenticated HTTP regressions pass;
+the complete350-test/65-file application suite passes (74.0s), as do typecheck/
+application-WASM build and all84 combined browser-SSH checks (10.7m). Browser
+assets are unchanged. Source symlink and final deletion-fence regressions were
+observed failing before their fixes. No production files/services or archive/
+account/deadline authority changed; this is not whole-media export qualification.
