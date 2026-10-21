@@ -25,15 +25,18 @@ initialized marker: committed clocks and one-use history survive, and existing
 student edits cannot be overwritten. This is not complete process-death/disk-full
 qualification of every boundary.
 
-The larger ACTIVATING transaction remains under investigation. Never reset a
+Private work staging now precedes Begin in bounded OS workers, with short
+fenced publication and explicit no-reopen repair (private-workspace-staging.md).
+Other initialization and unified grant migration remain under investigation. Never reset a
 consumption marker/interval or retry extraction over student changes. Inspect
 `examctl info ATTEMPT` and `examctl manifest SOURCE`; preserve workspace/staging,
 root grants/markers, state and verified source for safe diagnosis/source recovery.
 C1/C2 approve agent-based management authority and unified grants with private
 pre-Begin staging. C7 selects explicitly authorized new attempts from verified
 saved work with instructor-chosen allowances, not automatic refunds or reopening
-completed attempts. Source recovery/new-grant implementation and full initialization
-failure qualification remain pending; existing manual clock controls are separate.
+completed attempts. Unified source recovery/new-grant management and full
+initialization failure qualification remain pending; existing manual clock
+controls are separate.
 
 Deploy in an authorized drained window. No protected-archive migration is needed.
 Rollback retains all intervals, grants/markers, restored work and protected copies;

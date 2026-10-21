@@ -36,53 +36,64 @@ func recoveryName(a *Attempt) string {
 }
 
 func (e *Engine) recoveryPreparation(a *Attempt) (*RecoveryPreparation, *Manifest, error) {
+	r, err := e.recoveryReference(a)
+	if err != nil || r == nil {
+		return r, nil, err
+	}
+	source := e.state.Attempts[r.SourceAttempt]
+	manifest, err := ReadProtected(filepath.Join(e.Config.State, "submissions", source.ID), source)
+	return r, manifest, err
+}
+
+// Only bounded administrator metadata and in-memory identity checks belong in a
+// shared transaction. Hashing/extraction is the isolated staging worker's job.
+func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	if !identifier.MatchString(a.Exam) || !identifier.MatchString(a.Username) {
-		return nil, nil, errors.New("invalid recovery identity")
+		return nil, errors.New("invalid recovery identity")
 	}
 	root, err := os.OpenRoot(e.Config.State)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer root.Close()
 	f, err := root.OpenFile(recoveryName(a), os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if os.IsNotExist(err) {
-		return nil, nil, nil
+		return nil, nil
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	if err != nil || !info.Mode().IsRegular() || info.Size() > 16384 || info.Mode().Perm()&0077 != 0 || info.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) {
-		return nil, nil, errors.New("unsafe administrator recovery preparation")
+		return nil, errors.New("unsafe administrator recovery preparation")
 	}
 	var r RecoveryPreparation
 	if err = json.NewDecoder(io.LimitReader(f, 16385)).Decode(&r); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if r.Exam != a.Exam || r.Username != a.Username || r.UID != a.UID || r.Duration != a.Settings.Duration || r.Duration < 60 || r.Duration > 21600 || !attemptID.MatchString(r.SourceAttempt) || len(r.Checksum) != 64 || r.CreatedAt <= 0 || len(strings.TrimSpace(r.Reason)) < 8 {
-		return nil, nil, errors.New("recovery preparation does not match this student, exam or allowance")
+		return nil, errors.New("recovery preparation does not match this student, exam or allowance")
 	}
 	claimed, err := root.ReadFile(recoveryName(a) + ".consumed")
 	if err == nil && string(claimed) != a.ID {
-		return nil, nil, errors.New("saved-work recovery has already started")
+		return nil, errors.New("saved-work recovery has already started")
 	}
 	if err != nil && !os.IsNotExist(err) {
-		return nil, nil, err
+		return nil, err
 	}
 	// Also fence a crash after committing the interval but before writing the
 	// consumption marker. Cancelled, unstarted preflights do not consume a grant.
 	for _, other := range e.state.Attempts {
 		if other.ID != a.ID && other.Exam == a.Exam && other.UID == a.UID && other.Start >= r.CreatedAt {
-			return nil, nil, errors.New("saved-work recovery has already started")
+			return nil, errors.New("saved-work recovery has already started")
 		}
 	}
 	source, err := e.Find(r.SourceAttempt)
 	if err != nil || source.Username != a.Username || source.UID != a.UID || source.State != "COMPLETED" || !source.Protected || source.Checksum != r.Checksum {
-		return nil, nil, errors.New("secured recovery source unavailable")
+		return nil, errors.New("secured recovery source unavailable")
 	}
-	manifest, err := ReadProtected(filepath.Join(e.Config.State, "submissions", source.ID), source)
-	return &r, manifest, err
+	return &r, nil
 }
 
 func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest *Manifest, dest string) error {
@@ -99,6 +110,12 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 	if err := syncDirectory(filepath.Dir(claim)); err != nil {
 		return err
 	}
+	return e.restoreRecoveryFiles(a, r, manifest, dest)
+}
+
+// Extraction is deliberately separate from grant consumption. Private pre-Begin
+// staging must verify/copy saved files without claiming an interval or allowance.
+func (e *Engine) restoreRecoveryFiles(a *Attempt, r *RecoveryPreparation, manifest *Manifest, dest string) error {
 	archive, err := os.Open(filepath.Join(e.Config.State, "submissions", r.SourceAttempt, "submission.tar.gz"))
 	if err != nil {
 		return err

@@ -144,12 +144,19 @@ func boot() string {
 	return strings.TrimSpace(string(b))
 }
 func (e *Engine) Call(op string, r Request) (any, error) {
+	if op == "prepare-attempt" {
+		lock, err := e.accountWorkLock(r.UID)
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+	}
 	if op == "inspect-attempt" || op == "submission-status" || op == "delete-submission" {
 		if err := e.reconcileAccessOutside(r.ID); err != nil {
 			return nil, err
 		}
 	}
-	if op == "delete-submission" {
+	if op == "delete-submission" || op == "activate-attempt" {
 		lock, err := e.attemptCollectionLock(r.ID)
 		if err != nil {
 			return nil, err
@@ -158,6 +165,12 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 	}
 	var result any
 	err := e.WithState(func() error { var err error; result, err = e.callLocked(op, r); return err })
+	if err == nil && op == "activate-attempt" {
+		return e.activatePrepared(result.(*Attempt), r.Expires)
+	}
+	if err == nil && op == "prepare-workspace" {
+		return e.preparedWorkspace(r.ID)
+	}
 	if err == nil && op == "finalize-attempt" {
 		return e.finishCollection(r.ID)
 	}
@@ -175,7 +188,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "private-workspace-staging", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -252,7 +265,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if err := e.prepareHome(a); err != nil {
 				return err
 			}
-			if _, _, err := e.recoveryPreparation(a); err != nil {
+			if _, err := e.recoveryReference(a); err != nil {
 				return err
 			}
 			e.state.Attempts[r.ID] = a
@@ -266,6 +279,11 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 		}
 		e.expirePreflight(a, Millis())
 		switch op {
+		case "prepare-workspace":
+			if a.State != "PREPARING" || a.Start != 0 || a.Deadline != 0 || a.OriginalDeadline != 0 {
+				return errors.New("workspace staging requires a current unstarted preparation; inspect the attempt")
+			}
+			result = a
 		case "submission-manifest":
 			if !a.Protected {
 				return errors.New("protected submission unavailable")
@@ -287,41 +305,11 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if !sandboxAttempt(a) && (Millis() < a.Settings.Earliest || Millis() > a.Settings.Latest) {
 				return errors.New("outside start window")
 			}
-			ready, _ := e.Ready()
-			if !ready {
-				return errors.New("guards unavailable")
-			}
-			if _, _, err = e.recoveryPreparation(a); err != nil {
+			if err = e.workspaceForBegin(a); err != nil {
 				return err
 			}
-			if err = e.quiesceOrdinary(a); err != nil {
-				return err
-			}
-			if e.expirePreflight(a, Millis()) {
-				return errors.New(PreflightExpiredReason)
-			}
-			// Commit the original interval and hold BEFORE releasing material. A crash
-			// during initialization leaves a locked, started attempt, never an ordinary login.
-			commitStart(a, Millis(), uptime(), boot())
-			if e.temporaryPolicy(a) {
-				a.PolicyState = "HELD"
-				a.PolicyExpires = 0
-			}
-			a.State = "ACTIVATING"
-			a.Reason = "Activation in progress"
-			if err = e.save(); err != nil {
-				return err
-			}
-			if err = e.initialize(a); err != nil {
-				a.State = "COLLECTION_FAILED"
-				a.Reason = "Activation failed after access hold was committed"
-				a.Errors = appendError(a.Errors, err.Error())
-				a.Lease = 0
-				return err
-			}
-			a.Reason = ""
-			a.State = "ACTIVE"
-			e.Audit(op, a.ID)
+			// The caller performs guard/ordinary-writer verification outside the
+			// global lock, then rechecks this exact snapshot before committing.
 			result = a
 		case "issue-channel-admission":
 			if r.Username != a.Username || r.Transport != a.Transport || !attemptID.MatchString(r.Pane) {

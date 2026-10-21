@@ -96,7 +96,12 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (op === "issue-ssh-handoff") return h.issueHandoff(b.public_key);
   if (op.startsWith("issue-")) return h.agent.call(op, b);
   if (op === "close-pane") return { closed: true };
-  if (op === "health") return { ready: true, fixture: true };
+  if (op === "health")
+    return {
+      ready: true,
+      fixture: true,
+      capabilities: ["private-workspace-staging"],
+    };
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
       ...timezoneAccounts,
@@ -137,12 +142,18 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     return a;
   }
   if (op === "prepare-attempt") {
-    attempts.set(b.id, { ...b, state: "PREPARING", generation: 0 });
+    if (!attempts.has(b.id))
+      attempts.set(b.id, { ...b, state: "PREPARING", generation: 0 });
     return attempts.get(b.id);
   }
   const a = attempts.get(b.id);
   if (!a) throw Error("Unknown fixture attempt");
   switch (op) {
+    case "prepare-workspace":
+      if (a.state !== "PREPARING" || a.start)
+        throw Error("Workspace requires unstarted preparation");
+      a.workspace ??= { version: 1, attempt: a.id };
+      break;
     case "prepare-account-policy":
       a.policy_state = "READY";
       a.policy_expires = Date.now() + 300000;
@@ -163,6 +174,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       a.state = "CANCELLED_BEFORE_START";
       break;
     case "activate-attempt":
+      if (!a.workspace) throw Error("Private workspace not staged");
       if (
         a.account_policy_required &&
         (a.policy_state !== "READY" || a.policy_transport !== a.transport)

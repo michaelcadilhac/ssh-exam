@@ -47,6 +47,23 @@ func TestCollectionChild(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
+		e.workspaceCheckpoint = func(phase string) error {
+			if mode == "workspace-kill-private" && phase == "published-private" {
+				_ = syscall.Kill(os.Getpid(), syscall.SIGKILL)
+			}
+			if phase == "copied" && (mode == "workspace-hang" || mode == "workspace-file-bound") {
+				if err := os.WriteFile(filepath.Join(c.State, "child-entered"), []byte("workspace copied"), 0600); err != nil {
+					return err
+				}
+				if mode == "workspace-file-bound" {
+					return syscall.Setrlimit(syscall.RLIMIT_FSIZE, &syscall.Rlimit{Cur: 1, Max: 1})
+				}
+				for {
+					time.Sleep(time.Hour)
+				}
+			}
+			return nil
+		}
 		if mode == "disk-full" || mode == "read-only" {
 			mountpoint := filepath.Join(c.State, "submissions")
 			if err := os.MkdirAll(mountpoint, 0700); err != nil {

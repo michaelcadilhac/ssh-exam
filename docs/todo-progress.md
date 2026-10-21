@@ -38,6 +38,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
 | M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native worker/short-transaction implementation and fatal-child, actual user-systemd OOM/runtime, permission/user-namespace ENOSPC/read-only regressions pass locally; privileged SSH/PTY/workload gates remain open |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
+| D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved: manual cleanup/no grace and configurable 128/512 MiB defaults with crash isolation; implementation/qualification remain open |
 
@@ -48,6 +49,23 @@ mean implemented and tested locally when explicitly qualified; deployed status i
 separate and remains **not deployed** throughout this work.
 
 ## Current native increment (October 21)
+
+D1a in progress after local commit 35ec5c4: private staging now precedes Begin.
+Full native race suite with opt-ins passes, including actual child death and
+resource/runtime failure/retry. Focused tests cover source immutability/metadata,
+cancellation/owner/settings/expiry, signed Begin freshness, UID admission fencing
+and no-reopen publication repair. Actual synthetic SSH/gateway regressions cover
+lost staging replies and replaced-page Begin. All 304 app tests/52 files pass;
+the first full run caught an outdated readiness fixture, corrected with a new
+old-agent fail-closed assertion before rerunning. Static build/vet/typecheck and
+application build pass. All 28 browser/interface/real synthetic SSH checks pass
+(3.6m), including required staging in the fixture before Begin. Final native race
+suite with opt-ins passes again after corrupt-source and healthy signed-monitoring
+resource regressions. All three Go-module race checks pass. Generated screenshots
+were restored to baseline, not committed as product changes. See
+private-workspace-staging.md. Unified grants, legacy migration/source dependency
+fences, raised limits, retained SSH and complete management remain actionable.
+Nothing deployed; no command-not-found has occurred.
 
 C8/deployment scope recorded in local commit 807d3af. M6a now implements separate
 bounded OS workers, persistent per-attempt/slot locks, short fenced protection/

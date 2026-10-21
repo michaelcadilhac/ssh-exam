@@ -101,6 +101,8 @@ func (e *Engine) runCollectionJob(action, id string) error {
 	// e.state is a private, loaded snapshot in this worker, including the trusted
 	// SSH registrations used by writer verification. No shared-state lock is held.
 	switch action {
+	case "workspace-prepare":
+		return e.stageWorkspace(&snapshot)
 	case "finalize":
 		if snapshot.State == "COMPLETED" {
 			return nil

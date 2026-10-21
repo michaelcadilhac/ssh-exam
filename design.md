@@ -267,6 +267,16 @@ Use a deliberate **Begin exam** action. Before committing:
 
 Beginning is an idempotent, durable operation involving the backend and class agent. The class agent commits the canonical start timestamp and deadline immediately before releasing exam material. The backend stores those returned values; it does not start an unrelated second timer.
 
+October 21 local implementation stages work privately in a bounded native OS
+worker during preflight, before any clock/legacy consumption marker. Begin only
+rechecks the exact staged receipt/current authority, commits the original hold/
+interval, then publishes by a same-filesystem no-replace rename. Cancellation,
+ownership and signed-expiration fences prevent late starts. A per-UID workflow
+lock prevents replacement preparation from racing an old session purge. Explicit
+publication repair never reopens time or recopies a mutable source. See
+docs/private-workspace-staging.md for restart/CLI/mixed-version constraints and
+remaining unified-grant/privileged qualification. This is local, not deployed.
+
 Monitoring socket liveness and exam-state ordering are separate checks. Each bind and two-second preflight/heartbeat request uses a one-use connection-local confirmation value; the gateway echoes it only on the authenticated, page-owned socket. A reply within 15 seconds refreshes liveness even if a newer HTTP snapshot has overtaken its state. Apply state through the existing monotonic snapshot/generation checks independently. HTTP replies, unknown/replayed confirmations, replies from a retired socket and replies at or beyond the timeout cannot renew liveness, bind a replacement page or unlock a paused attempt. Before committing a new start, require a currently confirmed monitoring connection. Timeout diagnostics record only numeric acknowledgment age and rejected-snapshot counts, never confirmation values or credentials.
 
 Activation diagnostics must name the failed conditions (monitoring binding/acknowledgment, offline browser, SSH control, fullscreen, keyboard lock, visibility and required capture) in both the student error and durable server audit/log. Focus lost during activation uses the same 20-second grace as active work. A later watchdog acknowledgment of the same pause must retain the initiating reason and record its own cause separately; lease expiry and server reboot are distinct reasons.
@@ -1544,9 +1554,10 @@ healthy generations/deadlines. Existing two-attempt/synthetic blocking tests are
 not sufficient evidence of fatal-crash isolation. No implementation/deployment
 claim follows from this approved design requirement. Native collection/verification/
 cleanup workers, short transactions and fatal-child/resource/disk regressions are
-now implemented/tested locally (docs/collection-worker-isolation.md). Larger limits,
-initialization isolation, full privileged SSH/PTY and workload qualification remain
-open; nothing is deployed by these local results.
+now implemented/tested locally (docs/collection-worker-isolation.md). Private
+preflight work staging also uses that boundary (docs/private-workspace-staging.md).
+Larger limits, unified source/grant migration, other initialization and full
+privileged SSH/PTY/workload qualification remain open; nothing is deployed.
 
 ### Clock reset and recording-limit regression requirements
 

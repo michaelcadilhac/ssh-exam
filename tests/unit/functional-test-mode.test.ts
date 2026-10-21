@@ -141,6 +141,7 @@ it("production accepts a qualified administrator sandbox and keeps ordinary rost
         "server-only-submissions",
         "clock-reset",
         "deadline-timing-check",
+        "private-workspace-staging",
       ],
     };
     store.db
@@ -151,6 +152,25 @@ it("production accepts a qualified administrator sandbox and keeps ordinary rost
         JSON.stringify({ health, accounts: { admin: 1001, student: 1002 } }),
       );
     expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(200);
+    store.db
+      .prepare("UPDATE agent_snapshot SET payload=?")
+      .run(
+        JSON.stringify({
+          health: {
+            ...health,
+            capabilities: health.capabilities.filter(
+              (cap) => cap !== "private-workspace-staging",
+            ),
+          },
+          accounts: { admin: 1001, student: 1002 },
+        }),
+      );
+    expect((await app.inject({ url: "/health/ready" })).statusCode).toBe(503);
+    store.db
+      .prepare("UPDATE agent_snapshot SET payload=?")
+      .run(
+        JSON.stringify({ health, accounts: { admin: 1001, student: 1002 } }),
+      );
     expect(
       await agent.call("resolve-course-accounts", {
         usernames: ["admin"],

@@ -11,6 +11,7 @@ func init() {
 				return err
 			}
 			worker.quiesce, worker.terminate = e.quiesce, e.terminate
+			worker.workspaceCheckpoint = e.workspaceCheckpoint
 			return worker.runCollectionJob(action, id)
 		}
 	}

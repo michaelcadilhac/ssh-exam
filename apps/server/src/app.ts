@@ -510,6 +510,7 @@ export async function createApp(
               "server-only-submissions",
               "clock-reset",
               "deadline-timing-check",
+              "private-workspace-staging",
             ].every((cap) => h.capabilities?.includes(cap))));
       if (!ready) reply.code(503);
       return {
@@ -768,6 +769,7 @@ export async function createApp(
         "server-only-submissions",
         "clock-reset",
         "deadline-timing-check",
+        "private-workspace-staging",
       ].every((cap) => h.capabilities?.includes(cap))
     )
       throw Error(
@@ -850,6 +852,18 @@ export async function createApp(
     store.db
       .prepare("UPDATE attempts SET work_path=?,functional_test=? WHERE id=?")
       .run(prepared.work_path || "/work", prepared.functional_test ? 1 : 0, id);
+    // Large copies/verifications belong to isolated native preflight workers,
+    // never Begin. A lost/failed staging reply consumes neither time nor grant;
+    // preflight retry adopts its durable, attempt/source-bound private receipt.
+    if (h.capabilities?.includes("private-workspace-staging")) {
+      const staged = await conn.command("prepare-workspace", { id });
+      if (staged.state !== "PREPARING" || !staged.workspace) {
+        life.acceptRemote(staged, undefined, id);
+        throw Error(
+          "Workspace preparation changed; check status before beginning.",
+        );
+      }
+    }
     return {
       id,
       page: pageSecret,
@@ -937,6 +951,20 @@ export async function createApp(
       }
       for (const c of conn.panes.values()) await c.close();
       conn.panes.clear();
+      // Account handoff/pane closure may outlive this page or preparation.
+      // Never let the old page's asynchronous Begin start its replacement.
+      a = store.attempt(a.id);
+      page(req, a);
+      await requirePreflightTime(a);
+      if (
+        a.state !== "PREPARING" ||
+        connections.get(`${a.exam}:${a.username}`) !== conn ||
+        !conn.alive ||
+        !healthy(a)
+      )
+        throw Error(
+          "Preparation, connection or monitoring changed during setup; inspect status before beginning. No new clock was requested.",
+        );
       const result = await agent.call("activate-attempt", { id: a.id });
       if (result.state !== "ACTIVE") {
         const manifest = result.protected

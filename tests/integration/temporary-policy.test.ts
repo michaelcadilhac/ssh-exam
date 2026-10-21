@@ -7,9 +7,13 @@ import { createApp } from "../../apps/server/src/app.js";
 import { hosts } from "../fixtures/hosts.js";
 import { hash } from "../../apps/server/src/db.js";
 
-it.each([false, true])(
-  "automatic handoff failure=%s never starts time before protected SSH is ready",
-  async (failHandoff) => {
+it.each([
+  [false, false],
+  [true, false],
+  [false, true],
+])(
+  "automatic handoff failure=%s replaced-page=%s never starts time before protected SSH is ready",
+  async (failHandoff, replacedPage) => {
     const h = await hosts();
     const dir = mkdtempSync(tmpdir() + "/temporary-access-");
     const config = {
@@ -38,6 +42,10 @@ it.each([false, true])(
         expect(store.attempt("setup").deadline).toBeNull();
         if (failHandoff) throw Error("Fixture handoff failed");
         remote.policy_transport = "protected-fixture";
+        if (replacedPage)
+          store.db
+            .prepare("UPDATE attempts SET page_hash=? WHERE id='setup'")
+            .run(hash("replacement-page"));
       });
     h.control.command = async (op, body) => {
       operations.push(op);
@@ -195,7 +203,7 @@ it.each([false, true])(
         },
       });
       expect(handoff).toHaveBeenCalledOnce();
-      if (failHandoff) {
+      if (failHandoff || replacedPage) {
         expect(begun.statusCode).toBe(400);
         expect(store.attempt("setup").start).toBeNull();
         expect(store.attempt("setup").deadline).toBeNull();

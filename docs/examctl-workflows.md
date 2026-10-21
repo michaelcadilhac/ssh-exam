@@ -48,6 +48,10 @@ read-only dry run.
 
 Resources have separate workflows:
 
+- `workspace-prepare ATTEMPT`: private pre-Begin staging without time/allowance
+  consumption; normally automatic in preflight. `workspace-repair` completes an
+  interrupted committed publication without reopening/resetting time, followed
+  by explicit protected finalization. See private-workspace-staging.md.
 - `cancel ATTEMPT --reason ...`: only provably unstarted preparation.
 - `stop` / `finish ATTEMPT --reason ...`: irreversible protected collection of a
   started attempt, retaining original/current interval restrictions.

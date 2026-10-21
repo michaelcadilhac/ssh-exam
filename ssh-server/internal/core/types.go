@@ -78,6 +78,7 @@ type SSHHandoff struct {
 	Consumed       string `json:"consumed,omitempty"`
 }
 type Attempt struct {
+	Workspace               *WorkspaceReceipt    `json:"workspace,omitempty"`
 	Handoff                 *SSHHandoff          `json:"ssh_handoff,omitempty"`
 	PolicyRequired          bool                 `json:"account_policy_required,omitempty"`
 	PolicyTransport         string               `json:"policy_transport,omitempty"`
@@ -162,20 +163,22 @@ type State struct {
 	ManifestReceipts map[string]string     `json:"manifest_receipts,omitempty"`
 }
 type Engine struct {
-	accountMu       sync.RWMutex
-	accounts        map[string]Account
-	policyRun       func(string, string, string, string) ([]byte, error)
-	transportUptime func(int) (float64, error)
-	Config          Config
-	mu              sync.Mutex
-	monitorMu       sync.Mutex
-	state           State
-	quiesce         func(*Attempt) error
-	terminate       func(*Attempt) error
-	cutoff          func(*Attempt) error
-	collectionRun   func(string, string) error
-	workerCommand   func(string) []string
-	workerTimeout   time.Duration
+	accountMu           sync.RWMutex
+	accounts            map[string]Account
+	policyRun           func(string, string, string, string) ([]byte, error)
+	transportUptime     func(int) (float64, error)
+	Config              Config
+	mu                  sync.Mutex
+	monitorMu           sync.Mutex
+	state               State
+	quiesce             func(*Attempt) error
+	terminate           func(*Attempt) error
+	cutoff              func(*Attempt) error
+	collectionRun       func(string, string) error
+	workerCommand       func(string) []string
+	workerTimeout       time.Duration
+	workspaceCheckpoint func(string) error // Test-only fault barriers, never configurable.
+	activationPrepare   func(*Attempt) error
 }
 
 // Tests replace this factory in test-only code. There is no configuration or
@@ -310,6 +313,7 @@ func New(c Config) (*Engine, error) {
 	e.terminate = e.terminateWriters
 	e.cutoff = func(a *Attempt) error { return e.freeze(a, true) }
 	e.collectionRun = collectionRunner(e)
+	e.activationPrepare = e.prepareActivation
 	return e, nil
 }
 func (e *Engine) WithState(fn func() error) error {

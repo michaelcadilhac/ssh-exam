@@ -83,10 +83,10 @@ func (e *Engine) OpenExport(id string) (*os.File, error) {
 	return archive, err
 }
 func (e *Engine) Admin(op, id, reason string) (any, error) {
-	if (op == "pause" || op == "stop" || op == "finish" || op == "start" || op == "cancel" || op == "retry" || op == "delete") && len(strings.TrimSpace(reason)) < 8 {
+	if (op == "pause" || op == "stop" || op == "finish" || op == "start" || op == "cancel" || op == "retry" || op == "delete" || op == "workspace-repair") && len(strings.TrimSpace(reason)) < 8 {
 		return nil, errors.New("provide --reason with a concrete administrator reason (at least 8 characters)")
 	}
-	operations := map[string]string{"info": "inspect-attempt", "start": "activate-attempt", "pause": "lock-attempt", "stop": "finalize-attempt", "finish": "finalize-attempt", "cancel": "cancel-attempt", "retry": "finalize-attempt", "manifest": "submission-manifest", "delete": "delete-submission"}
+	operations := map[string]string{"info": "inspect-attempt", "start": "activate-attempt", "pause": "lock-attempt", "stop": "finalize-attempt", "finish": "finalize-attempt", "cancel": "cancel-attempt", "retry": "finalize-attempt", "manifest": "submission-manifest", "delete": "delete-submission", "workspace-prepare": "prepare-workspace", "workspace-repair": "workspace-repair"}
 	operation, ok := operations[op]
 	if !ok {
 		return nil, errors.New("unsupported administrator operation")
@@ -96,7 +96,7 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 			return nil, err
 		}
 	}
-	if op == "delete" {
+	if op == "delete" || op == "start" {
 		lock, err := e.attemptCollectionLock(id)
 		if err != nil {
 			return nil, err
@@ -124,9 +124,20 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 			}
 		}
 		var err error
-		result, err = e.callLocked(operation, Request{ID: id, Reason: "administrator: " + reason})
+		if op != "workspace-repair" {
+			result, err = e.callLocked(operation, Request{ID: id, Reason: "administrator: " + reason})
+		}
 		return err
 	})
+	if err == nil && operation == "activate-attempt" {
+		result, err = e.activatePrepared(result.(*Attempt), 0)
+	}
+	if err == nil && operation == "prepare-workspace" {
+		result, err = e.preparedWorkspace(id)
+	}
+	if err == nil && operation == "workspace-repair" {
+		result, err = e.repairWorkspace(id)
+	}
 	if err == nil && operation == "finalize-attempt" {
 		result, err = e.finishCollection(id)
 	}

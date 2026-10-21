@@ -150,6 +150,13 @@ deployment or historical-record change.
   default single-attempt policy until deliberately changed.
 
 - [ ] **Define clear `/work` initialization choices.**
+  October 21 local increment: ordinary/legacy-saved work stages privately in
+  bounded OS workers before Begin, without clock/marker consumption. Exact
+  receipt/source/owner fences, atomic no-replace publication and explicit
+  no-reopen repair are implemented; regression/qualification evidence is tracked
+  in docs/private-workspace-staging.md and docs/todo-progress.md. Unified source
+  selection/version catalog/migration and privileged combined qualification
+  remain open. Not deployed; the full investigation is not complete.
   Evaluate starting empty, resetting to a specified template's starter files, and
   preserving saved work by copying a selected prior attempt's verified protected
   snapshot. Clarify what “fresh,” “reset” and “preserved” mean in both interfaces,

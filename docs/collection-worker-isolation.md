@@ -103,6 +103,8 @@ support required). The new slice passes systemd-analyze verification. The parser
 also reports a pre-existing removed CPUAccounting option in exam.slice; this is
 not a collection-worker error. Local root sudo requires a password; do not claim
 installed root/PAM/real SSH-writer qualification from these unprivileged tests.
-Combined real privileged PTY survival, larger concurrency/storage sizing,
-initialization isolation, interrupted cleanup and full end-to-end release/CLI
+Private preflight work copying/restoration now uses this boundary too; see
+private-workspace-staging.md for actual staging-death/resource/Begin races and
+safe repair. Combined real privileged PTY survival, larger concurrency/storage
+sizing, other initialization, interrupted cleanup and full end-to-end release/CLI
 qualification remain release gates. Continue independent approved work meanwhile.

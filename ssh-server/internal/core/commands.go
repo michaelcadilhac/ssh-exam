@@ -93,6 +93,20 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if cmd.Op == "renew-execution-lease" {
 		return e.renewSignedLease(cmd, username, transport)
 	}
+	if cmd.Op == "activate-attempt" {
+		lock, err := e.attemptCollectionLock(cmd.Body.ID)
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+	}
+	if cmd.Op == "prepare-attempt" {
+		lock, err := e.accountWorkLock(cmd.Body.UID)
+		if err != nil {
+			return nil, err
+		}
+		defer lock.Close()
+	}
 	var discovered *Account
 	if _, explicit := e.Config.Accounts[username]; cmd.Op == "register" && e.Config.TemporaryAccountPolicy && !explicit {
 		if !identifier.MatchString(cmd.Body.Exam) || cmd.Transport != "" || transport == "" {
@@ -147,6 +161,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		}
 		e.state.Commands[cmd.Nonce] = cmd.Expires
 		r := cmd.Body
+		if cmd.Op == "activate-attempt" {
+			r.Expires = cmd.Expires
+		}
 		if discovered != nil {
 			for name, other := range e.Config.Accounts {
 				if name != username && other.UID == discovered.UID {
@@ -254,7 +271,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			if err != nil || a.Username != username {
 				return errors.New("attempt owner mismatch")
 			}
-		case "reset-clock", "activate-attempt", "issue-channel-admission", "close-pane", "lock-attempt", "renew-execution-lease", "consume-continuation", "finalize-attempt":
+		case "reset-clock", "prepare-workspace", "activate-attempt", "issue-channel-admission", "close-pane", "lock-attempt", "renew-execution-lease", "consume-continuation", "finalize-attempt":
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username || a.Transport != transport {
 				return errors.New("attempt SSH transport mismatch")
@@ -281,11 +298,17 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		result, err = e.callLocked(cmd.Op, r)
 		return err
 	})
+	if err == nil && cmd.Op == "activate-attempt" {
+		return e.activatePrepared(result.(*Attempt), cmd.Expires)
+	}
 	if err == nil && handoff {
 		return e.issueSSHHandoff(cmd.Body.ID, cmd.Body.PublicKey, transport)
 	}
 	if err == nil && setup != "" {
 		return e.prepareAccountPolicy(setup)
+	}
+	if err == nil && cmd.Op == "prepare-workspace" {
+		return e.preparedWorkspace(cmd.Body.ID)
 	}
 	if err == nil && cmd.Op == "finalize-attempt" {
 		return e.finishCollection(cmd.Body.ID)

@@ -47,8 +47,9 @@ see examctl-workflows.md and todo-design-decisions.md for honest coverage.
 
 Before release: repeat all local checks on the chosen revision, qualify metadata
 restoration and signed renewal receipts on disposable privileged accounts with
-the real watchdog, and verify recovery-grant compatibility. Actual process-death/
-ENOSPC initialization repair remains unqualified; do not advertise it as solved.
+the real watchdog, and verify recovery-grant compatibility. Private work-staging
+process-death/restart is tested locally; full initialization/ENOSPC/privileged
+repair qualification remains open. Do not advertise every boundary as solved.
 Confirm the artifact's recorded compiler/runtime versions and checksums. Build
 versioned gateway/native artifacts without changing the running services.
 
@@ -112,6 +113,20 @@ Recovery extraction still verifies protected source bytes and strips privileged
 bits. Older archives lack directory/ACL/xattr metadata; metadata restoration does
 not invent it or rewrite the source. New ordinary modes/mtimes affect only newly
 restored files, not previously initialized workspaces.
+
+D1a adds private preflight work staging and mandatory production capability
+`private-workspace-staging`, not a unified grant/schema migration. Deploy matching
+gateway and every native writer only after drain/backup. Preserve workspace
+receipts, private directories and legacy consumed markers. Old writers ignore
+attempt/UID locks and discard receipt fields: never mix them. Existing started
+attempts are not restaged or reset; unstarted preparations need successful staging
+before Begin. Repair interrupted committed publication without reopening time,
+then secure it through explicit finalization. Never downgrade an unresolved
+publication to an old initializer that ignores receipts. See
+private-workspace-staging.md for tests and remaining qualification. Broader
+home/application initialization, legacy grant catalog/source dependency fences
+and privileged real-SSH/workload gates remain open; do not deploy this increment
+merely because unit tests passed.
 
 ## Consolidate all three agent listeners (proposal only)
 
