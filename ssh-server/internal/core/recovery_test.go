@@ -4,18 +4,81 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 const recoveryID = "11111111-1234-1234-1234-123456789abc"
 const retryRecoveryID = "22222222-1234-1234-1234-123456789abc"
 
-func recoveryFixture(t *testing.T) (*Engine, *Attempt, RecoveryPreparation) {
+func TestRecoveryRestartNeverOverwritesPublishedStudentWork(t *testing.T) {
+	for _, initialized := range []bool{false, true} {
+		t.Run(fmt.Sprint(initialized), func(t *testing.T) {
+			e, a, _ := recoveryFixture(t)
+			if err := e.WithState(func() error {
+				commitStart(a, Millis(), uptime(), boot())
+				a.State = "ACTIVATING"
+				e.state.Attempts[a.ID] = a
+				return e.initialize(a)
+			}); err != nil {
+				t.Fatal(err)
+			}
+			base := filepath.Join(e.Config.Work, a.ID)
+			if !initialized {
+				if err := os.Remove(filepath.Join(base, "initialized")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			answer := filepath.Join(base, "work", "answer.txt")
+			if err := os.WriteFile(answer, []byte("new student work"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			restarted, err := New(e.Config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := restarted.WithState(func() error {
+				persisted, _ := restarted.Find(a.ID)
+				if persisted.Start != a.Start || persisted.Deadline != a.Deadline {
+					t.Fatal("restart changed the committed interval")
+				}
+				fresh := *persisted
+				fresh.ID = retryRecoveryID
+				if _, _, err := restarted.recoveryPreparation(&fresh); err == nil {
+					t.Fatal("consumed grant reused after restart")
+				}
+				err := restarted.initialize(persisted)
+				if !initialized && err == nil {
+					t.Fatal("unmarked published work was overwritten")
+				}
+				if initialized && err != nil {
+					return err
+				}
+				b, _ := os.ReadFile(answer)
+				if string(b) != "new student work" {
+					t.Fatal("student edits replaced")
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func recoveryFixture(t *testing.T, customize ...func(string)) (*Engine, *Attempt, RecoveryPreparation) {
 	t.Helper()
-	e, _, _ := finalFixture(t, "LOCKED", Millis()+5400000)
+	e, _, sourcePath := finalFixture(t, "LOCKED", Millis()+5400000)
+	for _, setup := range customize {
+		setup(sourcePath)
+	}
 	e.Config.Accounts = map[string]Account{"student": {UID: os.Getuid(), GID: os.Getgid()}}
 	if err := e.WithState(func() error {
 		e.state.Attempts[finalID].UID = os.Getuid()
@@ -32,6 +95,144 @@ func recoveryFixture(t *testing.T) (*Engine, *Attempt, RecoveryPreparation) {
 	a := &Attempt{ID: recoveryID, Exam: r.Exam, Username: r.Username, UID: r.UID, State: "PREPARING", Settings: Settings{ID: r.Exam, Duration: r.Duration}}
 	writeRecoveryFixture(t, e, a, r)
 	return e, a, r
+}
+
+func TestRecoveryPreservesArchivedMetadataUnderRestrictiveUmaskAndMake(t *testing.T) {
+	prior := syscall.Umask(0077)
+	defer syscall.Umask(prior)
+	e, a, r := recoveryFixture(t, func(source string) {
+		for _, dir := range []string{"src", "build"} {
+			if err := os.Mkdir(filepath.Join(source, dir), 0700); err != nil {
+				t.Fatal(err)
+			}
+		}
+		files := map[string]string{"Makefile": "all: build/result\nbuild/result: src/main.c\n\t@echo should-not-rebuild\n", "src/main.c": "int main(void) { return 0; }\n", "build/result": "saved executable"}
+		for name, body := range files {
+			if err := os.WriteFile(filepath.Join(source, name), []byte(body), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.Chmod(filepath.Join(source, "build/result"), 0751); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(filepath.Join(source, "src/main.c"), 0640); err != nil {
+			t.Fatal(err)
+		}
+		old := time.Date(2024, 1, 2, 3, 4, 5, 123456789, time.UTC)
+		for name, modified := range map[string]time.Time{"src/main.c": old, "build/result": old.Add(time.Hour)} {
+			if err := os.Chtimes(filepath.Join(source, name), modified, modified); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+	archive := filepath.Join(e.Config.State, "submissions", r.SourceAttempt, "submission.tar.gz")
+	before, _ := os.ReadFile(archive)
+	f, err := os.Open(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gz.Close()
+	headers := map[string]tar.Header{}
+	tr := tar.NewReader(gz)
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		headers[h.Name] = *h
+	}
+	if err := e.WithState(func() error {
+		commitStart(a, Millis(), uptime(), boot())
+		e.state.Attempts[a.ID] = a
+		return e.initialize(a)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(e.Config.Work, a.ID, "work")
+	for _, name := range []string{"src/main.c", "build/result"} {
+		info, err := os.Stat(filepath.Join(dest, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != os.FileMode(headers[name].Mode)&0777 || !info.ModTime().Equal(headers[name].ModTime) {
+			t.Fatalf("metadata lost for %s: %v %v / %+v", name, info.Mode(), info.ModTime(), headers[name])
+		}
+		if info.Sys().(*syscall.Stat_t).Uid != uint32(os.Getuid()) || info.Mode()&(os.ModeSetuid|os.ModeSetgid) != 0 {
+			t.Fatal("unsafe ownership/mode restored")
+		}
+	}
+	if out, err := exec.Command("make", "-q", "-C", dest, "all").CombinedOutput(); err != nil {
+		t.Fatalf("restored timestamps force a spurious rebuild: %v %s", err, out)
+	}
+	after, _ := os.ReadFile(archive)
+	if string(before) != string(after) {
+		t.Fatal("source archive changed")
+	}
+}
+
+func TestRecoveryRestoresNanosecondPAXMetadataAndHandlesLegacyAbsence(t *testing.T) {
+	for _, legacy := range []bool{false, true} {
+		t.Run(fmt.Sprint(legacy), func(t *testing.T) {
+			e, a, r := recoveryFixture(t)
+			var manifest *Manifest
+			if err := e.WithState(func() error {
+				source, _ := e.Find(r.SourceAttempt)
+				var err error
+				manifest, err = ReadProtected(filepath.Join(e.Config.State, "submissions", r.SourceAttempt), source)
+				return err
+			}); err != nil {
+				t.Fatal(err)
+			}
+			// Disposable archive fixture: exercise decoding of a valid older or PAX
+			// header. Production callers verify the full source before extraction.
+			f, err := os.Create(filepath.Join(e.Config.State, "submissions", r.SourceAttempt, "submission.tar.gz"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			gz := gzip.NewWriter(f)
+			tw := tar.NewWriter(gz)
+			modified := time.Date(2024, 1, 2, 3, 4, 5, 123456789, time.UTC)
+			if legacy {
+				modified = time.Time{}
+			}
+			if err := tw.WriteHeader(&tar.Header{Name: "answer.txt", Mode: 04751, Size: 12, Typeflag: tar.TypeReg, ModTime: modified, Format: tar.FormatPAX}); err != nil {
+				t.Fatal(err)
+			}
+			tw.Write([]byte("saved answer"))
+			tw.Close()
+			gz.Close()
+			f.Close()
+			dest := filepath.Join(e.Config.Work, "metadata-work")
+			if err := os.Mkdir(dest, 0700); err != nil {
+				t.Fatal(err)
+			}
+			started := time.Now().Add(-time.Second)
+			if err := e.initializeRecovery(a, &r, manifest, dest); err != nil {
+				t.Fatal(err)
+			}
+			info, err := os.Stat(filepath.Join(dest, "answer.txt"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.Mode().Perm() != 0751 || info.Mode()&os.ModeSetuid != 0 {
+				t.Fatal("ordinary/privileged permission bits not handled deliberately")
+			}
+			if !legacy && !info.ModTime().Equal(modified) {
+				t.Fatalf("PAX precision lost: %v", info.ModTime())
+			}
+			if legacy && info.ModTime().Before(started) {
+				t.Fatal("invented original timestamp for legacy absence")
+			}
+		})
+	}
 }
 
 func writeRecoveryFixture(t *testing.T, e *Engine, a *Attempt, r RecoveryPreparation) {

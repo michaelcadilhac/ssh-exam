@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // An administrator can stage a one-use continuation independently of a live
@@ -126,6 +127,11 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 		expected[file.Path] = file
 	}
 	seen := map[string]bool{}
+	type metadata struct {
+		mode     os.FileMode
+		modified time.Time
+	}
+	fileMetadata := map[string]metadata{}
 	tr := tar.NewReader(gz)
 	var total int64
 	for {
@@ -150,7 +156,9 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 		if err := root.MkdirAll(path.Dir(h.Name), 0700); err != nil {
 			return err
 		}
-		f, err := root.OpenFile(h.Name, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, os.FileMode(h.Mode)&0777)
+		// Extract privately with a writable mode, then restore ordinary metadata
+		// after verification and ownership changes. umask must not alter the result.
+		f, err := root.OpenFile(h.Name, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0600)
 		if err != nil {
 			return err
 		}
@@ -162,6 +170,7 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 			return fmt.Errorf("recovery file verification failed: %q", h.Name)
 		}
 		seen[h.Name] = true
+		fileMetadata[h.Name] = metadata{os.FileMode(h.Mode) & 0777, h.ModTime}
 	}
 	if len(seen) != len(expected) {
 		return errors.New("recovery archive is missing saved files")
@@ -177,6 +186,33 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 		return os.Lchown(p, account.UID, account.GID)
 	}); err != nil {
 		return err
+	}
+	for name, meta := range fileMetadata {
+		f, err := root.OpenFile(name, os.O_WRONLY|syscall.O_NOFOLLOW, 0)
+		if err != nil {
+			return err
+		}
+		info, err := f.Stat()
+		if err == nil {
+			err = f.Chmod(meta.mode)
+		}
+		// Tar has no reliable original access/birth/change times. Preserve the
+		// extraction access time, not an invented original. A zero epoch mtime
+		// is the legacy encoding for absent metadata; retain extraction time.
+		if err == nil && !meta.modified.IsZero() && !meta.modified.Equal(time.Unix(0, 0)) {
+			atime := info.Sys().(*syscall.Stat_t).Atim
+			err = root.Chtimes(name, time.Unix(atime.Sec, atime.Nsec), meta.modified)
+		}
+		if err == nil {
+			err = f.Sync()
+		}
+		closeErr := f.Close()
+		if err != nil {
+			return fmt.Errorf("restore recovery file metadata %q: %w", name, err)
+		}
+		if closeErr != nil {
+			return closeErr
+		}
 	}
 	if err := syncSnapshotDirectories(stage); err != nil {
 		return err

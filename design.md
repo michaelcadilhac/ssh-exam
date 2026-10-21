@@ -44,6 +44,12 @@ and committed-start fences make the entitlement one-use. After Begin, normal
 deadlines, monitoring, interruption authorization and collection apply. This does
 not make ordinary exam clocks pausable or reopen completed original submissions.
 
+Saved-work restoration explicitly reapplies archived ordinary file modes and
+available modification times after student ownership, independently of umask.
+Never restore privileged ownership/bits or invent absent metadata. Current
+archives lack original directory metadata, ACLs and xattrs; use private 0700
+directories. See docs/recovery-metadata.md for precision and legacy limitations.
+
 ## 2. Product context and defaults
 
 The instructor administers a programming exam on a Unix/Linux class server. Questions, tools, documentation, student files, and submission collection are server-side. The instructor has root access on that server. Students use their personal computers at home or supervised computers in person.

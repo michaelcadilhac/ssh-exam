@@ -347,6 +347,10 @@ This is a design investigation; agree on the proposal before implementation.
   repair path that preserves the original archive, audit and one-use history.
 
 - [ ] **Extend recovery restoration crash/failure tests and repair procedures.**
+  Investigated; still open. Local restart regressions now cover published work
+  before/after initialized-marker persistence and refusal to overwrite later
+  student edits. Full process-death/disk-error qualification and a supported
+  repair transaction remain pending the initialization/authority design decision.
   Existing tests cover delayed start, preflight expiry, restart/one-use fencing,
   identity/checksum rejection and unsafe archives. Still test process death and
   disk/permission errors at each boundary: committed start, consumption marker,
@@ -358,7 +362,11 @@ This is a design investigation; agree on the proposal before implementation.
   with the real watchdog and a second healthy attempt. Treat this as a recovery
   robustness gap, not evidence that a deployed student's restoration failed.
 
-- [ ] **Preserve recoverable filesystem metadata when restoring saved work.**
+- [x] **Preserve recoverable filesystem metadata when restoring saved work.**
+  Implemented/tested locally October 20; not deployed. Ordinary modes and archived
+  mtimes are reapplied after ownership, with restrictive-umask, nested executable,
+  PAX precision, legacy absence, checksum and real make regressions. See
+  docs/recovery-metadata.md for explicit unavailable-metadata limitations.
   Reapply archived file modification times and other relevant metadata actually
   available in the verified archive, within filesystem precision and isolation
   constraints. Restore ordinary permission bits deliberately rather than letting
