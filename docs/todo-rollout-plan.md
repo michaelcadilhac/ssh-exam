@@ -80,6 +80,14 @@ normal gateway startup migration, verify schema and preserve outbox/audit data.
 Do not drop this table or reset episode/outbox rows on rollback. There is no
 unified-attempt uniqueness migration, grant conversion or workspace cleanup here.
 
+Migration 013 adds management nonce/request/outcome records only. Preserve them
+on rollback; do not clear acknowledged intents to force a retry. C1a implements
+only signed definition reads; named managementOperations authorization defaults
+to none. Matching gateway and native CLI are required, with no new class-server
+listener. See agent-management.md. Verify actual gateway topology/scope before
+coordinating a gateway cutover; csc-sys authorization alone is not silently
+expanded to deploying on another host. This is not complete management or grants.
+
 Install matching gateway, connection-worker/browser receipt code and native
 artifacts in the drained window. Native authenticated renewal refusals now carry
 state without granting execution; older workers may lose this diagnostic detail.

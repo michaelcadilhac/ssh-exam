@@ -1,0 +1,412 @@
+import { expect, it } from "vitest";
+import {
+  generateKeyPairSync,
+  randomBytes,
+  randomUUID,
+  sign,
+  verify,
+} from "node:crypto";
+import {
+  mkdtempSync,
+  writeFileSync,
+  rmSync,
+  readFileSync,
+  existsSync,
+} from "node:fs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import https from "node:https";
+import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { createApp } from "../../apps/server/src/app.js";
+import { managementPurpose } from "../../packages/protocol/management.js";
+
+async function setup() {
+  const dir = mkdtempSync(tmpdir() + "/management-");
+  const keys = () =>
+    generateKeyPairSync("ed25519", {
+      publicKeyEncoding: { format: "pem", type: "spki" },
+      privateKeyEncoding: { format: "pem", type: "pkcs8" },
+    });
+  const agent = keys(),
+    gateway = keys();
+  writeFileSync(dir + "/agent.pub", agent.publicKey);
+  writeFileSync(dir + "/gateway.key", gateway.privateKey, { mode: 0o600 });
+  const config: any = {
+    mode: "development",
+    origin: "https://exam.test",
+    data: dir,
+    port: 0,
+    maintenance: false,
+    jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
+    class: { host: "localhost", port: 2223, pins: ["1".repeat(64)] },
+    agent: {
+      id: "class",
+      signingKey: dir + "/gateway.key",
+      callbackPublicKey: dir + "/agent.pub",
+      managementOperations: ["exams.list", "exams.show"],
+    },
+  };
+  let current = await createApp(config);
+  const request = (extra: object = {}) => ({
+    version: 1,
+    purpose: managementPurpose,
+    audience: config.origin,
+    agent: "class",
+    actor: "agent-root",
+    request: randomUUID(),
+    nonce: randomBytes(32).toString("hex"),
+    issued: Date.now(),
+    expires: Date.now() + 20000,
+    operation: "exams.list",
+    body: { limit: 1 },
+    ...extra,
+  });
+  const post = async (r: any, wrongKey = false) => {
+    const payload = Buffer.from(JSON.stringify(r));
+    return current.app.inject({
+      method: "POST",
+      url: "/api/agent/management",
+      headers: {
+        "content-type": "application/vnd.ssh-exam-management",
+        "x-exam-signature": sign(
+          null,
+          payload,
+          wrongKey ? gateway.privateKey : agent.privateKey,
+        ).toString("base64"),
+      },
+      payload,
+    });
+  };
+  const unpack = (response: any) => {
+    expect(response.statusCode).toBe(200);
+    const frame = response.json();
+    const bytes = Buffer.from(frame.payload, "base64");
+    expect(
+      verify(
+        null,
+        bytes,
+        gateway.publicKey,
+        Buffer.from(frame.signature, "base64"),
+      ),
+    ).toBe(true);
+    return JSON.parse(bytes.toString());
+  };
+  return {
+    dir,
+    agentKeys: agent,
+    gatewayKeys: gateway,
+    config,
+    request,
+    post,
+    unpack,
+    get current() {
+      return current;
+    },
+    async restart() {
+      await current.app.close();
+      current = await createApp(config);
+    },
+    async close() {
+      await current.app.close();
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+
+it("requires explicit root-agent management purpose, audience, freshness, pinned key and operation authorization", async () => {
+  const f = await setup();
+  try {
+    for (const bad of [
+      { purpose: "status-callback" },
+      { audience: "https://elsewhere.test" },
+      { agent: "other" },
+      { actor: "teacher" },
+      { human: "claimed-admin" },
+      { issued: Date.now() - 60000 },
+      { expires: Date.now() - 1 },
+      { expires: Date.now() + 60000 },
+      { operation: "arbitrary.command" },
+    ]) {
+      const response = await f.post(f.request(bad));
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    }
+    expect((await f.post(f.request(), true)).statusCode).toBe(403);
+    expect(
+      f.current.store.db
+        .prepare("SELECT count(*) n FROM agent_management_requests")
+        .get(),
+    ).toEqual({ n: 0 });
+    f.config.agent.managementOperations = [];
+    const refused = f.unpack(await f.post(f.request()));
+    expect(refused).toMatchObject({ ok: false, status: 403 });
+    expect(refused.error).toContain("managementOperations");
+    expect(
+      f.current.store.db
+        .prepare("SELECT actor FROM audit WHERE action='management-refused'")
+        .get(),
+    ).toEqual({ actor: "agent:class:root" });
+    f.config.agent.managementOperations = ["exams.list"];
+    expect(
+      f.unpack(
+        await f.post(
+          f.request({ operation: "exams.show", body: { id: "sandbox" } }),
+        ),
+      ).status,
+    ).toBe(403);
+    f.config.loginOnly = true;
+    expect(f.unpack(await f.post(f.request())).error).toContain("login-only");
+  } finally {
+    await f.close();
+  }
+});
+
+it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
+  "runs actual root-mapped examctl against the real gateway through local TLS, including replay-safe restart retry",
+  async () => {
+    const f = await setup();
+    const run = promisify(execFile);
+    let server: https.Server | undefined;
+    try {
+      const key = f.dir + "/tls.key",
+        cert = f.dir + "/tls.crt",
+        binary = f.dir + "/examctl";
+      await run("/usr/bin/openssl", [
+        "req",
+        "-x509",
+        "-newkey",
+        "ed25519",
+        "-nodes",
+        "-keyout",
+        key,
+        "-out",
+        cert,
+        "-subj",
+        "/CN=localhost",
+        "-addext",
+        "subjectAltName=IP:127.0.0.1",
+        "-days",
+        "1",
+      ]);
+      await run("go", ["build", "-o", binary, "./cmd/examctl"], {
+        cwd: "ssh-server",
+        timeout: 30000,
+      });
+      server = https.createServer(
+        { key: readFileSync(key), cert: readFileSync(cert) },
+        (req, res) => {
+          const chunks: Buffer[] = [];
+          req.on("data", (chunk) => chunks.push(chunk));
+          req.on("end", () => {
+            void f.current.app
+              .inject({
+                method: req.method as any,
+                url: req.url!,
+                headers: req.headers as any,
+                payload: Buffer.concat(chunks),
+              })
+              .then((reply) => {
+                res.writeHead(reply.statusCode, reply.headers as any);
+                res.end(reply.rawPayload);
+              })
+              .catch(() => {
+                res.writeHead(500);
+                res.end();
+              });
+          });
+        },
+      );
+      await new Promise<void>((resolve) =>
+        server!.listen(0, "127.0.0.1", resolve),
+      );
+      f.config.origin =
+        "https://127.0.0.1:" + (server.address() as AddressInfo).port;
+      writeFileSync(f.dir + "/cli-agent.key", f.agentKeys.privateKey, {
+        mode: 0o600,
+      });
+      writeFileSync(f.dir + "/gateway.pub", f.gatewayKeys.publicKey, {
+        mode: 0o600,
+      });
+      const configPath = f.dir + "/cli.json";
+      writeFileSync(
+        configPath,
+        JSON.stringify({
+          state: f.dir + "/unused-native-state",
+          work: f.dir + "/unused-work",
+          rootfs: f.dir,
+          accounts: {
+            synthetic: {
+              uid: 29999,
+              gid: 29999,
+              home: f.dir,
+              shell: "/bin/bash",
+            },
+          },
+          agent_id: "class",
+          gateway_public_key: f.dir + "/gateway.pub",
+          callback_key: f.dir + "/cli-agent.key",
+          callback_url: f.config.origin,
+          callback_ca: cert,
+        }),
+        { mode: 0o600 },
+      );
+      f.current.store.db
+        .prepare("INSERT INTO exams VALUES(?,?)")
+        .run("midterm", JSON.stringify({ id: "midterm", name: "Original" }));
+      const cli = (args: string[]) =>
+        run(
+          "/usr/bin/unshare",
+          [
+            "--user",
+            "--map-root-user",
+            binary,
+            "--config",
+            configPath,
+            "web",
+            "exams",
+            ...args,
+          ],
+          { timeout: 20000 },
+        );
+      const id = randomUUID();
+      const first = JSON.parse(
+        (await cli(["show", "midterm", "--request", id])).stdout,
+      );
+      expect(first).toMatchObject({
+        request: id,
+        operation: "exams.show",
+        confirmed: true,
+        result: { exam: { name: "Original" } },
+      });
+      await f.restart();
+      f.current.store.db
+        .prepare("UPDATE exams SET config=? WHERE id='midterm'")
+        .run(JSON.stringify({ id: "midterm", name: "Changed" }));
+      expect(
+        JSON.parse((await cli(["show", "midterm", "--request", id])).stdout)
+          .result,
+      ).toEqual(first.result);
+      expect(
+        JSON.parse((await cli(["show", "midterm"])).stdout).result.exam.name,
+      ).toBe("Changed");
+      expect(
+        JSON.parse((await cli(["list", "--limit", "1"])).stdout).result.next,
+      ).toBe("midterm");
+      f.config.agent.managementOperations = [];
+      await expect(cli(["show", "midterm"])).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("managementOperations"),
+      });
+      expect(existsSync(f.dir + "/unused-native-state")).toBe(false);
+      expect(
+        f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
+      ).toEqual({ n: 0 });
+    } finally {
+      if (server)
+        await new Promise<void>((resolve) => server!.close(() => resolve()));
+      await f.close();
+    }
+  },
+  45000,
+);
+
+it("persists replay/idempotency and scope-bound results across restart without repeating management reads", async () => {
+  const f = await setup();
+  try {
+    f.current.store.db
+      .prepare("INSERT INTO exams VALUES(?,?)")
+      .run("midterm", JSON.stringify({ id: "midterm", name: "Original" }));
+    const r = f.request({ operation: "exams.show", body: { id: "midterm" } });
+    const first = f.unpack(await f.post(r));
+    expect(first).toMatchObject({
+      version: 1,
+      purpose: managementPurpose,
+      audience: "class",
+      request: r.request,
+      nonce: r.nonce,
+      operation: "exams.show",
+      ok: true,
+      result: { exam: { name: "Original" } },
+    });
+    expect(first.result.revision).toMatch(/^[a-f0-9]{64}$/);
+    await f.restart();
+    expect(f.unpack(await f.post(r)).error).toContain("replay");
+    f.current.store.db
+      .prepare("UPDATE exams SET config=? WHERE id='midterm'")
+      .run(JSON.stringify({ id: "midterm", name: "Changed" }));
+    const retry = f.unpack(
+      await f.post(
+        f.request({ request: r.request, operation: r.operation, body: r.body }),
+      ),
+    );
+    expect(retry.result).toEqual(first.result);
+    expect(retry.nonce).not.toBe(first.nonce);
+    expect(
+      f.unpack(
+        await f.post(
+          f.request({
+            request: r.request,
+            operation: r.operation,
+            body: { id: "sandbox" },
+          }),
+        ),
+      ).status,
+    ).toBe(409);
+    const refreshed = f.unpack(
+      await f.post(f.request({ operation: r.operation, body: r.body })),
+    );
+    expect(refreshed.result.exam.name).toBe("Changed");
+    expect(refreshed.result.revision).not.toBe(first.result.revision);
+    expect(
+      f.current.store.db
+        .prepare(
+          "SELECT count(*) n FROM audit WHERE action='management-exams.show'",
+        )
+        .get(),
+    ).toEqual({ n: 2 });
+    expect(
+      f.current.store.db
+        .prepare(
+          "SELECT detail FROM audit WHERE action='management-exams.show' LIMIT 1",
+        )
+        .get(),
+    ).toMatchObject({ detail: expect.stringContaining('"target":"midterm"') });
+  } finally {
+    await f.close();
+  }
+});
+
+it("paginates definitions, refuses invalid/missing targets and does not change student attempts or browser authentication", async () => {
+  const f = await setup();
+  try {
+    f.current.store.db
+      .prepare("INSERT INTO exams VALUES(?,?)")
+      .run("midterm", JSON.stringify({ id: "midterm" }));
+    const page = f.unpack(await f.post(f.request()));
+    expect(page.result.exams).toHaveLength(1);
+    expect(page.result.next).toBe("midterm");
+    const next = f.unpack(
+      await f.post(f.request({ body: { after: page.result.next } })),
+    );
+    expect(next.result.exams).toHaveLength(1);
+    expect(next.result.next).toBeNull();
+    expect(
+      f.unpack(await f.post(f.request({ body: { limit: 201 } }))).status,
+    ).toBe(400);
+    expect(
+      f.unpack(
+        await f.post(
+          f.request({ operation: "exams.show", body: { id: "absent" } }),
+        ),
+      ).status,
+    ).toBe(404);
+    expect(
+      (await f.current.app.inject({ url: "/api/admin/exams" })).statusCode,
+    ).toBe(401);
+    expect(
+      f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
+    ).toEqual({ n: 0 });
+  } finally {
+    await f.close();
+  }
+});

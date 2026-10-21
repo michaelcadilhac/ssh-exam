@@ -65,6 +65,11 @@ An administrator should be able to discover and finish a workflow using
   this firm policy into the canonical design and operator documentation.
 
 - [ ] **Redesign help around discoverable management workflows.**
+  October 21 C1a: signed root-agent gateway management and `web exams list/show`
+  are tested locally, including the compiled CLI against the real gateway over
+  isolated local TLS/restart. Default-deny named operation authorization, replay/
+  idempotent request records, pinned reply validation and machine/root audit are
+  implemented. Mutations, complete CLI/web parity and deployment remain open.
   Local status: all currently supported native commands have process-tested help,
   examples, defaults, restrictions, units and exit-code guidance without requiring
   root/configuration. Unknown syntax and target/reason/filter misuse point to help.

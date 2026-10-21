@@ -23,9 +23,8 @@ check(
   !!config.browserSSH,
   config.browserSSH?.relay || "Legacy development/rollback transport",
 );
-for (const [name, p] of Object.entries(config.agent).filter(([n]) =>
-  ["signingKey", "callbackPublicKey"].includes(n),
-)) {
+for (const name of ["signingKey", "callbackPublicKey"] as const) {
+  const p = config.agent[name];
   const st = statSync(p);
   check(
     `Agent signature ${name}`,

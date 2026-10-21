@@ -34,6 +34,7 @@ import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { ClockControl } from "./clock-control.js";
 import { registerExamAdmin } from "./exam-admin.js";
+import { registerAgentManagement } from "./agent-management.js";
 import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { parseRosterAsync, exportRoster } from "./roster.js";
@@ -300,6 +301,7 @@ export async function createApp(
           : err.message,
     });
   });
+  registerAgentManagement(app, store, agent, config);
   app.addContentTypeParser(
     "application/vnd.ssh-exam-event",
     { parseAs: "buffer" },

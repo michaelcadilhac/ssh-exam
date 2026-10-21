@@ -1342,7 +1342,7 @@ docs/todo-design-decisions.md; existing native-only commands do not yet satisfy
 this policy. Preserve signed student-SSH commands and outbound callbacks, not a
 new webserver-to-agent API.
 
-Approved C1 design (October 20; implementation pending): root-run examctl on the
+Approved C1 design (October 20; partial local implementation): root-run examctl on the
 class server reuses its existing root-owned agent identity for outbound HTTPS
 management of gateway-owned state. Add explicit operation authorization, purpose/
 audience checks, durable replay/idempotency protection, revision conflict handling
@@ -1352,6 +1352,13 @@ authorize arbitrary administration. Do not infer a human identity from unverifie
 caller fields, copy agent keys to non-root clients, or introduce an inbound agent
 API. Existing browser administrators keep their session/Origin/CSRF checks. Native
 offline operations remain local; gateway operations require confirmed communication.
+
+The C1a signed protocol and `examctl web exams list/show` are now implemented/
+tested locally, including actual compiled CLI-to-gateway TLS/restart tests.
+Authorization defaults to none and must explicitly name supported operations.
+Migration 013 persists nonces and request outcomes. Mutations, complete management,
+shared revision-checked write services and production qualification remain open;
+see docs/agent-management.md. This is not a deployment claim.
 
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 

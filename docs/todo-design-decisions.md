@@ -12,8 +12,8 @@ The gateway owns exams, enrollment, pending clock intents, continuation grants,
 monitoring and the outbox. Native root state owns committed intervals, admission,
 workspaces, protected archives, policy restoration and the recovery JSON grants.
 Signed commands travel over student SSH; signed callbacks/timing checks travel
-outbound to the gateway. Keep this architecture. Local examctl does not currently
-manage gateway-owned state.
+outbound to the gateway. Keep this architecture. Local examctl now supports
+signed definition list/show; gateway mutations/full coverage remain pending.
 
 | Supported operation / setting | Present interface | CLI status and proposed workflow |
 | --- | --- | --- |
@@ -59,8 +59,9 @@ without root. Web-owned operations need the webserver and must report outages or
 pending native confirmation honestly. Keep HTTPS verification and protected key
 handling, no new webserver-to-agent control API, student credentials, generic
 command polling or disconnected SQL/JSON editor. Browser administrators continue
-using their existing session/Origin/CSRF checks. **Approved design only: management
-protocol/CLI implementation and qualification are still outstanding.**
+using their existing session/Origin/CSRF checks. **Partial implementation: management
+protocol/read-only CLI foundation is tested locally (agent-management.md);
+mutations/full coverage and production qualification remain outstanding.**
 
 ## Unified attempts and workspace initialization
 
@@ -263,7 +264,9 @@ restart/publication recovery, simultaneous larger collections, delayed callbacks
 and another healthy active attempt plus new admission/reconnect. Verify stable
 shared-agent/PTY ownership, continued heartbeat/lease acknowledgements, unchanged
 healthy deadlines/generations, independent cutoff and protected source integrity.
-**Approved requirements only; no limits or isolation code have changed yet.**
+Native worker/short-transaction isolation is now implemented/tested locally in
+2891567; see collection-worker-isolation.md. Larger limits, full privileged
+SSH/PTY/workload qualification and deployment remain outstanding.
 
 ## Outage recovery allowance (C7 approved)
 

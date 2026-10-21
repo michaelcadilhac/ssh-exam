@@ -30,6 +30,8 @@ escalation. Generated screenshot changes must not become product changes.
 | M2: renewal races and preparation housekeeping | M1 | Normal expiry has no new interruption; intentional actions survive delayed renewal results; stale replies cannot affect replacement ownership; never-contacted reservations do not generate cleanup; uncertain committed starts retained. Real WS/callback regressions and full integration suite | Implemented/tested locally; not deployed |
 | M3: recovery restoration correctness | M0 source review | Preserve archived ordinary modes and mtimes safely; document absent metadata; test restrictive umask, nested files, make, failure/crash fences and other healthy attempts. Native race suite/build | Metadata and publication restart fences tested locally; full crash repair investigation open |
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
+| C1a: root-agent management foundation | approved C1 | Explicit named authorization/purpose/audience; persistent replay/idempotency across restart; root-machine audit and pinned HTTPS replies; actual examctl/gateway list/show workflows, help/refusals and no native/student mutation | Implemented/tested locally; mutations/full coverage and deployment pending |
+| C1b/C8: shared definition management | C1a + approved C8 | Shared web/CLI create/update revision checks, previews, unused-only delete/history archive, safe admission/grant dependencies, conflict/retry/browser/native CLI tests | Next independent management increment; not implemented |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
 | M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native worker/short-transaction implementation and fatal-child, actual user-systemd OOM/runtime, permission/user-namespace ENOSPC/read-only regressions pass locally; privileged SSH/PTY/workload gates remain open |
@@ -66,12 +68,26 @@ qualification from test writer hooks. Continue approved independent work while
 privileged qualification remains a rollout gate. No production contact/cutover,
 workspace deletion, archive limit increase or service consolidation has occurred.
 
+Local commit 2891567 records that worker increment. C1a now adds default-deny
+named root-agent HTTPS management, purpose/audience/freshness, persistent request/
+nonce records (migration 013), machine-root audit and pinned signed responses.
+`examctl web exams list/show` is tested through the actual compiled CLI and real
+gateway via isolated local TLS, including restart-safe same-ID retry, refreshed
+reads and authorization revocation. No native state or student attempt is created.
+All 300 application tests / 51 files pass with the namespace interface opt-in;
+full native race checks pass with worker/systemd/user-namespace/CLI opt-ins,
+plus build/typecheck/vet/static build. See agent-management.md. This is a read-only
+foundation, not full management. Browser 52/52 evidence above is the preceding
+worker milestone; no new browser UI changed in C1a. Continue shared definition
+mutations/retirement and remaining approved increments; no production contact.
+
 ## Decision log
 
 Approved C1 (October 20): root-run examctl on the class server reuses existing
 agent authentication for outbound management, with explicit authorization and
 auditing. This replaces the earlier browser-session recommendation. It is not
-implemented or deployed yet; human attribution is not inferred from a root/agent
+fully implemented or deployed yet; the later C1a entry records the tested read-only
+foundation. Human attribution is not inferred from a root/agent
 signature. See todo-design-decisions.md for required shared validation and replay/
 idempotency/conflict safeguards. Local commits remain authorized without further
 approval requests.

@@ -8,11 +8,14 @@ validation, audit, revisions and idempotency with the web interface. No ad hoc
 SQL/JSON edit or incident script is a supported replacement. Decision C1 is now
 approved: root-run examctl on the class server will use the existing agent
 authentication for outbound gateway management, with explicit operation
-authorization and auditing. That management protocol and CLI are not implemented
-yet. No browser-session login or extra CLI credential is required by the approved
+authorization and auditing. The signed protocol and `web exams list/show`
+foundation are now tested locally; mutations/full coverage remain pending (see
+agent-management.md). No browser-session login or extra CLI credential is required by the approved
 design; browser administration keeps its current authentication.
 
 Start with `examctl help`, then `examctl help COMMAND` or `COMMAND --help`.
+Use `examctl help web` for gateway-owned definition reads and request-ID retry
+semantics. Explicit gateway operation authorization defaults to none.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native

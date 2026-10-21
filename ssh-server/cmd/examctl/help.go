@@ -69,12 +69,16 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "web" {
+		webHelp(w)
+		return true
+	}
 	if topic == "collection" {
 		fmt.Fprintln(w, "Collection diagnosis (root native operations; works offline from the gateway):\n  examctl info ATTEMPT\n  examctl manifest ATTEMPT\n  examctl retry ATTEMPT --reason 'Concrete storage/writer repair performed'\n  examctl reconcile\n\nCollection/verification/cleanup run in supervised per-attempt processes, separate from SSH/PTY owners. Two cross-process heavy-work slots; each worker has 256 MiB memory, no swap, 32 tasks and a 120-second runtime. The exam-collection.slice aggregate must be loaded and bounded to at most 512 MiB/96 tasks. Missing/unbounded configuration refuses new production admission/collection; install the supplied slice and reload systemd in the authorized maintenance workflow.\n\nFINALIZING means pending, not secured/completed. COLLECTION_FAILED preserves saved work, the original/current deadlines and account restrictions. A protected checksum with COLLECTION_FAILED means cleanup still needs repair; never delete or replace the bundle to force retry. Fix the stated storage, permission, timing, resource or uncontained-writer cause first. Read-only inspection may reconcile eligible access but never overrides a hold. Manifest/export verification also requires the worker resource boundary.\n\nExamples use an attempt UUID from examctl list; do not substitute an exam ID. Retry on an active attempt irreversibly finishes it. No automatic workspace deletion, refund or account override. Exit status: 0 success or honest pending state, 1 refusal/failure, 2 invalid syntax. See examctl help retry and examctl help override-access.")
 		return true
 	}
 	if topic == "management" {
-		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nGateway-owned exams, enrollment/CSV, current clock edits, interruption authorization, monitoring/alerts, and unified recovery grants require the pending authenticated web CLI implementation. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for current web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
+		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nThe signed root-agent foundation supports exam definition list/show: use examctl web help. Explicit gateway operation authorization is required. Enrollment/CSV, exam mutations, current clock edits, interruption authorization, monitoring/alerts and unified grants remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for current web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
 		return true
 	}
 	if topic != "" {
@@ -86,6 +90,9 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprintf(w, "Usage: sudo examctl %s\n\n%s\n\n%s\n\nExamples (replace ATTEMPT with a UUID from list):\n%s\n\n", g.usage, g.summary, g.restrictions, g.examples)
 	} else {
 		fmt.Fprint(w, "Usage: examctl help [COMMAND] | sudo examctl [FLAGS] COMMAND [TARGET]\n\nInspect:       list, info, health, accounts\nAttempts:      start, pause, stop (finish), cancel, retry\nSubmissions:   manifest, export, delete\nAccess:        reconcile, override-access\nAgent:         agent start|stop|restart|status\nCompatibility: export-status, pause-export, resume-export (disabled)\n\nCommon workflow: list -> info ATTEMPT -> diagnose -> reconcile -> info\nSubmission deletion is separate from exam-definition deletion and account release.\nRead examctl help COMMAND before mutations; examctl help management describes remaining coverage gaps.\nUse examctl help collection for worker/resource/pending-state recovery.\n\n")
+	}
+	if topic == "" {
+		fmt.Fprintln(w, "Gateway definitions: web exams list/show; use examctl web help (root agent identity, explicit gateway authorization).")
 	}
 	fmt.Fprint(w, "Global flags (before or after command):\n  --config FILE  root configuration; default /etc/exam-agent/agent.json\n  --reason TEXT  concrete audited administrator reason (at least 8 characters)\n  --exam EXAM    exam-ID filter for list (also legacy info --exam)\n  --active       only started unfinished attempts in list\n  --json         list as JSON; other inspection/mutation results already use JSON\n  --output FILE  export to a new private file instead of binary stdout\n  --help         command help, available without root/configuration\n\nAll actual native operations require root and use the same state/locks as the watchdog.\nExit status: 0 success, 1 refusal/operational failure, 2 invalid syntax.\nMachine timestamps are UTC Unix milliseconds; native durations are seconds.\nOffline native state is authoritative locally; it does not prove gateway synchronization.\n")
 	return true

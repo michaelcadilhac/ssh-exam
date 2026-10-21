@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { readFileSync } from "node:fs";
+import { managementOperations } from "../protocol/management.js";
 const schema = z.object({
   mode: z.enum(["development", "production"]).default("production"),
   origin: z.string().url(),
@@ -25,6 +26,7 @@ const schema = z.object({
     id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
     signingKey: z.string(),
     callbackPublicKey: z.string(),
+    managementOperations: z.array(z.enum(managementOperations)).optional(),
   }),
   smtp: z
     .union([

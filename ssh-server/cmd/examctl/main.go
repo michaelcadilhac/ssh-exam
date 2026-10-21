@@ -22,7 +22,7 @@ func ordered(args []string) []string {
 		arg := args[i]
 		if strings.HasPrefix(arg, "-") {
 			flags = append(flags, arg)
-			if (arg == "--config" || arg == "-config" || arg == "--reason" || arg == "-reason" || arg == "--exam" || arg == "-exam" || arg == "--output" || arg == "-output") && i+1 < len(args) {
+			if (arg == "--config" || arg == "-config" || arg == "--reason" || arg == "-reason" || arg == "--exam" || arg == "-exam" || arg == "--output" || arg == "-output" || arg == "--request" || arg == "--limit" || arg == "--after") && i+1 < len(args) {
 				i++
 				flags = append(flags, args[i])
 			}
@@ -45,6 +45,9 @@ func serviceCommands(action string) ([][]string, error) {
 func main() {
 	if core.CollectionWorkerMain(os.Args[1:]) {
 		return
+	}
+	if args, ok := webArguments(os.Args[1:]); ok {
+		os.Exit(webMain(args))
 	}
 	topic, help := helpRequest(os.Args[1:])
 	if help {
