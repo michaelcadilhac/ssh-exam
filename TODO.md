@@ -428,6 +428,14 @@ the approval is not a production change or a completed investigation.
   81 combined browser checks pass locally. See
   docs/monitoring-cli.md. Whole media export/shared deletion intents/isolated
   purge remain open; this is not a complete-management/deployment claim.
+  A subsequent failing HTTP regression confirmed legacy review/media could read
+  older bytes/metadata restored alongside a retained tombstone. Full/thumbnail
+  reads now refuse and aggregate review hides restored monitoring but keeps the
+  protected manifest. Full 332-test working-tree suite, 16 focused CLI/HTTP/unit
+  checks, 28 monitoring/admin browser checks and build/typecheck/native race
+  compatibility pass. The isolated purge process boundary has focused fatal/
+  hang/heap/permission/link tests but is still unwired; see
+  docs/monitoring-purge-isolation.md. Physical purge and shared deletion remain open.
 
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires

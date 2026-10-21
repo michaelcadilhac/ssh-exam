@@ -6,6 +6,15 @@ issuance, explicit unused revisions, finite independent Begin windows, effective
 webcam preservation and new-attempt saved-work recovery. This source map/order
 does not request approval for routine details or complete the investigation.
 
+One newly identified consequential choice is awaiting the instructor: when the
+first ordinary grant is issued/frozen. Recommended: first preflight, preserving
+roster/import/default edits before preparation and freezing the issued grant
+thereafter. Alternatives are enrollment/import (requires a confirmed material
+version immediately) or explicit instructor issuance (adds a required management
+step before ordinary Begin). Additional grants remain fixed when explicitly
+authorized in every option. This refines issuance timing; it does not reopen the
+approved fixed-at-issuance/revision policy. Independent purge work continues.
+
 ## Confirmed implementation constraints
 
 - `migrations/005.sql` enforces ordinary_exam_once on exam/student, with sandbox

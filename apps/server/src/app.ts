@@ -1420,22 +1420,34 @@ export async function createApp(
     store.attempt(req.params.id);
     store.audit(s.username, "view-monitoring", req.params.id);
     const manifestPath = `${store.dir}/receipts/${req.params.id}.manifest.json`;
+    const monitoringDeleted = !!store.db
+      .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
+      .get(req.params.id);
     return {
       manifest: existsSync(manifestPath)
         ? JSON.parse(readFileSync(manifestPath, "utf8"))
         : null,
-      frames: store.db
-        .prepare(
-          "SELECT * FROM frames WHERE attempt=? ORDER BY received DESC, id DESC LIMIT 10000",
-        )
-        .all(req.params.id)
-        .reverse(),
-      incidents: store.db
-        .prepare("SELECT * FROM incidents WHERE attempt=? ORDER BY opened DESC")
-        .all(req.params.id),
-      terminals: store.db
-        .prepare("SELECT * FROM recordings WHERE attempt=?")
-        .all(req.params.id),
+      monitoringDeleted,
+      frames: monitoringDeleted
+        ? []
+        : store.db
+            .prepare(
+              "SELECT * FROM frames WHERE attempt=? ORDER BY received DESC, id DESC LIMIT 10000",
+            )
+            .all(req.params.id)
+            .reverse(),
+      incidents: monitoringDeleted
+        ? []
+        : store.db
+            .prepare(
+              "SELECT * FROM incidents WHERE attempt=? ORDER BY opened DESC",
+            )
+            .all(req.params.id),
+      terminals: monitoringDeleted
+        ? []
+        : store.db
+            .prepare("SELECT * FROM recordings WHERE attempt=?")
+            .all(req.params.id),
     };
   });
   app.get("/api/admin/attempts/:id/monitoring", async (req: any) => {
@@ -1505,6 +1517,17 @@ export async function createApp(
       .prepare("SELECT * FROM frames WHERE id=?")
       .get(req.params.id) as any;
     if (!f) throw Error("Media unavailable");
+    if (
+      store.db
+        .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
+        .get(f.attempt)
+    )
+      throw Object.assign(
+        Error(
+          "Monitoring was deleted; restored orphan files cannot be viewed. Protected submissions have independent retention",
+        ),
+        { statusCode: 410 },
+      );
     store.audit(s.username, "view-media", f.attempt);
     return reply
       .type("image/jpeg")

@@ -1,7 +1,13 @@
 import { it, expect } from "vitest";
 import { createApp } from "../../apps/server/src/app.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 it("serves incremental recordings only to instructors and validates cursor and recording identity", async () => {
   const dir = mkdtempSync(tmpdir() + "/exam-live-review-");
@@ -154,6 +160,64 @@ it("serves incremental recordings only to instructors and validates cursor and r
       (await app.inject({ url: summary, headers })).json().current
         .monitoringDeleted,
     ).toBeTypeOf("number");
+    // A backup/failed migration may restore older metadata/bytes while keeping
+    // the durable deletion ledger. No legacy review/media endpoint may bypass it.
+    const image = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    store.db
+      .prepare(
+        "INSERT INTO frames VALUES(?,?,'screen',1,'PRIVATE-PAGE',1,1,1,40,30,'old-hash')",
+      )
+      .run(image, id);
+    store.db
+      .prepare("INSERT INTO recordings VALUES('orphan',?,?,1)")
+      .run(id, pane);
+    store.db
+      .prepare(
+        "INSERT INTO incidents(id,attempt,generation,opened,events,message) VALUES('orphan',?,1,1,'[\"PRIVATE-RESTORED-INCIDENT\"]','PRIVATE-RESTORED-MESSAGE')",
+      )
+      .run(id);
+    mkdirSync(`${dir}/monitoring/${id}`, { mode: 0o700 });
+    writeFileSync(
+      `${dir}/monitoring/${id}/${image}.jpg`,
+      "PRIVATE-RESTORED-IMAGE",
+    );
+    writeFileSync(
+      `${dir}/monitoring/${id}/${image}.thumb.jpg`,
+      "PRIVATE-RESTORED-THUMB",
+    );
+    const manifest = {
+      protected: true,
+      checksum: "immutable",
+      files: ["saved.c"],
+    };
+    writeFileSync(
+      `${dir}/receipts/${id}.manifest.json`,
+      JSON.stringify(manifest),
+    );
+    const protectedFile = `${dir}/submissions/immutable`;
+    writeFileSync(protectedFile, "protected bytes");
+    for (const suffix of ["", "?thumbnail=1"])
+      expect(
+        (
+          await app.inject({
+            url: `/api/admin/media/${image}${suffix}`,
+            headers,
+          })
+        ).statusCode,
+      ).toBe(410);
+    const retained = await app.inject({
+      url: `/api/admin/attempts/${id}/recordings`,
+      headers,
+    });
+    expect(retained.json()).toMatchObject({
+      manifest,
+      frames: [],
+      incidents: [],
+      terminals: [],
+      monitoringDeleted: true,
+    });
+    expect(retained.body).not.toContain("PRIVATE-RESTORED");
+    expect(readFileSync(protectedFile, "utf8")).toBe("protected bytes");
   } finally {
     await app.close();
     rmSync(dir, { recursive: true, force: true });

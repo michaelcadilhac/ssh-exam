@@ -42,3 +42,30 @@ Existing browser assets have the same hashes as C1f; generated documentation
 screenshots are restored, not product changes. Fresh full native race/resource/
 compiler/default-size opt-ins pass (core 105.1s); static build/vet and all three
 Go-module race checks pass. No production installation/state was changed.
+
+## Restored-orphan read follow-up
+
+A further executable HTTP regression confirmed that the legacy full-image route
+could return 200 for older image bytes/metadata restored alongside a retained
+tombstone. The legacy aggregate review also exposed restored frame/recording/
+incident metadata. All legacy media reads now check the ledger before filesystem
+IO (410 for full image and thumbnail); aggregate review returns empty monitoring
+with monitoringDeleted=true while retaining the independently protected manifest.
+Private restored messages/bytes are not returned, and protected bytes remain
+unchanged. This is enforcement of existing deletion policy, not a new retention
+rule, physical erasure receipt or reason to delete historical attempts.
+
+Sixteen focused actual CLI/TLS, HTTP and unit checks pass. The full working-tree
+suite passes 332 tests/59 files (66.4s), including five separate still-unwired
+purge-process tests. All 28 administrator/monitoring browser checks pass (2.0m),
+typecheck/build and native race compatibility checks pass (unchanged core uses
+valid cache). See monitoring-cli.md for the preceding combined 81-check result;
+no fresh privileged-host result is claimed for this read-only follow-up.
+
+No schema change. Keep consistent backups and deletion ledgers; do not restore
+older monitoring into a running installation. An older gateway can again serve
+restored orphan metadata/media despite the ledger, so downgrade needs a drained,
+retention-consistent restore or compatible reader. No rollout is authorized.
+The internal isolated purge boundary in monitoring-purge-isolation.md remains
+unwired: existing synchronous purge, full CLI export/shared deletion intents and
+durable scheduling still need implementation/qualification.

@@ -178,6 +178,54 @@ baseline screenshots are restored. This closes C1ga and the misleading rate-limi
 diagnosis locally, not full monitoring export/deletion/purge, grants, retained SSH,
 workspace cleanup or deployment. The earlier 80/81 run remains a failed run.
 
+C1ga is local commit d98317c. C1gb1's still-unwired process boundary now passes
+five real fault/safe traversal/busy/shutdown tests, typecheck and build. Full
+working-tree application repeat passes **332/59 (66.4s)**, including actual CLI/
+TLS and these five tests. Its single-child/heap/protocol limits are not hard RSS
+or uninterruptible-IO guarantees. Scope and next durable-job/interface acceptance
+are in monitoring-purge-isolation.md. The production synchronous purge remains;
+do not call C1gb complete. No production work or missing command.
+
+Additional confirmed retention read bug: a synthetic older backup containing
+frame/recording/incident metadata and image bytes alongside a retained tombstone
+was still served by the legacy media route (failing HTTP regression: 200, expected
+410). Legacy full/thumbnail media now checks the ledger before file IO; aggregate
+review hides all restored monitoring while retaining the protected manifest.
+The regression also preserves independent protected bytes. Sixteen focused actual
+CLI/HTTP/unit tests pass, and the full 332/59 app repeat passes. The 28 admin/
+monitoring browser checks are running; native implementation/browser assets are
+unchanged. This is a read-fence correctness fix, not physical purge completion.
+
+Final restored-orphan follow-up: all 28 monitoring/admin browser checks pass
+(2.0m), preserving protected submission review after monitoring deletion. Full
+working-tree app 332/59 (66.4s), 16 focused actual CLI/HTTP/unit checks, typecheck/
+build and native race compatibility pass (CLI 2.9s; unchanged core cached).
+The prior full native uncached 107.3s and combined 81-browser result remain
+evidence for their unchanged components, not new installed-host claims. No
+schema/policy/deployment change. See monitoring-retention-fixes.md.
+
+C2 has one newly identified issuance-timing choice awaiting the instructor via an
+asynchronous question: first ordinary grant at first preflight (recommended,
+preserving roster-before-template workflow), enrollment/import (requires version
+then), or explicit initial issuance (new required instructor step). Extra grants
+remain fixed at explicit authorization in all cases. Existing C1–C8 approvals
+remain in force; no routine/local-commit approval is requested. See template-grant-
+investigation.md. Continue independent C1gb purge work while awaiting the answer.
+
+The instructor asked what settings "frozen" meant before answering. Clarified:
+a saved settings snapshot, not an SSH/process/filesystem freeze; exam default
+edits do not silently change an issued grant, while explicit unused revisions
+remain available. Reasked using the 90-to-120-minute example; no issuance-timing
+decision is inferred from the clarification. Independent purge work continues.
+
+Final frozen follow-up repeat: all **332 app tests/59 files pass** after strict
+worker field validation and independent asynchronous removal verification, with
+the focused five process tests also passing all wrong/extra/forged-success,
+death/heap/hang/permission and shutdown variants. Typecheck/build and 28 admin/
+monitoring browser checks pass; native race compatibility passes (unchanged core
+cached). These are local milestones only, with synchronous production purge still
+unmodified and deployment/consolidation unexecuted.
+
 ## Baseline and method
 
 The working tree was clean when work resumed. TODO.md and design.md have been

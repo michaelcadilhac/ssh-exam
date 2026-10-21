@@ -21,6 +21,13 @@ records/retention through every backup restore. An older gateway also loses the
 retention-error containment. Full monitoring CLI/shared intents/isolated purge
 remain open. See monitoring-retention-fixes.md; no rollout is executed.
 
+The restored-orphan read follow-up makes all legacy media/aggregate review honor
+retained tombstones even with older restored bytes/rows. Protected manifest access
+remains independent. No migration/policy change; a downgrade loses these guards,
+so restore consistent files/ledger only after drain or retain a compatible reader.
+The purge process foundation is still unwired and does not change production
+deletion behavior or authorize running purges; see monitoring-purge-isolation.md.
+
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,
 without retaining/retrying credentials or bypassing approval/holds. No schema
