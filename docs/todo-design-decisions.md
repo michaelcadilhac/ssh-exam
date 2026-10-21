@@ -1,6 +1,6 @@
 # TODO architecture investigation and decisions
 
-Updated 2026-10-21, local source inspection and instructor decisions. **C1–C4 are
+Updated 2026-10-21, local source inspection and instructor decisions. **C1–C5 are
 approved for local implementation; the other proposals remain pending.
 Nothing here is a deployment receipt.** Investigation remains open until decisions
 and acceptance evidence exist.
@@ -103,8 +103,8 @@ Verify/stage the source privately before committing Begin; no writable exam work
 or time consumption is exposed during waiting/preflight. Failed/abandoned preflight
 does not consume the grant, and retries/concurrent claims cannot create extra
 attempts. Maintain the default single-attempt policy and all prior account holds.
-Exact webcam/start-window defaults and repair compensation remain separate open
-policy choices; fixing selected values does not choose their defaults. No
+Webcam/start-window policy is now approved separately in C5; repair compensation
+remains open. No
 production recovery window/enrollment changes are implied. **Design approved;
 implementation, migration and crash/race qualification remain outstanding.**
 
@@ -200,15 +200,35 @@ policy requires further investigation and crash/fault tests, not ad hoc file
 replacement. C1/C2 now approve the authority/unified model and pre-Begin staging;
 explicit repair compensation policy is still pending.
 
-## Additional policy questions C5–C8 (pending)
+## Grant monitoring and Begin windows (C5 approved)
 
-These are the remaining questions presented in the eight-question walkthrough;
-they have not been approved by approval of C1–C4.
+**Decision C5, approved by the instructor October 21:** preserve each student's
+current effective webcam requirement (exam default plus individual override) when
+issuing a new grant, unless explicitly overridden for that student or grant batch.
+Resolve and show the actual requirement before issuance, then fix it under C2;
+do not guess physical location or silently reevaluate it at Begin.
 
-- C5: recommend preserving each student's current effective webcam requirement
-  unless explicitly overridden, and requiring explicit finite earliest/latest
-  Begin times for new grants. Snapshot the chosen values under C2. Existing
-  production grants/windows are not changed by choosing future defaults.
+Require a finite, explicit earliest/latest Begin window for every new grant, with
+unambiguous date/time/timezone. An additional attempt's window is independent of
+the exam's default window and **may lie entirely outside it**. Do not intersect
+the two windows or globally reopen the exam to make an extra grant usable.
+Exam selection, authentication, preflight, native admission and Begin must agree
+on the selected eligible grant's window/identity and preserve all other account
+restrictions. Ordinary admission still uses the ordinary exam's default window.
+
+The window controls actual Begin, not a hard finish time: starting near latest
+Begin still grants the full fixed allowance. Waiting/preflight consume no exam
+time but cannot evade the latest-Begin bound. An unused expired grant stays in
+history and requires an explicit audited revision to reopen; closing its window
+never shortens an already-started interval. Changing defaults or future grant
+windows never changes existing production grants, attempts, deadlines or webcam
+snapshots. **Design approved, not implemented or deployed; add web/CLI and native
+regressions for a second attempt after the default exam window has closed.**
+
+## Additional policy questions C6–C8 (pending)
+
+These remaining questions have not been approved by approval of C1–C5.
+
 - C6: propose configurable per-exam collection limits, initially 128 MiB/file and
   512 MiB total subject to storage/stress verification, versus current 32/64 MiB;
   retain 10,000 entries/depth 32. Actual compiler/debugger/core-dump/dataset needs

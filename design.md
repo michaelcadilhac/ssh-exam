@@ -1413,9 +1413,30 @@ attempt identities/timing, normal account holds and explicit emergency-override
 separation. A second full 90-minute attempt copied from the student's first
 protected submission is a general grant, not a special recovery exam or a rewrite
 of the original interval. Provide matching web/CLI workflows and preserve existing
-recovery grants until migration and rollback are proven. Exact webcam/start-window
-defaults and repair compensation remain separate pending policy choices. This
+recovery grants until migration and rollback are proven. C5 below approves webcam/
+start-window policy; repair compensation remains pending. This
 approval does not implement, deploy or complete the investigation.
+
+### Approved grant webcam/Begin-window policy (October 21; implementation pending)
+
+At issuance preserve the student's current effective webcam requirement (exam
+default plus individual override), unless explicitly overridden for the student
+or grant batch. Show and snapshot the resolved value; later enrollment/default
+edits must not silently change a grant or started attempt.
+
+Every new grant requires an explicit finite earliest/latest Begin window with
+date/time/timezone. An additional attempt's window may be entirely outside the
+exam default window. Use the selected grant's window, never an intersection with
+the exam default window, throughout selection/authentication/preflight/native
+admission/Begin. Do not reopen the ordinary exam or bypass prior account holds
+to admit the additional attempt. The window limits actual Begin, not completion:
+starting near its end still receives the full fixed allowance. Waiting/preflight
+consume no time and cannot extend the grant window. An expired unused grant stays
+in history and needs an explicit audited revision to reopen. Once started, its
+committed interval is unaffected by the start window closing or defaults changing.
+Keep current production grants/attempts and their windows/monitoring unchanged
+until a separately approved migration. Require matching web/CLI and signed native
+tests for a second attempt outside the ordinary exam window before claiming done.
 
 ### Approved private-workspace cleanup design (October 21; implementation pending)
 

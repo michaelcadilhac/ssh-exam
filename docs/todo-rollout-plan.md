@@ -18,7 +18,9 @@ Do not bundle unfinished unified grants or full authenticated management into
 this release: C1/C2 are design-approved, not implemented/qualified release artifacts.
 C3 retained SSH with a verified freeze and C4 manual workspace cleanup with no
 grace period are also design-approved as of October 21, but unimplemented/
-unqualified and outside this release. Limit/other policy decisions and
+unqualified and outside this release. C5 also approves new grant webcam/Begin
+policy, including windows outside the exam default; it is not implemented or a
+retroactive production grant change. Limit/other policy decisions and
 investigation remain open. C4 does not authorize deleting existing workspaces now.
 No new root API/listener, account override, historical attempt transfer or automatic
 workspace deletion is part of these changes. CLI management remains incomplete;

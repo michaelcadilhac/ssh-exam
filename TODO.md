@@ -108,8 +108,9 @@ This is a design investigation; agree on the proposal before implementation.
 
 Local design status: C2 is approved October 20—unified grants with settings fixed
 at issuance and explicit audited revisions for unused grants. Implementation,
-migration, crash/race qualification and remaining webcam/window/repair policy
-choices are still open. Approval is not a deployment or historical-record change.
+migration and crash/race qualification are still open. C5 now approves webcam/
+window policy; repair compensation remains undecided. Approval is not a
+deployment or historical-record change.
 
 - [ ] **Map the present model and its restrictions.**
   Review exam definitions, enrollment, attempt uniqueness, sandbox repeatability,
@@ -412,6 +413,12 @@ the approval is not a production change or a completed investigation.
   archives, including how restoration affects tools such as `make`.
 
 - [ ] **Confirm the intended recovery webcam policy and start window.**
+  Local design status: C5 approved October 21—preserve each student's current
+  effective webcam requirement unless explicitly overridden, and require a finite,
+  explicit Begin window fixed at grant issuance. An extra attempt may have a window
+  outside the exam default window; do not intersect them or reopen ordinary
+  admissions. Implementation, web/CLI/native verification and migration remain
+  open; no existing production grants, windows or snapshots were changed.
   The incident setup preserved individual webcam settings and opened a very broad
   start window for delayed returns. Confirm the instructor's intended policy and
   make it explicit in the dashboard and grant tooling. Email text alone is not

@@ -29,7 +29,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M4: supported CLI workflows | M0 authority proposal | Ship coherent help/error improvements now; add full web-owned management only after authority/authentication decision. Exercise actual CLI help, refusals, local recovery and idempotency; native race/build and HTTP tests | Existing native help/refusals/export tested locally; C1/C2 approved, management/grant implementation and qualification pending |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Local concurrency/load/compiler checks pass; broader privileged qualification and policy decisions remain open |
-| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2 approved; implementation, migration, remaining policy defaults and investigation open |
+| D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5 approved; implementation, migration, remaining repair policy and investigation open |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; verified-freeze implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4 approved: manual cleanup/no grace with safety checks; implementation and C6 limit policy remain open |
 
@@ -54,7 +54,8 @@ explicit audited revisions for unused grants. Stage verified sources privately
 before Begin, consume once with the new committed interval, preserve default
 single-attempt policy/history/holds, and safely fence revisions against preparation
 and Begin. This is an approved design, not implementation/migration/deployment.
-Webcam/start-window defaults and repair compensation remain separate decisions.
+Webcam/start-window policy is now approved separately in C5; repair compensation
+remains pending.
 
 Approved C3 (October 21): retain authenticated SSH and preserve shells/editor
 buffers through a verified workload freeze during policy lockouts. Input/channels/
@@ -71,9 +72,18 @@ protected submissions/history/grants, account restrictions/deadlines and separat
 monitoring retention. The earlier 14-day recommendation is superseded. No cleanup
 has been implemented or performed.
 
-Pending C5–C8: webcam/start-window defaults, collection size limits and actual
-workloads, explicit repair compensation, and exam-definition archival/deletion.
-See todo-design-decisions.md. No approval is inferred from C1–C4 for these choices.
+Approved C5 (October 21): new grants preserve the student's current effective
+webcam requirement unless explicitly overridden, and require an explicit finite
+Begin window fixed at issuance. An extra-attempt window may be outside the exam's
+default window; do not intersect windows or reopen ordinary admissions. All
+admission/Begin layers must honor the selected grant, while preserving account
+holds. Latest Begin is not latest finish and does not shorten a started interval.
+No existing production windows, webcam snapshots or records were changed.
+Implementation/migration and interface/native regressions remain outstanding.
+
+Pending C6–C8: collection size limits and actual workloads, explicit repair
+compensation, and exam-definition archival/deletion. See todo-design-decisions.md.
+No approval is inferred from C1–C5 for these choices.
 
 ## Verification and commits
 
@@ -88,7 +98,7 @@ boundary and the explicit reminder capability still pending C1.
 
 M0 source map and concrete proposals are in todo-design-decisions.md. Four
 questions (C1–C4) were initially presented without assuming approval. All four
-are now approved as recorded above; C5–C8 and investigation remain open.
+are now approved as recorded above, as is C5; C6–C8 and investigation remain open.
 No production access or deployment performed. Verification entries below describe
 the decisions and implementation state at their original milestones.
 
@@ -143,7 +153,7 @@ checks and the separate compiler measurement pass. The 52-test browser result
 covers the unchanged final review implementation. No command was found missing.
 
 Checkpoint: further unified-grant/full management/retained-SSH/cleanup policy
-implementation now has C1–C4 approval; other policy choices remain pending in
+implementation now has C1–C5 approval; other policy choices remain pending in
 todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.
