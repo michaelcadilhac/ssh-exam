@@ -8,6 +8,15 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+October 21 decision refinement: the instructor selected enrollment/import, not
+first preflight, for initial ordinary grant issuance and the saved settings copy.
+Later defaults require explicit unused-grant revisions. This is unrelated to the
+SSH/process freeze. Catalog/version and finite Begin-window validation must precede
+issuance; existing enrollment migration remains unimplemented. The question is
+answered; the larger grant/source investigation remains open. Independent next
+increment: verify cross-process purge ownership, then durable jobs and shared
+CLI/web deletion/status. `flock` is installed at /usr/bin/flock; no missing command.
+
 October 21 qualification scope update: the instructor permits csc-sys tests that
 do not change the current installation or interrupt exams. The earlier attempt
 stopped immediately when systemd-nspawn was missing; after installation by the
@@ -204,13 +213,14 @@ The prior full native uncached 107.3s and combined 81-browser result remain
 evidence for their unchanged components, not new installed-host claims. No
 schema/policy/deployment change. See monitoring-retention-fixes.md.
 
-C2 has one newly identified issuance-timing choice awaiting the instructor via an
+C2 identified an issuance-timing choice (subsequently answered: enrollment/import;
+see the decision refinement at the top of this record). Originally sent via an
 asynchronous question: first ordinary grant at first preflight (recommended,
 preserving roster-before-template workflow), enrollment/import (requires version
 then), or explicit initial issuance (new required instructor step). Extra grants
 remain fixed at explicit authorization in all cases. Existing C1–C8 approvals
 remain in force; no routine/local-commit approval is requested. See template-grant-
-investigation.md. Continue independent C1gb purge work while awaiting the answer.
+investigation.md. Independent C1gb purge work continued during the question.
 
 The instructor asked what settings "frozen" meant before answering. Clarified:
 a saved settings snapshot, not an SSH/process/filesystem freeze; exam default
@@ -254,7 +264,7 @@ escalation. Generated screenshot changes must not become product changes.
 | C1e: attempts and current clocks | C1a + existing clock policy | Shared atomic staging, bounded private-safe inspection, single/bulk/reset-default workflows, exact amount/revision/child retry fences, honest pending/native status; compiled CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 313 app tests, all three Go-module race checks, static build/vet/typecheck/build, 46 admin/alert/definition/timezone and 28 interface/real synthetic SSH browser checks; not deployed |
 | C1f: interruption review and authorization | C1a + current continuation policy | Shared generation/review-counter/reason fence, unchanged expiry/SSH/readiness, atomic audit/intent, private retention-safe review, exact retries/pagination; actual CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 320 app tests, native race/build/vet/typecheck/build and 81 browser checks together; not deployed |
 | C1ga: bounded monitoring inspection/replay | C1a + tombstone correctness | Shared web/root summary and watermark pages, bounded complete-event replay, transient receipts, deletion/restart rechecks and validated private outputs; actual CLI/TLS/HTTP/unit/native race/build/browser | Implemented/tested locally: 327 application tests, native race/resource/compiler/default-size opt-ins (107.3s), static build/vet/typecheck/build and all 81 combined browser checks (10.5m). Not deployed |
-| C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Investigating synchronous purge/caller/retirement boundaries; no new deletion or worker implementation yet |
+| C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Unwired bounded process boundary and persistent cross-coordinator lock locally tested; durable jobs, removal of synchronous callers and shared CLI/web deletion still pending |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |

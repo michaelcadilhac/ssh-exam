@@ -154,6 +154,12 @@ window policy; C7 selects new-attempt outage recovery with instructor-chosen
 allowances and no automatic refunds/reopening. Approval is not a
 deployment or historical-record change.
 
+October 21 issuance timing decision: enrollment/import issues the initial ordinary
+grant and saves its settings immediately. Later defaults require explicit unused-
+grant revisions; do not defer the snapshot until preflight. Confirmed immutable
+template/source versions and finite Begin windows are issuance prerequisites.
+Existing enrollment migration and implementation remain outstanding.
+
 - [ ] **Map the present model and its restrictions.**
   October 21 local D1b increment exposes native-only legacy authorizations through
   `examctl recovery-grants` and blocks dependency-blind source deletion, including

@@ -104,6 +104,12 @@ snapshot/history cannot be rewritten. Exact compensation and a new full 90 minut
 are separate allowance modes; neither depends on file source. The earlier
 alternative of resolving mutable enrollment defaults at Begin is not selected.
 
+October 21 refinement approved: enrollment/import issues the first ordinary grant
+with its settings copy immediately. Later default edits need explicit revisions
+of unused grants. This is not the C3 process freeze. A confirmed immutable
+material/source version and finite Begin window are required before issuance;
+existing enrollment migration remains engineering work, not an implicit resnapshot.
+
 Verify/stage the source privately before committing Begin; no writable exam work
 or time consumption is exposed during waiting/preflight. Failed/abandoned preflight
 does not consume the grant, and retries/concurrent claims cannot create extra

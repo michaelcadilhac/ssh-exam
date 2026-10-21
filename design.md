@@ -1512,6 +1512,13 @@ selected start window. Later default/enrollment edits do not silently change an
 issued grant. Unused grants may be explicitly revised/revoked with audit and
 revision checks that fence preparation and race safely with Begin.
 
+October 21 issuance timing decision: issue the initial ordinary grant during
+enrollment/import and save its settings immediately, not at first preflight.
+Later default/enrollment edits require explicit unused-grant revision. Validate a
+confirmed immutable material/source version and finite Begin window before
+issuance; never silently defer the snapshot. This is settings immutability, not
+the separate SSH/process freeze. Existing enrollment migration remains unimplemented.
+
 Verify/stage sources privately before Begin; waiting and preflight expose no
 writable exam work and consume no allowance. Begin atomically consumes one grant
 and commits the new authoritative interval; abandon/retry/restart/concurrent claims
