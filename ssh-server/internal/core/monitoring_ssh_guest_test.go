@@ -24,10 +24,20 @@ func TestMonitoringSSHProcessGuestRefusesUnqualifiedHost(t *testing.T) {
 	if _, err := os.Stat("/run/ssh-exam-qualification-input/run.json"); err == nil {
 		t.Skip("negative host probe is not run inside a prepared guest")
 	}
-	command := exec.Command("/usr/bin/env", "EXAM_MONITORING_SSH_GUEST=1", "GORACE=atexit_sleep_ms=0", os.Args[0], "-test.run=^TestMonitoringSSHProcessGuest$", "-test.count=1")
-	output, err := command.CombinedOutput()
-	if err == nil || !(bytes.Contains(output, []byte("private guest root required")) || bytes.Contains(output, []byte("refuse outside the private systemd guest")) || bytes.Contains(output, []byte("private monitoring qualification identity required"))) {
-		t.Fatal("opt-in flag alone did not refuse an unqualified host", err, string(output))
+	for _, item := range []struct{ test, optIn string }{
+		{"TestMonitoringSSHProcessGuest", "EXAM_MONITORING_SSH_GUEST"},
+		{"TestMonitoringFreezePTYGuest", "EXAM_MONITORING_FREEZE_GUEST"},
+		{"TestMonitoringAsyncIOGuest", "EXAM_MONITORING_ASYNCIO_GUEST"},
+		{"TestMonitoringAsyncIOStoppedGuest", "EXAM_MONITORING_ASYNCIO_STOPPED_GUEST"},
+		{"TestMonitoringEditorGuest", "EXAM_MONITORING_EDITOR_GUEST"},
+	} {
+		t.Run(item.test, func(t *testing.T) {
+			command := exec.Command("/usr/bin/env", item.optIn+"=1", "GORACE=atexit_sleep_ms=0", os.Args[0], "-test.run=^"+item.test+"$", "-test.count=1")
+			output, err := command.CombinedOutput()
+			if err == nil || !(bytes.Contains(output, []byte("private guest root required")) || bytes.Contains(output, []byte("refuse outside the private systemd guest")) || bytes.Contains(output, []byte("private monitoring qualification identity required"))) {
+				t.Fatal("opt-in flag alone did not refuse an unqualified host", err, string(output))
+			}
+		})
 	}
 }
 

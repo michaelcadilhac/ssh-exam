@@ -8,6 +8,44 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Q5 investigation afterb8587b9: basic/SQPOLL io_uring is demonstrably
+available to the synthetic UID, so test deferred pipe-read/linked-file-write and
+timer-hardlinked-write, with explicit unfrozen baselines and forced-worker
+variants. Require no file change after confirmed freeze, then inspect completion
+and resumption rather than assuming CPU pause covers kernel effects. Use only
+the existing guarded disposable guest, known compiler and synthetic owned files/
+pipes/scopes. No syscall is restricted, no new retained mode is enabled and no
+result or design choice is assumed. Every baseline must work before interpreting
+a freeze result; the full C3/critical TODO remains open.
+The initial Q5 run is NOT qualified: all18 unfrozen baselines succeed and none
+of18 frozen observations sees a file write, but12 frozen normal-dispatch linked
+writes complete with -ECANCELED after the first read/timeout completes; all six
+forced-worker pipe cases resume normally. This repeats identically three times
+on6.8.0-111-generic. Host/base preservation passes; evidence
+/var/tmp/ssh-exam-overlay-h_ruyjs5. Test29712638a5e8842d50cb1a8875235429d44483e378a5898d9ffdb6abfd0d919e;
+static IO fixture c27fc71b015be1630a20ab7654903ac4fd70a98d850e5400f7b5dee23bc85a30.
+Investigate fixture-versus-kernel cancellation path before selecting a remedy;
+do not weaken the acceptance assertion, claim all IO is preserved, disable a
+syscall or enable retained mode. No initiating production fault is established.
+See native-async-io-investigation.md. A separate exact synthetic pidfd job-stop
+experiment is being qualified without deleting any original assertion/case or
+changing live workload policy. It is not yet a remedy or full admission barrier.
+The final synthetic stopped IO matrix passes36 cases, and the actual interactive
+Bash/Nano fixture passes ten repeats/thirty cycles with exact unsaved text and
+original stopped-job/foreground preservation; same test artifact
+0e205925fe9dfb762bcc9726247ba8be68d9fc1f083ea5d0142ab7360c49843d.
+Evidence /var/tmp/ssh-exam-overlay-ztsu8i3o and
+/var/tmp/ssh-exam-overlay-sk3ag8z7; host/base preservation passes both. Native
+full compatibility passes core172.21s/CLI6.13s, static build/vet,30 Python and20
+all-five-profile host-refusal race repeats (1.92s) pass. This closes neither the
+general root admission/stop protocol nor retained SSH. The final original
+cgroup-only gate on that exact artifact again fails12 linked writes;24 other
+writes succeed, host/base preservation passes. Evidence
+/var/tmp/ssh-exam-overlay-0skckf9p. It remains unqualified, not mislabeled fixed.
+The application-visible stop/continue versus separately qualified kernel choice
+is now explicitly awaiting instructor input. Independent monitoring-export work
+continues while that and renewal durability are pending; no policy is assumed.
+
 Next C3 qualification increment is in progress, not a live mode: a private guest
 test combines actual root cgroup freeze/UID inspection with the unused local
 PTY gate/discard. It will check repeated preservation of synthetic in-memory
@@ -1031,6 +1069,7 @@ escalation. Generated screenshot changes must not become product changes.
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |
 | M6a: collection process-failure isolation | investigate current native collection; prerequisite to enabling larger limits | Real isolated collection worker death/hang/resource/disk faults leave shared agent/PTYs, healthy monitoring, deadlines and admissions unaffected; durable protected publication/restart and native race/integration checks | Native implementation/fatal/resource/disk/race passes locally; Q2 now passes actual worker SIGKILL with healthy privileged SSH/PTY/admission/renewals in a normal-root disposable guest. Worst-case concurrent workload/initialization/cleanup qualification remains open |
 | Q2: representative privileged guest crash/enforcement | M6a + D1a + explicit isolated-host test scope | Normal-root software/private mounts, real root-controlled SSH/PAM/cgroups/watchdog, exact collector pidfd kill, unaffected healthy PTY/admission/owners/clocks, byte-verified retry, ordinary holds/release and unchanged installed host/base | Implemented/tested in cb33f24: 11 crash/private-root assertions plus all 39 enforcement assertions; 40 Python checks. Disposable fixture only, not installation/default-size capacity certification |
+| Q5: deferred IO and real editor investigation | Q3/Q4 + isolated-host scope | Real linked IO baselines/confirmed freeze/completion matrix, actual shell/editor buffer and original job-state preservation, unchanged host/base; no inferred all-writer/SSH permission | Investigated, not completed C3: cgroup-only12 cancellations remain RED; separate stop-assisted36 IO cases and ten real Bash/Nano repeats/thirty cycles pass. Consequential signal-policy choice awaiting input; see native-async-io-investigation.md |
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |

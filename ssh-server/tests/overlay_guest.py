@@ -116,6 +116,24 @@ def monitoring_freeze_command():
             '-test.timeout=60s']
 
 
+def monitoring_asyncio_command():
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestMonitoringAsyncIOGuest$', '-test.v', '-test.count=3',
+            '-test.timeout=120s']
+
+
+def monitoring_asyncio_stopped_command():
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestMonitoringAsyncIOStoppedGuest$', '-test.v', '-test.count=3',
+            '-test.timeout=120s']
+
+
+def monitoring_editor_command():
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestMonitoringEditorGuest$', '-test.v', '-test.count=10',
+            '-test.timeout=60s']
+
+
 def main():
     assert os.geteuid() == 0
     assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
@@ -158,6 +176,27 @@ def main():
         # workload scopes/UIDs/files are owned disposable-guest fixtures.
         environment = {**os.environ, 'EXAM_MONITORING_FREEZE_GUEST': '1'}
         result = subprocess.run(monitoring_freeze_command(), env=environment, timeout=75)
+        if result.returncode:
+            return result.returncode
+        profiles = ()
+    elif settings.get('profile') == 'monitoring-async-io':
+        assert username == 'examq', 'Exact synthetic async-IO fixture required'
+        environment = {**os.environ, 'EXAM_MONITORING_ASYNCIO_GUEST': '1'}
+        result = subprocess.run(monitoring_asyncio_command(), env=environment, timeout=150)
+        if result.returncode:
+            return result.returncode
+        profiles = ()
+    elif settings.get('profile') == 'monitoring-async-io-stopped':
+        assert username == 'examq', 'Exact synthetic async-IO stop fixture required'
+        environment = {**os.environ, 'EXAM_MONITORING_ASYNCIO_STOPPED_GUEST': '1'}
+        result = subprocess.run(monitoring_asyncio_stopped_command(), env=environment, timeout=150)
+        if result.returncode:
+            return result.returncode
+        profiles = ()
+    elif settings.get('profile') == 'monitoring-editor':
+        assert username == 'examq', 'Exact synthetic editor fixture required'
+        environment = {**os.environ, 'EXAM_MONITORING_EDITOR_GUEST': '1'}
+        result = subprocess.run(monitoring_editor_command(), env=environment, timeout=75)
         if result.returncode:
             return result.returncode
         profiles = ()

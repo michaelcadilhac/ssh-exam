@@ -113,6 +113,25 @@ class OverlayTests(unittest.TestCase):
             '-test.run=^TestMonitoringFreezePTYGuest$', '-test.v', '-test.count=5',
             '-test.timeout=60s'])
 
+    def test_asyncio_profile_uses_a_manifested_unprivileged_fixture_and_bounded_test(self):
+        self.assertEqual(overlay.FILES['asyncio-probe'], (None, 0o755))
+        self.assertEqual(guest.monitoring_asyncio_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestMonitoringAsyncIOGuest$', '-test.v', '-test.count=3',
+            '-test.timeout=120s'])
+
+    def test_asyncio_stop_experiment_has_its_own_exact_opt_in_test(self):
+        self.assertEqual(guest.monitoring_asyncio_stopped_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestMonitoringAsyncIOStoppedGuest$', '-test.v', '-test.count=3',
+            '-test.timeout=120s'])
+
+    def test_editor_experiment_is_separate_and_bounded(self):
+        self.assertEqual(guest.monitoring_editor_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestMonitoringEditorGuest$', '-test.v', '-test.count=10',
+            '-test.timeout=60s'])
+
 
 if __name__ == '__main__':
     unittest.main()

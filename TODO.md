@@ -202,6 +202,14 @@ full privileged qualification or deployment authorization.
   native admission/epoch transition or automatic recovery is claimed. Basic and
   SQPOLL asynchronous IO are available in that fixture, so deferred-IO behavior
   remains an explicit open gate. See docs/native-freeze-qualification.md.
+  Q5's real deferred-IO experiment finds an unresolved compatibility failure:
+  all18 unfrozen baselines succeed, but12 ordinary-dispatch frozen linked writes
+  are canceled, identically across three repeats; forced-worker cases survive.
+  Host/base preservation passes. This is not a completed freeze qualification;
+  no syscall restriction, kernel change or live retained mode is introduced.
+  See docs/native-async-io-investigation.md for exact evidence, unchanged
+  acceptance and the separate synthetic job-stop experiment. The critical TODO
+  remains open and no initiating production cause is claimed.
 
 ## Firm design policy: examctl is the complete management interface
 

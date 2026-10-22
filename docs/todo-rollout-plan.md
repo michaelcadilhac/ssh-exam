@@ -41,6 +41,17 @@ candidate. Keep old raw bridges on their original protocol/flags until a separat
 authorized drained cutover. Unprivileged local PTY tests do not qualify privileged
 SSH/PAM/cgroup/namespace containment or a temporary root agent owner's behavior.
 
+The October22 deferred-IO investigation is a release blocker, not a kernel or
+syscall-policy migration: cgroup-only freeze cancels ordinary linked writes in
+the tested private guest. The separate stop-before-freeze experiment passes its
+bounded IO matrix, but is not a general admission/descendant/epoch barrier.
+Require verified original job-state preservation and real editor/SSH workflows,
+then deadline, launch/revoke and restart faults before selecting/enabling a full
+protocol. Do not install a new kernel, restrict io_uring or consolidate agents
+as part of this investigation. Preserve failed-test evidence; see
+native-async-io-investigation.md. All deployment/consolidation steps remain
+proposals and none is executed.
+
 The October22 diagnostic CLI candidate adds explicit list/info --read-only with no
 state/config/key migration. It reads existing protected legacy metadata without
 Engine initialization or reconciliation; unflagged workflows retain their old

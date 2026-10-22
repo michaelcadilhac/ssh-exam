@@ -209,3 +209,24 @@ This is not actual editor/retained SSH, closed native admission, cross-process
 epochs or recovery qualification. Empty basic/SQPOLL io_uring setup succeeds as
 the synthetic UID; deferred IO must be tested, not presumed disabled. Detailed
 faults, artifact evidence and limitations: native-freeze-qualification.md.
+
+## Q5: deferred IO and actual editor investigation (October22)
+
+The exact manifest additionally includes `asyncio-probe`, a static unprivileged C
+fixture built from tests/asyncio_fixture.c using the installed compiler/Linux UAPI,
+not installed in the guest or a new production dependency. Explicit profiles are
+`monitoring-async-io`, `monitoring-async-io-stopped` and `monitoring-editor`; each
+has its own exact test/opt-in guard and bounded wrapper/test runtime. None replaces
+the gate socket or enables retention. Negative host probes cover every profile.
+
+Ordinary cgroup-only freeze fails the unchanged linked-write compatibility gate
+on the tested kernel. The separate owned-pidfd stop-before-freeze experiment
+passes36 IO cases; actual interactive Bash/Nano passes ten repetitions, thirty
+cycles, with positive in-editor buffer acknowledgement, exact later saved bytes,
+foreground pgrp/shell survival, discarded stale input and an originally stopped
+job still stopped. Final test SHA256:
+0e205925fe9dfb762bcc9726247ba8be68d9fc1f083ea5d0142ab7360c49843d.
+Host/base preservation passes; detailed failed controls, limitations and private
+evidence paths are in native-async-io-investigation.md. This is neither a general
+root stop/admission barrier nor actual retained-SSH qualification. No kernel,
+syscall policy, host installation, account or record is changed.

@@ -65,6 +65,10 @@ These empty setup/close probes establish **availability only**, not asynchronous
 IO freeze behavior. No syscall is disabled/restricted and no kernel policy is
 changed. Deferred IO, mmap/delayed writes and relevant worker/completion paths
 need explicit qualification before all-writer containment can be claimed.
+Q5 now finds a reproducible cgroup-only linked-write cancellation and separately
+qualifies a narrow stop-before-freeze IO/editor experiment. See
+native-async-io-investigation.md; do not infer a completed general barrier or
+quietly disable the available syscall.
 
 Local compatibility passes the full native race/resource/namespace/compiler/
 default-size suite (core171.16s/CLI5.92s), static build/vet,27 Python safety tests

@@ -1634,6 +1634,17 @@ This is not the root-owned native packet epoch and cannot recall already-posted
 worker/SSH bytes. Qualification and remaining C3 boundaries are in
 docs/browser-input-lifetime.md; no retained mode is enabled by this client fence.
 
+Disposable-guest IO qualification now demonstrates that cgroup-only freezing can
+cancel linked asynchronous writes on the tested kernel even though their unfrozen
+baselines succeed. A synthetic exact-process stop-before-freeze alternative
+preserves the tested completions; actual shell/editor/job-control qualification
+is separate. Neither CPU pause, `frozen 1`, a setup-only syscall probe nor a live
+SSH pidfd proves all kernel-side effects safe. Do not enable retention, disable
+student syscalls or require an untested kernel upgrade from that narrow result.
+See docs/native-async-io-investigation.md. Root closed admission/pending launches,
+all-writer ownership/epochs, unchanged deadlines and full recovery qualification
+remain mandatory; a test-only stop is not their implementation.
+
 ### Approved unified-grant design (October 20; implementation pending)
 
 Keep one ordinary attempt as the default. Explicit individual/bulk additional
