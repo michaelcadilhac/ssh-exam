@@ -50,6 +50,16 @@ Never restore privileged ownership/bits or invent absent metadata. Current
 archives lack original directory metadata, ACLs and xattrs; use private 0700
 directories. See docs/recovery-metadata.md for precision and legacy limitations.
 
+The local recovery-metadata safety candidate pins root-private catalog path
+components and bounds no-follow/nonblocking grant/consumption reads, including
+publication retries. Admission and catalog inspection/deletion share strict
+known-field JSON validation; unsafe/malformed authority is never absent or a
+fresh-template fallback. Refuse special/public/linked/changed metadata, preserving
+original intervals, markers and sources with supported read-only diagnostic
+commands. This does not declare an expected grant in the legacy protocol or
+complete unified grants/recovery compatibility. See docs/recovery-metadata-safety.md
+for qualification and intentionally stricter integrity rules. Local only.
+
 ## 2. Product context and defaults
 
 The instructor administers a programming exam on a Unix/Linux class server. Questions, tools, documentation, student files, and submission collection are server-side. The instructor has root access on that server. Students use their personal computers at home or supervised computers in person.

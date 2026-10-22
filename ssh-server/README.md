@@ -318,6 +318,17 @@ failure is not an availability guarantee.
 
 ## Collection, export and recovery
 
+Local recovery-metadata safety candidate (not deployed) refuses unsafe/linked/
+public/special or ambiguous legacy grant/consumption files before Begin and uses
+bounded reads during publication retries. Do not remove markers, edit JSON,
+choose starter files or release/restart an account to bypass refusal. Use the
+printed exact `examctl recovery-grants --exam EXAM` and
+`examctl info ATTEMPT --read-only` commands; preserve all source archives,
+staging and original intervals. Native private catalog directories must be real
+0700 owner-matched directories. Inspection is metadata, not fresh archive/live
+permission proof. New unified issuance and declared expected-source compatibility
+remain separate open work. See docs/recovery-metadata-safety.md.
+
 Host work: /srv/exam-workspace/work/<opaque-attempt>/work, shown as the trusted agent
 `exam_directory` setting (default /work). Provision that directory in the read-only rootfs. Only saved files are
 collected. Students do not submit, upload or archive anything. The optional Finish exam button and

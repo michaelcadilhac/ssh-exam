@@ -1,9 +1,6 @@
 package core
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -137,17 +134,14 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 			if total > 16*1024*1024 {
 				return nil, errors.New("legacy authorization metadata exceeds 16 MiB; preserve catalog for bounded migration")
 			}
-			var r RecoveryPreparation
-			decoder := json.NewDecoder(bytes.NewReader(b))
-			decoder.DisallowUnknownFields()
-			if err := decoder.Decode(&r); err != nil {
+			r, err := decodeRecoveryMetadata(b)
+			if err != nil {
 				return nil, fmt.Errorf("malformed legacy authorization %s/%s; preserve catalog and diagnose before deletion", exam.Name(), username)
 			}
-			_, checksumErr := hex.DecodeString(r.Checksum)
-			if decoder.Decode(new(any)) != io.EOF || r.Exam != exam.Name() || r.Username != username || r.UID < 0 || r.Duration < 60 || r.Duration > 21600 || !attemptID.MatchString(r.SourceAttempt) || len(r.Checksum) != 64 || checksumErr != nil || r.CreatedAt <= 0 || len(strings.TrimSpace(r.Reason)) < 8 {
+			if r.Exam != exam.Name() || r.Username != username {
 				return nil, fmt.Errorf("legacy authorization %s/%s identity/allowance invalid; preserve catalog before deletion", exam.Name(), username)
 			}
-			view := RecoveryGrantView{RecoveryPreparation: r, Disposition: "unused"}
+			view := RecoveryGrantView{RecoveryPreparation: *r, Disposition: "unused"}
 			if prior := state.Attempts[r.SourceAttempt]; prior != nil {
 				view.SourceRecordedProtected = prior.Protected && prior.State == "COMPLETED" && prior.Username == r.Username && prior.UID == r.UID && prior.Checksum == r.Checksum
 			}
@@ -165,7 +159,7 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 					view.ConsumerState = a.State
 					matches := a.Exam == r.Exam && a.Username == r.Username && a.UID == r.UID && a.Settings.Duration == r.Duration && a.Start >= r.CreatedAt && a.Deadline > 0 && a.OriginalDeadline > 0
 					if a.Workspace != nil {
-						matches = matches && a.Workspace.Source.Kind == "saved" && a.Workspace.Source.Attempt == r.SourceAttempt && a.Workspace.Source.Checksum == r.Checksum && a.Workspace.RecoveryHash == recoveryReferenceHash(&r)
+						matches = matches && a.Workspace.Source.Kind == "saved" && a.Workspace.Source.Attempt == r.SourceAttempt && a.Workspace.Source.Checksum == r.Checksum && a.Workspace.RecoveryHash == recoveryReferenceHash(r)
 					}
 					if matches {
 						view.Disposition = "consumed"

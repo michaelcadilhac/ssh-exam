@@ -290,3 +290,11 @@ native-pane-management.md. New unit incarnations/observed activation metadata
 prevent a stale reviewed close from controlling a replacement; this is explicit
 pane termination, not retained-lockout freeze or all-writer cleanup proof. No
 production service/config/account/student-record change or deployment occurs.
+
+The following recovery-metadata candidate has fresh exact artifact receipts:
+three ACK/two-shell/root-CLI repetitions,40 enforcement assertions and11 real
+collector-death/healthy-peer checks (23 renewals,max0.0851329s, exact40MiB retry).
+Every host/base preservation check passes. See recovery-metadata-safety.md for
+hashes/evidence, RED unsafe-authority/FIFO tests and fresh9-browser qualification.
+No saved-source full grant migration or later workspace-receipt fix is inferred
+from those profiles. No installed host service/account/config/record is changed.

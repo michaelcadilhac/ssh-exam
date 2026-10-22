@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -48,39 +47,37 @@ func (e *Engine) recoveryPreparation(a *Attempt) (*RecoveryPreparation, *Manifes
 // Only bounded administrator metadata and in-memory identity checks belong in a
 // shared transaction. Hashing/extraction is the isolated staging worker's job.
 func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
-	if !identifier.MatchString(a.Exam) || !identifier.MatchString(a.Username) {
+	if a == nil || !identifier.MatchString(a.Exam) || !identifier.MatchString(a.Username) {
 		return nil, errors.New("invalid recovery identity")
 	}
-	root, err := os.OpenRoot(e.Config.State)
-	if err != nil {
-		return nil, err
-	}
-	defer root.Close()
-	f, err := root.OpenFile(recoveryName(a), os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	root, err := e.openRecoveryExam(a.Exam)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, recoveryMetadataRefusal(a)
 	}
-	defer f.Close()
-	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > 16384 || info.Mode().Perm()&0077 != 0 || info.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) {
-		return nil, errors.New("unsafe administrator recovery preparation")
+	defer root.Close()
+	b, err := recoveryMetadataFile(root, a.Username+".json", 16384)
+	if os.IsNotExist(err) {
+		return nil, nil
 	}
-	var r RecoveryPreparation
-	if err = json.NewDecoder(io.LimitReader(f, 16385)).Decode(&r); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, recoveryMetadataRefusal(a)
+	}
+	r, err := decodeRecoveryMetadata(b)
+	if err != nil {
+		return nil, recoveryMetadataRefusal(a)
 	}
 	if r.Exam != a.Exam || r.Username != a.Username || r.UID != a.UID || r.Duration != a.Settings.Duration || r.Duration < 60 || r.Duration > 21600 || !attemptID.MatchString(r.SourceAttempt) || len(r.Checksum) != 64 || r.CreatedAt <= 0 || len(strings.TrimSpace(r.Reason)) < 8 {
 		return nil, errors.New("recovery preparation does not match this student, exam or allowance")
 	}
-	claimed, err := root.ReadFile(recoveryName(a) + ".consumed")
+	claimed, err := recoveryMetadataFile(root, a.Username+".json.consumed", 36)
 	if err == nil && string(claimed) != a.ID {
 		return nil, errors.New("saved-work recovery has already started")
 	}
 	if err != nil && !os.IsNotExist(err) {
-		return nil, err
+		return nil, recoveryMetadataRefusal(a)
 	}
 	// Also fence a crash after committing the interval but before writing the
 	// consumption marker. Cancelled, unstarted preflights do not consume a grant.
@@ -93,7 +90,7 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	if err != nil || source.Username != a.Username || source.UID != a.UID || source.State != "COMPLETED" || !source.Protected || source.Checksum != r.Checksum {
 		return nil, errors.New("secured recovery source unavailable")
 	}
-	return &r, nil
+	return r, nil
 }
 
 func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest *Manifest, dest string) error {
@@ -102,7 +99,7 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 		if !os.IsExist(err) {
 			return err
 		}
-		b, err := os.ReadFile(claim)
+		b, err := e.readRecoveryConsumption(a)
 		if err != nil || string(b) != a.ID {
 			return errors.New("recovery consumption conflicts with another attempt")
 		}

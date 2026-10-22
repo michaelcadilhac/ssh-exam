@@ -11,6 +11,17 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The local recovery-metadata safety candidate requires real private0700 catalog
+components, bounded no-follow single-link owner/private files and strict known-
+field JSON. Unsafe legacy metadata previously accepted by admission now refuses,
+as the deletion catalog already intended. Inspect actual legacy catalogs and
+preserve all authority/consumption/history before any separately authorized
+drained rollout; never automatically chmod, rewrite, drop unknown fields or
+remove consumed markers to pass the guard. No schema migration/resnapshot occurs.
+Rollback loses bounds/integrity refusals; repair forward with compatible readers
+and admission closed, never restore old state over newer work. This is not a
+supported legacy-grant editor, complete unified migration or deployment authority.
+
 The local native pane candidate adds unique incarnation-bearing unit names and
 persisted activation observations (`pane_instances`), plus checked serialized
 main-audit appends. New root close and shared student close refuse legacy or

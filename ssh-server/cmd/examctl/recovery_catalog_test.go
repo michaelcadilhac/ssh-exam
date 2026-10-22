@@ -88,4 +88,27 @@ func TestRecoveryCatalogCLIInRootUserNamespace(t *testing.T) {
 	if code != 1 || !strings.Contains(out, "account restriction") || !strings.Contains(out, "recovery-grants") || !strings.Contains(out, "Original deadline") {
 		t.Fatal("actual destructive refusal lacks guidance", code, out)
 	}
+	// Actual root CLI must agree with Begin's strict parser without exposing
+	// malformed private fields or interpreting them as an absent authorization.
+	grantPath := filepath.Join(c.State, "recovery-preparations", "retake", "student.json")
+	grant, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stateBefore, _ := os.ReadFile(statePath)
+	for _, suffix := range []string{`,"exam":"retake"}`, `,"Exam":"retake"}`, `,"private":"SYNTHETIC-PRIVATE-DO-NOT-ECHO"}`} {
+		malformed := append(append([]byte{}, grant[:len(grant)-1]...), []byte(suffix)...)
+		if err := os.WriteFile(grantPath, malformed, 0600); err != nil {
+			t.Fatal(err)
+		}
+		out, code = invoke("recovery-grants", "--exam", "retake")
+		if code != 1 || !strings.Contains(out, "preserve") || strings.Contains(out, "SYNTHETIC-PRIVATE-DO-NOT-ECHO") || strings.Contains(out, "\"disposition\"") {
+			t.Fatal("actual catalog CLI accepted ambiguous authority or leaked private fields", code, out)
+		}
+		stateAfter, _ := os.ReadFile(statePath)
+		metadataAfter, _ := os.ReadFile(grantPath)
+		if !bytes.Equal(stateBefore, stateAfter) || !bytes.Equal(malformed, metadataAfter) {
+			t.Fatal("refused catalog CLI rewrote authority or malformed metadata")
+		}
+	}
 }

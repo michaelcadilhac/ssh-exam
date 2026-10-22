@@ -357,7 +357,7 @@ func (e *Engine) publishWorkspace(a *Attempt) error {
 	if r.Source.Kind == "saved" {
 		claim := filepath.Join(e.Config.State, recoveryName(a)+".consumed")
 		if err := durableFile(claim, []byte(a.ID)); err != nil {
-			b, readErr := os.ReadFile(claim)
+			b, readErr := e.readRecoveryConsumption(a)
 			if !os.IsExist(err) || readErr != nil || string(b) != a.ID {
 				return errors.New("recovery consumption conflicts; preserve interval and inspect")
 			}

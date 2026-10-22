@@ -879,6 +879,17 @@ the approval is not a production change or a completed investigation.
   repair path that preserves the original archive, audit and one-use history.
 
 - [ ] **Extend recovery restoration crash/failure tests and repair procedures.**
+  October22 metadata safety candidate reproduces two shared-lock FIFO stalls in
+  actual Begin child processes and five accepted unsafe/ambiguous records, then
+  corrects them with pinned private directories, bounded no-follow/nonblocking
+  grant/marker reads and shared strict catalog/admission JSON validation. Sixteen
+  Begin cases, actual root CLI privacy/refusal, decoder fuzz and426 app checks
+  pass; final full native race/resource and fresh9-browser checks pass, plus new
+  exact-artifact guest40 enforcement/11 collector-death/3 root-pane repeats with
+  host/base preservation. No interval, marker, archive
+  or hold rewrite, unsafe-record fallback or production change. See
+  docs/recovery-metadata-safety.md. Every-boundary recovery and unified issuance/
+  expected-source compatibility remain open; this broad item stays unchecked.
   C7 approved October 21: recovery uses explicit new attempts from verified saved
   work with instructor-chosen allowances; no automatic refunds or reopening
   completed attempts. Preserve and safely secure the old work/history first;

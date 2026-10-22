@@ -8,7 +8,8 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
-Descriptor correction is local commita50067b, fully qualified as recorded below.
+Pane-management milestone is local commit0c2a529. Descriptor correction is local
+commita50067b, fully qualified as recorded below.
 C1 native pane management is implemented/tested locally: no-write bounded list/show,
 source/owner/incarnation-scoped reviewed revision, checked durable root audit and
 shared targeted close without preflight/account/clock side effects. Required
@@ -23,7 +24,7 @@ source/runtime hashes match; no web rebuild. Exact acceptance/hashes/compatibili
 and failed fixture evidence are in native-pane-management.md. C10/C11/legacy unused-enrollment choices have been
 re-presented asynchronously; independent correctness work continues without assuming answers.
 
-Next confirmed-correctness investigation: recoveryReference opens legacy grant
+Current confirmed-correctness increment: recoveryReference opened legacy grant
 files with blocking O_RDONLY under the shared state lock and reads consumed
 markers through unbounded/following ReadFile. The separate deletion catalog already
 has bounded no-follow/nonblocking file checks. Reproduce special/unsafe metadata
@@ -31,8 +32,28 @@ before changing shared validation. Seven actual Begin-process regressions are no
 RED: two FIFO stalls and five accepted unsafe/ambiguous records; a valid source
 reaches the explicitly mocked OS-guard boundary without starting time. An initial
 fixture stopped at earlier readiness rather than testing the suspect read; it
-was corrected before recording RED. Do not treat malformed authority as missing,
+was corrected before recording RED. The candidate now pins private path components,
+uses bounded no-follow/nonblocking metadata and publication-retry marker reads,
+and shares strict canonical-field JSON validation with the deletion catalog.
+Sixteen Begin-process cases pass two race repeats with surrounding recovery/
+workspace tests43.049s; actual root-mapped CLI privacy/refusal checks pass1.423s.
+Bounded two-worker decoder fuzz passes98664 executions/5.084s; all426 application
+tests92.61s, static/vet and35 Python checks pass. All174 prior browser hashes
+match. Full native race/resource/namespace/compiler/default-size passes
+core205.835s/CLI18.512s. New exact-artifact ACK/two-shell/root-CLI guest passes
+three times,40 enforcement and11 collector-death/healthy-peer checks pass
+(23 renewals,max0.0851329s, exact40MiB retry), all host/base preservation passing.
+Nine fresh browser/WASM SSH/handoff/monitoring/cleanup checks pass1.1m with all174
+hashes unchanged before/after. See recovery-metadata-safety.md. Do not treat malformed authority as missing,
 fall back to starter files, change intervals or rewrite legacy grants/history.
+
+The NEXT separate receipt investigation reproduces a FIFO stall in Begin's
+readWorkspaceReceipt plus accepted hardlinked/duplicate JSON receipts; valid
+control reaches only a mocked OS guard. Its candidate shares a pinned bounded
+private-file reader and rejects ambiguous top-level/nested source keys. This is
+not part of the preceding exact hashes or deployed behavior; qualification and
+supported diagnostics are still running. Preserve every private receipt/work
+directory; never recopy source, restart time or invent readiness to bypass failure.
 
 Pane-admission correction is local commitfad7e51. Next correctness investigation:
 local gate receives SCM_RIGHTS before JSON/account/SSH/capability validation but
