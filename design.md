@@ -1756,6 +1756,14 @@ and fences exact publisher tickets, but is not wired to native runtime or freeze
 input transitions. See docs/live-monitoring-renewals.md. Historical awaiting-
 decision notes below are superseded; no retained mode or deployment is enabled.
 
+The following R1a reader provides only bounded pinned kernel cgroup2 direct-thread
+membership, including live workers after main-thread exit. It rejects substitute/
+malformed/partial views and never writes controls. Empty membership is not proof
+against late launches. Actual scope/descendant coverage and pinned task/group/UID/
+stop facts remain separate barrier prerequisites; no runtime caller uses it.
+See docs/retained-thread-inventory.md and the dependency-ordered
+docs/retained-workload-barrier-plan.md. Do not infer a verified hold or cleanup.
+
 October22's local admission correction moves only provisional ready/ACK socket IO
 outside the global state transaction. Close revokes exact unused pane tokens;
 replacement issuance supersedes older unused tokens and recorded panes cannot be

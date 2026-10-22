@@ -124,6 +124,15 @@ full privileged qualification or deployment authorization.
   static build/vet and35 Python pass;174 browser hashes match. No runtime caller/
   actor factory/watchdog/input/freeze integration
   is enabled. See docs/live-monitoring-renewals.md. The critical item stays open.
+  The next R1a/C11 private reader observes bounded direct kernel cgroup.threads
+  through pinned cgroup2 descriptors, rejecting fake/unsafe/incomplete views.
+  Twenty native race repeats pass3.055s with actual surviving dead-leader workers
+  in owned user scopes; parser fuzz passes94815 executions10.069s. Full native
+  race/resource/namespace/compiler/default-size passes core269.086s/CLI25.771s;
+  426 app93.15s, build/vet/35 Python and nine fresh browser/WASM SSH checks1.1m
+  pass with174 hashes unchanged. This is not task/UID/stop verification, descendant/closed-
+  launch coverage, a freeze receipt or a live caller. See
+  docs/retained-thread-inventory.md and docs/retained-workload-barrier-plan.md.
   H4a/C3 now has a private unused framed-input codec and canonical cross-language
   byte fixture. Actual encrypted SSH-channel and raw Linux PTY tests cover binary
   control keys, UTF-8, fragmentation, truncation, malformed headers and bounded

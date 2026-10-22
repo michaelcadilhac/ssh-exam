@@ -1,0 +1,97 @@
+# Retained-workload barrier: implementation and qualification order
+
+October22,2026. C3/C9 retained lockout/recovery and C10 live renewals are approved;
+C11 authorizes developing/full qualification of stop-assisted freezing. This is
+the next dependency plan, not a completed investigation, freeze implementation or
+deployment. Current lockouts still terminate workloads and disconnect SSH.
+
+## Inspected boundaries
+
+- gate.go owns every original/workload PTY descriptor, bridge and child wait in
+  the shared agent. Its first WithState transaction also does filesystem/home/
+  temporary/application preparation. launchAcknowledgedPane then holds state
+  through actual start and system-manager readiness polling.
+- pane_admission.go already revokes unused tokens and rechecks current authority
+  after an ACK; an old ACK cannot relaunch a closed pane. That is not closed
+  admission for asynchronously pending OS launches. Simply moving start outside
+  the transaction would allow a late child after a close/hold.
+- engine.freeze observes recorded cgroups, but missing units are treated as
+  frozen/gone. That is insufficient while a root launch could still create one.
+  Positive writer verification is separate from pending launch exclusion.
+- uid_process.go pins group lifetime and includes zombie leaders with live
+  workers. It does not enumerate/prove every thread stopped. proc task-directory
+  views can become incomplete after main-thread exit; cgroup.threads must be
+  inspected through pinned real kernel cgroup descriptors, with task/group/UID/
+  lifetime checks. Do not add a newer thread-pidfd requirement or infer no writers
+  from a missing proc view.
+- Input framing, pane gate and pinned-PTY drain/discard are tested but unused.
+  Their local receipts are not authenticated cross-process registrations or
+  whole-attempt freeze/authorization. Root actor seal creation remains absent.
+- browser-ssh/client/client.go uses one authenticated class Client for command
+  and pane NewSession channels. A command exit/stall is not transport death.
+  Initial protected handoff deliberately replaces that Client once and clears
+  authentication references; retain that credential cleanup and distinguish
+  this verified transition from a new owner or ordinary later reconnect.
+
+## Dependency-ordered increments
+
+| Increment | Acceptance | Required tests |
+| --- | --- | --- |
+| R1: kernel inventory and stop facts | Bounded pinned cgroup/thread observations include surviving dead-leader workers; unknown is never empty/stopped | Actual synthetic thread groups, exits/reuse, malformed/oversized/foreign views, denied/closed handles; no host UID-wide signals |
+| R2: durable owner/epoch and closed launch admission | Exact root SSH peer/current registration plus durable one-use attempt/owner/input incarnation; no pending or new launch can escape a close | Actual root peer/process claims, crash/late reply, manager-start stall, simultaneous close/hold/deadline; no authority reconstructed from disk |
+| R3: retained pane supervisor | PTY, decoder and cancellable input gate outlive coordinator/collector failure; explicit role/epoch IPC and independently enforced expiry | Actual process death, EOF, stale/forged peer/frames, backpressure and leak/resource bounds; supported CLI/web inventory/close/status |
+| R4: stop/freeze/discard barrier | Close admission, revoke every gate, confirm all drains, preserve original job stops, stop/verify writers, freeze every scope and discard old input before claiming hold | Actual background/deferred IO, foreground job control, Nano/available course editors/debuggers, dead leader, fork/thread/namespace/manager races and injected failures |
+| R5: authorized thaw/recovery | Fresh per-pane input epochs/current same-owner complete coverage/unexpired interval; actual policy/auth loss retains its approval rules; C9 only under all prerequisites | Policy vs technical/gaps, old frames/acknowledgements, page/owner/restart and clock/deadline/collection races; no reopening/refund |
+| R6: combined qualification | Actual browser/WASM/SSH/native interfaces and operator CLI/web agree; mixed versions refuse unsafe mode | Full application/native race/resource/build/browser and exact-artifact guarded guest matrix; measured class/pane capacity |
+
+Per-pane supervisor versus one shared terminal supervisor is an explicit pending
+topology question. Recommended bounded per-pane processes limit a supervisor
+failure to its pane and preserve PTY/buffers through coordinator restart, at a
+measured memory/process cost. A shared terminal process costs less but fails all
+panes together. Neither topology may automatically restart a workload or derive
+positive permission from disk. No new service/unit is installed by this plan.
+
+The eventual supervisor must live in its own independently bounded control scope,
+outside both frozen student workloads and the coordinator service's kill/OOM
+domain. Merely forking a child inside a KillMode=control-group agent service does
+not survive that service restart. Before student code can run, positively verify
+the supervisor's independent scope/peer and closed bootstrap handshake. Pending
+scope assignment cannot release work. Keep the SSH entry/control descriptor and
+PTY ownership alive without copying keys or retaining password/MFA callbacks.
+Use inherited fixed-role descriptors and bounded authenticated local IPC, not
+caller-selected file paths, arbitrary root commands or a new inbound network API.
+The helper needs only measured necessary privileges; do not silently widen agent
+capabilities, weaken NoNewPrivileges or install units to make a fixture pass.
+
+## Barrier and failure rules
+
+An accepted live proof is not a kernel hold receipt. A control timeout is not
+misconduct. Keep root supervisors/verified SSH ownership outside frozen workloads;
+cover all student writers and any root launch which could still exec student
+code. Pending starters need a trusted closed admission/handshake gate, not an
+assumption that a missing cgroup can never appear later. Preserve unconfirmed
+tracking and refuse unsafe success; never drop it to free a terminal slot.
+
+Record original job stops before sending the barrier's own SIGSTOP. Cover every
+thread, not only leader state, and qualify shell notifications/foreground groups,
+pending/concurrent job-control signals and trace/debugger stops. Thaw only what
+this barrier actually stopped; never blindly SIGCONT the UID or a numeric PID.
+Identity loss, a missing live view, unknown asynchronous writers or failed input
+discard must not become a verified hold/thaw result. Failure handling must retain
+the access hold and preserve work; any destructive containment fallback needs an
+explicit operational failure, not a false promise of buffer retention.
+
+Deadline/watchdog and root live authority must coordinate current cutoffs. An old
+persisted lease or stale timer cannot override a newer verified live renewal.
+At a real deadline, keep timing verification/collection and original/current
+account restrictions; no stopped clock, automatic compensation or completed
+attempt reopening. A coordinator restart begins unknown and requires the full
+fresh verification/barrier/recovery protocol before work resumes.
+
+Every eventual management capability needs supported discoverable examctl and
+matching web behavior, including cause/current epoch/owner, pending starters,
+registered panes, drain/freeze failures and pending versus confirmed recovery.
+Do not expose raw input, credentials or arbitrary root commands in diagnostics.
+Keep old protocols unchanged until all prerequisites and combined tests pass.
+All rollout/migration/rollback and temporary-agent consolidation remain proposals
+in todo-rollout-plan.md; no deployment is authorized.

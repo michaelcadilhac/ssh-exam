@@ -44,6 +44,28 @@ race/resource/namespace/compiler/default-size passes core284.346s/CLI22.157s;
 426 app/80files pass95.78s, static build/vet and35 Python pass. All174 browser
 source/runtime hashes still match the nine-check run. See live-monitoring-renewals.md.
 
+C10 arbiter refactor is now local commit90f2c54. Next coordinated C3/C11 work is
+dependency-ordered in retained-workload-barrier-plan.md: pinned kernel thread
+inventory, durable current owner/epochs and closed launches, retained supervisors,
+all-writer/input stop/freeze/discard, authorized thaw and combined interfaces.
+Inspection confirms shared PTY ownership and state-locked startup remain; moving
+start outside state without a trusted closed bootstrap gate would be unsafe.
+Per-pane versus shared terminal-supervisor topology is asked, not assumed.
+At18:21UTC the raw boolean csc-sys guard remains BUSY; no guest/host work changed.
+
+Current R1a C11 groundwork adds a private unused bounded pinned cgroup2 direct-
+thread reader. It rejects ordinary text/FIFO/closed or malformed/oversized views;
+empty membership is explicitly not late-launch exclusion or freeze proof. Twenty
+race repeats pass3.055s, including an actual self-expiring owned user-manager
+scope whose main thread exits while a worker remains in cgroup.threads. Parser
+fuzz passes94815 executions10.069s; static build/vet pass. Full native race/
+resource/namespace/compiler/default-size passes core269.086s/CLI25.771s; all426
+app/80files pass93.15s,35 Python pass and nine fresh browser/WASM SSH checks pass
+1.1m with all174 browser source/runtime hashes unchanged. Task/UID/lifetime/stop
+validation, recursive coverage,
+closed launch/input registration and full barrier remain open; see
+retained-thread-inventory.md. No live mode, host UID signal, upload or deployment.
+
 Saved-work process-death/CLI/watchdog qualification is now local commit6cfd9d4.
 The next independent C7 correctness regression now confirms actual isolated
 ENOSPC leaves an empty consumption marker and prevents supported root CLI repair;
