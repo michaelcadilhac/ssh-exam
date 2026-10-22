@@ -827,6 +827,20 @@ summary {
   margin: 4px 0;
 }
 
+.continuation-resumed {
+  position: fixed;
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999999;
+  max-width: calc(100% - 32px);
+  padding: 8px 14px;
+  background: #152136;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
 .focus-warning {
   position: fixed;
   top: 88px;

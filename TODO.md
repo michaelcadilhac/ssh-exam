@@ -517,6 +517,15 @@ the approval is not a production change or a completed investigation.
   updates, expiration, a new interruption, both retained/lost SSH paths and successful
   continuation with a single approval. Implement only after the current exams,
   coordinated with the transport-retention changes below.
+  Local partial implementation (October22): scoped read-only status metadata and
+  stale-reply/expiry fences now drive explicit approval/revocation/expiry feedback
+  without automatic reauthentication, review requests or Continue. A deliberately
+  disabled status handler makes the real gateway/WASM SSH approval regression
+  fail; the mutant is removed. Six unit/HTTP checks, all395 application checks,
+  build/typecheck, all111 expanded browser checks and six desktop/narrow/clock
+  follow-up browser cases pass. Retained-path fixtures prove presentation only,
+  not actual C3
+  buffers/freeze; this checkbox stays open. See docs/student-continuation-status.md.
 
 - [ ] **Keep the existing SSH connection alive through policy lockouts.**
   When a student leaves fullscreen or another condition locks the attempt, retain

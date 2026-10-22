@@ -50,6 +50,7 @@ import {
 } from "../../../packages/protocol/monitoring-management.js";
 import { ClockControl } from "./clock-control.js";
 import { InterruptionManagement } from "./interruption-management.js";
+import { studentContinuationStatus } from "./continuation-status.js";
 import { assertClockCapabilities } from "./clock-management.js";
 import { registerExamAdmin } from "./exam-admin.js";
 import { registerTemplateAdmin } from "./template-admin.js";
@@ -1066,18 +1067,24 @@ export async function createApp(
     }
   });
   app.get("/api/student/attempts/:id/status", async (req) => {
-    const a = studentAttempt(req);
-    return {
-      attempt: a,
-      serverNow: now(),
-      authenticationGap: authenticationGap(a.id),
-      authorization:
-        store.db
-          .prepare(
-            "SELECT generation,expires,consumed FROM continuations WHERE attempt=?",
-          )
-          .get(a.id) || null,
-    };
+    return store.db.transaction(() => {
+      const a = studentAttempt(req),
+        at = now();
+      const authorization = store.db
+        .prepare(
+          "SELECT generation,expires,consumed FROM continuations WHERE attempt=?",
+        )
+        .get(a.id) as
+        | { generation: number; expires: number; consumed: number }
+        | undefined;
+      return {
+        attempt: a,
+        serverNow: at,
+        authenticationGap: authenticationGap(a.id),
+        authorization: authorization || null,
+        continuation: studentContinuationStatus(store, a, authorization, at),
+      };
+    })();
   });
   app.post(
     "/api/student/attempts/:id/frames",

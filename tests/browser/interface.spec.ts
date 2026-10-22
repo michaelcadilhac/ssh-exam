@@ -2113,7 +2113,11 @@ test("active page reload requires one instructor grant and fresh SSH before rest
     await expect(
       page.getByRole("heading", { name: "Instructor review required" }),
     ).toBeVisible();
-    await onlyScreens(page, ["summary", "Instructor review required"]);
+    await onlyScreens(page, [
+      "summary",
+      "Instructor review required",
+      "Continuation approved",
+    ]);
     await page
       .getByRole("button", { name: "Restore screen sharing", exact: true })
       .click();

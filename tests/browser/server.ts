@@ -27,6 +27,7 @@ const cleanupAccounts = { cleanup01: 10013, cleanup02: 10014 };
 const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
 const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
+const approvalAccounts = { approval01: 10020 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -114,6 +115,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...isolationAccounts,
       ...closureAccounts,
       ...monitoringAccounts,
+      ...approvalAccounts,
       policytest01: 12001,
       student01: 10001,
       student02: 10002,
@@ -308,6 +310,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       ...isolationAccounts,
       ...closureAccounts,
       policytest01: 12001,
+      ...approvalAccounts,
       student01: 10001,
       student02: 10002,
       student03: 10003,
@@ -419,6 +422,7 @@ for (const [id, username, uid] of [
   ["closure", "closure01", 10017],
   ["reload-opening", "closure02", 10018],
   ["monitoring-liveness", "monitoring01", 10019],
+  ["approval-feedback", "approval01", 10020],
   ["isolation-a", "isolation01", 10015],
   ["isolation-b", "isolation02", 10016],
   ["preflight-limit", "student04", 10004],

@@ -394,6 +394,16 @@ legacy-recovery-dependencies.md for qualification and constraints.
 
 ## Consolidate all three agent listeners (proposal only)
 
+The October22 approval-feedback candidate needs no additional migration beyond
+existing continuation revision016. Match gateway/browser artifacts; its additive
+read-only metadata never reconnects, thaws or consumes approval. Reverting the UI
+only restores generic messaging; do not roll back current grants, counters,
+deadlines or state. C3 remains disabled until coordinated native qualification.
+The Q3 core-qualification.test binary is test-only input for the disposable guest,
+**not an installation artifact** or a reason to restart installed services. See
+student-continuation-status.md and isolated-native-qualification.md for exact
+local/guest evidence. Temporary-agent consolidation below remains unexecuted.
+
 The canonical `exam-agent`, `exam-agent-live-upgrade` and
 `exam-agent-deferred-recovery` may each own historical PTY bridges. Do not stop
 **any** while those bridges may be needed, and do not mistake socket ownership

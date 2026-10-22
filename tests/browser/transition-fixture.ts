@@ -89,11 +89,16 @@ export async function simulatedMedia(page: Page) {
     });
   });
 }
-export async function fixture(page: Page, initial = "NONE", role = "student") {
+export async function fixture(
+  page: Page,
+  initial = "NONE",
+  role = "student",
+  exam = "sandbox",
+) {
   await observeScreens(page);
   await simulatedMedia(page);
   const settings = {
-    id: "sandbox",
+    id: exam,
     name: "Transition fixture",
     duration: 300,
     webcam: false,
@@ -108,7 +113,7 @@ export async function fixture(page: Page, initial = "NONE", role = "student") {
     state: initial,
     attempt: {
       id: "11111111-1111-4111-8111-111111111111",
-      exam: "sandbox",
+      exam,
       username: "transition",
       uid: 10001,
       settings: JSON.stringify(settings),
@@ -186,7 +191,7 @@ export async function fixture(page: Page, initial = "NONE", role = "student") {
               json: {
                 role,
                 username: "transition",
-                exam: role === "student" ? "sandbox" : null,
+                exam: role === "student" ? exam : null,
                 csrf: "fixture",
               },
             }

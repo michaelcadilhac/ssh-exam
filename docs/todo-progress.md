@@ -8,6 +8,56 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Actual SSH-owner qualification is being added as a separate opt-in disposable
+guest profile. The local helper compiles as a Go test executable only (not an
+installed native command); it refuses non-fixture/non-nspawn contexts. It will
+listen only after the guest wrapper stops that overlay's agent, never replace an
+existing guard socket, accept actual SO_PEERCRED from the installed exam-login
+over authenticated loopback SSH, refuse ordinary execution, and compare exact
+root-monitor pidfds across short-lived commands/owned connection exit. No ACTIVE
+seal, attempt, lease or held recovery is created. Twenty-six local Python safety
+checks and existing process guards pass. The first guest run failed safely on
+the removed RuntimeDirectory; the repaired actual OpenSSH/SO_PEERCRED test passes,
+then passes five repeats (0.23..0.29s each), with exact monitor identity across
+two refused command exits and exact connection exit. No ordinary work is allowed.
+Host binary/config/authority and guest-base preservation pass. Evidence:
+/var/tmp/ssh-exam-overlay-xkvs9bgs. A final test-binary rebuild adds a negative
+host guard passing20 race repeats (1.20s); its exact-artifact guest repeat is next.
+Full local native compatibility passes core173.28s/CLI6.35s, static build/vet pass.
+The existing shared csc-sys connection is available. A bounded read-only raw-state
+guard currently reports zero live/unresolved host attempts; no installed service,
+configuration or student record was changed. Any eventual test must recheck that
+guard throughout and abort its exact guest unit on new host work.
+
+During the approval candidate's expanded frozen-artifact browser run, a separate
+browser queue regression confirms that unsent input and late rejection can target
+a replacement pane with the same UI identifier. Both success/failure cases are
+RED on the old client. A local per-pane object fence now captures ownership before
+the asynchronous queue, invalidates it on close/exit/logout and prevents late
+rejection from closing the replacement. Thirteen focused client/cleanup/Unicode
+checks pass, including worker-reported natural exit and an unaffected sibling.
+This separate source change is NOT in the currently frozen browser
+build and must receive its own build/browser qualification before being committed
+as tested. It does not fence already-sent worker/SSH bytes or enable C3.
+
+Continuation after2928bc0: the paused student page is being given bounded,
+attempt/generation/review-revision-scoped approval presentation. Source inspection
+confirmed that the status endpoint already returns authorization but the page
+ignores it. The candidate adds explicit waiting/approved/expired/revoked/replaced
+messages, server-time expiry and stale-reply fences without granting work,
+reconnecting SSH, submitting review or invoking Continue automatically. Operational
+history can explain removal, never reconstruct usable permission. Six focused
+unit/HTTP checks and all395 application checks/74files (81.05s), typecheck/build,
+four focused browser checks and all111 expanded frozen-artifact browser checks
+(12.5m) pass. A disabled status-handler mutant makes the actual gateway/WASM SSH
+approval test RED; removed before final build. Nine runtime hashes (and all30
+including historical unused assets) match before/after. Nine generated screenshots
+were restored to their verified clean baseline. All six desktop/narrow and
+backward-time follow-up browser checks pass (32.2s) on the same frozen artifacts;
+no deployed claim is made.
+Retained-transport UI fixtures do not qualify real C3 containment;
+the full TODO stays open until coordinated native integration is verified.
+
 While clock/browser artifacts are frozen, a separate unused native process-lifetime
 guard is under qualification. Exact kernel pidfds are bracketed by full boot/start/
 UID-tuple/executable snapshots; current checks are nonblocking, never PID-only or

@@ -18,6 +18,10 @@ import { readinessMessage } from "../../../packages/protocol/readiness.js";
 import { PREFLIGHT_TIMEOUT_MINUTES } from "../../../packages/protocol/preflight.js";
 import { browserSSH } from "./browser-ssh.js";
 import { MonitoringConfirmations } from "./monitoring-confirmations.js";
+import {
+  ContinuationStatusTracker,
+  continuationNotice,
+} from "./continuation-status.js";
 import { examBrowserIssue } from "./browser-support.js";
 import "@xterm/xterm/css/xterm.css";
 import "winbox/dist/css/winbox.min.css";
@@ -80,6 +84,7 @@ export function Workspace({
     [count, setCount] = useState(0),
     [clock, setClock] = useState(Date.now()),
     [message, setMessage] = useState(""),
+    [resumedGeneration, setResumedGeneration] = useState<number | null>(null),
     [dialog, setDialog] = useState<any>(null),
     [dialogBusy, setDialogBusy] = useState(false),
     [openAfterBegin, setOpenAfterBegin] = useState(false),
@@ -116,6 +121,8 @@ export function Workspace({
   const activationEpoch = useRef(0);
   const activating = useRef(false);
   const lastServerSnapshot = useRef<number | null>(null);
+  const continuation = useRef(new ContinuationStatusTracker());
+  continuation.current.observeAttempt(attemptRef.current);
   const acceptSnapshot = (
     next: any,
     serverNow?: number,
@@ -147,8 +154,11 @@ export function Workspace({
       (current.state !== "LOCKED" ||
         next.generation !== current.generation ||
         next.reason !== current.reason)
-    )
+    ) {
       setRecoveryFeedback(null);
+      setResumedGeneration(null);
+    }
+    continuation.current.observeAttempt(next);
     attemptRef.current = next;
     setAttempt(next);
     if (serverNow) {
@@ -161,6 +171,7 @@ export function Workspace({
   const protecting =
     attempt.state === "FINALIZING" ||
     (finishing && attempt.state !== "COLLECTION_FAILED");
+  const approval = continuation.current.view(attempt, clock);
   const settings = reservation.settings;
   const sandbox = isSandbox(settings.id);
   const id = reservation.id;
@@ -897,6 +908,11 @@ export function Workspace({
           )
             return;
           updateAuthenticationGap(!!result.authenticationGap);
+          continuation.current.accept(
+            result.continuation,
+            result.attempt,
+            result.serverNow,
+          );
           if (result.attempt.state === "LOCKED") {
             armed.current = false;
             localLocked.current = true;
@@ -1152,6 +1168,7 @@ export function Workspace({
     localLocked.current = false;
     setLocked(false);
     armed.current = true;
+    setResumedGeneration(attemptRef.current.generation);
     for (const p of panes.current.values()) {
       p.fit.fit();
       send({
@@ -1321,6 +1338,13 @@ export function Workspace({
           </button>
         )}
       </header>
+      {attempt.state === "ACTIVE" &&
+        !covered &&
+        resumedGeneration === attempt.generation && (
+          <div className="continuation-resumed status" role="status">
+            Exam resumed. The clock continues.
+          </div>
+        )}
       {focusSeconds !== null && attempt.state === "ACTIVE" && !locked && (
         <div className="focus-warning" role="alert" aria-live="polite">
           <span aria-hidden="true">⚠</span>
@@ -1447,7 +1471,11 @@ export function Workspace({
                 {locked
                   ? sandbox
                     ? "Exam paused"
-                    : "Instructor review required"
+                    : approval.state === "approved"
+                      ? "Continuation approved"
+                      : approval.state === "expired"
+                        ? "Approval expired"
+                        : "Instructor review required"
                   : "Reconnecting"}
               </h1>
               <p>
@@ -1459,7 +1487,22 @@ export function Workspace({
 
               {locked && (
                 <>
-                  {!sandbox && (
+                  {!sandbox && attempt.state === "LOCKED" && (
+                    <p
+                      className={
+                        approval.state === "approved" ? "status" : "warn"
+                      }
+                      role="status"
+                      aria-live="polite"
+                      data-continuation-state={approval.state}
+                    >
+                      {continuationNotice(approval, authenticationGap)}
+                      {approval.state === "approved" && approval.expires && (
+                        <> Approval expires {chicago(approval.expires)}.</>
+                      )}
+                    </p>
+                  )}
+                  {!sandbox && approval.state !== "approved" && (
                     <details className="review-request">
                       <summary>Request instructor review</summary>
                       <label>
@@ -1519,9 +1562,11 @@ export function Workspace({
                   {authenticationGap && (
                     <p className="warn">
                       SSH disconnected. Reconnect
-                      {sandbox ? "" : " after instructor authorization"} to
-                      resume. Saved files remain; unsaved editor buffers are
-                      lost.
+                      {sandbox || approval.state === "approved"
+                        ? ""
+                        : " after instructor authorization"}{" "}
+                      to resume. Saved files remain. A disconnected session
+                      cannot restore unsaved editor buffers.
                     </p>
                   )}
                   <div className="restore-actions" hidden={authenticationGap}>

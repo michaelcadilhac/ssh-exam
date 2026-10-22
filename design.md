@@ -1618,6 +1618,15 @@ loss; protected submissions contain saved files only. Test hostile background
 writers/channels, repeated pauses, stale authorization, loss/rebind, deadlines and
 an unaffected second attempt before claiming implementation or deployment.
 
+October22's local presentation candidate adds strict read-only approval metadata
+to the existing student status read, scoped to attempt/generation/review revision
+and server observation time. Explicit expiry/revocation/replacement messages do
+not invoke SSH reconnect, request review, authorize input or Continue. Only a
+successful manually requested continuation shows generation-scoped resumed
+feedback; a new interruption clears it. The actual legacy disconnect path remains
+unchanged. Retained-path UI fixtures are not native buffer/freeze qualification.
+See docs/student-continuation-status.md for status and compatibility boundaries.
+
 ### Approved unified-grant design (October 20; implementation pending)
 
 Keep one ordinary attempt as the default. Explicit individual/bulk additional
