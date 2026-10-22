@@ -42,6 +42,16 @@ admission contained on uncertainty and never roll old state over newer work.
 C11 authorizes development/full qualification only, not production signals.
 See live-monitoring-renewals.md. No rollout/consolidation action is executed.
 
+The later local pane-open isolation/ownership-error correction adds no durable
+state format or pending-operation kind. Qualify matching native gate and current
+gateway/UI, preserving all existing one-use admissions, starts/deadlines, work,
+holds and submissions. New UI uses explicit gateway ownership codes, not error
+wording; old clients retain their old substring false-positive bug. An old
+gateway still enforces ownership but cannot provide the new UI classification.
+Prefer a matched drained forward update; do not silently count a downgrade as
+equivalent liveness/presentation safety. Native launch/readiness remain serialized
+and retained mode stays disabled. No service action or consolidation is executed.
+
 The local recovery-consumption atomicity candidate keeps the same36-byte marker
 format and preserves every existing marker/source/interval. It requires target
 filesystem O_TMPFILE and own-/proc/self/fd linkat support under actual hardened

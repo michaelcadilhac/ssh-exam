@@ -2246,6 +2246,21 @@ Stored durations remain seconds and timestamps remain absolute Unix milliseconds
 
 ### Monitoring isolation from native cleanup
 
+October22 local pane-open follow-up: Engine.local captures provisional admission
+under state, performs non-executing private filesystem/PTY setup outside shared
+state under the existing per-UID fence and a nonblocking one-copy-per-Engine
+resource guard, then releases setup fences before ready/ACK. Busy openings get
+retry guidance, not a monitoring violation. Final current-peer/authority/token
+consumption/actual OS launch remain serialized. Cancellation during IO cannot
+revive admission; existing watchdog cleanup settles partial cancelled files.
+This is not an asynchronous launch gate, retained supervisor or completed liveness
+fix. See docs/pane-admission-isolation.md for current qualification/limitations.
+Session errors carry an explicit gateway-generated page-ownership code only when
+an actual identity/page/owner check fails. The student UI must not infer ownership
+loss or a policy incident from diagnostic substrings such as Page/owns, which may
+occur in ordinary filesystem errors. Unclassified technical pane errors stay
+retryable diagnostics, never authorization, automatic recovery or a new clock.
+
 October 21 critical redesign requirement (partial local candidate): the instructor requires
 eliminating false lockouts caused by heartbeat/control latency. A timeout alone
 does not prove a policy violation, capture failure or SSH transport loss. The

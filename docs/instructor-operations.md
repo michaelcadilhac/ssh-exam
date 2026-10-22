@@ -165,6 +165,15 @@ uploads are not, by themselves, proof of complete authorized monitoring. The
 approved technical-only automatic recovery policy and remaining qualification
 are in monitoring-liveness-plan.md. Production recovery requirements are unchanged.
 
+Local pane-open correction (not deployed): private setup no longer blocks other
+students' shared-state controls. Busy setup is an explicit retry, not misconduct;
+use `examctl panes list ATTEMPT` and `info ATTEMPT --read-only`, never restart or
+clear tracking to force admission. The matching gateway/UI now classifies actual
+page-ownership failures explicitly. Technical error words such as Page/owns no
+longer create a local ownership incident. Required capture, actual page/SSH/native
+guards and original deadlines remain. See pane-admission-isolation.md; retained
+SSH/editor buffers and the complete liveness redesign are still unfinished.
+
 Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
 view of exact agent/name/hash metadata and first/latest attestation timestamps.
 It does not choose a version, edit defaults, issue grants or prove current native

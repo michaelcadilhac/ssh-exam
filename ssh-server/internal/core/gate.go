@@ -197,7 +197,7 @@ func (e *Engine) local(c *net.UnixConn) {
 			result = map[string]any{"shell": account.Shell, "home": account.Home}
 			return nil
 		}
-		identity, err := transportIdentity(int(cred.Pid), account.UID)
+		identity, err := e.paneIdentity(int(cred.Pid), account.UID)
 		if err != nil {
 			return err
 		}
@@ -206,6 +206,42 @@ func (e *Engine) local(c *net.UnixConn) {
 			return err
 		}
 		pending = &paneLaunchAdmission{capability: cap, account: account, authority: paneLaunchAuthority(a)}
+		return nil
+	})
+	if err != nil {
+		log.Printf("protected channel admission preview failed: %v", err)
+		json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	if r.Ordinary {
+		json.NewEncoder(c).Encode(result)
+		return
+	}
+	// No child can run in this phase. Serialize only this UID's private setup,
+	// not every student's control transaction. Cancellation may clean it while
+	// IO unwinds; the final unchanged authority/token/peer check below still
+	// refuses late admission. Release the UID fence before waiting for the ACK
+	// or running a terminal, so it is never a pane-lifetime reservation.
+	err = func() error {
+		// Preserve the old one-at-a-time private-copy resource budget without
+		// making other students' controls wait for it. Do not replace the old
+		// global-lock stall with unbounded concurrent copies in this process.
+		if !e.paneSetupMu.TryLock() {
+			return errors.New("private terminal setup is busy; retry opening this pane after checks settle; this is not a monitoring violation and starts no new clock")
+		}
+		defer e.paneSetupMu.Unlock()
+		lock, err := e.accountWorkLock(account.UID)
+		if err != nil {
+			return fmt.Errorf("private terminal setup is busy or unavailable; retry opening this pane after it settles; operator: examctl panes list %s and examctl info %s --read-only; cause: %w", pending.capability.ID, pending.capability.ID, err)
+		}
+		defer lock.Close()
+		a, cap := &pending.authority, pending.capability
+		identity := cap.Transport
+		if e.paneSetupCheckpoint != nil {
+			if err := e.paneSetupCheckpoint(); err != nil {
+				return err
+			}
+		}
 		if e.Config.HostFilesystem && !e.hostAccess(a) {
 			if issues := hostFilesystemIssues(e.Config); len(issues) != 0 {
 				return fmt.Errorf("host filesystem isolation unavailable: %v", issues)
@@ -291,14 +327,10 @@ func (e *Engine) local(c *net.UnixConn) {
 		// and the browser's bounded EXAM-READY protocol line.
 		result["welcome"] = welcome
 		return nil
-	})
+	}()
 	if err != nil {
 		log.Printf("protected channel preparation failed: %v", err)
 		json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
-		return
-	}
-	if launch == nil {
-		json.NewEncoder(c).Encode(result)
 		return
 	}
 	// Neither a slow client nor a backpressured ready reply owns the global
@@ -308,10 +340,14 @@ func (e *Engine) local(c *net.UnixConn) {
 		return
 	}
 	err = e.launchAcknowledgedPane(pending, r.Token, name, unit, func(currentAccount Account) (string, error) {
-		return transportIdentity(int(cred.Pid), currentAccount.UID)
+		return e.paneIdentity(int(cred.Pid), currentAccount.UID)
 	}, func(a *Attempt, cap Capability) (bool, error) {
 		practice := cap.Purpose == "practice"
-		if err = launch.Start(); err != nil {
+		start := launch.Start
+		if e.paneStart != nil {
+			start = e.paneStart
+		}
+		if err = start(); err != nil {
 			launch = nil
 			return false, err
 		}

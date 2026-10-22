@@ -50,6 +50,8 @@
   run affected unit/interface tests and targeted native races. Fix failures
   before advancing. Use actual isolated interfaces/kernel behavior when required;
   disclose mocked guards and untested privileged boundaries.
+  Read the focused test's completion result before launching broad qualification;
+  do not batch a broad-suite launch with collecting that still-unknown result.
 - Before broad qualification, review each new durable/intermediate state for
   inspection, cancellation, crash/restart, expiry, stale completion and admission
   bypass. No pending operation may become an indefinite account reservation or

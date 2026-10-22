@@ -2153,6 +2153,9 @@ export async function createApp(
       // another handler's identity, generation or error/revocation fence.
       let a: Attempt | undefined;
       let openingPane: string | undefined;
+      // Only these verified gateway checks may classify ownership loss. Never
+      // infer a policy event from native/filesystem diagnostic wording.
+      let pageOwnershipFailure = false;
       try {
         if (closingSessions) return;
         a = boundAttemptID ? store.attempt(boundAttemptID) : undefined;
@@ -2171,11 +2174,14 @@ export async function createApp(
             a.username !== session.username ||
             a.exam !== session.exam ||
             a.page_hash !== hash(bind.page)
-          )
+          ) {
+            pageOwnershipFailure = true;
             throw Error("Page does not own attempt");
+          }
           const old = sockets.get(a.id);
           if (old && old !== ws) {
             await life.lock(a.id, "Second page attempted WebSocket takeover");
+            pageOwnershipFailure = true;
             throw Error("Existing page owns attempt");
           }
           if (
@@ -2200,10 +2206,12 @@ export async function createApp(
         if (sockets.get(a.id) !== ws || ws.readyState !== WebSocket.OPEN)
           return;
         a = store.attempt(a.id);
-        if (a.page_hash !== boundPageHash)
+        if (a.page_hash !== boundPageHash) {
+          pageOwnershipFailure = true;
           throw Error(
             "Page no longer owns attempt; reconnect with authorization",
           );
+        }
         const m = messageSchema.parse(rawMessage);
         if (m.type === "open") openingPane = m.pane;
         const conn = connections.get(`${a.exam}:${a.username}`);
@@ -2437,6 +2445,7 @@ export async function createApp(
         }
         send(ws, {
           type: "error",
+          code: pageOwnershipFailure ? "page-ownership" : undefined,
           error: (e as Error).message,
           pane: openingPane,
         });

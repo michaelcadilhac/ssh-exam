@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import WebSocket from "ws";
 import { createApp } from "../../apps/server/src/app.js";
 import { hosts } from "../fixtures/hosts.js";
@@ -76,9 +77,13 @@ it.each(["e", "sandbox"])(
         remote.state = "LOCKED";
         return { ...remote };
       }
+      if (op === "issue-channel-admission")
+        throw Error("Synthetic setup failure: Page cache owns a busy filename");
       throw Error("Unexpected synthetic operation " + op);
     };
-    let ws: WebSocket | undefined;
+    let ws: WebSocket | undefined,
+      terminalWS: WebSocket | undefined,
+      badWS: WebSocket | undefined;
     try {
       const origin = await app.listen({ host: "127.0.0.1", port: 0 });
       config.origin = origin;
@@ -338,7 +343,64 @@ it.each(["e", "sandbox"])(
           1,
         );
       }
+      const connect = async () => {
+        const socket = new WebSocket(
+          origin.replace("http:", "ws:") + "/api/student/session",
+          { headers: { origin, cookie: sessionCookie } },
+        );
+        await new Promise<void>((resolve, reject) => {
+          socket.once("open", resolve);
+          socket.once("error", reject);
+        });
+        return socket;
+      };
+      const exchange = (socket: WebSocket, payload: object) =>
+        new Promise<any>((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(Error("Synthetic terminal WS reply timed out")),
+            5000,
+          );
+          socket.once("message", (data) => {
+            clearTimeout(timer);
+            resolve(JSON.parse(data.toString()));
+          });
+          socket.send(JSON.stringify(payload));
+        });
+      badWS = await connect();
+      const wrongPage = await exchange(badWS, {
+        v: 1,
+        type: "bind",
+        attempt: id,
+        page: "x".repeat(64),
+      });
+      expect(wrongPage).toMatchObject({
+        type: "error",
+        code: "page-ownership",
+        error: "Page does not own attempt",
+      });
+      expect(store.attempt(id).state).toBe("ACTIVE");
+      badWS.close();
+      terminalWS = await connect();
+      expect(
+        (await exchange(terminalWS, { v: 1, type: "bind", attempt: id, page }))
+          .type,
+      ).toBe("state");
+      const pane = randomUUID();
+      const technical = await exchange(terminalWS, {
+        v: 1,
+        type: "open",
+        pane,
+      });
+      expect(technical).toMatchObject({
+        type: "error",
+        pane,
+        error: "Synthetic setup failure: Page cache owns a busy filename",
+      });
+      expect(technical.code).toBeUndefined();
+      expect(store.attempt(id).state).toBe("ACTIVE");
     } finally {
+      terminalWS?.close();
+      badWS?.close();
       ws?.close();
       await app.close();
       await h.close();

@@ -295,8 +295,20 @@ docs/exam-definition-management.md; the broad grant TODOs remain unchecked.
   all three controls fail. Full426-app/native race/resource/build and35 Python
   checks pass, plus40 actual SSH/PAM/enforcement and11 collector-death/healthy-
   peer assertions, with host/base preservation. Exact hashes and limitations:
-  docs/pane-admission-isolation.md. Startup/readiness/filesystem waits, C10/C11,
-  retained SSH and the initiating incident remain open; no fix is deployed.
+  docs/pane-admission-isolation.md. The later October22 local pane-open follow-up
+  also moves private filesystem/PTY setup outside shared state, with nonblocking
+  per-UID and one-copy-per-Engine bounds. Actual Unix/PTY slow-setup controls,
+  close/cancel/no-late-launch, failure/FD/fence cleanup pass focused races;
+  current-artifact full native core281.826s/CLI20.327s and429 app checks94.50s pass.
+  Actual OS launch/readiness,
+  C10/C11, retained SSH and the initiating incident remain open; no fix is deployed.
+  End-to-end pane review also reproduces a UI false-positive: technical error
+  text containing Page/owns triggered an ownership incident. Explicit gateway-
+  classified ownership codes now distinguish it from retryable technical errors;
+  verified ownership/monitoring/native guards remain. Three browser RED cases and
+  actual authenticated WS regression cover this locally;17 fresh browser checks,
+  full native/app qualification and builds pass. Evidence/fixture corrections are
+  in docs/pane-admission-isolation.md. No incident cause is inferred.
   A separate local resource regression confirms received socket descriptors leaked
   on seven rejected/non-pane request paths. The candidate immediately owns/closes
   all returned rights, rejects truncation/extra rights and transfers one valid PTY

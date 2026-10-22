@@ -5,25 +5,32 @@ or temporary-agent consolidation. Stop if a command is not found. Preserve all
 work/history/protected submissions/deadlines/holds. Follow AGENTS.md; routine local
 commits and testing do not require instructor questions.
 
-## Current milestone: C14 finite sandbox Begin window
+## Current milestone: integrated pane setup and technical-error isolation
 
-Actual `web exams update sandbox`/web Exam settings preserve a finite explicit
-window; student preflight and gateway/native Begin enforce the saved window,
-including expiry during slow setup. New installs start closed; legacy indefinite
-definitions/preparations are never silently revised. Existing started deadlines,
-continuation, repeat history, protection and account restrictions remain intact.
-Old native agents refuse before new practice. No unified grant issuance yet.
+Actual Engine.local Unix/PTY entry prepares private files outside shared state,
+with nonblocking per-UID and one-copy-per-Engine bounds. Both setup fences release
+before ACK and on failure. Final one-use/current-peer admission/actual launch
+remain serialized; close/cancel during IO cannot start late code or revive an
+attempt. Existing `panes list/show/close`/`info --read-only` inspect/control it.
+The matching gateway/UI uses a verified ownership code, not Page/owns substrings;
+technical errors no longer manufacture local ownership incidents. No retained mode.
 
-RED native Begin/late-setup/preflight cases reproduce the former bypass0.369s
-after correcting the fixture UID; initial unit/HTTP cases reproduce unbounded
-defaults. Focused native sandbox races pass1.390s. Full429 application tests/81
-files pass106.95s, including compiled root-mapped CLI/TLS window configuration,
-real fixture SSH sign-in, closed preflight, old-agent refusal, staging retry and
-Begin/saved deadline checks. Four Chromium/WASM/SSH definition/repeat practice
-checks pass32.5s. App/WASM build/typecheck and native static build/vet pass; full
-native race/resource qualification passes core298.106s/CLI27.430s with all local
-opt-ins. Logs: /tmp/ssh-exam-sandbox-window-*.log. No command was missing.
-Detailed safety review/operator workflow: exam-definition-management.md.
+RED native1.102s and three browser cases reproduce the defects. Final focused
+races three repeats6.133s, full native core281.826s/CLI20.327s (all local opt-ins),
+17 Chromium/WASM/SSH monitoring/error/workspace/session checks49.5s and static/
+app/WASM build/typecheck/vet pass. Actual SSH/HTTP/WS scope cases pass13.52s after
+correcting a non-RFC fixture UUID; the first broad run also loaded that bad fixture
+(427 pass/two fail), not a pass. Fresh corrected full app qualification passes429
+tests/81 files94.50s. All current qualification runners have finished.
+Evidence/safety/limits: pane-admission-isolation.md; logs /tmp/ssh-exam-pane-setup-*.
+Real Unix peer/PTY/filesystem tests use private ancestry/exec seams, not privileged
+real-SSH qualification. No command was missing. AGENTS now requires inspecting a
+focused completion before starting broad qualification, not batching those steps.
+
+Prior validated C14: b90ba4d implements explicit finite sandbox window via shared
+CLI/web settings and gateway/native preflight/Begin, preserving started deadlines,
+repeat history and holds; new installs start closed. Full429 app/four browser/full
+native qualification is in exam-definition-management.md. Unified issuance is open.
 
 Previously validated: 47673b6 integrated slow readiness/home isolation with bounded
 cancellable non-admitting pending state (preflight-isolation.md); 43a7201 scoped
@@ -38,8 +45,14 @@ heartbeat/retained SSH, unified grants, workspace cleanup, safe definition
 retirement or all CLI management. Current lockouts still terminate workloads/
 disconnect SSH; the private live-renewal/input/process/readers are not a live fix.
 
-Next action: commit this validated C14 window increment locally, then resume the critical integrated
-C12 attempt-level terminal supervision through
+Immediate next action: commit this validated integrated milestone locally, then
+continue R2 closed launch/owner epochs plus C12's per-attempt supervisor through
+the actual gate/control/CLI path. Do not extend unused private helpers. Native
+launch/system-manager readiness and state fsync remain serialized and the full
+critical liveness workflow is still open. Unified Begin's outbound availability
+choice is awaiting the instructor; continue independent work while waiting.
+
+Next larger outcome remains C12 attempt-level terminal supervision through
 the actual exam-channel/control paths and supported CLI inspection/close, with
 PTY ownership outside coordinator kill/OOM scope. Specify the entry/loaded-role
 handshake and acceptance before coding; connect existing components rather than

@@ -1,5 +1,86 @@
 # Pane acknowledgement isolation (implemented/tested locally)
 
+## October22 follow-up: actual pane filesystem setup
+
+The current local candidate also moves the non-executing filesystem phase of
+Engine.local outside WithState, under the existing nonblocking per-UID workflow
+fence and a nonblocking single-setup-per-Engine guard, preserving the former
+one-copy-at-a-time process budget rather than introducing unbounded parallel
+copies. Another opening gets explicit retry/not-a-violation guidance; controls
+never wait for that setup guard. This is not a host-wide capacity claim across
+old handoff processes. A real Unix/SCM_RIGHTS/PTY regression reproduces blocked independent signed
+inspection/admission/close/cancel (RED1.102s). The actual runtime entry now captures
+authority under state, does private practice/application/home validation and PTY
+setup without shared state, releases the UID fence before ready/ACK, then uses the
+unchanged final one-use/current-peer/admission/serialized launch transaction.
+
+Cancellation may remove private files while IO unwinds: setup either refuses or
+its final revoked/current-state fence refuses; it cannot revive a cancelled
+attempt or execute code. The existing watchdog retries cancelled disposable
+cleanup. No new pending record, permission, timer, refund or retention policy is
+introduced. The UID fence is released on setup failure and before client waits;
+it never lasts for a terminal lifetime. A stuck filesystem can still require
+storage repair for that account; it is not a violation or permission to bypass
+holds. Inspection/targeted close remain supported by existing `examctl panes
+list/show/close` and `info --read-only`, with actionable setup-busy guidance.
+
+Safety review: no clock/lease/source/owner mutation in setup; final admission
+rechecks all those authorities, exact token/peer/registration/expiry and capacity.
+Cancellation/restart cannot reconstruct a positive admission; an unused capability
+keeps its original15s expiry. Partial private data is not a ready-work receipt.
+Missing/unconfirmed cleanup never enables work. Actual OS launch/system-manager
+readiness and state fsync remain serialized; moving them needs R2's closed-launch
+protocol. This does NOT implement C3/C10/C11/C12 or the completed heartbeat fix.
+
+Focused entry/descriptor/ACK/application/practice races pass three repeats6.057s.
+Four cases cover close/cancel during pipe-controlled slow setup, real invalid
+terminal refusal, injected setup failure, no OS launch, exact received-FD cleanup,
+released UID/copy fences, bounded refusal of a second actual entry and cancelled
+cleanup not deleting a new preparation. The resource guard was added during final
+review after the first broad run started; that earlier-artifact run is not final
+qualification and a fresh final native run is required.
+
+End-to-end review found a separate false-positive in this same workflow: the
+student UI inferred ownership loss from any error containing `Page` or `owns`.
+Ordinary filesystem/native diagnostics could therefore trigger a local incident
+and pause. Three real browser RED cases reproduce both false positives and the
+missing typed positive response. Gateway session handlers now attach the explicit
+`page-ownership` code ONLY at their three verified ownership checks; the UI uses
+that code, never diagnostic words. Other technical errors remove only their failed
+optimistic pane and display retry information. Genuine ownership handling, all
+server/native permission guards, required monitoring and existing deadlines stay
+unchanged. Error codes do not grant permission or recover a held attempt.
+
+Actual synthetic SSH/HTTP/WS tests distinguish a wrong-page bind's coded response
+from a native pane failure whose text contains both words, preserving ACTIVE and
+the original interval. The first follow-up fixture used a non-RFC UUID and failed
+before reaching native admission; it was corrected to randomUUID, without
+weakening validation. Both final cases pass13.52s. AGENTS.md now explicitly requires
+reading focused completion results before launching broad qualification, rather
+than batching those steps with an unknown focused result. This app/UI contract
+change requires fresh broad app/build/browser qualification; earlier unchanged-
+artifact evidence alone no longer suffices. The first full application run also
+loaded that invalid fixture (427 pass/two fail); it is not a qualification pass.
+No schema or permission migration.
+
+Final native qualification including the resource guard passes core281.826s/
+CLI20.327s, with all namespace/user-systemd/compiler/default-size opt-ins. Final
+focused entry/application/practice/ACK races pass three repeats6.133s. Fresh17
+Chromium monitoring/contact/error/ownership/workspace/session checks pass49.5s;
+app/WASM build/typecheck/format and static native build/vet pass. Fresh corrected
+full application qualification passes429 tests/81 files94.50s, including actual
+compiled root-mapped CLI/TLS and synthetic SSH/HTTP/WS workflows. Logs: /tmp/ssh-exam-pane-setup-{native-final,browser-final,
+app-final-corrected,build-final}.log and /tmp/ssh-exam-pane-error-ws-final.log.
+The latest pinned csc-sys guard is BUSY; no guest/upload/deployment is attempted.
+SSH ancestry and OS exec are private test-only seams (never configurable); the
+Unix peer credentials/descriptor/PTY/private filesystem entry are actual. No
+privileged real-SSH receipt is claimed for this later artifact. Full boundary
+qualification is pending; the earlier historical receipts below are not reused
+as new native qualification. Application/browser code/contracts remain unchanged
+from b90ba4d, whose429 app/four browser checks still apply to those artifacts.
+
+## Original ACK milestone and historical evidence
+
 October22,2026. No deployment or retained-SSH policy change. Source inspection
 confirmed the prior gate.local sent its ready response and waited for the client
 ACK inside WithState, up to the100s socket deadline. Signed renewals already use

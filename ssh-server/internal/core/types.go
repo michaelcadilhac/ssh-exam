@@ -187,6 +187,7 @@ type Engine struct {
 	Config              Config
 	mu                  sync.Mutex
 	healthMu            sync.Mutex
+	paneSetupMu         sync.Mutex
 	monitorMu           sync.Mutex
 	state               State
 	quiesce             func(*Attempt) error
@@ -199,6 +200,9 @@ type Engine struct {
 	activationPrepare   func(*Attempt) error
 	preparationReady    func() (bool, []string)
 	preparationHome     func(*Attempt) error
+	paneIdentity        func(int, int) (string, error) // Test-only dependency seams, never configurable.
+	paneSetupCheckpoint func() error
+	paneStart           func() error
 	healthProbe         func() (bool, []string) // Test-only dependency seam; never configurable.
 	templateVerify      func(Settings) error    // Test replacement never exposed in config/environment.
 }
@@ -347,6 +351,7 @@ func New(c Config) (*Engine, error) {
 	e.activationPrepare = e.prepareActivation
 	e.preparationReady = e.Ready
 	e.preparationHome = e.prepareHome
+	e.paneIdentity = transportIdentity
 	e.templateVerify = func(s Settings) error {
 		if s.TemplateVersion == "" {
 			return nil

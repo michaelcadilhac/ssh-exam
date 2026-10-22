@@ -766,10 +766,8 @@ export function Workspace({
         if (m.type === "error") {
           if (m.pane) remove(m.pane);
           setMessage(m.error);
-          if (!m.error.includes("Page") && !m.error.includes("owns"))
-            setDialog({ kind: "error", message: m.error });
-          if (m.error.includes("Page") || m.error.includes("owns"))
-            incident(m.error);
+          if (m.code === "page-ownership") incident(m.error);
+          else setDialog({ kind: "error", message: m.error });
         }
       };
       s.onclose = () => {

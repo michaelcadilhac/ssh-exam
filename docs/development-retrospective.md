@@ -43,3 +43,12 @@ completed verification, not expanded into another prototype. Subsequent work
 must connect to an actual supported workflow. Current status belongs in
 todo-current-checkpoint.md; feature documents retain detailed evidence. This
 retrospective records a process correction, not completion of the critical fix.
+
+Follow-up during the integrated pane-opening milestone: broad qualification was
+started in the same orchestration batch that collected an as-yet-unknown focused
+WS result. An invalid synthetic UUID then failed the intended native-error setup
+and was also picked up by the broad runner. The fixture was corrected without
+relaxing validation; the actual WS oracle passed, and fresh broad qualification
+was required. AGENTS.md now makes the sequencing explicit: inspect focused
+completion before launching broad suites. A failed setup is never proof of the
+behavior under test, and a passing earlier artifact never qualifies a later one.

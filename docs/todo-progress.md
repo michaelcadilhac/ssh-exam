@@ -3,6 +3,22 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 integrated pane-open result: actual Unix/PTY private setup no longer
+owns shared state; nonblocking per-UID/copy bounds preserve the old process copy
+budget and release before ACK/failure. Signed close/cancel during IO cannot launch
+late or revive preparation. Following errors through the UI reproduced a further
+false-positive from Page/owns substrings; explicit verified gateway ownership
+codes now preserve genuine ownership handling without turning technical errors
+into incidents. Native RED1.102s/three browser RED cases precede the fixes. Final
+full native core281.826s/CLI20.327s, corrected429 app checks94.50s,17 fresh browser
+checks49.5s and builds/typecheck/vet pass. A malformed UUID fixture initially
+missed native admission and failed a broad run; corrected actual WS cases and
+fresh full qualification pass, without relaxed validation. Full evidence is in
+pane-admission-isolation.md. AGENTS now requires observing focused completion
+before starting broad suites. No new unused component chain or retained mode.
+The raw host guard is BUSY; no guest/upload/deployment. Critical retained SSH,
+unified issuance and the other broad TODOs remain open; main count remains11/38.
+
 October22 C14: instructor selects a finite operator-configured sandbox window
 with automatic repeatable five-minute/no-webcam saved-settings grants. The local
 window workflow now works through shared CLI/web settings and gateway/native

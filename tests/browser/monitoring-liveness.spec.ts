@@ -1,6 +1,47 @@
 import { test, expect } from "@playwright/test";
 import { fixture, begin, simulatedMedia, ready } from "./transition-fixture.js";
 
+for (const error of [
+  "Cannot open /work/Page.notes: device busy",
+  "Temporary setup failure: cache owns a busy file",
+]) {
+  test(`technical pane error is not an ownership incident: ${error}`, async ({
+    page,
+  }) => {
+    const f = await fixture(page);
+    await begin(page, f);
+    f.model.socket!.send(JSON.stringify({ type: "error", error }));
+    await expect(
+      page.getByRole("dialog").filter({ hasText: error }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Exam paused" }),
+    ).toHaveCount(0);
+    expect(f.model.messages.filter((m) => m.type === "incident")).toEqual([]);
+    expect(f.model.attempt.state).toBe("ACTIVE");
+  });
+}
+
+test("explicit ownership error retains the existing local ownership interruption without text heuristics", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  await begin(page, f);
+  f.model.socket!.send(
+    JSON.stringify({
+      type: "error",
+      code: "page-ownership",
+      error: "Control registration replaced",
+    }),
+  );
+  await expect(
+    page.getByRole("heading", { name: "Exam paused" }),
+  ).toBeVisible();
+  await expect
+    .poll(() => f.model.messages.filter((m) => m.type === "incident").length)
+    .toBe(1);
+});
+
 test("contact-only acknowledgements cannot bind a page or substitute for initial state", async ({
   page,
 }) => {

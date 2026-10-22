@@ -16,7 +16,9 @@ type temporaryPaths struct {
 
 // Every source directory's parent stays agent-owned and private. A student may
 // write inside the mounted leaves, but cannot replace the bind-mount sources.
-// Call while holding the attempt state lock, as with pane admission/collection.
+// Pane preparation holds the per-UID workflow fence, not global state. It
+// confers no execution authority; final admission rechecks after setup. Cleanup
+// may remove cancelled private data concurrently, in which case setup refuses.
 func (e *Engine) prepareTemporary(a *Attempt, practice bool) (temporaryPaths, error) {
 	if !attemptID.MatchString(a.ID) {
 		return temporaryPaths{}, errors.New("invalid temporary-storage attempt ID")
