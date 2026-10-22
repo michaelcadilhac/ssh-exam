@@ -452,6 +452,17 @@ An administrator should be able to discover and finish a workflow using
   failure. Review the CLI as a first-time administrator with no repository context.
 
 - [ ] **Make refusal messages actionable, especially deletion and access release.**
+  October22 local correction removes a confirmed side effect: refusal reporting
+  called legacy List, reconciling access/rewriting state merely to explain an
+  error. It now uses scoped read-only capture, preserves the original error/exit1,
+  displays bounded recorded diagnostics and suggests working --read-only commands
+  with the chosen config path. Original state/lock regressions are RED0.318s; the
+  corrected actual compiled namespace-root workflow is RED0.405s when the old
+  side effect is restored, then passes after restoration. See
+  docs/native-read-only-diagnostics.md. Final full affected CLI races/TLS/namespace/
+  PTY/help pass14.594s, three focused read-only core repeats1.097s and build/vet
+  pass; no app/browser implementation or deployed policy change, and broader
+  management/refusal coverage remains open.
   Local status: CLI refusals show target type, attempt/account, original/current
   deadlines, protection/policy/writer errors and exact inspection/reconciliation
   commands. Emergency release remains separate and conditional. Broader web/CLI

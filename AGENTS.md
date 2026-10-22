@@ -25,6 +25,8 @@
 - Read TODO.md, design.md and the operational documentation relevant to the
   selected workflow; inspect the implementation before assuming work is missing.
   Use docs/todo-current-checkpoint.md to resume, not the entire historical log.
+- Resolve source paths with rg --files before opening them; do not guess filenames
+  or expand unchecked shell globs. Keep history/source reads scoped and bounded.
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.
@@ -67,6 +69,10 @@
   A failed test fixture must be distinguished from a product defect; retain the
   failure and explain the correction. Never infer new-artifact qualification
   from an older test bundle.
+- Verify that a regression's setup actually reaches the intended refusal/state.
+  If a mutation control passes, strengthen its oracle or record the limitation;
+  never count it as proof. Prefer direct observable effects over assumptions about
+  unavailable workers, incidental timestamps or coalesced filesystem events.
 - Report progress in usable outcomes and remaining gaps, not commit/test counts.
   Distinguish investigated, awaiting decision, implemented/tested locally and
   deployed. Proposals and unused helpers do not close a TODO investigation or

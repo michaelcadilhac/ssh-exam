@@ -50,6 +50,36 @@ transport/resume proofs, certificates/private keys, capability tokens, nonce map
 unit names, filesystem paths from private receipts or arbitrary raw JSON. Attempt
 identity/reason are private operator metadata, not suitable for public sharing.
 
+The subsequent local refusal-reporting correction also includes recorded access,
+policy and writer error strings in this typed root-only observation. These may
+contain private paths reported by the original operation; treat them as private
+operator metadata, not current writer/permission proof. Error reporting itself
+uses this reader rather than Engine.List, which would reconcile access and
+rewrite state. The original command retains its existing audit/failure semantics
+and exit1; it is not a promise that every refused mutation is globally zero-write.
+The reporter adds no state lock, worker, initialization or write. Console output
+quotes controls and limits access/policy/error text to1000 runes per string and
+20 writer errors; the read-only JSON retains the full recorded diagnostics.
+Unavailable/partial metadata never triggers fallback repair or false expiry.
+
+Original-path reporter tests fail on state bytes/mtime/ctime/initialized/lock and
+held-lock waiting (RED0.318s). An actual compiled namespace-root CLI test uses an
+unsafe private job-lock symlink to refuse an emergency override BEFORE its state
+transaction; no override/release is performed. It checks exact unchanged native
+state/history/holds, no initialization/audit, a held global lock and the emitted
+inspection command through a real shell with an apostrophe-containing config
+path. Restoring the old List call makes that final actual test RED0.405s; the
+mutant is removed. Earlier fixture assumptions were corrected rather than counted
+as product failures: ended pause is idempotent success, and failed cancel has its
+own legitimate state/audit transaction. A rename-count/field-only oracle was not
+sensitive enough; the final pre-transaction refusal directly checks bytes and
+timestamps. Broken state/lease and bounded escaped-display cases also pass.
+Final affected full CLI race/TLS/namespace/PTY/help suite passes14.594s; focused
+read-only core races pass three repeats1.097s, static native build/vet pass and
+diff checks are clean. Application/browser/runtime sources are unchanged; their
+previous milestone receipts are retained rather than rerun. No new target-host
+bundle, installation or deployment is claimed.
+
 The state file and each journal can change independently while reading. The CLI
 does not lock them into one atomic current view. Account/transport/generation/boot
 matching, unexpired timestamps and the existing15-second window are observations

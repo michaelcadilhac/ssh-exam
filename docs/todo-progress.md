@@ -3,6 +3,15 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 next integrated correctness result: refusal diagnostics no longer call
+legacy List/reconcile. They capture scoped metadata without writes/locks/workers,
+retain error/exit1 and provide actually exercised quoted --read-only commands.
+Original state/lock RED0.318s; final actual compiled root-namespace regression
+detects restored old List RED0.405s. Full affected CLI races/TLS/namespace/PTY/help
+pass14.594s, focused core read-only races1.097s/build/vet pass. No unchanged app/
+browser rerun or new root-host receipt; see native-read-only-diagnostics.md. The
+raw csc-sys guard remains BUSY, so no guest/new upload/deployment was attempted.
+
 Updated 2026-10-22 (America/Chicago). This is a local development record, not a
 deployment receipt. The instructor's latest October 21 instruction revokes the
 earlier conditional csc-sys deployment authorization: **do not deploy, including

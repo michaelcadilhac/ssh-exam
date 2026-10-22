@@ -66,6 +66,9 @@ type ReadOnlyAttemptObservation struct {
 	RecordedProtected           bool                     `json:"recorded_protected"`
 	AccessState                 string                   `json:"access_state"`
 	PolicyState                 string                   `json:"policy_state"`
+	AccessError                 string                   `json:"access_error"`
+	PolicyError                 string                   `json:"policy_error"`
+	Errors                      []string                 `json:"errors"`
 	Reason                      string                   `json:"reason"`
 	RecordedUnitCount           int                      `json:"recorded_unit_count"`
 	RegisteredTransportRecorded bool                     `json:"registered_transport_recorded"`
@@ -323,6 +326,8 @@ func ObserveNativeReadOnly(stateDir string, q ReadOnlyQuery) (ReadOnlySnapshot, 
 		a := state.Attempts[id]
 		v := ReadOnlyAttemptObservation{ID: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, State: a.State, Generation: a.Generation, ClockRevision: a.ClockRevision, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline, Ended: a.Ended, RecordedLease: a.Lease, RecordedProtected: a.Protected, AccessState: a.AccessState, PolicyState: a.PolicyState, Reason: a.Reason, RecordedUnitCount: len(a.Units), RegisteredTransportRecorded: a.Transport != "" && state.Registrations[a.Transport] == a.Username}
 		v.PreparationPending = a.PreparationPending
+		v.AccessError, v.PolicyError = a.AccessError, a.PolicyError
+		v.Errors = append([]string(nil), a.Errors...)
 		v.Lease = ReadOnlyLeaseObservation{Status: "absent", ObservedAt: Millis()}
 		// Both the directory and leaf are pinned/no-follow. A missing lease is
 		// ordinary; an inaccessible/unsafe directory is not evidence of absence.

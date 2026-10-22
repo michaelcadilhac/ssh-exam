@@ -90,14 +90,18 @@ after a command. List filters never silently constrain a mutation targeting a UU
 An ordinary local diagnosis starts with:
 
 ```sh
-sudo examctl list --active
-sudo examctl list --exam midterm --json
-sudo examctl info ATTEMPT
+sudo examctl list --read-only --active
+sudo examctl list --read-only --exam midterm --json
+sudo examctl info ATTEMPT --read-only
 ```
 
-`info` distinguishes state, original/current deadlines, protection, account/policy
-restoration and errors. Refusals print these facts plus exact inspection and
-reconciliation commands, retaining a nondefault configuration path. Collection
+`info --read-only` distinguishes recorded state, original/current deadlines,
+protection flags and account/policy/writer diagnostics, without proving current
+permission or fresh archive integrity. Refusal reporting uses this same zero-write
+reader, not legacy list/reconciliation. It preserves the original error/exit1,
+prints bounded escaped diagnostic text and gives working read-only inspection
+commands, retaining a nondefault configuration path. Explicit reconciliation is
+separate and may mutate state; it is never needed merely to explain a refusal. Collection
 recovery requires fixing the stated cause before an audited `retry`; a protected
 bundle must never be overwritten. `reconcile` handles eligible state across all
 attempts and may perform due collection/timing checks/restoration; it is not a

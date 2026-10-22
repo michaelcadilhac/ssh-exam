@@ -35,6 +35,23 @@ Do not extend the unused reader chain.
 
 ## Scope and next integrated outcome
 
+Independent refusal-reporting fix is now implemented/tested locally while the
+guarded host is BUSY. Original printRefusal called Engine.List and rewrote/
+reconciled state just to explain an error (RED0.318s). Scoped zero-write capture
+now preserves original error/exit1, bounded diagnostic/deadline context and the
+config path; suggested commands use --read-only. An actual compiled namespace-
+root pre-transaction refusal verifies exact unchanged state, held-lock response
+and executes its quoted inspection command. Restoring old List is RED0.405s,
+then removed. Final full affected CLI races/TLS/namespace/PTY/help pass14.594s;
+focused read-only core races three repeats1.097s/static build/vet/diff pass.
+App/browser implementation is unchanged, so those suites are not repeated.
+See native-read-only-diagnostics.md. No new bundle/guest/deployment.
+
+Sandbox grant-window transition has now been asked: recommended explicitly
+operator-configured finite window with the existing repeatable five-minute/no-
+webcam practice, versus individually issued grants only. Await the answer; do
+not invent an always-open or rolling window. Other approved decisions stand.
+
 TODO remains11 checked main items/38. This increment does NOT complete critical
 heartbeat/retained SSH, unified grants, workspace cleanup, safe definition
 retirement or all CLI management. Current lockouts still terminate workloads/

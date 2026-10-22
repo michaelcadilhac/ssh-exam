@@ -183,9 +183,9 @@ func printRefusal(w io.Writer, op, id, config string, e *core.Engine) {
 		fmt.Fprintf(w, "Inspect saved-work dependencies: %s recovery-grants\nUnused/uncertain authorizations and unfinished dependent attempts must retain their source. Never remove grant/consumed markers or rewrite history to force deletion.\n", prefix)
 	}
 	if e != nil && id != "" {
-		rows, err := e.List(false, "")
+		snapshot, err := core.ObserveNativeReadOnly(e.Config.State, core.ReadOnlyQuery{ID: id, Limit: 1})
 		if err == nil {
-			for _, a := range rows {
+			for _, a := range snapshot.Attempts {
 				if a.ID == id {
 					date := func(ms int64) string {
 						if ms == 0 {
@@ -193,18 +193,29 @@ func printRefusal(w io.Writer, op, id, config string, e *core.Engine) {
 						}
 						return time.UnixMilli(ms).UTC().Format(time.RFC3339Nano)
 					}
-					fmt.Fprintf(w, "Attempt %s; student %q; exam %q; state %s; access %s; policy %s; protected=%t\nOriginal deadline: %s\nCurrent deadline: %s\nAccess/policy recovery: %q / %q\nRecorded collection/writer errors: %q\n", a.ID, a.Username, a.Exam, a.State, a.AccessState, a.PolicyState, a.Protected, date(max(a.OriginalDeadline, 0)), date(a.Deadline), a.AccessError, a.PolicyError, a.Errors)
+					fmt.Fprintf(w, "Captured native metadata only; refusal reporting performs no reconciliation, locking or writes. Lease observation: %s; not proof of current SSH, monitoring or work permission.\nAttempt %s; student %q; exam %q; state %s; access %s; policy %s; recorded protected=%t\nOriginal deadline: %s\nCurrent deadline: %s\nAccess/policy recovery: %.1000q / %.1000q\n", a.Lease.Status, a.ID, a.Username, a.Exam, a.State, a.AccessState, a.PolicyState, a.RecordedProtected, date(max(a.OriginalDeadline, 0)), date(a.Deadline), a.AccessError, a.PolicyError)
+					fmt.Fprintf(w, "Recorded collection/writer errors (%d total; at most 20 displayed):\n", len(a.Errors))
+					for i, diagnostic := range a.Errors {
+						if i == 20 {
+							fmt.Fprintln(w, "  Further errors omitted; inspect the read-only JSON snapshot for full recorded diagnostics.")
+							break
+						}
+						fmt.Fprintf(w, "  %.1000q\n", diagnostic)
+					}
 					if a.Start == 0 {
 						fmt.Fprintln(w, "Only an unstarted preparation can be cancelled. Cancellation is distinct from submission deletion; inspect its status first.")
 					} else {
 						fmt.Fprintln(w, "Normal release requires both original/current deadlines, the same-boot elapsed boundary, verified protected work, no remaining writers and confirmed account restoration.")
 					}
-					fmt.Fprintf(w, "Inspect: %s info %s\nReconcile eligible state: %s reconcile\nVerify again: %s info %s\n", prefix, id, prefix, prefix, id)
+					if op == "cancel" && a.Start > 0 {
+						fmt.Fprintln(w, "This recorded attempt already started and cannot be cancelled, reopened or refunded. A completed record remains historical; inspect it without writes. For an unfinished attempt, review help pause/stop before any separately intended lock or irreversible finish.")
+					}
+					fmt.Fprintf(w, "Inspect without writes: %s info %s --read-only\nOnly for deliberate eligible-state recovery: %s reconcile\nObserve again without writes: %s info %s --read-only\n", prefix, id, prefix, prefix, id)
 					if a.State == "COLLECTION_FAILED" {
 						fmt.Fprintln(w, "Collection worker/resource/storage/writer diagnosis: examctl help collection. Protected work and account restrictions remain in place.")
 						fmt.Fprintf(w, "After fixing the reported cause: %s retry %s --reason 'Concrete collection repair performed'\n", prefix, id)
 					}
-					if a.Protected {
+					if a.RecordedProtected {
 						fmt.Fprintf(w, "Verify protected source: %s manifest %s\n", prefix, id)
 					}
 					if op == "delete" || op == "override-access" {
@@ -212,6 +223,8 @@ func printRefusal(w io.Writer, op, id, config string, e *core.Engine) {
 					}
 				}
 			}
+		} else {
+			fmt.Fprintf(w, "Current native snapshot unavailable; no fallback reconciliation or repair was attempted. Preserve records and inspect: %s info %s --read-only\n", prefix, id)
 		}
 	}
 	fmt.Fprintf(w, "Help: examctl help %s\n", op)
