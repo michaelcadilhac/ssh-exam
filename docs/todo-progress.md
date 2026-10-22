@@ -116,6 +116,36 @@ is implemented/tested locally (full app414/79files86.76s, native core169.485s/
 CLI8.439s, build/vet,32 Python, focused root-CLI/guard repeats and real guest
 property/worker-death/enforcement). Broader C6 capacity and critical C3 remain open;
 this is not deployment or permission for service consolidation.
+C6 aggregate readiness hardening is local commitd8abc8a. The next independent
+C4b0 prerequisite now has an internal UNWIRED bounded mountinfo parser, pinned
+descriptor mount/device-to-filesystem-root mapping and cross-view source-root
+relationship observations. It never returns eligibility/busy/safe or mounts/
+deletes anything. First synthetic refusal and actual private-namespace same-device
+file/directory bind checks pass; escaped whitespace paths and host-refusal repeats
+are being qualified. A complete namespace/process/fd/cwd/root/mmap inventory,
+admission/private-path fences, fresh archive/holds and destructive-phase proof
+remain open. No CLI cleanup or C3 mode is enabled; see
+workspace-mount-observations.md. Critical C10/C11 and legacy migration choices
+remain pending; no answer/policy is assumed.
+C4b0's expanded ten native race repeats pass3.341s with actual same-device
+directory/file aliases and escaped-path bytes preserved. A deliberately wrong
+mountpoint-only TEST mutant makes both synthetic mapping and actual kernel
+namespace-bind checks RED; restored immediately. Source-root mapping remains
+unwired/no eligibility output. Restored repeat, bounded fuzz, full app/native/
+build and unchanged web-artifact confirmation are now being qualified, not yet
+claimed complete. Complete namespace/process-use proof and supported cleanup
+remain open; no writer is killed or workspace deleted by this increment.
+C4b0 final local qualification passes restored10 race repeats3.254s, bounded
+two-worker fuzz57445 executions/11.020s, full native race/resource/namespace/
+compiler/default-size core172.616s/CLI10.615s, all414 app/79files88.29s and static
+build/vet. All140 source/runtime hashes remain the113-browser/12.8m artifact;
+no web/UI edit/rebuild. This closes the private topology primitive only, not full
+usage proof, dry-run eligibility, cleanup or C3. The full TODO remains unchecked.
+Further source review flags a potential correctness gap worth reproducing before
+continuing usage inventory: UID writer enumerators skip a zombie leader, although
+pthread_exit can leave another thread running and leader /proc views may be
+incomplete. Reproduce with a bounded owned synthetic process before calling it a
+confirmed bug; do not signal unrelated UIDs or assume this caused production.
 
 Q5 investigation afterb8587b9: basic/SQPOLL io_uring is demonstrably
 available to the synthetic UID, so test deferred pipe-read/linked-file-write and

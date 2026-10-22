@@ -69,6 +69,14 @@ verifyRelease also re-verifies the archive and may terminate recorded units; it
 is **not** a read-only cleanup eligibility probe. Do not reuse it blindly in a
 dry run. inspectWriters checks student UID containment, not every other process's
 namespace mounts/open handles. There is currently no mount-usage inventory.
+October22 C4b0 now adds an internal unused bounded mountinfo/source-root
+relationship primitive, not that full inventory or a cleanup decision. Actual
+private-namespace same-device file/directory aliases and escaped names are
+tested; a mountpoint-only mutant fails the real kernel regression, then is
+removed. Full app/native race/build and bounded fuzz pass; web artifacts stay
+identical. See workspace-mount-observations.md. Complete process/namespace/fd/
+cwd/root/mmap/lifetime barriers, fresh archive/holds and actual deletion-phase
+proof still must precede any supported dry-run eligibility/cleanup workflow.
 
 D1a privately stages and publishes work under the same per-attempt job fence and
 per-UID workflow lock. A committed-but-unpublished attempt needs those exact

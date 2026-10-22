@@ -873,6 +873,14 @@ the approval is not a production change or a completed investigation.
 ## Maintenance and further validation
 
 - [ ] **Define and implement private workspace cleanup after secured collection.**
+  October22 C4b0 implements/tests an internal bounded mountinfo/source-root
+  relationship prerequisite, including actual private-namespace same-device
+  directory/file aliases and escaped paths; a wrong mountpoint-only mutant fails
+  and is removed. Full414 app/native race/build, bounded fuzz and140 unchanged
+  web-artifact hashes pass. This is NOT complete mount/process-use proof,
+  eligibility or a cleanup command; those and fresh archive/hold/state/admission
+  fences remain required. See docs/workspace-mount-observations.md. No workspace
+  is deleted, grace period introduced or production state changed.
   Local design status: C4 approved October 21—manual cleanup with no grace period,
   superseding the earlier 14-day proposal. Verified archive/manifest, confirmed
   termination, no mounts/use/repair dependencies, holds, dry-run and audited
