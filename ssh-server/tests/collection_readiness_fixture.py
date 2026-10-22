@@ -33,7 +33,14 @@ if args and args[0] == '--enter':
     assert len(command) > 2 and os.path.isabs(command[0])
     mount('', '/', (1 << 14) | (1 << 18))  # MS_REC | MS_PRIVATE only in this child.
     mount(adapter, '/usr/bin/systemctl', 4096)  # Namespace bind, not a host file write.
+    mount(adapter, '/usr/bin/getent', 4096)  # Synthetic NSS only; never query host accounts.
     os.execv(command[0], command)
+
+if os.path.basename(sys.argv[0]) == 'getent':
+    assert os.getuid() == os.geteuid() == 0
+    assert args == ['passwd', 'synthetic']
+    print('synthetic:x:20001:20001::/home/synthetic:/usr/local/libexec/exam-login')
+    sys.exit(0)
 
 assert os.path.basename(sys.argv[0]) == 'systemctl'
 expected = ['show', 'exam-collection.slice', '--property=LoadState',
@@ -44,11 +51,24 @@ info = policy_path.lstat()
 assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1
 assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_size <= 4096
 policy = json.loads(policy_path.read_text())
-assert set(policy) == {'swap', 'capture'}
+assert set(policy) in ({'swap', 'capture'}, {'swap', 'capture', 'hold'})
 capture = Path(policy['capture'])
 assert capture.parent == policy_path.parent and capture.name == 'captured-query.json'
 assert not capture.is_symlink()
 capture.write_text(json.dumps(args) + '\n')
+if 'hold' in policy:
+    assert policy['hold'] is True
+    gate = policy_path.parent / 'health-probe-gate'
+    info = gate.lstat()
+    assert stat.S_ISFIFO(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1
+    assert stat.S_IMODE(info.st_mode) == 0o600
+    entered = policy_path.parent / 'health-probe-entered'
+    fd = os.open(entered, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    os.write(fd, b'entered\n')
+    os.close(fd)
+    # Deliberately held dependency ONLY in this guarded namespace test adapter.
+    with gate.open('rb', buffering=0) as stream:
+        assert stream.read(1) == b'1'
 print('LoadState=loaded\nMemoryMax=536870912\nTasksMax=96')
 if policy['swap'] is not None:
     print('MemorySwapMax=' + policy['swap'])

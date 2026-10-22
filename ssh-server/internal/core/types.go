@@ -184,6 +184,7 @@ type Engine struct {
 	transportUptime     func(int) (float64, error)
 	Config              Config
 	mu                  sync.Mutex
+	healthMu            sync.Mutex
 	monitorMu           sync.Mutex
 	state               State
 	quiesce             func(*Attempt) error
@@ -194,7 +195,8 @@ type Engine struct {
 	workerTimeout       time.Duration
 	workspaceCheckpoint func(string) error // Test-only fault barriers, never configurable.
 	activationPrepare   func(*Attempt) error
-	templateVerify      func(Settings) error // Test replacement never exposed in config/environment.
+	healthProbe         func() (bool, []string) // Test-only dependency seam; never configurable.
+	templateVerify      func(Settings) error    // Test replacement never exposed in config/environment.
 }
 
 // Tests replace this factory in test-only code. There is no configuration or

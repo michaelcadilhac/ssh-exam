@@ -255,6 +255,71 @@ func TestPaneAcknowledgementGuest(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// Exercise actual authenticated SSH -> SO_PEERCRED -> signed health while its
+	// readiness dependency is held. The seam exists only in this test executable;
+	// no installed/native environment switch or positive readiness is introduced.
+	healthReader, healthWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	healthEntered := make(chan struct{})
+	engine.healthProbe = func() (bool, []string) {
+		close(healthEntered)
+		_, _ = io.Copy(io.Discard, healthReader)
+		return false, []string{"synthetic held readiness observation, not admission permission"}
+	}
+	healthCmd := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Username: "examq", Transport: transport, Op: "health"}
+	healthFrame, _ := json.Marshal(signedCommand(key, healthCmd))
+	healthContext, healthCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	healthDone := make(chan error, 1)
+	t.Cleanup(func() {
+		_ = healthWriter.Close()
+		healthCancel()
+		select {
+		case <-healthDone:
+		case <-time.After(3 * time.Second):
+			t.Error("owned held-health SSH cleanup unconfirmed")
+		}
+		_ = healthReader.Close()
+	})
+	go func() {
+		request := exec.CommandContext(healthContext, "/usr/bin/ssh", append(append([]string{}, args...), "examq@127.0.0.1", "exam-control")...)
+		request.Stdin = bytes.NewReader(append(healthFrame, '\n'))
+		out, err := request.Output()
+		var response struct {
+			Result map[string]any `json:"result"`
+			Error  string         `json:"error"`
+		}
+		if err == nil && (json.Unmarshal(out, &response) != nil || response.Error != "" || response.Result["ready"] != false) {
+			err = fmt.Errorf("held health returned an invalid or positive readiness result")
+		}
+		healthDone <- err
+	}()
+	select {
+	case <-healthEntered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("real signed SSH health did not reach held dependency")
+	}
+	command("inspect-attempt", Request{ID: id})
+	if err := healthWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-healthDone:
+		healthDone <- err
+		if err != nil {
+			t.Fatal("actual signed SSH health failed after owned release", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("held health did not finish after release")
+	}
+	engine.healthProbe = nil
+	if state, err := readStateSnapshot(config.State); err != nil {
+		t.Fatal(err)
+	} else if a := state.Attempts[id]; a.State != "PREPARING" || a.Start != 0 || a.Deadline != 0 || a.OriginalDeadline != 0 || a.Transport != transport || len(a.Units) != 0 {
+		t.Fatal("held health changed owner/interval/admission authority")
+	}
+	t.Log("actual authenticated signed SSH health waits outside state while independent signed inspection remains responsive; no readiness permission or interval granted")
 	pane := ManagementID()
 	token := command("issue-channel-admission", Request{ID: id, Username: "examq", Transport: transport, Pane: pane, Purpose: "practice"}).(map[string]any)["token"].(string)
 	entry := exec.Command("/usr/bin/ssh", append(append([]string{}, args...), "-tt", "examq@127.0.0.1", "pane-ack")...)

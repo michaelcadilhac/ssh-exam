@@ -148,6 +148,14 @@ func boot() string {
 	return strings.TrimSpace(string(b))
 }
 func (e *Engine) Call(op string, r Request) (any, error) {
+	if op == "health" {
+		// Preserve legacy state validation/initialization before observing, but
+		// never retain its lock through NSS/checker/filesystem readiness IO.
+		if err := e.WithState(func() error { return nil }); err != nil {
+			return nil, err
+		}
+		return e.observeNativeHealth()
+	}
 	if op == "prepare-attempt" {
 		lock, err := e.accountWorkLock(r.UID)
 		if err != nil {
@@ -197,14 +205,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 	var result any
 	err := func() error {
 		if op == "health" {
-			ready, missing := e.Ready()
-			productionReady := ready
-			if e.Config.FunctionalTestAccount != "" {
-				productionReady = false
-			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "private-workspace-staging", "collection-limits-v1", "immutable-template-versions-v1", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
-			result.(map[string]any)["capabilities"] = append(result.(map[string]any)["capabilities"].([]string), "unique-pane-incarnations-v1", "reviewed-native-pane-control-v1")
-			return nil
+			return errors.New("health observation requires the outside-state workflow; use Engine.Call or signed health")
 		}
 		if op == "resolve-course-accounts" {
 			if len(r.Usernames) > 10000 {

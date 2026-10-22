@@ -69,6 +69,16 @@ receipts, source history and holds; do not recopy or invent metadata to repair a
 failure. See docs/workspace-receipt-safety.md for tests and pending exact-artifact
 qualification. No deployment, new allowance or lockout policy is enabled.
 
+The local native health workflow validates state and consumes authenticated
+one-use signed nonces before observing readiness outside the global state lock.
+Configuration reporting publishes the observation afterward in a separate short
+transaction. One no-wait probe per Engine prevents in-process fanout; this is not
+a host-wide resource limit or an atomic readiness snapshot. Busy/unknown is not
+student misconduct, cached permission or a new clock. Actual preparation/Begin
+guards remain fresh and unchanged. See docs/native-health-isolation.md for local
+and exact-artifact guest evidence and the remaining guarded worker regression.
+Preparation/startup/home-copy waits and durable-storage delays remain open.
+
 ## 2. Product context and defaults
 
 The instructor administers a programming exam on a Unix/Linux class server. Questions, tools, documentation, student files, and submission collection are server-side. The instructor has root access on that server. Students use their personal computers at home or supervised computers in person.

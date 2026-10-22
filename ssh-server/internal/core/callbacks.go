@@ -81,11 +81,14 @@ func (e *Engine) queueChanges() error {
 	return nil
 }
 func (e *Engine) ReportConfiguration() error {
+	if err := e.WithState(func() error { return nil }); err != nil {
+		return err
+	}
+	h, err := e.observeNativeHealth()
+	if err != nil {
+		return err // Busy/unknown is not a failed-readiness snapshot to publish.
+	}
 	return e.WithState(func() error {
-		h, err := e.callLocked("health", Request{})
-		if err != nil {
-			return err
-		}
 		accounts := map[string]int{}
 		for name, a := range e.Config.Accounts {
 			accounts[name] = a.UID

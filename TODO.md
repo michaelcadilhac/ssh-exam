@@ -245,6 +245,19 @@ full privileged qualification or deployment authorization.
   40 enforcement and11 collector-death/healthy-peer assertions pass; every host/base
   preservation check passes. Details: docs/native-gate-descriptors.md. This is not
   global connection-flood capacity, C3 completion, a production diagnosis or deployment.
+  The local health-isolation increment also reproduces slow readiness IO blocking
+  global state through public health, signed health and configuration publication.
+  Observations now run outside state after existing validation/durable nonce
+  consumption; configuration publication remains a short separate transaction.
+  Busy refuses without false readiness/policy events and Begin never uses cached
+  health. Focused/actual compiled namespace CLI checks,426 app, full native
+  race/resource/build and35 Python checks pass. The exact artifact passes three
+  actual signed-SSH held-health/independent-inspection repeats and40 enforcement
+  assertions with host/base preservation. Its final11 worker/healthy-peer checks
+  remain pending: new live/unresolved host work made the guard refuse BEFORE
+  guest creation. See docs/native-health-isolation.md. Do not clear production
+  records or substitute an older binary's receipt. This does not close the
+  critical TODO, establish the incident cause or enable retained SSH/recovery.
 
 ## Firm design policy: examctl is the complete management interface
 

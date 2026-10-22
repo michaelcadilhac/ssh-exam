@@ -8,7 +8,18 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
-Recovery-metadata milestone is local commitcb5b809; pane management is0c2a529.
+Workspace-receipt milestone is local commitde16a5c, recovery metadata iscb5b809
+and pane management is0c2a529. Current health-observation code passes all local
+checks but is NOT yet committed/fully privileged-qualified. The first csc-sys
+guard refused live/unresolved work BEFORE guest creation; no test unit/production
+state/service was changed. A later boolean-only raw recheck reported idle. The
+unchanged guarded retry passes3 real signed-SSH held-health/independent-inspection,
+late-ACK/root-CLI/two-shell repeats1.79/0.86/0.79s with host/base preservation at
+/var/tmp/ssh-exam-overlay-vvl49xqt. The same artifact passes40 guest enforcement
+assertions with host/base preservation at /var/tmp/ssh-exam-overlay-ynys70us.
+The final worker-isolation run was refused BEFORE guest creation when new
+live/unresolved host work appeared; its11 assertions remain pending, not PASS.
+Pending C10/C11/legacy-unused migration answers are not inferred.
 Descriptor correction is local
 commita50067b, fully qualified as recorded below.
 C1 native pane management is implemented/tested locally: no-write bounded list/show,
@@ -25,7 +36,7 @@ source/runtime hashes match; no web rebuild. Exact acceptance/hashes/compatibili
 and failed fixture evidence are in native-pane-management.md. C10/C11/legacy unused-enrollment choices have been
 re-presented asynchronously; independent correctness work continues without assuming answers.
 
-Current confirmed-correctness increment: recoveryReference opened legacy grant
+Implemented recovery correctness increment: recoveryReference opened legacy grant
 files with blocking O_RDONLY under the shared state lock and reads consumed
 markers through unbounded/following ReadFile. The separate deletion catalog already
 has bounded no-follow/nonblocking file checks. Reproduce special/unsafe metadata
@@ -48,7 +59,7 @@ Nine fresh browser/WASM SSH/handoff/monitoring/cleanup checks pass1.1m with all1
 hashes unchanged before/after. See recovery-metadata-safety.md. Do not treat malformed authority as missing,
 fall back to starter files, change intervals or rewrite legacy grants/history.
 
-The CURRENT separate receipt increment reproduces a FIFO stall in Begin's
+The completed local receipt increment reproduces a FIFO stall in Begin's
 readWorkspaceReceipt plus accepted hardlinked/duplicate JSON receipts; valid
 control reaches only a mocked OS guard. Its candidate shares a pinned bounded
 private-file reader and rejects ambiguous top-level/nested source keys. This is
@@ -63,15 +74,24 @@ host/base preservation check passing. All174 browser hashes match; no web rebuil
 See workspace-receipt-safety.md. Preserve every private receipt/work
 directory; never recopy source, restart time or invent readiness to bypass failure.
 
-Next health-observation investigation confirms slow readiness IO is called inside
+Current health-observation investigation confirms slow readiness IO is called inside
 WithState by native health, signed health and configuration reporting. All three
 controlled kernel-pipe/signed-inspection regressions are RED. An uncommitted
 candidate authorizes/durably consumes signed nonces first, probes outside state
 and publishes configuration afterward, preserving initial broken-state refusal.
 It never caches health for Begin and bounds concurrent probes per Engine only,
 not across all processes. Ten focused race repeats including busy/replay/restart/
-untrusted-request/no-false-publication cases pass1.312s. Actual CLI/guest and full
-qualification remain pending; see native-health-isolation.md. No incident cause,
+untrusted-request/no-false-publication cases pass1.370s, now also requiring the real
+Begin guard despite a healthy observation. Actual static root CLI concurrency and
+synthetic NSS/manager checks pass3.185s; full426 app90.47s, native race/resource/
+namespace/compiler/default-size core208.587s/CLI12.946s, static/vet and35 Python
+checks pass. After the initial safe idle-guard refusal, a later read-only recheck
+reported idle and the unchanged guarded guest retry passes3 actual signed SSH
+held-health/inspection plus prior pane/root-CLI repeats with host/base preserved.
+The same artifact passes40 enforcement assertions with host/base preservation;
+its final worker run was refused before guest creation on new live/unresolved
+host work and remains pending. Do not change host work or substitute a prior
+binary's receipt. See native-health-isolation.md. No incident cause,
 C3/C9 completion, C10/C11 answer or deployment is inferred.
 
 Pane-admission correction is local commitfad7e51. Next correctness investigation:

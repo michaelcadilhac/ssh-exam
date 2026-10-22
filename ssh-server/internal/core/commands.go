@@ -142,6 +142,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	}
 	setup := ""
 	handoff := false
+	health := false
 	var result any
 	err = e.WithState(func() error {
 		now := Millis()
@@ -258,6 +259,8 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			setup = a.ID
 			return nil
 		case "health":
+			health = true
+			return nil // Signature/account/registration/nonce commit BEFORE slow IO.
 		case "resolve-course-accounts":
 			if len(r.Usernames) != 1 || r.Usernames[0] != username {
 				return errors.New("only own account resolution allowed over student SSH")
@@ -298,6 +301,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		result, err = e.callLocked(cmd.Op, r)
 		return err
 	})
+	if err == nil && health {
+		return e.observeNativeHealth()
+	}
 	if err == nil && cmd.Op == "activate-attempt" {
 		return e.activatePrepared(result.(*Attempt), cmd.Expires)
 	}
