@@ -220,7 +220,13 @@ full privileged qualification or deployment authorization.
   with host/base preservation. See docs/writer-thread-groups.md. This is not the
   production incident cause or completed retained-SSH/root-admission work. Add the
   documented dead-leader terminal case to C11 stop-assisted qualification; do not
-  infer it from earlier Bash/Nano tests or enable a new signal policy.
+  infer it from earlier Bash/Nano tests or enable a new signal policy. That
+  separate guarded test now passes60 actual freeze/discard/thaw cycles, preserving
+  acknowledged worker-memory/foreground/shell/original stopped-job state with
+  unchanged host/base evidence. Full native race/resource/build and34 Python
+  checks pass. It does not repair deferred-IO cancellation or complete root
+  admission/retained SSH; C11 remains awaiting decision. Exact hashes/evidence:
+  docs/native-async-io-investigation.md. No deployment or policy change.
 
 ## Firm design policy: examctl is the complete management interface
 

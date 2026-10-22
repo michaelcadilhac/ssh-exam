@@ -247,3 +247,13 @@ with host/base preservation. Exact hashes, evidence paths, bounds and limitation
 writer-thread-groups.md. This fixes a narrow UID/writer correctness gap; it does
 not complete retained SSH, all-root admission, cross-namespace cleanup or
 temporary-agent consolidation, and is not a production diagnosis/deployment.
+
+The subsequent test-only `monitoring-thread-tty` profile extends the same bounded
+unprivileged fixture with private-buffer terminal acknowledgements. Ten paired
+repeats pass60 cgroup-only/stop-assisted cycles with the main thread dead and
+foreground worker live, exact memory/foreground/shell preservation, original
+stopped job unchanged and stale terminal input discarded. Host/base preservation
+passes; evidence /var/tmp/ssh-exam-overlay-r_r9rril. Negative host probes cover
+this profile too. Exact artifact hashes and unchanged limitations are in
+native-async-io-investigation.md. No live signal/admission/retained-SSH policy is
+enabled; the separate linked-IO compatibility failure remains a release blocker.

@@ -152,6 +152,12 @@ class OverlayTests(unittest.TestCase):
             '-test.run=^TestWriterThreadGroupGuest$', '-test.v', '-test.count=5',
             '-test.timeout=90s'])
 
+    def test_dead_leader_foreground_tty_profile_is_separate_and_bounded(self):
+        self.assertEqual(guest.monitoring_thread_tty_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestMonitoringThreadTTYGuest$', '-test.v', '-test.count=10',
+            '-test.timeout=90s'])
+
 
 if __name__ == '__main__':
     unittest.main()

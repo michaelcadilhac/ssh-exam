@@ -132,3 +132,45 @@ The instructor has now been asked whether the eventual retained-mode design may
 use application-visible SIGSTOP/SIGCONT while preserving originally stopped jobs,
 or should require a separately qualified kernel baseline. That consequential
 choice is awaiting a response; no stop-assisted runtime policy is adopted here.
+
+## Dead-main-thread foreground qualification (October22, test only)
+
+The writer correctness investigation separately proved that a zombie main thread
+can retain a live worker. That is also a job-control edge, not covered by the
+earlier Nano fixture. The new guarded `monitoring-thread-tty` profile runs an
+actual interactive Bash with an original deliberately stopped background job and
+an unprivileged foreground pthread fixture whose main thread exits. Acknowledged
+sequence-numbered terminal replies prove a private worker-memory buffer, not
+terminal echo or a buffer saved to disk. The fixture also writes a counter and
+self-expires after15s; its original nonterminal writer mode is unchanged.
+
+Ten repeats each compare three cgroup-only holds with three test-only
+shell-first/worker SIGSTOP holds. Each hold verifies actual cgroup freeze and
+UID-tuple writer containment, unchanged counter bytes, drained private input gate
+and discarded kernel terminal input. Only the exact pinned processes stopped by
+the assisted case receive SIGCONT, worker before shell. The original stopped job
+must stay stopped, the surviving worker must keep its foreground group and exact
+acknowledged buffer, and EXIT must return to that same live Bash. Current and
+original synthetic deadlines remain unchanged. The supervisor uses RawConn for
+the foreground query so observation does not change nonblocking PTY flags.
+
+All60 cycles pass,0.35..0.80s per paired repetition; installed host binaries,
+configuration, authority and guest base preservation pass. Private evidence:
+`/var/tmp/ssh-exam-overlay-r_r9rril`. Exact SHA-256:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| exam-agent | 9dd13a2958b6305c3aaab180c840e572b50e118f1afa2797e9025f3bca9652b4 |
+| examctl | c3cead81bb6cfd1caa2cc4a83c175cd6e2f2b5e2e644f041c2b23959b7f50b05 |
+| core-qualification.test | 406f9b134d345e2963164458e0ddbdf6a7121215561b9ffeda4100ff4345e65c |
+| thread-leader-probe | 8ad3410a5de6b69ad628326c8c783fb0fb4910e05ddd12dff7bdab177cc29689 |
+
+Local full uncached native race/resource/namespace/compiler/default-size tests
+pass (core173.400s/CLI8.263s), static build/vet pass,34 Python safety/helper tests
+pass and ten focused writer/all-profile host-refusal repeats pass3.804s. This
+increment changes only tests/qualification/documentation: no live stop policy,
+kernel, SSH bridge, browser or server runtime is changed or rebuilt. The prior
+114-browser qualification is separate exact-artifact evidence, not a new run.
+This narrow dead-leader case passes on this kernel; it does not repair the
+cgroup-only deferred-IO failure above, cover every application/job-control state,
+close root admission or prove actual retained SSH. C11 remains awaiting decision.

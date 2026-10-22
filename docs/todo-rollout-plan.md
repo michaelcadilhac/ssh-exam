@@ -82,6 +82,11 @@ protocol. Do not install a new kernel, restrict io_uring or consolidate agents
 as part of this investigation. Preserve failed-test evidence; see
 native-async-io-investigation.md. All deployment/consolidation steps remain
 proposals and none is executed.
+The later60-cycle dead-leader foreground fixture preserves acknowledged worker
+memory, shell/foreground state and an original stopped job in both tested modes;
+it is not full application compatibility or actual retained SSH. C11's live
+signal-policy choice remains pending and the ordinary linked-IO failure remains
+a release blocker; do not infer a kernel upgrade or signal-policy migration.
 
 The October22 diagnostic CLI candidate adds explicit list/info --read-only with no
 state/config/key migration. It reads existing protected legacy metadata without

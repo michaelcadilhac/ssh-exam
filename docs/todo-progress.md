@@ -8,6 +8,20 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Administrator milestone is local commitb42129d; previous writer correction is
+76cf926. The TEST-ONLY C11 dead-leader foreground investigation now passes ten
+repeats,60 actual freeze/discard/thaw cycles across cgroup-only and exact
+shell-first/worker stop-assisted modes. Every cycle retains the acknowledged
+private worker buffer, foreground group, parent shell and original stopped job;
+actual stale terminal input is discarded. Host/base preservation passes, evidence
+/var/tmp/ssh-exam-overlay-r_r9rril. Full uncached native race/resource/namespace/
+compiler/default-size checks pass core173.400s/CLI8.263s;34 Python checks and ten
+focused writer/host-refusal repeats pass. Static build/vet pass. Exact hashes and
+limitations are in native-async-io-investigation.md. No browser runtime changed or
+was rebuilt. This does not adopt signals as live policy, repair the cgroup-only
+linked-IO failure, implement retained SSH/all-root admission or answer pending
+C10/C11/legacy migration choices. No deployment or consolidation.
+
 Current validated checkpoint: administrator metadata/secret-safe creation CLI
 and same-form browser retry are implemented/tested locally. Final426 app/80files
 with production-mode CGO-disabled actual TLS CLI passes88.57s (preceding92.37s);

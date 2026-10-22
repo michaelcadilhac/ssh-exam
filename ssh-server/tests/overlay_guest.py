@@ -152,6 +152,12 @@ def writer_threads_command():
             '-test.timeout=90s']
 
 
+def monitoring_thread_tty_command():
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestMonitoringThreadTTYGuest$', '-test.v', '-test.count=10',
+            '-test.timeout=90s']
+
+
 def main():
     assert os.geteuid() == 0
     assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
@@ -215,6 +221,13 @@ def main():
         assert username == 'examq', 'Exact synthetic editor fixture required'
         environment = {**os.environ, 'EXAM_MONITORING_EDITOR_GUEST': '1'}
         result = subprocess.run(monitoring_editor_command(), env=environment, timeout=75)
+        if result.returncode:
+            return result.returncode
+        profiles = ()
+    elif settings.get('profile') == 'monitoring-thread-tty':
+        assert username == 'examq', 'Exact synthetic foreground-thread fixture required'
+        environment = {**os.environ, 'EXAM_MONITORING_THREAD_TTY_GUEST': '1'}
+        result = subprocess.run(monitoring_thread_tty_command(), env=environment, timeout=105)
         if result.returncode:
             return result.returncode
         profiles = ()

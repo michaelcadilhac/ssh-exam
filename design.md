@@ -1731,6 +1731,12 @@ student syscalls or require an untested kernel upgrade from that narrow result.
 See docs/native-async-io-investigation.md. Root closed admission/pending launches,
 all-writer ownership/epochs, unchanged deadlines and full recovery qualification
 remain mandatory; a test-only stop is not their implementation.
+The separate dead-main-thread foreground test now passes60 real cgroup-only/
+stop-assisted hold cycles with acknowledged worker-memory retention, original
+stopped job, foreground group and parent shell preserved, and stale terminal
+input discarded. This is a bounded job-control prerequisite, not general
+application compatibility, a repair for the linked-IO failure or adopted live
+SIGSTOP/SIGCONT policy. C11 remains awaiting the instructor's decision.
 
 ### Approved unified-grant design (October 20; implementation pending)
 
