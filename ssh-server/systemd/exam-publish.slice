@@ -1,0 +1,14 @@
+[Unit]
+Description=Bounded monitoring provisional-metadata publishers (never PTY owners)
+
+[Slice]
+MemoryAccounting=yes
+MemoryMax=256M
+MemorySwapMax=0
+TasksMax=64
+CPUQuota=100%
+
+# Two persistent metadata slot claims, one publisher per attempt, 64M/16 tasks
+# and two-second runtime per scope, with aggregate charging headroom. No agent,
+# watchdog, student, collection or
+# template worker belongs here. Local candidate only; no runtime caller enabled.

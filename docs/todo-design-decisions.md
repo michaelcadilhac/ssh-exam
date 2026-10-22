@@ -377,3 +377,29 @@ authentication rules. No automatic refund, clock stop/extension or reopening of
 completed attempts. See monitoring-liveness-plan.md: H1/H2a is a partial local
 contact-path candidate; full native evidence, alternate path and C3 verified
 containment/thaw are not implemented or deployed.
+
+## Active-renewal durability (C10 proposed October22; awaiting decision)
+
+Independent storage-worker investigation exposes another false-hold mechanism:
+requiring a durable disk commit on every execution renewal can exhaust existing
+authority during a filesystem stall, even while full monitoring and the same
+authenticated ownership remain verifiable. The private arbiter/publisher still
+models publication-before-acceptance; no live code uses it.
+
+Recommended split, asked of the instructor: renew execution in the positively
+verified live native coordinator without waiting for disk sync. Keep grants,
+authoritative deadlines, ownership/epoch transitions and audit durable. Renewals
+remain bounded by the original15s complete-evidence window and current deadline;
+no keepalive, frame alone, stale receipt or queued retry adds permission. A
+coordinator restart loses positive authority: do not restore it from disk, and
+require the verified freeze/recovery protocol before working again. This may
+lose immediate durable confirmation of the last renewal, which must be reported
+as unknown/pending rather than fabricated or accused as misconduct.
+
+The alternative is durable per-renewal commit, accepting technical holds during
+storage stalls despite healthy monitoring. No answer is assumed. C9 technical
+recovery, genuine policy/authentication rules, original/current deadlines,
+protected history and account restrictions remain unchanged. Independent local
+work continues; no production or live mode is altered. The publisher remains
+useful for durable transitions under either choice. Fair bounded scheduling and
+measured admission capacity are prerequisites, not inferred from two flock slots.

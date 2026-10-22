@@ -8,6 +8,9 @@ import (
 )
 
 func main() {
+	if core.MonitoringPublisherMain(os.Args[1:]) {
+		return
+	}
 	if core.TemplateWorkerMain(os.Args[1:]) {
 		return
 	}

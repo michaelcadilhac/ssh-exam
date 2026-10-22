@@ -5,6 +5,15 @@ documents command-specific help, actionable refusals and private non-overwriting
 exports. Full gateway-management coverage is still under investigation; this is
 not a deployment receipt. Use `examctl help` to discover current commands.
 
+Critical monitoring groundwork is local only: private authority/ownership and a
+bounded provisional-metadata publisher do not enable a lease, retained SSH or
+recovery mode. No public command launches that publisher. Its internal root-only
+worker entries and proposed exam-publish.slice are not manual operator workflows;
+do not invoke/install them against current exams. Provisional files cannot restore
+permission after restart. Full native-peer/admission/input/freeze/CLI/web
+coordination and qualification remain required; see
+[native publication status](../docs/native-monitoring-publication.md).
+
 The local immutable catalog candidate provides `examctl templates help` for
 validate/install/list/show/verify/jobs/clean. It uses a separate bounded
 exam-template.slice, not student/collection slots. It is not deployed; optional

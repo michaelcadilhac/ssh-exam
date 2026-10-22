@@ -172,6 +172,13 @@ full privileged qualification or deployment authorization.
   durable journal, actual owner verifier, freeze or recovery workflow. Root
   ownership exclusion, isolated publication and coordinated containment remain
   required; this critical item stays open. See docs/native-monitoring-authority.md.
+  Independent native process claims and a private bounded provisional publisher
+  are now tested locally, including surviving children, actual OOM/runtime/disk
+  faults, compiled root-mapped binaries, full native/app regressions and replay/
+  concurrency fences. They enable no live renewal or retained mode. Per-renewal
+  durability versus live-authority availability is now an explicit pending design
+  question; fair scheduling, actual native peers, C3 barriers and combined
+  qualification remain open. See docs/native-monitoring-publication.md.
 
 ## Firm design policy: examctl is the complete management interface
 

@@ -52,6 +52,9 @@ func serviceCommands(action string) ([][]string, error) {
 	return append(commands, []string{action, "exam-agent.service"}), nil
 }
 func main() {
+	if core.MonitoringPublisherMain(os.Args[1:]) {
+		return
+	}
 	if core.TemplateWorkerMain(os.Args[1:]) {
 		return
 	}

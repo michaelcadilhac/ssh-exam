@@ -63,6 +63,7 @@ type monitoringPublication struct {
 }
 
 type monitoringCommitTicket struct {
+	workerStarted   atomic.Bool // One process launch per ticket, including concurrent retries.
 	authority       *monitoringAuthority
 	revision        uint64
 	proof           monitoringPermitCandidate

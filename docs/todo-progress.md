@@ -8,6 +8,32 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Continuation afterf8fcb89: private bounded provisional publication is under
+qualification; see native-monitoring-publication.md. Actual child death, late/
+malformed replies, concurrent retry, independent second-owner publication and
+cutoff, compiled namespace-root examctl/agent entry, user-manager inherited-fd/
+OOM/runtime controls, and disposable namespace ENOSPC/readonly-view cases pass.
+A disabled one-worker CAS made concurrent retry RED; the mutant is removed.
+Race child exit sleep is disabled only by test command, not by extending live
+timeouts. A real readonly fixture EBUSY was resolved using a fresh bind view,
+without dropping current claims. This is not privileged retained-mode/capacity
+qualification and does not enable a live monitoring path. Frozen full native
+race/resource/namespace/compiler/default-size checks pass (core170.74s/CLI8.31s),
+all383 application tests/71files pass (80.35s), process/unit twenty race repeats
+pass (15.19s), static build/vet/typecheck pass and bounded two-worker metadata
+fuzz passes774 executions (11.01s elapsed). Slice verification passes; the local
+systemd emits an existing parent exam.slice CPUAccounting-deprecation warning,
+not a new publisher-unit error. No unit is installed/reloaded. All six browser
+artifact hashes match H4a's91-check run exactly; no client import or rebuild.
+
+A consequential active-renewal durability question is outstanding (asked October
+22): recommend live native renewals without waiting for disk sync, while retaining
+durable deadlines/grants/owner/epoch transitions/audit and verified restart
+freeze/recovery. Mandatory per-renewal sync retains an availability failure mode
+during storage stalls. No decision is assumed and no existing runtime policy is
+changed; independent work continues. Fair bounded multi-owner scheduling and
+measured admission capacity remain required before either mode is enabled.
+
 Continuation after9284522: private per-attempt ownership claims are being
 qualified separately. Persistent empty private lock inodes are never truncated,
 removed, replaced or explicitly unlocked. A publisher inherits the same open-file

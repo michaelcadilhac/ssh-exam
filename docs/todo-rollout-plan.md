@@ -67,6 +67,16 @@ input/freeze/discard and signed recovery receipts together. Unused model tests
 are not that release gate. See native-monitoring-authority.md. No temporary agent
 is stopped or consolidated by this increment.
 
+The next private provisional publisher adds root-only internal worker entries and
+a proposed separate exam-publish.slice. It is not a public management action,
+live lease journal or native capability. Do not install/start the slice, invoke
+the worker manually, restore positive authority from provisional files, or mix
+actors/publishers lacking the persistent ownership claims. A future release must
+qualify real-root system-manager inherited descriptors, resource/latency capacity,
+peer verification and the approved renewal-durability decision, followed by all
+input/freeze/recovery gates. Current user-scope/root-mapped tests are narrower.
+Preserve control records with state/audit; no new mode or deployment is enabled.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

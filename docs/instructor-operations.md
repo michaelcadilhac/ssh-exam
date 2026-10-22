@@ -18,6 +18,13 @@ Verified all-writer freeze, input revocation/discard, current ownership and the
 approved full recovery conditions must pass together before any new mode can be
 enabled. See monitoring-liveness-plan.md and retained-ssh-input-protocol.md.
 
+The local private authority/ownership/provisional-publisher increments likewise
+do not enable retained mode or provide a management recovery command. Internal
+worker flags are not operator workflows; do not invoke them or install/start the
+proposed publisher slice against existing exams. Native monitoring authority must
+never be restored from a provisional file. See native-monitoring-publication.md;
+the active-renewal durability choice and full C3/CLI/web integration remain open.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/
