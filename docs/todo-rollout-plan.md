@@ -11,6 +11,19 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The local closed-pane-startup increment adds bounded closed/cancelled observations
+to pane_instances and a fixed inherited-descriptor bootstrap role in exam-agent.
+Before future separately authorized installation, qualify that exact loaded binary
+under the real agent hardening: root SO_PASSCRED/pidfd/executable identity, inherited
+descriptors through systemd-run, exact exam.slice membership, late close/expiry and
+ordinary SSH/PAM/Begin/collection. The current artifact has local user-scope and
+namespace-root evidence, not a new root-guest receipt; the guard remains BUSY.
+Use matching native roles and settle/cancel every pending starter before an older
+writer can drop its fields. Preserve all units/history/work/deadlines/holds and
+audit. No backfill, positive authority reconstruction or retained-mode enablement.
+Keep admission closed for compatible forward repair on uncertainty. The proposed
+three-listener consolidation still requires the full drain below; execute none.
+
 The local integrated preflight candidate adds non-admitting preparation_pending
 records and bounded abandoned-readiness cleanup. Before any future install,
 qualify/update all loaded gate/agent/watchdog/CLI roles together; old roles do not

@@ -174,6 +174,15 @@ longer create a local ownership incident. Required capture, actual page/SSH/nati
 guards and original deadlines remain. See pane-admission-isolation.md; retained
 SSH/editor buffers and the complete liveness redesign are still unfinished.
 
+The following local closed-startup path also moves ordinary scope startup outside
+shared state. Inspect `examctl panes show ATTEMPT PANE`: `closed_startups` is a
+non-executing trusted bootstrap, `cancelled_startups` may still need cleanup, and
+the displayed startup expiry is not a renewed lease. The supported reviewed close
+cancels that exact incarnation, as does student Close terminal. Never edit state,
+clear tracking or restart services to force it. Existing deadlines, holds and
+protected work remain. Root-guest qualification is pending on the BUSY host guard;
+this does not preserve active editors through coordinator failure/lockout yet.
+
 Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
 view of exact agent/name/hash metadata and first/latest attestation timestamps.
 It does not choose a version, edit defaults, issue grants or prove current native

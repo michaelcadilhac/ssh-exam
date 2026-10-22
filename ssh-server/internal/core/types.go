@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -178,6 +180,11 @@ type PaneInstance struct {
 	ID      string `json:"id"`
 	Boot    string `json:"boot"`
 	ReadyAt int64  `json:"ready_at"`
+	// ClosedUntil is a bounded bootstrap observation, never exec permission.
+	// Only the live parent's final transaction can change it to ReadyAt.
+	ClosedUntil     int64 `json:"closed_until,omitempty"`
+	ClosedBootUntil int64 `json:"closed_boot_until,omitempty"`
+	Cancelled       bool  `json:"cancelled,omitempty"`
 }
 type Engine struct {
 	accountMu           sync.RWMutex
@@ -188,6 +195,7 @@ type Engine struct {
 	mu                  sync.Mutex
 	healthMu            sync.Mutex
 	paneSetupMu         sync.Mutex
+	paneLaunchMu        sync.Mutex
 	monitorMu           sync.Mutex
 	state               State
 	quiesce             func(*Attempt) error
@@ -203,6 +211,7 @@ type Engine struct {
 	paneIdentity        func(int, int) (string, error) // Test-only dependency seams, never configurable.
 	paneSetupCheckpoint func() error
 	paneStart           func() error
+	paneBootstrapStart  func(*exec.Cmd, *net.UnixConn, *os.File, string, PaneInstance) (*paneBootstrapPeer, bool, error)
 	healthProbe         func() (bool, []string) // Test-only dependency seam; never configurable.
 	templateVerify      func(Settings) error    // Test replacement never exposed in config/environment.
 }

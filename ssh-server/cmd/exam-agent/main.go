@@ -8,6 +8,9 @@ import (
 )
 
 func main() {
+	if core.PaneBootstrapMain(os.Args[1:]) {
+		return
+	}
 	if core.MonitoringPublisherMain(os.Args[1:]) {
 		return
 	}

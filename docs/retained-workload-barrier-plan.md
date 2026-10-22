@@ -7,14 +7,16 @@ deployment. Current lockouts still terminate workloads and disconnect SSH.
 
 ## Inspected boundaries
 
-- gate.go owns every original/workload PTY descriptor, bridge and child wait in
-  the shared agent. Its first WithState transaction also does filesystem/home/
-  temporary/application preparation. launchAcknowledgedPane then holds state
-  through actual start and system-manager readiness polling.
+- gate.go still owns original/workload PTYs, bridges and child waits in the
+  shared agent. Filesystem setup/ready-ACK are now outside shared state. The next
+  local closed-bootstrap path also isolates ordinary scope startup, with final
+  durable current-state exec release and exact pending close; see
+  closed-pane-launch.md. The administrator host-service exception remains
+  serialized. Independent PTY ownership/C12 and root-guest qualification are open.
 - pane_admission.go already revokes unused tokens and rechecks current authority
   after an ACK; an old ACK cannot relaunch a closed pane. That is not closed
-  admission for asynchronously pending OS launches. Simply moving start outside
-  the transaction would allow a late child after a close/hold.
+  admission by itself. The local closed bootstrap now supplies that fence for
+  ordinary scope launches, not the full durable owner/input-epoch protocol.
 - engine.freeze observes recorded cgroups, but missing units are treated as
   frozen/gone. That is insufficient while a root launch could still create one.
   Positive writer verification is separate from pending launch exclusion.

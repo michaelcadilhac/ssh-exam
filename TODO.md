@@ -354,6 +354,17 @@ checks pass,426 app and six relevant browser workflows pass; final native
 qualification passes core278.848s/CLI27.072s. See docs/preflight-isolation.md. This does not complete
 the critical monitoring redesign, unified grants or CLI audit; nothing deployed.
 
+October22 next integrated local result: ordinary native pane startup now uses a
+closed inherited bootstrap outside shared state, with durable one-use tracking
+and current peer/account/authority/expiry checks before exec. Exact signed and
+reviewed CLI close cancel pending startups; actual Tick reaps bounded orphans.
+Actual Unix/PTY/user-systemd synthetic shell/late-close workflows, compiled root-
+namespace CLI, full native races/resources,429 app and eight rebuilt browser
+checks pass locally. See docs/closed-pane-launch.md. Root-guest qualification is
+pending on the BUSY guard; C12 independent PTY supervision/root epochs and C3/C9
+freeze/recovery remain unimplemented. This does not close the critical TODO or
+prove its initiating incident cause. Nothing deployed; main count remains11/38.
+
 ## Firm design policy: examctl is the complete management interface
 
 **If an exam-management operation can be done, it must be doable through

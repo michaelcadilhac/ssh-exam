@@ -2263,6 +2263,19 @@ consumption/actual OS launch remain serialized. Cancellation during IO cannot
 revive admission; existing watchdog cleanup settles partial cancelled files.
 This is not an asynchronous launch gate, retained supervisor or completed liveness
 fix. See docs/pane-admission-isolation.md for current qualification/limitations.
+
+The following local ordinary-scope path now adds that closed launch gate:
+persist bounded per-incarnation closed startup, launch the pinned already-loaded
+agent bootstrap through inherited descriptors, verify its actual root sender/
+pidfd/executable/current scope, then durably recheck current SSH/account/attempt
+authority and original wall/BOOTTIME cutoff before a one-use exec release. Ready
+activation changes the reviewed close revision. Shared student/CLI close revokes
+closed startup even when later cleanup fails; actual Tick reaps expired orphans
+without reconstructing permission. No manager wait or startup-failure cleanup
+owns shared state. The trusted-administrator host-service exception remains
+serialized. CLI inspection distinguishes closed/cancelled starts; root-guest
+qualification and C12 independent PTYs/owner epochs/full C3 barrier remain open.
+See docs/closed-pane-launch.md. This is not retained SSH or a deployed fix.
 Session errors carry an explicit gateway-generated page-ownership code only when
 an actual identity/page/owner check fails. The student UI must not infer ownership
 loss or a policy incident from diagnostic substrings such as Page/owns, which may

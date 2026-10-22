@@ -339,59 +339,70 @@ func (e *Engine) local(c *net.UnixConn) {
 		log.Printf("protected channel acknowledgement failed: %v", err)
 		return
 	}
-	err = e.launchAcknowledgedPane(pending, r.Token, name, unit, func(currentAccount Account) (string, error) {
+	identify := func(currentAccount Account) (string, error) {
 		return e.paneIdentity(int(cred.Pid), currentAccount.UID)
-	}, func(a *Attempt, cap Capability) (bool, error) {
-		practice := cap.Purpose == "practice"
-		start := launch.Start
-		if e.paneStart != nil {
-			start = e.paneStart
-		}
-		if err = start(); err != nil {
-			launch = nil
-			return false, err
-		}
-		// Forward startup diagnostics as well as the eventual shell. A failed
-		// sandbox may exit before its scope becomes active.
-		if practice || !a.BrowserSSH {
+	}
+	bridge := func() error {
+		if pending.capability.Purpose == "practice" || !pending.authority.BrowserSSH {
 			bridgePTY(original, master, done)
-		} else {
-			if err := e.bridgeRecordedPTY(original, master, done, a.ID, cap.Pane, unit); err != nil {
+			return nil
+		}
+		return e.bridgeRecordedPTY(original, master, done, id, pending.capability.Pane, unit)
+	}
+	if strings.HasSuffix(unit, ".scope") {
+		_, err = e.launchClosedLocalPane(pending, r.Token, name, unit, identify, launch, bridge)
+	} else {
+		// Trusted-administrator host services cannot inherit the scope gate's
+		// descriptors. Preserve their serialized legacy exception, not an unsafe
+		// asynchronous launch or a claim of production student isolation.
+		err = e.launchAcknowledgedPane(pending, r.Token, name, unit, identify, func(a *Attempt, cap Capability) (bool, error) {
+			start := launch.Start
+			if e.paneStart != nil {
+				start = e.paneStart
+			}
+			if err = start(); err != nil {
+				launch = nil
+				return false, err
+			}
+			// Forward startup diagnostics as well as the eventual shell. A failed
+			// sandbox may exit before its scope becomes active.
+			if err := bridge(); err != nil {
 				master.Close()
 				syscall.Kill(-launch.Process.Pid, syscall.SIGKILL)
 				launch.Wait()
 				launch = nil
 				return true, err
 			}
-		}
-		var activeScope bool
-		for i := 0; i < 50; i++ {
-			if exec.Command("/usr/bin/systemctl", "is-active", "--quiet", unit).Run() == nil {
-				activeScope = true
-				break
+			var activeScope bool
+			for i := 0; i < 50; i++ {
+				if exec.Command("/usr/bin/systemctl", "is-active", "--quiet", unit).Run() == nil {
+					activeScope = true
+					break
+				}
+				time.Sleep(20 * time.Millisecond)
 			}
-			time.Sleep(20 * time.Millisecond)
-		}
-		if !activeScope {
-			syscall.Kill(-launch.Process.Pid, syscall.SIGKILL)
-			launch.Wait()
-			launch = nil
-			return true, errors.New("workload scope failed readiness; pane denied")
-		}
-		_, _, instance, valid := recordedPaneIdentity(a.ID, unit)
-		currentBoot := boot()
-		if !valid || instance == "" || currentBoot == "" {
-			return true, errors.New("pane readiness identity unavailable; preserve tracked scope for recovery")
-		}
-		if e.state.PaneInstances == nil {
-			e.state.PaneInstances = map[string]PaneInstance{}
-		}
-		e.state.PaneInstances[unit] = PaneInstance{Attempt: a.ID, Pane: cap.Pane, ID: instance, Boot: currentBoot, ReadyAt: Millis()}
-		e.Audit("pane-admitted", a.ID)
-		return true, nil
-	})
+			if !activeScope {
+				syscall.Kill(-launch.Process.Pid, syscall.SIGKILL)
+				launch.Wait()
+				launch = nil
+				return true, errors.New("workload scope failed readiness; pane denied")
+			}
+			_, _, instance, valid := recordedPaneIdentity(a.ID, unit)
+			currentBoot := boot()
+			if !valid || instance == "" || currentBoot == "" {
+				return true, errors.New("pane readiness identity unavailable; preserve tracked scope for recovery")
+			}
+			if e.state.PaneInstances == nil {
+				e.state.PaneInstances = map[string]PaneInstance{}
+			}
+			e.state.PaneInstances[unit] = PaneInstance{Attempt: a.ID, Pane: cap.Pane, ID: instance, Boot: currentBoot, ReadyAt: Millis()}
+			e.Audit("pane-admitted", a.ID)
+			return true, nil
+		})
+	}
 	if err != nil {
 		log.Printf("protected channel admission failed: %v", err)
+		err = fmt.Errorf("%w; operator: examctl panes show %s %s; retry opening only this pane after checks settle, preserving work and restrictions", err, id, pending.capability.Pane)
 		json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
 		return
 	}

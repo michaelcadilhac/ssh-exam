@@ -28,6 +28,10 @@ the previous next pane UUID cursor, not a timestamp or attempt UUID.
 Recorded kinds/incarnations and pending counts are NOT live SSH, monitoring,
 writer absence, archive verification, cleanup eligibility or permission to work.
 Present=false means absent from captured metadata, not proof that all work ended.
+closed_startups counts trusted bootstraps waiting behind a CLOSED exec gate;
+cancelled_startups have lost that gate and may still need kernel cleanup.
+earliest_startup_expiry is their original bound, never a renewed lease. A fresh
+reviewed close cancels the exact startup; do not wait indefinitely or clear state.
 Legacy/startup-unverified records remain inspectable with unsafe_metadata=true
 and no close revision. Preserve them and use matching native versions/guards in
 the separately authorized drained maintenance workflow; never clear tracking,

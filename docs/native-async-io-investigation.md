@@ -1,5 +1,11 @@
 # Deferred IO across a temporary freeze: unqualified
 
+Current decision update: C11 is approved for development/full qualification of
+stop-assisted freezing, preserving originally stopped jobs. Historical awaiting-
+decision statements below describe their earlier checkpoints; they are not open
+questions. The full runtime all-writer/input barrier is still unqualified and
+disabled. No kernel/syscall policy or installed service is changed.
+
 October 22, 2026. Investigation only, not a completed C3/heartbeat fix or a
 deployment receipt. Do not enable retained mode from these results. Nothing
 below changes a kernel, syscall policy, installed service, attempt or deadline.

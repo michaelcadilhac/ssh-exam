@@ -3,6 +3,18 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 closed-pane-launch outcome: ordinary scope startup/manager waits no
+longer own shared state. A pinned inherited trusted bootstrap cannot exec until
+durable current-authority release; signed/CLI close and actual Tick cancel/reap
+bounded pending starts. Actual local Unix/PTY/user-systemd shell and late-close
+checks, compiled root-namespace CLI, full native races/resources (core297.370s/
+CLI27.937s),429 app checks102.19s and eight post-rebuild browser checks53.9s pass.
+Build/vet/typecheck pass; an initial build EPERM and two fixture corrections are
+retained honestly in closed-pane-launch.md. C15 fresh outbound Begin verification
+is separately recorded in25c9f71, not implemented. The raw guard at20:56UTC is
+BUSY, so no new guest/upload or deployed claim. Critical C12/epochs/full C3/C9,
+unified issuance and the remaining broad TODOs stay open; count remains11/38.
+
 October22 integrated pane-open result: actual Unix/PTY private setup no longer
 owns shared state; nonblocking per-UID/copy bounds preserve the old process copy
 budget and release before ACK/failure. Signed close/cancel during IO cannot launch

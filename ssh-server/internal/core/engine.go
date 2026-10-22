@@ -607,6 +607,7 @@ func (e *Engine) Tick() error {
 	}
 	var jobs []string
 	err := e.WithState(func() error {
+		e.reapClosedPaneStarts()
 		// Cancellation must close practice shells even when their browser/old
 		// entry process disappeared. No started attempt is cancelled here.
 		for _, a := range e.state.Attempts {

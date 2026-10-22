@@ -16,12 +16,14 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestNativePaneHelpAndRefusalsAreDiscoverableBeforeRootOrConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "panes"}, {"panes", "help"}, {"--config", "/missing", "panes", "--help"}} {
 		out, code := cliProcess(t, args...)
-		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:"} {
+		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:", "closed_startups", "cancelled_startups", "earliest_startup_expiry"} {
 			if code != 0 || !strings.Contains(out, want) {
 				t.Fatal("pane workflow missing", want, code, out)
 			}
@@ -174,5 +176,31 @@ func TestNativePaneActualStaticRootNamespaceCLI(t *testing.T) {
 	data, _ = os.ReadFile(filepath.Join(stateDir, "state.json"))
 	if code != 1 || out != "" || !strings.Contains(diagnostics, "snapshot changed") || !bytes.Equal(beforeRetry, data) {
 		t.Fatal("stale actual root close touched replacement/state", code, out, diagnostics)
+	}
+	// Actual compiled CLI can inspect and cancel a closed OS startup, not only
+	// an unused admission token. No real host scope or manager call is needed.
+	bootData, err := os.ReadFile("/proc/sys/kernel/random/boot_id")
+	var clock unix.Timespec
+	if err != nil || unix.ClockGettime(unix.CLOCK_BOOTTIME, &clock) != nil {
+		t.Fatal("fixture kernel clocks unavailable", err)
+	}
+	instance := core.ManagementID()
+	unit := "exam-" + id + "-" + other + "-" + instance + ".scope"
+	until := core.Millis() + 15000
+	current.Attempts[id].Units = []string{unit}
+	current.PaneInstances = map[string]core.PaneInstance{unit: {Attempt: id, Pane: other, ID: instance, Boot: strings.TrimSpace(string(bootData)), ClosedUntil: until, ClosedBootUntil: clock.Sec*1000 + clock.Nsec/1000000 + 15000}}
+	write(filepath.Join(stateDir, "state.json"), current)
+	out, diagnostics, code = invoke("panes", "show", id, other, "--state", stateDir)
+	if code != 0 || diagnostics != "" || json.Unmarshal([]byte(out), &view) != nil || len(view.Panes) != 1 || view.Panes[0].ClosedStartups != 1 || view.Panes[0].StartupExpires != until || view.Panes[0].Unsafe || view.Panes[0].Revision == "" {
+		t.Fatal("actual CLI cannot review closed startup", code, out, diagnostics)
+	}
+	out, diagnostics, code = invoke("panes", "close", id, other, "--config", config, "--revision", view.Panes[0].Revision, "--reason", "Reviewed closed synthetic OS startup cancellation")
+	if code != 0 || diagnostics != "" || json.Unmarshal([]byte(out), &closed) != nil || closed.ClosedStartupsRevoked != 1 || !closed.RecordedTargetsQuiesced {
+		t.Fatal("actual CLI cannot cancel closed startup", code, out, diagnostics)
+	}
+	data, _ = os.ReadFile(filepath.Join(stateDir, "state.json"))
+	current = core.State{}
+	if json.Unmarshal(data, &current) != nil || len(current.Attempts[id].Units) != 0 || len(current.PaneInstances) != 0 || current.Attempts[id].Start != 0 || current.Attempts[id].State != "PREPARING" {
+		t.Fatal("actual CLI stranded closed startup or changed clock/attempt")
 	}
 }

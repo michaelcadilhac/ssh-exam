@@ -22,6 +22,9 @@ type NativePane struct {
 	Incarnations      []string `json:"incarnations"`
 	PendingAdmissions int      `json:"pending_admissions"`
 	PendingUnexpired  int      `json:"pending_unexpired_at_read"`
+	ClosedStartups    int      `json:"closed_startups"`
+	CancelledStartups int      `json:"cancelled_startups"`
+	StartupExpires    int64    `json:"earliest_startup_expiry,omitempty"`
 	Present           bool     `json:"recorded_present"`
 	Unsafe            bool     `json:"unsafe_metadata"`
 }
@@ -92,7 +95,7 @@ func recordedPaneIdentity(attempt, unit string) (string, string, string, bool) {
 func paneInstanceReady(state State, a *Attempt, unit, currentBoot string) bool {
 	pane, _, instance, ok := recordedPaneIdentity(a.ID, unit)
 	proof, found := state.PaneInstances[unit]
-	return ok && instance != "" && currentBoot != "" && found && proof.Attempt == a.ID && proof.Pane == pane && proof.ID == instance && proof.Boot == currentBoot && proof.ReadyAt > 0
+	return ok && instance != "" && currentBoot != "" && found && proof.Attempt == a.ID && proof.Pane == pane && proof.ID == instance && proof.Boot == currentBoot && proof.ReadyAt > 0 && proof.ClosedUntil == 0 && proof.ClosedBootUntil == 0 && !proof.Cancelled
 }
 
 // Fingerprint ONLY scoped nonsecret control facts, never generic attempt JSON
@@ -100,13 +103,24 @@ func paneInstanceReady(state State, a *Attempt, unit, currentBoot string) bool {
 func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSource, at int64) NativePane {
 	v := NativePane{ID: pane, RecordedKinds: []string{}, Incarnations: []string{}}
 	units := []string{}
+	proofs := map[string]PaneInstance{}
 	for _, unit := range a.Units {
 		id, kind, instance, ok := recordedPaneIdentity(a.ID, unit)
 		if ok && id == pane {
 			v.RecordedKinds = append(v.RecordedKinds, kind)
 			v.Incarnations = append(v.Incarnations, instance)
 			units = append(units, unit)
-			if !paneInstanceReady(state, a, unit, source.Boot) {
+			proof := state.PaneInstances[unit]
+			proofs[unit] = proof
+			if paneInstanceClosed(state, a, unit, source.Boot) {
+				v.ClosedStartups++
+				if proof.Cancelled {
+					v.CancelledStartups++
+				}
+				if v.StartupExpires == 0 || proof.ClosedUntil < v.StartupExpires {
+					v.StartupExpires = proof.ClosedUntil
+				}
+			} else if !paneInstanceReady(state, a, unit, source.Boot) {
 				v.Unsafe = true
 			}
 		}
@@ -151,7 +165,8 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 		Kinds   []string
 		Units   []string
 		Pending []pendingFact
-	}{source, owner, pane, v.RecordedKinds, units, facts})
+		Proofs  map[string]PaneInstance
+	}{source, owner, pane, v.RecordedKinds, units, facts, proofs})
 	v.Revision = "sha256:" + Hash(b)
 	return v
 }
@@ -241,6 +256,7 @@ type NativePaneCloseResult struct {
 	ReviewedRevision        string `json:"reviewed_revision"`
 	RecordedTargetsQuiesced bool   `json:"recorded_targets_quiesced"`
 	AlreadyAbsent           bool   `json:"already_recorded_absent"`
+	ClosedStartupsRevoked   int    `json:"closed_startups_revoked"`
 	ClockChanged            bool   `json:"clock_changed"`
 	AccessReleased          bool   `json:"access_released"`
 	Note                    string `json:"note"`
@@ -287,7 +303,7 @@ func (e *Engine) closeNativePaneReviewed(id, pane, revision, reason string) (Nat
 		if _, err := e.closePaneLocked(e.state.Attempts[id], pane); err != nil {
 			return errors.New("pane termination unconfirmed; pending admissions remain revoked and recorded scopes retained; preserve work, inspect native state and matching manager controls, then review a fresh pane snapshot")
 		}
-		result = NativePaneCloseResult{Attempt: id, Pane: pane, ReviewedRevision: revision, RecordedTargetsQuiesced: true, AlreadyAbsent: !current.Present, Note: "Only recorded target scopes/admissions were closed. Other panes, clocks, account restrictions, grants and protected submissions are not released or deleted. This is not all-UID writer proof, cleanup eligibility, current monitoring or permission to work. After a lost reply inspect fresh read-only pane status; never silently adopt a replacement revision."}
+		result = NativePaneCloseResult{Attempt: id, Pane: pane, ReviewedRevision: revision, RecordedTargetsQuiesced: true, AlreadyAbsent: !current.Present, ClosedStartupsRevoked: current.ClosedStartups, Note: "Only recorded target scopes/admissions were closed. A cancelled trusted bootstrap can finish/refuse later, but cannot release student exec; this is not proof every root setup process is already gone. Other panes, clocks, account restrictions, grants and protected submissions are not released or deleted. This is not all-UID writer proof, cleanup eligibility, current monitoring or permission to work. After a lost reply inspect fresh read-only pane status; never silently adopt a replacement revision."}
 		return nil
 	})
 	if err != nil {

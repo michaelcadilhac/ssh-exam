@@ -1,6 +1,7 @@
 package core
 
-// UNWIRED native monitoring/control clock. Legacy deadline/access calculations
+// Checked native clock, now used by closed pane startup's bounded lifetime.
+// The private monitoring authority remains unwired. Legacy deadline/access calculations
 // are intentionally unchanged. Future callers must propagate errors as unknown
 // authority, never turn a failed read into expiry, access release or a new lease.
 

@@ -1,5 +1,16 @@
 # Native pane management (implemented/tested locally; not deployed)
 
+October22 closed-startup follow-up: ordinary scope launch waits now run behind
+an inherited closed exec gate outside shared state. Read-only `panes list/show`
+distinguishes `closed_startups`, `cancelled_startups` and the original
+`earliest_startup_expiry`. A reviewed close cancels the same exact incarnation as
+signed student Close; it cannot release a late shell. `closed_startups_revoked`
+qualifies the result: a root bootstrap may still finish/refuse after cancellation,
+not proof every root setup process has already vanished. Activation changes the
+review revision. Unconfirmed workload tracking stays retained. No new force-close,
+clock/hold change or retained mode. Full workflow/evidence and pending root-guest
+qualification are in closed-pane-launch.md; older receipts below are historical.
+
 October22,2026. C1's firm CLI policy covers targeted native management; the
 existing signed student `close-pane` has no discoverable root equivalent. This
 increment does not need a new lockout/grant policy decision. Do not substitute

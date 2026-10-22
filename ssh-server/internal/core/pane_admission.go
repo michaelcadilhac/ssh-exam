@@ -63,7 +63,11 @@ func (e *Engine) closePaneLocked(a *Attempt, pane string) (any, error) {
 	}
 	currentBoot := boot()
 	for _, unit := range closed.Units {
-		if !paneInstanceReady(e.state, a, unit, currentBoot) {
+		if paneInstanceClosed(e.state, a, unit, currentBoot) {
+			proof := e.state.PaneInstances[unit]
+			proof.Cancelled = true // Final release refuses even if cleanup fails.
+			e.state.PaneInstances[unit] = proof
+		} else if !paneInstanceReady(e.state, a, unit, currentBoot) {
 			return nil, errors.New("pane startup/incarnation is unverified; admissions revoked and recorded scopes retained; inspect native state and matching versions, preserving work and tracking")
 		}
 	}
@@ -114,24 +118,9 @@ func (p *paneLaunchAdmission) unchanged(cap Capability, a *Attempt, account Acco
 // a started but unsuccessfully cleaned child must remain tracked.
 func (e *Engine) launchAcknowledgedPane(p *paneLaunchAdmission, token, name, unit string, identify func(Account) (string, error), start func(*Attempt, Capability) (bool, error)) error {
 	return e.WithState(func() error {
-		account, ok := e.account(name)
-		if !ok || account != p.account {
-			return errors.New("pane account changed during acknowledgement; reopen this pane")
-		}
-		identity, err := identify(account)
+		cap, a, err := e.acknowledgedPaneLocked(p, token, name, unit, identify)
 		if err != nil {
 			return err
-		}
-		cap, a, err := e.paneAdmission(token, name, identity, account)
-		if err != nil {
-			return err
-		}
-		if !p.unchanged(cap, a, account) {
-			return errors.New("pane authority changed during acknowledgement; refresh and reopen this pane")
-		}
-		unitPane, _, instance, validUnit := recordedPaneIdentity(a.ID, unit)
-		if !validUnit || unitPane != cap.Pane || instance == "" || !e.recordedUnitAllowed(a, unit) {
-			return errors.New("invalid pane workload unit")
 		}
 		delete(e.state.Caps, Hash([]byte(token)))
 		a.Units = append(a.Units, unit)
@@ -161,6 +150,162 @@ func (e *Engine) launchAcknowledgedPane(p *paneLaunchAdmission, token, name, uni
 		}
 		return err
 	})
+}
+
+func (e *Engine) acknowledgedPaneLocked(p *paneLaunchAdmission, token, name, unit string, identify func(Account) (string, error)) (Capability, *Attempt, error) {
+	account, ok := e.account(name)
+	if !ok || account != p.account {
+		return Capability{}, nil, errors.New("pane account changed during acknowledgement; reopen this pane")
+	}
+	identity, err := identify(account)
+	if err != nil {
+		return Capability{}, nil, err
+	}
+	cap, a, err := e.paneAdmission(token, name, identity, account)
+	if err != nil {
+		return cap, a, err
+	}
+	if !p.unchanged(cap, a, account) {
+		return cap, a, errors.New("pane authority changed during acknowledgement; refresh and reopen this pane")
+	}
+	unitPane, _, instance, validUnit := recordedPaneIdentity(a.ID, unit)
+	if !validUnit || unitPane != cap.Pane || instance == "" || !e.recordedUnitAllowed(a, unit) {
+		return cap, a, errors.New("invalid pane workload unit")
+	}
+	return cap, a, nil
+}
+
+func paneInstanceClosed(state State, a *Attempt, unit, currentBoot string) bool {
+	pane, kind, instance, ok := recordedPaneIdentity(a.ID, unit)
+	proof, found := state.PaneInstances[unit]
+	return ok && kind == "scope" && instance != "" && currentBoot != "" && found && proof.Attempt == a.ID && proof.Pane == pane && proof.ID == instance && proof.Boot == currentBoot && proof.ReadyAt == 0 && proof.ClosedUntil > 0 && proof.ClosedBootUntil > 0
+}
+
+// Reserve only a CLOSED bootstrap, never a shell. The global transaction ends
+// before systemd startup. The live parent and a fresh final transaction are both
+// mandatory for exec; a persisted pending observation is never sufficient.
+func (e *Engine) reserveClosedPane(p *paneLaunchAdmission, token, name, unit string, identify func(Account) (string, error)) (PaneInstance, error) {
+	var proof PaneInstance
+	err := e.WithState(func() error {
+		cap, a, err := e.acknowledgedPaneLocked(p, token, name, unit, identify)
+		if err != nil {
+			return err
+		}
+		now, err := monitoringBootMillis()
+		remaining := cap.Expires - Millis()
+		if err != nil || now <= 0 || remaining <= 0 || remaining > 15000 {
+			return errPaneBootstrap
+		}
+		_, kind, instance, _ := recordedPaneIdentity(a.ID, unit)
+		if kind != "scope" {
+			return errPaneBootstrap
+		}
+		proof = PaneInstance{Attempt: a.ID, Pane: cap.Pane, ID: instance, Boot: boot(), ClosedUntil: cap.Expires, ClosedBootUntil: now + remaining}
+		if proof.Boot == "" {
+			return errPaneBootstrap
+		}
+		delete(e.state.Caps, Hash([]byte(token)))
+		a.Units = append(a.Units, unit)
+		if e.state.PaneInstances == nil {
+			e.state.PaneInstances = map[string]PaneInstance{}
+		}
+		e.state.PaneInstances[unit] = proof
+		return nil
+	})
+	return proof, err
+}
+
+func (e *Engine) releaseClosedPane(p *paneLaunchAdmission, name, unit string, proof PaneInstance, identify func(Account) (string, error), current func() bool, permit func() error) error {
+	return e.WithState(func() error {
+		account, ok := e.account(name)
+		if !ok || account != p.account {
+			return errPaneBootstrap
+		}
+		identity, err := identify(account)
+		if err != nil || identity != p.capability.Transport || e.state.Registrations[identity] != name {
+			return errPaneBootstrap
+		}
+		a, err := e.Find(p.capability.ID)
+		if err != nil || !p.unchanged(p.capability, a, account) || !paneRecorded(a, p.capability.Pane) || e.state.PaneInstances[unit] != proof || proof.Cancelled || !paneInstanceClosed(e.state, a, unit, boot()) {
+			return errPaneBootstrap
+		}
+		allowed := func() bool {
+			now, err := monitoringBootMillis()
+			return err == nil && now < proof.ClosedBootUntil && Millis() < proof.ClosedUntil && workloadAllowed(a, p.capability.Purpose) == nil && len(a.Units) <= a.Settings.Terminals && current()
+		}
+		if !allowed() {
+			return errPaneBootstrap
+		}
+		ready := proof
+		ready.ReadyAt, ready.ClosedUntil, ready.ClosedBootUntil = Millis(), 0, 0
+		e.state.PaneInstances[unit] = ready
+		// Do not release anything if durable tracking/activation fails. An
+		// uncertain save remains inspectable, never reconstructible permission.
+		if err := e.save(); err != nil {
+			return err
+		}
+		if !allowed() {
+			return errPaneBootstrap
+		}
+		if err := permit(); err != nil {
+			return errPaneBootstrap
+		}
+		e.Audit("pane-admitted", a.ID)
+		return nil
+	})
+}
+
+// No child ever started in this case. Do not strand a slot on failed exec; do
+// not use this to erase an uncertain started bootstrap or a ready workload.
+func (e *Engine) discardUnstartedPane(unit string, proof PaneInstance) error {
+	return e.WithState(func() error {
+		a := e.state.Attempts[proof.Attempt]
+		if a != nil && e.state.PaneInstances[unit] == proof && proof.ReadyAt == 0 {
+			removePaneUnit(e.state.PaneInstances, a, unit)
+		}
+		return nil
+	})
+}
+
+func removePaneUnit(instances map[string]PaneInstance, a *Attempt, unit string) {
+	units := a.Units[:0]
+	for _, v := range a.Units {
+		if v != unit {
+			units = append(units, v)
+		}
+	}
+	a.Units = units
+	delete(instances, unit)
+}
+
+// Called by Tick under state. A crashed parent cannot authorize from disk; its
+// original bounded startup is revoked/reaped rather than reserving a pane slot
+// forever. Failed kernel cleanup stays visible/tracked, never fake success.
+func (e *Engine) reapClosedPaneStarts() {
+	now, clockErr := monitoringBootMillis()
+	currentBoot := boot()
+	for unit, proof := range e.state.PaneInstances {
+		if proof.ReadyAt != 0 || proof.ClosedUntil <= 0 || proof.ClosedBootUntil <= 0 {
+			continue
+		}
+		a := e.state.Attempts[proof.Attempt]
+		pane, kind, instance, valid := recordedPaneIdentity(proof.Attempt, unit)
+		if a == nil || !valid || kind != "scope" || pane != proof.Pane || instance != proof.ID || !e.recordedUnitAllowed(a, unit) {
+			continue // Preserve corrupt/foreign records; not authority or safe cleanup.
+		}
+		if !proof.Cancelled && proof.Boot == currentBoot && Millis() < proof.ClosedUntil && (clockErr != nil || now < proof.ClosedBootUntil) {
+			continue
+		}
+		proof.Cancelled = true
+		e.state.PaneInstances[unit] = proof
+		closed := *a
+		closed.Units = []string{unit}
+		if err := e.terminateWriters(&closed); err != nil {
+			a.Errors = appendError(a.Errors, "Closed terminal startup cleanup unconfirmed; inspect examctl panes list and preserve tracking/work")
+			continue
+		}
+		removePaneUnit(e.state.PaneInstances, a, unit)
+	}
 }
 
 func awaitPaneAcknowledgement(c net.Conn, result map[string]any, expires int64) error {
