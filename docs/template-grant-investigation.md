@@ -18,6 +18,13 @@ explicitly authorized. Migration of existing enrollments and exact catalog/claim
 protocols remain engineering work; this decision alone completes no investigation
 or implementation. Independent purge work continues.
 
+October22 follow-up source map and concrete proposed claim/Begin/crash/migration
+protocol are in [unified-grant-protocol-proposal.md](unified-grant-protocol-proposal.md).
+This also identifies the current live-SSH UID0-to-verified binding, latest-row
+admission/legacy cancellation deletion, sandbox finite-window transition and
+root-outbound Begin verification questions. It is investigated, not implemented
+or an authority to migrate records; the broad investigation stays open.
+
 Current foundation status: C2a2 local catalog/CLI, C2a3 optional exact-version
 native readers and C2a4 signed registry/inspection are implemented/tested locally.
 C2a5 now qualifies the actual root template CLI against the real system manager

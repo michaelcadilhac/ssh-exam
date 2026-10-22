@@ -8,9 +8,45 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Health observation is now local commitd37463a; its final11 guarded worker checks
+remain pending on host-idle eligibility, not falsely reported as PASS. A new
+separate concurrent512MiB-per-source test verifies both archives/holds and healthy
+authority, but its subsecond signed-inspection criterion fails in three runs.
+Runtime tracing attributes the longest exchange to durable fsync/rename rather
+than read-only diagnostics (under11ms). C10 has been re-asked with this evidence.
+The initial full native run then passes including that experiment. A subsequent
+test-criterion correction applies the pre-existing3s durable-IO workload budget
+to signed inspection/registration/pane operations while retaining1s no-write
+diagnostics and separate controlled-lock checks; three final race repeats pass
+116.594s with exact source/archive verification, live worker controls and
+35/41/42 healthy renewals. No
+runtime timeout/lease/resource policy changes. Preserve the earlier failed
+measurements and open liveness investigation; see concurrent-collection-latency.md.
+
+Next independent readiness correction: actual compiled namespace-root health
+reproduces unbounded configured-account NSS waiting6.67s. A candidate now bounds
+the whole lookup walk to5s with4KiB/account output and250ms pipe drain, retaining
+all current UID/managed/sandbox checks and fresh admission verification. It marks
+provider failure unavailable, not changed policy/misconduct, and caches nothing.
+Two initial focused race repeats pass core3.115s/CLI13.696s; late-cutoff and full
+native race/resource/namespace/compiler/default-size pass core242.620s/CLI23.556s.
+All426 app/80files pass91.33s, static builds/vet and35 Python checks pass; all174
+prior browser hashes match; nine fresh real browser/WASM SSH checks pass1.2m.
+New exact-artifact guest evidence remains pending;
+the16:48UTC boolean-only raw host check reports BUSY, no guest started. See
+native-readiness-accounts.md; no deployed or completed-parent-TODO claim.
+
+Unified-grant authority investigation now has a concrete source map and proposed
+claim/Begin/crash/migration protocol in unified-grant-protocol-proposal.md.
+It preserves live signed UID verification independently of enrollment-time
+settings, one-use/unknown-start fencing and authoritative holds. The legacy
+unused-enrollment choice remains unanswered; native outbound Begin reachability
+and sandbox finite-window transition are identified as further consequential
+boundaries, not implemented assumptions. No schema/index/history change occurs.
+
 Workspace-receipt milestone is local commitde16a5c, recovery metadata iscb5b809
-and pane management is0c2a529. Current health-observation code passes all local
-checks but is NOT yet committed/fully privileged-qualified. The first csc-sys
+and pane management is0c2a529. Health-observation is local commitd37463a and
+passes local checks but is NOT fully privileged-qualified. The first csc-sys
 guard refused live/unresolved work BEFORE guest creation; no test unit/production
 state/service was changed. A later boolean-only raw recheck reported idle. The
 unchanged guarded retry passes3 real signed-SSH held-health/independent-inspection,

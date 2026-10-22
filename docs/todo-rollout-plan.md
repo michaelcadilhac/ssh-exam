@@ -11,6 +11,23 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The local health-observation split and subsequent bounded configured-account NSS
+verification require no state/schema migration. Pair matching binaries/help and
+repeat current account verification under target NSS before any separately
+authorized drained rollout. A failed/oversized/timed-out lookup now reports
+unavailable admission verification, not confirmed account-policy change. Never
+cache identity or relax guards to pass it. Readiness observations are outside
+shared state but are not atomic permission or host-wide resource isolation.
+The health artifact's final worker regression was refused before guest creation
+on live/unresolved host work; the later NSS artifact needs its own exact guarded
+receipts. Preserve that distinction and all original state/holds. Downgrade loses
+the lock/IO bounds and is not equivalent safety; prefer compatible forward repair
+with admission closed. No install, service change or consolidation is executed.
+The concurrent512MiB-per-source workload has local user-systemd evidence only;
+its documented durable-IO benchmark correction is not a liveness-policy fix or
+an authorization to raise production limits/leases. Keep C3/C10/C11 and actual
+target/capacity qualification gates before any future release.
+
 The following local workspace-receipt candidate extends pinned bounded metadata
 reads to workspace-ready receipts and enforces exact top-level/nested-source JSON
 keys. Verify private0700 real staging components and matching readers/writers

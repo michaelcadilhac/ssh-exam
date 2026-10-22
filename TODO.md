@@ -258,6 +258,15 @@ full privileged qualification or deployment authorization.
   guest creation. See docs/native-health-isolation.md. Do not clear production
   records or substitute an older binary's receipt. This does not close the
   critical TODO, establish the incident cause or enable retained SSH/recovery.
+  A following configured-account readiness fix reproduces an unbounded NSS wait
+  through actual compiled namespace-root CLI. The candidate bounds the whole
+  lookup pass/output/pipe drain while keeping current UID/login restrictions and
+  fresh uncached Begin checks. Unknown provider results are unavailable, not
+  misconduct. Full426 app/native race/resource/namespace/compiler/default-size,
+  static/vet and35 Python tests pass;174 prior browser hashes match. New exact-
+  artifact guest qualification remains pending on the idle-host safety gate.
+  See docs/native-readiness-accounts.md. No production change or closed parent
+  TODO/initiating-fault claim.
 
 ## Firm design policy: examctl is the complete management interface
 
