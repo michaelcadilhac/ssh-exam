@@ -3,6 +3,19 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 exact-source selection outcome: shared CLI/web definition settings now
+feed the existing native exact-version consumer through student preflight/Begin.
+Signed target/settings validation fixes confirmed wrong-exam/private-field CLI
+output; old-role refusal, saved snapshot preservation and stale-page checks prevent
+silent mutable fallback/late Begin. Full435 app checks101.94s, native races/
+resources core299.160s/CLI25.978s, build/vet/typecheck and16 post-build browser
+checks46.7s pass. One incomplete historical CLI fixture correctly failed the
+first broad run; it was corrected, its actual workflow passed, and fresh broad
+qualification passed without relaxing the validator. Detailed evidence and state
+review: template-source-selection.md. No grants/migration/C15/retained mode is
+enabled; broad TODO count stays11/38. The21:41UTC read-only host guard is BUSY;
+no new upload, guest, production change, push, deployment or consolidation.
+
 October22 closed-pane-launch outcome: ordinary scope startup/manager waits no
 longer own shared state. A pinned inherited trusted bootstrap cannot exec until
 durable current-authority release; signed/CLI close and actual Tick cancel/reap

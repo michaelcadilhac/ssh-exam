@@ -684,9 +684,19 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         }),
         { mode: 0o600 },
       );
+      const midterm = {
+        id: "midterm",
+        name: "Original",
+        template: "v1",
+        duration: 5400,
+        webcam: true,
+        terminals: 4,
+        earliest: 0,
+        latest: 8640000000000000,
+      };
       f.current.store.db
         .prepare("INSERT INTO exams VALUES(?,?)")
-        .run("midterm", JSON.stringify({ id: "midterm", name: "Original" }));
+        .run("midterm", JSON.stringify(midterm));
       const invoke = (category: string, args: string[]) =>
         run(
           "/usr/bin/unshare",
@@ -744,7 +754,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       await f.restart();
       f.current.store.db
         .prepare("UPDATE exams SET config=? WHERE id='midterm'")
-        .run(JSON.stringify({ id: "midterm", name: "Changed" }));
+        .run(JSON.stringify({ ...midterm, name: "Changed" }));
       expect(
         JSON.parse((await cli(["show", "midterm", "--request", id])).stdout)
           .result,
@@ -1207,6 +1217,100 @@ it("paginates definitions, refuses invalid/missing targets and does not change s
     expect(
       f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
     ).toEqual({ n: 0 });
+  } finally {
+    await f.close();
+  }
+});
+
+it("requires a recognized source-selection protocol before signed root create/update can mutate definitions", async () => {
+  const f = await setup();
+  try {
+    f.config.agent.managementOperations = [
+      "templates.sync",
+      "exams.create",
+      "exams.update",
+    ];
+    const digest = "a".repeat(64);
+    const synced = f.unpack(
+      await f.post(
+        f.request({
+          operation: "templates.sync",
+          body: {
+            version: {
+              schema: 1,
+              name: "v1",
+              hash: digest,
+              entries: 4,
+              files: 2,
+              bytes: 30,
+              max_file_bytes: 20,
+              created: 1000,
+            },
+            reason: "Verify synthetic reviewed source selection",
+          },
+        }),
+      ),
+    );
+    expect(synced.ok).toBe(true);
+    const exam = {
+      id: "exact",
+      name: "Exact source",
+      template: "v1",
+      template_version: digest,
+      earliest: Date.now() - 60000,
+      latest: Date.now() + 3600000,
+    };
+    for (const marker of [undefined, "template-version/v2"]) {
+      const refused = f.unpack(
+        await f.post(
+          f.request({
+            operation: "exams.create",
+            body: { exam, ...(marker ? { source_selection: marker } : {}) },
+          }),
+        ),
+      );
+      expect(refused.ok).toBe(false);
+      expect(
+        f.current.store.db
+          .prepare("SELECT id FROM exams WHERE id='exact'")
+          .get(),
+      ).toBeUndefined();
+    }
+    const selected = f.unpack(
+      await f.post(
+        f.request({
+          operation: "exams.create",
+          body: { exam, source_selection: "template-version/v1" },
+        }),
+      ),
+    );
+    expect(selected.ok).toBe(true);
+    expect(selected.result.exam.template_version).toBe(digest);
+    for (const value of [digest, ""]) {
+      const refused = f.unpack(
+        await f.post(
+          f.request({
+            operation: "exams.update",
+            body: {
+              id: exam.id,
+              revision: selected.result.revision,
+              changes: { template_version: value },
+            },
+          }),
+        ),
+      );
+      expect(refused.ok).toBe(false);
+      expect(refused.error).toContain("source-selection protocol marker");
+      expect(
+        JSON.parse(
+          (
+            f.current.store.db
+              .prepare("SELECT config FROM exams WHERE id='exact'")
+              .get() as { config: string }
+          ).config,
+        ).template_version,
+      ).toBe(digest);
+    }
   } finally {
     await f.close();
   }

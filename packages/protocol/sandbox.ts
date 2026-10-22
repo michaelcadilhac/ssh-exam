@@ -15,7 +15,7 @@ export function hasSandboxWindow(settings: Pick<Exam, "earliest" | "latest">) {
 export function sandboxExam(
   template = "sample-exam",
   limits: Parameters<typeof collectionSettings>[0] &
-    Partial<Pick<Exam, "earliest" | "latest">> = {},
+    Partial<Pick<Exam, "earliest" | "latest" | "template_version">> = {},
 ): Exam {
   return {
     id: SANDBOX_EXAM_ID,
@@ -28,6 +28,9 @@ export function sandboxExam(
     webcam: false,
     terminals: 4,
     template,
+    ...(limits.template_version
+      ? { template_version: limits.template_version }
+      : {}),
     ...collectionSettings(limits),
   };
 }

@@ -355,6 +355,18 @@ publication repair never reopens time or recopies a mutable source. See
 docs/private-workspace-staging.md for restart/CLI/mixed-version constraints and
 remaining unified-grant/privileged qualification. This is local, not deployed.
 
+October22 local exact-source selection now connects the shared CLI/web definition
+writer to that native version consumer. `--template-version HASH` / the separate
+Immutable template hash field requires an authenticated catalog acknowledgement
+for the configured agent/name/hash. Saved preparations retain the exact source
+despite later default edits. Preflight and Begin require matching capabilities,
+identity and source; the distinct signed versioned Begin compares complete saved
+settings and rechecks current ownership after awaited checks before original
+activation. Older gateways/agents refuse before mutation/start, with no mutable
+fallback. Explicit legacy selection changes future defaults only. No grant
+issuance/schema backfill is implemented; C15 fresh authenticated outbound grant
+agreement remains required future work. See docs/template-source-selection.md.
+
 The existing protected-collection reservation of root MANIFEST.json is now also
 enforced in fresh starter copying, retained private-stage adoption and final
 pre-commit Begin checks. Refuse before any interval/consumption, preserve source/

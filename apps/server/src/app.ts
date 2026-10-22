@@ -172,6 +172,37 @@ export async function createApp(
         "Class server lacks finite sandbox Begin-window enforcement; ask the operator to verify matching native roles before new practice. No exam clock has started.",
       );
   };
+  const requireTemplateAgent = (settings: any, h: any) => {
+    if (
+      settings.template_version &&
+      ![
+        "immutable-template-versions-v1",
+        "exact-template-begin-v1",
+        "private-workspace-staging",
+      ].every((cap) => h.capabilities?.includes(cap))
+    )
+      throw Error(
+        "Class server lacks exact-template Begin enforcement; ask the operator to verify matching native roles. No new Begin was requested by this check; preserve the preparation and inspect its status.",
+      );
+  };
+  const requireTemplateSnapshot = (
+    settings: any,
+    remote: any,
+    expected: { id: string; username: string; uid: number },
+  ) => {
+    if (
+      settings.template_version &&
+      (!remote ||
+        remote.id !== expected.id ||
+        remote.username !== expected.username ||
+        remote.uid !== expected.uid ||
+        remote.settings?.template !== settings.template ||
+        remote.settings?.template_version !== settings.template_version)
+    )
+      throw Error(
+        "Class server did not retain the selected exact template; no new Begin requested by this check. Preserve the preparation and inspect its saved settings; never substitute a mutable source.",
+      );
+  };
   const autoAuthorizeSandbox = async (id: string, gap = false) => {
     let a = store.attempt(id);
     if (!isSandbox(a.exam)) return;
@@ -886,6 +917,7 @@ export async function createApp(
       Object.assign(settings, policy);
       requireBeginWindow(s.exam, settings);
     }
+    requireTemplateAgent(settings, h);
     if (!previous)
       store.db
         .prepare(
@@ -923,6 +955,12 @@ export async function createApp(
           : "Preparation status changed; check the current attempt before continuing.",
       );
     }
+    const expectedPreparation = {
+      id,
+      username: s.username,
+      uid: enrollment.uid,
+    };
+    requireTemplateSnapshot(settings, prepared, expectedPreparation);
     store.db
       .prepare("UPDATE attempts SET work_path=?,functional_test=? WHERE id=?")
       .run(prepared.work_path || "/work", prepared.functional_test ? 1 : 0, id);
@@ -937,6 +975,7 @@ export async function createApp(
           "Workspace preparation changed; check status before beginning.",
         );
       }
+      requireTemplateSnapshot(settings, staged, expectedPreparation);
     }
     return {
       id,
@@ -1038,7 +1077,48 @@ export async function createApp(
           "Preparation, connection or monitoring changed during setup; inspect status before beginning. No new clock was requested.",
         );
       requireBeginWindow(a.exam, JSON.parse(a.settings));
-      const result = await agent.call("activate-attempt", { id: a.id });
+      const currentSettings = JSON.parse(a.settings);
+      if (currentSettings.template_version) {
+        requireTemplateAgent(currentSettings, await conn.command("health"));
+        requireTemplateSnapshot(
+          currentSettings,
+          await conn.command("inspect-attempt", { id: a.id }),
+          { id: a.id, username: a.username, uid: a.uid },
+        );
+      }
+      // Those source checks await SSH. Recheck actual current page/settings/
+      // connection/window immediately before dispatch, not their old copies.
+      const checkedSettings = a.settings;
+      const currentPreparation = store.attempt(a.id);
+      if (!currentPreparation)
+        throw Error(
+          "Preparation retired during Begin checks; no new Begin requested; inspect current status",
+        );
+      a = currentPreparation;
+      page(req, a);
+      if (
+        a.state !== "PREPARING" ||
+        a.settings !== checkedSettings ||
+        preflightExpired(a, now()) ||
+        connections.get(`${a.exam}:${a.username}`) !== conn ||
+        !conn.alive ||
+        !healthy(a)
+      )
+        throw Error(
+          "Preparation or required monitoring changed during Begin checks; no new Begin requested; inspect current status",
+        );
+      requireBeginWindow(a.exam, JSON.parse(a.settings));
+      const result = await agent.call(
+        currentSettings.template_version
+          ? "activate-versioned-attempt"
+          : "activate-attempt",
+        {
+          id: a.id,
+          ...(currentSettings.template_version
+            ? { settings: currentSettings }
+            : {}),
+        },
+      );
       if (result.state !== "ACTIVE") {
         const manifest = result.protected
           ? await conn.command("submission-manifest", { id: a.id })
@@ -1296,9 +1376,9 @@ export async function createApp(
   });
   app.get("/api/admin/exams", async (req) => {
     principal(req, "admin");
-    return new ExamDefinitions(store).all();
+    return new ExamDefinitions(store, config.agent.id).all();
   });
-  app.post("/api/admin/exams", async (req) => {
+  const saveExamDefinition = async (req: any) => {
     const s = principal(req, "admin");
     const body = z
       .object({
@@ -1311,7 +1391,7 @@ export async function createApp(
       })
       .passthrough()
       .parse(req.body);
-    const definitions = new ExamDefinitions(store);
+    const definitions = new ExamDefinitions(store, config.agent.id);
     const { requestID, ...intent } = body;
     const result = definitions.withRequest(s.username, requestID, intent, () =>
       body.revision
@@ -1330,6 +1410,16 @@ export async function createApp(
         : definitions.create(body, s.username, body.reason),
     );
     return { ...result.exam, revision: result.revision };
+  };
+  app.post("/api/admin/exams", saveExamDefinition);
+  // Older gateways strip unknown create fields. Their missing versioned route
+  // must refuse BEFORE they could create an unintended mutable default.
+  app.post("/api/admin/exams/versioned", async (req) => {
+    principal(req, "admin");
+    z.object({ template_version: z.string().regex(/^[a-f0-9]{64}$/) })
+      .passthrough()
+      .parse(req.body);
+    return saveExamDefinition(req);
   });
   const describeAttempt = (a: any) => {
     const conn = attemptConnections.get(a.id);

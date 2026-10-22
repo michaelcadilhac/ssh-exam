@@ -413,7 +413,17 @@ new requests refresh deliberately. Verify the compiled CLI's signed nested scope
 refusal before output, offline/pending behavior and read-only admin catalog.
 An older gateway/CLI loses this workflow, not permission to substitute a mutable
 source; coordinate allowlist compatibility and retain additive rows/newer state.
-No source/default selection, grant, production migration or cutover is enabled.
+That C2a4 increment enabled no default selection or grants. The October22 local
+source-selection candidate now adds explicit CLI/web exact-hash defaults and
+student preflight/Begin without schema migration/backfill. Coordinate gateway,
+CLI/browser and all native writers: new root protocol markers/browser route and
+native Begin purpose refuse older roles before mutation/start. Qualify actual
+exact-source private staging, normal/admin material readers and saved settings
+with missing/damaged sources and restart in the disposable guest. Retain registry,
+catalog, definition/request/audit and versioned attempt/receipt metadata; never
+roll back to a writer that drops hashes. Existing legacy definitions are unchanged.
+Defaults are not enrollment-time grants, and historical attestation is not a live
+source-retention lease. No cutover is authorized or executed.
 
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,

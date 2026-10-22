@@ -42,6 +42,12 @@ export const examConfiguration = z.object({
   webcam: z.boolean().default(true),
   terminals: z.number().int().min(1).max(4).default(4),
   template: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  // Empty is an explicit legacy-default selection on writes. The shared
+  // writer removes it; saved versioned snapshots always contain the exact hash.
+  template_version: z
+    .string()
+    .regex(/^([a-f0-9]{64})?$/)
+    .optional(),
   collection_file_mib: z
     .number()
     .int()

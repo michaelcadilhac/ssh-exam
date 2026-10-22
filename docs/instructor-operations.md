@@ -185,13 +185,19 @@ this does not preserve active editors through coordinator failure/lockout yet.
 
 Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
 view of exact agent/name/hash metadata and first/latest attestation timestamps.
-It does not choose a version, edit defaults, issue grants or prove current native
-availability. The shared CLI reads are `examctl web templates list/show`; root
+The catalog view does not choose a version, edit defaults, issue grants or prove
+current native availability. The shared CLI reads are `examctl web templates list/show`; root
 `examctl templates sync NAME HASH --reason TEXT` first verifies local native bytes,
 then requests a signed gateway acknowledgement. Reusing a sync request keeps its
 original timestamp; use a new request to refresh. Browser administrators cannot
-attest class filesystem contents. Current definitions/enrollments remain legacy;
-see template-catalog.md and command help before any future source issuance.
+attest class filesystem contents. The local source-selection candidate separately
+accepts that exact name/hash in Exam settings → Immutable template hash, or root
+`examctl web exams create/update --template-version HASH`. Empty / explicit
+`--template-version legacy` changes future defaults only; editing the name never
+silently clears a hash. Old prepared/started snapshots remain unchanged. Native
+preflight/Begin still verifies capability/identity/exact bytes; errors never mean
+permission to substitute another source or reset time. Unified enrollment-time
+issuance remains pending. See template-source-selection.md and command help.
 
 Submission distinguishes collection pending/failed from a verified protected copy. It
 shows collection/execution/protection timestamps, file and omission counts/reasons, manifest/checksum, and server-access recovery/release dates; no

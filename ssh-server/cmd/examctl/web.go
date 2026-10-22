@@ -50,6 +50,9 @@ managementOperations allowlist; the default is no management authorization.
 Settings (no ad hoc database/JSON editing required):
 --name TEXT              name; creation default 'Programming exam'
 --template NAME          installed native materials template; required on create
+--template-version HASH  exact lowercase64-hex hash from templates sync/web templates
+                        show; must have an attestation for this agent/name/hash
+                        'legacy' explicitly clears this FUTURE default; no fallback
 --duration-seconds N     60..21600; creation default 5400 (90 minutes)
 --webcam required|optional  creation default required
 --terminals N            1..4; creation default 4
@@ -65,7 +68,12 @@ Create never overwrites an existing ID. Update changes ONLY named settings and
 refuses a stale revision; reload/show, review differences, then use a new intent.
 Existing attempt settings, clocks, account restrictions and submissions remain
 unchanged. Template deployment is separate; definition creation does not install
-materials. Sandbox stays repeatable/five-minute/no-webcam, but NEW practice needs
+materials. Inspect templates verify/sync and web templates list/show first. A
+catalog entry is historical attestation, not current availability. Native exact
+staging/Begin and matching capabilities remain mandatory. Changing template name
+never silently clears a selected version; select its matching hash or explicitly
+choose legacy. This does not issue/revise grants or rewrite prepared snapshots.
+Sandbox stays repeatable/five-minute/no-webcam, but NEW practice needs
 an explicit finite Begin window. Configure it with show sandbox then update
 sandbox --revision HASH --earliest RFC3339 --latest RFC3339 (same web settings).
 An unconfigured/legacy indefinite window refuses new starts; no rolling default.
@@ -154,6 +162,7 @@ func webMain(args []string) int {
 	after := flags.String("after", "", "exclusive exam-ID cursor")
 	name := flags.String("name", "Programming exam", "exam name")
 	template := flags.String("template", "", "installed template")
+	templateVersion := flags.String("template-version", "", "exact attested hash or explicit legacy default")
 	duration := flags.Int64("duration-seconds", 5400, "future attempt seconds")
 	webcam := flags.String("webcam", "required", "required or optional")
 	terminals := flags.Int("terminals", 4, "terminal count")
@@ -182,7 +191,7 @@ func webMain(args []string) int {
 	visited := map[string]bool{}
 	flags.Visit(func(f *flag.Flag) { visited[f.Name] = true })
 	mutatingFlag := false
-	for _, key := range []string{"name", "template", "duration-seconds", "webcam", "terminals", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
+	for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
 		mutatingFlag = mutatingFlag || visited[key]
 	}
 	switch words[1] {
@@ -221,6 +230,9 @@ func webMain(args []string) int {
 			return usage("create/update require exactly one exam ID and setting flags, not list filters")
 		}
 		create := words[1] == "create"
+		if visited["template-version"] && *templateVersion != "legacy" && !catalogHash.MatchString(*templateVersion) {
+			return usage("--template-version requires an exact lowercase64-hex catalog hash, or explicit legacy; use templates sync/web templates show, never latest")
+		}
 		if create && (*template == "" || *earliest == "" || *latest == "" || visited["revision"]) {
 			return usage("create requires --template, --earliest and --latest, without --revision")
 		}
@@ -247,6 +259,13 @@ func webMain(args []string) int {
 				settings[field] = value
 			}
 		}
+		if visited["template-version"] {
+			value := *templateVersion
+			if value == "legacy" {
+				value = ""
+			}
+			settings["template_version"] = value
+		}
 		for key, value := range map[string]string{"earliest": *earliest, "latest": *latest} {
 			if create || visited[key] {
 				parsed, err := time.Parse(time.RFC3339, value)
@@ -260,6 +279,9 @@ func webMain(args []string) int {
 			return usage("choose at least one setting to update")
 		}
 		b := map[string]any{}
+		if visited["template-version"] {
+			b["source_selection"] = "template-version/v1"
+		}
 		if create {
 			settings["id"] = words[2]
 			b["exam"] = settings
@@ -301,6 +323,10 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 	// Verify nested resource scope before ANY private output/file creation. A
 	// signed outer envelope authenticates the sender, not an accidental wrong
 	// target, cursor or intent inside its result.
+	if err := validateExamResult(operation, body, result.Result); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	var partialClock error
 	if err := validateCatalogRead(operation, body, result.Result, c.AgentID); err != nil {
 		fmt.Fprintln(os.Stderr, err)

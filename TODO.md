@@ -567,6 +567,19 @@ Existing enrollment migration and implementation remain outstanding.
   default single-attempt policy until deliberately changed.
 
 - [ ] **Define clear `/work` initialization choices.**
+  October22 exact source selection is now implemented/tested locally through
+  `examctl web exams create/update --template-version HASH`, shared Exam settings
+  and student preflight/Begin. Only the configured agent's attested exact name/
+  hash is accepted; saved preparations retain it and missing capabilities/bytes/
+  identity refuse without mutable fallback. Old gateways/agents refuse the new
+  selection/Begin purposes before mutation/start. Explicit legacy selection changes
+  future defaults only. CLI replies now refuse wrong-exam/private-field results
+  before confirmed output. Full435 app/native race/resource/build and16 rebuilt
+  browser checks pass; evidence/state review/fixture correction are in
+  docs/template-source-selection.md. This does not issue enrollment-time grants,
+  implement C15, change history or finish the broad initialization investigation.
+  New exact-artifact privileged qualification is blocked on the BUSY raw guard;
+  no upload/guest/deployment. Earlier narrower source notes below are historical.
   October 21 source investigation confirmed legacy materials/welcome still read
   mutable template paths after starter staging. The C2a3 native candidate now
   binds explicit versions consistently; current gateway-issued snapshots remain

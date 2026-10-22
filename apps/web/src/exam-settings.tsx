@@ -24,6 +24,7 @@ export function ExamSettings({
     id: "",
     name: "Programming exam",
     template: "sample-exam",
+    template_version: "",
     duration: 5400,
     webcam: true,
     terminals: 4,
@@ -63,10 +64,13 @@ export function ExamSettings({
             const fingerprint = JSON.stringify(form);
             if (intent.current.fingerprint !== fingerprint)
               intent.current = { fingerprint, requestID: crypto.randomUUID() };
-            const result = await api("/admin/exams", {
-              ...form,
-              requestID: intent.current.requestID,
-            });
+            const result = await api(
+              form.template_version ? "/admin/exams/versioned" : "/admin/exams",
+              {
+                ...form,
+                requestID: intent.current.requestID,
+              },
+            );
             onSaved(result);
           } catch (e) {
             setError((e as Error).message);
@@ -109,6 +113,27 @@ export function ExamSettings({
         </label>
         <small className="admin-field-help">
           Name of the exam template installed on the SSH server.
+        </small>
+        <label>
+          Immutable template hash (optional)
+          <input
+            value={form.template_version ?? ""}
+            disabled={busy}
+            pattern="([a-f0-9]{64})?"
+            maxLength={64}
+            placeholder="Empty selects the legacy mutable source"
+            onChange={(e) =>
+              setForm({ ...form, template_version: e.target.value })
+            }
+          />
+        </label>
+        <small className="admin-field-help">
+          Copy an exact hash for this template from Administration → Template
+          catalog after root installation and sync. This pins future preparation
+          settings; the class server must still verify actual bytes before
+          Begin. Changing the name does not clear its hash. Clearing the hash
+          explicitly selects legacy defaults; saved preparations and history
+          stay unchanged. This does not issue or revise an attempt grant.
         </small>
         <fieldset className="admin-form-group">
           <legend>Start window</legend>

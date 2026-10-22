@@ -75,6 +75,7 @@ export const examShowRequest = z
 export const examCreateRequest = z
   .object({
     exam: z.record(z.string(), z.unknown()),
+    source_selection: z.literal("template-version/v1").optional(),
     reason: z.string().trim().min(8).max(1000).optional(),
   })
   .strict();
@@ -82,6 +83,7 @@ export const examUpdateRequest = z
   .object({
     id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
     changes: z.record(z.string(), z.unknown()),
+    source_selection: z.literal("template-version/v1").optional(),
     reason: z.string().trim().min(8).max(1000).optional(),
     revision: z.string().regex(/^[a-f0-9]{64}$/),
   })

@@ -90,6 +90,12 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if cmd.Expires <= Millis() || cmd.Expires > Millis()+30000 {
 		return nil, errors.New("command expired")
 	}
+	// A distinct purpose makes older agents refuse, rather than silently
+	// ignoring a new expected-settings field and starting a mutable source.
+	versionedBegin := cmd.Op == "activate-versioned-attempt"
+	if versionedBegin {
+		cmd.Op = "activate-attempt"
+	}
 	if cmd.Op == "renew-execution-lease" {
 		return e.renewSignedLease(cmd, username, transport)
 	}
@@ -118,6 +124,11 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			a, err := e.Find(cmd.Body.ID)
 			if err != nil || a.Username != username || cmd.Transport != transport || a.Transport != transport || e.state.Registrations[transport] != username {
 				return errors.New("attempt SSH transport mismatch")
+			}
+			if versionedBegin {
+				if err := versionedBeginSettings(a, cmd.Body.Settings); err != nil {
+					return err
+				}
 			}
 			if e.temporaryPolicy(a) && a.Start == 0 {
 				snapshot := *a
@@ -274,6 +285,11 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username || a.Transport != transport {
 				return errors.New("attempt SSH transport mismatch")
+			}
+			if versionedBegin {
+				if err := versionedBeginSettings(a, r.Settings); err != nil {
+					return err
+				}
 			}
 			if cmd.Op == "finalize-attempt" {
 				if a.State == "COMPLETED" || a.State == "FINALIZING" || a.State == "COLLECTION_FAILED" {

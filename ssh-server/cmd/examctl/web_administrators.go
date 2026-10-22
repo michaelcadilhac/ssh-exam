@@ -296,7 +296,13 @@ func validateAdministratorResult(op string, body map[string]any, raw json.RawMes
 // Reject duplicate keys before struct decoding (which otherwise accepts the
 // last value). This is a small bounded metadata schema, not a generic JSON API.
 func administratorJSONSafe(data []byte) bool {
-	if len(data) == 0 || len(data) > 65536 {
+	return boundedMetadataJSON(data, 65536, 4, 4096)
+}
+
+// Shared only by the bounded administrator and exam-definition reply schemas.
+// This prevents duplicate-key ambiguity before their strict typed decoders.
+func boundedMetadataJSON(data []byte, byteLimit, depthLimit, tokenLimit int) bool {
+	if len(data) == 0 || len(data) > byteLimit {
 		return false
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -305,7 +311,7 @@ func administratorJSONSafe(data []byte) bool {
 	var value func(int) bool
 	value = func(depth int) bool {
 		tokens++
-		if depth > 4 || tokens > 4096 {
+		if depth > depthLimit || tokens > tokenLimit {
 			return false
 		}
 		token, err := decoder.Token()

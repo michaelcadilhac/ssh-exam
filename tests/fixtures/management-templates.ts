@@ -148,6 +148,89 @@ export async function qualifyTemplateCLI(
         .stdout,
     ).result.sources,
   ).toHaveLength(1);
+  for (const permission of ["exams.create", "exams.update"])
+    if (!f.config.agent.managementOperations.includes(permission))
+      f.config.agent.managementOperations.push(permission);
+  const examID = "cli-versioned",
+    earliest = new Date(Date.now() - 60000).toISOString(),
+    latest = new Date(Date.now() + 3600000).toISOString();
+  const create = [
+    "create",
+    examID,
+    "--template",
+    info.name,
+    "--template-version",
+    info.hash,
+    "--earliest",
+    earliest,
+    "--latest",
+    latest,
+    "--reason",
+    "Select reviewed exact synthetic catalog version",
+    "--request",
+    randomUUID(),
+  ];
+  const selected = JSON.parse((await invoke("exams", create)).stdout);
+  expect(selected.result.exam).toMatchObject({
+    id: examID,
+    template: info.name,
+    template_version: info.hash,
+  });
+  await f.restart();
+  expect(JSON.parse((await invoke("exams", create)).stdout).result).toEqual(
+    selected.result,
+  );
+  const unchanged = await invoke("exams", [
+    "update",
+    examID,
+    "--revision",
+    selected.result.revision,
+    "--duration-seconds",
+    "7200",
+  ]);
+  const changed = JSON.parse(unchanged.stdout).result;
+  expect(changed.exam).toMatchObject({
+    template_version: info.hash,
+    duration: 7200,
+  });
+  const legacy = JSON.parse(
+    (
+      await invoke("exams", [
+        "update",
+        examID,
+        "--revision",
+        changed.revision,
+        "--template-version",
+        "legacy",
+      ])
+    ).stdout,
+  ).result;
+  expect(legacy.exam).not.toHaveProperty("template_version");
+  await expect(
+    invoke(
+      "exams",
+      [
+        ...create.slice(0, 2),
+        "--template",
+        info.name,
+        "--template-version",
+        "f".repeat(64),
+        "--earliest",
+        earliest,
+        "--latest",
+        latest,
+      ].map((v, i) => (i === 1 ? "unknown-version" : v)),
+    ),
+  ).rejects.toMatchObject({
+    code: 1,
+    stdout: "",
+    stderr: expect.stringContaining("attestation"),
+  });
+  expect(
+    f.current.store.db
+      .prepare("SELECT id FROM exams WHERE id='unknown-version'")
+      .get(),
+  ).toBeUndefined();
   corrupt("templates.show");
   try {
     await expect(show()).rejects.toMatchObject({

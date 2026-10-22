@@ -7,13 +7,14 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import argon2 from "argon2";
 import { hosts } from "../fixtures/hosts.js";
-import { sign } from "node:crypto";
+import { randomUUID, sign } from "node:crypto";
 import { verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { WebSocketServer } from "ws";
 import net from "node:net";
 import { hash } from "../../apps/server/src/db.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
+import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 const h = await hosts({
   classCertificates: process.env.EXAM_BROWSER_SSH === "1",
 });
@@ -29,6 +30,7 @@ const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
 const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
 const approvalAccounts = { approval01: 10020 };
+const versionAccounts = { version01: 10021 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -107,7 +109,11 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     return {
       ready: true,
       fixture: true,
-      capabilities: ["private-workspace-staging"],
+      capabilities: [
+        "private-workspace-staging",
+        "immutable-template-versions-v1",
+        "exact-template-begin-v1",
+      ],
     };
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
@@ -117,6 +123,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...closureAccounts,
       ...monitoringAccounts,
       ...approvalAccounts,
+      ...versionAccounts,
       policytest01: 12001,
       student01: 10001,
       student02: 10002,
@@ -184,7 +191,17 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       if (a.start) throw Error("Cannot cancel started attempt");
       a.state = "CANCELLED_BEFORE_START";
       break;
+    case "activate-versioned-attempt":
     case "activate-attempt":
+      if (
+        a.settings.template_version &&
+        (op !== "activate-versioned-attempt" ||
+          JSON.stringify(b.settings) !== JSON.stringify(a.settings))
+      )
+        throw Error(
+          "Exact browser source requires the distinct purpose and complete saved settings",
+        );
+      if (a.start) break;
       if (!a.workspace) throw Error("Private workspace not staged");
       if (
         a.account_policy_required &&
@@ -312,6 +329,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       ...closureAccounts,
       policytest01: 12001,
       ...approvalAccounts,
+      ...versionAccounts,
       student01: 10001,
       student02: 10002,
       student03: 10003,
@@ -378,7 +396,37 @@ const exam = {
   terminals: 4,
   template: "sample-exam",
 };
-const definitions = new ExamDefinitions(store);
+const definitions = new ExamDefinitions(store, "class");
+const versionHash = "a".repeat(64);
+new TemplateCatalog(store, "class").sync(
+  {
+    version: {
+      schema: 1,
+      name: exam.template,
+      hash: versionHash,
+      entries: 4,
+      files: 2,
+      bytes: 30,
+      max_file_bytes: 20,
+      created: 1000,
+    },
+    reason: "Review synthetic browser exact source",
+  },
+  {
+    agent: "class",
+    actor: "agent:class:root",
+    request: randomUUID(),
+    issued: 1000,
+    observed: 1001,
+  },
+);
+definitions.create(
+  { ...exam, id: "versioned-source", template_version: versionHash },
+  "fixture-operator",
+);
+store.db
+  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
+  .run("versioned-source", "version01", null, null, null, 10021);
 definitions.update(
   "sandbox",
   { earliest: exam.earliest, latest: exam.latest },

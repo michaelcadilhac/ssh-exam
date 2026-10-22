@@ -2,10 +2,12 @@
 
 October 21, 2026: candidate local development, **not deployed**. This is the C2a2
 foundation for fixed-at-issuance grants, not completed unified grants or their
-migration. Current gateway-issued snapshots still use legacy template IDs. C2a3
-now adds native-only optional exact-version readers. C2a4 additionally provides
-signed metadata acknowledgement and read-only gateway inspection; no gateway
-selection or grant issuance/migration is enabled. Native catalog
+migration. C2a3 adds optional native exact-version readers. C2a4 provides signed
+metadata acknowledgement and read-only gateway inspection. October22's local
+source-selection candidate now connects exact hashes to shared CLI/web definition
+settings and student preparation/Begin; see template-source-selection.md. Legacy
+definitions retain their old semantics. Unified enrollment-time grant issuance/
+migration is still unimplemented. Native catalog
 installation does not select a version, issue a grant, change an existing attempt,
 or confirm availability to the gateway. Never enter a catalog hash as a legacy
 dashboard Template ID.
@@ -33,7 +35,8 @@ identity and metadata revision. No source paths, inventories, question bytes or
 student credentials. Out-of-order observations cannot regress the retained row.
 This is historical/as-of root evidence, **not** a live source probe, availability
 lease, default selection or grant. Native full-byte verification before Begin
-remains necessary. Ordinary definitions/enrollments still issue legacy snapshots.
+remains necessary. Selection is a separate explicit definition-settings action;
+enrollment-time unified grant issuance remains open.
 
 Reuse `--request UUID` for a lost sync reply with identical intent. Exact retries
 retain the original gateway acknowledgement, even after a restart; they do not
@@ -47,7 +50,9 @@ Administrators may inspect the same read-only metadata via **Administration →
 Template catalog**. Lists default to 50 rows (maximum 200), with exact-name filter
 and exclusive NAME@HASH cursor. These are live pages, not a consistent full export.
 Details retain list navigation/focus and display times in the current device
-timezone. The browser cannot upload/attest, select a default, delete or issue grants.
+timezone. The catalog view cannot upload/attest, select a default, delete or issue
+grants. Copy its exact name/hash into the separate Exam settings workflow when
+deliberately selecting a future default.
 Signed CLI reply validators reject wrong scope, missing/extra/null fields,
 inconsistent counters/cursors and invalid flags before printing any private output.
 Reasons use 8..1000 UTF-8 bytes consistently across native/CLI/gateway validation.
@@ -214,9 +219,9 @@ starting the bounded test guest. No host services/configuration/accounts/state
 were changed. Continue independent local work, not production reconciliation.
 Full verification evidence is recorded in `todo-progress.md`.
 
-Next: bounded authenticated catalog acknowledgement and gateway selection of the
-optional native binding below, then gateway-owned grant issuance/claim/
-Begin/revision and reviewed legacy migration. Those are not enabled by this CLI.
+The acknowledgement and optional source-selection workflows are now local
+candidates; gateway-owned grant issuance/claim/Begin/revision and reviewed legacy
+migration remain open. Those are not enabled by the native catalog CLI itself.
 See `template-grant-investigation.md` and the future-only `todo-rollout-plan.md`.
 
 ## Optional native exact-version binding (C2a3 candidate)
@@ -224,8 +229,9 @@ See `template-grant-investigation.md` and the future-only `todo-rollout-plan.md`
 Native `Settings.template_version` is an optional exact lowercase 64-hex hash;
 `template` remains its name. Omitted fields retain byte-identical legacy settings
 JSON/hashes, private receipts and protected history. A present hash means catalog
-only: never mutable fallback or latest. Gateway definitions, enrollment and grants
-do not yet expose/select this field; do not edit native JSON to simulate issuance.
+only: never mutable fallback or latest. Gateway definitions now optionally select
+this field through the shared CLI/web writer; enrollment-time grant issuance is
+not implemented. Do not edit native JSON to simulate issuance.
 
 Versioned staging verifies the whole work/materials package in the already
 bounded **actual-attempt** staging worker, including when adopting retained private
@@ -258,6 +264,6 @@ snapshot races and private read-only bubblewrap material IO tests pass. The last
 uses an existing private target because this workstation has no `/materials`;
 it is not full privileged SSH/PAM/sandbox qualification. Full native/application/
 browser regression status is in todo-progress.md. Privileged guest qualification
-and grant/source selection remain open; C2a4 above adds signed metadata
+and unified grants remain open; C2a4 above adds signed metadata
 acknowledgement, not current availability. These increments do not finish the wider
 investigation or authorize deployment.

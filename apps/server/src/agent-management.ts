@@ -71,7 +71,7 @@ export function registerAgentManagement(
   monitoring?: MonitoringManagement,
   administrators?: AdministratorManagement,
 ) {
-  const definitions = new ExamDefinitions(store);
+  const definitions = new ExamDefinitions(store, config.agent.id);
   const templates = new TemplateCatalog(store, config.agent.id);
   const roster = new RosterManagement(store, describe);
   const alerts = new AlertManagement(store, () => !!config.smtp);
@@ -378,6 +378,13 @@ export function registerAgentManagement(
                 };
               } else if (r.operation === "exams.create") {
                 const b = examCreateRequest.parse(r.body);
+                if (
+                  "template_version" in b.exam &&
+                  b.source_selection !== "template-version/v1"
+                )
+                  throw Error(
+                    "Exact-source writes require the source-selection protocol marker; update examctl and inspect current definitions before retrying",
+                  );
                 return {
                   ok: true,
                   status: 200,
@@ -385,6 +392,13 @@ export function registerAgentManagement(
                 };
               } else if (r.operation === "exams.update") {
                 const b = examUpdateRequest.parse(r.body);
+                if (
+                  "template_version" in b.changes &&
+                  b.source_selection !== "template-version/v1"
+                )
+                  throw Error(
+                    "Exact-source writes require the source-selection protocol marker; update examctl and inspect current definitions before retrying",
+                  );
                 return {
                   ok: true,
                   status: 200,

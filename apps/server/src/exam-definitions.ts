@@ -9,6 +9,7 @@ import {
   hasSandboxWindow,
 } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
+import { TemplateCatalog } from "./template-catalog.js";
 
 const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const revisionSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -20,7 +21,10 @@ const failure = (message: string, statusCode: number): never => {
 // The only definition writer for browser and root CLI. Attempt/grant snapshots,
 // native work/submissions, clocks and account policy are never rewritten here.
 export class ExamDefinitions {
-  constructor(private store: Store) {}
+  constructor(
+    private store: Store,
+    private agent?: string,
+  ) {}
   withRequest<T>(
     actor: string,
     request: string | undefined,
@@ -143,6 +147,19 @@ export class ExamDefinitions {
     const exam = isSandbox(parsed.id)
       ? sandboxExam(parsed.template, parsed)
       : parsed;
+    if (exam.template_version) {
+      if (!this.agent)
+        return failure(
+          "Exact source selection needs the configured class-agent identity; preserve settings and inspect the authenticated template catalog",
+          503,
+        );
+      // Historical source attestation, not a live availability lease. Native
+      // staging/Begin must still verify the actual exact bytes.
+      new TemplateCatalog(this.store, this.agent).show({
+        name: exam.template,
+        hash: exam.template_version,
+      });
+    } else delete exam.template_version;
     const why = reasonSchema.parse(reason ?? "Exam definition configuration");
     return this.store.db.transaction(() => {
       const prior = this.store.db

@@ -7,10 +7,13 @@ import { createApp } from "../../apps/server/src/app.js";
 import { hosts } from "../fixtures/hosts.js";
 import { hash } from "../../apps/server/src/db.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
+import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 
-it.each(["e", "sandbox"])(
+it.each(["e", "sandbox", "versioned"])(
   "%s signed SSH preflight retries a lost staging acknowledgment without consuming time; only explicit Begin starts",
   async (examID) => {
+    const versioned = examID === "versioned",
+      sourceHash = "a".repeat(64);
     const h = await hosts();
     const data = mkdtempSync(tmpdir() + "/workspace-stage-");
     const config = {
@@ -28,21 +31,46 @@ it.each(["e", "sandbox"])(
     let remote: any,
       staged = false,
       lost = false,
-      legacyAgent = false;
+      legacyAgent = false,
+      legacyTemplateAgent = false,
+      wrongPreparation = "";
+    let holdHealth: { entered: () => void; release: Promise<void> } | null =
+      null;
     h.control.command = async (op, body) => {
       operations.push(op);
       if (op === "register") return { uid: 10001 };
       if (op === "resolve-course-accounts") return { student: 10001 };
-      if (op === "health")
+      if (op === "health") {
+        if (holdHealth) {
+          const gate = holdHealth;
+          holdHealth = null;
+          gate.entered();
+          await gate.release;
+        }
         return {
           ready: true,
           fixture: !legacyAgent,
-          capabilities: ["private-workspace-staging"],
+          capabilities: [
+            "private-workspace-staging",
+            ...(versioned && !legacyTemplateAgent
+              ? ["immutable-template-versions-v1", "exact-template-begin-v1"]
+              : []),
+          ],
         };
+      }
       if (op === "prepare-attempt") {
         expect(body.settings.collection_file_mib).toBe(128);
         expect(body.settings.collection_total_mib).toBe(512);
+        if (versioned) expect(body.settings.template_version).toBe(sourceHash);
         remote ??= { ...body, state: "PREPARING", start: 0, deadline: 0 };
+        if (wrongPreparation === "missing-version")
+          return {
+            ...remote,
+            settings: { ...remote.settings, template_version: undefined },
+          };
+        if (wrongPreparation === "wrong-id")
+          return { ...remote, id: randomUUID() };
+        if (wrongPreparation === "wrong-uid") return { ...remote, uid: 10002 };
         return { ...remote };
       }
       if (op === "prepare-workspace") {
@@ -59,7 +87,11 @@ it.each(["e", "sandbox"])(
         return { ...remote };
       }
       if (op === "inspect-attempt") return { ...remote };
-      if (op === "activate-attempt") {
+      if (op === "activate-attempt" || op === "activate-versioned-attempt") {
+        if (versioned) {
+          expect(op).toBe("activate-versioned-attempt");
+          expect(body.settings).toEqual(remote.settings);
+        } else expect(op).toBe("activate-attempt");
         expect(staged).toBe(true);
         expect(
           operations.filter((x) => x === "prepare-workspace"),
@@ -106,6 +138,38 @@ it.each(["e", "sandbox"])(
           definitions.show(examID).revision,
           "fixture-operator",
           "Configure finite synthetic practice window",
+        );
+      } else if (versioned) {
+        const catalog = new TemplateCatalog(store, config.agent.id);
+        catalog.sync(
+          {
+            version: {
+              schema: 1,
+              name: "v1",
+              hash: sourceHash,
+              entries: 4,
+              files: 2,
+              bytes: 30,
+              max_file_bytes: 20,
+              created: 1000,
+            },
+            reason: "Reviewed synthetic immutable source",
+          },
+          {
+            agent: config.agent.id,
+            actor: `agent:${config.agent.id}:root`,
+            request: randomUUID(),
+            issued: Date.now(),
+            observed: Date.now(),
+          },
+        );
+        new ExamDefinitions(store, config.agent.id).create(
+          {
+            ...definition,
+            name: "Versioned exam",
+            template_version: sourceHash,
+          },
+          "fixture-operator",
         );
       } else
         store.db
@@ -229,6 +293,36 @@ it.each(["e", "sandbox"])(
           "Reopen explicit synthetic practice window",
         );
       }
+      if (versioned) {
+        legacyTemplateAgent = true;
+        const old = await app.inject({
+          method: "POST",
+          url: "/api/student/preflight",
+          headers,
+          payload: {},
+        });
+        expect(old.statusCode, old.body).toBe(400);
+        expect(old.json().error).toContain("lacks exact-template");
+        expect(operations).not.toContain("prepare-attempt");
+        expect(
+          store.db.prepare("SELECT count(*) n FROM attempts").get(),
+        ).toEqual({ n: 0 });
+        legacyTemplateAgent = false;
+        for (const fault of ["missing-version", "wrong-id", "wrong-uid"]) {
+          wrongPreparation = fault;
+          const wrong = await app.inject({
+            method: "POST",
+            url: "/api/student/preflight",
+            headers,
+            payload: {},
+          });
+          expect(wrong.statusCode, wrong.body).toBe(400);
+          expect(wrong.json().error).toContain("did not retain");
+          expect(operations).not.toContain("prepare-workspace");
+          expect(store.attempt(remote.id).start).toBeNull();
+        }
+        wrongPreparation = "";
+      }
       const failed = await app.inject({
         method: "POST",
         url: "/api/student/preflight",
@@ -245,6 +339,44 @@ it.each(["e", "sandbox"])(
         original_deadline: null,
       });
       expect(operations).not.toContain("activate-attempt");
+      expect(operations).not.toContain("activate-versioned-attempt");
+      if (versioned) {
+        const nextHash = "b".repeat(64),
+          catalog = new TemplateCatalog(store, config.agent.id);
+        catalog.sync(
+          {
+            version: {
+              schema: 1,
+              name: "v1",
+              hash: nextHash,
+              entries: 4,
+              files: 2,
+              bytes: 30,
+              max_file_bytes: 20,
+              created: 1000,
+            },
+            reason: "Reviewed new synthetic immutable source",
+          },
+          {
+            agent: config.agent.id,
+            actor: `agent:${config.agent.id}:root`,
+            request: randomUUID(),
+            issued: Date.now(),
+            observed: Date.now(),
+          },
+        );
+        const definitions = new ExamDefinitions(store, config.agent.id);
+        definitions.update(
+          examID,
+          { template_version: nextHash },
+          definitions.show(examID).revision,
+          "fixture-operator",
+          "Change defaults without rewriting saved preparation",
+        );
+        expect(JSON.parse(store.attempt(id).settings).template_version).toBe(
+          sourceHash,
+        );
+      }
       const retry = await app.inject({
         method: "POST",
         url: "/api/student/preflight",
@@ -260,8 +392,9 @@ it.each(["e", "sandbox"])(
           "INSERT INTO frames VALUES('f',?,'screen',0,?,0,0,?,640,480,'synthetic')",
         )
         .run(id, hash(page), Date.now());
-      if (examID === "sandbox") {
+      if (examID === "sandbox" || versioned) {
         legacyAgent = true;
+        legacyTemplateAgent = true;
         const refused = await app.inject({
           method: "POST",
           url: `/api/student/attempts/${id}/begin`,
@@ -277,12 +410,65 @@ it.each(["e", "sandbox"])(
         });
         expect(refused.statusCode, refused.body).toBe(400);
         expect(operations).not.toContain("activate-attempt");
+        expect(operations).not.toContain("activate-versioned-attempt");
         expect(store.attempt(id)).toMatchObject({
           state: "PREPARING",
           start: null,
           deadline: null,
         });
         legacyAgent = false;
+        legacyTemplateAgent = false;
+      }
+      if (versioned) {
+        let entered!: () => void, release!: () => void;
+        const seen = new Promise<void>((resolve) => (entered = resolve)),
+          gate = new Promise<void>((resolve) => (release = resolve));
+        holdHealth = { entered, release: gate };
+        const pending = app.inject({
+          method: "POST",
+          url: `/api/student/attempts/${id}/begin`,
+          headers: { ...headers, "x-page-instance": page },
+          payload: {
+            screen: true,
+            keyboard: true,
+            fullscreen: true,
+            focus: true,
+            visible: true,
+            webcam: false,
+          },
+        });
+        let waitTimer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            seen,
+            new Promise(
+              (_, reject) =>
+                (waitTimer = setTimeout(
+                  () =>
+                    reject(
+                      Error("Begin did not reach scoped source-health wait"),
+                    ),
+                  3000,
+                )),
+            ),
+          ]);
+          store.db
+            .prepare("UPDATE attempts SET page_hash=? WHERE id=?")
+            .run(hash("synthetic-replacement-page"), id);
+          release();
+          const stale = await pending;
+          expect(stale.statusCode, stale.body).toBe(400);
+          expect(operations).not.toContain("activate-versioned-attempt");
+          expect(remote.start).toBe(0);
+          expect(store.attempt(id).start).toBeNull();
+        } finally {
+          clearTimeout(waitTimer);
+          release();
+          await pending;
+          store.db
+            .prepare("UPDATE attempts SET page_hash=? WHERE id=?")
+            .run(hash(page), id);
+        }
       }
       const begin = await app.inject({
         method: "POST",
@@ -303,9 +489,13 @@ it.each(["e", "sandbox"])(
         start: remote.start,
         deadline: remote.deadline,
       });
-      expect(operations.filter((x) => x === "activate-attempt")).toHaveLength(
-        1,
-      );
+      expect(
+        operations.filter(
+          (x) =>
+            x ===
+            (versioned ? "activate-versioned-attempt" : "activate-attempt"),
+        ),
+      ).toHaveLength(1);
       if (examID === "sandbox") {
         expect(remote.settings).toMatchObject({
           earliest: definition.earliest,

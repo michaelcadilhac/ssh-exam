@@ -67,6 +67,29 @@ func TestWebCollectionLimitsHelpAndSyntax(t *testing.T) {
 	}
 }
 
+func TestWebTemplateVersionHelpAndSyntax(t *testing.T) {
+	output, code := cliProcess(t, "web", "exams", "update", "--help")
+	for _, required := range []string{"--template-version HASH", "attestation", "'legacy'", "no fallback", "never silently clears", "prepared snapshots"} {
+		if code != 0 || !strings.Contains(output, required) {
+			t.Fatalf("missing exact-source guidance %q: %d %s", required, code, output)
+		}
+	}
+	for _, value := range []string{"", "latest", strings.Repeat("A", 64), strings.Repeat("a", 63), "legacy-extra"} {
+		output, code := cliProcess(t, "web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--template-version", value)
+		if code != 2 || !strings.Contains(output, "exact lowercase64-hex") || !strings.Contains(output, "web help") || strings.Contains(output, "Load root") {
+			t.Fatal("invalid exact source reached configuration/authority", code, output)
+		}
+	}
+	if os.Getuid() != 0 {
+		for _, value := range []string{strings.Repeat("a", 64), "legacy"} {
+			output, code := cliProcess(t, "--template-version", value, "web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64))
+			if code != 1 || !strings.Contains(output, "root on the class server") {
+				t.Fatal("valid source before web command was misparsed", code, output)
+			}
+		}
+	}
+}
+
 func TestRosterCLIHelpAndRefusalsAreDiscoverable(t *testing.T) {
 	for _, args := range [][]string{{"help", "students"}, {"web", "students", "help"}, {"web", "students", "add", "--help"}, {"--config", "/missing", "web", "students", "--help"}} {
 		output, code := cliProcess(t, args...)
@@ -150,7 +173,8 @@ func TestWebCLIRealHTTPSInRootUserNamespace(t *testing.T) {
 			_, _ = w.Write(make([]byte, 16*1024*1024+1))
 			return
 		}
-		reply := map[string]any{"version": 1, "purpose": "ssh-exam-management/v1", "audience": "class", "request": r["request"], "nonce": r["nonce"], "operation": r["operation"], "at": time.Now().UnixMilli(), "ok": true, "status": 200, "result": map[string]any{"exam": map[string]any{"id": "midterm"}, "revision": strings.Repeat("a", 64)}}
+		exam := map[string]any{"id": "midterm", "name": "Midterm", "template": "v1", "duration": 5400, "webcam": true, "terminals": 4, "earliest": 0, "latest": 8640000000000000}
+		reply := map[string]any{"version": 1, "purpose": "ssh-exam-management/v1", "audience": "class", "request": r["request"], "nonce": r["nonce"], "operation": r["operation"], "at": time.Now().UnixMilli(), "ok": true, "status": 200, "result": map[string]any{"exam": exam, "revision": strings.Repeat("a", 64)}}
 		switch mode.Load().(string) {
 		case "scope":
 			reply["audience"] = "elsewhere"
@@ -158,6 +182,10 @@ func TestWebCLIRealHTTPSInRootUserNamespace(t *testing.T) {
 			reply["nonce"] = strings.Repeat("0", 64)
 		case "refusal":
 			reply["ok"], reply["status"], reply["error"] = false, 403, "managementOperations does not authorize exams.show"
+		case "wrong-exam":
+			exam["id"] = "different-exam"
+		case "private-field":
+			exam["private"] = "PRIVATE-SENTINEL"
 		}
 		payload, _ := json.Marshal(reply)
 		key := gatewayPrivate
@@ -192,7 +220,7 @@ func TestWebCLIRealHTTPSInRootUserNamespace(t *testing.T) {
 		t.Fatal(err)
 		return "", -1
 	}
-	for _, scenario := range []string{"ok", "scope", "nonce", "refusal", "bad-signature", "redirect", "oversized"} {
+	for _, scenario := range []string{"ok", "scope", "nonce", "refusal", "bad-signature", "redirect", "oversized", "wrong-exam", "private-field"} {
 		t.Run(scenario, func(t *testing.T) {
 			mode.Store(scenario)
 			before := calls.Load()
@@ -207,7 +235,7 @@ func TestWebCLIRealHTTPSInRootUserNamespace(t *testing.T) {
 			} else if code != 1 || strings.Contains(output, `"confirmed":true`) || !strings.Contains(output, "--request") {
 				t.Fatal("unverified/refused reply was not actionable", code, output)
 			}
-			if strings.Contains(output, "PRIVATE KEY") {
+			if strings.Contains(output, "PRIVATE KEY") || strings.Contains(output, "PRIVATE-SENTINEL") {
 				t.Fatal("private key leaked")
 			}
 		})

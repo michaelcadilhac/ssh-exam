@@ -32,6 +32,36 @@ names exams.create/update in gateway managementOperations (default deny). The
 existing agent-key purpose/audience/replay/reply contract remains in force; see
 agent-management.md. Browser session/Origin/CSRF checks are unchanged.
 
+## Exact source selection (October22 local candidate)
+
+After root `examctl templates install/verify` and `templates sync NAME HASH`,
+inspect `examctl web templates show NAME HASH` (or Administration → Template
+catalog). Use that exact name and lowercase64-hex hash, not `latest`, a path or
+the metadata revision:
+
+```sh
+sudo examctl web exams create midterm --template v1 --template-version SOURCE-HASH --earliest '2026-10-22T09:00:00-05:00' --latest '2026-10-22T09:30:00-05:00'
+sudo examctl web exams update midterm --revision DEFINITION-REVISION --template-version SOURCE-HASH --reason 'Reviewed exact source for future preparations'
+```
+
+Web Exam settings has the separate **Immutable template hash (optional)** field.
+The shared writer requires a catalog acknowledgement for the configured class
+agent and exact name/hash. Historical acknowledgement does not prove present
+availability: loaded native capabilities and actual bytes are checked during
+preflight/Begin. Missing/damaged sources refuse; never fall back to mutable or
+latest. Template-name edits preserve the hash and must select a matching version.
+
+To explicitly return future defaults to legacy mutable source semantics, clear
+that browser field or use `--template-version legacy`. This never changes saved
+preparations, started intervals, histories or submissions. No grant is issued or
+revised by editing a definition; enrollment-time issuance/migration remains open.
+
+Older gateways refuse the new versioned browser route or root protocol marker
+before mutation. Older agents refuse the distinct versioned Begin purpose before
+starting time. A lost reply is uncertain until status is reconciled, not evidence
+that no start occurred. Do not downgrade any state writer that can discard saved
+hashes. See template-source-selection.md for state review, evidence and limits.
+
 ## Concurrency, partial updates and retry
 
 Creation never silently upserts an existing ID. Updates require the revision of

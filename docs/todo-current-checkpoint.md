@@ -1,105 +1,81 @@
 # Current local TODO checkpoint
 
-Updated October 22, 2026 (America/Chicago). No deployment, push, production changes
+Updated October22,2026 (America/Chicago). No deployment, push, production changes
 or temporary-agent consolidation. Stop if a command is not found. Preserve all
-work/history/protected submissions/deadlines/holds. Follow AGENTS.md; routine local
-commits and testing do not require instructor questions.
+work/history/protected submissions/deadlines/holds. Routine local tests/commits
+are authorized. Follow AGENTS.md and the development retrospective.
 
-## Current milestone: integrated pane setup and technical-error isolation
+## Validated local outcome: exact source selection
 
-Validated implementation revision: 155baaf; preceding C14 window revision b90ba4d.
-Both are coherent local commits, not deployed. Later checkpoint-only edits do
-not change the qualified runtime/test artifacts.
+Shared `examctl web exams create/update --template-version HASH` and Exam settings
+now select only the configured agent's attested exact name/hash. Student
+preflight/Begin retains the saved source, refuses old roles/mismatched snapshots
+and stale pages without mutable fallback, and uses the distinct native Begin
+purpose with complete saved-settings comparison. Explicit legacy selection only
+changes future defaults. Signed CLI definition replies now validate target,
+known fields/settings/page bounds before confirmed output. No grant issuance,
+schema backfill or history change. Evidence/review: template-source-selection.md.
 
-Actual Engine.local Unix/PTY entry prepares private files outside shared state,
-with nonblocking per-UID and one-copy-per-Engine bounds. Both setup fences release
-before ACK and on failure. Final one-use/current-peer admission/actual launch
-remain serialized; close/cancel during IO cannot start late code or revive an
-attempt. Existing `panes list/show/close`/`info --read-only` inspect/control it.
-The matching gateway/UI uses a verified ownership code, not Page/owns substrings;
-technical errors no longer manufacture local ownership incidents. No retained mode.
+Full435 app/83 files101.94s; full native race/resource/namespace/compiler/default-
+size core299.160s/CLI25.978s;16 rebuilt Chromium/WASM/SSH checks46.7s; static native
+build/vet, app/WASM build/typecheck and diff checks pass. The first broad app run
+correctly refused an incomplete historical CLI fixture; corrected actual CLI
+passes6.40s, then fresh broad passes. Failed log retained. All runners finished.
+Runtime based on dd8e4b7; this validated milestone is being committed locally.
 
-RED native1.102s and three browser cases reproduce the defects. Final focused
-races three repeats6.133s, full native core281.826s/CLI20.327s (all local opt-ins),
-17 Chromium/WASM/SSH monitoring/error/workspace/session checks49.5s and static/
-app/WASM build/typecheck/vet pass. Actual SSH/HTTP/WS scope cases pass13.52s after
-correcting a non-RFC fixture UUID; the first broad run also loaded that bad fixture
-(427 pass/two fail), not a pass. Fresh corrected full app qualification passes429
-tests/81 files94.50s. All current qualification runners have finished.
-Evidence/safety/limits: pane-admission-isolation.md; logs /tmp/ssh-exam-pane-setup-*.
-Real Unix peer/PTY/filesystem tests use private ancestry/exec seams, not privileged
-real-SSH qualification. No command was missing. AGENTS now requires inspecting a
-focused completion before starting broad qualification, not batching those steps.
+Earlier integrated outcomes: dd8e4b7 closed ordinary pane startup outside shared
+state with exact current-peer/durable exec release and CLI close/reaping;
+155baaf private pane setup/typed technical errors; b90ba4d finite sandbox windows;
+47673b6 isolated pending preflight;43a7201 zero-write refusal diagnostics. Detailed
+evidence remains in feature documents, not repeated here. C15 recorded25c9f71.
 
-Prior validated C14: b90ba4d implements explicit finite sandbox window via shared
-CLI/web settings and gateway/native preflight/Begin, preserving started deadlines,
-repeat history and holds; new installs start closed. Full429 app/four browser/full
-native qualification is in exam-definition-management.md. Unified issuance is open.
+## Next bounded critical milestone: C12 terminal ownership
 
-Previously validated: 47673b6 integrated slow readiness/home isolation with bounded
-cancellable non-admitting pending state (preflight-isolation.md); 43a7201 scoped
-zero-write refusal diagnostics including actual CLI/suggested-command/mutation
-checks (native-read-only-diagnostics.md). c630450 sets outcome-first guardrails;
-93632c6 closes the already-qualified unused R1c reader. Do not extend that chain.
+Actual entry: Engine.local/exam-channel pane open, signed/root CLI pane inspection
+and close. One bounded supervisor per user/attempt must own all its PTYs/child
+waits outside the coordinator's kill/OOM domain. Reproduce coordinator death via
+the actual Unix/PTY entry first; independent scopes/FD handoff and current-peer/
+closed-bootstrap release must prevent stale execution. Qualify exact supervisor
+death isolation, pending close/deadline/lease/owner changes, recording failure,
+descriptor/resource bounds and coordinator replacement with CLI visibility.
 
-## Scope and next integrated outcome
+Do not duplicate the whole-state Engine per student, fork inside the agent's
+KillMode=control-group service, inherit the metadata actor claim into retained
+supervisors or grow another unused helper chain. Coordinator remains metadata/
+authority owner; original accepted socket/PTY descriptors preserve kernel peer
+identity, not a forwarded numeric UID. Closed bootstrap authority stays with the
+live coordinator. Specify the loaded-role handshake and whole integrated result
+before editing. No retained mode or automatic recovery until all R2–R6 gates pass.
 
-TODO remains11 checked main items/38. This increment does NOT complete critical
-heartbeat/retained SSH, unified grants, workspace cleanup, safe definition
-retirement or all CLI management. Current lockouts still terminate workloads/
-disconnect SSH; the private live-renewal/input/process/readers are not a live fix.
+Critical gaps: root owner/input epochs and role agreement, actual C12 supervisor,
+stop-assisted all-writer/input barrier and authorized C9 recovery. Current
+lockouts still terminate workloads/disconnect SSH. Private renewal/input/process/
+reader components are not a live fix. See retained-workload-barrier-plan.md.
 
-Immediate next implementation: R2 closed launch/owner epochs plus C12's per-attempt supervisor through
-the actual gate/control/CLI path. Do not extend unused private helpers. Native
-launch/system-manager readiness and state fsync remain serialized and the full
-critical liveness workflow is still open. Unified Begin's outbound availability
-choice is awaiting the instructor; continue independent work while waiting.
+Unified enrollment-time issuance/revisions/claim/C15 Begin/explicit work source/
+CLI/web/migration remain in unified-grant-protocol-proposal.md. C4 complete
+cross-namespace/kernel references, C8 retirement and class/capacity checks remain
+open. TODO remains11 checked main items/38, not a percentage of effort.
 
-Next larger outcome remains C12 attempt-level terminal supervision through
-the actual exam-channel/control paths and supported CLI inspection/close, with
-PTY ownership outside coordinator kill/OOM scope. Specify the entry/loaded-role
-handshake and acceptance before coding; connect existing components rather than
-adding more unused helpers. Full root registration/epochs/closed launches,
-stop-assisted all-writer/input barrier and authorized C9 recovery remain required
-before retained mode can be enabled. See retained-workload-barrier-plan.md.
+## Decisions and qualification gate
 
-Unified-grant issuance/revisions/claim/Begin/expected-source/CLI/web migration
-remain in unified-grant-protocol-proposal.md. C4 complete cross-namespace/kernel
-reference proof, C8 retirement and course/capacity checks remain open. A proposal
-or component test is not a completed investigation.
+C1–C15 are settled (todo-design-decisions.md). Initial ordinary settings are saved
+at enrollment/import. C10 live verified renewals need not wait for disk; restart
+needs fresh verification. C11 stop-assisted freezing is authorized development,
+not enabled. C12 one supervisor/user/attempt. C13 reviewed bulk NEW legacy issuance
+from selected current settings, never invented history. C14 finite operator
+sandbox window/repeatable saved grants. C15 fresh authenticated native outbound
+HTTPS agreement at unified Begin; no offline revocable permit/browser relay.
 
-## Decisions
+The pinned raw read-only csc-sys guard reports BUSY at21:41UTC October22. No new
+upload/guest. Only the previously approved old bundle exists remotely; it predates
+this runtime and cannot qualify it. Current root installed-bootstrap/SSH/PAM/
+cgroup/hardening and new exact-source guest checks remain pending. Busy/uncertain
+means no test: never clear records, relax the guard or reconcile/restart production.
 
-C1–C9 and enrollment/import-time initial settings are approved. C10: verified
-live renewals do not wait for disk sync; restart needs fresh verification, while
-starts/deadlines/ownership/epochs/audit stay durable. C11: develop/fully qualify
-stop-assisted freezing, preserving originally stopped jobs.
-
-C12 now approved: one bounded supervisor per user/attempt, owning its panes;
-neither per-pane nor shared across students. C13 now approved: reviewed bulk NEW
-issuance for legacy unused enrollments from explicitly selected current settings,
-version and finite Begin window; never invent historical snapshots or change
-active/historical attempts. See todo-design-decisions.md. Additional C2 boundaries
-still need resolution: fresh root outbound Begin; no invented offline permit.
-C14 settles the sandbox transition; its window workflow is now local, unified
-saved-settings grant issuance remains pending. The fresh outbound Begin choice
-has been asked explicitly; do not invent an offline revocable permit while waiting.
-See todo-design-decisions.md and unified-grant-protocol-proposal.md.
-
-## Privileged gate and future rollout
-
-Only the exact approved old code-only bundle is uploaded at
-/var/tmp/ssh-exam-atomic-consumption-upload.QBtItC on csc-sys (private0700,
-14 artifact hashes verified). It predates current changes. Its three pane/health/
-CLI repeats pass with host/base preservation; the next enforcement run was
-refused BEFORE guest creation on new live/unresolved work.40 enforcement/11 worker
-assertions and hardened consumption-filesystem compatibility remain pending for
-that artifact. Do not transfer its receipt to this candidate.
-
-Use only guarded disposable nspawn qualification; never clear host records,
-relax the idle guard or reconcile/restart production to qualify. No new bundle
-was uploaded this milestone. Future separately authorized rollout requires drain,
-backups, matched loaded native roles and migration/rollback review. In particular,
-old roles do not understand preparation_pending: settle/cancel unstarted pending
-checks before an older-version rollback, preserving history/work/holds. Include
-temporary three-agent consolidation from todo-rollout-plan.md, but execute none.
+Future separately authorized rollout needs verified drain, compatible loaded
+roles, private consistent backups, migration/rollback review and temporary
+three-agent consolidation (todo-rollout-plan.md). Never downgrade a writer that
+drops exact source/receipt/pending-start fields or restore older one-use history.
+Settle/cancel unstarted pending operations before a compatible rollback; preserve
+all history/work/holds. Execute none of this during local development.

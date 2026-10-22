@@ -40,6 +40,16 @@ func validTemplateBinding(s Settings) bool {
 	return identifier.MatchString(s.Template) && (s.TemplateVersion == "" || templateDigest.MatchString(s.TemplateVersion))
 }
 
+// Called by the distinct authenticated versioned-Begin entry before OS checks
+// and again after those checks. Its saved snapshot then traverses the existing
+// source verifier and final workspace/settings fences, never mutable fallback.
+func versionedBeginSettings(a *Attempt, expected Settings) error {
+	if a == nil || expected.TemplateVersion == "" || !validTemplateBinding(expected) || expected != a.Settings {
+		return errors.New("immutable Begin settings differ from the saved preparation; no new activation requested; preserve state and inspect examctl info ATTEMPT --read-only and templates verify NAME HASH")
+	}
+	return nil
+}
+
 // verify=false reads only bounded metadata and pinned directory identities for
 // PTY/state transactions. verify=true is exclusively for a bounded staging
 // worker, never a state transaction or PTY-owning process. Pre-Begin verification

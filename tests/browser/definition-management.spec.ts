@@ -5,12 +5,14 @@ async function fixture(
   conflict = false,
   examID = "midterm",
   unconfigured = false,
+  version = "",
 ) {
   const state = {
     definition: {
       id: examID,
       name: "Midterm",
       template: "v1",
+      ...(version ? { template_version: version } : {}),
       duration: 7200,
       webcam: false,
       terminals: 2,
@@ -19,6 +21,8 @@ async function fixture(
       revision: "a".repeat(64),
     },
     writes: [] as any[],
+    paths: [] as string[],
+    oldGateway: false,
   };
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -28,10 +32,27 @@ async function fixture(
       });
     if (path === "/api/login-test")
       return route.fulfill({ json: { loginOnly: false } });
-    if (path === "/api/admin/exams") {
+    if (path === "/api/admin/exams" || path === "/api/admin/exams/versioned") {
       if (route.request().method() === "POST") {
         const body = route.request().postDataJSON();
         state.writes.push(body);
+        state.paths.push(path);
+        if (state.oldGateway && path.endsWith("/versioned"))
+          return route.fulfill({
+            status: 404,
+            json: {
+              error:
+                "Versioned definition workflow unavailable; update matching gateway before retrying",
+            },
+          });
+        if (body.template_version && body.template !== "v1")
+          return route.fulfill({
+            status: 404,
+            json: {
+              error:
+                "No authenticated source attestation for this exact name/hash",
+            },
+          });
         if (conflict) {
           state.definition = {
             ...state.definition,
@@ -48,6 +69,7 @@ async function fixture(
         }
         if (state.writes.length === 1) return route.abort("failed");
         const { requestID: _request, ...saved } = body;
+        if (!saved.template_version) delete saved.template_version;
         state.definition = { ...saved, revision: "b".repeat(64) };
         return route.fulfill({ json: state.definition });
       }
@@ -101,6 +123,88 @@ test("sandbox exposes an explicit finite window without inventing legacy default
   expect(s.writes[0].earliest).toBeGreaterThan(0);
   expect(s.writes[0].latest - s.writes[0].earliest).toBe(8 * 3600000);
   expect(s.writes[1]).toEqual(s.writes[0]);
+});
+
+test("exact source survives a lost save and name edits never silently clear the hash", async ({
+  page,
+}) => {
+  const s = await fixture(page),
+    hash = "c".repeat(64);
+  let dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
+  await dialog.getByLabel("Immutable template hash (optional)").fill(hash);
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(
+    dialog.getByLabel("Immutable template hash (optional)"),
+  ).toHaveValue(hash);
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(s.paths).toEqual([
+    "/api/admin/exams/versioned",
+    "/api/admin/exams/versioned",
+  ]);
+  expect(s.writes[1]).toEqual(s.writes[0]);
+  await page
+    .getByRole("button", { name: "Exam settings", exact: true })
+    .click();
+  dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
+  await expect(
+    dialog.getByLabel("Immutable template hash (optional)"),
+  ).toHaveValue(hash);
+  await dialog
+    .getByLabel("Materials template", { exact: true })
+    .fill("different-name");
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("exact name/hash");
+  await expect(
+    dialog.getByLabel("Immutable template hash (optional)"),
+  ).toHaveValue(hash);
+  expect(s.paths.at(-1)).toBe("/api/admin/exams/versioned");
+  expect(s.definition.template).toBe("v1");
+});
+
+test("explicit legacy default selection clears only the future hash and stays retryable", async ({
+  page,
+}) => {
+  const s = await fixture(page, false, "midterm", false, "c".repeat(64));
+  const dialog = page.getByRole("dialog", {
+    name: "Exam settings",
+    exact: true,
+  });
+  await dialog.getByLabel("Immutable template hash (optional)").fill("");
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(s.writes[0].template_version).toBe("");
+  expect(s.writes[1]).toEqual(s.writes[0]);
+  expect(s.paths).toEqual(["/api/admin/exams", "/api/admin/exams"]);
+  expect(s.definition).not.toHaveProperty("template_version");
+});
+
+test("versioned creation refuses an old gateway without falling back to mutable creation", async ({
+  page,
+}) => {
+  const s = await fixture(page);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  s.oldGateway = true;
+  await page.getByRole("button", { name: "New exam", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "New exam", exact: true });
+  await dialog.getByLabel("Exam ID", { exact: true }).fill("new-versioned");
+  await dialog.getByLabel("Materials template", { exact: true }).fill("v1");
+  await dialog
+    .getByLabel("Immutable template hash (optional)")
+    .fill("c".repeat(64));
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("matching gateway");
+  expect(s.paths).toEqual(["/api/admin/exams/versioned"]);
+  expect(s.definition.id).toBe("midterm");
+  await expect(
+    dialog.getByLabel("Immutable template hash (optional)"),
+  ).toHaveValue("c".repeat(64));
 });
 
 test("lost definition reply preserves form and reuses the same revision/request on retry", async ({

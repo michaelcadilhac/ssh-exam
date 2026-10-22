@@ -27,6 +27,13 @@ or an authority to migrate records; the broad investigation stays open.
 
 Current foundation status: C2a2 local catalog/CLI, C2a3 optional exact-version
 native readers and C2a4 signed registry/inspection are implemented/tested locally.
+October22 source selection now connects explicit CLI/web exact-hash defaults to
+student preflight/Begin, including complete native saved-settings agreement and
+old-role refusal; see template-source-selection.md for final local evidence.
+This is not enrollment-time issuance or the C15 outbound grant protocol. The
+statements below about unselected gateway snapshots describe earlier increments;
+legacy snapshots remain unchanged, while new explicitly selected preparations
+may now bind an exact source. No old enrollment snapshot is invented.
 C2a5 now qualifies the actual root template CLI against the real system manager
 and supplied bounded slice in the guarded disposable guest, including128MiB
 import, retries/refusals and published-job cleanup preserving installed versions.
