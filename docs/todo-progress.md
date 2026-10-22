@@ -8,6 +8,51 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Continuation correction: a validated checkpoint is not a stopping condition for
+the unfinished backlog. The legacy-unused-enrollment decision does not block
+independent work. The resumed C2a2 milestone adds separate resource-bounded native
+template worker/pool and complete local templates CLI (validate/install/list/show/
+verify plus owned failed-staging inspection/cleanup). Publish only exact named
+content versions, never replace legacy sources or implicitly select latest; keep
+all student readers unchanged until separately qualified version binding. Local
+installation must explicitly report not gateway-confirmed. Acceptance requires
+actual CLI help/refusals, bounded strict IPC, worker death/hang/resource/storage/
+retry/concurrent isolation, atomic no-replace publication, safe job cleanup and
+unchanged protected/attempt/account/clock authority. C2a2 is now implemented and
+tested locally as a separate catalog candidate, not deployed, confirmed to the
+gateway or connected to student readers. No routine/local-commit approval is requested.
+
+C2a2 current qualification: fresh full native race/resource/namespace/compiler/
+default-size suite passes **core155.8s/CLI5.7s**; **350 application tests/65 files
+(74.4s)**, typecheck, application-WASM build, static native build and vet pass.
+All29 fresh browser-SSH interface/closure checks pass (6.1m). Focused regressions
+include actual child panic/exit/SIGKILL before intent/before publication/after
+publication, hang/fatal allocation/file-size failure, strict malformed/scope/
+required-flag/overflow IPC, real private ENOSPC/read-only and root/nested/file bind
+cleanup refusals, retained flock versus healthy signed lease/admission, exact
+published retry/corruption/budget fences and unknown-intent cleanup tombstones.
+Actual local user-systemd failures report oom-kill/timeout. A real128MiB import
+passes under unchanged256MiB/no-swap/32-task controls (observed peak165588992,
+not an exact peak guarantee), and installed bytes verify. The compiled root-mapped
+CLI exercises all workflows with a private **synthetic manager interface**; this
+does not replace privileged system-manager qualification.
+
+The csc-sys read-only precheck finds **two live or unresolved host attempts**;
+the strict idle-host test guard therefore prohibits the disposable guest run.
+No guest, host service/configuration/account/record mutation or production
+reconciliation was attempted. Existing host work is not test setup. Independent
+local work continues. The first full native run correctly refused the CLI fixture's
+memory-backed /tmp state; corrected it to private disk scratch, not the guard.
+The initial app build used the unwritable default Go cache; the repeat with the
+established /tmp caches passes. Neither failure was a missing command.
+See template-catalog.md; all-reader/version visibility/grant work remains open.
+Final CLI/help repeat passes5.1s; read-only systemd slice validation passes, with
+the existing parent exam.slice CPUAccounting deprecation warning. Browser assets
+retain their prior hashes; nine generated screenshots were restored to the
+pre-run tracked versions. Next active milestone: exact-version reader binding,
+preserving legacy settings JSON/hashes and practice confidentiality. Do not stop
+at this commit or treat the pending legacy migration question as a global blocker.
+
 Current validated checkpoint: initial ordinary issuance remains enrollment/import
 with explicit unused revisions (decision38f3fbc). C2a1 private copying is local
 commit1d4026c and remains internal/unwired. Image link/bounds/retention fixes and
@@ -19,8 +64,8 @@ kernel controls; no limits were raised. Fallback closure passes2/one explicit
 browser-only skip (2.3m); that guarded case separately passes in browser-SSH mode
 (16.2s). Generated screenshots are restored, not product edits.
 
-The backlog is NOT complete. Next dependencies: separate bounded immutable
-template worker/pool + publication/CLI + all-reader binding + signed catalog
+The backlog is NOT complete. The bounded immutable template worker/pool and
+publication/CLI foundation now passes locally. Next dependencies: all-reader binding + signed catalog
 acknowledgement, then unified grant issuance/revision/claim/Begin/migration and C8;
 independently, coordinated C3 native input/liveness/verified-freeze work, C4 fresh
 archive/usage proof/manual cleanup, full monitoring export and remaining management.
@@ -523,7 +568,7 @@ escalation. Generated screenshot changes must not become product changes.
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
-| D1c: immutable template/material versions | D1a + C2 fixed issuance | Supported native catalog/CLI, atomic bounded worker installation, all-reader exact version binding and authenticated metadata visibility; mutation/crash/restart/practice confidentiality/CLI/race/integration tests | C2a0/a1 internal inspection/private copying pass locally (1d4026c); unwired, not catalog publication/CLI or all-reader binding. Mutable materials gap and investigation remain open; see template-grant-investigation.md |
+| D1c: immutable template/material versions | D1a + C2 fixed issuance | Supported native catalog/CLI, atomic bounded worker installation, all-reader exact version binding and authenticated metadata visibility; mutation/crash/restart/practice confidentiality/CLI/race/integration tests | C2a0/a1 inspection/copy and C2a2 separate bounded catalog/publication/CLI pass locally; no student binding or gateway confirmation. All-reader mutable-materials gap, privileged system-manager gate and investigation remain open; see template-catalog.md and template-grant-investigation.md |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; source investigation confirms both PTY input bridges need a revocation/queued-input barrier, not just omitted termination. Coordinated implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore, default-size worker and full local regression pass in 7ef7ac5; manual cleanup and privileged/concurrent sizing remain open |
 | C4a: workspace metadata and operator holds | C4 + D1a fences | Known-attempt inventory, exact private identity, separate durable hold revisions/loss markers, audit failure and stale/busy refusals, no eligibility/deletion claim; actual CLI/native race/build | Implemented/tested locally: actual namespace-root CLI/help, frozen full native race/resource/compiler/default-size opt-ins, static build/vet, 320 app tests and unchanged typechecked/built browser assets. Fresh proof/cleanup remain open; not deployed |

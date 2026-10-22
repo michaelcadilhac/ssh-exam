@@ -5,6 +5,14 @@ documents command-specific help, actionable refusals and private non-overwriting
 exports. Full gateway-management coverage is still under investigation; this is
 not a deployment receipt. Use `examctl help` to discover current commands.
 
+The local immutable catalog candidate provides `examctl templates help` for
+validate/install/list/show/verify/jobs/clean. It uses a separate bounded
+exam-template.slice, not student/collection slots. It is not deployed or connected
+to student readers/grants: every result says `gateway_confirmed=false`. Do not
+select catalog hashes as legacy dashboard template IDs. See
+[the catalog operator guide](../docs/template-catalog.md) for exact retry, manual
+failed-job cleanup, storage/resource bounds and pending qualification.
+
 This directory independently installs the compiled account gate, root SSH command agent, independent
 watchdog/reconciliation timer, collector and root tools. Target: Debian 12/13, Linux systemd/
 cgroup v2, OpenSSH privilege separation and bubblewrap. **Privileged installation remains

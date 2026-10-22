@@ -1,7 +1,7 @@
 package core
 
-// Internal catalog foundation only. Not wired into the agent, student paths or
-// examctl yet. Bulk calls must run in a separately bounded template OS worker;
+// Catalog inspection primitive. Student readers remain legacy; management bulk
+// calls run only in the separately bounded template OS worker, never the agent;
 // never call this while holding WithState or in a PTY-owning process.
 import (
 	"crypto/sha256"

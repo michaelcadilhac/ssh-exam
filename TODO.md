@@ -195,9 +195,16 @@ Existing enrollment migration and implementation remain outstanding.
   C2a1 adds an internal, still-unwired exclusive private-copy primitive with
   independent copied-byte/source verification, metadata preservation and flushes.
   Focused race tests include 128 MiB streaming, actual child SIGKILL/fresh retry,
-  mutation and same-device source bind-alias refusal. Worker/pool, immutable
-  publication/owned crash cleanup, supported CLI and all-reader binding remain
-  unimplemented. No installed source or student path changed; not deployed.
+  mutation and same-device source bind-alias refusal. The subsequent C2a2 local
+  candidate adds a separate bounded worker/pool, atomic no-replace catalog,
+  supported `templates validate/install/list/show/verify/jobs/clean`, strict IPC
+  and owned crash cleanup. Focused race/process/CLI/storage/mount/resource tests
+  pass, including fresh full native race (core155.8s/CLI5.7s), 350 app tests,
+  typecheck/build/static/vet and 29 browser-SSH checks. Privileged system-manager
+  guest evidence remains pending. The csc-sys idle-host guard refuses its two live or
+  unresolved attempts. No production source/student path was changed. All-reader
+  binding, signed catalog acknowledgement and unified grants remain unimplemented;
+  see docs/template-catalog.md. Not deployed; investigation remains open.
   This is an ongoing investigation, not an implemented catalog/grant migration.
   October 21 local increment: ordinary/legacy-saved work stages privately in
   bounded OS workers before Begin, without clock/marker consumption. Exact
@@ -215,8 +222,9 @@ Existing enrollment migration and implementation remain outstanding.
   rule, not automatic file cleanup or a catalog/grant implementation.
   C2a0 additionally has a tested internal, unwired source inspector (safe pinned
   traversal, observed mutation checks, per-tree entry/depth bounds, real same-
-  device mount refusal and 128 MiB streaming). No catalog installation/CLI,
-  published-version acknowledgement or all-reader version binding exists yet;
+  device mount refusal and 128 MiB streaming). C2a2's separate local catalog/CLI
+  candidate is described above; no published-version acknowledgement or all-reader
+  version binding exists yet;
   investigation and migration remain open. See template-grant-investigation.md.
   Evaluate starting empty, resetting to a specified template's starter files, and
   preserving saved work by copying a selected prior attempt's verified protected

@@ -1,0 +1,13 @@
+[Unit]
+Description=Bounded immutable template workers (independent of collection and student workloads)
+
+[Slice]
+MemoryAccounting=yes
+MemoryMax=256M
+MemorySwapMax=0
+TasksMax=32
+CPUQuota=100%
+
+# One persistent worker flock bounds bulk import/verification/cleanup.
+# Short metadata workers bypass that flock, but share these aggregate limits.
+# No agent, watchdog, collection worker or student PTY belongs in this slice.

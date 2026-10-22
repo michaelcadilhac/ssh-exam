@@ -81,6 +81,13 @@ read-only dry run.
 
 Resources have separate workflows:
 
+- `templates validate/install/list/show/verify/jobs/clean`: separate bounded
+  immutable local catalog, expected content hash, exact install UUID retries and
+  explicit owned failed-staging cleanup. Results are not gateway-confirmed or
+  selected for any student; current student readers stay legacy. No published-
+  version deletion. See template-catalog.md for prerequisites, units and the
+  distinction between local interface/resource tests and pending privileged
+  system-manager qualification.
 - `workspaces list/show/hold/release-hold`: local bounded known-attempt metadata
   and audited revision-fenced workspace holds. Candidate is not eligibility;
   no archive/writer/mount-use proof or deletion command is enabled. Missing known

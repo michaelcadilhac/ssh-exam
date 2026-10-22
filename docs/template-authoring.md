@@ -228,6 +228,15 @@ and individual duration/webcam overrides are configured separately in the dashbo
 
 ## Installation on the class server
 
+The local C2a2 candidate now provides a separate immutable catalog workflow via
+`examctl templates help`; see [template-catalog.md](template-catalog.md). It is
+**not deployed or connected to student readers/gateway grants yet**. Validation
+and local installation report `gateway_confirmed=false`; do not select a catalog
+hash in the existing dashboard. The procedure below documents the legacy reader
+layout, not an alternative for bypassing the candidate catalog's CLI or an
+authorization to modify production. Never copy catalog files into a live legacy
+ID to simulate version binding.
+
 A server administrator installs the finished template. Do not deploy or modify a
 live exam merely because you were asked to draft its content. Confirm the configured
 template base path and use a **new, unused versioned ID** for each revision.

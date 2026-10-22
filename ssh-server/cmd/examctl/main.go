@@ -19,7 +19,7 @@ import (
 func takesValue(arg string) bool {
 	name := strings.TrimLeft(strings.SplitN(arg, "=", 2)[0], "-")
 	switch name {
-	case "config", "reason", "exam", "output", "request", "limit", "after", "name", "template", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset":
+	case "config", "reason", "exam", "output", "request", "limit", "after", "name", "template", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib":
 		return strings.HasPrefix(arg, "-")
 	}
 	return false
@@ -52,6 +52,9 @@ func serviceCommands(action string) ([][]string, error) {
 	return append(commands, []string{action, "exam-agent.service"}), nil
 }
 func main() {
+	if core.TemplateWorkerMain(os.Args[1:]) {
+		return
+	}
 	if core.CollectionWorkerMain(os.Args[1:]) {
 		return
 	}
@@ -60,6 +63,9 @@ func main() {
 	}
 	if webCategory(os.Args[1:]) == "workspaces" {
 		os.Exit(workspacesMain(os.Args[1:]))
+	}
+	if webCategory(os.Args[1:]) == "templates" {
+		os.Exit(templatesMain(os.Args[1:]))
 	}
 	topic, help := helpRequest(os.Args[1:])
 	if help {

@@ -79,6 +79,21 @@ C2a0/a1 remain unwired primitives, not installed template/version/grant manageme
 Future publication/migration and coherent retained-SSH changes require their
 separate acceptance gates before becoming release scope.
 
+C2a2 now adds a local candidate immutable catalog/CLI; it does not bind student
+readers or confirm versions to the gateway. Before any separately authorized
+rollout, qualify the exact artifacts in the disposable privileged guest on an
+idle host; the current csc-sys precheck has two live/unresolved attempts and must
+refuse testing, never reconcile them as test setup. Install the separate bounded
+exam-template.slice only during that future authorized maintenance workflow;
+absence refuses template operations, not student admission. Preserve the entire
+template-catalog versions/jobs/audit and persistent worker.lock inode in consistent
+private backups. No SQL migration, legacy directory rewrite or automatic version
+selection/deletion accompanies this increment. Rollback must first drain template
+workers; leave the additive catalog intact and keep a compatible inspection/
+cleanup CLI rather than deleting its receipts or pretending legacy readers are
+version-bound. Later all-reader/grant migration changes rollback requirements and
+must have a separate coordinated plan. Nothing here reloads or installs a unit.
+
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,
 without retaining/retrying credentials or bypassing approval/holds. No schema

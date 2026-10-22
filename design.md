@@ -1370,6 +1370,23 @@ docs/todo-design-decisions.md; existing native-only commands do not yet satisfy
 this policy. Preserve signed student-SSH commands and outbound callbacks, not a
 new webserver-to-agent API.
 
+Local C2a2 adds a separate root-only immutable template catalog and discoverable
+`examctl templates validate/install/list/show/verify/jobs/clean` workflows.
+Validation/import/verification/cleanup run outside attempt state/collection slots
+in ordinary bounded worker processes under a separate exam-template.slice
+(256 MiB/no swap/32 tasks aggregate, 120-second per-job runtime). Owned persistent
+flock, strict bounded request/reply target checks, verified private copies, flushed
+no-replace publication and audited explicit failed-staging cleanup preserve old
+versions and protected/student authority. Retry verifies a published exact version,
+never recopies/replaces it from mutable author paths; unknown interrupted intent
+is visible and only empty/private-metadata cleanup is eligible. No installed-
+version deletion, implicit latest selection or automatic cleanup exists. Results
+explicitly say gateway_confirmed=false. Student readers still resolve legacy
+sources; all-reader exact-version binding, signed metadata acknowledgement and
+unified grants/migration remain separate unfinished dependencies. Focused local
+qualification is not deployment or privileged system-manager qualification;
+see docs/template-catalog.md and docs/todo-progress.md.
+
 Approved C1 design (October 20; partial local implementation): root-run examctl on the
 class server reuses its existing root-owned agent identity for outbound HTTPS
 management of gateway-owned state. Add explicit operation authorization, purpose/

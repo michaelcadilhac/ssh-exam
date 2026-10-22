@@ -1,6 +1,7 @@
 # Template versions before unified grants
 
-October 21, 2026. **Investigation in progress, not implemented or deployed.**
+October 21, 2026. **Investigation in progress; foundations partially implemented
+locally, unified model not implemented or deployed.**
 C2/C5/C7 already approve unified grants, settings/material/source fixed at
 issuance, explicit unused revisions, finite independent Begin windows, effective
 webcam preservation and new-attempt saved-work recovery. This source map/order
@@ -42,7 +43,7 @@ or implementation. Independent purge work continues.
 
 ## Ordered increments and required acceptance
 
-Local C2a0 foundation now implements an **internal, unwired source inspector** in
+Local C2a0 foundation implements a source inspector in
 template_source.go, not a catalog/CLI/installer/agent capability. It pins no-follow
 package/work/material roots; refuses links, special files, nested mount IDs,
 non-UTF-8 paths, unreadable materials and reserved root work metadata; enforces
@@ -59,7 +60,7 @@ distinct physical copies, mode-sensitive hashes, links/FIFO/layout/readability,
 after-read mutation with restored mtime, the 10,000-entry boundary/depth 32, real
 same-device bind mounts and 128 MiB streaming without proportional allocation.
 No existing reader or settings hash was changed. Full qualification is in
-todo-progress.md; bounded worker/CLI installation, publication/crash recovery,
+todo-progress.md. C2a2 now adds the separate local worker/CLI catalog below;
 all-reader binding and catalog acknowledgement remain unimplemented. Do not
 mark the catalog investigation complete from this primitive or the proposal below.
 
@@ -78,13 +79,47 @@ Focused source/copy race tests pass (6.4s), including 128 MiB streaming, actual
 SIGKILL/retry, private-copy/source mutation, untouched existing destinations and
 real bind-alias refusal in a private user/mount namespace. The first fixture used
 Go test subdirectories without explicit 0700; corrected the fixture, not the
-private-parent guard. This still needs a separately bounded worker/pool, owned
+private-parent guard. That primitive alone needed a separately bounded worker/pool, owned
 staging crash cleanup, durable catalog manifest/publication, list/show/validate/
 install CLI, resource/disk/runtime fault qualification and all-reader binding.
 Fresh full native race/resource/namespace/compiler/default-size qualification
 passes (core112.5s, CLI3.0s); static build and vet pass. No student path, issued
 grant, installed template or production record changed. This is not qualification
 of an OS template worker/catalog/CLI that has not been implemented.
+
+C2a2 now adds a separate root-only native immutable catalog and
+`templates validate/install/list/show/verify/jobs/clean`, with strict private IPC,
+256 MiB/no-swap/32-task aggregate and per-worker resource boundaries, 120-second
+runtime, persistent bulk flock, streamed private-copy verification, flushed
+no-replace publication and explicit exact-job cleanup. It preserves published
+versions, all student/legacy sources and state authority; installation explicitly
+reports not gateway-confirmed or student-bound. Crash-before-intent jobs remain
+visible as unknown, with only empty/private-metadata cleanup eligible and a
+retained tombstone. Focused actual child/storage/mount/CLI/resource tests pass;
+fresh full native race qualification passes (core155.8s/CLI5.7s), application
+350/65 (74.4s), typecheck/build/static/vet and 29 browser-SSH checks (6.1m) pass.
+The compiled CLI tests use a private synthetic manager interface; actual local
+user-systemd tests independently enforce OOM/runtime and a 128 MiB import with
+live kernel-control observations. Privileged system-manager guest qualification
+is pending: the read-only csc-sys precheck found two live/unresolved attempts,
+so no guest was started. See template-catalog.md for exact scope and recovery.
+
+Next all-reader increment must also cover the old engine.initialize helper
+(now referenced only by legacy recovery tests),
+not just workspace_stage, sandbox_launch, functional_host and welcome. Add an
+optional exact hash to native settings/source snapshots with omitted legacy JSON
+fields so historical settings/receipts/manifests remain byte-compatible. No
+version means existing legacy behavior, never implicitly latest; an explicit
+version means catalog-only resolution with no fallback. Verify actual installed
+bytes before committing Begin in a separate bounded worker, outside WithState,
+then recheck snapshot/generation/ownership before the short commit. Never hash
+materials inside the PTY admission state transaction. Practice must not inspect,
+verify or reveal private catalog text. Both normal/admin mount builders and the
+welcome reader must receive the same exact version, with missing/damaged catalog
+state refusing material release rather than turning into an optional-banner skip.
+No gateway issuance/version selection is exposed until signed catalogue visibility
+and shared web/CLI validation exist. This is an engineering plan, not completed
+binding qualification or a reason to stop independent work.
 
 Further October 21 source findings (investigation remains open):
 

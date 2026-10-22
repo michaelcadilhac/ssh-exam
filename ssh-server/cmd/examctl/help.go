@@ -79,6 +79,10 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "templates" {
+		templatesHelp(w)
+		return true
+	}
 	if topic == "monitoring" {
 		webMonitoringHelp(w)
 		return true
@@ -116,7 +120,7 @@ func printHelp(w io.Writer, topic string) bool {
 		return true
 	}
 	if topic == "management" {
-		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nSigned root-agent workflows cover definitions, roster/CSV, alerts, attempts/clocks, interruptions and bounded monitoring reads/reviewed deletion/purge inventory: use examctl web help and web students/alerts/attempts/clocks/interruptions/monitoring help. Explicit gateway operation authorization is required. Clock acceptance is not native confirmation; inspect each intent and native info. Interruption approval alone is not execution permission. Monitoring logical deletion is not physical purge completion; inspect fresh monitoring show or purge-status. Definition retirement, full monitoring export, unified grants, templates/config and administrator management remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for remaining web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
+		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nSigned root-agent workflows cover definitions, roster/CSV, alerts, attempts/clocks, interruptions and bounded monitoring reads/reviewed deletion/purge inventory: use examctl web help and web students/alerts/attempts/clocks/interruptions/monitoring help. Explicit gateway operation authorization is required. Clock acceptance is not native confirmation; inspect each intent and native info. Interruption approval alone is not execution permission. Monitoring logical deletion is not physical purge completion; inspect fresh monitoring show or purge-status. Local immutable catalog workflows use examctl templates help; installation is not gateway confirmation or student version binding. Definition retirement, full monitoring export, unified grants, template binding/synchronization, configuration and administrator management remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for remaining web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
 		return true
 	}
 	if topic != "" {
@@ -130,6 +134,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprint(w, "Usage: examctl help [COMMAND] | sudo examctl [FLAGS] COMMAND [TARGET]\n\nInspect:       list, info, health, accounts\nAttempts:      start, pause, stop (finish), cancel, retry\nWorkspace:     workspace-prepare, workspace-repair\nSubmissions:   manifest, export, delete\nAccess:        reconcile, override-access\nAgent:         agent start|stop|restart|status\nCompatibility: export-status, pause-export, resume-export (disabled)\n\nCommon workflow: list -> info ATTEMPT -> diagnose -> reconcile -> info\nSubmission deletion is separate from exam-definition deletion and account release.\nRead examctl help COMMAND before mutations; examctl help management describes remaining coverage gaps.\nUse examctl help collection for worker/resource/pending-state recovery.\n\n")
 	}
 	if topic == "" {
+		fmt.Fprintln(w, "Immutable local templates: templates validate/install/list/show/verify/jobs/clean; use examctl templates help (not gateway-confirmed or student-bound).")
 		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM] (offline inspection, not unified grant issuance).")
 		fmt.Fprintln(w, "Workspace retention metadata/holds: workspaces list/show/hold/release-hold; use examctl help workspaces (no deletion enabled).")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")

@@ -13,6 +13,19 @@ is still open. The following C6 increment adds compatible configurable limits
 and a real default-size disk-backed worker/restore test (collection-limits.md).
 No production deployment is implied.
 
+October 21 C2a2 catalog candidate: full fresh native race/resource/userns/compiler/
+default-size qualification passes (core155.8s/CLI5.7s), application350/65 (74.4s),
+typecheck/application-WASM build/static native build/vet, slice syntax validation,
+and29 browser-SSH interface/closure checks (6.1m). Actual local user-systemd OOM/
+runtime failures and128MiB template import pass with live256MiB/no-swap/32-task
+controls; observed import peak165588992 bytes is not an exact ceiling. The actual
+compiled root-mapped CLI uses a private synthetic manager interface for workflow
+tests; privileged system-manager guest evidence remains separate/pending. Its
+read-only csc-sys precheck found two live/unresolved attempts, so no guest started.
+The disk-backed fixture correction preserved the new tmpfs/ramfs install refusal.
+No production changes; no all-reader binding, gateway confirmation or grants are
+enabled. See template-catalog.md and todo-progress.md for scope and remaining work.
+
 ## Concurrent deadlines, cleanup and delayed callbacks
 
 `TestConcurrentDeadlinesSlowCleanupAndCallbackBacklog` runs 16 native attempts:
