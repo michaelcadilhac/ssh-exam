@@ -2018,6 +2018,16 @@ than revoke healthy work; a failing candidate regression now passes. This local
 controller is not a cross-process native barrier, advertised capability or thaw
 implementation. No runtime caller uses it.
 
+H4c's private unused pinned-PTY adapter requires explicit O_NONBLOCK/poller support,
+the actual TIOCGPTPEER-matched slave and supported N_TTY discipline. Stop/join
+cancellation callbacks and clear write deadlines before acknowledging drain.
+Input-only kernel discard requires current drained receipts plus separately
+verified native freeze/closed admissions; reserve it without holding controller
+state over IO and refuse arm while pending/after failure. Preserve terminal output
+and already-read application/editor buffers. Root durable cross-process control,
+all-writer freeze and live negotiation remain unimplemented; the legacy raw PTY
+path retains its original flags and no mode/capability advertises this adapter.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.

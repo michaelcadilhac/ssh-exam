@@ -35,15 +35,16 @@ type paneInputDrain struct {
 }
 
 type paneInputGate struct {
-	mu                 sync.Mutex
-	pane, epoch        string
-	now                func() int64 // Trusted boot-monotonic milliseconds.
-	lastNow, until     int64
-	deadline           int64
-	sequence, revision uint64
-	held, exhausted    bool
-	flight             *paneInputDelivery
-	drain              *paneInputDrain
+	mu                  sync.Mutex
+	pane, epoch         string
+	now                 func() int64 // Trusted boot-monotonic milliseconds.
+	lastNow, until      int64
+	deadline            int64
+	sequence, revision  uint64
+	held, exhausted     bool
+	discarding, faulted bool
+	flight              *paneInputDelivery
+	drain               *paneInputDrain
 }
 
 func newPaneInputGate(pane string, now func() int64) (*paneInputGate, error) {
@@ -104,7 +105,7 @@ func (g *paneInputGate) clockLocked() (int64, bool) {
 func (g *paneInputGate) arm(drain *paneInputDrain, epoch string, until, deadline int64) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if drain == nil || !g.held || g.exhausted || g.drain != drain || drain.gate != g || drain.revision != g.revision || !monitoringDigest.MatchString(epoch) || epoch == g.epoch {
+	if drain == nil || !g.held || g.exhausted || g.faulted || g.discarding || g.drain != drain || drain.gate != g || drain.revision != g.revision || !monitoringDigest.MatchString(epoch) || epoch == g.epoch {
 		return errPaneInputBarrier
 	}
 	select {

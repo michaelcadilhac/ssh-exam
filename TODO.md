@@ -131,6 +131,15 @@ full privileged qualification or deployment authorization.
   uses it; durable cross-process
   registration/epochs, queue discard/all-writer freeze and authenticated negotiation
   remain mandatory. Drain alone is not freeze proof or permission to thaw.
+  H4c adds a private unused cancellable pinned-PTY adapter and kernel-input discard.
+  Actual PTY tests cover raw/canonical pending input, output preservation,
+  backpressure cancellation, stale deadlines, failed discard and independent panes;
+  all18 combined gate/adapter cases pass20 native race repeats (15.9s). Final full
+  native race/resource/namespace/compiler checks pass (core170.3s/CLI6.4s), static
+  build/vet and all383 application checks pass again (82.82s). Exact browser assets
+  remain hash-identical to the91-check run. Legacy raw bridges/flags remain unchanged.
+  This is not root cross-process authority, verified workload freeze or live
+  retained SSH. No mode/capability or automatic recovery is enabled.
 
 ## Firm design policy: examctl is the complete management interface
 

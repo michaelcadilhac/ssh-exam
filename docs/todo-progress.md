@@ -8,6 +8,28 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Critical continuation afterdf197ff: H4c private cancellable pinned-PTY writer and
+kernel-input discard candidate is unused by all live paths. Explicit O_NONBLOCK/
+poller and TIOCGPTPEER pinned-pair/N_TTY checks refuse unsafe descriptors. Cancel
+callbacks are stopped/joined and write deadlines cleared before acknowledging
+drain. Current already-drained receipts and an IO-outside-controller-lock discard
+reservation fence arm; failed discard prevents local re-arm even if ignored.
+Actual PTY checks cover backpressure, raw/control/UTF-8 and incomplete canonical
+input, output preservation,20 repeated hold/discard/new-epoch cycles, stale/foreign/
+undrained receipts, stalled-discard revocation and two-pane independence. Eight
+adapter plus ten gate cases pass final20-repeat race checks (15.91s), full native
+race/resource/namespace/compiler passes (core170.3s/CLI6.4s), static build/vet pass
+and all383 application checks/71files pass (82.82s). Browser WASM/runtime/JS/CSS/
+worker/HTML hashes remain exact matches to the91-check H4a run; no rebuild occurred.
+Complete kernel ioctl inspection corrected an
+initial incomplete-source inference: slave TCIFLUSH already flushes pending buffers
+before its line-discipline handler; no second/output flush is added. No production
+cause or absolute guarantee is inferred from that source review. Do not qualify
+unsupported line disciplines by autoloading host kernel modules. Legacy raw bridge
+flags remain unchanged; no browser rebuild is needed or performed. Native durable
+cross-process registration/epoch/authority plus all-writer freeze and authenticated
+mode negotiation remain next; no runtime retention/thaw is enabled.
+
 Critical continuation after83af9ec: H4b local per-pane revocation/drain controller
 candidate is unused by all production paths and under full native qualification.
 It starts revoked, bounds one in-flight frame/no queue, consumes increasing

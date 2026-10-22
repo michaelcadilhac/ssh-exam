@@ -33,6 +33,14 @@ not merely its JS loader filename: record hashes before/after frozen browser
 tests and rebuild/retest if that artifact changes. The initial H2b/H3b record has
 been corrected because the earlier WASM identity was not compared.
 
+H4b/H4c's private input gate and pinned cancellable PTY/discard adapter likewise
+advertise no capability or mode. Retained mode must qualify TIOCGPTPEER, normal
+N_TTY, explicit nonblocking Go-poller cancellation, current all-pane drain/freeze/
+discard receipts and cross-process epoch fencing on the actual drained test
+candidate. Keep old raw bridges on their original protocol/flags until a separately
+authorized drained cutover. Unprivileged local PTY tests do not qualify privileged
+SSH/PAM/cgroup/namespace containment or a temporary root agent owner's behavior.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

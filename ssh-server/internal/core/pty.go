@@ -38,7 +38,14 @@ func rawTerminal(fd uintptr) (func(), error) {
 }
 
 func openPTY() (*os.File, *os.File, error) {
-	m, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY, 0)
+	return openPTYMasterFlags(0)
+}
+
+// The existing raw bridges keep their original flags. The unused framed-input
+// adapter explicitly opens O_NONBLOCK so Go's cancellable poller remains active
+// even when trusted code obtains Fd for resize/verification ioctls.
+func openPTYMasterFlags(flags int) (*os.File, *os.File, error) {
+	m, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|flags, 0)
 	if err != nil {
 		return nil, nil, err
 	}

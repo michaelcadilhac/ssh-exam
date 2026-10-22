@@ -155,6 +155,127 @@ build/vet pass and26 focused cross-language/HTTP/WS/SSH application checks pass
 privileged all-writer, runtime negotiation or technical-hold qualification is
 claimed.
 
+### Cancellable pinned-PTY adapter candidate (H4c, unwired)
+
+`input_pty.go` connects the local gate to a private cancellable PTY writer and
+input-discard primitive, not a runtime admission/recording/hold path. It requires
+an explicitly O_NONBLOCK Go-poller-supported master and its actual pinned slave.
+TIOCGPTPEER obtains the peer without resolving a possibly different namespace's
+`/dev/pts/NUMBER`; device/inode identity must match the provided descriptor. Both
+descriptors must have the supported normal N_TTY discipline. Alternative line
+disciplines are not qualified; tests do not autoload kernel modules on this host.
+The unchanged legacy `openPTY()` still uses its original flags; a private helper
+allows explicit flags for this future mode only. Never retrofit a live raw bridge.
+
+Cancellation uses the poller's write deadline. Before write returns, stop or join
+its cancellation callback and clear that deadline. Thus no old callback can poison
+a later new-epoch write; the controller's drain covers the callback as well as the
+final syscall. A discard reservation blocks arm without holding the controller
+mutex over IO. Require the current already-drained receipt and separately verified
+all-writer freeze/closed admissions before flushing; a failed discard permanently
+refuses local arm until native containment is inspected. No timeout alone counts
+as success. Static errors never print keys, fd paths or syscall contents.
+
+Only this slave's unread INPUT is flushed, then TIOCINQ must report zero. Do not
+flush terminal output or erase already-read application/editor buffers. A partially
+typed canonical kernel line must be discarded even if it was not yet readable;
+zero readable bytes by itself would not prove this. Kernel source inspection
+must include the complete ioctl path: the top-level
+[TCFLSH dispatch](https://raw.githubusercontent.com/torvalds/linux/master/drivers/tty/tty_io.c)
+flushes pending buffers before the
+[line-discipline helper](https://raw.githubusercontent.com/torvalds/linux/master/drivers/tty/tty_ioctl.c).
+Looking at the latter alone incorrectly suggested a second flush; the full path
+and actual backpressure tests did not support that inference. These source links
+are upstream references, not a claim that another host runs the identical source.
+
+Eight adapter cases exercise actual Linux PTYs on local7.2.6-arch2-1: blocking/
+wrong/closed descriptor refusal, backpressure cancellation,20 sequential hold/
+discard/new-epoch cycles without late deadline poisoning, raw/control/UTF-8 and
+incomplete canonical input discard, output preservation, current/foreign/stale/
+undrained receipts, failed discard refusal, independent revocation during a stalled
+discard, and two panes with one genuinely backpressured while the other keeps its
+epoch/cutoff/deadline and input. Combined with ten gate cases, all18 cases pass20
+race repeats (15.91s). Final full native race/resource/namespace/compiler tests pass
+(core170.3s/CLI6.4s), static build/vet and all383 application checks pass (82.82s).
+Browser assets remain hash-identical to the91-check H4a run; no rebuild occurred.
+These are unprivileged PTY tests,
+not privileged cgroup freeze/SSH/PAM/namespace containment qualification. No live
+bridge, attempt state, root journal, callback or capability calls the adapter.
+
+## Next integration boundary: durable native coordination (not implemented)
+
+The listener, retained PTY owners, independent watchdog and root examctl may be
+different processes. A process-local map/mutex or the current shared state lock
+cannot be the final barrier. Keep the existing independent deadline cutoff and
+account restrictions throughout. The proposed next increment has these fences:
+
+1. A root-private, per-attempt durable control journal and persistent lock inode
+   bind full native owner/boot, generation, clock revision, page/input epochs,
+   fixed deadline/current authority cutoff and every admitted pane/bridge owner.
+   Register a pane before launch while admission is open; remove it only after
+   verified scope/bridge cleanup. Record root bridge PID/start/boot identity, not
+   merely a user-supplied PID or a transport hash string. Root-only coordination
+   uses existing local IPC/private state, not a new network control listener.
+2. Lease commit and monitoring cutoff share this per-attempt revocation lock.
+   Re-read current authority under that lock before beginning revocation; never
+   freeze an old state.json snapshot that raced a healthy renewal. Journal IO and
+   lock acquisition are bounded; one attempt cannot block another's cutoff. Use
+   checked integer boot-monotonic time, not the existing /proc float helper; charge
+   suspend/clock anomalies explicitly and test timer-source/expiry interactions.
+3. First durably close new admission/renewal and revoke the current input epoch.
+   Notify all registered retained bridge owners, cancel writes and require exact
+   controller/pane/revision drain acknowledgements. Independently freeze every
+   recorded workload/descendant and verify all real/effective/saved/filesystem-UID
+   writers; only verified trusted entry/SSH supervisors remain outside. Do not
+   reuse finalization's permanent work ownership/mode change for a temporary hold.
+4. With workload freeze and all input drains verified, discard every pinned PTY's
+   unread kernel input. Publish a scoped freeze/discard receipt only after all
+   confirmations, with unconfirmed/missing/dead owners as explicit faults. A
+   successful systemctl exit, a vanished peer, an empty direct process list or a
+   timeout is not proof. If freeze/discard cannot be verified, keep admission and
+   input revoked and use the existing fail-closed containment escalation; report
+   truthful process/buffer loss rather than claiming retention succeeded.
+5. Distinguish technical uncertainty from confirmed policy-condition loss and
+   authentication loss. Automatic technical recovery requires the approved same
+   live authenticated owner, complete current evidence and uninterrupted coverage,
+   verified current freeze/discard receipt, unexpired deadline and no overriding
+   policy/authentication loss. Revalidate actual root sshd PID/start/boot ancestry;
+   a gateway signature on a registered owner string alone is insufficient. Policy
+   continuation still requires its explicit review/approval. Actual transport loss
+   still needs fresh authentication. Never refund time or reopen a completed exam.
+6. Resume is coordinated, not a direct `freeze(false)`: stage a fresh native input
+   epoch behind closed gates, perform an explicit coverage-preserving gateway
+   handover, commit bounded fresh authority, thaw/verify all writers and publish
+   the signed resulting epoch/receipt before enabling browser input. Record the
+   authorized-but-not-yet-confirmed thaw phase honestly; a partial thaw/failure
+   revokes and refreezes every scope. Original/current deadlines and independent
+   cutoffs continue to apply during each phase. No old frame or late reply can
+   acquire the new epoch; no held ACTIVE-verifier bootstrap is fabricated.
+7. Purpose-bound durable request/sequence receipts preserve the first original
+   cutoff across duplicate/lost replies and root restart; they cannot refresh
+   permission or reset a coverage watermark. Never silently change the legacy
+   one-use signed-command replay contract. Missing/corrupt journal or unknown
+   crash phase closes input/admission, never reconstructs positive authority.
+
+Qualification must exercise the coordination between real processes, not just
+reducers: renewal-versus-expiry, pane launch-versus-revoke, concurrent root CLI,
+old/new watchdog, duplicate/reordered acknowledgements, bridge death/stall and
+PID reuse, namespace-pinned descriptors, deadline/clock/finish races and crash at
+each fsync/rename/receipt/thaw boundary. Prove another student's monitoring,
+input/cutoff and collection stay independent. Add genuine policy/authentication
+loss and gateway restart with no invented historical coverage or reused keys.
+The local isolated root/system-manager guest remains required for full SSH/PAM/
+cgroup qualification; unprivileged PTY tests do not replace it.
+
+Before enablement, implement discoverable read-only native diagnostics (including
+an explicit read-only examctl workflow, without reconciliation side effects),
+shared CLI/web status and audited policy recovery. Show observation age, ownership,
+authority cutoff/deadline, coverage, journal phase and which bridge/freeze/discard
+confirmation is pending. Operational uncertainty must not appear as a misconduct
+finding or a false successful thaw. Current command names/capabilities do not yet
+provide this new workflow; add complete help and actionable next steps together
+with runtime integration. Do not advertise an unsupported command as available.
+
 ## Coordinated milestones before enabling retained mode
 
 1. Codec and shared byte fixture, including actual PTY/SSH transport checks.
