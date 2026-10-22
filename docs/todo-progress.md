@@ -8,6 +8,30 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+After test-only commitd53de3f, the next confirmed correctness milestone isolates
+client ready/ACK network IO from pane admission's global state transaction and
+revokes unused pane capabilities on close. Signed renewals already bypass that
+lock; do not call this a proven renewal-lock cause. Exact late-authority fences,
+scope/clock/hold preservation and interface acceptance are planned in
+pane-admission-isolation.md. Candidate passes426 app/91.11s, final full native
+race/resource/namespace/compiler/default-size core177.149s/CLI8.957s, static/vet,
+35 Python checks and ten final focused race repeats6.456s. Actual guest passes40
+SSH/PAM/Begin/enforcement assertions and11 real collector-death/healthy-SSH
+assertions (23 peer renewals,max0.0800769s), plus three actual authenticated SSH
+delayed-ACK/late-close repeats. The old-locking test-only mutant fails all three;
+corrected source is restored byte-identical and all three final positive repeats
+pass again0.40..0.81s with host/base preservation. Detailed failed fixture/quota evidence, exact hashes and remaining
+boundaries are in pane-admission-isolation.md. No deployment/C3 completion claim.
+C10/C11 and legacy migration remain awaiting decisions; per-pane root CLI remains
+an identified C1 gap. All174 existing browser source/runtime hashes are unchanged.
+
+Development scratch note: only generated qualification bundles and the Go build
+cache were moved off quota-limited /tmp into the private owned child
+/home/micha/src/ssh-exam/var/collection-tests/qualification-artifacts.qTDysU.
+Use GOCACHE at that child's go-build; GOMODCACHE remains
+/tmp/ssh-exam-toolcheck.OA9pbg/go-mod. These are generated test artifacts, not
+student workspaces or cleanup eligibility; no broad deletion/quota change occurred.
+
 Administrator milestone is local commitb42129d; previous writer correction is
 76cf926. The TEST-ONLY C11 dead-leader foreground investigation now passes ten
 repeats,60 actual freeze/discard/thaw cycles across cgroup-only and exact

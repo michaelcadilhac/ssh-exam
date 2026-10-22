@@ -1664,6 +1664,19 @@ checks complete. Local simulated browser tests alone do not qualify privileged i
 
 ### Approved retained-SSH lockout design (October 21; implementation pending)
 
+October22's local admission correction moves only provisional ready/ACK socket IO
+outside the global state transaction. Close revokes exact unused pane tokens;
+replacement issuance supersedes older unused tokens and recorded panes cannot be
+started twice. The final locked transaction rechecks current capability, account,
+actual SSH ancestry/registration, authority snapshot, deadline/lease and terminal
+limit, consumes the token and durably tracks the unit before launch. A late ACK
+after close/authority change is not permission. Independent healthy renewals and
+other-pane/diagnostic observations do not falsely invalidate the preview. Actual
+authenticated SSH positive/negative controls, full native/app and guarded guest
+compatibility pass locally; see docs/pane-admission-isolation.md. Filesystem and
+system-manager startup/readiness waits remain serialized, not solved. This is not
+a closed root pending-launch/freeze protocol, C3 retention or deployment.
+
 October22 local native coordination adds an unused authority/publication arbiter
 only; see docs/native-monitoring-authority.md. Its live decision cannot wait for
 storage, and provisional disk records alone cannot restore authority after restart.

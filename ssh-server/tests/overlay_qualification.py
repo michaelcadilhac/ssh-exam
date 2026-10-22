@@ -285,7 +285,7 @@ if __name__ == '__main__':
     parser.add_argument('--guest', type=Path, required=True)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--username', default='examq')
-    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty'), default='enforcement')
+    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):

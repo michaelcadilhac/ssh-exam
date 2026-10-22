@@ -167,6 +167,7 @@ func (e *Engine) local(c *net.UnixConn) {
 	unit := ""
 	id := ""
 	result := map[string]any{}
+	var pending *paneLaunchAdmission
 	err = e.WithState(func() error {
 		if baseline, ok := e.account(name); ok {
 			account = baseline
@@ -186,21 +187,11 @@ func (e *Engine) local(c *net.UnixConn) {
 		if err != nil {
 			return err
 		}
-		cap, ok := e.state.Caps[Hash([]byte(r.Token))]
-		delete(e.state.Caps, Hash([]byte(r.Token)))
-		if !ok || cap.Expires < Millis() || cap.Username != name {
-			return errors.New("invalid or expired one-use admission")
-		}
-		if cap.Transport != identity {
-			return errors.New("capability transport mismatch")
-		}
-		a, err := e.Find(cap.ID)
+		cap, a, err := e.paneAdmission(r.Token, name, identity, account)
 		if err != nil {
 			return err
 		}
-		if a.Transport != identity || a.Username != name {
-			return errors.New("attempt transport mismatch")
-		}
+		pending = &paneLaunchAdmission{capability: cap, account: account, authority: paneLaunchAuthority(a)}
 		if e.Config.HostFilesystem && !e.hostAccess(a) {
 			if issues := hostFilesystemIssues(e.Config); len(issues) != 0 {
 				return fmt.Errorf("host filesystem isolation unavailable: %v", issues)
@@ -210,12 +201,6 @@ func (e *Engine) local(c *net.UnixConn) {
 			}
 		}
 		practice := cap.Purpose == "practice"
-		if err := workloadAllowed(a, cap.Purpose); err != nil {
-			return err
-		}
-		if !practice && len(a.Units) >= a.Settings.Terminals {
-			return errors.New("terminal limit")
-		}
 		messages, err := syscall.ParseSocketControlMessage(oob[:on])
 		if err != nil || len(messages) != 1 {
 			return errors.New("PTY descriptor required")
@@ -296,22 +281,30 @@ func (e *Engine) local(c *net.UnixConn) {
 		// Local-only display data: leave it out of the signed admission receipt
 		// and the browser's bounded EXAM-READY protocol line.
 		result["welcome"] = welcome
-		a.Units = append(a.Units, unit)
-		if err = e.save(); err != nil {
-			return err
-		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("protected channel preparation failed: %v", err)
+		json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	if launch == nil {
 		json.NewEncoder(c).Encode(result)
-		var acknowledged [1]byte
-		if _, err = c.Read(acknowledged[:]); err != nil {
-			return err
-		}
-		if !practice && (expired(a) || Millis() >= a.Lease) {
-			launch = nil
-			return errors.New("deadline/lease expired during admission")
-		}
+		return
+	}
+	// Neither a slow client nor a backpressured ready reply owns the global
+	// state lock. The unconsumed capability can be revoked while this waits.
+	if err := awaitPaneAcknowledgement(c, result, pending.capability.Expires); err != nil {
+		log.Printf("protected channel acknowledgement failed: %v", err)
+		return
+	}
+	err = e.launchAcknowledgedPane(pending, r.Token, name, unit, func(currentAccount Account) (string, error) {
+		return transportIdentity(int(cred.Pid), currentAccount.UID)
+	}, func(a *Attempt, cap Capability) (bool, error) {
+		practice := cap.Purpose == "practice"
 		if err = launch.Start(); err != nil {
 			launch = nil
-			return err
+			return false, err
 		}
 		// Forward startup diagnostics as well as the eventual shell. A failed
 		// sandbox may exit before its scope becomes active.
@@ -323,7 +316,7 @@ func (e *Engine) local(c *net.UnixConn) {
 				syscall.Kill(-launch.Process.Pid, syscall.SIGKILL)
 				launch.Wait()
 				launch = nil
-				return err
+				return true, err
 			}
 		}
 		var activeScope bool
@@ -338,10 +331,10 @@ func (e *Engine) local(c *net.UnixConn) {
 			syscall.Kill(-launch.Process.Pid, syscall.SIGKILL)
 			launch.Wait()
 			launch = nil
-			return errors.New("workload scope failed readiness; pane denied")
+			return true, errors.New("workload scope failed readiness; pane denied")
 		}
 		e.Audit("pane-admitted", a.ID)
-		return nil
+		return true, nil
 	})
 	if err != nil {
 		log.Printf("protected channel admission failed: %v", err)

@@ -332,10 +332,14 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if r.Username != a.Username || r.Transport != a.Transport || !attemptID.MatchString(r.Pane) {
 				return errors.New("pane identity mismatch")
 			}
+			if paneRecorded(a, r.Pane) {
+				return errors.New("pane already admitted; close it before opening a replacement")
+			}
 			if r.Purpose == "practice" && a.State == "PREPARING" {
 				if len(a.Units) >= a.Settings.Terminals {
 					return errors.New("practice terminal limit")
 				}
+				e.revokePaneAdmissions(a.ID, r.Pane)
 				result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: r.Purpose, Transport: r.Transport, Expires: Millis() + 15000})
 				break
 			}
@@ -345,11 +349,15 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if len(a.Units) >= a.Settings.Terminals {
 				return errors.New("terminal limit")
 			}
+			e.revokePaneAdmissions(a.ID, r.Pane)
 			result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + 15000})
 		case "close-pane":
 			if !attemptID.MatchString(r.Pane) {
 				return errors.New("invalid pane identity")
 			}
+			// Revoke queued, not-yet-launched admissions even when terminating an
+			// existing workload fails. WithState durably saves errors as well.
+			e.revokePaneAdmissions(a.ID, r.Pane)
 			closed := *a
 			closed.Units = nil
 			remaining := []string{}

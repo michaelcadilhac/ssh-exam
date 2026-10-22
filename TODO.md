@@ -227,6 +227,16 @@ full privileged qualification or deployment authorization.
   checks pass. It does not repair deferred-IO cancellation or complete root
   admission/retained SSH; C11 remains awaiting decision. Exact hashes/evidence:
   docs/native-async-io-investigation.md. No deployment or policy change.
+  A further confirmed native admission issue is corrected/tested locally: ready/
+  ACK socket IO no longer owns the global state lock, closes revoke queued pane
+  tokens, replacements supersede old tokens and launch rechecks current authority
+  before durable one-use consumption/scope tracking. Actual authenticated SSH
+  with a withheld ACK and signed late close passes; restoring the old lock makes
+  all three controls fail. Full426-app/native race/resource/build and35 Python
+  checks pass, plus40 actual SSH/PAM/enforcement and11 collector-death/healthy-
+  peer assertions, with host/base preservation. Exact hashes and limitations:
+  docs/pane-admission-isolation.md. Startup/readiness/filesystem waits, C10/C11,
+  retained SSH and the initiating incident remain open; no fix is deployed.
 
 ## Firm design policy: examctl is the complete management interface
 
@@ -284,6 +294,11 @@ An administrator should be able to discover and finish a workflow using
   all gaps. Include bulk operations and inspection of confirmed versus pending
   changes. Make the CLI and web UI agree after either changes a setting. Carry
   this firm policy into the canonical design and operator documentation.
+  October22 inspection also identifies a per-pane root-management gap: signed
+  student close now revokes pending tokens safely, but discoverable root CLI
+  inspection/targeted close with audited reason remains to implement. Do not
+  require direct state edits, confuse a pane UUID with an attempt or recommend
+  whole-attempt termination as a substitute for targeted management.
 
 - [ ] **Redesign help around discoverable management workflows.**
   Administrator candidate help covers full privilege consequences, named

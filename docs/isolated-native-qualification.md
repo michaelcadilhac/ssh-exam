@@ -257,3 +257,18 @@ passes; evidence /var/tmp/ssh-exam-overlay-r_r9rril. Negative host probes cover
 this profile too. Exact artifact hashes and unchanged limitations are in
 native-async-io-investigation.md. No live signal/admission/retained-SSH policy is
 enabled; the separate linked-IO compatibility failure remains a release blocker.
+
+## Actual delayed pane acknowledgement (October22)
+
+The guarded pane-ack profile uses only a newly owned guest-only loopback sshd,
+synthetic examq, private pinned host/client keys and the exact manifested Go test
+binary. It keeps StrictModes and normal-root endpoint exclusions. Actual
+Engine.local receives the real peer UID/root SSH ancestry and passed PTY; a
+withheld practice-pane ACK must not block actual signed inspection/close. Its
+late ACK must refuse with no workload/start/deadline. Three positive repetitions
+pass, and restoring the old ACK-locking behavior in a test-only binary fails all
+three. Host/base preservation passes for both controls and the prior failed
+StrictModes fixture. This is not an ACTIVE retained-SSH/buffer-freeze test.
+Exact artifact/evidence/failed-build details and full regressions are in
+pane-admission-isolation.md. No installed host service/account/configuration,
+student record, deadline or production authority is changed.

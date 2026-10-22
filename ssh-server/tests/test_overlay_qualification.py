@@ -158,6 +158,12 @@ class OverlayTests(unittest.TestCase):
             '-test.run=^TestMonitoringThreadTTYGuest$', '-test.v', '-test.count=10',
             '-test.timeout=90s'])
 
+    def test_actual_ssh_pane_ack_profile_is_separate_and_bounded(self):
+        self.assertEqual(guest.pane_ack_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestPaneAcknowledgementGuest$', '-test.v', '-test.count=3',
+            '-test.timeout=90s'])
+
 
 if __name__ == '__main__':
     unittest.main()

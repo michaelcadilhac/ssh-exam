@@ -13,7 +13,10 @@ import (
 
 func templateCopyParent(t *testing.T) string {
 	t.Helper()
-	parent := t.TempDir()
+	// Honor the existing explicitly selected private disk scratch for actual
+	// default-size copies too, rather than charging the shared /tmp tmpfs quota.
+	// nativeFixtureDir owns/removes only its new child, never the scratch parent.
+	parent := nativeFixtureDir(t)
 	if err := os.Chmod(parent, 0700); err != nil {
 		t.Fatal(err)
 	}
