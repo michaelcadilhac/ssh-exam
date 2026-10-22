@@ -15,12 +15,26 @@ asking. Preserve unrelated work and protected/history/clock/hold authority.
 | 623e218 | Saved-work storage causes preserved; eight real isolated storage-fault/retry workflows |
 | 90f2c54 | Unwired native arbiter accepts verified live renewals independently of metadata publication; exact retired-ticket fence |
 | d1b26d1 | R1a unused pinned bounded cgroup2 direct-thread observations; real dead-leader scope, fuzz, full compatibility and fresh9-browser qualification |
+| 1630456 | R1b unused pinned task/group/UID/start and distinct stop-state observations; actual owned stop/continue/exit and full compatibility |
 
 These do not complete the broad critical monitoring/C3/grant/cleanup TODOs.
 TODO.md still has11 checked parent items out of38; local components are not
 deployed features or completed investigations.
 
 ## Active increment
+
+R1c's unused retained_scope_tree.go now observes bounded descendant hierarchy,
+identity/membership/child brackets and refuses changes/exhaustion without partial
+coverage. Actual owned user-scope delegation is test-only; production stays
+Delegate=no. The descendant test keeps64MiB/swap0/16tasks and demonstrates new
+children even while frozen1. A shallow-walk mutant is RED0.052s and restored;
+twenty combined R1 races pass4.219s.426 app98.97s/static build/vet pass. Full
+native qualification passes core280.307s/CLI24.891s; logs use the
+/tmp/ssh-exam-retained-scope-tree- prefix. All174 browser hashes match. See
+retained-scope-hierarchy.md. It is NOT globally atomic or a closed-launch/freeze
+permit. Commit only after current native checks and final documentation/hash pass.
+
+The previous validated R1b increment:
 
 R1b's locally implemented/tested unused retained_task.go and tests observe exact task/group/UID/start through
 pinned proc snapshots and original group pidfd lifetime, preserving distinct
@@ -84,8 +98,12 @@ call source maps/proposals completed investigations or close unchecked parents.
 The instructor explicitly approved the exact code-only atomic-consumption bundle
 at /var/tmp/ssh-exam-atomic-consumption-upload.QBtItC on csc-sys. Its private0700
 directory/16 files and14 artifact hashes/wrapper are verified; nothing installed.
-It predates later commits and cannot certify their exact artifacts. No guest was
-started: the raw boolean guard remains BUSY at18:36UTC. Never clear host records,
+It predates later commits and cannot certify their exact artifacts. After an IDLE
+guard, its three actual signed-SSH pane/health/root-CLI repeats pass1.65/0.89/0.75s
+with host/base preservation at /var/tmp/ssh-exam-overlay-yxy0txo_. The next
+enforcement run is refused BEFORE guest creation on new live/unresolved host
+work;40/11 enforcement/worker assertions and hardened consumption-filesystem
+compatibility remain pending. Never clear host records,
 relax the guard, stop exams or native-reconcile production just to qualify.
 Only guarded disposable nspawn profiles are authorized; host/base stay unchanged.
 

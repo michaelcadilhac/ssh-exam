@@ -84,6 +84,28 @@ R1a run. See
 retained-task-observations.md; no runtime owner/epoch/admission factory, complete
 barrier, privileged PASS or deployment is claimed.18:36UTC csc-sys remains BUSY.
 
+R1b is now local commit1630456. Next R1c's unused pinned cgroup2 hierarchy reader
+observes descendants with128-node/depth32/4096-total-thread hard bounds and
+no-follow identity/membership/child brackets. Changes/exhaustion return no partial
+coverage; this is not a globally atomic or closed-admission/freeze proof. Actual
+owned nested-scope tests find a helper under an empty parent, enforce64MiB/
+swap0/16tasks and show frozen1 does not prevent a new child. A shallow-walk mutant
+is RED0.052s and restored in finally. Twenty hierarchy repeats2.245s and twenty
+combined R1 races4.219s pass;426 app98.97s/static build/vet pass. Full native
+qualification passes core280.307s/CLI24.891s;174 browser hashes match the last
+nine-check browser/WASM SSH run. See retained-scope-hierarchy.md. Close this
+existing increment without extending the unwired reader chain; the October22
+process correction is in AGENTS.md and development-retrospective.md.
+
+Privileged gate update for the EARLIER exact approved atomic-consumption artifact:
+after an IDLE guard, three actual signed-SSH held-health/independent inspection,
+late ACK and root-CLI/two-shell repeats pass1.65/0.89/0.75s with host/base
+preservation at /var/tmp/ssh-exam-overlay-yxy0txo_. The next enforcement profile
+is refused BEFORE guest creation when new live/unresolved host work appears;
+40 enforcement and11 worker assertions remain pending, not PASS. No further
+guest is started. These receipts do not certify later C10/R1 artifacts or the
+separate actual hardened consumption-filesystem syscall gate. No deployment.
+
 Saved-work process-death/CLI/watchdog qualification is now local commit6cfd9d4.
 The next independent C7 correctness regression now confirms actual isolated
 ENOSPC leaves an empty consumption marker and prevents supported root CLI repair;

@@ -145,6 +145,13 @@ full privileged qualification or deployment authorization.
   and35 Python pass;174 browser hashes match the fresh9-check/1.1m R1a run;
   full scope/descendant/closed-launch/input/freeze proof remains open. See
   docs/retained-task-observations.md. No live mode or production action.
+  R1c's next unused pinned hierarchy reader now observes descendant cgroups and
+  refuses observed changes/duplicates/budget exhaustion without partial coverage.
+  Actual owned nested scopes remain64MiB/swap0/16tasks; a new child during verified
+  frozen1 is still detected/refused. The shallow-walk mutant is RED0.052s and
+  restored; twenty combined R1 races pass4.219s.426 app98.97s/build/vet pass;
+  full native qualification passes core280.307s/CLI24.891s. This is not global atomicity, root launch
+  exclusion or a freeze/input permit. See docs/retained-scope-hierarchy.md.
   H4a/C3 now has a private unused framed-input codec and canonical cross-language
   byte fixture. Actual encrypted SSH-channel and raw Linux PTY tests cover binary
   control keys, UTF-8, fragmentation, truncation, malformed headers and bounded
@@ -987,7 +994,11 @@ the approval is not a production change or a completed investigation.
   Two raw archive fixtures were corrected to use the nonconsuming extractor,
   not relax the durable-start guard. All174 browser hashes still match. The
   explicitly approved code-only bundle is uploaded/checksum-verified in a private
-  csc-sys test directory; its guard reports BUSY, no guest started. New exact-
+  csc-sys test directory; initial guards refuse BUSY. A later guarded run passes
+  three actual pane/health/root-CLI repeats with host/base preservation; the next
+  enforcement run is refused before guest creation on new live/unresolved host
+  work.40/11 enforcement/worker assertions and hardened consumption-filesystem
+  compatibility remain pending for that artifact. New exact-
   artifact hardened guest/whole recovery gates remain open. See
   docs/recovery-consumption-atomicity.md.
   No clock/hold/grant-format, account policy or production change is implied.

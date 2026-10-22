@@ -94,9 +94,16 @@ The instructor explicitly approved uploading the exact code-only synthetic test
 bundle to /var/tmp/ssh-exam-atomic-consumption-upload.QBtItC on csc-sys. The
 private0700 directory contains exactly the16 expected files; all14 manifest
 artifact hashes and the wrapper hash match. No installation/deployment occurred.
-The next boolean-only raw authority guard reports BUSY, so no candidate guest
-was started and no privileged PASS is claimed. Use only the continuously guarded
-disposable guest when eligible, never clear live/unresolved work to run a test.
+The initial boolean-only raw authority guard reports BUSY, so no guest starts
+then. A later IDLE result allows three actual signed-SSH held-health/independent
+inspection, late ACK and root-CLI/two-shell repeats1.65/0.89/0.75s with host/base
+preservation at /var/tmp/ssh-exam-overlay-yxy0txo_. The subsequent enforcement
+run is refused BEFORE guest creation on new live/unresolved host work. Its40 and
+the worker profile's11 assertions remain pending. The pane profile does not
+exercise the separate actual hardened consumption-filesystem O_TMPFILE gate;
+do not call that qualified or transfer these receipts to later code artifacts.
+Use only the continuously guarded disposable guest when eligible, never clear
+live/unresolved work to run a test. No installed service or production data changes.
 
 No new code reconstructs an OLD malformed/partial marker. Retain/refuse it for
 explicit reviewed diagnosis/migration; never remove it, infer unused authority or
