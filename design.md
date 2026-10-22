@@ -2007,6 +2007,17 @@ until that write actually stops. No runtime bridge, mode negotiation or advertis
 capability uses the codec yet. See docs/retained-ssh-input-protocol.md; this is not
 buffer-retention or automatic-recovery enablement.
 
+H4b additionally implements an unused per-pane input/revocation gate. It consumes
+sequences before partial delivery, bounds one in-flight frame/no queue and starts
+revoked. Revocation cannot wait for a blocked write, but drain cannot acknowledge
+until that write returns. Current opaque revision-bound receipts and a different
+epoch are necessary, not sufficient, to arm: native durable authorization,
+all-pane registration, verified writer freeze and queue discard are still caller
+prerequisites. An old write timer must recheck the current renewed cutoff rather
+than revoke healthy work; a failing candidate regression now passes. This local
+controller is not a cross-process native barrier, advertised capability or thaw
+implementation. No runtime caller uses it.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.

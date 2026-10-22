@@ -119,6 +119,18 @@ full privileged qualification or deployment authorization.
   acknowledgements, queue discard, all-writer freeze and coordinated recovery are
   still required; a codec alone cannot preserve editor buffers safely. See
   docs/retained-ssh-input-protocol.md. This critical item remains unchecked.
+  H4b now also has an internal, unused per-pane input/revocation gate. Ten focused
+  cases pass ten native race repeats, including real PTY backpressure and a
+  delayed partial old-epoch frame. Revocation never waits for a write; the drain
+  deliberately does wait for its final return. A stale initial-write timeout
+  false-revocation regression was reproduced in the candidate and fixed by
+  rechecking current authority on timer delivery/renewal. Full native race/resource/
+  namespace/compiler checks pass again (core171.9s/CLI5.8s), static build/vet pass
+  and26 focused application/compiled-Go/real-interface checks pass. Browser artifacts
+  remain hash-identical to H4a's91-check run. No native transition or live bridge
+  uses it; durable cross-process
+  registration/epochs, queue discard/all-writer freeze and authenticated negotiation
+  remain mandatory. Drain alone is not freeze proof or permission to thaw.
 
 ## Firm design policy: examctl is the complete management interface
 

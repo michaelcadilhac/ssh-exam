@@ -124,6 +124,37 @@ handover. Root process/gateway restart must not reconstruct positive authorizati
 from controller-local fields; root-owned durable state and replay fencing are
 required before any live caller can use this primitive.
 
+### Local controller candidate (unwired, H4b)
+
+`ssh-server/internal/core/input_controller.go` implements only this local per-pane
+barrier. No live bridge, attempt operation, lease consumer or capability calls it.
+It starts revoked, bounds one in-flight frame/no queue, consumes sequences before
+writing and gives an opaque current-revision drain which cannot be reused after
+arming/revocation or on another controller. Arming requires a different epoch and
+the supplied original permit cutoff; expired/revoked gates cannot self-renew.
+Clock regressions and revision exhaustion fail closed. The clock callback is a
+trusted, nonblocking boot-monotonic read, never a filesystem/network operation.
+
+A failing regression exposed an early candidate bug: an in-flight write retained
+its initial timeout even after valid renewal, creating a false revocation. The
+corrected single watcher rechecks the current cutoff on timer delivery and uses a
+bounded coalescing wake on renewal. It never treats an old timer as expiry proof.
+This was a development-candidate defect, not evidence of that production cause.
+
+Ten race-detector repeats cover ten controller cases, including an intentionally
+uncooperative writer (immediate revoke but no false drain), current-cutoff renewal,
+expiry, backwards clocks, stale/consumed/foreign receipts, replay and partial write
+failure. Actual Linux PTY tests exercise cancellation under kernel backpressure
+and parser→gate→PTY bytes: a partial old-epoch frame delayed until after new-epoch
+arming is rejected, new input preserves binary/control/UTF-8 bytes and output is
+independent of held input. The backpressure test deliberately does NOT arm again:
+its unread kernel queue still exists. Drain is not input-flush/freeze proof. Full
+native race/resource/namespace/compiler tests pass (core171.9s/CLI5.8s), static
+build/vet pass and26 focused cross-language/HTTP/WS/SSH application checks pass
+(11.60s). Browser artifacts remain hash-identical to H4a's91-check run. No
+privileged all-writer, runtime negotiation or technical-hold qualification is
+claimed.
+
 ## Coordinated milestones before enabling retained mode
 
 1. Codec and shared byte fixture, including actual PTY/SSH transport checks.

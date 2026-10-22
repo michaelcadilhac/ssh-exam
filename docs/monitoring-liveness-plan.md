@@ -118,6 +118,13 @@ discard, authenticated mode negotiation and held-recovery integration are still
 required together. Current bridges remain raw; no capability enables retention.
 See [retained-ssh-input-protocol.md](retained-ssh-input-protocol.md).
 
+H4b adds only the unused local per-pane revocation/drain gate, with ten focused
+cases passing ten race repeats and fresh full native/resource qualification.
+Actual PTY backpressure and delayed partial old-epoch frames cannot falsely
+acknowledge drain or reach a new epoch. A candidate stale-write-timer regression
+was reproduced and fixed by checking current renewed authority. Drain remains
+distinct from all-writer freeze/queue discard, and no live transition uses it.
+
 1. **Browser contact:** acknowledge a valid current page's monitoring message
    promptly without waiting for SSH/collection/management work. This acknowledgement
    proves receipt only; it must never enable input, thaw workloads or extend a

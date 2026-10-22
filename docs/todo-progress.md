@@ -8,6 +8,24 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Critical continuation after83af9ec: H4b local per-pane revocation/drain controller
+candidate is unused by all production paths and under full native qualification.
+It starts revoked, bounds one in-flight frame/no queue, consumes increasing
+sequences before any write, binds current receipts to the controller/revision and
+rejects stale/consumed/foreign receipts, old epochs, unsafe cutoffs and expired
+self-renewal. Revocation cancels outside-IO independently; an uncooperative write
+cannot falsely acknowledge drain. Clock regression/revision exhaustion fail closed.
+A RED regression reproduced an initial-write timer revoking a healthy later
+renewal; the candidate now rechecks the current cutoff and coalesces timer wakes.
+Ten focused cases pass ten race repeats (7.10s), including actual Linux PTY
+backpressure and partial delayed-frame parser→gate→PTY epoch/byte/output checks.
+Static build/vet pass. Full native race/resource/namespace/compiler repeat passes
+(core171.9s/CLI5.8s);26 focused contract/ledger/compiled-Go and real HTTP/WS/SSH
+checks pass (11.60s). No browser artifact changed from83af9ec's exact
+91-check run. Cross-process durable authority/admission/bridge registration,
+all-writer freeze/queue discard, negotiation and hold/thaw remain open. Continue
+with that native barrier design/integration, not feature expansion or deployment.
+
 Critical continuation after7f443b1: H4a/C3 unused framed-input codecs, canonical
 byte fixture and delivery/revocation controller design are under local
 qualification. Real encrypted SSH-channel and raw Linux PTY checks preserve
