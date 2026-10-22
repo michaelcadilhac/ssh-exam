@@ -94,3 +94,11 @@ native race/resource/namespace/compiler/default-size qualification passes
 authenticated SSH/ACTIVE verifier or all-writer hold, and no runtime seal factory
 uses it. Bounded provisional publication remains the next separate increment;
 see native-monitoring-publication.md. No production operation was performed.
+
+The next unused kernel process-lifetime guard also passes focused20-repeat/full
+native qualification; see native-monitoring-process.md. Exact pidfd checks avoid
+confusing a stalled process, unrelated command exit or unknown handle with the
+pinned owner's death. Its SSH pin helper checks installed entry/monitor inodes at
+pin time, but no positive actual SSH/PAM test or ACTIVE seal factory is claimed.
+Current native registration/epochs, role/IPC validation, admission/freeze/input
+barriers and complete supported management remain open before any live use.

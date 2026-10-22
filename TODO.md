@@ -186,6 +186,11 @@ full privileged qualification or deployment authorization.
   unknown work. The evidence ledger remains unused; no live retained mode or
   automatic recovery is enabled. Container packaging remains unverified until a
   local Docker engine is available. See docs/gateway-monitoring-clock.md.
+  A separate unused kernel process-lifetime guard now passes actual synthetic
+  stop/continue/death, identity/JSON/close-race, fake-root refusal and late-authority
+  tests plus full native qualification. A live pidfd alone is not authentication,
+  current registration or freeze proof; actual positive SSH/PAM, native epochs/
+  admission/IPC and all-writer C3 remain open. See docs/native-monitoring-process.md.
 
 ## Firm design policy: examctl is the complete management interface
 
