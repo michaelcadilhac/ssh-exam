@@ -140,6 +140,18 @@ full privileged qualification or deployment authorization.
   remain hash-identical to the91-check run. Legacy raw bridges/flags remain unchanged.
   This is not root cross-process authority, verified workload freeze or live
   retained SSH. No mode/capability or automatic recovery is enabled.
+  H1/C1 diagnostics candidate adds explicit `list/info --read-only` before agent
+  initialization: no reconciliation/chmod/lock/audit/network/subprocess or lease
+  application. `--state` works without config/keys. Scoped paginated JSON separates
+  captured state/lease facts from live SSH/monitoring/authorization; partial reads
+  are not false expiry/misconduct. Focused core/actual compiled namespace-root CLI/
+  help cases pass; full native race/resource/namespace/compiler checks pass
+  (core168.0s/CLI9.2s), all383 app tests pass (81.89s), static build/vet/typecheck
+  pass and bounded two-worker JSON fuzz passes119353 executions (11.02s elapsed).
+  Exact browser artifacts remain unchanged from the91-check run. Unflagged legacy inspections
+  retain their reconciliation behavior and are explicitly documented. See
+  docs/native-read-only-diagnostics.md. This does not close the incident's initiating
+  fault, root coordination or the critical item; nothing is deployed.
 
 ## Firm design policy: examctl is the complete management interface
 

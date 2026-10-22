@@ -25,6 +25,27 @@ endpoint. Production terminals use the browser SSH worker; authorization and
 signed receipts pass through the webserver. It is independent of the exam agent and its installation
 does not restart SSH or exam enforcement services.
 
+## Explicit read-only incident diagnosis (local candidate, not deployed)
+
+Unflagged legacy `examctl list/info` initialize native state and may reconcile
+eligible access. For a non-mutating investigation, the local candidate supports:
+
+```sh
+sudo examctl list --read-only --active --json
+sudo examctl info ATTEMPT_UUID --read-only
+sudo examctl info ATTEMPT_UUID --read-only --state /var/lib/exam-agent
+```
+
+The explicit flag avoids initialization/chmod, locks, reconciliation, audit/state
+writes, key loading, network and subprocesses. `--state` bypasses config/keys;
+otherwise only the protected config's state path is read. Scoped paginated JSON
+distinguishes captured state from separate lease observations; neither proves live
+SSH/monitoring, archive integrity, freeze or execution permission. Exit1 with JSON
+means partial observation, not confirmed expiry/misconduct. Preserve records and
+retry, never reconcile/repair merely to inspect. These flags are not installed in
+production. See `examctl help info` and
+[native read-only diagnostics](../docs/native-read-only-diagnostics.md).
+
 ## Prerequisites and recovery
 
 Keep a separate root recovery SSH session throughout changes. Back up passwd, group, shells,
@@ -428,8 +449,11 @@ unsaved editor state is lost. The local deadline watchdog stays independent.
 
 ## Local examctl administration
 
-All commands require root. The shared gate, watchdog and CLI use one durable state and flock;
-no separate HTTP API is installed. Use attempt UUIDs to address an individual student's run.
+All operations require root; help is available without privilege. Unflagged legacy
+native workflows share watchdog state/locks and may reconcile during list/info.
+The explicit local `--read-only` observation path takes no state lock or write;
+see the incident workflow above. No separate HTTP API is installed. Use attempt
+UUIDs to address an individual student's run.
 
 ```sh
 sudo examctl list

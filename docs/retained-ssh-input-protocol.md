@@ -267,14 +267,16 @@ loss and gateway restart with no invented historical coverage or reused keys.
 The local isolated root/system-manager guest remains required for full SSH/PAM/
 cgroup qualification; unprivileged PTY tests do not replace it.
 
-Before enablement, implement discoverable read-only native diagnostics (including
-an explicit read-only examctl workflow, without reconciliation side effects),
-shared CLI/web status and audited policy recovery. Show observation age, ownership,
+An explicit current-state/legacy-lease `list/info --read-only` CLI candidate is now
+implemented/tested locally; see native-read-only-diagnostics.md. It proves no live owner,
+new control-journal phase or verified freeze. Before enablement, extend these
+discoverable diagnostics to the new native barrier and shared CLI/web status and
+audited policy recovery. Show observation age, ownership,
 authority cutoff/deadline, coverage, journal phase and which bridge/freeze/discard
 confirmation is pending. Operational uncertainty must not appear as a misconduct
-finding or a false successful thaw. Current command names/capabilities do not yet
-provide this new workflow; add complete help and actionable next steps together
-with runtime integration. Do not advertise an unsupported command as available.
+finding or a false successful thaw. Current commands/capabilities do not yet
+provide the new barrier/recovery workflow; add complete help and actionable next
+steps with runtime integration. Do not advertise unsupported operations as available.
 
 ## Coordinated milestones before enabling retained mode
 

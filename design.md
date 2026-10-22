@@ -2028,6 +2028,18 @@ and already-read application/editor buffers. Root durable cross-process control,
 all-writer freeze and live negotiation remain unimplemented; the legacy raw PTY
 path retains its original flags and no mode/capability advertises this adapter.
 
+October22 H1/C1 diagnostics adds explicit root `list/info --read-only` before
+Engine initialization. It must never create/chmod/lock state, reconcile, apply a
+lease, write an audit or contact a service. Explicit --state bypasses config/keys;
+otherwise read only the protected config's state path. Private pinned native
+openat/NOFOLLOW single-component reads, bounds and strict duplicate/null/scope
+checks feed a paginated whitelist, never raw private JSON or credentials/proofs.
+Stored state and separate journal timestamps are independent observations, not
+live SSH/monitoring, protected archive integrity, freeze or permission. Partial
+diagnostics report scoped JSON/exit1 without asserting expiry/misconduct. Legacy
+unflagged inspections keep reconciliation behavior, now explicitly documented;
+mutating recovery remains separate and audited. See docs/native-read-only-diagnostics.md.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.

@@ -125,6 +125,17 @@ acknowledge drain or reach a new epoch. A candidate stale-write-timer regression
 was reproduced and fixed by checking current renewed authority. Drain remains
 distinct from all-writer freeze/queue discard, and no live transition uses it.
 
+H1/C1 now adds an explicit native `list/info --read-only` diagnostic candidate.
+It bypasses Engine initialization/permission repair/reconciliation and takes no
+state lock, so investigating a blocked agent need not change the attempt. Scoped
+captured state and independent lease observations cannot prove live SSH/monitoring,
+freeze or permission; partial reads are not expiry/misconduct. Actual compiled
+root-mapped CLI tests work while a synthetic state lock is held and keys are
+missing, with unchanged native bytes/metadata/inventory. Full native race/resource,
+all383 app checks, static build/vet/typecheck and bounded parser fuzz pass; see
+native-read-only-diagnostics.md. This supplies observation, not the
+missing durable root coordination or the initiating production fault evidence.
+
 1. **Browser contact:** acknowledge a valid current page's monitoring message
    promptly without waiting for SSH/collection/management work. This acknowledgement
    proves receipt only; it must never enable input, thaw workloads or extend a

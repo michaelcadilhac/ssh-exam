@@ -19,7 +19,7 @@ import (
 func takesValue(arg string) bool {
 	name := strings.TrimLeft(strings.SplitN(arg, "=", 2)[0], "-")
 	switch name {
-	case "config", "reason", "exam", "output", "request", "limit", "after", "name", "template", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib":
+	case "config", "state", "reason", "exam", "output", "request", "limit", "after", "name", "template", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib":
 		return strings.HasPrefix(arg, "-")
 	}
 	return false
@@ -81,10 +81,16 @@ func main() {
 	exam := flags.String("exam", "", "filter list by exam ID")
 	asJSON := flags.Bool("json", false, "machine-readable list")
 	output := flags.String("output", "", "create a new private export file; never overwrite")
+	readOnly := flags.Bool("read-only", false, "observe native metadata without initialization, reconciliation or writes; list/info only")
+	statePath := flags.String("state", "", "explicit private state directory for --read-only; bypasses configuration/key loading")
+	limit := flags.Int("limit", 50, "read-only list page size, 1..200")
+	after := flags.String("after", "", "read-only list exclusive attempt UUID cursor")
 	flags.Usage = func() {
 		printHelp(os.Stderr, topic)
 	}
 	flags.Parse(ordered(os.Args[1:]))
+	provided := map[string]bool{}
+	flags.Visit(func(f *flag.Flag) { provided[f.Name] = true })
 	op := "list"
 	if flags.NArg() > 0 {
 		op = flags.Arg(0)
@@ -107,6 +113,18 @@ func main() {
 		invalid = "--active filters only list/info; --exam also filters recovery-grants, never mutations by UUID"
 	} else if op == "info" && *exam != "" && flags.Arg(1) != "" {
 		invalid = "choose info ATTEMPT or list --exam EXAM; do not combine an attempt target and exam filter"
+	} else if (*readOnly || provided["state"] || provided["limit"] || provided["after"]) && (!*readOnly || (op != "list" && op != "info")) {
+		invalid = "--read-only/--state/--limit/--after are supported only by list/info with --read-only; see examctl help info"
+	} else if *readOnly && (*reason != "" || (provided["state"] && (*statePath == "" || provided["config"]))) {
+		invalid = "read-only observation takes no --reason; choose --state DIR or --config FILE, not both, and never an empty state path; see examctl help info"
+	} else if *readOnly && op == "info" && flags.Arg(1) != "" && provided["limit"] {
+		invalid = "--limit pages a read-only list, not a named info target; see examctl help info"
+	}
+	query := core.ReadOnlyQuery{ID: flags.Arg(1), Exam: *exam, Active: *active, Limit: *limit, After: *after}
+	if invalid == "" && *readOnly {
+		if err := query.Validate(); err != nil {
+			invalid = err.Error()
+		}
 	}
 	if invalid != "" {
 		fmt.Fprintln(os.Stderr, invalid)
@@ -122,6 +140,31 @@ func main() {
 	if os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "Native operations require root. Run sudo examctl with the same arguments; examctl help is available without privilege.")
 		os.Exit(1)
+	}
+	if *readOnly {
+		directory := *statePath
+		var err error
+		if directory == "" {
+			directory, err = core.ReadOnlyConfiguredState(*p)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Cannot resolve the configured state directory without writes. Use --state DIR for the known private native directory; see examctl help info. No initialization or reconciliation was attempted.")
+			os.Exit(1)
+		}
+		snapshot, err := core.ObserveNativeReadOnly(directory, query)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(snapshot); err != nil {
+			fmt.Fprintln(os.Stderr, "Cannot write read-only snapshot output; no native record was changed.")
+			os.Exit(1)
+		}
+		if !snapshot.Complete {
+			fmt.Fprintln(os.Stderr, "Partial read-only observation: inspect observation flags and each lease status, preserving its journal; unknown/unavailable/invalid is not proof of expiry or misconduct. Retry the same read-only command, or use examctl help info. No reconciliation was attempted.")
+			os.Exit(1)
+		}
+		return
 	}
 	if op == "agent" {
 		action := flags.Arg(1)

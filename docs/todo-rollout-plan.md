@@ -41,6 +41,16 @@ candidate. Keep old raw bridges on their original protocol/flags until a separat
 authorized drained cutover. Unprivileged local PTY tests do not qualify privileged
 SSH/PAM/cgroup/namespace containment or a temporary root agent owner's behavior.
 
+The October22 diagnostic CLI candidate adds explicit list/info --read-only with no
+state/config/key migration. It reads existing protected legacy metadata without
+Engine initialization or reconciliation; unflagged workflows retain their old
+behavior. New help/flags require the new CLI binary, not an assumed production
+upgrade. Preserve state/journals and qualify the actual compiled root workflow,
+including busy locks and partial/missing installations. This does not authorize
+installing that CLI, touching a live agent owner or collecting student data now.
+A future drained full release still needs all native control/monitoring gates and
+the proposed temporary-agent consolidation; no rollout or migration is executed.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

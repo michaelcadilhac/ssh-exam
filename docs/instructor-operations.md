@@ -18,6 +18,17 @@ Verified all-writer freeze, input revocation/discard, current ownership and the
 approved full recovery conditions must pass together before any new mode can be
 enabled. See monitoring-liveness-plan.md and retained-ssh-input-protocol.md.
 
+The local pending diagnostic CLI adds `examctl list --read-only` and
+`examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
+unavailable. These explicitly avoid initialization, reconciliation, permission/
+audit/state changes and network calls. Unflagged legacy list/info may reconcile
+eligible access; do not use them for a non-mutating incident investigation.
+Read-only output is captured metadata, not live SSH/monitoring, verified protection/
+freeze or work permission. Exit1 with JSON means partial observation, not proven
+expiry/misconduct; preserve records and retry without changing the attempt.
+See native-read-only-diagnostics.md and command help. These flags are not yet
+installed in production; do not assume the current examctl supports them.
+
 First select an exam in the top bar. The exam toolbar contains **Exam settings** and
 **Add student**; **New exam** remains beside the exam picker. Global **Administration**
 contains **Alerts**, **Add administrator** and **Sign out**. Notification setup and SMTP

@@ -1,12 +1,32 @@
 # Local TODO implementation record
 
-Updated 2026-10-21 (America/Chicago). This is a local development record, not a
+Updated 2026-10-22 (America/Chicago). This is a local development record, not a
 deployment receipt. The instructor's latest October 21 instruction revokes the
 earlier conditional csc-sys deployment authorization: **do not deploy, including
 at the end of local work.** Provide a rollout/migration/rollback proposal only;
 do not execute temporary-agent consolidation. Never interrupt exams, reset clocks
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
+
+October22 continuation after9af06c7: explicit native `list/info --read-only`
+diagnostics are being implemented/qualified locally before root coordination.
+Source inspection confirms legacy list/info reconcile and Engine.New creates/
+chmods state; incident observation must bypass both. The candidate takes no state
+locks and performs no initialization, permission repair, audit/network/subprocess,
+or lease application. Private pinned single-component native openat/NOFOLLOW and
+bounded duplicate/depth-checked JSON feed a scoped whitelist, never admission
+tokens, transport proofs, private keys/certificates/nonces or raw private JSON.
+Explicit --state bypasses config/keys; otherwise only the protected configured
+state path is read. State and separate leases are labelled independent observations,
+not execution/SSH/monitoring/archive/freeze proof. Eight focused core cases, actual
+compiled namespace-root CLI/help/zero-side-effect workflows, full native race/
+resource/namespace/compiler (core168.0s/CLI9.2s), all383 app tests (81.89s), static
+build/vet and typecheck pass. Bounded two-worker JSON fuzz passes119353 executions
+(10s requested,11.02s elapsed). All six browser artifact hashes remain exact matches
+to H4a's91-check run; no rebuild. No
+production use/change or C3 enablement is implied. Continue this increment, then
+the durable native revocation/lease/admission/bridge coordination plan in
+retained-ssh-input-protocol.md; the critical item remains open.
 
 Critical continuation afterdf197ff: H4c private cancellable pinned-PTY writer and
 kernel-input discard candidate is unused by all live paths. Explicit O_NONBLOCK/
