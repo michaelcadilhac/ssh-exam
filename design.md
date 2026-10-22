@@ -1923,6 +1923,28 @@ Stored durations remain seconds and timestamps remain absolute Unix milliseconds
 
 ### Monitoring isolation from native cleanup
 
+October 21 critical redesign requirement (planning only): the instructor requires
+eliminating false lockouts caused by heartbeat/control latency. A timeout alone
+does not prove a policy violation, capture failure or SSH transport loss. The
+installed serial session handler can await a 120-second SSH command while native
+permission expires after 15 seconds; independent HTTP captures can still succeed.
+Browser confirmation, control-detachment and worker timers also require review.
+The exact initiating incident fault is not established. Existing expiry/admin-
+action fixes below do not close this broader availability/attribution defect.
+
+See [the critical liveness plan](docs/monitoring-liveness-plan.md) and TODO.md for
+independent contact/policy-evidence/renewal receipt handling, bounded alternate
+authenticated evidence, scoped replay-safe recovery, technical safety holds and
+real-interface fault acceptance. Contact, images, PTY bytes and SSH keepalive alone
+must never authorize work. Unverifiable monitoring still fails closed; C3 verified
+freeze/input revocation must preserve viable transports/buffers without writers.
+Automatic recovery of a positively verified infrastructure-only hold is proposed,
+not approved or enabled, and cannot bypass policy-lock continuation authorization.
+No automatic refunds, deadline changes or completed-attempt reopening. Absolute
+uninterrupted availability under arbitrary partitions cannot also guarantee no
+unverified work; document and test the supported fault envelope explicitly. No
+implementation, qualification or production change is claimed by this proposal.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.

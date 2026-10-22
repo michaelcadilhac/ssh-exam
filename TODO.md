@@ -23,6 +23,66 @@ when it does not modify the current installation or interrupt exams. The October
 21 nspawn smoke test passed with a disposable overlay/private network; it is not
 full privileged qualification or deployment authorization.
 
+## Critical priority: eliminate heartbeat-induced false lockouts
+
+- [ ] **Redesign monitoring liveness and execution authorization; do not turn a
+  delayed control exchange into a student violation or destructive lockout.**
+  Requested October 21. Initial read-only investigation confirms that the
+  installed gateway serializes session messages, awaits an SSH renewal before
+  acknowledging browser contact, and permits a 120-second command wait against
+  a 15-second execution lease. Independent HTTP captures can keep succeeding
+  while this path stalls. Browser confirmation/rebind, control-detachment and
+  worker timers must also be investigated; the exact initiating fault is not
+  established. Fresh terminal bytes during the reported interval were not proven.
+  Keep individual incident details and student identities out of this repository.
+
+  The instructor requires no false positives. Acceptance must demonstrate no
+  timeout-induced violation, forced instructor approval, credential prompt,
+  process termination or buffer loss while complete, fresh monitoring and the
+  same authenticated ownership remain verifiable through a supported path.
+  A missing reply alone proves neither student misconduct nor SSH loss. A
+  genuine inability to verify required monitoring must still stop work safely;
+  call this a technical safety hold, not a confirmed policy violation. It is not
+  possible to guarantee uninterrupted work during arbitrary network partitions
+  while also forbidding unverified work. Do not conceal that limitation, merely
+  lengthen a timeout, suppress warnings, or treat camera/terminal traffic alone
+  as authorization.
+
+  Dependency-ordered plan and explicit acceptance/fault matrix:
+  [docs/monitoring-liveness-plan.md](docs/monitoring-liveness-plan.md).
+
+  1. Reproduce and trace each hop with synthetic accounts; distinguish monitoring
+     receipt, renewal delivery/native commit and reply delivery. Establish the
+     initiating-fault evidence before claiming the incident investigation closed.
+  2. Isolate/coalesce bounded renewal handling from generic session queues and
+     long commands; separate contact acknowledgements from native work permission.
+     Add scoped, replay-safe recovery for lost replies and an authenticated
+     alternate monitoring path; neither may manufacture fresh policy evidence.
+  3. Implement a separate technical-uncertainty state with truthful UI/audit/
+     alerts and complete examctl inspection/diagnostics. Any required hold depends
+     on C3's verified all-writer freeze, input-epoch revocation and retained viable
+     SSH/PTYs. Transport uncertainty must not routinely kill editors or force MFA.
+     Preserve genuine policy locks, actual authentication loss and deadline rules.
+  4. Decide the consequential technical-hold recovery policy before enabling it:
+     recommend automatic recovery only when the same ownership, current complete
+     monitoring and uninterrupted authorized coverage are positively verified,
+     with no actual policy violation or authentication loss. Otherwise retain
+     explicit review/recovery; never silently override C3 continuation approval.
+     No automatic clock refunds, deadline extension or completed-attempt reopening.
+  5. Qualify real browser/WebSocket/WASM/SSH/native workflows with injected queue,
+     command/reply, socket, worker, resource and restart faults, including healthy
+     uploads/PTY traffic during a stalled renewal. Test genuine monitoring loss,
+     hostile/stale/replayed evidence, freeze/thaw/input fences and deadline races.
+     Require full integration, native race/build and browser evidence before any
+     future drained rollout. Mixed versions must refuse unsafe enablement.
+
+  **Status:** investigation and implementation plan recorded; initiating cause,
+  recovery-policy decision, implementation and new regression qualification are
+  outstanding. This is not covered by the completed expiry/admin-action race
+  fixes below. No fix is implemented, tested or deployed by this planning entry.
+  Production remains unchanged; deployment is not authorized. Prioritize this
+  correctness work over noncritical feature expansion when development resumes.
+
 ## Firm design policy: examctl is the complete management interface
 
 **If an exam-management operation can be done, it must be doable through
