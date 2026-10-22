@@ -21,8 +21,10 @@ the removed RuntimeDirectory; the repaired actual OpenSSH/SO_PEERCRED test passe
 then passes five repeats (0.23..0.29s each), with exact monitor identity across
 two refused command exits and exact connection exit. No ordinary work is allowed.
 Host binary/config/authority and guest-base preservation pass. Evidence:
-/var/tmp/ssh-exam-overlay-xkvs9bgs. A final test-binary rebuild adds a negative
-host guard passing20 race repeats (1.20s); its exact-artifact guest repeat is next.
+/var/tmp/ssh-exam-overlay-xkvs9bgs. The final test-binary rebuild adds a negative
+host guard passing20 race repeats (1.20s); its five exact-artifact guest repeats
+also pass (0.24..0.28s each), preserving host/base state. Final private evidence:
+/var/tmp/ssh-exam-overlay-orunyydb. See isolated-native-qualification.md for hashes.
 Full local native compatibility passes core173.28s/CLI6.35s, static build/vet pass.
 The existing shared csc-sys connection is available. A bounded read-only raw-state
 guard currently reports zero live/unresolved host attempts; no installed service,

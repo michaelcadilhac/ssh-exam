@@ -97,6 +97,16 @@ class OverlayTests(unittest.TestCase):
         self.assertNotIn('/bin/sh', command)
         self.assertIn('--bind-ro=' + str(self.root / 'in' / 'exam-agent') + ':/usr/local/sbin/exam-agent', command)
 
+    def test_monitoring_owner_uses_only_the_manifested_test_executable(self):
+        self.assertEqual(overlay.FILES['core-qualification.test'], (None, 0o755))
+        self.assertEqual(guest.monitoring_owner_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestMonitoringSSHProcessGuest$', '-test.v', '-test.count=5',
+            '-test.timeout=60s'])
+        command = overlay.candidate_command('ssh-exam-qualification-test.service',
+                                            self.root / 'guest', self.root / 'in', self.root / 'out')
+        self.assertFalse(any('core-qualification.test:/' in arg for arg in command))
+
 
 if __name__ == '__main__':
     unittest.main()

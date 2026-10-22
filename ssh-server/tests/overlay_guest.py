@@ -103,6 +103,13 @@ def prepare_normal_filesystem(config):
     return proposed
 
 
+def monitoring_owner_command():
+    # This is a compiled Go TEST executable, never an installed command or gate.
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestMonitoringSSHProcessGuest$', '-test.v', '-test.count=5',
+            '-test.timeout=60s']
+
+
 def main():
     assert os.geteuid() == 0
     assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
@@ -125,8 +132,23 @@ def main():
             print('COMMAND_NOT_FOUND: ' + command, flush=True)
             return 127
     config = prepare_normal_filesystem(config)
+    if settings.get('profile') == 'monitoring-owner':
+        assert username == 'examq', 'Exact synthetic owner fixture required'
+        # Stop only this disposable overlay's agent before the test listens on
+        # its gate path. The test refuses to replace an existing socket and
+        # refuses every ordinary execution request; it never starts exam work.
+        subprocess.run(['systemctl', 'stop', 'exam-agent.service'], check=True, timeout=30)
+        try:
+            environment = {**os.environ, 'EXAM_MONITORING_SSH_GUEST': '1'}
+            result = subprocess.run(monitoring_owner_command(), env=environment, timeout=75)
+            if result.returncode:
+                return result.returncode
+        finally:
+            subprocess.run(['systemctl', 'start', 'exam-agent.service'], check=True, timeout=30)
+        profiles = ()
+    else:
+        profiles = (['--handoff-only'], ['--setup-only'], [])
     # Commands execute only in the network/PID/mount namespace of this overlay.
-    profiles = (['--handoff-only'], ['--setup-only'], [])
     if settings.get('profile', 'enforcement') == 'worker-isolation':
         peer, uid = 'examqpeer', 29979
         for entry in pwd.getpwall():

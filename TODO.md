@@ -189,8 +189,12 @@ full privileged qualification or deployment authorization.
   A separate unused kernel process-lifetime guard now passes actual synthetic
   stop/continue/death, identity/JSON/close-race, fake-root refusal and late-authority
   tests plus full native qualification. A live pidfd alone is not authentication,
-  current registration or freeze proof; actual positive SSH/PAM, native epochs/
-  admission/IPC and all-writer C3 remain open. See docs/native-monitoring-process.md.
+  current registration or freeze proof. Q3's disposable guest now passes actual
+  SO_PEERCRED/OpenSSH-owner pinning across command exits and real connection exit,
+  including five repeats of the final test artifact with unchanged host/base
+  evidence. No installed command/attempt/lease is added. Current registration,
+  native epochs/admission/IPC and all-writer C3 remain open. See
+  docs/native-monitoring-process.md and docs/isolated-native-qualification.md.
 
 ## Firm design policy: examctl is the complete management interface
 

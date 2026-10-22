@@ -147,3 +147,47 @@ not persistent-disk/default-size/concurrent capacity certification. Cross-namesp
 cleanup proof, saved restore/each-boundary crash qualification, worst-case capacity
 and institutional student MFA remain separate gates. No claim here enables C3
 retained-buffer freeze, C4 deletion or deployment.
+
+## Q3: actual SSH-owner lifetime (October22, partial prerequisite)
+
+The `monitoring-owner` profile adds a separately compiled static Go test binary
+to the exact candidate manifest: build with `CGO_ENABLED=0 go test -c -o
+core-qualification.test ./internal/core`. It is read-only inside the test input
+mount, never installed in a native command path. The profile repeats the narrow
+test five times. It refuses non-nspawn/non-fixture contexts, requires the exact
+synthetic examq identity and private input/output mounts, and never creates an
+ACTIVE seal, attempt, lease or continuation authorization.
+
+After normal-root setup, the wrapper stops **only the overlay's** agent. The test
+recreates that guest's removed RuntimeDirectory if necessary and refuses an
+existing guard socket. Authenticated loopback OpenSSH invokes the actual
+installed exam-login inode. SO_PEERCRED identifies the synthetic account/entry;
+the native helper validates and pins its actual root SSH monitor. Two refused
+ordinary-command requests on the same multiplexed transport must keep the same
+live pidfd identity. Wrong-account pinning refuses. Closing only the owned SSH
+master must produce exact process-exit observations. No ordinary shell/home result
+is supplied and no server process is signalled. The wrapper then starts only its
+guest agent before shutdown.
+
+An initial run failed because stopping the guest service removed its runtime
+directory. It was not counted as authentication qualification. The repaired
+single test passes in0.25s; host binary/config/attempt authority and guest-base
+preservation checks pass. Evidence is /var/tmp/ssh-exam-overlay-9hf_p5ye on
+csc-sys. Candidate exam-agent SHA256:
+336acee1c34c661533d48e3de225fb70c3bdad36a3a6ab7adbefe814eac6bfcf.
+Test binary SHA256:
+e9764a19307a19ad8207006b2c25f80372a15a92684ee5d61cd95610ea75dd66.
+The first five-repeat profile passes (0.23..0.29s each), preserving host/base
+evidence in /var/tmp/ssh-exam-overlay-xkvs9bgs. The final test binary additionally
+contains a negative host guard (20 local race repeats pass in1.20s) and again
+passes all five guest repetitions (0.24..0.28s each), with preservation checks:
+/var/tmp/ssh-exam-overlay-orunyydb. Final test binary SHA256:
+b15664a0ba6744eab1860adfde998182ea99f7e2a8d945fc5f9637b6958bec55.
+All26 local Python runner checks pass. Full local native product compatibility
+passes (core173.28s/CLI6.35s), static build/vet pass; the added negative guard is
+separately race-tested. No race-instrumented guest binary is claimed.
+
+This closes only the positive actual-SSH pinning observation for that exact
+fixture. A live pidfd is not current registration/page/input-epoch authority,
+network viability, all-writer freeze, input discard, permission to thaw or C3
+completion. No host installation/service/account/record is changed or deployed.

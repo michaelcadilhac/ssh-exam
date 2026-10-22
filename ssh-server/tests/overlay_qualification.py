@@ -36,6 +36,7 @@ FILES = {
     'exam-collection.slice': ('/etc/systemd/system/exam-collection.slice', 0o644),
     'linux_qualification.py': (None, 0o600),
     'overlay_guest.py': (None, 0o600),
+    'core-qualification.test': (None, 0o755),
 }
 SERVICE = 'ssh-exam-overlay-qualification.service'
 UNIT = '''[Unit]
@@ -249,8 +250,8 @@ def run_locked(args):
                 print(stream.read(32768).decode('utf8', errors='replace'), flush=True)
         assert digest(host_paths + guest_paths) == preserved, 'Preservation check failed; retain private test evidence'
         assert authority(config) == baseline, 'Host attempt authority changed during qualification'
-        assert process.returncode == 0 and result['exit'] == 0, 'Overlay candidate qualification failed'
         print('Preservation checks passed: live binaries/config/authority and guest base unchanged', flush=True)
+        assert process.returncode == 0 and result['exit'] == 0, 'Overlay candidate qualification failed'
         return 0
     finally:
         if process is not None:
@@ -281,7 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--guest', type=Path, required=True)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--username', default='examq')
-    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation'), default='enforcement')
+    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):

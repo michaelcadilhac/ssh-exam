@@ -22,9 +22,13 @@ The separate SSH pin helper requires real/effective root, a native local-peer PI
 and course UID, the existing matching transport identity, actual installed
 trusted entry/SSH executable inodes, an all-root privileged monitor UID tuple
 and repeated ancestry checks around pinning. It is not enough for a process to
-be named sshd or be root. No test here claims a positive actual OpenSSH/PAM peer:
-local positive tests use generic owned synthetic processes; root-mapped tests
-only prove untrusted executable refusal.
+be named sshd or be root. The initial local positive tests use generic owned
+synthetic processes; root-mapped tests only prove untrusted executable refusal.
+The separate Q3 disposable-guest profile now passes a positive actual OpenSSH
+peer test through the installed exam-login and SO_PEERCRED, preserves the same
+monitor across two refused command exits and observes exact connection exit.
+It creates no attempt or ACTIVE authority. See isolated-native-qualification.md
+for exact artifacts, preservation evidence and the five-repeat follow-up.
 
 Before any ACTIVE seal factory, still verify current native registration, account,
 ACTIVE/unexpired state, generation/clock/deadline, root-owned page/input epochs,
@@ -41,5 +45,6 @@ unknown handles, concurrent checks/close, namespace-root fake-peer refusal and
 late synthetic authority acknowledgement after process death. These signals
 target only owned Go test children, never an SSH daemon or exam. Full frozen
 native race/resource/namespace/compiler/default-size qualification passes
-(core172.99s/CLI7.29s), static build/vet pass. Actual privileged positive SSH/PAM,
-all-writer freeze/input discard and retained-mode qualification remain open.
+(core172.99s/CLI7.29s), static build/vet pass. Q3 additionally checks actual SSH
+pinning only; real registration/epoch/admission integration, all-writer freeze/
+input discard and retained-mode qualification remain open.
