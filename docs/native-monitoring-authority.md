@@ -4,6 +4,13 @@ October 22, 2026. Private, **unused by runtime paths**. No new command, mode,
 capability, lease, watchdog, freeze or recovery transition is enabled. This is
 not the completed critical monitoring fix and is not deployed.
 
+C10 is now approved and the local arbiter has been refactored: complete verified
+proof acceptance is an in-memory live commit; optional storage publication only
+observes that original outcome and cannot gate the next proof. The historical
+qualification below describes the earlier publication-before-acceptance model.
+Current evidence/remaining gates are in live-monitoring-renewals.md; full combined
+runtime integration and privileged containment are still absent.
+
 ## Authority versus publication
 
 `monitoring_authority.go` separates a per-attempt live decision from potentially
@@ -28,6 +35,7 @@ unexpired receipts are bounded without evicting another owner or resetting the
 sequence watermark. Worker bytes are copies, not mutable arbiter state.
 
 A future authenticated publisher must acknowledge the actual durable bytes.
+Its acknowledgement confirms storage only, never grants or refreshes authority.
 Wrong, expired, failed, foreign or superseded acknowledgements cannot extend
 permission. Late completion after revocation cannot revive it. Verified policy,
 authentication, operator and recording causes remain distinct and sticky; missing

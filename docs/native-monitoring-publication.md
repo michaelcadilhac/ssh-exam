@@ -7,8 +7,9 @@ The authority arbiter must not perform storage IO. The proposed tiny publisher
 uses an independent bounded scope/pool, not collection/template slots or a
 PTY-owning agent. It writes **provisional metadata only**: no attempt state,
 deadline, account policy, submission, key, signed receipt or positive authority
-can be restored from this file. The live arbiter alone accepts a current,
-scope/hash-matched completion within its original cutoff.
+can be restored from this file. Following approved C10, the live arbiter accepts
+complete verified proof before publication; a scope/hash-matched completion only
+observes its original outcome and cannot change permission.
 
 The persistent attempt claim must survive coordinator death while a publisher
 still has the inherited open-file description. Explicit LOCK_UN would release
@@ -77,7 +78,8 @@ transitions and audit remain durable, and restart never restores positive work
 permission from disk. Verified freeze/recovery remains mandatory. The alternative
 was durable-per-renewal commit with its explicit availability cost. Do not enable
 either incomplete model or quietly relax the15s evidence bound. The existing
-private arbiter still models publication-before-acceptance and must be refactored;
+private arbiter has now been locally refactored with separate live acceptance and
+optional observation; see live-monitoring-renewals.md for current qualification;
 this worker can serve durable transitions regardless of the renewal choice.
 
 Before wiring, also supply fair bounded scheduling/coalescing across owners and

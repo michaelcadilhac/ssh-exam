@@ -114,6 +114,16 @@ full privileged qualification or deployment authorization.
   develop and fully qualify stop-assisted freezing, preserving originally stopped
   jobs. Earlier awaiting-decision notes below are historical. Neither approval is
   implementation, completed barrier qualification or deployment authorization.
+  The subsequent private C10 arbiter candidate now accepts complete verified
+  renewals in memory independently of optional storage publication. Old-model
+  wait-for-publication is RED0.018s; a separate retired-ticket launch is RED0.095s
+  and corrected with exact current-ticket fences. Ten focused authority/process/
+  publisher/storage races pass44.607s and four new cases pass twenty repeats
+  3.428s with real blocked children and signed proofs. Full native race/resource/
+  namespace/compiler/default-size passes core284.346s/CLI22.157s;426 app95.78s,
+  static build/vet and35 Python pass;174 browser hashes match. No runtime caller/
+  actor factory/watchdog/input/freeze integration
+  is enabled. See docs/live-monitoring-renewals.md. The critical item stays open.
   H4a/C3 now has a private unused framed-input codec and canonical cross-language
   byte fixture. Actual encrypted SSH-channel and raw Linux PTY tests cover binary
   control keys, UTF-8, fragmentation, truncation, malformed headers and bounded

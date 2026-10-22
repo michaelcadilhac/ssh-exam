@@ -81,7 +81,7 @@ func TestMonitoringPublisherNamespaceStorageChild(t *testing.T) {
 		os.Exit(69)
 	}
 	v := p.f.a.check()
-	if !v.ExecutionAuthorized || v.AuthorityUntilMS != 5000 || v.Sequence != 3 || len(v.Causes) != 0 || !v.PublicationFailureObserved {
+	if !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || v.Sequence != 4 || len(v.Causes) != 0 || !v.PublicationFailureObserved {
 		os.Exit(70)
 	}
 	data, err := os.ReadFile(protected)

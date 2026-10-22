@@ -30,6 +30,20 @@ pass96.01s with both opt-in root CLI tests enabled;35 Python checks pass0.023s
 and all174 browser source/runtime hashes still match the nine-check run.
 See recovery-storage-diagnostics.md. No production change or privileged PASS.
 
+Staging-storage correction is now local commit623e218. Current C10 candidate
+separates complete verified in-memory renewal acceptance from optional metadata
+publication; neither a busy writer nor its old cutoff blocks a newer proof. The
+old model is RED0.018s. An additional retired-ticket launcher regression is
+RED0.095s and now refuses before subprocess launch without retiring its replacement.
+Ten authority/process/publisher/storage races pass44.607s, including actual child/
+OOM/runtime/ENOSPC/readonly/root-CLI boundaries. Four new cases pass twenty race
+repeats3.428s, including actual blocked children, six fresh signed proofs across
+the earlier cutoff, coalesced metadata and32 concurrent exact retries. Seals/clocks
+are synthetic; no production actor/freeze or live mode is enabled. Full native
+race/resource/namespace/compiler/default-size passes core284.346s/CLI22.157s;
+426 app/80files pass95.78s, static build/vet and35 Python pass. All174 browser
+source/runtime hashes still match the nine-check run. See live-monitoring-renewals.md.
+
 Saved-work process-death/CLI/watchdog qualification is now local commit6cfd9d4.
 The next independent C7 correctness regression now confirms actual isolated
 ENOSPC leaves an empty consumption marker and prevents supported root CLI repair;

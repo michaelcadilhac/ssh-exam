@@ -23,7 +23,7 @@ var (
 	errMonitoringAuthority   = errors.New("native monitoring authority is revoked or unknown; no permission established")
 	errMonitoringScope       = errors.New("native monitoring scope, sequence or challenge rejected; current authority unchanged")
 	errMonitoringBusy        = errors.New("native monitoring publication already pending; no new allowance or queued commit")
-	errMonitoringPublication = errors.New("native monitoring publication unconfirmed or superseded; no allowance extended")
+	errMonitoringPublication = errors.New("native monitoring publication unconfirmed or superseded; verified live authority unchanged")
 	errMonitoringCapacity    = errors.New("native monitoring receipt/challenge capacity reached; no current owner evicted")
 )
 
@@ -65,11 +65,11 @@ type monitoringPublication struct {
 type monitoringCommitTicket struct {
 	workerStarted   atomic.Bool // One process launch per ticket, including concurrent retries.
 	authority       *monitoringAuthority
-	revision        uint64
 	proof           monitoringPermitCandidate
 	proofHash       string
 	publication     monitoringPublication
 	publicationHash string
+	confirmed       bool // Protected by authority.mu; storage observation only.
 }
 
 // The eventual worker receives a fresh byte slice, never mutable ticket state.
@@ -80,10 +80,10 @@ func (t *monitoringCommitTicket) publicationBytes() ([]byte, string) {
 }
 
 type monitoringCommitReceipt struct {
-	Nonce             string
-	Sequence          uint64
-	UntilUptimeMS     int64
-	CommittedRevision uint64
+	Nonce            string
+	Sequence         uint64
+	UntilUptimeMS    int64
+	AcceptedRevision uint64 // Live memory acceptance, NOT a durable receipt.
 }
 type monitoringCommitted struct {
 	ticket  *monitoringCommitTicket
@@ -245,37 +245,31 @@ func monitoringCandidateHash(p monitoringPermitCandidate) string {
 	return Hash(b)
 }
 
-// Only accept a candidate from verifyMonitoringEvidence for an exact challenge
-// returned above. Returns either a new/current opaque publication ticket OR the
-// original immutable committed receipt, never refreshed permission on retry.
-func (a *monitoringAuthority) prepare(p monitoringPermitCandidate) (*monitoringCommitTicket, *monitoringCommitReceipt, error) {
+// Accept only a candidate from verifyMonitoringEvidence for an exact challenge.
+// C10: this bounded memory commit is live authority, without storage or worker
+// admission. The original immutable receipt is returned on exact retries.
+// This does NOT make persisted bytes sufficient to reconstruct live authority.
+func (a *monitoringAuthority) accept(p monitoringPermitCandidate) (monitoringCommitReceipt, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	now, ok := a.tickLocked()
 	if !ok || (a.phase != "active" && a.phase != "awaiting-evidence") {
-		return nil, nil, errMonitoringAuthority
+		return monitoringCommitReceipt{}, errMonitoringAuthority
 	}
 	if p.Owner != a.context.Owner || !monitoringDigest.MatchString(p.Nonce) || !monitoringDigest.MatchString(p.CoverageEpoch) || p.Sequence == 0 || p.Sequence > monitoringEvidenceMaxSequence {
-		return nil, nil, errMonitoringScope
+		return monitoringCommitReceipt{}, errMonitoringScope
 	}
 	digest := monitoringCandidateHash(p)
 	if old, ok := a.committed[p.Nonce]; ok {
 		if old.ticket.proofHash != digest {
-			return nil, nil, errMonitoringScope
+			return monitoringCommitReceipt{}, errMonitoringScope
 		}
-		r := old.receipt
-		return nil, &r, nil
-	}
-	if a.pending != nil {
-		if a.pending.proofHash == digest {
-			return a.pending, nil, nil
-		}
-		return nil, nil, errMonitoringBusy
+		return old.receipt, nil
 	}
 	c, issued := a.challenges[p.Nonce]
 	if !issued || now >= c.ExpiresUptimeMS || now >= c.AuthorityUntilMS || p.Sequence <= a.context.Sequence || p.Sequence <= c.AfterSequence || p.UntilUptimeMS <= now || p.UntilUptimeMS > a.context.DeadlineUptimeMS || p.UntilUptimeMS < c.IssuedUptimeMS || p.UntilUptimeMS-c.IssuedUptimeMS > monitoringEvidenceWindowMS ||
 		(a.context.CoverageEpoch != "" && p.CoverageEpoch != a.context.CoverageEpoch) {
-		return nil, nil, errMonitoringScope
+		return monitoringCommitReceipt{}, errMonitoringScope
 	}
 	for n, r := range a.committed {
 		if r.receipt.UntilUptimeMS <= now {
@@ -283,7 +277,11 @@ func (a *monitoringAuthority) prepare(p monitoringPermitCandidate) (*monitoringC
 		}
 	}
 	if len(a.committed) >= 32 {
-		return nil, nil, errMonitoringCapacity
+		return monitoringCommitReceipt{}, errMonitoringCapacity
+	}
+	if a.revision == monitoringEvidenceMaxSequence {
+		a.revokeLocked("counter-exhausted")
+		return monitoringCommitReceipt{}, errMonitoringAuthority
 	}
 	effectiveUntil := p.UntilUptimeMS
 	if a.phase == "active" {
@@ -293,9 +291,56 @@ func (a *monitoringAuthority) prepare(p monitoringPermitCandidate) (*monitoringC
 	// Never inherit that bootstrap interval beyond the first verified cutoff.
 	publication := monitoringPublication{Version: 1, Incarnation: a.incarnation, Owner: p.Owner, Nonce: p.Nonce, Sequence: p.Sequence, CoverageEpoch: p.CoverageEpoch, CandidateUntilMS: p.UntilUptimeMS, EffectiveUntilMS: effectiveUntil, PreparedRevision: a.revision}
 	b, _ := json.Marshal(publication)
-	t := &monitoringCommitTicket{authority: a, revision: a.revision, proof: p, proofHash: digest, publication: publication, publicationHash: Hash(b)}
-	a.pending = t
-	return t, nil, nil
+	t := &monitoringCommitTicket{authority: a, proof: p, proofHash: digest, publication: publication, publicationHash: Hash(b)}
+	a.revision++
+	a.context.AuthorityUntilMS = effectiveUntil
+	a.context.CoverageEpoch = p.CoverageEpoch
+	a.context.Sequence = p.Sequence
+	a.phase = "active"
+	r := monitoringCommitReceipt{Nonce: p.Nonce, Sequence: p.Sequence, UntilUptimeMS: effectiveUntil, AcceptedRevision: a.revision}
+	a.committed[p.Nonce] = monitoringCommitted{ticket: t, receipt: r}
+	delete(a.challenges, p.Nonce)
+	return r, nil
+}
+
+// Optional storage observation of an ALREADY accepted live outcome. One pending
+// publisher is bounded independently; contention never refuses a fresh proof.
+// A caller may coalesce to the newest accepted nonce after an earlier child exits.
+func (a *monitoringAuthority) preparePublication(nonce string) (*monitoringCommitTicket, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	now, ok := a.tickLocked()
+	if !ok || a.phase != "active" {
+		return nil, errMonitoringAuthority
+	}
+	r, found := a.committed[nonce]
+	if !found || r.receipt.UntilUptimeMS <= now || r.ticket.confirmed || r.ticket.workerStarted.Load() {
+		return nil, errMonitoringPublication
+	}
+	if a.pending != nil && a.pending != r.ticket {
+		return nil, errMonitoringBusy
+	}
+	a.pending = r.ticket
+	return r.ticket, nil
+}
+
+// Exact nonblocking launch fence, not just "some publication is pending".
+// A retired ticket must not start filesystem work against its replacement.
+func (a *monitoringAuthority) publicationReady(t *monitoringCommitTicket) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	now, ok := a.tickLocked()
+	if !ok || a.phase != "active" {
+		return errMonitoringAuthority
+	}
+	if t == nil || t.authority != a || a.pending != t || t.confirmed {
+		return errMonitoringPublication
+	}
+	r, found := a.committed[t.proof.Nonce]
+	if !found || r.ticket != t || r.receipt.UntilUptimeMS <= now {
+		return errMonitoringPublication
+	}
+	return nil
 }
 
 // Publication failure/cancellation cannot kill still-valid existing authority.
@@ -309,54 +354,45 @@ func (a *monitoringAuthority) publicationFailed(t *monitoringCommitTicket) error
 	}
 	a.pending = nil
 	a.publicationFailureObserved = true
-	delete(a.challenges, t.proof.Nonce)
 	return nil
 }
 
 // This acknowledgement is a future trusted publisher/IPC responsibility, not a
 // browser-supplied hash. No disk/network/write callback executes under this lock.
-// A late success after revocation/failure/deadline can never revive permission.
+// It only confirms storage of the ORIGINAL outcome. It never grants/shortens
+// permission, advances a sequence or recreates a receipt. Late success cannot
+// undo revocation/failure/deadline or replace a newer live decision.
 func (a *monitoringAuthority) published(t *monitoringCommitTicket, verifiedPublicationHash string) (monitoringCommitReceipt, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	now, ok := a.tickLocked()
-	if !ok || (a.phase != "active" && a.phase != "awaiting-evidence") {
+	_, ok := a.tickLocked()
+	if !ok || a.phase != "active" {
 		return monitoringCommitReceipt{}, errMonitoringAuthority
 	}
 	if t == nil || t.authority != a {
 		return monitoringCommitReceipt{}, errMonitoringScope
 	}
-	if old, ok := a.committed[t.proof.Nonce]; ok {
-		if old.ticket != t || verifiedPublicationHash != t.publicationHash {
-			return monitoringCommitReceipt{}, errMonitoringScope
+	old, found := a.committed[t.proof.Nonce]
+	if !found || old.ticket != t {
+		return monitoringCommitReceipt{}, errMonitoringPublication
+	}
+	if verifiedPublicationHash != t.publicationHash {
+		if a.pending == t {
+			a.pending = nil
+			a.publicationFailureObserved = true
 		}
+		return monitoringCommitReceipt{}, errMonitoringPublication
+	}
+	if t.confirmed {
 		return old.receipt, nil
 	}
-	if a.pending != t || a.revision != t.revision {
+	if a.pending != t {
 		return monitoringCommitReceipt{}, errMonitoringPublication
 	}
-	c := a.challenges[t.proof.Nonce]
-	if verifiedPublicationHash != t.publicationHash || now >= c.ExpiresUptimeMS || now >= c.AuthorityUntilMS || now >= t.proof.UntilUptimeMS {
-		a.pending = nil
-		a.publicationFailureObserved = true
-		delete(a.challenges, t.proof.Nonce)
-		return monitoringCommitReceipt{}, errMonitoringPublication
-	}
-	if a.revision == monitoringEvidenceMaxSequence {
-		a.revokeLocked("counter-exhausted")
-		return monitoringCommitReceipt{}, errMonitoringAuthority
-	}
-	a.revision++
-	a.context.AuthorityUntilMS = t.publication.EffectiveUntilMS
-	a.context.CoverageEpoch = t.proof.CoverageEpoch
-	a.context.Sequence = t.proof.Sequence
-	a.phase = "active"
+	t.confirmed = true
 	a.publicationFailureObserved = false
-	r := monitoringCommitReceipt{Nonce: t.proof.Nonce, Sequence: t.proof.Sequence, UntilUptimeMS: a.context.AuthorityUntilMS, CommittedRevision: a.revision}
-	a.committed[t.proof.Nonce] = monitoringCommitted{ticket: t, receipt: r}
 	a.pending = nil
-	delete(a.challenges, t.proof.Nonce)
-	return r, nil
+	return old.receipt, nil
 }
 
 // History only: always return current phase alongside the ORIGINAL outcome.

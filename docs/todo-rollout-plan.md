@@ -11,6 +11,17 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The approved C10 private-arbiter refactor has no live caller, enabled mode,
+configuration or durable-state migration. It is not independently deployable as
+the completed monitoring fix. Future enablement requires matched root actor,
+watchdog, evidence/IPC, input/freeze/recovery and CLI/web diagnostics; an old
+disk-only cutoff must not override newer verified live authority. Restart cannot
+restore positive permission from provisional files or old receipts. Preserve all
+durable starts/deadlines/epochs/audit/history on forward repair/rollback, keep
+admission contained on uncertainty and never roll old state over newer work.
+C11 authorizes development/full qualification only, not production signals.
+See live-monitoring-renewals.md. No rollout/consolidation action is executed.
+
 The local recovery-consumption atomicity candidate keeps the same36-byte marker
 format and preserves every existing marker/source/interval. It requires target
 filesystem O_TMPFILE and own-/proc/self/fd linkat support under actual hardened

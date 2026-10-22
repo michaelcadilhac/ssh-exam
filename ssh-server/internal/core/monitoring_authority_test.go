@@ -64,9 +64,12 @@ func (f authorityFixture) proof(t *testing.T, sequence uint64, age int64) monito
 }
 func (f authorityFixture) prepare(t *testing.T, p monitoringPermitCandidate) *monitoringCommitTicket {
 	t.Helper()
-	ticket, original, err := f.a.prepare(p)
-	if err != nil || ticket == nil || original != nil {
-		t.Fatal(ticket, original, err)
+	if _, err := f.a.accept(p); err != nil {
+		t.Fatal(err)
+	}
+	ticket, err := f.a.preparePublication(p.Nonce)
+	if err != nil || ticket == nil {
+		t.Fatal(ticket, err)
 	}
 	return ticket
 }
@@ -87,8 +90,8 @@ func TestMonitoringAuthorityBootstrapCannotAuthorizeWorkOrInheritUnverifiedAllow
 	}
 	p := f.proof(t, 1, 12000) // Fixed candidate cutoff4000, shorter than prior bootstrap5000.
 	ticket := f.prepare(t, p)
-	if f.a.check().ExecutionAuthorized {
-		t.Fatal("provisional publication granted work")
+	if v := f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != p.UntilUptimeMS {
+		t.Fatal("fresh proof did not establish only its verified cutoff", v)
 	}
 	r, err := f.a.published(ticket, ticket.publicationHash)
 	if err != nil || r.UntilUptimeMS != p.UntilUptimeMS || !f.a.check().ExecutionAuthorized {
@@ -100,8 +103,8 @@ func TestMonitoringAuthorityRenewalSupersedesOldCutoffAndRetriesKeepOriginalOutc
 	f := nativeAuthorityFixture(t, false, 5000)
 	p := f.proof(t, 4, 0)
 	ticket := f.prepare(t, p)
-	if v := f.a.check(); v.AuthorityUntilMS != 5000 || !v.PublicationPending {
-		t.Fatal("prepare extended permission", v)
+	if v := f.a.check(); v.AuthorityUntilMS != 16000 || !v.PublicationPending {
+		t.Fatal("live proof waited for publication", v)
 	}
 	r, err := f.a.published(ticket, ticket.publicationHash)
 	if err != nil || r.UntilUptimeMS != 16000 {
@@ -114,9 +117,9 @@ func TestMonitoringAuthorityRenewalSupersedesOldCutoffAndRetriesKeepOriginalOutc
 		t.Fatal(later)
 	}
 	for range 3 {
-		next, old, err := f.a.prepare(p)
-		if err != nil || next != nil || old == nil || *old != r {
-			t.Fatal("retry freshened original outcome", next, old, err)
+		old, err := f.a.accept(p)
+		if err != nil || old != r {
+			t.Fatal("retry freshened original outcome", old, err)
 		}
 		duplicate, err := f.a.published(ticket, ticket.publicationHash)
 		if err != nil || duplicate != r {
@@ -158,12 +161,12 @@ func TestMonitoringAuthorityBlockedPublicationCannotDelayRevocationOrLateSuccess
 		finished <- err
 	}()
 	<-blocked
-	f.clock.Store(5000)
+	f.clock.Store(16000)
 	checked := make(chan monitoringAuthorityView, 1)
 	go func() { checked <- f.a.check() }()
 	select {
 	case v := <-checked:
-		if v.Phase != "revoking" || v.ExecutionAuthorized || v.AuthorityUntilMS != 5000 || !reflect.DeepEqual(v.Causes, []string{"technical-expiry"}) {
+		if v.Phase != "revoking" || v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || !reflect.DeepEqual(v.Causes, []string{"technical-expiry"}) {
 			close(release)
 			t.Fatal(v)
 		}
@@ -175,12 +178,12 @@ func TestMonitoringAuthorityBlockedPublicationCannotDelayRevocationOrLateSuccess
 	if err := <-finished; err != errMonitoringAuthority {
 		t.Fatal("late publication revived permission", err)
 	}
-	if _, _, err := f.a.prepare(p); err != errMonitoringAuthority {
+	if _, err := f.a.accept(p); err != errMonitoringAuthority {
 		t.Fatal("revocation undone by replay", err)
 	}
 }
 
-func TestMonitoringAuthorityPublicationFailureOrWrongReplyPreservesOnlyOldAllowance(t *testing.T) {
+func TestMonitoringAuthorityPublicationFailureOrWrongReplyPreservesVerifiedLiveAllowance(t *testing.T) {
 	for _, wrongReply := range []bool{false, true} {
 		f := nativeAuthorityFixture(t, false, 5000)
 		p := f.proof(t, 4, 0)
@@ -193,11 +196,11 @@ func TestMonitoringAuthorityPublicationFailureOrWrongReplyPreservesOnlyOldAllowa
 			t.Fatal(err)
 		}
 		v := f.a.check()
-		if v.Phase != "active" || v.AuthorityUntilMS != 5000 || !v.ExecutionAuthorized || !v.PublicationFailureObserved || v.PublicationPending {
-			t.Fatal("unconfirmed publication caused early lock or fresh allowance", v)
+		if v.Phase != "active" || v.AuthorityUntilMS != 16000 || !v.ExecutionAuthorized || !v.PublicationFailureObserved || v.PublicationPending {
+			t.Fatal("unconfirmed publication changed verified live authority", v)
 		}
 		f.clock.Store(2000)
-		newer := f.proof(t, 4, 0)
+		newer := f.proof(t, 5, 0)
 		current := f.prepare(t, newer)
 		if _, err := f.a.published(old, old.publicationHash); err != errMonitoringPublication {
 			t.Fatal("retired worker completion reached replacement", err)
@@ -218,7 +221,7 @@ func TestMonitoringAuthorityOnlyOwnIssuedChallengesAndCurrentCoverageCanCommit(t
 	f := nativeAuthorityFixture(t, false, 16000)
 	other := nativeAuthorityFixture(t, false, 16000)
 	foreign := other.proof(t, 4, 0)
-	if _, _, err := f.a.prepare(foreign); err != errMonitoringScope {
+	if _, err := f.a.accept(foreign); err != errMonitoringScope {
 		t.Fatal("foreign challenge accepted", err)
 	}
 	p := f.proof(t, 4, 0)
@@ -229,18 +232,21 @@ func TestMonitoringAuthorityOnlyOwnIssuedChallengesAndCurrentCoverageCanCommit(t
 	} {
 		bad := p
 		change(&bad)
-		if _, _, err := f.a.prepare(bad); err == nil {
+		if _, err := f.a.accept(bad); err == nil {
 			t.Fatal("unsafe candidate accepted")
 		}
 	}
 	ticket := f.prepare(t, p)
-	same, old, err := f.a.prepare(p)
-	if err != nil || same != ticket || old != nil {
+	same, err := f.a.preparePublication(p.Nonce)
+	if err != nil || same != ticket {
 		t.Fatal("pending retry duplicated publication", err)
 	}
 	newer := f.proof(t, 5, 0)
-	if _, _, err := f.a.prepare(newer); err != errMonitoringBusy {
-		t.Fatal("pending publication not bounded", err)
+	if _, err := f.a.accept(newer); err != nil {
+		t.Fatal("pending publication blocked live renewal", err)
+	}
+	if _, err := f.a.preparePublication(newer.Nonce); err != errMonitoringBusy {
+		t.Fatal("pending storage publication not bounded", err)
 	}
 	if _, err := other.a.published(ticket, ticket.publicationHash); err != errMonitoringScope {
 		t.Fatal("foreign ticket accepted", err)
@@ -250,7 +256,7 @@ func TestMonitoringAuthorityOnlyOwnIssuedChallengesAndCurrentCoverageCanCommit(t
 	}
 	changed := p
 	changed.UntilUptimeMS--
-	if _, _, err := f.a.prepare(changed); err != errMonitoringScope {
+	if _, err := f.a.accept(changed); err != errMonitoringScope {
 		t.Fatal("changed original receipt accepted", err)
 	}
 }
@@ -292,7 +298,7 @@ func TestMonitoringAuthorityReceiptCapacityPrunesOnlyExpiredOutcomesAndKeepsWate
 		f.commit(t, p)
 	}
 	p := f.proof(t, 36, 0)
-	if _, _, err := f.a.prepare(p); err != errMonitoringCapacity {
+	if _, err := f.a.accept(p); err != errMonitoringCapacity {
 		t.Fatal("unexpired outcomes evicted", err)
 	}
 	f.clock.Store(16000)
@@ -362,7 +368,7 @@ func TestMonitoringAuthorityEntropyAndInitialContextFailureDoNotInventAnIncarnat
 	}
 }
 
-func TestMonitoringAuthorityPublicationExpiryOrMutableWorkerCopyCannotAddPermission(t *testing.T) {
+func TestMonitoringAuthorityDelayedPublicationOrMutableWorkerCopyCannotChangeLivePermission(t *testing.T) {
 	f := nativeAuthorityFixture(t, false, 16000)
 	p := f.proof(t, 4, 0)
 	ticket := f.prepare(t, p)
@@ -373,14 +379,14 @@ func TestMonitoringAuthorityPublicationExpiryOrMutableWorkerCopyCannotAddPermiss
 	if !bytes.Equal(before, after) || again != expected || Hash(before) != expected {
 		t.Fatal("worker got mutable arbiter state")
 	}
-	f.clock.Store(6000) // Request expired; previous committed authority is still valid.
-	if _, err := f.a.published(ticket, expected); err != errMonitoringPublication {
-		t.Fatal("expired publication applied", err)
+	f.clock.Store(6000) // Original challenge expired; its proof was accepted earlier.
+	if r, err := f.a.published(ticket, expected); err != nil || r.UntilUptimeMS != 16000 {
+		t.Fatal("delayed observation did not retain the original live outcome", r, err)
 	}
-	if v := f.a.check(); v.Phase != "active" || !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || v.Sequence != 3 {
+	if v := f.a.check(); v.Phase != "active" || !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || v.Sequence != 4 {
 		t.Fatal("expired request caused early hold or fresh allowance", v)
 	}
-	p = f.proof(t, 4, 0)
+	p = f.proof(t, 5, 0)
 	f.commit(t, p)
 	if v := f.a.check(); v.PublicationFailureObserved || v.AuthorityUntilMS != 21000 {
 		t.Fatal("fresh confirmed publication did not resolve its fault", v)

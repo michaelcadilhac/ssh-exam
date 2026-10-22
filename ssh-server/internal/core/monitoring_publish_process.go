@@ -125,9 +125,8 @@ func publishMonitoringTicket(parent context.Context, claim *monitoringOwnerClaim
 			_ = ticket.authority.publicationFailed(ticket)
 		}
 	}()
-	current := ticket.authority.check()
-	if (current.Phase != "active" && current.Phase != "awaiting-evidence") || !current.PublicationPending {
-		return receipt, errMonitoringAuthority
+	if err := ticket.authority.publicationReady(ticket); err != nil {
+		return receipt, err
 	}
 	timeout := 2 * time.Second
 	if opts.timeout > 0 {
@@ -195,6 +194,12 @@ func publishMonitoringTicket(parent context.Context, claim *monitoringOwnerClaim
 	case <-ctx.Done():
 		return receipt, errMonitoringPublishIO
 	default:
+	}
+	if !claim.current() {
+		return receipt, errMonitoringAuthority
+	}
+	if err := ticket.authority.publicationReady(ticket); err != nil {
+		return receipt, err
 	}
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "LANG=C.UTF-8", "GOMAXPROCS=2", "GOMEMLIMIT=48MiB"}

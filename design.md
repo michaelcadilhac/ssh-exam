@@ -1747,6 +1747,15 @@ checks complete. Local simulated browser tests alone do not qualify privileged i
 
 ### Approved retained-SSH lockout design (October 21; implementation pending)
 
+October22 C10/C11 follow-up: positively verified renewals take effect in live root
+authority without waiting for disk sync; restart requires fresh verification and
+durable significant transitions/starts/deadlines/audit remain mandatory. Develop
+and fully qualify stop-assisted freezing, preserving originally stopped jobs.
+The private arbiter now separates live acceptance from optional storage observation
+and fences exact publisher tickets, but is not wired to native runtime or freeze/
+input transitions. See docs/live-monitoring-renewals.md. Historical awaiting-
+decision notes below are superseded; no retained mode or deployment is enabled.
+
 October22's local admission correction moves only provisional ready/ACK socket IO
 outside the global state transaction. Close revokes exact unused pane tokens;
 replacement issuance supersedes older unused tokens and recorded panes cannot be

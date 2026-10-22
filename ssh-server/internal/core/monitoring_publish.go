@@ -20,7 +20,7 @@ import (
 const monitoringPublisherFlag = "--monitoring-publication-worker"
 const monitoringPublishLimit = 8192
 
-var errMonitoringPublishIO = errors.New("native monitoring publication unconfirmed; prior authority only; preserve coordination records and inspect publisher status")
+var errMonitoringPublishIO = errors.New("native monitoring publication unconfirmed; verified live authority unchanged; preserve coordination records and inspect publisher status")
 
 type monitoringPublishRequest struct {
 	Version     int                   `json:"version"`
