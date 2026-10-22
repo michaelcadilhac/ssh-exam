@@ -77,6 +77,15 @@ webcam requirement, terminal count and root-approved material template. See
 Materials template names identify files installed on the SSH server. Settings apply to future attempts. Attempt rows show start/end dates and time taken, or the live countdown and elapsed time. Unstarted rows show when preflight opened. Dashboard times use America/Chicago; start-window
 inputs use your device timezone. Sandbox always starts with five minutes.
 
+Local C14 candidate (not deployed): sandbox practice also needs an explicitly
+configured finite start window in Exam settings, or `examctl web exams show
+sandbox` followed by revision-fenced `update sandbox --earliest RFC3339 --latest
+RFC3339`. New installs start closed; no automatic rolling window. Its webcam
+requirement remains off. Existing started deadlines/continuation do not change,
+and saved preparations retain their own window when defaults change. Cancel and
+recreate an old indefinite unstarted preparation; never rewrite saved settings.
+See exam-definition-management.md for the exact CLI workflow and limitations.
+
 The duration value selects an individual allowance (1–360 whole minutes) or restores
 the exam default. The webcam value changes the requirement, with required/not-required/
 exam-default choices. Prepared and active attempts retain their original settings.

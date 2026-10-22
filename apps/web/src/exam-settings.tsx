@@ -1,7 +1,10 @@
 import React, { useState, useRef } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
-import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import {
+  isSandbox,
+  hasSandboxWindow,
+} from "../../../packages/protocol/sandbox.js";
 import {
   DEFAULT_COLLECTION_FILE_MIB,
   DEFAULT_COLLECTION_TOTAL_MIB,
@@ -29,14 +32,19 @@ export function ExamSettings({
     earliest: Date.now() - 60000,
     latest: Date.now() + 7 * 86400000,
     ...initial,
+    ...(isSandbox(initial.id) && !hasSandboxWindow(initial)
+      ? { earliest: NaN, latest: NaN }
+      : {}),
   });
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const intent = useRef({ fingerprint: "", requestID: "" });
   const dateValue = (n: number) =>
-    new Date(n - new Date(n).getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
+    Number.isFinite(n)
+      ? new Date(n - new Date(n).getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 16)
+      : "";
   return (
     <Modal
       title={initial.id ? "Exam settings" : "New exam"}
@@ -102,50 +110,50 @@ export function ExamSettings({
         <small className="admin-field-help">
           Name of the exam template installed on the SSH server.
         </small>
-        {!isSandbox(form.id) && (
-          <fieldset className="admin-form-group">
-            <legend>Start window</legend>
-            <div className="admin-form-grid">
-              <label>
-                Earliest start
-                <input
-                  required
-                  disabled={busy}
-                  type="datetime-local"
-                  value={dateValue(form.earliest)}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      earliest: new Date(e.target.value).getTime(),
-                    })
-                  }
-                />
-              </label>
-              <label>
-                Latest start
-                <input
-                  required
-                  disabled={busy}
-                  type="datetime-local"
-                  value={dateValue(form.latest)}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      latest: new Date(e.target.value).getTime(),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <small>
-              Times use your device timezone. This sets when students may begin.
-            </small>
-          </fieldset>
-        )}
+        <fieldset className="admin-form-group">
+          <legend>Start window</legend>
+          <div className="admin-form-grid">
+            <label>
+              Earliest start
+              <input
+                required
+                disabled={busy}
+                type="datetime-local"
+                value={dateValue(form.earliest)}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    earliest: new Date(e.target.value).getTime(),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Latest start
+              <input
+                required
+                disabled={busy}
+                type="datetime-local"
+                value={dateValue(form.latest)}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    latest: new Date(e.target.value).getTime(),
+                  })
+                }
+              />
+            </label>
+          </div>
+          <small>
+            Times use your device timezone. This sets when students may begin.
+            {isSandbox(form.id) &&
+              " Required for repeatable practice; no new Begin outside this finite window. Existing started attempts keep their deadlines."}
+          </small>
+        </fieldset>
         {isSandbox(form.id) && (
           <p>
-            Repeatable · 5 minutes · no start window · automatic recovery
-            approval
+            Repeatable within the configured window · 5 minutes · no webcam ·
+            automatic recovery approval
           </p>
         )}
         <div className="admin-form-grid">
@@ -181,8 +189,8 @@ export function ExamSettings({
         <label>
           <input
             type="checkbox"
-            disabled={busy}
-            checked={form.webcam}
+            disabled={busy || isSandbox(form.id)}
+            checked={isSandbox(form.id) ? false : form.webcam}
             onChange={(e) => setForm({ ...form, webcam: e.target.checked })}
           />{" "}
           Default webcam requirement

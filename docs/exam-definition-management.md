@@ -66,6 +66,55 @@ deadlines, access restrictions, protected submissions, receipts or grants.
 
 ## Evidence and remaining work
 
+### Finite sandbox practice window (C14, local candidate October22)
+
+Sandbox remains repeatable, five minutes/no webcam, with all account/collection
+holds and protected history preserved. Configure its finite Begin window using
+the existing shared revision-fenced writer:
+
+```sh
+sudo examctl web exams show sandbox
+sudo examctl web exams update sandbox --revision HASH-FROM-SHOW --earliest '2026-10-22T09:00:00-05:00' --latest '2026-10-22T17:00:00-05:00' --reason 'Open supervised practice window'
+```
+
+Web Exam settings exposes the same required date/time fields in device timezone.
+New installs have no open window. Legacy indefinite configuration is preserved
+for inspection, not silently rewritten or treated as finite permission. Its form
+requires explicit dates; unsupported updates explain the working CLI workflow.
+The gateway and root both refuse unconfigured/outside-window new starts. New
+preflight also refuses before native preparation or account reservation. A signed
+loaded-agent capability is required; old-agent refusal occurs before time starts.
+
+Preparation snapshots retain their selected window despite later default edits.
+An old indefinite unstarted preparation must be explicitly cancelled and recreated;
+do not edit its saved settings. Changing defaults does not revoke existing saved
+preparations. Window closure never truncates a started deadline, prevents its
+permitted continuation or resets an exact Begin retry. Termination/protection and
+failed-collection restrictions still gate the next repeat.
+
+Safety review: this adds no pending/durable operation kind. Existing preparation
+cancellation/restart/expiry fences remain; expiry during native setup is rechecked
+under the final commit fence, and gateway setup also rechecks after its awaited
+handoff. No timeout grants permission, refund or automatic reopening. Ordinary
+admission is unchanged except for repeating its existing window check after setup.
+No schema/backfill/service change is executed. Full fixed-settings grant issuance,
+revision/withdrawal and migration remain open in unified-grant-protocol-proposal.md.
+
+Validation: native bypass/late-setup/preflight regressions RED0.369s after correcting
+the fixture UID; initial unit/HTTP cases also reproduce the unbounded defaults.
+Focused native sandbox races pass1.390s. Full429 application tests/81 files pass
+106.95s, including compiled root-mapped examctl over actual local TLS, shared web
+configuration and synthetic SSH/HTTP preflight/Begin, old-agent refusals and saved
+deadline checks. Four actual Chromium/WASM/SSH definition/repeat/resume/history
+checks pass32.5s. Full local native race/resource suite passes core298.106s and
+CLI27.430s with namespace, user-systemd, compiler and large-collection opt-ins.
+App/WASM build/typecheck, static native build/vet and diff checks pass.
+Logs: /tmp/ssh-exam-sandbox-window-{app,native,browser,build}.log. No missing command.
+These use synthetic identities/data; native OS activation is supplied by test
+guards and the browser shell is a fixture, not privileged containment proof.
+The pinned boolean host guard reports BUSY; no new guest or upload is attempted.
+Nothing is deployed and unified fixed-settings grant records remain unimplemented.
+
 All 301 application tests in 51 files pass with actual compiled CLI-to-gateway
 TLS create/update, explicit-zone conversion, partial preservation, stale refusal
 and gateway-restart retry. Authenticated web/root regressions preserve historical

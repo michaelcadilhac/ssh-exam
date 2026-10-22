@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { api, setCsrf, socket, chicago } from "./api.js";
 import { Workspace } from "./workspace.js";
 import { Admin } from "./admin.js";
-import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import {
+  isSandbox,
+  hasSandboxWindow,
+} from "../../../packages/protocol/sandbox.js";
 import {
   authMessageBlocks,
   isPhoneApprovalChallenge,
@@ -428,7 +431,13 @@ function App() {
                   <>
                     <small>Signed in as {user.username}</small>
                     <h2>{info.exam.name}</h2>
-                    {!isSandbox(info.exam.id) && (
+                    {isSandbox(info.exam.id) && !hasSandboxWindow(info.exam) ? (
+                      <p>
+                        Sandbox practice awaits an operator-configured finite
+                        Begin window. Existing started attempts keep their
+                        deadlines.
+                      </p>
+                    ) : (
                       <details className="exam-details">
                         <summary>Start window</summary>
                         <p>

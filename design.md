@@ -1434,10 +1434,17 @@ readable terminal names; show missing webcam evidence only when webcam is requir
 
 ## Reserved sandbox exam
 
+October22 C14 approved policy change: replace indefinite new admission with an
+explicit finite operator-configured Begin window. Within it, automatically issue
+repeatable five-minute/no-webcam grants with saved settings. The local window
+workflow is implemented/tested locally; unified grant records are
+still pending. No deployment. Existing started deadlines/continuation remain
+unchanged; never invent an always-open or rolling window.
+
 The exam ID is the string constant SANDBOX_EXAM_ID="sandbox" (SandboxExamID in the
 native agent); ordinary exams have string IDs, so no numerical alias is needed. The
 sandbox is a practice/test exception, never a graded exam: fixed 300-second duration,
-no earliest/latest start check in either gateway or class agent, automatic enrollment
+finite earliest/latest Begin checks in both gateway and class agent, automatic enrollment
 for successful real SSH identities approved by the class agent, and automatic continuation
 and reauthentication grants. Host pins, real password/phone MFA, account approval,
 monitoring readiness, same-identity/page ownership and generation/deadline checks remain.
@@ -1451,7 +1458,17 @@ single-attempt policy remain unchanged, including when requesting sandbox while 
 exam restricts the same account. Use partial uniqueness for ordinary exam/student pairs
 and retain the one-busy-attempt-per-UID guard. Historical status retries must operate on
 that attempt's protected copy and never disconnect a subsequent sandbox connection.
-UI hides start-window controls for sandbox, fixes duration, and uses Resume/Continue/Reconnect
+New installations leave practice closed until explicitly configured. Existing
+indefinite definitions/preparations are not rewritten on startup and cannot
+authorize a new Begin: operators configure the definition through the shared
+revision-fenced CLI/web service, then cancel/recreate any legacy unstarted
+preparation. New preparations save the selected window; later default edits do
+not revise those snapshots. Both initial and final native Begin checks enforce
+the saved window, including expiry during slow setup. A retry of an already
+started Begin returns its original interval even after the window closes.
+Gateway admission requires the running agent's signed sandbox-begin-window-v1
+capability; this is not a claim of complete mixed-version retained-SSH safety.
+UI exposes required start-window controls for sandbox, fixes duration/webcam, and uses Resume/Continue/Reconnect
 without instructor-approval wording. Confirmations remain irreversible and collection automatic.
 
 Pause implementation: intentional disconnect suppresses the old connection's loss callback so
@@ -1881,7 +1898,8 @@ stop-assisted hold cycles with acknowledged worker-memory retention, original
 stopped job, foreground group and parent shell preserved, and stale terminal
 input discarded. This is a bounded job-control prerequisite, not general
 application compatibility, a repair for the linked-IO failure or adopted live
-SIGSTOP/SIGCONT policy. C11 remains awaiting the instructor's decision.
+SIGSTOP/SIGCONT policy. C11 subsequently approved development/full qualification;
+the integrated all-writer/input barrier remains unimplemented and disabled.
 
 ### Approved unified-grant design (October 20; implementation pending)
 

@@ -19,6 +19,18 @@ unstarted pending checks with the matching version, retaining history/work/holds
 Do not deploy it as the completed heartbeat/retained-SSH redesign. See
 preflight-isolation.md; no rollout or consolidation is executed here.
 
+C14's local sandbox-window workflow intentionally removes indefinite new Begin
+admission. Before any separately authorized rollout, review and explicitly
+configure the finite practice window through shared CLI/web settings; leave new
+installations closed until then. Inventory/cancel and recreate legacy unstarted
+indefinite preparations with supported commands, never rewrite saved snapshots.
+Preserve all started intervals, continuation, protected history and account holds.
+Use matching gateway/native roles and verify signed sandbox-begin-window-v1
+capability plus actual Begin/late-setup refusal. There is no schema/backfill here;
+unified issuance is a later migration. An old version restores the old indefinite
+exception and is not an equivalent policy rollback: keep admission closed and
+repair forward rather than silently downgrading enforcement. No rollout is run.
+
 The approved C10 private-arbiter refactor has no live caller, enabled mode,
 configuration or durable-state migration. It is not independently deployable as
 the completed monitoring fix. Future enablement requires matched root actor,

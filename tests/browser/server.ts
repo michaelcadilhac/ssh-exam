@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { WebSocketServer } from "ws";
 import net from "node:net";
 import { hash } from "../../apps/server/src/db.js";
+import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 const h = await hosts({
   classCertificates: process.env.EXAM_BROWSER_SSH === "1",
 });
@@ -377,6 +378,14 @@ const exam = {
   terminals: 4,
   template: "sample-exam",
 };
+const definitions = new ExamDefinitions(store);
+definitions.update(
+  "sandbox",
+  { earliest: exam.earliest, latest: exam.latest },
+  definitions.show("sandbox").revision,
+  "fixture-operator",
+  "Configure finite synthetic practice window",
+);
 store.db
   .prepare("INSERT INTO exams VALUES(?,?)")
   .run("sample", JSON.stringify(exam));

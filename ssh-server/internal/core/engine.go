@@ -243,7 +243,11 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.temporaryPolicy(a) && (a.PolicyState != "READY" || a.PolicyTransport == "" || a.PolicyTransport != a.Transport || a.PolicyReadyBoot != boot() || a.PolicyExpires <= Millis()) {
 				return errors.New("fresh SSH authentication under temporary account policy required before exam start")
 			}
-			if !sandboxAttempt(a) && (Millis() < a.Settings.Earliest || Millis() > a.Settings.Latest) {
+			if sandboxAttempt(a) {
+				if err := sandboxBeginWindow(a.Settings, Millis()); err != nil {
+					return err
+				}
+			} else if Millis() < a.Settings.Earliest || Millis() > a.Settings.Latest {
 				return errors.New("outside start window")
 			}
 			if err = e.workspaceForBegin(a); err != nil {

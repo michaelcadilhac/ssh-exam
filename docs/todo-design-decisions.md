@@ -450,3 +450,17 @@ time settings, backdate authority, revise used grants or change active/historica
 attempts and protected submissions. This supersedes earlier awaiting-decision
 notes. The review/confirmation transaction, matching CLI/web workflows and
 migration qualification remain to implement; no records are migrated by approval.
+
+## Repeatable sandbox grants (C14 approved October22)
+
+Use an explicitly operator-configured finite Begin window for sandbox practice.
+Within that window, automatically issue fixed-settings grants for repeatable
+five-minute/no-webcam practice. Outside it no new practice may Begin; existing
+started attempts retain their original/current deadlines and continuation rules.
+Do not invent an always-open or automatically rolling window. This intentionally
+replaces indefinite sandbox admission for new grants, not ordinary account holds,
+protected history, monitoring or verified-collection requirements. CLI and web
+must expose the same window configuration. Approval is not implementation or
+deployment. Finite-window CLI/web configuration and gateway/native admission are
+implemented/tested locally; unified fixed-settings grant
+issuance/migration remain pending. See exam-definition-management.md.

@@ -19,6 +19,11 @@ semantics. Explicit gateway operation authorization defaults to none.
 Every current definition setting also has a create/update flag; updates require
 the current revision and preserve omitted fields, rather than resetting create
 defaults. See exam-definition-management.md for both interfaces and migration 014.
+Sandbox uses the same `web exams show sandbox`/revision-fenced `update sandbox
+--earliest RFC3339 --latest RFC3339` workflow. C14's local candidate keeps practice
+repeatable/five-minute/no-webcam but requires an explicit finite Begin window;
+new installs start closed. Defaults never rewrite saved preparations or started
+deadlines. Full unified issuance/migration remain pending; no deployment.
 Collection setting flags are `--collection-file-mib` (default 128) and
 `--collection-total-mib` (default 512), in logical MiB, not allocated/compressed
 size. Existing preparations/attempts/bundles keep their snapshots; absent legacy

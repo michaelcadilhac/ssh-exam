@@ -17,6 +17,13 @@ it("reserves a recognizable sandbox ID and fixed five-minute configuration", () 
     duration: 300,
   });
   expect(isSandbox("sandbox-copy")).toBe(false);
+  expect(sandboxExam().latest).toBeLessThan(Date.now());
+  expect(sandboxExam("v1", { earliest: 100, latest: 200 })).toMatchObject({
+    earliest: 100,
+    latest: 200,
+    duration: 300,
+    webcam: false,
+  });
 });
 
 it("migrates old submissions and foreign keys while allowing sandbox history only", () => {

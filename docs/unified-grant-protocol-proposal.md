@@ -17,7 +17,7 @@ grant, revise history or declare the investigation complete.
 | lifecycle.ts retirePreflight | Requires native no-start/restoration confirmation, then removes cancelled web row/monitoring to allow legacy uniqueness retry | New grant preparations need retained cancellation/claim history, not deletion of the entitlement or an inferred refund |
 | native engine.go | Checks root identity/registered transport/account busy; Begin fixes clocks and holds; current lockout destroys paused workload | Add grant-specific admission/consumption without bypassing restrictions or pretending C3 is implemented |
 | native workspace_jobs.go/recovery.go | Optional immutable version binding; native-only legacy saved-work JSON chosen before template fallback | Explicit recorded source in unified settings; missing expected source must never become fresh template work |
-| protocol/sandbox.ts and app.ts | Built-in sandbox is repeatable, auto-enrolled after SSH, five minutes/no webcam, effectively unbounded availability | Preserve legacy behavior during transition; explicit finite-window policy for newly issued sandbox grants needs resolution |
+| protocol/sandbox.ts and app.ts | Built-in sandbox is repeatable, auto-enrolled after SSH, five minutes/no webcam, effectively unbounded availability | C14 approved: finite operator-configured Begin window, repeatable saved-settings grants within it; existing started deadlines unchanged |
 | exam-admin.ts and web admin.tsx | Dashboard already groups retained attempts by student and renders attempt numbers; student admission still assumes latest row | Add grants as a distinct section and stable identities; cancelled preparation is not a completed timed attempt |
 | lifecycle.ts authenticated callbacks | Reject mismatched attempt/exam/user/UID and changed original intervals; protection requires verified manifest | Extend exact grant/revision/intent scope; retain immutable clocks, verified submissions and callback replay rules |
 | agent_template_versions (migration020) | Timestamped root attestations, not material contents or a live availability guarantee | Explicitly select exact attested version at issuance; native re-verification remains mandatory before Begin |
@@ -154,10 +154,15 @@ source for all. History retains both submissions without implying a grading rule
 - Reconcile root-only legacy recovery records/consumption with signed explicit
   identities. Preserve source dependencies and markers; uncertain records remain
   unavailable for migration/definition deletion rather than treated as absent.
-- Sandbox's current indefinite/repeatable admission is not a finite new grant
-  policy. Resolve that transition separately; do not silently invent a rolling
-  window or interrupt existing sandbox attempts. New ordinary-grant engineering
-  and independent correctness fixes need not wait for that policy choice.
+- C14 approved October22: sandbox automatically issues repeatable five-minute/
+  no-webcam grants only within an explicit finite operator-configured Begin
+  window. Implement matching CLI/web configuration and gateway/native admission;
+  do not invent a rolling window or interrupt existing started sandbox attempts.
+  Fixed-settings grant records still require the unified implementation above.
+
+  Local C14 window workflow is now implemented/tested through those existing
+  interfaces (exam-definition-management.md). This closes that finite-window
+  boundary only, not unified automatic issuance, migration or the investigation.
 - C8 may delete only unused definitions after authoritative grant/claim/native
   legacy dependency proof. Archive historical definitions without destroying or
   stranding attempts/submissions. Never silently cancel a grant to make deletion

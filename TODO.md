@@ -33,6 +33,14 @@ recording the decision; no production records or services are changed. Developme
 must follow the outcome-first guardrails in AGENTS.md; the scope retrospective is
 in docs/development-retrospective.md.
 
+October22 C14 approval: retain automatic repeatable five-minute/no-webcam sandbox
+practice within an explicit finite operator-configured Begin window. Every new
+grant saves its settings; no new Begin outside the window. Existing started
+attempts retain their deadlines. Matching CLI/web configuration and native/gateway
+window enforcement are implemented/tested locally; unified
+issuance remains implementation work. No deployment. See
+docs/exam-definition-management.md; the broad grant TODOs remain unchecked.
+
 ## Critical priority: eliminate heartbeat-induced false lockouts
 
 - [ ] **Redesign monitoring liveness and execution authorization; do not turn a

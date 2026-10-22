@@ -1,16 +1,21 @@
 import { test, expect, type Page } from "@playwright/test";
 
-async function fixture(page: Page, conflict = false) {
+async function fixture(
+  page: Page,
+  conflict = false,
+  examID = "midterm",
+  unconfigured = false,
+) {
   const state = {
     definition: {
-      id: "midterm",
+      id: examID,
       name: "Midterm",
       template: "v1",
       duration: 7200,
       webcam: false,
       terminals: 2,
-      earliest: Date.now() - 60000,
-      latest: Date.now() + 3600000,
+      earliest: unconfigured ? 0 : Date.now() - 60000,
+      latest: unconfigured ? 8640000000000000 : Date.now() + 3600000,
       revision: "a".repeat(64),
     },
     writes: [] as any[],
@@ -66,14 +71,37 @@ async function fixture(page: Page, conflict = false) {
     });
   });
   await page.goto("/");
-  await page
-    .getByLabel("Selected exam", { exact: true })
-    .selectOption("midterm");
+  await page.getByLabel("Selected exam", { exact: true }).selectOption(examID);
   await page
     .getByRole("button", { name: "Exam settings", exact: true })
     .click();
   return state;
 }
+
+test("sandbox exposes an explicit finite window without inventing legacy defaults", async ({
+  page,
+}) => {
+  const s = await fixture(page, false, "sandbox", true);
+  const dialog = page.getByRole("dialog", {
+    name: "Exam settings",
+    exact: true,
+  });
+  await expect(dialog.getByLabel("Earliest start")).toHaveValue("");
+  await expect(dialog.getByLabel("Latest start")).toHaveValue("");
+  await expect(
+    dialog.getByLabel("Default webcam requirement"),
+  ).not.toBeChecked();
+  await expect(dialog.getByLabel("Default webcam requirement")).toBeDisabled();
+  await dialog.getByLabel("Earliest start").fill("2026-10-22T09:00");
+  await dialog.getByLabel("Latest start").fill("2026-10-22T17:00");
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(s.writes[0].earliest).toBeGreaterThan(0);
+  expect(s.writes[0].latest - s.writes[0].earliest).toBe(8 * 3600000);
+  expect(s.writes[1]).toEqual(s.writes[0]);
+});
 
 test("lost definition reply preserves form and reuses the same revision/request on retry", async ({
   page,

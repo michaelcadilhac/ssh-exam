@@ -87,7 +87,12 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 		candidate = &Attempt{PreparationPending: true, PreparationPendingSince: Millis(), BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
 		candidate.PolicyRequired = e.temporaryPolicy(candidate)
 		if sandboxAttempt(candidate) {
+			if err := sandboxBeginWindow(candidate.Settings, Millis()); err != nil {
+				candidate = nil
+				return err
+			}
 			candidate.Settings.Duration = SandboxDurationSeconds
+			candidate.Settings.Webcam = false
 		}
 		candidate.AdministratorSandbox = account.SandboxOnly && sandboxAttempt(candidate)
 		candidate.FunctionalTest = e.functionalAccount(candidate)
@@ -148,6 +153,11 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 		}
 		if current != account || candidate.PolicyRequired != e.temporaryPolicy(candidate) {
 			return errors.New("account changed during preflight checks; retry after administrator inspection; no clock has started")
+		}
+		if sandboxAttempt(candidate) {
+			if err := sandboxBeginWindow(candidate.Settings, Millis()); err != nil {
+				return err
+			}
 		}
 		// Revalidate bounded grant/source metadata against current state. Home
 		// copying confers no saved-source authority and consumes no allowance.

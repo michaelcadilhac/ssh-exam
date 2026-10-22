@@ -65,7 +65,11 @@ Create never overwrites an existing ID. Update changes ONLY named settings and
 refuses a stale revision; reload/show, review differences, then use a new intent.
 Existing attempt settings, clocks, account restrictions and submissions remain
 unchanged. Template deployment is separate; definition creation does not install
-materials. Sandbox immutable policy defaults remain enforced in both interfaces.
+materials. Sandbox stays repeatable/five-minute/no-webcam, but NEW practice needs
+an explicit finite Begin window. Configure it with show sandbox then update
+sandbox --revision HASH --earliest RFC3339 --latest RFC3339 (same web settings).
+An unconfigured/legacy indefinite window refuses new starts; no rolling default.
+Existing saved attempt settings and started deadlines are never rewritten.
 Collection limits apply to future settings snapshots; old attempts/archives retain
 their limits (legacy omitted snapshots mean 32/64 MiB). Entry/depth limits remain
 10000/32; no live disk quota or monitoring limit changes. Worker memory/runtime

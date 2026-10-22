@@ -5,59 +5,41 @@ or temporary-agent consolidation. Stop if a command is not found. Preserve all
 work/history/protected submissions/deadlines/holds. Follow AGENTS.md; routine local
 commits and testing do not require instructor questions.
 
-## Current milestone: integrated new-preflight isolation
+## Current milestone: C14 finite sandbox Begin window
 
-Implemented locally through Engine.Call and authenticated signed prepare-attempt:
-readiness/home copying run outside global state under the per-UID fence. Durable
-pending records support inspection/cancellation but cannot admit panes, stage
-materials, apply account policy or Begin. Recheck current ownership/settings/
-reservation/expiry/source before ready publication; late checks cannot revive a
-cancelled attempt. Pending readiness has separate bounded crash cleanup; no exam
-clock/allowance starts. Existing ready retries retain their original policy.
+Actual `web exams update sandbox`/web Exam settings preserve a finite explicit
+window; student preflight and gateway/native Begin enforce the saved window,
+including expiry during slow setup. New installs start closed; legacy indefinite
+definitions/preparations are never silently revised. Existing started deadlines,
+continuation, repeat history, protection and account restrictions remain intact.
+Old native agents refuse before new practice. No unified grant issuance yet.
 
-Evidence: original four blocked-control cases RED2.085s (plus a corrected
-fixture-owner mismatch); focused API/actual-home/compiled read-only CLI races
-pass. All426 app tests/80 files pass93.27s; the new signed-callback regression
-passes with eight callback cases1.10s. Six browser/WASM SSH preflight/logout
-workflows pass45.5s. Static native build/vet/typecheck pass. First full native
-pass core273.585s/CLI21.405s; final run includes the review-discovered pending
-readiness crash-expiry guard, with three focused race repeats2.360s. Final native
-qualification passes core278.848s/CLI27.072s; log
-/tmp/ssh-exam-preparation-isolation-native-final.log.
-Feature evidence/limitations: preflight-isolation.md. Browser fixtures and supplied
-Go peer identities are not actual privileged containment qualification.
+RED native Begin/late-setup/preflight cases reproduce the former bypass0.369s
+after correcting the fixture UID; initial unit/HTTP cases reproduce unbounded
+defaults. Focused native sandbox races pass1.390s. Full429 application tests/81
+files pass106.95s, including compiled root-mapped CLI/TLS window configuration,
+real fixture SSH sign-in, closed preflight, old-agent refusal, staging retry and
+Begin/saved deadline checks. Four Chromium/WASM/SSH definition/repeat practice
+checks pass32.5s. App/WASM build/typecheck and native static build/vet pass; full
+native race/resource qualification passes core298.106s/CLI27.430s with all local
+opt-ins. Logs: /tmp/ssh-exam-sandbox-window-*.log. No command was missing.
+Detailed safety review/operator workflow: exam-definition-management.md.
 
-Latest commits: c630450 installs outcome-first guardrails/retrospective;
-93632c6 closes pre-existing R1c with its already completed native qualification.
-The integrated preflight milestone is validated locally; see the corresponding
-local commit in git log. No privileged current-artifact qualification/deployment.
-Do not extend the unused reader chain.
+Previously validated: 47673b6 integrated slow readiness/home isolation with bounded
+cancellable non-admitting pending state (preflight-isolation.md); 43a7201 scoped
+zero-write refusal diagnostics including actual CLI/suggested-command/mutation
+checks (native-read-only-diagnostics.md). c630450 sets outcome-first guardrails;
+93632c6 closes the already-qualified unused R1c reader. Do not extend that chain.
 
 ## Scope and next integrated outcome
-
-Independent refusal-reporting fix is now implemented/tested locally while the
-guarded host is BUSY. Original printRefusal called Engine.List and rewrote/
-reconciled state just to explain an error (RED0.318s). Scoped zero-write capture
-now preserves original error/exit1, bounded diagnostic/deadline context and the
-config path; suggested commands use --read-only. An actual compiled namespace-
-root pre-transaction refusal verifies exact unchanged state, held-lock response
-and executes its quoted inspection command. Restoring old List is RED0.405s,
-then removed. Final full affected CLI races/TLS/namespace/PTY/help pass14.594s;
-focused read-only core races three repeats1.097s/static build/vet/diff pass.
-App/browser implementation is unchanged, so those suites are not repeated.
-See native-read-only-diagnostics.md. No new bundle/guest/deployment.
-
-Sandbox grant-window transition has now been asked: recommended explicitly
-operator-configured finite window with the existing repeatable five-minute/no-
-webcam practice, versus individually issued grants only. Await the answer; do
-not invent an always-open or rolling window. Other approved decisions stand.
 
 TODO remains11 checked main items/38. This increment does NOT complete critical
 heartbeat/retained SSH, unified grants, workspace cleanup, safe definition
 retirement or all CLI management. Current lockouts still terminate workloads/
 disconnect SSH; the private live-renewal/input/process/readers are not a live fix.
 
-Next critical integrated milestone: C12 attempt-level terminal supervision through
+Next action: commit this validated C14 window increment locally, then resume the critical integrated
+C12 attempt-level terminal supervision through
 the actual exam-channel/control paths and supported CLI inspection/close, with
 PTY ownership outside coordinator kill/OOM scope. Specify the entry/loaded-role
 handshake and acceptance before coding; connect existing components rather than
@@ -82,8 +64,11 @@ neither per-pane nor shared across students. C13 now approved: reviewed bulk NEW
 issuance for legacy unused enrollments from explicitly selected current settings,
 version and finite Begin window; never invent historical snapshots or change
 active/historical attempts. See todo-design-decisions.md. Additional C2 boundaries
-still need resolution: fresh root outbound Begin and the finite-window transition
-for the currently indefinite/repeatable sandbox; no invented offline permit/window.
+still need resolution: fresh root outbound Begin; no invented offline permit.
+C14 settles the sandbox transition; its window workflow is now local, unified
+saved-settings grant issuance remains pending. The fresh outbound Begin choice
+has been asked explicitly; do not invent an offline revocable permit while waiting.
+See todo-design-decisions.md and unified-grant-protocol-proposal.md.
 
 ## Privileged gate and future rollout
 

@@ -704,6 +704,33 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         );
       const cli = (args: string[]) => invoke("exams", args);
       const students = (args: string[]) => invoke("students", args);
+      f.config.agent.managementOperations = [
+        "exams.list",
+        "exams.show",
+        "exams.update",
+      ];
+      const sandbox = JSON.parse(
+        (await cli(["show", "sandbox"])).stdout,
+      ).result;
+      const practiceWindow = [
+        "update",
+        "sandbox",
+        "--revision",
+        sandbox.revision,
+        "--earliest",
+        "2026-10-22T09:00:00-05:00",
+        "--latest",
+        "2026-10-22T17:00:00-05:00",
+        "--reason",
+        "Configure finite synthetic practice window",
+      ];
+      const practice = JSON.parse((await cli(practiceWindow)).stdout).result;
+      expect(practice.exam).toMatchObject({
+        earliest: Date.parse("2026-10-22T09:00:00-05:00"),
+        latest: Date.parse("2026-10-22T17:00:00-05:00"),
+        duration: 300,
+        webcam: false,
+      });
       const id = randomUUID();
       const first = JSON.parse(
         (await cli(["show", "midterm", "--request", id])).stdout,

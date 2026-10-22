@@ -3,7 +3,11 @@ import {
   examSchema,
   examConfiguration,
 } from "../../../packages/protocol/index.js";
-import { isSandbox, sandboxExam } from "../../../packages/protocol/sandbox.js";
+import {
+  isSandbox,
+  sandboxExam,
+  hasSandboxWindow,
+} from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
 
 const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
@@ -131,6 +135,11 @@ export class ExamDefinitions {
     reason?: string,
   ) {
     const parsed = examSchema.parse(input);
+    if (isSandbox(parsed.id) && !hasSandboxWindow(parsed))
+      return failure(
+        "Sandbox requires an explicit finite Begin window; use Exam settings or examctl web exams show sandbox, then update sandbox --revision HASH --earliest RFC3339 --latest RFC3339. Existing attempts are unchanged.",
+        400,
+      );
     const exam = isSandbox(parsed.id)
       ? sandboxExam(parsed.template, parsed)
       : parsed;

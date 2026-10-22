@@ -60,7 +60,11 @@ import { AdministratorManagement } from "./administrator-management.js";
 import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { RosterManagement } from "./roster-management.js";
-import { isSandbox, sandboxExam } from "../../../packages/protocol/sandbox.js";
+import {
+  isSandbox,
+  sandboxExam,
+  hasSandboxWindow,
+} from "../../../packages/protocol/sandbox.js";
 import {
   PREFLIGHT_TIMEOUT_MS,
   PREFLIGHT_EXPIRED_REASON,
@@ -144,6 +148,30 @@ export async function createApp(
   store.db
     .prepare("INSERT OR IGNORE INTO exams VALUES(?,?)")
     .run("sandbox", JSON.stringify(sandboxExam()));
+  const requireBeginWindow = (
+    exam: string,
+    settings: { earliest: number; latest: number },
+  ) => {
+    if (isSandbox(exam) && !hasSandboxWindow(settings))
+      throw Error(
+        "Sandbox practice needs an operator-configured finite Begin window. Ask your instructor to configure Exam settings; an old unstarted preparation must be cancelled and recreated, not silently revised.",
+      );
+    const at = now();
+    if (at < settings.earliest || at > settings.latest)
+      throw Error(
+        "Outside allowed start window; a window controls Begin, not an existing attempt's deadline.",
+      );
+  };
+  const requireSandboxAgent = (exam: string, h: any) => {
+    if (
+      isSandbox(exam) &&
+      !h.capabilities?.includes("sandbox-begin-window-v1") &&
+      !(config.mode === "development" && h.fixture)
+    )
+      throw Error(
+        "Class server lacks finite sandbox Begin-window enforcement; ask the operator to verify matching native roles before new practice. No exam clock has started.",
+      );
+  };
   const autoAuthorizeSandbox = async (id: string, gap = false) => {
     let a = store.attempt(id);
     if (!isSandbox(a.exam)) return;
@@ -786,6 +814,7 @@ export async function createApp(
         "Class server lacks trusted browser SSH monitoring; update the agent first.",
       );
     if (!h.ready) throw Error("Class server guards not ready");
+    requireSandboxAgent(s.exam, h);
     if (
       h.functional_test &&
       (!config.functionalTest || config.mode !== "development")
@@ -855,6 +884,7 @@ export async function createApp(
       } = sandboxExam(settings.template, settings);
       // Preserve even legacy preparation limit snapshots and template choice.
       Object.assign(settings, policy);
+      requireBeginWindow(s.exam, settings);
     }
     if (!previous)
       store.db
@@ -954,11 +984,7 @@ export async function createApp(
     if (productionReadinessIssues(config).length)
       throw Error("Production exam setup is awaiting operator verification.");
     const settings = JSON.parse(a.settings);
-    if (
-      !isSandbox(a.exam) &&
-      (now() < settings.earliest || now() > settings.latest)
-    )
-      throw Error("Outside allowed start window");
+    requireBeginWindow(a.exam, settings);
     if ((settings.webcam && !(req.body as any).webcam) || !healthy(a))
       throw Error("Current required images missing");
     const conn = connections.get(`${a.exam}:${a.username}`);
@@ -967,6 +993,8 @@ export async function createApp(
       throw Error("Preparation is changing; check status before starting.");
     busy.add(a.id);
     try {
+      if (isSandbox(a.exam))
+        requireSandboxAgent(a.exam, await conn.command("health"));
       const prepared = await conn.command("inspect-attempt", { id: a.id });
       if (
         prepared.account_policy_required &&
@@ -1009,6 +1037,7 @@ export async function createApp(
         throw Error(
           "Preparation, connection or monitoring changed during setup; inspect status before beginning. No new clock was requested.",
         );
+      requireBeginWindow(a.exam, JSON.parse(a.settings));
       const result = await agent.call("activate-attempt", { id: a.id });
       if (result.state !== "ACTIVE") {
         const manifest = result.protected

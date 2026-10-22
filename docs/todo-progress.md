@@ -3,6 +3,18 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 C14: instructor selects a finite operator-configured sandbox window
+with automatic repeatable five-minute/no-webcam saved-settings grants. The local
+window workflow now works through shared CLI/web settings and gateway/native
+preflight/Begin, including expiry during setup, old-agent refusal and unchanged
+started deadlines/continuation/history. Full429 app checks106.95s, four actual
+browser/WASM/SSH checks32.5s and full native race/resource suite core298.106s/
+CLI27.430s plus app/WASM/static build/typecheck/vet pass. Initial native bypass
+and unit/HTTP regressions were RED; feature evidence/safety/limitations are in
+exam-definition-management.md. Unified grant records/issuance remain open; TODO
+stays11/38. Guarded csc-sys is BUSY, so no guest/new upload/deployment. The separate
+fresh root-outbound Begin availability choice has now been asked explicitly.
+
 October22 next integrated correctness result: refusal diagnostics no longer call
 legacy List/reconcile. They capture scoped metadata without writes/locks/workers,
 retain error/exit1 and provide actually exercised quoted --read-only commands.
