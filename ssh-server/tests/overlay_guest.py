@@ -146,6 +146,12 @@ def collection_pool_command():
             '-test.timeout=90s']
 
 
+def writer_threads_command():
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestWriterThreadGroupGuest$', '-test.v', '-test.count=5',
+            '-test.timeout=90s']
+
+
 def main():
     assert os.geteuid() == 0
     assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
@@ -209,6 +215,13 @@ def main():
         assert username == 'examq', 'Exact synthetic editor fixture required'
         environment = {**os.environ, 'EXAM_MONITORING_EDITOR_GUEST': '1'}
         result = subprocess.run(monitoring_editor_command(), env=environment, timeout=75)
+        if result.returncode:
+            return result.returncode
+        profiles = ()
+    elif settings.get('profile') == 'writer-threads':
+        assert username == 'examq', 'Exact synthetic writer-thread fixture required'
+        environment = {**os.environ, 'EXAM_WRITER_THREADS_GUEST': '1'}
+        result = subprocess.run(writer_threads_command(), env=environment, timeout=105)
         if result.returncode:
             return result.returncode
         profiles = ()

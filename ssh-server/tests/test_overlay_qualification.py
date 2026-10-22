@@ -145,6 +145,13 @@ class OverlayTests(unittest.TestCase):
             '-test.run=^TestCollectionPoolReadinessGuest$', '-test.v', '-test.count=3',
             '-test.timeout=90s'])
 
+    def test_thread_profile_has_a_manifested_unprivileged_fixture_and_bounded_test(self):
+        self.assertEqual(overlay.FILES['thread-leader-probe'], (None, 0o755))
+        self.assertEqual(guest.writer_threads_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestWriterThreadGroupGuest$', '-test.v', '-test.count=5',
+            '-test.timeout=90s'])
+
 
 if __name__ == '__main__':
     unittest.main()

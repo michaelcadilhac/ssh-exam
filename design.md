@@ -748,6 +748,17 @@ During the restriction interval the root-installed login gate must be the effect
 
 At activation terminate existing login/user-service sessions and scan real/effective/saved/filesystem UIDs for uncontained processes, preserving only the verified gateway SSH transport. Include detached children and pre-existing writable descriptors; fail activation if cleanup cannot be confirmed. Temporarily control lingering and cron/at/local/PAM routes, preserving exact settings and job definitions for restoration; do not delete queued jobs or silently let a scheduler consume them. If a route cannot be suspended reversibly and safely, fail qualification before activation. Inventory root/system scheduler entries, enabled services, additional SSH listeners, privileged groups and host sockets capable of acting as the UID. Root-managed arbitrary code cannot be inferred from client claims: record administrator signoff only after testing all enabled routes. Uncontrollable isolation is a preflight failure.
 
+The October22 local writer correction distinguishes a dead main thread from a
+dead process group: live threads can retain writable descriptors after leader
+Z/X and loss of its executable link. Pin process lifetime and proc identity before
+UID/containment observation, retain the original pidfd through ordinary-session
+termination, and require last-thread exit rather than a zombie-leader shortcut.
+Missing/uncertain live views do not prove no writers. Readiness probes the required
+kernel lifetime/no-signal API; unsupported controls refuse with actionable health
+guidance, never numeric-PID fallback. This does not complete root-monitor scope
+attachment races, C3 retained SSH/admission or C4 namespace/use proof. Exact local
+qualification and limits: docs/writer-thread-groups.md. Nothing is deployed.
+
 The installed root-owned machine checker checks effective SSH configuration for managed accounts (loopback and non-loopback contexts), gate shell/UID/groups, environment/RC/forwarding policy, alternate PAM entry denial, lingering, user crontabs and pending at jobs. The operator matrix must also cover every actual listener/Match branch, system jobs and other enabled services. New readiness guards `intervalAccessHold`, `allSessionChannels`, `alternateServices`, and `schedulerIsolation` default false. Production also requires the new agent capability and interval-access signoff. Missing/corrupt previously initialized administrator state must deny access, never be treated as no attempts.
 
 During installation, identify access routes on the supported server and establish a course-account policy covering them. If a route cannot be controlled, the production readiness check must fail with a concrete diagnostic. Do not accept an undocumented, test-only exception that leaves an alternate exam path open.

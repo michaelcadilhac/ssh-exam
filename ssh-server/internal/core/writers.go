@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -44,83 +43,68 @@ func (e *Engine) inspectWriters(a *Attempt, release bool) error {
 	if e.trustedAdministratorAttempt(a) {
 		return nil
 	} // Explicit trusted administrator sandbox; other exam UIDs require isolation.
-	entries, err := os.ReadDir("/proc")
+	processes, err := pinUIDProcesses(a.UID)
 	if err != nil {
 		return err
 	}
-	for _, entry := range entries {
-		pid, err := strconv.Atoi(entry.Name())
-		if err != nil {
-			continue
-		}
-		base := filepath.Join("/proc", entry.Name())
-		status, err := os.ReadFile(filepath.Join(base, "status"))
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
+	defer closeUIDProcesses(processes)
+	for _, p := range processes {
+		if err := e.inspectWriter(a, release, p); err != nil {
 			return err
 		}
-		if strings.Contains(string(status), "State:\tZ") || strings.Contains(string(status), "State:\tX") {
-			continue
-		}
-		owns := false
-		for _, line := range strings.Split(string(status), "\n") {
-			if strings.HasPrefix(line, "Uid:") {
-				for _, value := range strings.Fields(line)[1:] {
-					if value == strconv.Itoa(a.UID) {
-						owns = true
-					}
-				}
-			}
-		}
-		if !owns {
-			continue
-		}
-		cg, err := os.ReadFile(filepath.Join(base, "cgroup"))
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		contained := false
-		for _, unit := range a.Units {
-			scope := "/exam.slice/" + unit
-			for _, line := range strings.Split(string(cg), "\n") {
-				path := strings.TrimPrefix(line, "0::")
-				if path == scope || strings.HasPrefix(path, scope+"/") {
-					contained = true
-				}
-			}
-		}
-		if contained {
-			continue
-		}
-		_, err = os.Readlink(filepath.Join(base, "exe"))
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		// Root-owned gate/SSH entry stubs bridge PTYs, not the working tree. They cannot invoke
-		// an ordinary shell while Busy denies this UID. No arbitrary executable is exempted.
-		if trustedEntryExecutable(pid) {
-			identity, err := transportIdentity(pid, a.UID)
-			if err == nil && (identity == a.Transport || e.state.Registrations[identity] == a.Username) {
-				continue
-			}
-		}
-		if release && e.idleDeniedSSH(a, pid) {
-			continue
-		}
-		if release {
-			return fmt.Errorf("uncontained process %d for exam UID; account restoration blocked until all writers are quiesced", pid)
-		}
-		return fmt.Errorf("uncontained process %d for exam UID; collection refused until all writers are quiesced", pid)
 	}
 	return nil
+}
+
+func (e *Engine) inspectWriter(a *Attempt, release bool, p *uidProcess) error {
+	pid := p.pid
+	cg, readErr := p.read("cgroup", 131072)
+	live, err := p.live()
+	if err != nil {
+		return err
+	}
+	if !live {
+		return nil
+	}
+	if readErr != nil {
+		return fmt.Errorf("live process %d containment unavailable; writer isolation unverified: %w", pid, readErr)
+	}
+	contained := false
+	for _, unit := range a.Units {
+		scope := "/exam.slice/" + unit
+		for _, line := range strings.Split(string(cg), "\n") {
+			path := strings.TrimPrefix(line, "0::")
+			if path == scope || strings.HasPrefix(path, scope+"/") {
+				contained = true
+			}
+		}
+	}
+	if contained {
+		return nil
+	}
+	// Root-owned gate/SSH entry stubs bridge PTYs, not the working tree. They cannot invoke
+	// an ordinary shell while Busy denies this UID. No arbitrary executable is exempted.
+	exempt := false
+	if trustedEntryExecutable(pid) {
+		identity, err := transportIdentity(pid, a.UID)
+		if err == nil && (identity == a.Transport || e.state.Registrations[identity] == a.Username) {
+			exempt = true
+		}
+	}
+	if release && e.idleDeniedSSH(a, pid) {
+		exempt = true
+	}
+	live, err = p.live()
+	if err != nil {
+		return err
+	}
+	if !live || exempt {
+		return nil
+	}
+	if release {
+		return fmt.Errorf("uncontained process %d for exam UID; account restoration blocked until all writers are quiesced", pid)
+	}
+	return fmt.Errorf("uncontained process %d for exam UID; collection refused until all writers are quiesced", pid)
 }
 func (e *Engine) terminateWriters(a *Attempt) error {
 	for _, unit := range a.Units {
@@ -193,41 +177,4 @@ func emptyRecordedScope(base string) (bool, error) {
 		}
 	}
 	return false, errors.New("cgroup population status unavailable")
-}
-
-// Include real/effective/saved/filesystem UIDs, not just pgrep's effective UID.
-// A failed /proc enumeration is an isolation failure, never 'no processes'.
-func uidProcesses(uid int) ([]int, error) {
-	entries, err := os.ReadDir("/proc")
-	if err != nil {
-		return nil, err
-	}
-	var pids []int
-	for _, entry := range entries {
-		pid, err := strconv.Atoi(entry.Name())
-		if err != nil {
-			continue
-		}
-		status, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "status"))
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		if strings.Contains(string(status), "State:\tZ") || strings.Contains(string(status), "State:\tX") {
-			continue
-		}
-		for _, line := range strings.Split(string(status), "\n") {
-			if strings.HasPrefix(line, "Uid:") {
-				for _, v := range strings.Fields(line)[1:] {
-					if v == strconv.Itoa(uid) {
-						pids = append(pids, pid)
-						break
-					}
-				}
-			}
-		}
-	}
-	return pids, nil
 }

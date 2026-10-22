@@ -23,6 +23,18 @@ H2a as the completed reliability fix or increase a timeout to pass qualification
 Keep the existing drained-only temporary-agent consolidation and rollback gates.
 See monitoring-liveness-plan.md; nothing is deployed or migrated here.
 
+October22's local writer correction adds no state/schema migration but DOES
+require working process pidfds, poll and pidfd_send_signal (combined Linux5.3+
+API), including through the deployed agent security policy. Future separately
+authorized drained rollout must pass the new health probe and actual surviving-
+thread/ordinary-SSH Begin/contained collection/restoration qualification on the
+chosen binary. Never loosen syscall/account policy or fall back to numeric PID
+signals to pass readiness. A downgrade loses zombie-leader/missing-executable and
+pinned-signal protections; do not treat it as an equivalent safety rollback.
+Preserve state, protected work and holds; use drained compatible binaries or keep
+admission closed for repair. This does not authorize deployment, kernel changes
+or temporary-agent consolidation; see writer-thread-groups.md.
+
 H4a's unused input codec changes no live bridge or compatibility claim. Never
 activate framed input on one side of a raw-input channel or infer support by
 sniffing bytes. Future mode/epoch negotiation must be authenticated and require

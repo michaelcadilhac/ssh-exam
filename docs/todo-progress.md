@@ -8,17 +8,22 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
-Current checkpoint: C1gc2 complete private monitoring export is implemented/tested
-locally. Final414 app checks/79files (85.99s), uncached native race/resource/
-namespace/compiler/default-size (core173.882s/CLI6.637s), static build/vet/typecheck/
-build and all113 combined browser checks (12.8m) pass. All140 frozen source/runtime
-hashes match before/after; nine generated screenshots are restored to their
-verified pre-run baseline. The local monitoring workflow/isolated-purge TODO is
-now checked:11 of38 top-level items implemented/tested locally,27 open. This does
-not mean deployed, complete wider management, C3 retained mode or whole-host
-capacity certification. Exact evidence: monitoring-export-qualification.md.
-Independent template-system-manager qualification is tracked separately below.
-No missing command, production operation, push or deployment occurred.
+Current checkpoint: the surviving-thread writer correctness fix is implemented/
+tested locally. Old zombie-leader/missing-executable shortcuts could miss a live
+writer; pinned kernel lifetime/proc observations and pinned signals now refuse
+that unsafe result. All414 app/79files86.86s, full uncached native race/resource/
+namespace/compiler/default-size core175.114s/CLI8.024s, static build/vet, ten
+focused native/kernel-denial/host-refusal repeats and33 Python checks pass. Exact
+candidate guest passes five writer-group repeats,40 SSH/PAM/Begin/protection/
+hold/watchdog/restart assertions,11 real worker-death/healthy-SSH assertions and
+three actual health/kernel-property cycles; every host/base preservation check
+passes. All140 web source/runtime hashes remain the prior113-browser/12.8m
+artifact; no web rebuild is claimed. See writer-thread-groups.md.
+Count remains11 of38 top-level items implemented/tested locally,27 open; the
+complete monitoring export milestone is in monitoring-export-qualification.md.
+This is not deployment, C3/root admission/C4 completion, the production incident
+cause or whole-host capacity certification. No missing command, installed-host
+operation, push, deployment or temporary-agent consolidation occurred.
 
 C2a5's final guest-only increment now passes actual template CLI validate/install/
 show/verify/list/jobs/clean against the real system manager and bounded supplied
@@ -146,6 +151,50 @@ continuing usage inventory: UID writer enumerators skip a zombie leader, althoug
 pthread_exit can leave another thread running and leader /proc views may be
 incomplete. Reproduce with a bounded owned synthetic process before calling it a
 confirmed bug; do not signal unrelated UIDs or assume this caused production.
+C4b0 is local commitc32b74c. The surviving-thread hypothesis now has an owned
+unprivileged C fixture and real pidfd/file-progress regression. It never calls
+UID-wide termination or touches real state/accounts; only its exact child is
+stopped on cleanup. Run it RED before changing the writer enumerator. Primary
+kernel/userspace contracts and required containment/SSH/freeze caveats are in
+writer-thread-groups.md. Investigation remains open; no production cause/remedy
+or C11 behavior is assumed.
+The owned dead-leader regression is RED on the old code while its process pidfd
+is live and file grows. Candidate pinned UID/proc/group handles now fix that
+skip and the missing-executable exemption; ordinary termination uses its original
+kernel handle, never a late numeric PID lookup. Ten focused race repeats and
+actual child-only syscall-denial readiness regressions pass3.989s;33 Python checks
+pass. The first guest fixture permission failure is not counted; private input
+permissions remain strict and only a new guest test directory receives the fixture.
+Corrected five-repeat guest and40 real SSH/PAM/Begin/collection/hold/restart checks
+pass with host/base preservation. Final readiness-probe candidate additionally
+passes five writer-group repetitions at /var/tmp/ssh-exam-overlay-zh1yrwdx;
+enforcement/healthy-worker isolation and final full native compatibility remain
+pending. All414 app/79files pass86.86s, static build/vet pass, all140 web hashes
+remain the exact113-browser/12.8m artifact. Limits/remaining root-monitor/C3/C4
+gates and exact native artifact hashes are in writer-thread-groups.md. No new
+policy, root mode, completed-TODO, deployment or initiating production cause claim.
+Final process-lifetime candidate full native race/resource/namespace/compiler/
+default-size passes core175.114s/CLI8.024s; all414 app/79files86.86s and33 Python
+checks pass. Five exact-artifact writer guest repetitions and40 full actual
+SSH/PAM/Begin/protection/hold/watchdog/restart/restoration assertions pass with
+host/base preservation at /var/tmp/ssh-exam-overlay-zh1yrwdx and
+/var/tmp/ssh-exam-overlay-wdgvovdn. Same-candidate healthy peer/real worker-death
+and actual CLI health property-cycle qualification is next; no production change.
+The same final artifact now also passes all11 real worker-death/healthy privileged
+SSH/PTY/admission assertions:23 fresh peer renewals/max0.0833635s, unchanged
+owners/generation/original/current deadlines, all40MiB source bytes protected by
+explicit retry, account restoration only at unchanged deadlines. Host/base
+preservation passes at /var/tmp/ssh-exam-overlay-dbi52qp6. Actual root health/
+kernel property-cycle checks are the final pending narrow gate before committing
+this writer correctness milestone; the critical C3/C10/C11 choices are not inferred.
+Final actual root CLI health/kernel no-swap refusal/repair cycles pass three
+repetitions3.87/2.92/2.90s with unchanged authority and host/base at
+/var/tmp/ssh-exam-overlay-zke40le5. Writer fix is implemented/tested locally, no
+broader TODO completion or deployment;11/38 remain checked. Next independent
+administrator CLI parity investigation/acceptance is in administrator-cli-plan.md;
+the old CLI fails the new help/discovery regression. That next test is a deliberate
+uncommitted RED, not a missing executable or a failed writer qualification. Do not
+commit it as completed work before implementing/qualifying the actual workflow.
 
 Q5 investigation afterb8587b9: basic/SQPOLL io_uring is demonstrably
 available to the synthetic UID, so test deferred pipe-read/linked-file-write and

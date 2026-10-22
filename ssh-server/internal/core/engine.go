@@ -44,6 +44,9 @@ type Request struct {
 
 func (e *Engine) productionReady() (bool, []string) {
 	missing := []string{}
+	if err := writerProcessLifetimeReady(); err != nil {
+		missing = append(missing, err.Error())
+	}
 	missing = append(missing, collectionStorageIssues(e.Config)...)
 	if err := collectionResourceBounds(); err != nil {
 		missing = append(missing, err.Error())
@@ -562,17 +565,19 @@ func (e *Engine) quiesceOrdinary(a *Attempt) error { // Administrator's PAM/job 
 	}
 	// Preserve only SSH transport/session ancestors identified at registration. The verified guard suite must
 	// demonstrate that configured PAM does not place the gateway transport in the killed user slice.
-	pids, err := uidProcesses(a.UID)
+	processes, err := pinUIDProcesses(a.UID)
 	if err != nil {
 		return err
 	}
+	defer closeUIDProcesses(processes)
 	trusted := func(pid int) bool {
 		identity, err := transportIdentity(pid, a.UID)
 		return err == nil && identity == a.Transport && trustedEntryExecutable(pid)
 	}
 	var entries []int
 	seen := map[int]bool{}
-	for _, pid := range pids {
+	for _, p := range processes {
+		pid := p.pid
 		if trusted(pid) {
 			_, monitor, err := transportInfo(pid, a.UID)
 			if err != nil {
@@ -594,23 +599,16 @@ func (e *Engine) quiesceOrdinary(a *Attempt) error { // Administrator's PAM/job 
 	if err := terminateLoggedInUser(a.UID); err != nil {
 		return fmt.Errorf("terminate existing login/user-service sessions: %w", err)
 	}
-	for _, pid := range pids {
-		if trusted(pid) {
+	for _, p := range processes {
+		if trusted(p.pid) {
 			continue
 		}
-		// Go uses pidfds on supported Linux; avoid signalling a recycled PID.
-		process, err := os.FindProcess(pid)
-		if err != nil {
-			return err
-		}
-		err = process.Kill()
-		process.Release()
-		if err != nil && !errors.Is(err, os.ErrProcessDone) && !errors.Is(err, syscall.ESRCH) {
+		if err := p.kill(a.UID); err != nil {
 			return err
 		}
 	}
 	for i := 0; i < 50; i++ {
-		pids, err = uidProcesses(a.UID)
+		pids, err := uidProcesses(a.UID)
 		if err != nil {
 			return err
 		}

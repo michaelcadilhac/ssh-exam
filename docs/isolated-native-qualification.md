@@ -230,3 +230,20 @@ Host/base preservation passes; detailed failed controls, limitations and private
 evidence paths are in native-async-io-investigation.md. This is neither a general
 root stop/admission barrier nor actual retained-SSH qualification. No kernel,
 syscall policy, host installation, account or record is changed.
+
+## Surviving-thread writer regression (October22)
+
+The exact manifest now also includes thread-leader-probe, a static unprivileged
+pthread fixture with a15s self-expiry. The writer-threads profile repeats the
+exact guarded test five times: root-private inputs remain private; only a new
+root-owned guest test directory receives the executable. It proves leader Z
+with live writers, valid recorded cgroup containment/freeze, outside-worker
+collection/restoration refusal, exact pinned termination despite a deliberately
+different owned cached PID, resumed contained peer and unchanged deadlines.
+The first input-permission fixture failure is retained, not qualified. Final
+five-repeat profile,40 full actual SSH/PAM/Begin/protection/hold/watchdog/restart
+assertions and11 real worker-death/healthy-PTY/admission/renewal assertions pass
+with host/base preservation. Exact hashes, evidence paths, bounds and limitations:
+writer-thread-groups.md. This fixes a narrow UID/writer correctness gap; it does
+not complete retained SSH, all-root admission, cross-namespace cleanup or
+temporary-agent consolidation, and is not a production diagnosis/deployment.

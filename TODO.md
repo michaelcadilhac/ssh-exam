@@ -210,6 +210,17 @@ full privileged qualification or deployment authorization.
   See docs/native-async-io-investigation.md for exact evidence, unchanged
   acceptance and the separate synthetic job-stop experiment. The critical TODO
   remains open and no initiating production cause is claimed.
+  October22 writer regression also confirms that a zombie main thread can hide
+  a still-writing worker from the old UID checks. The local candidate now pins
+  group lifetime/proc observations through signals and refuses missing live views;
+  actual thread/cgroup and ordinary SSH-to-Begin regression passes locally.
+  Final local qualification passes414 app checks, full native race/resource/build,
+  five actual writer guest repeats,40 SSH/PAM/Begin/hold/restart assertions,11 real
+  collector-death/healthy-SSH assertions and three actual CLI health cycles, all
+  with host/base preservation. See docs/writer-thread-groups.md. This is not the
+  production incident cause or completed retained-SSH/root-admission work. Add the
+  documented dead-leader terminal case to C11 stop-assisted qualification; do not
+  infer it from earlier Bash/Nano tests or enable a new signal policy.
 
 ## Firm design policy: examctl is the complete management interface
 

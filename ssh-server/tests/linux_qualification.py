@@ -341,12 +341,39 @@ if temporary:
 check_jobs()
 # Old authenticated connection and detached writer precede the activation barrier.
 old=Connection(); current=Connection()
+thread_fixture=None; thread_handle=None
 try:
     writer='/tmp/preexisting-writer'
     p=old.raw("nohup /bin/sh -c 'while :; do echo writing >> "+writer+"; sleep .1; done' >/dev/null 2>&1 </dev/null & echo STARTED")
     assert p.returncode==0 and 'STARTED' in p.stdout,p
     wait_for(lambda:pathlib.Path(writer).exists(),5)
+    # Actual ordinary SSH -> Begin barrier regression, only for the guarded
+    # overlay's manifested synthetic fixture. Never select a process by name.
+    probe=pathlib.Path('/run/ssh-exam-qualification-input/thread-leader-probe')
+    if probe.is_file():
+        thread_fixture=tempfile.TemporaryDirectory(prefix='qualification-thread-route-',dir='/var/tmp')
+        private=pathlib.Path(thread_fixture.name);private.chmod(0o755)
+        executable=private/'probe';data=probe.read_bytes();assert 0<len(data)<=2*1024*1024
+        executable.write_bytes(data);executable.chmod(0o755)
+        writable=private/'work';writable.mkdir(mode=0o700);os.chown(writable,account.pw_uid,account.pw_gid)
+        report=writable/'identity';thread_output=writable/'writes'
+        p=old.raw('nohup '+shlex.quote(str(executable))+' '+shlex.quote(str(thread_output))+' >'+shlex.quote(str(report))+' 2>/dev/null </dev/null & printf THREAD_STARTED')
+        assert p.returncode==0 and p.stdout=='THREAD_STARTED',p
+        wait_for(lambda:report.is_file() and len(report.read_text().split())==2,5,interval=.01)
+        thread_pid,thread_tid=map(int,report.read_text().split());assert thread_pid>1 and thread_tid>1 and thread_pid!=thread_tid
+        thread_handle=os.pidfd_open(thread_pid)
+        process=pathlib.Path('/proc')/str(thread_pid)
+        assert os.path.samefile(process/'task'/str(thread_tid)/'exe',executable), 'Exact surviving-thread fixture inode required'
+        assert str(account.pw_uid) in next(line.split()[1:] for line in (process/'status').read_text().splitlines() if line.startswith('Uid:'))
+        wait_for(lambda:'State:\tZ' in (process/'status').read_text(),3,interval=.01)
+        poll=select.poll();poll.register(thread_handle,select.POLLIN)
+        assert not poll.poll(0),'Synthetic thread group unexpectedly exited'
+        size=thread_output.stat().st_size;time.sleep(.04);assert thread_output.stat().st_size>size
     id=current.start();deadline=info(id)['deadline'];
+    if thread_handle is not None:
+        wait_for(lambda:bool(poll.poll(0)),3,interval=.01)
+        size=thread_output.stat().st_size;time.sleep(.05);assert thread_output.stat().st_size==size
+        ok('actual ordinary SSH Begin barrier terminates live worker after main-thread exit, preserving approved transport')
     if temporary:denied(run(['su',a.username,'-c','echo BYPASS']),'temporary PAM restriction blocks alternate su')
     size=pathlib.Path(writer).stat().st_size;time.sleep(.4)
     assert pathlib.Path(writer).stat().st_size==size
@@ -381,7 +408,13 @@ try:
     p=old.raw('printf ORDINARY-RESTORED');assert p.returncode==0 and 'ORDINARY-RESTORED' in p.stdout,p
     ok('ordinary access restores only after original deadline and protected collection')
     if temporary:normal_access('exact account baseline and SSH/SFTP restored with gate daemon stopped')
-finally:old.close();current.close()
+finally:
+    old.close();current.close()
+    if thread_handle is not None:
+        try:signal.pidfd_send_signal(thread_handle,signal.SIGKILL)
+        except ProcessLookupError:pass
+        finally:os.close(thread_handle)
+    if thread_fixture is not None:thread_fixture.cleanup()
 
 # Class watchdog must finish locally while gate service and all clients are absent.
 current=Connection()
