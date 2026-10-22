@@ -94,6 +94,11 @@ full privileged qualification or deployment authorization.
   technical hold/thaw. Native evidence/receipt recovery, alternate monitoring,
   input epochs and C3 verified containment remain open; this item stays unchecked.
   The initiating production fault remains unproven. No fix is deployed.
+  H2b/H3 now also has an internal, unwired signed-evidence/age verifier and strict
+  shared contract tested locally (364 app, fresh full native race/resource checks,
+  static/build/typecheck and bounded signed-metadata fuzz); it cannot renew or thaw anything.
+  Root epochs, complete evidence/coverage and durable receipt/commit plus C3
+  containment remain prerequisites. See docs/monitoring-evidence-contract.md.
   Production remains unchanged; deployment is not authorized. Prioritize this
   correctness work over noncritical feature expansion when development resumes.
 

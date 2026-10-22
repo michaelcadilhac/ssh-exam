@@ -89,6 +89,14 @@ never conceal that fact. No production behavior has changed.
 
 ### Remaining protocol
 
+H2b/H3 internal verification groundwork is now under local qualification, still
+unwired: strict cross-language scoped metadata and native signed evidence/age
+validation. Native request-monotonic time plus bounded gateway component age
+charges full transit delay, rather than trusting remote wall-clock expiry or
+minting a new window on reply/retry. It grants no work and does not implement the
+missing issuer, coverage ledger, epochs, durable commit or hold/thaw. See
+[monitoring-evidence-contract.md](monitoring-evidence-contract.md).
+
 1. **Browser contact:** acknowledge a valid current page's monitoring message
    promptly without waiting for SSH/collection/management work. This acknowledgement
    proves receipt only; it must never enable input, thaw workloads or extend a

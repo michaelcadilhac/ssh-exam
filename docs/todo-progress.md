@@ -8,6 +8,20 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Critical continuation after7930f84 (H2a contact isolation) and9b26217 (separately
+qualified preserved C2a4): H2b/H3 signed-evidence candidate is internal/unwired.
+Strict Go/TypeScript scope, required/null/duplicate/unknown fields, bounded signed
+metadata and challenge/sequence/monotonic evidence-age/current deadline arithmetic
+do not start a new allowance on delayed receipt/retry. Focused native race and
+three shared-contract tests pass; short two-worker fuzz passes376 executions.
+No lease, callback, live route, thaw, capability or configuration uses it. Full
+app repeat passes364 tests/69 files (79.49s); full native race/resource/namespace/
+compiler repeat passes core169.7s/CLI6.5s. Static build/vet, typecheck/build pass;
+browser assets retain the H2a/C2a4 run's hashes, with no live client import. Owner epoch
+assignment, coverage/receipt ledger, alternate exchange and C3 verified input/
+writer containment remain prerequisites; no automatic recovery is enabled. See
+monitoring-evidence-contract.md. Continue beyond this internal checkpoint.
+
 Critical-priority continuation: the instructor approved automatic recovery of
 positively verified infrastructure-only technical holds, retaining current
 recovery requirements for actual policy violations/authentication loss. H1/H2 in

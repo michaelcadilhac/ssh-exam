@@ -1974,6 +1974,16 @@ resource checks. Native expiry during a
 stalled renewal, alternate evidence/receipts and C3 verified hold/thaw remain open;
 this does not complete the critical TODO or change production.
 
+H2b/H3 has an internal, unwired strict signed evidence/age verifier and matching
+TypeScript contract. Purpose/audience/challenge, every native owner/epoch field,
+sequence, complete evidence and native request/prior-authority/deadline bounds
+must agree. Candidate cutoff is clipped to native deadline and request issue plus
+15 seconds minus gateway component age, charging full transit time without
+cross-host wall-clock assumptions. It returns verification facts, never a lease
+or thaw. Root epoch/coverage/receipt/journal integration and C3 barriers remain
+mandatory and unimplemented. See docs/monitoring-evidence-contract.md; no runtime
+path, capability, configuration, management operation or production change uses it.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.
