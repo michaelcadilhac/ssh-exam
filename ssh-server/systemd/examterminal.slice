@@ -1,0 +1,6 @@
+[Unit]
+Description=Bounded per-attempt terminal owners outside agent and student workload containment
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes

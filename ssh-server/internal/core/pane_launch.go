@@ -9,11 +9,24 @@ import (
 // Actual Engine.local scope caller. Only a trusted bootstrap can start outside
 // state; legacy host-service launches still use the serialized path. All IPC,
 // manager startup and failure cleanup occur without owning shared state.
-func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit string, identify func(Account) (string, error), launch *exec.Cmd, bridge func() error) (started bool, err error) {
+func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit string, identify func(Account) (string, error), launch *exec.Cmd, bridge func(*paneBootstrapPeer) error) (started bool, err error) {
 	if !e.paneLaunchMu.TryLock() {
 		return false, errors.New("terminal startup is busy; retry opening this pane after checks settle; this is not a monitoring violation; inspect examctl panes list ATTEMPT")
 	}
 	defer e.paneLaunchMu.Unlock()
+	defer func() {
+		if p.supervisorControl != nil {
+			verdict := byte(2)
+			if err == nil {
+				verdict = 1
+			}
+			// Reply ownership only, NOT an execution permit. Exec may already
+			// have committed: a lost notice must not trigger destructive cleanup.
+			_, _ = p.supervisorControl.Write([]byte{verdict})
+			_ = p.supervisorControl.Close()
+			p.supervisorControl = nil
+		}
+	}()
 	control, child, err := paneBootstrapSocket()
 	if err != nil {
 		return false, errPaneBootstrap
@@ -86,7 +99,7 @@ func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit
 		return started, errPaneBootstrap
 	}
 	defer peer.process.close()
-	if err := bridge(); err != nil {
+	if err := bridge(peer); err != nil {
 		return true, err
 	}
 	err = e.releaseClosedPane(p, name, unit, proof, identify, peer.current, func() error {

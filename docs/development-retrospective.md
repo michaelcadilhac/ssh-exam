@@ -52,3 +52,12 @@ relaxing validation; the actual WS oracle passed, and fresh broad qualification
 was required. AGENTS.md now makes the sequencing explicit: inspect focused
 completion before launching broad suites. A failed setup is never proof of the
 behavior under test, and a passing earlier artifact never qualifies a later one.
+
+C12 follow-up: review found the first timed-recorder fallback would transiently
+load global state in each per-attempt supervisor. It was removed before broad
+qualification. The implementation boundary was narrowed to preflight practice
+ownership; timed recording stays unchanged until coordinator-owned event/owner/
+restart integration is ready. This is an explicitly incomplete C12, not a new
+claim that the critical fix works. Tool churn also exposed duplicated cwd prefixes
+and out-of-order patch hunks. AGENTS.md now requires current plain-text context,
+consistent paths and ordered per-target patches instead of repeated guessed fixes.

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -16,17 +17,18 @@ type NativePaneQuery struct {
 	Limit                int
 }
 type NativePane struct {
-	ID                string   `json:"id"`
-	Revision          string   `json:"revision,omitempty"`
-	RecordedKinds     []string `json:"recorded_kinds"`
-	Incarnations      []string `json:"incarnations"`
-	PendingAdmissions int      `json:"pending_admissions"`
-	PendingUnexpired  int      `json:"pending_unexpired_at_read"`
-	ClosedStartups    int      `json:"closed_startups"`
-	CancelledStartups int      `json:"cancelled_startups"`
-	StartupExpires    int64    `json:"earliest_startup_expiry,omitempty"`
-	Present           bool     `json:"recorded_present"`
-	Unsafe            bool     `json:"unsafe_metadata"`
+	ID                  string   `json:"id"`
+	Revision            string   `json:"revision,omitempty"`
+	RecordedKinds       []string `json:"recorded_kinds"`
+	Incarnations        []string `json:"incarnations"`
+	RecordedSupervisors []string `json:"recorded_supervisors"`
+	PendingAdmissions   int      `json:"pending_admissions"`
+	PendingUnexpired    int      `json:"pending_unexpired_at_read"`
+	ClosedStartups      int      `json:"closed_startups"`
+	CancelledStartups   int      `json:"cancelled_startups"`
+	StartupExpires      int64    `json:"earliest_startup_expiry,omitempty"`
+	Present             bool     `json:"recorded_present"`
+	Unsafe              bool     `json:"unsafe_metadata"`
 }
 type NativePanesSnapshot struct {
 	Version           int          `json:"version"`
@@ -101,7 +103,7 @@ func paneInstanceReady(state State, a *Attempt, unit, currentBoot string) bool {
 // Fingerprint ONLY scoped nonsecret control facts, never generic attempt JSON
 // (which contains handoff private keys). Source identity fences cloned backups.
 func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSource, at int64) NativePane {
-	v := NativePane{ID: pane, RecordedKinds: []string{}, Incarnations: []string{}}
+	v := NativePane{ID: pane, RecordedKinds: []string{}, Incarnations: []string{}, RecordedSupervisors: []string{}}
 	units := []string{}
 	proofs := map[string]PaneInstance{}
 	for _, unit := range a.Units {
@@ -112,6 +114,16 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 			units = append(units, unit)
 			proof := state.PaneInstances[unit]
 			proofs[unit] = proof
+			if proof.Supervisor != "" {
+				prefix := "exam-terminal-" + a.ID + "-"
+				digest := strings.TrimSuffix(strings.TrimPrefix(proof.Supervisor, prefix), ".scope")
+				_, decodeErr := hex.DecodeString(digest)
+				if !strings.HasPrefix(proof.Supervisor, prefix) || !strings.HasSuffix(proof.Supervisor, ".scope") || len(digest) != 32 || decodeErr != nil || strings.ToLower(digest) != digest {
+					v.Unsafe = true
+				} else {
+					v.RecordedSupervisors = append(v.RecordedSupervisors, proof.Supervisor)
+				}
+			}
 			if paneInstanceClosed(state, a, unit, source.Boot) {
 				v.ClosedStartups++
 				if proof.Cancelled {
@@ -127,6 +139,7 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 	}
 	sort.Strings(v.RecordedKinds)
 	sort.Strings(v.Incarnations)
+	sort.Strings(v.RecordedSupervisors)
 	sort.Strings(units)
 	type pendingFact struct {
 		Hash                                       string

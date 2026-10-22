@@ -27,6 +27,9 @@
   Use docs/todo-current-checkpoint.md to resume, not the entire historical log.
 - Resolve source paths with rg --files before opening them; do not guess filenames
   or expand unchecked shell globs. Keep history/source reads scoped and bounded.
+- Read source as plain text, not a JSON-escaped wrapper. Keep paths consistent
+  with each command's cwd and patch hunks in file order, one target block per
+  file. After a patch fails, inspect current context before retrying it.
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.

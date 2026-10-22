@@ -23,7 +23,7 @@ import (
 func TestNativePaneHelpAndRefusalsAreDiscoverableBeforeRootOrConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "panes"}, {"panes", "help"}, {"--config", "/missing", "panes", "--help"}} {
 		out, code := cliProcess(t, args...)
-		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:", "closed_startups", "cancelled_startups", "earliest_startup_expiry"} {
+		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:", "closed_startups", "cancelled_startups", "earliest_startup_expiry", "recorded_supervisors", "NOT proof they are alive"} {
 			if code != 0 || !strings.Contains(out, want) {
 				t.Fatal("pane workflow missing", want, code, out)
 			}

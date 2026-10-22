@@ -11,6 +11,24 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The C12a candidate changes ordinary PRACTICE pane lifetime only. Future separately
+authorized drained installation needs examterminal.slice and matching loaded
+exam-agent/bootstrap roles. Qualify actual root inherited FD/SCM_CREDENTIALS/
+pidfd/executable/scope/resource agreement under agent hardening, supervisor and
+coordinator whole-cgroup death, ready/pending close/expiry, native Tick and real
+SSH/PAM/private filesystem flows with a NEW exact artifact. Keep the current
+timed recording path; do not enable retained lockout/recovery from this increment.
+Bounded coordinator-owned timed event/owner/restart integration remains necessary;
+never restore a whole metadata Engine in each supervisor to bypass it.
+
+Drain inventory/consolidation must also include any independent practice owner
+that may still hold a needed socket/PTY, not merely the three agent service
+cgroups. Do not stop it while buffers are needed. After verified full drain and
+settled pending/ready records, preserve lifetime metadata and supported cleanup;
+do not downgrade an old writer over new pane/source/receipt fields. No unit
+installation, state backfill, migration, production restart or consolidation is
+executed here. The detailed three-agent proposal below is unchanged.
+
 The local closed-pane-startup increment adds bounded closed/cancelled observations
 to pane_instances and a fixed inherited-descriptor bootstrap role in exam-agent.
 Before future separately authorized installation, qualify that exact loaded binary

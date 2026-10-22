@@ -16,6 +16,12 @@ var errGateDescriptors = errors.New("invalid local descriptor frame; use matchin
 type gateDescriptors struct{ files []*os.File }
 
 func receiveGateDescriptors(control []byte, flags int) (owned *gateDescriptors, resultErr error) {
+	return receiveBoundedDescriptors(control, flags, 1)
+}
+
+// The public gate still accepts at most one descriptor. The private, verified
+// root terminal-supervisor handoff needs five exact fixed-role descriptors.
+func receiveBoundedDescriptors(control []byte, flags, limit int) (owned *gateDescriptors, resultErr error) {
 	owned = &gateDescriptors{}
 	defer func() {
 		if resultErr != nil {
@@ -54,7 +60,7 @@ func receiveGateDescriptors(control []byte, flags int) (owned *gateDescriptors, 
 			invalid = true
 		}
 	}
-	if invalid || len(owned.files) > 1 {
+	if invalid || limit < 0 || limit > 5 || len(owned.files) > limit {
 		return owned, errGateDescriptors
 	}
 	return owned, nil

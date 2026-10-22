@@ -32,6 +32,10 @@ closed_startups counts trusted bootstraps waiting behind a CLOSED exec gate;
 cancelled_startups have lost that gate and may still need kernel cleanup.
 earliest_startup_expiry is their original bound, never a renewed lease. A fresh
 reviewed close cancels the exact startup; do not wait indefinitely or clear state.
+recorded_supervisors names independent attempt-level terminal owners as captured
+metadata, NOT proof they are alive, current authenticated ownership or retention
+through a lockout. Supported close still targets just this pane; idle supervisors
+exit after their panes/handshakes settle. Never kill the shared agent to close one.
 Legacy/startup-unverified records remain inspectable with unsafe_metadata=true
 and no close revision. Preserve them and use matching native versions/guards in
 the separately authorized drained maintenance workflow; never clear tracking,

@@ -1,5 +1,13 @@
 # Native pane management (implemented/tested locally; not deployed)
 
+C12a local practice-owner follow-up adds captured `recorded_supervisors` to the
+same bounded CLI list/show and revision fingerprint. Help distinguishes this from
+actual liveness, authentication, monitoring or retained-lockout support. Existing
+close still targets only its exact pane; idle owners expire after their panes/
+bounded handshakes settle. Timed panes retain coordinator recording and no C3
+mode is enabled. See terminal-supervision.md for scope/state review and current
+qualification; no old guest receipt qualifies the new owner role.
+
 October22 closed-startup follow-up: ordinary scope launch waits now run behind
 an inherited closed exec gate outside shared state. Read-only `panes list/show`
 distinguishes `closed_startups`, `cancelled_startups` and the original

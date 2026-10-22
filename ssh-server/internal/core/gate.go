@@ -342,7 +342,16 @@ func (e *Engine) local(c *net.UnixConn) {
 	identify := func(currentAccount Account) (string, error) {
 		return e.paneIdentity(int(cred.Pid), currentAccount.UID)
 	}
-	bridge := func() error {
+	defer func() {
+		if pending.supervisor != nil {
+			pending.supervisor.process.close()
+		}
+	}()
+	bridge := func(process *paneBootstrapPeer) error {
+		if process != nil && pending.capability.Purpose == "practice" {
+			_, err := e.handoffTerminal(c, original, master, pending, unit, process.process)
+			return err
+		}
 		if pending.capability.Purpose == "practice" || !pending.authority.BrowserSSH {
 			bridgePTY(original, master, done)
 			return nil
@@ -366,7 +375,7 @@ func (e *Engine) local(c *net.UnixConn) {
 			}
 			// Forward startup diagnostics as well as the eventual shell. A failed
 			// sandbox may exit before its scope becomes active.
-			if err := bridge(); err != nil {
+			if err := bridge(nil); err != nil {
 				master.Close()
 				syscall.Kill(-launch.Process.Pid, syscall.SIGKILL)
 				launch.Wait()
@@ -411,6 +420,10 @@ func (e *Engine) local(c *net.UnixConn) {
 		return
 	}
 	c.SetDeadline(time.Time{})
+	if pending.supervisor != nil {
+		e.waitSupervisedPane(pending, unit, c, func() { _ = launch.Wait() })
+		return
+	} // Its original socket/PTYs and exact cleanup outlive this coordinator.
 	launch.Wait()
 	// A shell may exit while detached children remain. Never drop their scope from
 	// persistent tracking until systemd confirms the entire cgroup is gone.

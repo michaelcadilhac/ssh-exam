@@ -120,6 +120,15 @@ fresh and uncached. This does not bound all readiness IO or change ongoing
 monitoring; see docs/native-readiness-accounts.md for actual CLI/local evidence
 and pending new exact-artifact guest qualification. No deployment is authorized.
 
+The C12a local candidate independently owns ordinary preflight practice PTYs in
+one bounded supervisor per user/attempt, outside coordinator and student kill
+domains. Kernel sender/loaded-role/scope agreement and original current-authority
+closed exec release precede work; no global metadata/config/credentials enter the
+supervisor. Actual Tick/CLI retain bounded exact-scope cleanup. Timed panes keep
+the original coordinator recording path: timed owner/event/restart integration,
+input epochs and C3 freeze remain open. No retained mode or automatic recovery is
+enabled. See docs/terminal-supervision.md for scope review, tests and root gates.
+
 ## 2. Product context and defaults
 
 The local new-preflight workflow also isolates readiness/home copying from shared

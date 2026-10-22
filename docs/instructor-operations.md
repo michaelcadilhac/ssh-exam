@@ -181,7 +181,16 @@ the displayed startup expiry is not a renewed lease. The supported reviewed clos
 cancels that exact incarnation, as does student Close terminal. Never edit state,
 clear tracking or restart services to force it. Existing deadlines, holds and
 protected work remain. Root-guest qualification is pending on the BUSY host guard;
-this does not preserve active editors through coordinator failure/lockout yet.
+this does not preserve timed-exam editors through coordinator failure/lockout yet.
+
+The subsequent C12a local candidate preserves ordinary **Practice terminal**
+sockets/PTYs through coordinator death, with one bounded independent owner per
+user/attempt. `panes show` adds `recorded_supervisors`: captured metadata, not live
+monitoring/authentication or lockout-retention proof. Existing targeted close and
+preflight expiry/Begin cleanup remain. Do not restart or kill owners to clear a
+refusal; that can lose buffers. Timed recording/supervision remains on the old
+path and the full critical fix is unfinished. See terminal-supervision.md; no
+new role/slice has been installed and root qualification remains guarded.
 
 Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
 view of exact agent/name/hash metadata and first/latest attestation timestamps.

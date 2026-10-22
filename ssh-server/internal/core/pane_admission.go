@@ -12,9 +12,12 @@ import (
 // A ready reply is provisional, not execution authority. Only the final locked
 // transaction may consume the still-current capability and launch student code.
 type paneLaunchAdmission struct {
-	capability Capability
-	account    Account
-	authority  Attempt
+	capability        Capability
+	account           Account
+	authority         Attempt
+	supervisor        *paneBootstrapPeer
+	supervisorUnit    string
+	supervisorControl *net.UnixConn
 }
 
 func paneLaunchAuthority(a *Attempt) Attempt {
@@ -231,13 +234,14 @@ func (e *Engine) releaseClosedPane(p *paneLaunchAdmission, name, unit string, pr
 		}
 		allowed := func() bool {
 			now, err := monitoringBootMillis()
-			return err == nil && now < proof.ClosedBootUntil && Millis() < proof.ClosedUntil && workloadAllowed(a, p.capability.Purpose) == nil && len(a.Units) <= a.Settings.Terminals && current()
+			return err == nil && now < proof.ClosedBootUntil && Millis() < proof.ClosedUntil && workloadAllowed(a, p.capability.Purpose) == nil && len(a.Units) <= a.Settings.Terminals && current() && (p.supervisor == nil || p.supervisor.current())
 		}
 		if !allowed() {
 			return errPaneBootstrap
 		}
 		ready := proof
 		ready.ReadyAt, ready.ClosedUntil, ready.ClosedBootUntil = Millis(), 0, 0
+		ready.Supervisor = p.supervisorUnit
 		e.state.PaneInstances[unit] = ready
 		// Do not release anything if durable tracking/activation fails. An
 		// uncertain save remains inspectable, never reconstructible permission.

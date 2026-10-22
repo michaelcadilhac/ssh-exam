@@ -7,12 +7,17 @@ deployment. Current lockouts still terminate workloads and disconnect SSH.
 
 ## Inspected boundaries
 
-- gate.go still owns original/workload PTYs, bridges and child waits in the
-  shared agent. Filesystem setup/ready-ACK are now outside shared state. The next
-  local closed-bootstrap path also isolates ordinary scope startup, with final
-  durable current-state exec release and exact pending close; see
-  closed-pane-launch.md. The administrator host-service exception remains
-  serialized. Independent PTY ownership/C12 and root-guest qualification are open.
+- gate.go now hands ordinary PRACTICE sockets/PTYs/lifetime handles to one
+  independent bounded supervisor per attempt, before the existing durable closed
+  exec release. Actual two-pane shell memory survives whole coordinator-cgroup
+  death. The supervisor never reads global metadata; actual Tick retires only
+  positively gone ready practice records. Timed panes retain coordinator-owned
+  recording: the initial thin-Engine recorder fallback was removed before broad
+  qualification because it duplicated global state per student. Timed owner/
+  event/restart integration is the next necessary integrated boundary, not a new
+  unused helper chain. See terminal-supervision.md for full local evidence and
+  state review. Root-role qualification, R2 epochs, C3/C9 remain open. The
+  administrator host-service exception remains serialized.
 - pane_admission.go already revokes unused tokens and rechecks current authority
   after an ACK; an old ACK cannot relaunch a closed pane. That is not closed
   admission by itself. The local closed bootstrap now supplies that fence for

@@ -175,11 +175,12 @@ type State struct {
 // It is not live execution/monitoring authority, freeze proof or restart recovery.
 // Never backfill this observation from a legacy unit name or restored snapshot.
 type PaneInstance struct {
-	Attempt string `json:"attempt"`
-	Pane    string `json:"pane"`
-	ID      string `json:"id"`
-	Boot    string `json:"boot"`
-	ReadyAt int64  `json:"ready_at"`
+	Attempt    string `json:"attempt"`
+	Pane       string `json:"pane"`
+	ID         string `json:"id"`
+	Boot       string `json:"boot"`
+	ReadyAt    int64  `json:"ready_at"`
+	Supervisor string `json:"supervisor,omitempty"`
 	// ClosedUntil is a bounded bootstrap observation, never exec permission.
 	// Only the live parent's final transaction can change it to ReadyAt.
 	ClosedUntil     int64 `json:"closed_until,omitempty"`

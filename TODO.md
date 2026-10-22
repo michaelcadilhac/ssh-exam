@@ -365,6 +365,19 @@ pending on the BUSY guard; C12 independent PTY supervision/root epochs and C3/C9
 freeze/recovery remain unimplemented. This does not close the critical TODO or
 prove its initiating incident cause. Nothing deployed; main count remains11/38.
 
+October22 C12a is now implemented/tested locally for ordinary Practice terminals:
+one bounded independent supervisor per attempt preserves two panes' original
+shell processes/memory through whole coordinator-cgroup death. Positive owner
+death contains its exact writers; the supported pane CLI exposes captured owner
+identities, and actual Tick reaps only proven-gone ready practice records. No
+global attempt metadata enters the supervisor. Timed panes deliberately retain
+coordinator recording until bounded owner/event/restart integration is complete;
+an initial global-Engine fallback was removed during review. Full native race/
+resource/build,435 app and22 rebuilt browser checks pass. See
+docs/terminal-supervision.md for state/failure review and remaining root-role
+qualification blocked by the BUSY guard. This does not finish C12/R2, enable C3/C9
+or close the critical TODO. No deployment, upload or temporary-agent consolidation.
+
 ## Firm design policy: examctl is the complete management interface
 
 **If an exam-management operation can be done, it must be doable through

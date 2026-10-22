@@ -3,6 +3,20 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 C12a integrated outcome: ordinary Practice sockets/PTYs now survive
+whole coordinator-cgroup death in one bounded independent supervisor per attempt;
+same process/memory survives in two panes. Positive supervisor death contains its
+exact HUP-ignoring writer without ending a healthy peer workflow. Existing pane
+CLI exposes captured supervisor identities; actual Tick retires only proven-gone
+ready practice records. No global state enters the supervisor. Timed recording
+remains on the coordinator: review removed that fallback rather than duplicating
+global state per student. Full native races/resources pass core304.305s/CLI39.164s,
+435 app checks108.19s,22 rebuilt browser checks1.1m and build/vet/typecheck pass.
+State/failure review, fixture corrections, limits and test receipts are in
+terminal-supervision.md. The BUSY guard prevents new exact-artifact privileged
+qualification. Full timed C12/R2/C3/C9 remain open; no retained mode, deployment,
+upload or consolidation. Main TODO count stays11/38.
+
 October22 exact-source selection outcome: shared CLI/web definition settings now
 feed the existing native exact-version consumer through student preflight/Begin.
 Signed target/settings validation fixes confirmed wrong-exam/private-field CLI

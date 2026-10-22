@@ -51,6 +51,9 @@ func (e *Engine) productionReady() (bool, []string) {
 	if err := collectionResourceBounds(); err != nil {
 		missing = append(missing, err.Error())
 	}
+	if err := terminalSupervisorReadiness(); err != nil {
+		missing = append(missing, err.Error())
+	}
 	if !setupCapabilitiesAvailable() {
 		missing = append(missing, "root launcher requires SETUID, SETGID and SETPCAP setup capabilities")
 	}
@@ -608,6 +611,7 @@ func (e *Engine) Tick() error {
 	var jobs []string
 	err := e.WithState(func() error {
 		e.reapClosedPaneStarts()
+		e.reapSupervisedPracticePanes()
 		// Cancellation must close practice shells even when their browser/old
 		// entry process disappeared. No started attempt is cancelled here.
 		for _, a := range e.state.Attempts {

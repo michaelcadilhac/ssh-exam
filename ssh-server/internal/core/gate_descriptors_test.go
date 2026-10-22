@@ -42,6 +42,57 @@ func ownedGateDescriptors(t *testing.T, info os.FileInfo) []int {
 	return result
 }
 
+func TestPrivateSupervisorDescriptorBudgetClosesExcessAndTruncatedRights(t *testing.T) {
+	for _, count := range []int{5, 6, 8} {
+		t.Run(strconv.Itoa(count), func(t *testing.T) {
+			pair, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer unix.Close(pair[0])
+			defer unix.Close(pair[1])
+			marker, err := os.Create(filepath.Join(t.TempDir(), "owned-supervisor-right"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			info, err := marker.Stat()
+			if err != nil {
+				marker.Close()
+				t.Fatal(err)
+			}
+			fds := make([]int, count)
+			for i := range fds {
+				fds[i] = int(marker.Fd())
+			}
+			_, err = unix.SendmsgN(pair[0], []byte{1}, unix.UnixRights(fds...), nil, 0)
+			marker.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, oob := make([]byte, 2), make([]byte, unix.CmsgSpace(5*4))
+			_, on, flags, _, err := unix.Recvmsg(pair[1], data, oob, unix.MSG_CMSG_CLOEXEC)
+			if err != nil {
+				t.Fatal(err)
+			}
+			owned, parseErr := receiveBoundedDescriptors(oob[:on], flags, 5)
+			if (parseErr == nil) != (count == 5) {
+				t.Error("wrong private descriptor budget/refusal", count, parseErr)
+			}
+			if count == 5 && len(owned.files) != 5 {
+				t.Error("valid fixed-role handoff lost descriptors")
+			}
+			owned.close()
+			leaked := ownedGateDescriptors(t, info)
+			for _, fd := range leaked {
+				unix.Close(fd)
+			}
+			if len(leaked) != 0 {
+				t.Fatal("private handoff leaked owned descriptor copies", len(leaked))
+			}
+		})
+	}
+}
+
 func TestLocalGateClosesReceivedDescriptorsOnEveryRefusalAndOrdinaryReturn(t *testing.T) {
 	for _, name := range []string{"malformed", "unapproved", "ordinary", "command", "admission", "two-rights", "truncated-rights"} {
 		t.Run(name, func(t *testing.T) {
