@@ -79,6 +79,8 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	}
 	allowed := false
 	switch operation {
+	case "administrators.list", "administrators.show", "administrators.create":
+		allowed = true
 	case "templates.list", "templates.show", "templates.sync":
 		allowed = true
 	case "exams.list", "exams.show", "exams.create", "exams.update", "students.list", "students.add", "students.remove", "students.settings", "students.import-preview", "students.import-confirm", "students.export", "students.example", "alerts.list", "alerts.show", "alerts.test", "alerts.remind", "attempts.list", "attempts.show", "clocks.show", "clocks.reset", "clocks.extend", "clocks.batch", "clocks.preview", "interruptions.show", "interruptions.review", "interruptions.authorize", "monitoring.show", "monitoring.list", "monitoring.replay", "monitoring.delete":
@@ -108,6 +110,12 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	if err != nil || len(payload) > 12*1024*1024 {
 		return result, errors.New("management request exceeds its encoding/size limit")
 	}
+	var bodyReader io.Reader = bytes.NewReader(payload)
+	if operation == "administrators.create" {
+		owned := &credentialRequestBody{data: payload}
+		defer owned.Close()
+		bodyReader = owned
+	}
 	e := &Engine{Config: c}
 	client, err := e.callbackClient()
 	if err != nil {
@@ -115,10 +123,11 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	}
 	defer client.CloseIdleConnections()
 	client.Timeout = 15 * time.Second
-	req, err := http.NewRequest("POST", strings.TrimSuffix(c.CallbackURL, "/")+"/api/agent/management", bytes.NewReader(payload))
+	req, err := http.NewRequest("POST", strings.TrimSuffix(c.CallbackURL, "/")+"/api/agent/management", bodyReader)
 	if err != nil {
 		return result, err
 	}
+	req.ContentLength = int64(len(payload))
 	req.Header.Set("Content-Type", "application/vnd.ssh-exam-management")
 	req.Header.Set("X-Exam-Signature", base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload)))
 	response, err := client.Do(req)
@@ -157,6 +166,9 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 		return result, errors.New("gateway management reply scope/freshness rejected; outcome not confirmed")
 	}
 	if !reply.OK {
+		if strings.HasPrefix(operation, "administrators.") {
+			return result, fmt.Errorf("gateway refused administrator management (HTTP %d): %s; no change confirmed. Inspect examctl web administrators list/show, the named operation authorization and current intent; retry a creation with the original password and --request %s. Never overwrite/reset an existing account to reconcile a lost reply", reply.Status, administratorPublicRefusal(reply.Error), requestID)
+		}
 		return result, fmt.Errorf("gateway refused management (%d): %s", reply.Status, reply.Error)
 	}
 	if reply.Status != 200 || len(reply.Result) == 0 {

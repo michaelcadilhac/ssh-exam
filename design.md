@@ -508,6 +508,24 @@ Keep submission archives and minimal grading/attempt metadata under their separa
 
 Provide a separate authenticated instructor interface. Bootstrap the initial administrator through a CLI command that prompts securely for a password; do not ship default credentials. Store only a suitable password hash. Use distinct authorization rules for student and administrator endpoints. Signed-in administrators can use Add administrator in the dashboard to create another administrator with the same exam-management permissions. Require a unique username (1–64 ASCII letters, digits, underscores or hyphens), a 12–1024-character password and client-side confirmation. Protect creation with administrator authorization, same-origin/CSRF checks, bounded requests and rate limits. Hash passwords with Argon2id; return only the username and atomically audit the creator and new username without credentials or hashes. Duplicate/concurrent creation must never change an existing account. Clear password fields and application references after transmission or cancellation; failed creation stays in the dialog with a readable diagnostic.
 
+The October22 local C1 candidate shares administrator creation with root
+`examctl web administrators list/show/create`, using the existing agent identity
+and separately named default-deny operation authorization. Creation grants full
+gateway administrator powers, not Unix/student accounts, credential replacement
+or native access. Expensive Argon2id64MiB/time3/parallelism1 work has two no-wait
+slots outside SQLite; publication rechecks authority and the same scoped receipt.
+Exact retries bind username and the SAME salted strong authentication verifier,
+never a fast password/body fingerprint. Migration021 adds private browser intents;
+root intents reuse the existing request table. Protect fingerprint verifiers like
+the admins table/backups, never public telemetry or outcomes. Lost browser replies
+retain only a same-form nonsecret intent ID; passwords clear and must be re-entered.
+Native input is hidden confirmed foreground-TTY or explicit exact finite UTF-8
+stdin; owned buffers/HTTP-body lifetime are guarded and no password argument/env
+or temporary credential file is accepted/created. Strict nested account/page/
+duplicate-key validation precedes output; only exact public refusal messages may
+be reflected. See docs/administrator-management.md for current qualification and
+limits. This is not full management, a student-policy change or deployment.
+
 The dashboard initially shows an explicit exam selector and global administrative controls, with no preselected exam and no exam data fetched/displayed until selection. Every count, student group, attempt, incident and review in the workspace belongs to that exam; switching exams clears selections, dialogs and stale data, and late responses cannot replace the new view. Paginate by student, retaining each student's complete attempt history together. Use one table: a student row for enrollment/future allowance/webcam settings, followed by every attempt as a separate row, newest first. Preserve stable attempt numbering through filtering. Include students without attempts and historical attempts whose enrollment was removed.
 
 Show Working only from the matching attempt's live SSH, open browser control socket and fresh contact. Distinguish working, disconnected, preflight, locked and ended attempts. Poll every five seconds and render the server-synchronized remaining clock every second. Keep current attempt webcam settings separate from future enrollment settings. Choose a bulk action before exposing checkboxes: future duration/webcam actions select student rows; Reset clock/Extend time selects eligible attempt rows. Allow one selection scope at a time and clear it on action, exam, search, filter or page changes. Provide page selection and explicit target confirmation. Individual actions remain in row menus. Compare each attempt's revision, persist independent request IDs, show per-target failures/pending outcomes and make retries incapable of applying an extension twice. Clock actions are capped at 100 attempts per request. Future settings changes are transactional across the selected enrolled students and do not touch attempt snapshots. CSV imports contain only enrollment settings; they never execute live clock actions.

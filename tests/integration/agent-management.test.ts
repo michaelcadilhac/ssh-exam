@@ -4,6 +4,7 @@ import { qualifyClockCLI } from "../fixtures/management-clocks.js";
 import { qualifyInterruptionCLI } from "../fixtures/management-interruptions.js";
 import { qualifyMonitoringCLI } from "../fixtures/management-monitoring.js";
 import { qualifyTemplateCLI } from "../fixtures/management-templates.js";
+import { qualifyAdministratorCLI } from "../fixtures/management-administrators.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import { MonitoringManagement } from "../../apps/server/src/monitoring-management.js";
 import sharp from "sharp";
@@ -23,6 +24,8 @@ import {
 } from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { Writable } from "node:stream";
+import argon2 from "argon2";
 import https from "node:https";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -58,7 +61,16 @@ async function setup() {
       managementOperations: ["exams.list", "exams.show"],
     },
   };
-  let current = await createApp(config);
+  let logs = "";
+  const appOptions = () => ({
+    logStream: new Writable({
+      write(chunk, _encoding, done) {
+        logs += chunk.toString();
+        done();
+      },
+    }),
+  });
+  let current = await createApp(config, appOptions());
   const request = (extra: object = {}) => ({
     version: 1,
     purpose: managementPurpose,
@@ -111,12 +123,13 @@ async function setup() {
     request,
     post,
     unpack,
+    logs: () => logs,
     get current() {
       return current;
     },
     async restart() {
       await current.app.close();
-      current = await createApp(config);
+      current = await createApp(config, appOptions());
     },
     async close() {
       await current.app.close();
@@ -124,6 +137,308 @@ async function setup() {
     },
   };
 }
+
+it("creates administrators through explicitly authorized root-agent intents with strong secret-safe retries across restart", async () => {
+  const f = await setup(),
+    password = "root-agent-synthetic-password";
+  try {
+    f.config.agent.managementOperations = [
+      "administrators.list",
+      "administrators.show",
+      "administrators.create",
+    ];
+    const request = f.request({
+      operation: "administrators.create",
+      body: { username: "root-created-admin", password },
+    });
+    const first = f.unpack(await f.post(request));
+    expect(first).toMatchObject({
+      ok: true,
+      result: { username: "root-created-admin" },
+    });
+    const original = f.current.store.db
+      .prepare("SELECT * FROM admins WHERE username='root-created-admin'")
+      .get() as any;
+    expect(await argon2.verify(original.hash, password)).toBe(true);
+    const receipt = f.current.store.db
+      .prepare(
+        "SELECT fingerprint,outcome FROM agent_management_requests WHERE request=?",
+      )
+      .get(request.request) as any;
+    expect(JSON.parse(receipt.fingerprint)).toEqual({
+      purpose: "ssh-exam-administrator-intent/v1",
+      username: "root-created-admin",
+      verifier: original.hash,
+    });
+    expect(receipt.outcome).not.toContain(original.hash);
+    expect(receipt.outcome).not.toContain(password);
+    await f.restart();
+    const retry = () => ({
+      ...request,
+      nonce: randomBytes(32).toString("hex"),
+      issued: Date.now(),
+      expires: Date.now() + 20000,
+    });
+    expect(f.unpack(await f.post(retry())).result).toEqual({
+      username: "root-created-admin",
+    });
+    expect(
+      f.unpack(
+        await f.post({
+          ...retry(),
+          body: {
+            username: "root-created-admin",
+            password: "different-root-synthetic-password",
+          },
+        }),
+      ),
+    ).toMatchObject({ ok: false, status: 409 });
+    expect(
+      f.unpack(
+        await f.post({
+          ...retry(),
+          body: { username: "another-admin", password },
+        }),
+      ),
+    ).toMatchObject({ ok: false, status: 409 });
+    expect(f.current.store.db.prepare("SELECT * FROM admins").all()).toEqual([
+      original,
+    ]);
+    expect(
+      f.current.store.db
+        .prepare("SELECT actor FROM audit WHERE action='create-admin'")
+        .all(),
+    ).toEqual([{ actor: "agent:class:root" }]);
+    expect(
+      f.unpack(
+        await f.post(
+          f.request({ operation: "administrators.list", body: { limit: 1 } }),
+        ),
+      ).result,
+    ).toEqual({
+      administrators: [{ username: "root-created-admin" }],
+      next: null,
+    });
+    expect(
+      f.unpack(
+        await f.post(
+          f.request({
+            operation: "administrators.show",
+            body: { username: "root-created-admin" },
+          }),
+        ),
+      ).result,
+    ).toEqual({ username: "root-created-admin", role: "admin" });
+    f.config.agent.managementOperations = [];
+    expect(f.unpack(await f.post(retry()))).toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(
+      f.current.store.db.prepare("SELECT * FROM attempts").all(),
+    ).toHaveLength(0);
+    expect(f.logs()).not.toContain(password);
+    expect(f.logs()).not.toContain(original.hash);
+    const actor = f.current.store.session("admin", "browser-owner", null);
+    const login = await f.current.app.inject({
+      method: "POST",
+      url: "/api/admin/login",
+      headers: { origin: f.config.origin },
+      payload: { username: "root-created-admin", password },
+    });
+    expect(login.statusCode).toBe(200);
+    expect(actor.csrf).toBeTruthy();
+  } finally {
+    await f.close();
+  }
+});
+
+it("never fingerprints invalid credentials and redacts malformed signed credential requests and corrupt receipts", async () => {
+  const f = await setup(),
+    password = "malformed-credential-synthetic-secret";
+  try {
+    f.config.agent.managementOperations = ["administrators.create"];
+    for (const body of [
+      { username: "helper", password: "short" },
+      { username: "bad name", password },
+      { username: "helper", password, unexpected: "field" },
+    ]) {
+      const r = f.request({ operation: "administrators.create", body });
+      const response = f.unpack(await f.post(r));
+      expect(response).toMatchObject({ ok: false, status: 400 });
+      expect(JSON.stringify(response)).not.toContain(password);
+      expect(
+        f.current.store.db
+          .prepare("SELECT * FROM agent_management_requests WHERE request=?")
+          .get(r.request),
+      ).toBeUndefined();
+    }
+    const malformed = [
+      `{"password":"${password}","operation":`,
+      JSON.stringify(f.request({ operation: password, body: { password } })),
+    ];
+    for (const raw of malformed) {
+      const payload = Buffer.from(raw);
+      const response = await f.current.app.inject({
+        method: "POST",
+        url: "/api/agent/management",
+        headers: {
+          "content-type": "application/vnd.ssh-exam-management",
+          "x-exam-signature": sign(
+            null,
+            payload,
+            f.agentKeys.privateKey,
+          ).toString("base64"),
+        },
+        payload,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).not.toContain(password);
+    }
+    const r = f.request({
+      operation: "administrators.create",
+      body: { username: "helper", password },
+    });
+    expect(f.unpack(await f.post(r)).ok).toBe(true);
+    const original = f.current.store.db
+      .prepare("SELECT * FROM admins")
+      .get() as any;
+    f.current.store.db
+      .prepare(
+        "UPDATE agent_management_requests SET fingerprint=? WHERE request=?",
+      )
+      .run(
+        JSON.stringify({
+          purpose: "ssh-exam-administrator-intent/v1",
+          username: "helper",
+          verifier:
+            "$argon2id$v=19$m=999999999,t=3,p=1$" +
+            "a".repeat(22) +
+            "$" +
+            "a".repeat(43),
+        }),
+        r.request,
+      );
+    const result = f.unpack(
+      await f.post({ ...r, nonce: randomBytes(32).toString("hex") }),
+    );
+    expect(result).toMatchObject({ ok: false, status: 409 });
+    expect(f.current.store.db.prepare("SELECT * FROM admins").all()).toEqual([
+      original,
+    ]);
+    expect(f.logs()).not.toContain(password);
+    expect(f.logs()).not.toContain(original.hash);
+  } finally {
+    await f.close();
+  }
+});
+
+it("refuses corrupt root credential outcomes and never fast-fingerprints a password on a different operation", async () => {
+  const f = await setup(),
+    password = "credential-outcome-synthetic-password";
+  try {
+    f.config.agent.managementOperations = [
+      "administrators.create",
+      "exams.list",
+    ];
+    const r = f.request({
+      operation: "administrators.create",
+      body: { username: "helper", password },
+    });
+    expect(f.unpack(await f.post(r)).ok).toBe(true);
+    const row = f.current.store.db.prepare("SELECT * FROM admins").get() as any;
+    const original = f.current.store.db
+      .prepare("SELECT outcome FROM agent_management_requests WHERE request=?")
+      .get(r.request) as any;
+    for (const result of [
+      { username: "other" },
+      { username: "helper", hash: row.hash },
+    ]) {
+      f.current.store.db
+        .prepare(
+          "UPDATE agent_management_requests SET outcome=? WHERE request=?",
+        )
+        .run(
+          JSON.stringify({ ...JSON.parse(original.outcome), result }),
+          r.request,
+        );
+      const response = f.unpack(
+        await f.post({ ...r, nonce: randomBytes(32).toString("hex") }),
+      );
+      expect(response).toMatchObject({ ok: false, status: 409 });
+      expect(JSON.stringify(response)).not.toContain(row.hash);
+    }
+    const misplaced = f.request({
+      operation: "exams.list",
+      body: { limit: 1, password },
+    });
+    const refused = await f.post(misplaced);
+    expect(refused.statusCode).toBe(400);
+    expect(
+      f.current.store.db
+        .prepare("SELECT * FROM agent_management_requests WHERE request=?")
+        .get(misplaced.request),
+    ).toBeUndefined();
+    expect(f.current.store.db.prepare("SELECT * FROM admins").all()).toEqual([
+      row,
+    ]);
+  } finally {
+    await f.close();
+  }
+});
+
+it("rechecks root credential authorization after asynchronous work and keeps SQLite available", async () => {
+  const f = await setup(),
+    password = "pending-credential-synthetic-secret";
+  const digest = await argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 1,
+    hashLength: 32,
+  });
+  let release!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let entered!: () => void;
+  const began = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const spy = vi.spyOn(argon2, "hash").mockImplementation(async () => {
+    expect(f.current.store.db.inTransaction).toBe(false);
+    entered();
+    await waiting;
+    return digest;
+  });
+  try {
+    f.config.agent.managementOperations = ["administrators.create"];
+    const r = f.request({
+      operation: "administrators.create",
+      body: { username: "revoked-admin", password },
+    });
+    const pending = f.post(r);
+    await began;
+    expect(f.current.store.db.prepare("SELECT 1 AS available").get()).toEqual({
+      available: 1,
+    });
+    f.config.agent.managementOperations = [];
+    release();
+    expect(f.unpack(await pending)).toMatchObject({ ok: false, status: 403 });
+    expect(
+      f.current.store.db.prepare("SELECT * FROM admins").all(),
+    ).toHaveLength(0);
+    expect(
+      f.current.store.db
+        .prepare("SELECT * FROM agent_management_requests WHERE request=?")
+        .get(r.request),
+    ).toBeUndefined();
+  } finally {
+    release();
+    spy.mockRestore();
+    await f.close();
+  }
+});
 
 it("requires explicit root-agent management purpose, audience, freshness, pinned key and operation authorization", async () => {
   const f = await setup();
@@ -232,9 +547,11 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       await run("go", ["build", "-o", binary, "./cmd/examctl"], {
         cwd: "ssh-server",
         timeout: 30000,
+        env: { ...process.env, CGO_ENABLED: "0" },
       });
       let corruptCatalog: string | null = null;
       let corruptImage: string | null = null;
+      let corruptAdministrator: "drop" | "scope" | "refusal" | null = null;
       server = https.createServer(
         { key: readFileSync(key), cert: readFileSync(cert) },
         (req, res) => {
@@ -251,7 +568,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
               .then((reply) => {
                 let raw = reply.rawPayload;
                 if (
-                  (corruptCatalog || corruptImage) &&
+                  (corruptCatalog || corruptImage || corruptAdministrator) &&
                   req.url === "/api/agent/management"
                 ) {
                   const frame = JSON.parse(raw.toString());
@@ -259,6 +576,28 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                     Buffer.from(frame.payload, "base64").toString(),
                   );
                   let changed = false;
+                  if (
+                    corruptAdministrator &&
+                    payload.operation === "administrators.create" &&
+                    payload.ok
+                  ) {
+                    if (corruptAdministrator === "drop") {
+                      res.destroy();
+                      return;
+                    }
+                    if (corruptAdministrator === "scope")
+                      payload.result = {
+                        username: "wrong_account",
+                        hash: "PRIVATE-ADMIN-PASSWORD-MUST-NOT-PRINT",
+                      };
+                    if (corruptAdministrator === "refusal") {
+                      payload.ok = false;
+                      payload.status = 409;
+                      payload.error = "PRIVATE-ADMIN-PASSWORD-MUST-NOT-PRINT";
+                      delete payload.result;
+                    }
+                    changed = true;
+                  }
                   if (
                     payload.operation === corruptCatalog &&
                     payload.ok &&
@@ -634,6 +973,9 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
       ).toEqual({ n: 0 });
       delete f.config.smtp;
+      await qualifyAdministratorCLI(f, binary, configPath, invoke, (mode) => {
+        corruptAdministrator = mode;
+      });
       await qualifyClockCLI(f, invoke);
       await qualifyInterruptionCLI(f, invoke);
       await qualifyMonitoringCLI(f, invoke, (kind) => {

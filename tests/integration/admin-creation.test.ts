@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Writable } from "node:stream";
+import { randomUUID } from "node:crypto";
 import { createApp } from "../../apps/server/src/app.js";
 
 async function setup() {
@@ -196,6 +197,75 @@ it("never overwrites an existing administrator under duplicate or concurrent cre
         .prepare("SELECT * FROM audit WHERE action='create-admin'")
         .all(),
     ).toHaveLength(1);
+  } finally {
+    await t.close();
+  }
+});
+
+it("reconciles a lost browser reply with the original credential intent without recreating or logging credentials", async () => {
+  const t = await setup();
+  const password = "browser-intent-synthetic-password",
+    request = randomUUID();
+  try {
+    const input = { username: "retry-admin", password, request };
+    const first = await t.create(input);
+    expect(first.statusCode).toBe(201);
+    const original = t.store.db
+      .prepare("SELECT * FROM admins WHERE username='retry-admin'")
+      .get() as any;
+    expect((await t.create(input)).json()).toEqual({ username: "retry-admin" });
+    expect(
+      (await t.create({ ...input, password: "a-different-synthetic-password" }))
+        .statusCode,
+    ).toBe(409);
+    expect(
+      (await t.create({ ...input, username: "another-admin" })).statusCode,
+    ).toBe(409);
+    expect(t.store.db.prepare("SELECT * FROM admins").all()).toEqual([
+      original,
+    ]);
+    expect(
+      t.store.db
+        .prepare("SELECT * FROM audit WHERE action='create-admin'")
+        .all(),
+    ).toHaveLength(1);
+    const receipt = t.store.db
+      .prepare("SELECT fingerprint,result FROM administrator_creation_requests")
+      .get() as any;
+    expect(JSON.parse(receipt.fingerprint).verifier).toBe(original.hash);
+    expect(receipt.result).toBe('{"username":"retry-admin"}');
+    expect(t.logs()).not.toContain(password);
+    expect(t.logs()).not.toContain(original.hash);
+    const foreign = t.store.session("admin", "other-owner", null);
+    expect(
+      (
+        await t.create(input, {
+          ...t.headers,
+          cookie: `session=${foreign.token}`,
+          "x-csrf-token": foreign.csrf,
+        })
+      ).statusCode,
+    ).toBe(409);
+  } finally {
+    await t.close();
+  }
+});
+
+it("never reflects malformed credential JSON fragments in errors or logs", async () => {
+  const t = await setup();
+  try {
+    for (const url of ["/api/admin/administrators", "/api/admin/login"]) {
+      const result = await t.app.inject({
+        method: "POST",
+        url,
+        headers: { ...t.headers, "content-type": "application/json" },
+        payload: '{"password":SYNTH_SECRET}',
+      });
+      expect(result.statusCode).toBe(400);
+      expect(result.body).not.toContain("SYNTH");
+      expect(t.logs()).not.toContain("SYNTH");
+    }
+    expect(t.store.db.prepare("SELECT * FROM admins").all()).toHaveLength(0);
   } finally {
     await t.close();
   }

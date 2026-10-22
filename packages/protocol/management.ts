@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const managementPurpose = "ssh-exam-management/v1";
 export const managementOperations = [
+  "administrators.list",
+  "administrators.show",
+  "administrators.create",
   "exams.list",
   "exams.show",
   "exams.create",

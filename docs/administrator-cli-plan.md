@@ -1,12 +1,21 @@
-# Administrator CLI parity — next local milestone
+# Administrator CLI parity — implementation plan and qualification
 
-October22,2026. Investigation/proposed implementation plan, not implemented,
-deployed or a request to change production administrators. Existing browser
+October22,2026. Original investigation/implementation plan, now implemented and
+tested locally as recorded below; not deployed or a request to change production
+administrators. The existing browser
 creation hashes with Argon2id64MiB/time3/parallelism1 outside SQLite, inserts
 without overwriting a username and audits the authenticated administrator. Root
-examctl cannot yet perform that operation. Reuse approved C1 root-agent outbound
+examctl could not perform that operation before this milestone. Reuse approved C1 root-agent outbound
 authentication with separately named default-deny operations; no root SSH, token,
 student credential, arbitrary route proxy or direct database edit.
+
+Continuation: the plan's shared service, named root operations, native input/
+metadata CLI and browser same-form retry are now implemented/tested locally.
+Final426 application/80files, full native race/resource/static/
+vet/typecheck/build, actual CLI/TLS/TTY and114 combined browser checks now pass
+with174 exact source/runtime hashes unchanged. Operator/evidence details are in
+administrator-management.md and todo-progress.md. This closes this creation/
+metadata workflow locally, not full management or deployment.
 
 ## Manageable increments and acceptance
 

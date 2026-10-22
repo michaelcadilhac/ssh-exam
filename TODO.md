@@ -261,6 +261,15 @@ An administrator should be able to discover and finish a workflow using
 ## examctl completeness and usability work
 
 - [ ] **Audit command coverage against the complete management policy above.**
+  October22 administrator parity candidate now adds shared browser/root
+  `web administrators list/show/create`, explicit named agent authorization,
+  original-password strong-verifier retries, secret-safe TTY/stdin and no account
+  overwrite. Full426 app/native race/build and actual CLI/TLS/PTY checks pass;
+  all114 combined browser checks pass with174 unchanged source/runtime hashes.
+  Migration021 contains
+  sensitive verifier intents, not plaintext/fast password fingerprints. See
+  docs/administrator-management.md. Full management/remaining items stay open;
+  this is local work, not configuration enablement or deployment.
   C8 approved October 21: delete only unused exam definitions; archive those with
   history, preserving attempts/submissions. No cascade deletion or silent grant
   cancellation. CLI/web implementation and qualification remain outstanding.
@@ -271,6 +280,14 @@ An administrator should be able to discover and finish a workflow using
   this firm policy into the canonical design and operator documentation.
 
 - [ ] **Redesign help around discoverable management workflows.**
+  Administrator candidate help covers full privilege consequences, named
+  permissions, exact secret input, scope-safe metadata, original-intent retry,
+  no reset/overwrite and actionable known-cause refusals. Unknown signed errors
+  cannot leak credentials. The old missing workflow and candidate overly generic
+  refusal each fail their real CLI regressions before correction. Actual private
+  TLS and hidden-terminal checks, final426 app/full native repeat and114 browser
+  checks pass locally. Do not count this as completed help for all pending grant/config
+  workflows or deployed functionality.
   October 21 C1a: signed root-agent gateway management and `web exams list/show`
   are tested locally, including the compiled CLI against the real gateway over
   isolated local TLS/restart. Default-deny named operation authorization, replay/

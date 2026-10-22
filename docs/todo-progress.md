@@ -8,7 +8,66 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
-Current checkpoint: the surviving-thread writer correctness fix is implemented/
+Current validated checkpoint: administrator metadata/secret-safe creation CLI
+and same-form browser retry are implemented/tested locally. Final426 app/80files
+with production-mode CGO-disabled actual TLS CLI passes88.57s (preceding92.37s);
+full final native race/resource/namespace/compiler/default-size core173.285s/
+CLI10.458s, static build/vet/typecheck/complete build pass. Final ten focused
+CLI/core/real-PTY/refusal cases pass7.603s/1.663s; bounded two-worker metadata fuzz
+passes150369 executions/11.011s. All114 combined browser checks pass12.6m with
+all174 frozen server/web/protocol source/runtime hashes unchanged before/after.
+Nine generated documentation screenshots are restored to their verified baseline.
+See administrator-management.md for exact hashes, security/rollback limits and
+failed-candidate/fixture evidence. The full TODO count remains11/38 checked,
+27 open; no deployment, production account/configuration change, push, service
+consolidation, C3/C4 completion or initiating-incident cause is claimed.
+
+Implementation trail AFTER writer commit76cf926: administrator CLI parity under C1.
+The old CLI help/discovery regression is RED; shared browser/root credential
+service, additive migration021 and named default-deny list/show/create routes are
+being implemented, not qualified or deployed. Expensive64MiB Argon2 work has two
+no-wait slots outside SQLite; retries bind the username to the SAME strong salted
+verifier, never generic SHA(password/body). Fresh authorization/receipt checks
+fence competing/missing receipts. Initial shared/native memory tests pass:18 app
+checks/1 opt-in skip across3files, typecheck,20 race repeats of owned HTTP-body
+read/close/wiping. Browser lost-reply/security tests pass, but root compiled CLI,
+PTY cancellation/echo restoration, actual TLS, full regressions/build/browser and
+documentation remain pending. New native CLI input/help/result-scope and hidden
+TTY code is uncommitted and under qualification; do not count it completed.
+No production access/account change, push, deployment or missing command occurred.
+Detailed acceptance and investigation: administrator-cli-plan.md.
+Administrator continuation: shared server/security and actual compiled root-
+mapped CLI/private TLS checks now pass19 across3files (10.11s), including exact
+finite stdin/Unicode/newline limits, restart/same-ID original-password retries,
+signed scope/error corruption, lost replies and unchanged native state/attempts.
+Native help/input/result-whitelist/duplicate-key checks plus actual hidden PTY
+confirmation/mismatch and SIGINT/TERM/HUP/QUIT restoration pass ten race repeats
+7.381s;20 synchronized request-body wiping/read-close race repeats pass2.338s.
+The first PTY test fixture incorrectly opened a read-only slave; all six fixture
+cases failed and were NOT qualification. Correct explicit TIOCGPTPEER read/write
+flags repair only the owned fixture, with unchanged echo/restoration assertions.
+An additional RED candidate regression exposed unchecked corrupted saved creation
+results; strict scoped metadata receipts now refuse those, and misplaced top-level
+password fields never reach a generic fast request fingerprint. Those final checks
+are running. Browser form now retains a nonsecret intent UUID and clears/reasks
+the password on a lost reply; its new actual lost-response browser check, full
+build/browser/native/application regressions and operator docs are still pending.
+No administrator milestone commit/completed-TODO/deployment claim yet.
+The administrator malformed-browser JSON regression passes the EXISTING safe
+Fastify parser; no parser policy change is made. All426 app/80files pass91.36s,
+native core170.866s/CLI8.989s, static/build/vet/typecheck and complete app/WASM build
+pass. Two actual administrator browser cases pass11.6s; all174 frozen web/server/
+protocol source/runtime hashes match before/after. The combined114 browser run
+is in progress against these NEW hashes, not the older113-check artifact.
+A final native-only usability RED shows that generic secret-safe refusals hid
+the useful conflict cause. Exact public refusal whitelists now retain actionable
+duplicate/conflict/receipt/authorization guidance while suppressing arbitrary
+signed secrets. Actual compiled CLI/private TLS now passes22 focused app checks
+10.63s; final all426 app repeat passes92.37s. Full final native/static/vet and
+combined browser completion/hash comparison/screenshot restoration remain pending.
+No web source/runtime edits/rebuild occur during that frozen browser run.
+
+Previous validated checkpoint: the surviving-thread writer correctness fix is implemented/
 tested locally. Old zombie-leader/missing-executable shortcuts could miss a live
 writer; pinned kernel lifetime/proc observations and pinned signals now refuse
 that unsafe result. All414 app/79files86.86s, full uncached native race/resource/
@@ -22,8 +81,9 @@ artifact; no web rebuild is claimed. See writer-thread-groups.md.
 Count remains11 of38 top-level items implemented/tested locally,27 open; the
 complete monitoring export milestone is in monitoring-export-qualification.md.
 This is not deployment, C3/root admission/C4 completion, the production incident
-cause or whole-host capacity certification. No missing command, installed-host
-operation, push, deployment or temporary-agent consolidation occurred.
+cause or whole-host capacity certification. No missing command, installed
+production binary/configuration/service change, push, deployment or temporary-agent
+consolidation occurred; the separately authorized disposable test unit is documented.
 
 C2a5's final guest-only increment now passes actual template CLI validate/install/
 show/verify/list/jobs/clean against the real system manager and bounded supplied

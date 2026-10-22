@@ -23,6 +23,25 @@ H2a as the completed reliability fix or increase a timeout to pass qualification
 Keep the existing drained-only temporary-agent consolidation and rollback gates.
 See monitoring-liveness-plan.md; nothing is deployed or migrated here.
 
+The October22 administrator CLI candidate uses additive migration021 for scoped
+browser creation intents and existing root request records with strong salted
+credential verifiers. Future separately authorized rollout must back up the
+consistent private database/WAL, retain nonce/intents/audit, qualify actual CLI/
+TTY/TLS/browser retry flows and explicitly enable only intended named
+administrators.* permissions (default none). Those fingerprint tables must be
+protected/redacted like the admins authentication table; they are not public
+telemetry. No SSH/student account or attempt/clock migration is involved. An old
+gateway loses browser intent reconciliation/bounded work and rejects the new
+root operations; rollback must retain021 and all request records and must never
+overwrite/reset credentials or clear receipts to resolve an unknown creation.
+The older strict configuration enum also rejects new administrators.* allowlist
+entries at load: restore a reviewed compatible configuration before starting an
+older gateway, in that separately authorized drained workflow. Do not drop data.
+Rebuild/retest the exact future release artifacts, including WASM VCS metadata;
+the local dirty-tree hash receipt is not a future rebuilt binary receipt. See
+administrator-management.md. This is a proposal, not configuration enablement,
+deployment or temporary-agent consolidation.
+
 October22's local writer correction adds no state/schema migration but DOES
 require working process pidfds, poll and pidfd_send_signal (combined Linux5.3+
 API), including through the deployed agent security policy. Future separately

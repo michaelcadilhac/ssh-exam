@@ -56,6 +56,7 @@ import { registerExamAdmin } from "./exam-admin.js";
 import { registerTemplateAdmin } from "./template-admin.js";
 import { registerAgentManagement } from "./agent-management.js";
 import { ExamDefinitions } from "./exam-definitions.js";
+import { AdministratorManagement } from "./administrator-management.js";
 import { reportFocus } from "./focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { RosterManagement } from "./roster-management.js";
@@ -138,6 +139,7 @@ export async function createApp(
   );
   const interruptionManagement = new InterruptionManagement(store);
   const alertManagement = new AlertManagement(store, () => !!config.smtp);
+  const administratorManagement = new AdministratorManagement(store);
   const authAttempts = new Map<string, { at: number; count: number }>();
   store.db
     .prepare("INSERT OR IGNORE INTO exams VALUES(?,?)")
@@ -358,6 +360,7 @@ export async function createApp(
     (a) => describeAttempt(a),
     clocks,
     monitoringManagement,
+    administratorManagement,
   );
   app.addContentTypeParser(
     "application/vnd.ssh-exam-event",
@@ -660,44 +663,17 @@ export async function createApp(
     },
     async (req, reply) => {
       const actor = principal(req, "admin");
-      let credentials: { username: string; password: string } | undefined;
       try {
-        const parsed = z
-          .object({
-            username: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
-            password: z.string().min(12).max(1024),
-          })
-          .safeParse(req.body);
-        if (!parsed.success)
-          throw Error(
-            "Use a username of 1–64 letters, numbers, underscores or hyphens and a password of 12–1024 characters.",
-          );
-        credentials = parsed.data;
-        const digest = await argon2.hash(credentials.password, {
-          type: argon2.argon2id,
-          memoryCost: 65536,
-          timeCost: 3,
-          parallelism: 1,
-        });
-        credentials.password = "";
-        const username = credentials.username;
-        store.db.transaction(() => {
-          const inserted = store.db
-            .prepare(
-              "INSERT INTO admins(id,username,hash) VALUES(?,?,?) ON CONFLICT(username) DO NOTHING",
-            )
-            .run(randomUUID(), username, digest);
-          if (!inserted.changes)
-            throw Object.assign(
-              Error("An administrator with that username already exists."),
-              { statusCode: 409 },
-            );
-          store.audit(actor.username, "create-admin", username);
-        })();
+        const result = await administratorManagement.browserCreate(
+          req.body,
+          actor.username,
+          () => {
+            principal(req, "admin");
+          },
+        );
         reply.code(201);
-        return { username };
+        return result;
       } finally {
-        if (credentials) credentials.password = "";
         if (req.body && typeof req.body === "object")
           (req.body as any).password = "";
       }

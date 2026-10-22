@@ -10,6 +10,7 @@ export function CreateAdministrator({
   onCreated: (username: string) => void;
 }) {
   const pending = useRef(false);
+  const intent = useRef<{ username: string; request: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
@@ -48,16 +49,22 @@ export function CreateAdministrator({
           }
           pending.current = true;
           setBusy(true);
+          if (!intent.current || intent.current.username !== username)
+            intent.current = { username, request: crypto.randomUUID() };
           try {
             const request = api("/admin/administrators", {
               username,
               password,
+              request: intent.current.request,
             });
             password = "";
             const result = await request;
             onCreated(result.username);
           } catch (e) {
-            setError((e as Error).message);
+            setError(
+              (e as Error).message +
+                " If a reply was lost, re-enter the original password and retry this form. Cancelling closes the form; it does not undo a confirmed creation.",
+            );
           } finally {
             password = "";
             pending.current = false;

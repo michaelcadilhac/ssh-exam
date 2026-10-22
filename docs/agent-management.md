@@ -10,6 +10,15 @@ metadata/replay and its all-read transient receipts are in monitoring-cli.md. Fu
 unified grants and definition retirement are still pending; this is not CLI
 completeness or production qualification.
 
+The October22 administrator candidate adds named default-deny metadata list/show
+and secret-safe creation through the same agent identity. Shared browser/root
+validation, bounded Argon2 work, scoped strong-verifier intents and no-overwrite
+retries are in [administrator-management.md](administrator-management.md). It is
+implemented/tested locally (426 app/full native/114 browser), not deployed or full
+management. Credential
+fingerprints are sensitive salted verifiers, not generic fast body hashes or
+public diagnostics; protect the entire database/backups accordingly.
+
 ## Supported workflow
 
 Use `examctl help web` / `examctl web help`, then:

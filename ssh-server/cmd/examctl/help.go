@@ -90,6 +90,10 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "administrators" {
+		webAdministratorsHelp(w)
+		return true
+	}
 	if topic == "config" {
 		configurationHelp(w)
 		return true
@@ -135,7 +139,7 @@ func printHelp(w io.Writer, topic string) bool {
 		return true
 	}
 	if topic == "management" {
-		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nSigned root-agent workflows cover definitions, roster/CSV, alerts, attempts/clocks, interruptions and bounded monitoring reads/complete private export/reviewed deletion/purge inventory: use examctl web help and web students/alerts/attempts/clocks/interruptions/monitoring help. Explicit gateway operation authorization is required. Clock acceptance is not native confirmation; inspect each intent and native info. Interruption approval alone is not execution permission. Monitoring logical deletion is not physical purge completion; inspect fresh monitoring show or purge-status. Monitoring export requires a NEW private directory and successful signed completion; it is not a protected submission or work permission. Local immutable catalog workflows use examctl templates help; installation is not gateway confirmation or student version binding. Definition retirement, unified grants, template binding/synchronization, configuration and administrator management remain pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for remaining web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
+		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nSigned root-agent workflows cover definitions, roster/CSV, alerts, attempts/clocks, interruptions and bounded monitoring reads/complete private export/reviewed deletion/purge inventory: use examctl web help and web students/alerts/attempts/clocks/interruptions/monitoring help. Explicit gateway operation authorization is required. Clock acceptance is not native confirmation; inspect each intent and native info. Interruption approval alone is not execution permission. Monitoring logical deletion is not physical purge completion; inspect fresh monitoring show or purge-status. Monitoring export requires a NEW private directory and successful signed completion; it is not a protected submission or work permission. Local immutable catalog workflows use examctl templates help; installation is not gateway confirmation or student version binding. Gateway administrator list/show/secret-safe creation use examctl web administrators help; creation never resets or overwrites credentials. Definition retirement, unified grants, template binding/synchronization, configuration mutation and remaining full management are pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for remaining web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
 		return true
 	}
 	if topic != "" {
@@ -155,6 +159,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprintln(w, "Workspace retention metadata/holds: workspaces list/show/hold/release-hold; use examctl help workspaces (no deletion enabled).")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")
 		fmt.Fprintln(w, "Gateway roster/CSV: web students; use examctl web students help.")
+		fmt.Fprintln(w, "Gateway administrators: web administrators list/show/create; use examctl web administrators help (secret-safe input, no credential reset/overwrite).")
 		fmt.Fprintln(w, "Gateway email delivery/manual reminders: web alerts; use examctl web alerts help.")
 		fmt.Fprintln(w, "Gateway attempts/clocks/interruption review: web attempts/clocks/interruptions; use each topic's help.")
 		fmt.Fprintln(w, "Gateway private monitoring metadata/images/replay/complete export/deletion/purge status: web monitoring; use examctl web monitoring help.")

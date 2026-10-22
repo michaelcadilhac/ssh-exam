@@ -640,6 +640,66 @@ test("instructor creates an administrator with confirmation, cancellation and du
   ).toBeVisible();
 });
 
+test("administrator creation reconciles a committed lost reply using the same intent and re-entered password", async ({
+  page,
+}) => {
+  await page.setExtraHTTPHeaders({ "X-Forwarded-For": "198.51.100.203" });
+  await page.goto("/admin");
+  await page.getByLabel("Username", { exact: true }).fill("instructor");
+  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await adminCommand(page, "Add administrator");
+  const dialog = page.getByRole("dialog", { name: "Add administrator" });
+  const username = "browser-retry-admin",
+    password = "synthetic-browser-retry-password";
+  const requests: string[] = [];
+  await page.route("**/api/admin/administrators", async (route) => {
+    const body = route.request().postDataJSON();
+    requests.push(body.request);
+    if (requests.length === 1) {
+      const result = await route.fetch();
+      expect(result.status()).toBe(201);
+      await route.abort("failed");
+    } else await route.continue();
+  });
+  await dialog
+    .getByLabel("Administrator username", { exact: true })
+    .fill(username);
+  const submit = async () => {
+    await dialog.getByLabel("Password", { exact: true }).fill(password);
+    await dialog.getByLabel("Confirm password", { exact: true }).fill(password);
+    await dialog
+      .getByRole("button", { name: "Create administrator", exact: true })
+      .click();
+  };
+  await submit();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "re-enter the original password",
+  );
+  await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue("");
+  await expect(
+    dialog.getByLabel("Confirm password", { exact: true }),
+  ).toHaveValue("");
+  await submit();
+  await expect(dialog).toHaveCount(0);
+  expect(requests).toHaveLength(2);
+  expect(requests[0]).toMatch(/^[a-f0-9-]{36}$/);
+  expect(requests[1]).toBe(requests[0]);
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: `Administrator ${username} created.` }),
+  ).toBeVisible();
+  await page.unroute("**/api/admin/administrators");
+  await adminCommand(page, "Sign out");
+  await page.getByLabel("Username", { exact: true }).fill(username);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Administration", exact: true }),
+  ).toBeVisible();
+});
+
 async function studentSignIn(
   page: import("@playwright/test").Page,
   exam = "sample",
