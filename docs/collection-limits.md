@@ -101,6 +101,17 @@ this is real I/O/resource/process qualification, not installed root/PAM/PTYS pro
 Fixture creation is flushed before measurement, and test services do not use
 RemainAfterExit (which would prevent systemd-run --wait from completing).
 
+October22 also adds two simultaneous default-ceiling sources/collectors, exact
+byte protection and live two-worker controls while a healthy signed renewal,
+inspection, new registration and pane-capability issue/close remain usable.
+Three final local race repeats pass116.594s. The three earlier subsecond signed-
+inspection failures and traced fsync/rename delay are retained; the final test
+uses the pre-existing3s durable-IO budget and a separate1s no-write diagnostic
+bound. This changes a benchmark criterion, not runtime authority/timeouts or
+resource bounds, and does not close critical liveness/C10. See
+concurrent-collection-latency.md for all measurements and remaining privileged/
+course-specific/capacity gates.
+
 October21 measurement correction: a full repeat completed collection/restore
 successfully but reported a peak of268,439,552 bytes, one4KiB page above the
 configured268,435,456-byte limit. Linux explicitly permits transient usage above
