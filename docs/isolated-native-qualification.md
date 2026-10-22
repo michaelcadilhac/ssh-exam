@@ -191,3 +191,21 @@ This closes only the positive actual-SSH pinning observation for that exact
 fixture. A live pidfd is not current registration/page/input-epoch authority,
 network viability, all-writer freeze, input discard, permission to thaw or C3
 completion. No host installation/service/account/record is changed or deployed.
+
+## Q4: cgroup/PTY prerequisite qualification (October22)
+
+The same manifested test-only binary also supports `--profile monitoring-freeze`.
+It does not replace the gate socket or stop its guest agent. Five repetitions
+each perform three actual descendant freeze/UID-verification/input-discard/thaw
+cycles, retaining a synthetic in-memory value and exact process handles while
+stopping/resuming a background file writer. An uncontained same-UID process must
+refuse verification. A deliberately skipped discard makes every repeat RED with
+STALE input; removed before final qualification.
+
+Final15-cycle qualification passes on kernel6.8.0-111-generic with unchanged host/
+base evidence at /var/tmp/ssh-exam-overlay-3u8w6mlt. Test binary SHA256:
+5ca1c283f4120f52abb638c817065ce7b4cd938a48cfc36e962f3beb4aacf7ba.
+This is not actual editor/retained SSH, closed native admission, cross-process
+epochs or recovery qualification. Empty basic/SQPOLL io_uring setup succeeds as
+the synthetic UID; deferred IO must be tested, not presumed disabled. Detailed
+faults, artifact evidence and limitations: native-freeze-qualification.md.

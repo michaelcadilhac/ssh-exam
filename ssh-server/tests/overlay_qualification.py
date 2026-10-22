@@ -282,7 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--guest', type=Path, required=True)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--username', default='examq')
-    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner'), default='enforcement')
+    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner', 'monitoring-freeze'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):

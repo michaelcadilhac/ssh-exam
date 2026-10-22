@@ -31,9 +31,9 @@ func TestMonitoringSSHProcessGuestRefusesUnqualifiedHost(t *testing.T) {
 	}
 }
 
-func requireMonitoringSSHGuest(t *testing.T) int {
+func requireMonitoringGuest(t *testing.T, profile, optIn string) int {
 	t.Helper()
-	if os.Getenv("EXAM_MONITORING_SSH_GUEST") != "1" {
+	if os.Getenv(optIn) != "1" {
 		t.Skip("requires explicit disposable overlay qualification profile")
 	}
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
@@ -46,7 +46,7 @@ func requireMonitoringSSHGuest(t *testing.T) int {
 	const input = "/run/ssh-exam-qualification-input"
 	marker, err := os.ReadFile(input + "/run.json")
 	var run struct{ Username, Unit, Profile string }
-	if err != nil || len(marker) > 4096 || json.Unmarshal(marker, &run) != nil || run.Username != "examq" || run.Profile != "monitoring-owner" || !strings.HasPrefix(run.Unit, "ssh-exam-qualification-") || !strings.HasSuffix(run.Unit, ".service") {
+	if err != nil || len(marker) > 4096 || json.Unmarshal(marker, &run) != nil || run.Username != "examq" || run.Profile != profile || !strings.HasPrefix(run.Unit, "ssh-exam-qualification-") || !strings.HasSuffix(run.Unit, ".service") {
 		t.Fatal("private monitoring qualification identity required")
 	}
 	mounts, err := os.ReadFile("/proc/self/mountinfo")
@@ -75,7 +75,7 @@ func requireMonitoringSSHGuest(t *testing.T) int {
 }
 
 func TestMonitoringSSHProcessGuest(t *testing.T) {
-	uid := requireMonitoringSSHGuest(t)
+	uid := requireMonitoringGuest(t, "monitoring-owner", "EXAM_MONITORING_SSH_GUEST")
 	// The wrapper has stopped ONLY the overlay's agent. Listen refuses an
 	// existing socket: never unlink/replace a live guard to make this test pass.
 	// systemd removes the agent's RuntimeDirectory at stop. Recreate only this

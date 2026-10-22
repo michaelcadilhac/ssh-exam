@@ -195,6 +195,13 @@ full privileged qualification or deployment authorization.
   evidence. No installed command/attempt/lease is added. Current registration,
   native epochs/admission/IPC and all-writer C3 remain open. See
   docs/native-monitoring-process.md and docs/isolated-native-qualification.md.
+  Q4 also qualifies15 actual cgroup/PTY freeze/discard/thaw cycles in the isolated
+  guest, preserving synthetic process/memory state, stopping/resuming a background
+  writer and refusing an uncontained UID. Skipping discard makes all five tests
+  fail with STALE input; the mutant is removed. No actual editor/retained SSH,
+  native admission/epoch transition or automatic recovery is claimed. Basic and
+  SQPOLL asynchronous IO are available in that fixture, so deferred-IO behavior
+  remains an explicit open gate. See docs/native-freeze-qualification.md.
 
 ## Firm design policy: examctl is the complete management interface
 

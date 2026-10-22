@@ -110,6 +110,12 @@ def monitoring_owner_command():
             '-test.timeout=60s']
 
 
+def monitoring_freeze_command():
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestMonitoringFreezePTYGuest$', '-test.v', '-test.count=5',
+            '-test.timeout=60s']
+
+
 def main():
     assert os.geteuid() == 0
     assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
@@ -145,6 +151,15 @@ def main():
                 return result.returncode
         finally:
             subprocess.run(['systemctl', 'start', 'exam-agent.service'], check=True, timeout=30)
+        profiles = ()
+    elif settings.get('profile') == 'monitoring-freeze':
+        assert username == 'examq', 'Exact synthetic freeze fixture required'
+        # No gate socket replacement or agent action for this profile. All
+        # workload scopes/UIDs/files are owned disposable-guest fixtures.
+        environment = {**os.environ, 'EXAM_MONITORING_FREEZE_GUEST': '1'}
+        result = subprocess.run(monitoring_freeze_command(), env=environment, timeout=75)
+        if result.returncode:
+            return result.returncode
         profiles = ()
     else:
         profiles = (['--handoff-only'], ['--setup-only'], [])

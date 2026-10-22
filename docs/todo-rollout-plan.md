@@ -403,6 +403,11 @@ The Q3 core-qualification.test binary is test-only input for the disposable gues
 **not an installation artifact** or a reason to restart installed services. See
 student-continuation-status.md and isolated-native-qualification.md for exact
 local/guest evidence. Temporary-agent consolidation below remains unexecuted.
+Q4's cgroup/PTY fixture likewise adds no installed command/capability or schema.
+It does not authorize removing legacy termination. Require native admission,
+page/pane epochs, deferred-IO/all-writer proof and real retained-buffer recovery
+before proposing enablement. Preserve watchdog/clock/account enforcement and
+all current authority; see native-freeze-qualification.md. Nothing is deployed.
 
 The canonical `exam-agent`, `exam-agent-live-upgrade` and
 `exam-agent-deferred-recovery` may each own historical PTY bridges. Do not stop

@@ -107,6 +107,12 @@ class OverlayTests(unittest.TestCase):
                                             self.root / 'guest', self.root / 'in', self.root / 'out')
         self.assertFalse(any('core-qualification.test:/' in arg for arg in command))
 
+    def test_freeze_profile_is_scoped_to_the_same_private_test_binary(self):
+        self.assertEqual(guest.monitoring_freeze_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestMonitoringFreezePTYGuest$', '-test.v', '-test.count=5',
+            '-test.timeout=60s'])
+
 
 if __name__ == '__main__':
     unittest.main()

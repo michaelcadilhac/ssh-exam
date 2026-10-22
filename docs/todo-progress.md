@@ -25,6 +25,21 @@ evidence /var/tmp/ssh-exam-overlay-xckp4pge. The mutant is removed. Final rebuil
 and qualification are in progress, with read-only guest kernel/async-IO setup
 observations added (availability is not async-IO freeze qualification). No runtime
 product source is mutated.
+The added IO probe first exposed a fixture ordering failure: Python forked after
+creating kernel IO helpers and emitted its multi-threaded-fork warning. This was
+not counted as qualified; no warning filtering was added. The background child is
+now forked before the capability probe. That failed guest still passed host/base
+preservation (/var/tmp/ssh-exam-overlay-a07hchv9). Final Q4 passes five repetitions
+(0.54..0.72s),15 actual cycles, on kernel6.8.0-111-generic, with host/base preservation:
+/var/tmp/ssh-exam-overlay-3u8w6mlt. Basic and SQPOLL setup both return errno0 as
+the synthetic UID; deferred IO is therefore a real remaining qualification gate,
+not assumed absent/disabled. Full native compatibility passes core171.16s/CLI5.92s,
+static build/vet,27 Python checks and20 host-refusal race repeats (1.20s) pass.
+See native-freeze-qualification.md for exact hashes and open admission/epoch/
+real-editor/retained-SSH/deferred-IO limitations. The final shared-validator Q3
+also passes five repeats (0.23..0.35s) on the same exact artifact, preserving
+host/base state; evidence /var/tmp/ssh-exam-overlay-ue_wdjrm. No C3 mode or deployed
+claim. Continue with deferred-IO behavior and native admission/epoch integration.
 Kernel-source investigation is separate:
 cgroup.freeze confirmation is asynchronous; process/mount moves and privileged
 kernel IO cannot be assumed covered from a live SSH pidfd or CPU pause alone.
