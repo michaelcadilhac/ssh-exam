@@ -36,6 +36,13 @@ does not restart SSH or exam enforcement services.
 
 ## Explicit read-only incident diagnosis (local candidate, not deployed)
 
+The local new-preflight candidate exposes preparation_pending in read-only
+inspection. Pending readiness/home checks admit no workload, account setup,
+workspace or Begin. An unstarted pending preparation can be deliberately cancelled
+with `examctl cancel ATTEMPT --reason REASON`; late checks cannot revive it. A
+crashed pending-readiness reservation expires without starting the exam. See
+[preflight isolation](../docs/preflight-isolation.md); no production change.
+
 Unflagged legacy `examctl list/info` initialize native state and may reconcile
 eligible access. For a non-mutating investigation, the local candidate supports:
 

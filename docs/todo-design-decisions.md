@@ -430,3 +430,23 @@ introduce a syscall restriction or kernel change to make tests pass. C3/C9,
 deadlines, account holds and credential cleanup remain unchanged. This approval
 authorizes local development/guarded testing only, not deployment or production
 signals. See native-async-io-investigation.md and monitoring-liveness-plan.md.
+
+## Retained terminal supervision (C12 approved October22)
+
+The instructor selected one bounded supervisor per user/attempt, owning that
+attempt's terminal panes. This supersedes the suggested per-pane topology;
+there must not be one shared terminal supervisor across students. Supervisor
+failure is contained to its own attempt. Preserve it outside the coordinator's
+kill/OOM domain, with authenticated role/ownership/epoch IPC, closed launches and
+independent cutoff. Capacity and actual process-death/SSH/input/freeze integration
+remain to qualify. This authorizes local development, not installation or an
+enabled retained mode. See retained-workload-barrier-plan.md.
+
+## Legacy unused enrollment migration (C13 approved October22)
+
+Use reviewed bulk issuance of NEW grants from explicitly selected current
+settings/version and a finite Begin window. Do not fabricate original enrollment-
+time settings, backdate authority, revise used grants or change active/historical
+attempts and protected submissions. This supersedes earlier awaiting-decision
+notes. The review/confirmation transaction, matching CLI/web workflows and
+migration qualification remain to implement; no records are migrated by approval.

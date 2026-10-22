@@ -127,6 +127,9 @@ func (e *Engine) prepareAccountPolicy(id string) (any, error) {
 		if e.expirePreflight(a, Millis()) {
 			return errors.New(PreflightExpiredReason)
 		}
+		if a.PreparationPending {
+			return errors.New("account setup requires completed preflight checks; retry preflight after checks settle")
+		}
 		if !e.temporaryPolicy(a) {
 			snapshot = *a
 			return nil

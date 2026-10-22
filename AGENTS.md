@@ -48,10 +48,21 @@
   run affected unit/interface tests and targeted native races. Fix failures
   before advancing. Use actual isolated interfaces/kernel behavior when required;
   disclose mocked guards and untested privileged boundaries.
+- Before broad qualification, review each new durable/intermediate state for
+  inspection, cancellation, crash/restart, expiry, stale completion and admission
+  bypass. No pending operation may become an indefinite account reservation or
+  execution permission. Complete this review before freezing milestone artifacts.
 - Run broad application/integration/native-race/build/browser checks at coherent
   milestone boundaries according to affected surfaces and risk. Do not rerun
   unchanged application/browser suites for every private native helper. Record
   why existing evidence still applies; rerun when artifacts/contracts change.
+- Integration/browser suites require local TCP/Unix listeners; native resource
+  tests also need the owned user-systemd bus/scopes. The restricted sandbox denies
+  these even when compilers and focused tests work. Request the tool's local-test
+  sandbox escalation at the outset, without asking the instructor to approve
+  routine testing. Do not waste a full suite on known-denied listeners. Separate
+  permission failures from product regressions and stop only the exact owned test
+  runner before retrying; never terminate unrelated processes or services.
 - Do not weaken acceptance criteria or production enforcement to obtain a pass.
   A failed test fixture must be distinguished from a product defect; retain the
   failure and explain the correction. Never infer new-artifact qualification

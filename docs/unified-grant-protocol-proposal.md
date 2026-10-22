@@ -146,10 +146,11 @@ source for all. History retains both submissions without implying a grading rule
   admission switch or student-record backfill as a side effect of schema startup.
   Test old-writer refusal against new-mode definitions. Preserve legacy JSON/hash
   encodings and source behavior for existing preparations/started/history rows.
-- Existing unused enrollments lack issuance-time snapshots. Instructor choice
-  remains open: reviewed bulk new issuance from explicitly selected current
-  settings/window/version, or individual reissuance. Label it new issuance, never
-  pretend those were original enrollment-time settings. No migration is executed.
+- Existing unused enrollments lack issuance-time snapshots. C13 approved October22:
+  reviewed bulk NEW issuance from explicitly selected current settings/window/
+  version. Label it new issuance, never pretend those were original enrollment-
+  time settings. The reviewed transaction/UI/CLI/tests remain to implement; no
+  migration is executed and active/historical attempts remain unchanged.
 - Reconcile root-only legacy recovery records/consumption with signed explicit
   identities. Preserve source dependencies and markers; uncertain records remain
   unavailable for migration/definition deletion rather than treated as absent.

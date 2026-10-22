@@ -25,6 +25,14 @@ when it does not modify the current installation or interrupt exams. The October
 21 nspawn smoke test passed with a disposable overlay/private network; it is not
 full privileged qualification or deployment authorization.
 
+October22 follow-up approvals: C12 selects one bounded terminal supervisor per
+user/attempt, not per pane or one shared across students; C13 selects reviewed
+bulk NEW grant issuance for legacy unused enrollments from explicitly selected
+current settings/version and a finite Begin window. Neither is implemented by
+recording the decision; no production records or services are changed. Development
+must follow the outcome-first guardrails in AGENTS.md; the scope retrospective is
+in docs/development-retrospective.md.
+
 ## Critical priority: eliminate heartbeat-induced false lockouts
 
 - [ ] **Redesign monitoring liveness and execution authorization; do not turn a
@@ -311,6 +319,14 @@ full privileged qualification or deployment authorization.
   artifact guest qualification remains pending on the idle-host safety gate.
   See docs/native-readiness-accounts.md. No production change or closed parent
   TODO/initiating-fault claim.
+
+October22 integrated preflight candidate: new prepare-attempt readiness/home IO
+no longer owns shared state. Durable pending checks remain inspectable/cancellable
+without admitting work or starting time; late results recheck current authority
+and cannot revive cancellation. Focused native/signed/CLI and signed HTTP callback
+checks pass,426 app and six relevant browser workflows pass; final native
+qualification passes core278.848s/CLI27.072s. See docs/preflight-isolation.md. This does not complete
+the critical monitoring redesign, unified grants or CLI audit; nothing deployed.
 
 ## Firm design policy: examctl is the complete management interface
 

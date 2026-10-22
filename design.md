@@ -122,6 +122,14 @@ and pending new exact-artifact guest qualification. No deployment is authorized.
 
 ## 2. Product context and defaults
 
+The local new-preflight workflow also isolates readiness/home copying from shared
+state. Durable preparation_pending records permit observation/cancellation but
+never admit work, account setup, staging or Begin. Fresh commit fences and bounded
+abandoned-readiness cleanup prevent late revival/indefinite reservations, without
+starting exam time or consuming allowance. Existing ready retries, protected work
+and original holds stay unchanged. See docs/preflight-isolation.md; this is not
+unified grant/source binding or the complete monitoring/retained-SSH fix.
+
 The instructor administers a programming exam on a Unix/Linux class server. Questions, tools, documentation, student files, and submission collection are server-side. The instructor has root access on that server. Students use their personal computers at home or supervised computers in person.
 
 The known ordinary connection is:
@@ -1747,6 +1755,13 @@ checks complete. Local simulated browser tests alone do not qualify privileged i
 
 ### Approved retained-SSH lockout design (October 21; implementation pending)
 
+October22 C12 topology decision: use one bounded supervisor per user/attempt,
+owning that attempt's terminal panes. It must outlive the coordinator's service
+kill/OOM domain and contain its failures to that attempt. This supersedes the
+per-pane proposal; do not share one terminal supervisor across students. Capacity,
+authenticated ownership/epochs, freeze/input barriers and combined qualification
+remain required. No supervisor mode, service or production change is enabled.
+
 October22 C10/C11 follow-up: positively verified renewals take effect in live root
 authority without waiting for disk sync; restart requires fresh verification and
 durable significant transitions/starts/deadlines/audit remain mandatory. Develop
@@ -1869,6 +1884,13 @@ application compatibility, a repair for the linked-IO failure or adopted live
 SIGSTOP/SIGCONT policy. C11 remains awaiting the instructor's decision.
 
 ### Approved unified-grant design (October 20; implementation pending)
+
+October22 C13 migration decision: offer reviewed bulk issuance of NEW grants for
+legacy unused enrollments, from explicitly selected current settings/version and
+a finite Begin window. Label it new issuance, not reconstruction of historical
+enrollment-time snapshots. Preserve active/historical attempts, source protection
+and consumption markers. Migration implementation/qualification remain pending;
+no records are backfilled or changed by documenting this approval.
 
 Keep one ordinary attempt as the default. Explicit individual/bulk additional
 grants under the same exam choose an allowance independently of empty, versioned

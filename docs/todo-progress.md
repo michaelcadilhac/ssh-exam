@@ -18,7 +18,21 @@ C11 now authorizes development/full qualification of stop-assisted freezing,
 preserving originally stopped jobs. Neither approval enables a live mode or
 authorizes deployment/signals on production. Historical awaiting-decision entries
 below describe their earlier checkpoints; see todo-design-decisions.md for the
-current decisions. Legacy unused-enrollment migration remains unanswered.
+current decisions. C12 now selects one bounded supervisor per user/attempt;
+C13 approves reviewed bulk NEW issuance for legacy unused enrollments, without
+invented historical settings or active/history changes. Earlier unanswered notes
+are superseded by these approvals.
+
+October22 outcome-first correction is committed in c630450; the already-written
+R1c increment is closed in93632c6 without expanding its unwired reader chain.
+The next actual entry-point milestone isolates new prepare-attempt readiness/home
+IO from shared state, with durable non-admitting pending state, cancellation and
+fresh commit fences. Focused native/signed/actual-home/CLI tests pass;426 app,
+eight signed-callback cases and six browser workflows pass. Final native race/
+resource qualification passes core278.848s/CLI27.072s after the pending-readiness
+crash-expiry guard; static build/vet/typecheck pass.
+See preflight-isolation.md and the concise current checkpoint; no deployment or
+completion of the broad critical/grant TODO is claimed.
 
 Recovery atomicity is now local commit2c2b9c3; C10/C11 decisions are1635822.
 An independent expanded staging-storage regression is RED0.476s: actual ENOSPC

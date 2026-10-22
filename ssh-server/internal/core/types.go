@@ -81,6 +81,8 @@ type SSHHandoff struct {
 	Consumed       string `json:"consumed,omitempty"`
 }
 type Attempt struct {
+	PreparationPending      bool                 `json:"preparation_pending,omitempty"`
+	PreparationPendingSince int64                `json:"preparation_pending_since,omitempty"`
 	Workspace               *WorkspaceReceipt    `json:"workspace,omitempty"`
 	Handoff                 *SSHHandoff          `json:"ssh_handoff,omitempty"`
 	PolicyRequired          bool                 `json:"account_policy_required,omitempty"`
@@ -195,6 +197,8 @@ type Engine struct {
 	workerTimeout       time.Duration
 	workspaceCheckpoint func(string) error // Test-only fault barriers, never configurable.
 	activationPrepare   func(*Attempt) error
+	preparationReady    func() (bool, []string)
+	preparationHome     func(*Attempt) error
 	healthProbe         func() (bool, []string) // Test-only dependency seam; never configurable.
 	templateVerify      func(Settings) error    // Test replacement never exposed in config/environment.
 }
@@ -341,6 +345,8 @@ func New(c Config) (*Engine, error) {
 	e.cutoff = func(a *Attempt) error { return e.freeze(a, true) }
 	e.collectionRun = collectionRunner(e)
 	e.activationPrepare = e.prepareActivation
+	e.preparationReady = e.Ready
+	e.preparationHome = e.prepareHome
 	e.templateVerify = func(s Settings) error {
 		if s.TemplateVersion == "" {
 			return nil

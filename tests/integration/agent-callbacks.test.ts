@@ -122,6 +122,82 @@ async function setup() {
     },
   };
 }
+it("keeps pending native preflight checks unstarted and cancellation final without violation alerts", async () => {
+  const t = await setup();
+  try {
+    const id = randomUUID();
+    t.current()
+      .store.db.prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,preflight_started_at) VALUES(?,'e','bob',1002,'PREPARING','{}',?)",
+      )
+      .run(id, Date.now());
+    const pending = {
+      id,
+      exam: "e",
+      username: "bob",
+      uid: 1002,
+      state: "PREPARING",
+      preparation_pending: true,
+      start: 0,
+      deadline: 0,
+      original_deadline: 0,
+      protected: false,
+      access_state: "",
+    };
+    const outbox = () =>
+      t.current().store.db.prepare("SELECT COUNT(*) AS n FROM outbox").get();
+    const before = outbox();
+    expect(
+      (await t.post(1, { attempt: pending, manifest: undefined })).statusCode,
+    ).toBe(200);
+    expect(t.current().store.attempt(id)).toMatchObject({
+      state: "PREPARING",
+      start: null,
+      deadline: null,
+      original_deadline: null,
+      generation: 0,
+    });
+    expect(outbox()).toEqual(before);
+    expect(
+      (
+        await t.post(2, {
+          attempt: { ...pending, preparation_pending: false },
+          manifest: undefined,
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(t.current().store.attempt(id).start).toBeNull();
+    expect(
+      (
+        await t.post(3, {
+          attempt: {
+            ...pending,
+            preparation_pending: false,
+            state: "CANCELLED_BEFORE_START",
+            reason:
+              "Technical preflight checks did not complete; no clock started",
+            ended: Date.now(),
+          },
+          manifest: undefined,
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (await t.post(4, { attempt: pending, manifest: undefined })).statusCode,
+    ).toBe(200);
+    expect(t.current().store.attempt(id)).toMatchObject({
+      state: "CANCELLED_BEFORE_START",
+      start: null,
+      deadline: null,
+      original_deadline: null,
+      generation: 0,
+    });
+    expect(outbox()).toEqual(before);
+  } finally {
+    await t.close();
+  }
+});
+
 it("accepts signed deadline completion without a browser while refusing archive transfers", async () => {
   const t = await setup();
   try {

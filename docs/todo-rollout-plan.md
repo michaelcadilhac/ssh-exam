@@ -11,6 +11,14 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The local integrated preflight candidate adds non-admitting preparation_pending
+records and bounded abandoned-readiness cleanup. Before any future install,
+qualify/update all loaded gate/agent/watchdog/CLI roles together; old roles do not
+understand the flag. Before an older-version rollback, settle or explicitly cancel
+unstarted pending checks with the matching version, retaining history/work/holds.
+Do not deploy it as the completed heartbeat/retained-SSH redesign. See
+preflight-isolation.md; no rollout or consolidation is executed here.
+
 The approved C10 private-arbiter refactor has no live caller, enabled mode,
 configuration or durable-state migration. It is not independently deployable as
 the completed monitoring fix. Future enablement requires matched root actor,

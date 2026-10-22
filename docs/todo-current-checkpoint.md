@@ -1,114 +1,87 @@
 # Current local TODO checkpoint
 
-Updated October22,2026. This page is the current resumable summary; the longer
-todo-progress.md preserves historical checkpoints and their then-pending gates.
-**No deployment, production changes, pushes or temporary-agent consolidation.**
-Stop if an executable is not found. Commit validated local milestones without
-asking. Preserve unrelated work and protected/history/clock/hold authority.
+Updated October 22, 2026 (America/Chicago). No deployment, push, production changes
+or temporary-agent consolidation. Stop if a command is not found. Preserve all
+work/history/protected submissions/deadlines/holds. Follow AGENTS.md; routine local
+commits and testing do not require instructor questions.
 
-## Latest validated commits
+## Current milestone: integrated new-preflight isolation
 
-| Commit | Local outcome |
-| --- | --- |
-| 2c2b9c3 | Atomic complete recovery consumption markers; unknown original interval refuses Begin |
-| 1635822 | Instructor C10 live-renewal and C11 stop-assisted development decisions recorded |
-| 623e218 | Saved-work storage causes preserved; eight real isolated storage-fault/retry workflows |
-| 90f2c54 | Unwired native arbiter accepts verified live renewals independently of metadata publication; exact retired-ticket fence |
-| d1b26d1 | R1a unused pinned bounded cgroup2 direct-thread observations; real dead-leader scope, fuzz, full compatibility and fresh9-browser qualification |
-| 1630456 | R1b unused pinned task/group/UID/start and distinct stop-state observations; actual owned stop/continue/exit and full compatibility |
+Implemented locally through Engine.Call and authenticated signed prepare-attempt:
+readiness/home copying run outside global state under the per-UID fence. Durable
+pending records support inspection/cancellation but cannot admit panes, stage
+materials, apply account policy or Begin. Recheck current ownership/settings/
+reservation/expiry/source before ready publication; late checks cannot revive a
+cancelled attempt. Pending readiness has separate bounded crash cleanup; no exam
+clock/allowance starts. Existing ready retries retain their original policy.
 
-These do not complete the broad critical monitoring/C3/grant/cleanup TODOs.
-TODO.md still has11 checked parent items out of38; local components are not
-deployed features or completed investigations.
+Evidence: original four blocked-control cases RED2.085s (plus a corrected
+fixture-owner mismatch); focused API/actual-home/compiled read-only CLI races
+pass. All426 app tests/80 files pass93.27s; the new signed-callback regression
+passes with eight callback cases1.10s. Six browser/WASM SSH preflight/logout
+workflows pass45.5s. Static native build/vet/typecheck pass. First full native
+pass core273.585s/CLI21.405s; final run includes the review-discovered pending
+readiness crash-expiry guard, with three focused race repeats2.360s. Final native
+qualification passes core278.848s/CLI27.072s; log
+/tmp/ssh-exam-preparation-isolation-native-final.log.
+Feature evidence/limitations: preflight-isolation.md. Browser fixtures and supplied
+Go peer identities are not actual privileged containment qualification.
 
-## Active increment
+Latest commits: c630450 installs outcome-first guardrails/retrospective;
+93632c6 closes pre-existing R1c with its already completed native qualification.
+The integrated preflight milestone is validated locally; see the corresponding
+local commit in git log. No privileged current-artifact qualification/deployment.
+Do not extend the unused reader chain.
 
-R1c's unused retained_scope_tree.go now observes bounded descendant hierarchy,
-identity/membership/child brackets and refuses changes/exhaustion without partial
-coverage. Actual owned user-scope delegation is test-only; production stays
-Delegate=no. The descendant test keeps64MiB/swap0/16tasks and demonstrates new
-children even while frozen1. A shallow-walk mutant is RED0.052s and restored;
-twenty combined R1 races pass4.219s.426 app98.97s/static build/vet pass. Full
-native qualification passes core280.307s/CLI24.891s; logs use the
-/tmp/ssh-exam-retained-scope-tree- prefix. All174 browser hashes match. See
-retained-scope-hierarchy.md. It is NOT globally atomic or a closed-launch/freeze
-permit. Commit only after current native checks and final documentation/hash pass.
+## Scope and next integrated outcome
 
-The previous validated R1b increment:
+TODO remains11 checked main items/38. This increment does NOT complete critical
+heartbeat/retained SSH, unified grants, workspace cleanup, safe definition
+retirement or all CLI management. Current lockouts still terminate workloads/
+disconnect SSH; the private live-renewal/input/process/readers are not a live fix.
 
-R1b's locally implemented/tested unused retained_task.go and tests observe exact task/group/UID/start through
-pinned proc snapshots and original group pidfd lifetime, preserving distinct
-T/t/Z/D states. No signals/runtime caller/positive freeze permit is added by the
-reader. The only stop/continue signals are to the owned synthetic test child.
+Next critical integrated milestone: C12 attempt-level terminal supervision through
+the actual exam-channel/control paths and supported CLI inspection/close, with
+PTY ownership outside coordinator kill/OOM scope. Specify the entry/loaded-role
+handshake and acceptance before coding; connect existing components rather than
+adding more unused helpers. Full root registration/epochs/closed launches,
+stop-assisted all-writer/input barrier and authorized C9 recovery remain required
+before retained mode can be enabled. See retained-workload-barrier-plan.md.
 
-Twenty corrected focused races pass3.173s; removing the UID check makes the real
-owned-worker test RED0.109s and is restored. Metadata fuzz passes88319 executions
-11.017s. The initial exit fixture selected the test process's main thread; its
-failed run is retained, and the fixture now excludes/retains that thread.
-All426 app tests pass96.14s, static build/vet and35 Python pass. Full native race/
-resource/namespace/compiler/default-size passes core286.609s/CLI27.791s. All174
-browser hashes match. Logs use the /tmp/ssh-exam-retained-task- prefix; see
-retained-task-observations.md. Next is full scope/descendant/stop coverage and R2
-closed launches/current epochs, not enabling the isolated observer as a barrier.
-
-Latest actual browser run:9 checks/1.1m in
-/tmp/ssh-exam-retained-thread-inventory-browser.log. All174 source/runtime hashes
-matched afterward; no browser source/runtime changes in R1b. Do not transfer this
-receipt to a rebuilt/changed browser or to untested privileged containment.
+Unified-grant issuance/revisions/claim/Begin/expected-source/CLI/web migration
+remain in unified-grant-protocol-proposal.md. C4 complete cross-namespace/kernel
+reference proof, C8 retirement and course/capacity checks remain open. A proposal
+or component test is not a completed investigation.
 
 ## Decisions
 
-C1–C9 and enrollment-time first-grant settings are already approved. C10 now
-approves verified live renewals without per-renewal disk sync; restart needs
-fresh verification and significant transitions/starts/deadlines/ownership/audit
-remain durable. C11 authorizes developing and fully qualifying stop-assisted
-freezing, preserving originally stopped jobs. Neither enables a live mode.
+C1–C9 and enrollment/import-time initial settings are approved. C10: verified
+live renewals do not wait for disk sync; restart needs fresh verification, while
+starts/deadlines/ownership/epochs/audit stay durable. C11: develop/fully qualify
+stop-assisted freezing, preserving originally stopped jobs.
 
-Asked and unanswered:
+C12 now approved: one bounded supervisor per user/attempt, owning its panes;
+neither per-pane nor shared across students. C13 now approved: reviewed bulk NEW
+issuance for legacy unused enrollments from explicitly selected current settings,
+version and finite Begin window; never invent historical snapshots or change
+active/historical attempts. See todo-design-decisions.md. Additional C2 boundaries
+still need resolution: fresh root outbound Begin and the finite-window transition
+for the currently indefinite/repeatable sandbox; no invented offline permit/window.
 
-- Per-pane bounded retained supervisors (recommended) versus one shared terminal
-  supervisor. Shared-agent PTY ownership currently loses buffers on its crash;
-  a fork still inside its service kill domain does not solve that.
-- Reviewed bulk NEW issuance for legacy unused enrollments from explicitly
-  selected current settings/window/version (recommended), versus individual
-  reissuance. Never invent enrollment-time settings or backdate authority.
+## Privileged gate and future rollout
 
-Additional C2 boundaries identified, not resolved by a proposal: fresh narrow
-root outbound Begin agreement/path availability and finite-window transition for
-the currently indefinite/repeatable sandbox. Ordinary independent work can
-proceed; never silently infer an offline permit or rolling sandbox window.
+Only the exact approved old code-only bundle is uploaded at
+/var/tmp/ssh-exam-atomic-consumption-upload.QBtItC on csc-sys (private0700,
+14 artifact hashes verified). It predates current changes. Its three pane/health/
+CLI repeats pass with host/base preservation; the next enforcement run was
+refused BEFORE guest creation on new live/unresolved work.40 enforcement/11 worker
+assertions and hardened consumption-filesystem compatibility remain pending for
+that artifact. Do not transfer its receipt to this candidate.
 
-## Next dependency work
-
-Continue retained-workload-barrier-plan.md: finish R1 task/descendant/stop facts;
-actual current root SSH registration and durable epochs/closed pending launches;
-retained supervisors after topology decision; complete stop/freeze/input drain/
-discard barrier; C9 authorized recovery; actual combined CLI/web/browser/WASM/
-SSH/native fault qualification. Old loaded watchdog/gate roles must not override
-live authority. Do not enable any incomplete mode or merely remove termination.
-
-C2/C5/C7 source/claim/Begin/issuance/migration and shared CLI/web flows remain in
-unified-grant-protocol-proposal.md. C4 complete cross-namespace/kernel-reference
-proof and manual cleanup; C8 safe definition retirement; complete configuration
-apply/management and course workload/capacity checks also remain open. Do not
-call source maps/proposals completed investigations or close unchecked parents.
-
-## Privileged test gate and future rollout
-
-The instructor explicitly approved the exact code-only atomic-consumption bundle
-at /var/tmp/ssh-exam-atomic-consumption-upload.QBtItC on csc-sys. Its private0700
-directory/16 files and14 artifact hashes/wrapper are verified; nothing installed.
-It predates later commits and cannot certify their exact artifacts. After an IDLE
-guard, its three actual signed-SSH pane/health/root-CLI repeats pass1.65/0.89/0.75s
-with host/base preservation at /var/tmp/ssh-exam-overlay-yxy0txo_. The next
-enforcement run is refused BEFORE guest creation on new live/unresolved host
-work;40/11 enforcement/worker assertions and hardened consumption-filesystem
-compatibility remain pending. Never clear host records,
-relax the guard, stop exams or native-reconcile production just to qualify.
-Only guarded disposable nspawn profiles are authorized; host/base stay unchanged.
-
-Plan a later separately authorized drained deployment/migration/rollback only
-after all gates and missing decisions are satisfied. Preserve all newer durable
-authority/history/work, prefer compatible forward repair and include the
-temporary three-agent consolidation proposal from todo-rollout-plan.md. Execute
-none of it during this task; the latest instruction is explicitly no deploy.
+Use only guarded disposable nspawn qualification; never clear host records,
+relax the idle guard or reconcile/restart production to qualify. No new bundle
+was uploaded this milestone. Future separately authorized rollout requires drain,
+backups, matched loaded native roles and migration/rollback review. In particular,
+old roles do not understand preparation_pending: settle/cancel unstarted pending
+checks before an older-version rollback, preserving history/work/holds. Include
+temporary three-agent consolidation from todo-rollout-plan.md, but execute none.

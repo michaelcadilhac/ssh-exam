@@ -150,6 +150,18 @@ func TestCompiledReadOnlyCLIUnderRootUserNamespaceDoesNotInitializeReconcileOrWa
 			t.Fatal("compiled read-only workflow mutated native state")
 		}
 	}
+	pendingID := "22222222-1234-1234-1234-123456789abc"
+	state.Attempts[pendingID] = &core.Attempt{ID: pendingID, Exam: "midterm", Username: "student2", UID: 20002, State: "PREPARING", PreparationPending: true}
+	write(statePath, state)
+	beforePending := fingerprint()
+	pendingOut, pendingDiagnostics, pendingCode := invoke("info", pendingID, "--read-only", "--state", stateDir)
+	var pending core.ReadOnlySnapshot
+	if pendingCode != 0 || pendingDiagnostics != "" || json.Unmarshal([]byte(pendingOut), &pending) != nil || len(pending.Attempts) != 1 || !pending.Attempts[0].PreparationPending || pending.Attempts[0].State != "PREPARING" || pending.Attempts[0].Start != 0 || pending.Attempts[0].Deadline != 0 {
+		t.Fatal("actual CLI hides pending preflight or implies a started interval", pendingCode, pendingOut, pendingDiagnostics)
+	}
+	if !reflect.DeepEqual(beforePending, fingerprint()) {
+		t.Fatal("pending-preflight inspection changed private state")
+	}
 	if err := os.Mkdir(filepath.Join(stateDir, "leases"), 0700); err != nil {
 		t.Fatal(err)
 	}

@@ -80,6 +80,9 @@ func (e *Engine) ordinaryAccess(uid int) error {
 	return nil
 }
 func workloadAllowed(a *Attempt, purpose string) error {
+	if a.PreparationPending {
+		return errors.New("preflight checks still pending; no workload admitted; retry preflight after checks settle")
+	}
 	if purpose == "practice" && a.State == "PREPARING" && a.Start == 0 && !preflightExpired(a, Millis()) {
 		return nil
 	}

@@ -141,11 +141,7 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 		return e.observeNativeHealth()
 	}
 	if op == "prepare-attempt" {
-		lock, err := e.accountWorkLock(r.UID)
-		if err != nil {
-			return nil, err
-		}
-		defer lock.Close()
+		return e.prepareAttempt(r, 0)
 	}
 	if op == "inspect-attempt" || op == "submission-status" || op == "delete-submission" {
 		if err := e.reconcileAccessOutside(r.ID); err != nil {
@@ -213,74 +209,16 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			return errors.New("invalid attempt identifier")
 		}
 		if op == "prepare-attempt" {
-			if a := e.state.Attempts[r.ID]; a != nil {
-				if a.Username != r.Username || a.UID != r.UID || e.state.Registrations[r.Transport] != r.Username {
-					return errors.New("preparation ownership mismatch")
-				}
-				e.expirePreflight(a, Millis())
-				if a.State == "PREPARING" {
-					a.PolicyRequired = e.temporaryPolicy(a)
-					if a.Transport != r.Transport {
-						if err := e.terminateWriters(a); err != nil {
-							return err
-						}
-						a.Units = nil
-					}
-					a.Transport = r.Transport
-					a.BrowserSSH = r.BrowserSSH
-				}
-				result = a
-				return nil
-			}
-			ready, missing := e.Ready()
-			if !ready {
-				return fmt.Errorf("server guards unavailable: %v", missing)
-			}
-			account, ok := e.account(r.Username)
-			if !ok || account.UID != r.UID || e.state.Registrations[r.Transport] != r.Username {
-				return errors.New("identity/transport not approved")
-			}
-			if account.SandboxOnly && r.Exam != SandboxExamID {
-				return errors.New("administrator account is approved only for sandbox")
-			}
-			if e.Busy(account.UID) != nil {
-				return errors.New("account already reserved")
-			}
-			if !identifier.MatchString(r.Exam) || !validTemplateBinding(r.Settings) || r.Settings.Duration < 60 || r.Settings.Duration > 21600 || r.Settings.Terminals < 1 || r.Settings.Terminals > 4 {
-				return errors.New("invalid exam settings")
-			}
-			if _, err := limitsForSettings(r.Settings); err != nil {
-				return err
-			}
-			a := &Attempt{BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", PreflightStartedAt: Millis(), Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
-			a.PolicyRequired = e.temporaryPolicy(a)
-			if sandboxAttempt(a) {
-				a.Settings.Duration = SandboxDurationSeconds
-			}
-			a.AdministratorSandbox = account.SandboxOnly && sandboxAttempt(a)
-			if a.AdministratorSandbox {
-				e.Audit("administrator-sandbox-preparation", a.ID)
-			}
-			a.FunctionalTest = e.functionalAccount(a)
-			if a.FunctionalTest {
-				e.Audit("trusted-functional-test-preparation", a.ID)
-			}
-			if err := e.prepareHome(a); err != nil {
-				return err
-			}
-			if _, err := e.recoveryReference(a); err != nil {
-				return err
-			}
-			e.state.Attempts[r.ID] = a
-			e.Audit(op, r.ID)
-			result = a
-			return nil
+			return errors.New("preparation requires the outside-state workflow; use Engine.Call or signed prepare-attempt")
 		}
 		a, err := e.Find(r.ID)
 		if err != nil {
 			return err
 		}
 		e.expirePreflight(a, Millis())
+		if a.PreparationPending && (op == "prepare-workspace" || op == "activate-attempt" || op == "issue-channel-admission") {
+			return errors.New("preflight checks still pending; retry preflight after checks settle; no clock or workload admitted")
+		}
 		switch op {
 		case "prepare-workspace":
 			if a.State != "PREPARING" || a.Start != 0 || a.Deadline != 0 || a.OriginalDeadline != 0 {
@@ -427,6 +365,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("cannot cancel started attempt")
 			}
 			a.State = "CANCELLED_BEFORE_START"
+			a.PreparationPending, a.PreparationPendingSince = false, 0
 			if a.Reason == "" {
 				a.Reason = r.Reason
 			}
@@ -670,7 +609,13 @@ func (e *Engine) Tick() error {
 			if a.State == "PREPARING" && a.Start == 0 && a.PreflightStartedAt == 0 {
 				// Legacy records have no reliable native preparation date. Give
 				// them one bounded grace period, never renewed on later restarts.
-				a.PreflightStartedAt = Millis()
+				if a.PreparationPending {
+					if a.PreparationPendingSince == 0 {
+						a.PreparationPendingSince = Millis()
+					}
+				} else {
+					a.PreflightStartedAt = Millis()
+				}
 			}
 			e.expirePreflight(a, Millis())
 			if a.Start == 0 && a.State == "CANCELLED_BEFORE_START" {

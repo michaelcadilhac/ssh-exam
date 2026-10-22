@@ -39,16 +39,16 @@ deployment. Current lockouts still terminate workloads and disconnect SSH.
 | --- | --- | --- |
 | R1: kernel inventory and stop facts | Bounded pinned cgroup/thread observations include surviving dead-leader workers; unknown is never empty/stopped | Actual synthetic thread groups, exits/reuse, malformed/oversized/foreign views, denied/closed handles; no host UID-wide signals |
 | R2: durable owner/epoch and closed launch admission | Exact root SSH peer/current registration plus durable one-use attempt/owner/input incarnation; no pending or new launch can escape a close | Actual root peer/process claims, crash/late reply, manager-start stall, simultaneous close/hold/deadline; no authority reconstructed from disk |
-| R3: retained pane supervisor | PTY, decoder and cancellable input gate outlive coordinator/collector failure; explicit role/epoch IPC and independently enforced expiry | Actual process death, EOF, stale/forged peer/frames, backpressure and leak/resource bounds; supported CLI/web inventory/close/status |
+| R3: retained attempt supervisor (C12) | One bounded process owns its attempt's PTYs, decoders and input gates, outliving coordinator/collector failure; explicit role/epoch IPC and independently enforced expiry | Actual process death, EOF, stale/forged peer/frames, backpressure and leak/resource bounds; supported CLI/web inventory/close/status |
 | R4: stop/freeze/discard barrier | Close admission, revoke every gate, confirm all drains, preserve original job stops, stop/verify writers, freeze every scope and discard old input before claiming hold | Actual background/deferred IO, foreground job control, Nano/available course editors/debuggers, dead leader, fork/thread/namespace/manager races and injected failures |
 | R5: authorized thaw/recovery | Fresh per-pane input epochs/current same-owner complete coverage/unexpired interval; actual policy/auth loss retains its approval rules; C9 only under all prerequisites | Policy vs technical/gaps, old frames/acknowledgements, page/owner/restart and clock/deadline/collection races; no reopening/refund |
 | R6: combined qualification | Actual browser/WASM/SSH/native interfaces and operator CLI/web agree; mixed versions refuse unsafe mode | Full application/native race/resource/build/browser and exact-artifact guarded guest matrix; measured class/pane capacity |
 
-Per-pane supervisor versus one shared terminal supervisor is an explicit pending
-topology question. Recommended bounded per-pane processes limit a supervisor
-failure to its pane and preserve PTY/buffers through coordinator restart, at a
-measured memory/process cost. A shared terminal process costs less but fails all
-panes together. Neither topology may automatically restart a workload or derive
+C12 approved October22: one bounded supervisor per user/attempt, owning that
+attempt's panes. This supersedes the proposed per-pane topology; do not use one
+shared terminal supervisor across students. A supervisor failure may affect its
+own attempt's panes, never unrelated attempts. Qualify memory/process capacity
+with the approved grouping. Never automatically restart workloads or derive
 positive permission from disk. No new service/unit is installed by this plan.
 
 The eventual supervisor must live in its own independently bounded control scope,

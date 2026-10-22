@@ -100,13 +100,6 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		}
 		defer lock.Close()
 	}
-	if cmd.Op == "prepare-attempt" {
-		lock, err := e.accountWorkLock(cmd.Body.UID)
-		if err != nil {
-			return nil, err
-		}
-		defer lock.Close()
-	}
 	var discovered *Account
 	if _, explicit := e.Config.Accounts[username]; cmd.Op == "register" && e.Config.TemporaryAccountPolicy && !explicit {
 		if !identifier.MatchString(cmd.Body.Exam) || cmd.Transport != "" || transport == "" {
@@ -143,6 +136,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	setup := ""
 	handoff := false
 	health := false
+	prepare := false
 	var result any
 	err = e.WithState(func() error {
 		now := Millis()
@@ -253,7 +247,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			return nil
 		case "prepare-account-policy":
 			a, err := e.Find(r.ID)
-			if err != nil || a.Username != username || a.Transport != transport || a.State != "PREPARING" || a.Start != 0 {
+			if err != nil || a.Username != username || a.Transport != transport || a.State != "PREPARING" || a.PreparationPending || a.Start != 0 {
 				return errors.New("account setup owner/state mismatch")
 			}
 			setup = a.ID
@@ -269,6 +263,8 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			if r.UID != account.UID || r.Transport != transport || r.Username != username {
 				return errors.New("preparation identity mismatch")
 			}
+			prepare = true
+			return nil // Commit authenticated scope and one-use nonce before slow IO.
 		case "inspect-attempt", "submission-status", "submission-manifest", "cancel-attempt":
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username {
@@ -303,6 +299,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	})
 	if err == nil && health {
 		return e.observeNativeHealth()
+	}
+	if err == nil && prepare {
+		return e.prepareAttempt(cmd.Body, cmd.Expires)
 	}
 	if err == nil && cmd.Op == "activate-attempt" {
 		return e.activatePrepared(result.(*Attempt), cmd.Expires)

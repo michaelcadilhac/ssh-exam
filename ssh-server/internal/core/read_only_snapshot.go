@@ -50,6 +50,7 @@ type ReadOnlyLeaseObservation struct {
 }
 
 type ReadOnlyAttemptObservation struct {
+	PreparationPending          bool                     `json:"preparation_pending"`
 	ID                          string                   `json:"id"`
 	Exam                        string                   `json:"exam"`
 	Username                    string                   `json:"username"`
@@ -321,6 +322,7 @@ func ObserveNativeReadOnly(stateDir string, q ReadOnlyQuery) (ReadOnlySnapshot, 
 	for _, id := range ids {
 		a := state.Attempts[id]
 		v := ReadOnlyAttemptObservation{ID: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, State: a.State, Generation: a.Generation, ClockRevision: a.ClockRevision, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline, Ended: a.Ended, RecordedLease: a.Lease, RecordedProtected: a.Protected, AccessState: a.AccessState, PolicyState: a.PolicyState, Reason: a.Reason, RecordedUnitCount: len(a.Units), RegisteredTransportRecorded: a.Transport != "" && state.Registrations[a.Transport] == a.Username}
+		v.PreparationPending = a.PreparationPending
 		v.Lease = ReadOnlyLeaseObservation{Status: "absent", ObservedAt: Millis()}
 		// Both the directory and leaf are pinned/no-follow. A missing lease is
 		// ordinary; an inaccessible/unsafe directory is not evidence of absence.

@@ -14,7 +14,7 @@ import (
 )
 
 func workspaceFence(a, snapshot *Attempt) bool {
-	return protectedIdentity(a, snapshot) && a.State == "PREPARING" && a.Start == 0 && a.Deadline == 0 && a.OriginalDeadline == 0 && a.Transport == snapshot.Transport && a.Generation == snapshot.Generation && a.PreflightStartedAt == snapshot.PreflightStartedAt
+	return protectedIdentity(a, snapshot) && a.State == "PREPARING" && a.Start == 0 && a.Deadline == 0 && a.OriginalDeadline == 0 && a.Transport == snapshot.Transport && a.Generation == snapshot.Generation && a.PreflightStartedAt == snapshot.PreflightStartedAt && a.PreparationPending == snapshot.PreparationPending && a.PreparationPendingSince == snapshot.PreparationPendingSince
 }
 
 func recoveryReferenceHash(r *RecoveryPreparation) string {
