@@ -11,6 +11,24 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The local recovery-consumption atomicity candidate keeps the same36-byte marker
+format and preserves every existing marker/source/interval. It requires target
+filesystem O_TMPFILE and own-/proc/self/fd linkat support under actual hardened
+agent/worker settings; verify them on exact release artifacts before any
+separately authorized drained rollout. No extra capability, service setting or
+partial-final-write fallback is authorized. Staging probes support/current
+writability, not reserved future space. Legacy malformed/foreign markers stay
+refused for reviewed diagnosis/migration, never automatically rewritten. Back up
+native state/catalogs/receipts/audit consistently; an old writer loses atomicity
+and can recreate the confirmed empty-marker failure. Preserve newer one-use
+history and prefer compatible forward repair; never restore an old state snapshot
+over a newer consumption record. Matching consumed UUIDs with missing or
+chronologically inconsistent original intervals now refuse before new Begin;
+preserve/diagnose inconsistent backups, never invent history. Full local native/
+application qualification passes; the exact uploaded code-only bundle is verified
+but host eligibility refuses guest creation. Hardened qualification remains open and
+no rollout, storage migration or temporary-agent consolidation is executed.
+
 The saved-work publication child-death follow-up adds only private non-configurable
 test checkpoints, no source/clock/schema/grant format or policy migration. Its
 actual namespace-root CLI/watchdog/healthy-peer checks are not a substitute for

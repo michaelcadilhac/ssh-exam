@@ -157,7 +157,7 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 				view.Disposition = "uncertain"
 				if a := state.Attempts[view.ConsumedBy]; a != nil {
 					view.ConsumerState = a.State
-					matches := a.Exam == r.Exam && a.Username == r.Username && a.UID == r.UID && a.Settings.Duration == r.Duration && a.Start >= r.CreatedAt && a.Deadline > 0 && a.OriginalDeadline > 0
+					matches := a.Exam == r.Exam && a.Username == r.Username && a.UID == r.UID && a.Settings.Duration == r.Duration && recoveryConsumedIntervalKnown(a, r)
 					if a.Workspace != nil {
 						matches = matches && a.Workspace.Source.Kind == "saved" && a.Workspace.Source.Attempt == r.SourceAttempt && a.Workspace.Source.Checksum == r.Checksum && a.Workspace.RecoveryHash == recoveryReferenceHash(r)
 					}

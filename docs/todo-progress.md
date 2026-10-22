@@ -8,6 +8,28 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Saved-work process-death/CLI/watchdog qualification is now local commit6cfd9d4.
+The next independent C7 correctness regression now confirms actual isolated
+ENOSPC leaves an empty consumption marker and prevents supported root CLI repair;
+readonly catalog failures also lose their IO category. Both are RED0.853s. The
+local candidate shares complete unnamed-inode/single-link/no-replace/fsynced
+publication across current/legacy writers and an early isolated staging probe.
+No retained malformed marker is repaired/overwritten. Three expanded focused
+race repeats pass12.678s including48 actual child-death cases, real storage/CLI/
+healthy-peer checks; marker-only five repeats pass1.312s after correcting only a
+nonprivate unit fixture. A second RED signed-Begin case accepted a matching
+consumed UUID with unknown original clocks; shared chronological interval checks
+now refuse before admission/time consumption. Broader recovery races pass42.895s.
+The first full native run exposed two unstarted raw-decoder fixtures; they now
+use the nonconsuming extractor and assert no marker, without relaxing the start
+guard. Final full native race/resource/namespace/compiler/default-size passes
+core273.777s/CLI23.267s;426 app/80files pass97.88s, static build/vet,35 Python and
+actual CLI help pass. All174 prior browser source/runtime hashes still match.
+The explicitly approved exact code-only bundle is uploaded and checksum-verified
+in private0700 /var/tmp/ssh-exam-atomic-consumption-upload.QBtItC on csc-sys.
+The next boolean-only raw host guard reports BUSY; no candidate guest started.
+See recovery-consumption-atomicity.md; no production/privileged completion claim.
+
 Latest validated local milestones: healthd37463a, bounded NSS76fd030, simultaneous
 default-size workload d9cc715 and grant/progress proposal9e28edf. None is deployed.
 Current independent C7 qualification adds six actual workspace publication child-

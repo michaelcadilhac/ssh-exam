@@ -79,6 +79,21 @@ matrix are fake; disk faults, new exact-artifact privileged combined evidence an
 unified expected-source migration remain open. See
 docs/workspace-publication-crash-qualification.md; no deployment is authorized.
 
+A following local recovery-consumption correction reproduces an empty final
+one-use marker after actual ENOSPC. Current and legacy writers now fsync an
+unpublished private inode, publish a complete single-link marker without
+replacement, then sync its pinned catalog. Staging probes known storage support/
+writability outside shared state before time starts; this is not a reservation.
+Original clocks/holds and committed-start/one-use fences remain authoritative.
+Existing ambiguous/foreign markers refuse without rewriting them; format stays
+the same36-byte UUID. A matching consumed UUID without known chronological
+original clocks also refuses before admission/new time, consistently with catalog
+inspection; never infer unused authority from an inconsistent backup. Full local
+native/application qualification passes. See docs/recovery-consumption-atomicity.md
+for exact evidence, filesystem/procfs requirements and pending hardened-target
+qualification; the guarded host currently has live/unresolved work.
+No deployment or new grant/reopening policy is enabled.
+
 The local native health workflow validates state and consumes authenticated
 one-use signed nonces before observing readiness outside the global state lock.
 Configuration reporting publishes the observation afterward in a separate short

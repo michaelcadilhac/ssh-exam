@@ -44,6 +44,13 @@ func (e *Engine) recoveryPreparation(a *Attempt) (*RecoveryPreparation, *Manifes
 	return r, manifest, err
 }
 
+// A retained consumed UUID without its original interval is unknown history,
+// never permission to manufacture a new start for that same UUID. The catalog
+// and admission use the same conservative time evidence.
+func recoveryConsumedIntervalKnown(a *Attempt, r *RecoveryPreparation) bool {
+	return a != nil && r != nil && a.Start > 0 && a.Start >= r.CreatedAt && a.Deadline > a.Start && a.OriginalDeadline > a.Start
+}
+
 // Only bounded administrator metadata and in-memory identity checks belong in a
 // shared transaction. Hashing/extraction is the isolated staging worker's job.
 func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
@@ -76,6 +83,9 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	if err == nil && string(claimed) != a.ID {
 		return nil, errors.New("saved-work recovery has already started")
 	}
+	if err == nil && !recoveryConsumedIntervalKnown(a, r) {
+		return nil, fmt.Errorf("saved-work recovery consumption recorded but original interval is unavailable or mismatched; preserve markers and every attempt; inspect examctl recovery-grants --exam %s and examctl info %s --read-only; no new Begin or allowance is authorized", a.Exam, a.ID)
+	}
 	if err != nil && !os.IsNotExist(err) {
 		return nil, recoveryMetadataRefusal(a)
 	}
@@ -94,17 +104,7 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 }
 
 func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest *Manifest, dest string) error {
-	claim := filepath.Join(e.Config.State, recoveryName(a)+".consumed")
-	if err := durableFile(claim, []byte(a.ID)); err != nil {
-		if !os.IsExist(err) {
-			return err
-		}
-		b, err := e.readRecoveryConsumption(a)
-		if err != nil || string(b) != a.ID {
-			return errors.New("recovery consumption conflicts with another attempt")
-		}
-	}
-	if err := syncDirectory(filepath.Dir(claim)); err != nil {
+	if err := e.commitRecoveryConsumption(a); err != nil {
 		return err
 	}
 	return e.restoreRecoveryFiles(a, r, manifest, dest)

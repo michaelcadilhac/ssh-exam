@@ -934,6 +934,26 @@ the approval is not a production change or a completed investigation.
   fake in this matrix; actual disk-fault boundaries/new exact-artifact privileged
   combined qualification/unified expected-source migration remain open. See
   docs/workspace-publication-crash-qualification.md; no production change.
+  A subsequent actual private-tmpfs ENOSPC regression confirms an empty final
+  consumption marker prevented supported root CLI repair; readonly errors were
+  also masked as conflicts. Both are RED on the old writer. A local candidate
+  atomically publishes a complete single-link marker from an unnamed private
+  inode across current/legacy writers, preserves typed IO errors and probes
+  known bad consumption storage before Begin in the isolated staging worker.
+  Existing malformed/foreign markers are NOT overwritten. Three expanded native
+  race repeats pass12.678s with48 actual child-death cases, real disk/readonly/
+  CLI/healthy-peer workflows; marker race/privacy/refusal checks pass too. Full
+  native race/resource/namespace/compiler/default-size passes core273.777s/
+  CLI23.267s;426 app97.88s, build/vet,35 Python and actual CLI help pass. A
+  separate RED signed-Begin case now refuses a matching consumed UUID without
+  known chronological original clocks before admission or new time consumption.
+  Two raw archive fixtures were corrected to use the nonconsuming extractor,
+  not relax the durable-start guard. All174 browser hashes still match. The
+  explicitly approved code-only bundle is uploaded/checksum-verified in a private
+  csc-sys test directory; its guard reports BUSY, no guest started. New exact-
+  artifact hardened guest/whole recovery gates remain open. See
+  docs/recovery-consumption-atomicity.md.
+  No clock/hold/grant-format, account policy or production change is implied.
   C7 approved October 21: recovery uses explicit new attempts from verified saved
   work with instructor-chosen allowances; no automatic refunds or reopening
   completed attempts. Preserve and safely secure the old work/history first;

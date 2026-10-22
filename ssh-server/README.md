@@ -487,6 +487,19 @@ restarting active exams. These are not bounds on every filesystem/state/checker
 operation or a host-wide probe/process limit. See docs/native-health-isolation.md
 and docs/native-readiness-accounts.md for exact local/remaining guest evidence.
 
+Local recovery-consumption candidate (not deployed): `examctl help
+workspace-prepare` and `examctl help workspace-repair` explain writable supported
+consumption storage, early unpublished probes and complete atomic no-replace
+markers. Actual disk-full/read-only faults retain their IO category and the
+original interval/hold. After restoring storage, repair only the existing private
+publication, then explicitly secure it; never reset time, remove an ambiguous
+marker or overwrite saved work. Existing malformed/foreign markers still refuse.
+Matching consumed UUIDs also refuse when their original committed interval is
+missing/inconsistent; preserve the records for diagnosis, never invent clocks.
+The same36-byte UUID format is retained, but O_TMPFILE/own-procfd publication must
+be qualified on the actual hardened target. See docs/recovery-consumption-atomicity.md
+for current local tests and remaining gates, not a deployed fix.
+
 Local pane-management candidate (not deployed): `examctl help panes` explains
 bounded offline `panes list ATTEMPT`, `panes show ATTEMPT PANE` and reviewed
 `panes close ATTEMPT PANE --revision SNAPSHOT --reason TEXT`. Reads never initialize,

@@ -190,6 +190,11 @@ func (e *Engine) stageWorkspace(snapshot *Attempt) error {
 		return err
 	}
 	if source.Kind == "saved" {
+		if err := e.probeRecoveryConsumptionStorage(snapshot); err != nil {
+			return fmt.Errorf("saved-work consumption storage unavailable before Begin; no interval consumed; verify writable supported storage and retry examctl workspace-prepare %s without changing grants/markers: %w", snapshot.ID, err)
+		}
+	}
+	if source.Kind == "saved" {
 		// No wait while holding a state transaction; source deletion/export shares
 		// this lock. Completed sources cannot form cyclic staging dependencies.
 		lock, err := e.attemptCollectionLock(source.Attempt)
@@ -390,14 +395,7 @@ func (e *Engine) publishWorkspace(a *Attempt) error {
 		return err
 	}
 	if r.Source.Kind == "saved" {
-		claim := filepath.Join(e.Config.State, recoveryName(a)+".consumed")
-		if err := durableFile(claim, []byte(a.ID)); err != nil {
-			b, readErr := e.readRecoveryConsumption(a)
-			if !os.IsExist(err) || readErr != nil || string(b) != a.ID {
-				return errors.New("recovery consumption conflicts; preserve interval and inspect")
-			}
-		}
-		if err := syncDirectory(filepath.Dir(claim)); err != nil {
+		if err := e.commitRecoveryConsumption(a); err != nil {
 			return err
 		}
 		if err := e.workspaceBarrier("recovery-consumed"); err != nil {

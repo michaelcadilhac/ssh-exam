@@ -33,7 +33,7 @@ func TestSavedWorkspaceProcessDeathWatchdogBeforeRepair(t *testing.T) {
 func testSavedWorkspaceProcessDeath(t *testing.T, watchdogFirst bool) {
 	t.Helper()
 	cli, cliConfig, signingKey := workspaceCrashCompiledCLI(t)
-	for _, phase := range []string{"copied", "published-private", "start-committed", "recovery-consumed", "work-published", "initialized"} {
+	for _, phase := range []string{"copied", "published-private", "start-committed", "consumption-written", "consumption-flushed", "recovery-consumed", "work-published", "initialized"} {
 		t.Run(phase, func(t *testing.T) {
 			e, target, grant := recoveryFixture(t)
 			e.Config.AgentID, e.Config.CallbackURL = cliConfig.AgentID, cliConfig.CallbackURL
@@ -168,9 +168,13 @@ func testSavedWorkspaceProcessDeath(t *testing.T, watchdogFirst bool) {
 				if before.State != "ACTIVATING" || before.Start <= 0 || before.Deadline-before.Start != grant.Duration*1000 || before.OriginalDeadline != before.Deadline || before.AccessState != "HELD" {
 					t.Fatal("committed interval/hold lost at process death", before.State, before.Start, before.Deadline)
 				}
-				if phase == "start-committed" {
+				if phase == "start-committed" || phase == "consumption-written" || phase == "consumption-flushed" {
 					if !os.IsNotExist(claimErr) {
 						t.Fatal("start-commit fixture passed the consumption boundary", claimErr)
+					}
+					entries, err := os.ReadDir(filepath.Dir(claimPath))
+					if err != nil || len(entries) != 1 {
+						t.Fatal("unpublished marker left a named catalog orphan after child death", err, len(entries))
 					}
 				} else if claimErr != nil || string(claim) != target.ID {
 					t.Fatal("grant consumption did not bind the original attempt", claimErr)

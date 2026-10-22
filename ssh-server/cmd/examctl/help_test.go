@@ -80,3 +80,17 @@ func TestCollectionDiagnosisIsDiscoverableWithoutConfiguration(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkspaceHelpExplainsAtomicConsumptionAndStorageRecovery(t *testing.T) {
+	for topic, required := range map[string][]string{
+		"workspace-prepare": {"O_TMPFILE", "unpublished", "writable", "not a reservation"},
+		"workspace-repair":  {"atomic", "existing markers", "--read-only", "COLLECTION_FAILED"},
+	} {
+		output, code := cliProcess(t, "help", topic)
+		for _, text := range required {
+			if code != 0 || !strings.Contains(output, text) {
+				t.Fatalf("workspace help missing actionable storage contract %q: %s", text, output)
+			}
+		}
+	}
+}

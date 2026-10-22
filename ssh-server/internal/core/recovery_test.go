@@ -215,8 +215,13 @@ func TestRecoveryRestoresNanosecondPAXMetadataAndHandlesLegacyAbsence(t *testing
 				t.Fatal(err)
 			}
 			started := time.Now().Add(-time.Second)
-			if err := e.initializeRecovery(a, &r, manifest, dest); err != nil {
+			// Decode metadata only: this fixture deliberately has no committed
+			// interval and must not invoke one-use grant consumption.
+			if err := e.restoreRecoveryFiles(a, &r, manifest, dest); err != nil {
 				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(e.Config.State, recoveryName(a)+".consumed")); !os.IsNotExist(err) {
+				t.Fatal("metadata decoder consumed an unstarted grant", err)
 			}
 			info, err := os.Stat(filepath.Join(dest, "answer.txt"))
 			if err != nil {
@@ -412,8 +417,13 @@ func TestRecoveryRejectsUnsafeArchiveEntriesWithoutPublishingWork(t *testing.T) 
 			if err := os.MkdirAll(dest, 0700); err != nil {
 				t.Fatal(err)
 			}
-			if err := e.initializeRecovery(a, &r, manifest, dest); err == nil {
+			// Reach the actual entry/hash decoder, not a deliberately earlier
+			// missing-original-interval refusal in the consuming initializer.
+			if err := e.restoreRecoveryFiles(a, &r, manifest, dest); err == nil {
 				t.Fatal("unsafe archive restored")
+			}
+			if _, err := os.Stat(filepath.Join(e.Config.State, recoveryName(a)+".consumed")); !os.IsNotExist(err) {
+				t.Fatal("unsafe extraction consumed an unstarted grant", err)
 			}
 			if _, err := os.Stat(filepath.Join(base, "initialized")); !os.IsNotExist(err) {
 				t.Fatal("unsafe recovery published")
