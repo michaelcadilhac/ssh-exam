@@ -63,6 +63,25 @@ caller-selected file paths, arbitrary root commands or a new inbound network API
 The helper needs only measured necessary privileges; do not silently widen agent
 capabilities, weaken NoNewPrivileges or install units to make a fixture pass.
 
+Keep actor and pane lifetime claims distinct. Existing provisional publishers
+inherit the actor claim so a surviving writer excludes an overlapping owner;
+retained pane supervisors must not inherit that same open-file description or
+they would prevent replacement of a dead coordinator until their PTYs were
+destroyed. Give panes their own persistent incarnation/lifetime claims and a
+verified fail-closed owner-handover protocol. A still-running old metadata writer
+may delay a safe actor transition; do not unlock/remove its claim to force it.
+Retain buffers/SSH while reporting the actual pending transition.
+
+Before any future new-mode Begin, verify actual loaded coordinator, independent
+watchdog, gate and supervisor versions/roles, not only new files on disk or one
+capability string. A stale old watchdog can read a stale disk lease and destroy
+retained workloads even when the new live actor is healthy. Mixed loaded roles
+must refuse enablement before time/material release; old root daemons do not
+magically honor a new sidecar lock/field they never implemented. Include the
+temporary handoff services in the future verified drain/version/consolidation
+plan, and never assume arbitrary old root administration is a supported writer
+against new-mode state. No service action is executed during local development.
+
 ## Barrier and failure rules
 
 An accepted live proof is not a kernel hold receipt. A control timeout is not

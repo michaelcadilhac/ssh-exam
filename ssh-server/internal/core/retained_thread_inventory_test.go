@@ -165,5 +165,62 @@ func TestRetainedKernelThreadInventoryIncludesOwnedDeadLeaderWorker(t *testing.T
 	if err != nil || !slices.Contains(ids, tid) || slices.Contains(ids, os.Getpid()) {
 		t.Fatal("kernel inventory lost surviving worker or includes parent", ids, err)
 	}
+	p, err := pinUIDProcess(pid, os.Getuid())
+	if err != nil || p == nil {
+		t.Fatal("owned live group could not be pinned", err)
+	}
+	defer p.close()
+	original, err := observeRetainedTask(p, tid, os.Getuid())
+	if err != nil || original.Identity.TID != tid || original.Identity.TGID != pid || original.Identity.Start == 0 {
+		t.Fatal("owned dead-leader worker identity unavailable", original, err)
+	}
+	for _, value := range original.Identity.UIDs {
+		if value != uint32(os.Getuid()) {
+			t.Fatal("owned thread UID tuple differs")
+		}
+	}
+	for _, rejected := range []struct{ tid, uid int }{{tid, os.Getuid() + 1}, {os.Getpid(), os.Getuid()}} {
+		if observation, err := observeRetainedTask(p, rejected.tid, rejected.uid); err == nil || observation != (retainedTaskObservation{}) {
+			t.Fatal("wrong-account/other-group task became an observation")
+		}
+	}
+	if err := p.control(func(fd int) error { return unix.PidfdSendSignal(fd, unix.SIGSTOP, nil, 0) }); err != nil {
+		t.Fatal("stop exact owned group", err)
+	}
+	until = time.Now().Add(time.Second)
+	for {
+		stopped, err := observeRetainedTask(p, tid, os.Getuid())
+		if err != nil || stopped.Identity != original.Identity {
+			t.Fatal("stop changed pinned task identity", err)
+		}
+		if stopped.States == [4]byte{'T', 'T', 'T', 'T'} {
+			break
+		}
+		if time.Now().After(until) {
+			t.Fatal("owned worker stop not observed")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if err := p.control(func(fd int) error { return unix.PidfdSendSignal(fd, unix.SIGCONT, nil, 0) }); err != nil {
+		t.Fatal("continue exact owned group", err)
+	}
+	until = time.Now().Add(time.Second)
+	for {
+		continued, err := observeRetainedTask(p, tid, os.Getuid())
+		if err != nil || continued.Identity != original.Identity {
+			t.Fatal("continue changed pinned task identity", err)
+		}
+		if continued.States != [4]byte{'T', 'T', 'T', 'T'} {
+			break
+		}
+		if time.Now().After(until) {
+			t.Fatal("owned worker continuation not observed")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	p.close()
+	if observation, err := observeRetainedTask(p, tid, os.Getuid()); err == nil || observation != (retainedTaskObservation{}) {
+		t.Fatal("closed group lifetime became a task/stop proof")
+	}
 	t.Log("pinned real cgroup.threads includes surviving worker after main-thread exit; this is inventory, not freeze proof")
 }

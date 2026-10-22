@@ -11,7 +11,9 @@ individual incident records out of repository documentation.
 Local implementation is authorized separately as of October 20. Progress,
 dependency order, acceptance tests and decisions are tracked in
 [`docs/todo-progress.md`](docs/todo-progress.md). All production deferrals above
-remain safety prerequisites. On October 21 the instructor approved C1–C8 and
+remain safety prerequisites. The latest resumable status is in
+[`docs/todo-current-checkpoint.md`](docs/todo-current-checkpoint.md).
+On October 21 the instructor approved C1–C8 and
 deployment to csc-sys after all required tests succeed, without another approval
 request. Require verified safe drain, backups and compatibility; never interrupt
 running exams. A local test result is not a deployment claim.
@@ -133,6 +135,16 @@ full privileged qualification or deployment authorization.
   pass with174 hashes unchanged. This is not task/UID/stop verification, descendant/closed-
   launch coverage, a freeze receipt or a live caller. See
   docs/retained-thread-inventory.md and docs/retained-workload-barrier-plan.md.
+  R1b's next unused observer now brackets exact thread PID/TGID/UID/start through
+  pinned proc snapshots and group pidfd lifetime, preserving separate T/t/Z/D
+  states rather than inventing no-writer proof. The actual wrong-UID mutant is
+  RED0.109s and restored;20 corrected races pass3.173s and bounded metadata fuzz
+  passes88319 executions11.017s. An initial main-thread-exit fixture failed and
+  was corrected, not counted as PASS. Full native race/resource/namespace/
+  compiler/default-size passes core286.609s/CLI27.791s;426 app96.14s, build/vet
+  and35 Python pass;174 browser hashes match the fresh9-check/1.1m R1a run;
+  full scope/descendant/closed-launch/input/freeze proof remains open. See
+  docs/retained-task-observations.md. No live mode or production action.
   H4a/C3 now has a private unused framed-input codec and canonical cross-language
   byte fixture. Actual encrypted SSH-channel and raw Linux PTY tests cover binary
   control keys, UTF-8, fragmentation, truncation, malformed headers and bounded

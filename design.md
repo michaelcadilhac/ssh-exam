@@ -1764,6 +1764,13 @@ stop facts remain separate barrier prerequisites; no runtime caller uses it.
 See docs/retained-thread-inventory.md and the dependency-ordered
 docs/retained-workload-barrier-plan.md. Do not infer a verified hold or cleanup.
 
+The subsequent private R1b task observer retains proc descriptors, validates
+exact PID/TGID/all-four-UID/start identities across snapshots and brackets them
+with unchanged group identity plus original pidfd lifetime. It records distinct
+job/trace/zombie/uninterruptible states and refuses uncertainty. It sends no
+signals and supplies neither continuous/full writer coverage nor an input/hold/
+thaw permit. See docs/retained-task-observations.md for current qualification.
+
 October22's local admission correction moves only provisional ready/ACK socket IO
 outside the global state transaction. Close revokes exact unused pane tokens;
 replacement issuance supersedes older unused tokens and recorded panes cannot be

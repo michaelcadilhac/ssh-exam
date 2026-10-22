@@ -1,5 +1,8 @@
 # Local TODO implementation record
 
+For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
+The chronological evidence below includes historical then-pending states.
+
 Updated 2026-10-22 (America/Chicago). This is a local development record, not a
 deployment receipt. The instructor's latest October 21 instruction revokes the
 earlier conditional csc-sys deployment authorization: **do not deploy, including
@@ -65,6 +68,21 @@ app/80files pass93.15s,35 Python pass and nine fresh browser/WASM SSH checks pas
 validation, recursive coverage,
 closed launch/input registration and full barrier remain open; see
 retained-thread-inventory.md. No live mode, host UID signal, upload or deployment.
+
+R1a is now local commitd1b26d1. R1b's next unused task observer brackets pinned
+proc status/stat identity with original group-pidfd lifetime and unchanged group/
+UID data. It preserves distinct T/t/Z/D facts and refuses missing/changed views,
+without signalling or claiming complete freeze. A removed expected-UID guard
+makes the actual owned worker test RED0.109s; it is restored in finally. The first
+individual-exit fixture could select the test process's main thread; the initial
+20-repeat run fails4.151s and the fixture is corrected to exclude/retain that
+thread. Final20 combined races pass3.173s; metadata fuzz passes88319 executions
+11.017s. Full native race/resource/namespace/compiler/default-size passes
+core286.609s/CLI27.791s; all426 app/80files pass96.14s, static build/vet and35
+Python pass. All174 browser source/runtime hashes match the fresh9-check/1.1m
+R1a run. See
+retained-task-observations.md; no runtime owner/epoch/admission factory, complete
+barrier, privileged PASS or deployment is claimed.18:36UTC csc-sys remains BUSY.
 
 Saved-work process-death/CLI/watchdog qualification is now local commit6cfd9d4.
 The next independent C7 correctness regression now confirms actual isolated

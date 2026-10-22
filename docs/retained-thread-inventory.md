@@ -51,3 +51,7 @@ stop/freeze/input-discard; membership alone must never authorize thaw or cleanup
 Normal-root/hardened exact-artifact qualification remains idle-guard gated on
 csc-sys; this reader has not been uploaded or installed. No deployment/signals on
 production or temporary-agent consolidation is authorized/executed.
+
+R1b is now a separate unused candidate under local qualification; see
+retained-task-observations.md. It does not convert direct membership into a
+complete scope/descendant/admission or freeze receipt.
