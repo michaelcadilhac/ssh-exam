@@ -7,6 +7,10 @@ commits and testing do not require instructor questions.
 
 ## Current milestone: integrated pane setup and technical-error isolation
 
+Validated implementation revision: 155baaf; preceding C14 window revision b90ba4d.
+Both are coherent local commits, not deployed. Later checkpoint-only edits do
+not change the qualified runtime/test artifacts.
+
 Actual Engine.local Unix/PTY entry prepares private files outside shared state,
 with nonblocking per-UID and one-copy-per-Engine bounds. Both setup fences release
 before ACK and on failure. Final one-use/current-peer admission/actual launch
@@ -45,8 +49,7 @@ heartbeat/retained SSH, unified grants, workspace cleanup, safe definition
 retirement or all CLI management. Current lockouts still terminate workloads/
 disconnect SSH; the private live-renewal/input/process/readers are not a live fix.
 
-Immediate next action: commit this validated integrated milestone locally, then
-continue R2 closed launch/owner epochs plus C12's per-attempt supervisor through
+Immediate next implementation: R2 closed launch/owner epochs plus C12's per-attempt supervisor through
 the actual gate/control/CLI path. Do not extend unused private helpers. Native
 launch/system-manager readiness and state fsync remain serialized and the full
 critical liveness workflow is still open. Unified Begin's outbound availability
