@@ -921,6 +921,19 @@ the approval is not a production change or a completed investigation.
   preservation passing;174 frozen browser source/runtime hashes still match.
   See docs/workspace-receipt-safety.md; no source recopy, metadata invention,
   account release, deployment or completed initialization claim.
+  A later local C7 qualification increment now kills actual disposable children
+  at six private/start/consumption/work-rename/initialized boundaries in both
+  operator-first and native-watchdog-first order. Thirty-six cases include24
+  actual namespace-root CLI repair/refusal operations and102 healthy signed peer
+  renewals, exact source manifest/archive/identity/hold and new-answer hashes.
+  A temporarily removed durable-start fence makes the new test fail and is
+  restored. Final focused matrix6.465s, full native race/resource/namespace/
+  compiler/default-size core256.144s/CLI21.434s,426 app91.32s, static/vet and35
+  Python checks pass. Only private non-configurable test checkpoints are added
+  to runtime; no new recovery policy is enabled. OS account/writer guards are
+  fake in this matrix; actual disk-fault boundaries/new exact-artifact privileged
+  combined qualification/unified expected-source migration remain open. See
+  docs/workspace-publication-crash-qualification.md; no production change.
   C7 approved October 21: recovery uses explicit new attempts from verified saved
   work with instructor-chosen allowances; no automatic refunds or reopening
   completed attempts. Preserve and safely secure the old work/history first;

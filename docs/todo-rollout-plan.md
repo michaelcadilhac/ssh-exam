@@ -11,6 +11,14 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The saved-work publication child-death follow-up adds only private non-configurable
+test checkpoints, no source/clock/schema/grant format or policy migration. Its
+actual namespace-root CLI/watchdog/healthy-peer checks are not a substitute for
+new exact-artifact privileged combined or disk-fault qualification. Preserve
+original intervals, consumption history, archive/manifest bytes and published
+work on any repair/rollback; never recopy a template, reopen completed work or
+clear a marker to recover time. No rollout/consolidation action is executed.
+
 The local health-observation split and subsequent bounded configured-account NSS
 verification require no state/schema migration. Pair matching binaries/help and
 repeat current account verification under target NSS before any separately

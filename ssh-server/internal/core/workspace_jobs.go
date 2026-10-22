@@ -356,6 +356,9 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64) (any, error)
 		if err := e.save(); err != nil {
 			return err
 		}
+		if err := e.workspaceBarrier("start-committed"); err != nil {
+			return err
+		}
 		if err := e.publishWorkspace(a); err != nil {
 			a.State, a.Reason = "COLLECTION_FAILED", "Activation failed after access hold was committed"
 			a.Errors, a.Lease = appendError(a.Errors, err.Error()), 0
@@ -397,6 +400,9 @@ func (e *Engine) publishWorkspace(a *Attempt) error {
 		if err := syncDirectory(filepath.Dir(claim)); err != nil {
 			return err
 		}
+		if err := e.workspaceBarrier("recovery-consumed"); err != nil {
+			return err
+		}
 	}
 	dest := filepath.Join(base, "work")
 	if _, err := os.Lstat(dest); os.IsNotExist(err) {
@@ -419,11 +425,17 @@ func (e *Engine) publishWorkspace(a *Attempt) error {
 	if err := syncDirectory(filepath.Join(base, "workspace-ready")); err != nil {
 		return err
 	}
+	if err := e.workspaceBarrier("work-published"); err != nil {
+		return err
+	}
 	marker := filepath.Join(base, "initialized")
 	if err := durableFile(marker, []byte("1")); err != nil && !os.IsExist(err) {
 		return err
 	}
-	return syncDirectory(base)
+	if err := syncDirectory(base); err != nil {
+		return err
+	}
+	return e.workspaceBarrier("initialized")
 }
 
 func (e *Engine) preparedWorkspace(id string) (any, error) {

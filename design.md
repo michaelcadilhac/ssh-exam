@@ -69,6 +69,16 @@ receipts, source history and holds; do not recopy or invent metadata to repair a
 failure. See docs/workspace-receipt-safety.md for tests and pending exact-artifact
 qualification. No deployment, new allowance or lockout policy is enabled.
 
+Local saved-work publication qualification now covers actual child death at six
+private/start/consumption/rename/initialized boundaries, native watchdog-first
+versus operator-first order and actual namespace-root examctl repair/refusal.
+It verifies original clocks/holds/one-use fences, retained edits and exact source/
+target protected hashes with healthy signed peers. Private non-configurable fault
+checkpoints do not change production behavior. OS account/writer checks in that
+matrix are fake; disk faults, new exact-artifact privileged combined evidence and
+unified expected-source migration remain open. See
+docs/workspace-publication-crash-qualification.md; no deployment is authorized.
+
 The local native health workflow validates state and consumes authenticated
 one-use signed nonces before observing readiness outside the global state lock.
 Configuration reporting publishes the observation afterward in a separate short

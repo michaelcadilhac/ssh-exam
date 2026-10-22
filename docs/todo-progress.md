@@ -8,6 +8,21 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Latest validated local milestones: healthd37463a, bounded NSS76fd030, simultaneous
+default-size workload d9cc715 and grant/progress proposal9e28edf. None is deployed.
+Current independent C7 qualification adds six actual workspace publication child-
+death boundaries, real namespace-root repair/refusal, native watchdog-first order
+and healthy signed peers. Thirty-six cases/24 root CLI operations/102 renewal
+samples pass three race repeats6.452s; a removed durable-start-save mutant makes
+the targeted test fail and is restored. Stronger source manifest/identity/hold/
+answer-hash assertions pass the repeated matrix6.465s. Full native race/resource/
+namespace/compiler/default-size passes core256.144s/CLI21.434s; all426 app/80files
+pass91.32s, static builds/vet and35 Python checks pass. New exact-artifact guest
+qualification remains pending; the17:07UTC boolean raw host guard reports BUSY,
+no guest started. See
+workspace-publication-crash-qualification.md. This is not a new grant protocol,
+actual privileged writer/SSH containment or a completed broad recovery TODO.
+
 Health observation is now local commitd37463a; its final11 guarded worker checks
 remain pending on host-idle eligibility, not falsely reported as PASS. A new
 separate concurrent512MiB-per-source test verifies both archives/holds and healthy
