@@ -76,7 +76,7 @@ web account_busy enforcement independently; a valid grant never releases them.
    authority atomically reserves one Begin intent against that exact revision.
    A revision/revocation cannot report successful withdrawal while this intent
    could still start. Busy/unknown is explicit, not silently "unused".
-4. Proposed narrow root outbound Begin verification uses existing agent HTTPS
+4. C15-approved narrow root outbound Begin verification uses existing agent HTTPS
    authentication, analogous to deadline timing verification but a distinct
    purpose. Bind agent, student verified UID, grant/revision/hash, preparation,
    owner/boot epoch and one Begin intent. Replies are not arbitrary commands or
@@ -90,12 +90,12 @@ web account_busy enforcement independently; a valid grant never releases them.
    reply is UNKNOWN, not failure-to-start proof. Original one-use markers and
    historical attempts/submissions remain durable.
 
-Before implementing step4, resolve the narrow availability contract explicitly:
-the supported browser Begin already needs the webserver, but requiring root's
-outbound reachability is an additional path prerequisite. Recommended: require
-fresh outbound agreement for unified Begin/revision withdrawal, fail before time
-starts, and provide actionable retry/diagnostics. Do not introduce an offline
-permit that appears immediately revocable while root could still consume it.
+C15 approved October22: require fresh authenticated outbound agreement for
+unified Begin/revision withdrawal. Root outbound reachability is an explicit
+additional prerequisite; unavailability refuses before time starts and explains
+retry/inspection. Do not substitute an offline permit or browser-relayed protocol.
+This does not change an already started deadline or resolve an uncertain prior
+Begin merely by timeout. Protocol implementation/qualification remain pending.
 
 An abandoned preflight consumes no allowance. Reuse/revision after an uncertain
 Begin is different: require a root-authenticated durable retirement fence for the

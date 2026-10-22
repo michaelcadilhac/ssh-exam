@@ -464,3 +464,15 @@ must expose the same window configuration. Approval is not implementation or
 deployment. Finite-window CLI/web configuration and gateway/native admission are
 implemented/tested locally; unified fixed-settings grant
 issuance/migration remain pending. See exam-definition-management.md.
+
+## Fresh native Begin verification (C15 approved October22)
+
+Unified Begin requires fresh agreement over the native agent's existing
+authenticated outbound HTTPS path. Bind its distinct purpose to the exact
+grant/revision/settings/source, verified account, preparation, owner/boot and
+one-use Begin intent. Unavailable verification refuses before the clock starts,
+with actionable retry/inspection guidance; it is not a student violation or
+proof that a previously uncertain Begin never started. No offline permit or new
+browser-relayed challenge protocol is introduced. Existing started deadlines,
+holds/history and original one-use outcomes remain authoritative. This settles
+the availability choice, not implementation, migration or deployment.

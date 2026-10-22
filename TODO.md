@@ -41,6 +41,12 @@ window enforcement are implemented/tested locally; unified
 issuance remains implementation work. No deployment. See
 docs/exam-definition-management.md; the broad grant TODOs remain unchecked.
 
+October22 C15 approval: unified Begin requires fresh verification over the
+existing authenticated native-agent outbound HTTPS path. If unavailable, refuse
+before starting time with retry/inspection guidance; no offline permit or new
+browser relay. Existing started deadlines/holds/history and uncertain one-use
+outcomes are preserved. Protocol implementation/qualification remain pending.
+
 ## Critical priority: eliminate heartbeat-induced false lockouts
 
 - [ ] **Redesign monitoring liveness and execution authorization; do not turn a

@@ -1903,6 +1903,14 @@ the integrated all-writer/input barrier remains unimplemented and disabled.
 
 ### Approved unified-grant design (October 20; implementation pending)
 
+October22 C15 availability decision: require fresh native-agent outbound HTTPS
+verification of the exact unified Begin intent using existing pinned agent/
+gateway authentication and a distinct purpose. An unavailable path refuses
+before starting time, with retry/inspection guidance, not a policy violation or
+an automatic no-start/refund conclusion. No offline permit or browser-relayed
+challenge protocol. Already-started deadlines and one-use outcomes are unchanged;
+implementation/qualification remain pending.
+
 October22 C13 migration decision: offer reviewed bulk issuance of NEW grants for
 legacy unused enrollments, from explicitly selected current settings/version and
 a finite Begin window. Label it new issuance, not reconstruction of historical
