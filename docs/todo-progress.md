@@ -8,6 +8,18 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Current checkpoint: C1gc2 complete private monitoring export is implemented/tested
+locally. Final414 app checks/79files (85.99s), uncached native race/resource/
+namespace/compiler/default-size (core173.882s/CLI6.637s), static build/vet/typecheck/
+build and all113 combined browser checks (12.8m) pass. All140 frozen source/runtime
+hashes match before/after; nine generated screenshots are restored to their
+verified pre-run baseline. The local monitoring workflow/isolated-purge TODO is
+now checked:11 of38 top-level items implemented/tested locally,27 open. This does
+not mean deployed, complete wider management, C3 retained mode or whole-host
+capacity certification. Exact evidence: monitoring-export-qualification.md.
+Independent template-system-manager qualification is tracked separately below.
+No missing command, production operation, push or deployment occurred.
+
 Q5 investigation afterb8587b9: basic/SQPOLL io_uring is demonstrably
 available to the synthetic UID, so test deferred pipe-read/linked-file-write and
 timer-hardlinked-write, with explicit unfrozen baselines and forced-worker
@@ -61,6 +73,50 @@ checks (3.5m) pass. All18 runtime/source hashes match before/after; nine screens
 baselines are unchanged. See monitoring-image-qualification.md. No full export,
 deployed or completed-TODO claim. Docker remains absent on the local Unix socket
 in the renewed read-only check; no daemon/service/group/permission changes made.
+C1gc1 is local commitdc68921. C1gc2 is now starting with a bounded purpose-signed
+stream on the existing outbound management route, one actual export/cleanup slot,
+shared media bounds, exact partial-tail recording prefixes and no-replace private
+CLI publication. See monitoring-export-plan.md for the concrete proposal and
+fault matrix. C1gc2 is now wired locally, not yet finally qualified: actual
+streaming TLS/root-mapped CLI, multi-chunk raw binary tails, append exclusion,
+overwrite/truncation, oversized history, deletion before signed completion,
+bad signed scope/file/digest, trailing/truncated stream and no-replace destination
+races pass focused regressions. Actual socket cancellation keeps its owner until
+cleanup; uncertain close retains/poisons the bounded slot. A removed ignored-close
+mutant makes the shared image reader regression RED. Held export IO leaves actual
+authenticated SSH, signed renewals, new panes, uploads and health responsive.
+The first full app run passes413/79files (87.32s); final suite including the last
+SSH regression, full native compatibility and fresh frozen browser checks remain
+pending. No deployed/completed-TODO claim. C10/C11/legacy migration decisions and
+the local Docker-engine prerequisite remain pending; no policy is assumed.
+Final export candidate application suite passes414 checks/79files (85.99s),
+native uncached race/resource/namespace/compiler/default-size passes
+core173.882s/CLI6.637s, static build/vet/typecheck/build pass. Fresh113-browser
+qualification is running with140 runtime/source files frozen; no web/runtime
+edits or rebuilds during that run. Final browser evidence/commit is still pending.
+Independent C2a5 qualification is now being prepared: exact guarded
+template-catalog guest profile, actual root CLI/system manager/supplied separate
+slice,128MiB import, exact retry/source mutation/conflicting intent/link refusal,
+inventory/verify and unchanged synthetic/native authority. Thirteen Python runner
+checks and20 host-refusal repeats pass. This is not yet privileged qualification
+or grant issuance. C8 still depends on legacy-grant visibility/migration, not a
+gateway-only zero-dependency count. No installed service/configuration change.
+The first C2a5 guest run fails a fixture-only cgroup-path assumption after real
+128MiB validation: systemd correctly places exam-template.slice under exam.slice,
+not directly at cgroup root. Host/base preservation passes; private evidence
+/var/tmp/ssh-exam-overlay-urmj72yk. The fixture now checks the exact documented
+hierarchy and the same unchanged kernel limits. This failure is not called a
+qualified run and no installed unit/limit is modified.
+The second/third runs expose an overly broad byte-equality assertion against the
+independent idle guest agent's state file. Scoped diagnosis proves ONLY callback
+sequence/events differ; private CLI-state and protected sentinels are unchanged.
+Evidence /var/tmp/ssh-exam-overlay-cd4kd5b_ and
+/var/tmp/ssh-exam-overlay-91j3h3u7; both host/base preservation checks pass.
+The fixture now excludes exactly callback events/sequence/reported bookkeeping,
+while comparing all remaining parsed fields, including every attempt and unknown
+future authority field. A local regression must still reject changed deadlines,
+holds, protected state, settings and added authority. No live policy is changed;
+the corrected guest run and final qualification are pending.
 
 Next C3 qualification increment is in progress, not a live mode: a private guest
 test combines actual root cgroup freeze/UID inspection with the unused local
@@ -1080,6 +1136,7 @@ escalation. Generated screenshot changes must not become product changes.
 | C1f: interruption review and authorization | C1a + current continuation policy | Shared generation/review-counter/reason fence, unchanged expiry/SSH/readiness, atomic audit/intent, private retention-safe review, exact retries/pagination; actual CLI/TLS/HTTP/browser/race/build | Implemented/tested locally: 320 app tests, native race/build/vet/typecheck/build and 81 browser checks together; not deployed |
 | C1ga: bounded monitoring inspection/replay | C1a + tombstone correctness | Shared web/root summary and watermark pages, bounded complete-event replay, transient receipts, deletion/restart rechecks and validated private outputs; actual CLI/TLS/HTTP/unit/native race/build/browser | Implemented/tested locally: 327 application tests, native race/resource/compiler/default-size opt-ins (107.3s), static build/vet/typecheck/build and all 81 combined browser checks (10.5m). Not deployed |
 | C1gb: monitoring deletion/purge parity | C1ga + current retention rules | Shared explicit audited/retry-safe web/root deletion; immediate durable tombstones, separate honest physical status; isolated supervised bounded purge, durable retries, restart/fatal/hang/permission/healthy-session tests; actual CLI/HTTP/browser/build | Durable isolated jobs/shared reviewed deletion/retired-job reads and safe image reads pass locally: 350 app/65 files, 84 browser-SSH checks, real HTTP-SSH faults and compiled CLI-TLS. Full export remains open; not deployed |
+| C1gc: complete private monitoring copy | C1ga/C1gb + pinned bounded media | Discoverable named-authorized root image/export workflows, scoped signed bounded stream, exact raw prefixes/tails, no private durable payloads, tombstone/cancel/cleanup fences, private no-replace outputs; actual TLS/CLI/HTTP/SSH failures, native race/build and fresh browser checks | Implemented/tested locally:414 app/79files, full native race/resource/default-size, static/vet/typecheck/build and113 frozen-artifact browser checks; all140 hashes match. Monitoring workflow/purge TODO checked; not deployed or hardware IO/capacity certification |
 | C8: definition retirement | C1b + unified grant migration/visibility | Previews, unused-only delete/history archive, no stranded active preparations/unused legacy or unified grants, conflict/retry/browser/native CLI tests | Approved; implementation/qualification pending migration of native-only legacy grants |
 | M5: screenshot-first review | baseline | No terminal fetch/play until deliberately opened; screenshot/replay/tab positions survive polling; active/completed browser coverage, no recording/retention change | Implemented/tested locally; not deployed |
 | M6: stress, limits and final qualification | M1–M5 | Simultaneous synthetic attempts and failures, documented workload limits; integration/native race/build/browser checks; deployment/migration/rollback plan including all three live agent daemons | Worker/fatal/resource/disk increment tested locally; larger limits, privileged combined qualification and rollout still open |

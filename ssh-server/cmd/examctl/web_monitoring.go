@@ -19,12 +19,13 @@ func webMonitoringHelp(out io.Writer) {
        sudo examctl web monitoring list ATTEMPT [--section frames|terminals --limit N --after N --through N]
        sudo examctl web monitoring replay ATTEMPT PANE [--offset N --output NEW_FILE|-]
        sudo examctl web monitoring image ATTEMPT FRAME [--thumbnail --output NEW_FILE|-]
+       sudo examctl web monitoring export ATTEMPT --output NEW_DIR
        sudo examctl web monitoring delete ATTEMPT --confirm USERNAME --revision HASH --reason TEXT [--intent UUID]
        sudo examctl web monitoring purges [--status pending|running|retry|verified-absent --limit N --after ATTEMPT]
        sudo examctl web monitoring purge-status ATTEMPT
 
 Read gateway monitoring through existing root-agent signed outbound HTTPS.
-Explicit monitoring.show/list/replay/image/delete managementOperations authorization is required;
+Explicit monitoring.show/list/replay/image/export/delete managementOperations authorization is required;
 Purge inventory separately requires monitoring.purges and monitoring.purge.
 default is denied. No student credentials or inbound agent control API.
 show returns counts, retention and attempt metadata, not fresh native protection.
@@ -43,6 +44,36 @@ Default JSON contains private image bytes. --output NEW_FILE writes one binary
 JPEG to a new exclusive 0600 file; '-' emits binary stdout, use only a private
 redirect, never an interactive terminal. This is NOT a whole monitoring export.
 
+export downloads one complete private monitoring copy, using separately authorized
+monitoring.export and a bounded signed stream over the same outbound HTTPS route.
+--output NEW_DIR is REQUIRED, never '-' or an existing directory/link. Every
+parent component must be a real directory, not a symlink. Only a verified first
+packet creates a new 0700 private .incomplete staging directory. Validate all
+packets/files/digests/counts and clean EOF, flush files/metadata, then publish
+without replacing an existing target. A failed export returns exit 1, retains
+explicitly INCOMPLETE private data, and never claims success. Rare post-publication
+sync/close failure is reported UNCONFIRMED even if the final directory exists.
+
+Export includes original screen/webcam JPEGs, derived thumbnails, exact terminal
+bytes (including incomplete trailing NDJSON), whitelisted metadata and incident/
+interruption history. Per-file hashes, metadata indexes and manifest.json describe
+the selected append-watermarked inventory and each recording's initial pinned
+byte prefix. Later captures/appends are excluded; history/attempt facts are
+observations during the export, NOT a globally atomic snapshot, a live permission
+or fresh protected-submission proof. Source prefixes are independently rehashed
+before completion. Old/replayed/mixed/wrong-target packets refuse. At most one
+gateway export/cleanup owner; capture and exam clocks stay independent.
+
+Chunks are at most 256 KiB, signed event payloads 4 MiB; individual history text
+fields above 1 MiB refuse explicitly, never truncate silently. The read session has
+a 30-minute budget and 15-second network-progress waits; local file writes/syncs
+do not consume a network wait. Preserve --request on retry, but always choose a
+NEW output directory: retries keep inventory watermarks, reread retained bytes
+and may observe a later recording prefix. Do not combine incomplete copies.
+Default stdout is a small confirmed JSON receipt, never private media. Downloaded
+copies have independent operator storage/retention obligations and cannot be
+recalled by later gateway deletion. No source, clock, hold or grant is changed.
+
 replay reads at most 1 MiB of complete NDJSON events starting at --offset bytes
 (default 0). Follow nextOffset; more means another full batch is available now.
 availableBytes is the observed size, not proof that recording has finished. An
@@ -51,7 +82,8 @@ Offsets must follow a newline, never a timestamp or character index. Invalid or
 unavailable storage refuses with diagnosis; monitoring never changes exam clocks,
 holds, approval or protected submissions. Use native manifest/export for submissions.
 
-Default output is JSON. --output applies ONLY to image or replay (ONE batch),
+Default output is JSON. --output selects a NEW_DIR for export; otherwise it
+applies ONLY to image or replay (ONE batch),
 not a complete media export. Replay '-' streams NDJSON to stdout; NEW_FILE is created
 exclusively with mode 0600, never overwritten. A failed write may leave partial
 output. Review nextOffset/availableBytes in JSON when collecting multiple batches.
@@ -60,7 +92,8 @@ Show includes logical deletion and pending/running/retry/verified-absent physica
 purge metadata. Verified-absent is timestamped current-directory absence, not
 backup removal or secure disk erasure. Automatic isolated retries preserve tombstones;
 inspect storage/permissions and worker diagnostics on failure. Never remove locks
-or deletion records to bypass busy. Whole-media export remains pending.
+or deletion records to bypass busy. Use export, not concatenated replay batches,
+for a complete raw media copy.
 
 purges lists bounded live deletion/job metadata, including retired preparations
 with no remaining attempt row. Default 50, range 1..100; --after is an attempt ID
@@ -101,6 +134,7 @@ Examples:
   sudo examctl web monitoring replay ATTEMPT PANE --offset 0 --output ./replay-batch.ndjson
   sudo examctl web monitoring image ATTEMPT FRAME --output ./new-private-frame.jpg
   sudo examctl web monitoring image ATTEMPT FRAME --thumbnail --output ./new-private-thumb.jpg
+  sudo examctl web monitoring export ATTEMPT --output ./new-private-monitoring
   sudo examctl web monitoring delete ATTEMPT --confirm student01 --revision HASH --reason 'Reviewed monitoring retention request'
   sudo examctl web monitoring purges --status retry --limit 50
   sudo examctl web monitoring purge-status ATTEMPT
@@ -205,6 +239,10 @@ func webMonitoringMain(args []string) int {
 			return usage("image needs ATTEMPT FRAME UUID from monitoring list, with optional --thumbnail/--output NEW_FILE|- and common flags; no replay/list flags")
 		}
 		b["frame"], b["thumbnail"] = w[3], *thumbnail
+	case "export":
+		if len(w) != 3 || !seen["output"] || *output == "" || *output == "-" || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] {
+			return usage("export needs ATTEMPT --output NEW_DIR (not stdout/existing output), without list/replay/image flags")
+		}
 	case "delete":
 		why := strings.TrimSpace(*reason)
 		if len(w) != 3 || !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,31}$`).MatchString(*confirm) || !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(*revision) || len([]rune(why)) < 8 || len([]rune(why)) > 1000 || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] || seen["output"] {
@@ -221,6 +259,9 @@ func webMonitoringMain(args []string) int {
 		return usage("unknown monitoring workflow")
 	}
 	operation := "monitoring." + w[1]
+	if w[1] == "export" {
+		return executeMonitoringExport(*config, *request, w[2], *output)
+	}
 	if w[1] == "purge-status" {
 		operation = "monitoring.purge"
 	}

@@ -93,7 +93,7 @@ Unknown/unverified replies never imply success; retain the request ID for retry.
 	fmt.Fprintln(out, "Alert inspection/test/manual reminders: examctl web alerts help (list/show/test/remind).")
 	fmt.Fprintln(out, "Gateway attempt/clock workflows: examctl web attempts help; examctl web clocks help.")
 	fmt.Fprintln(out, "Interruption review/authorization: examctl web interruptions help.")
-	fmt.Fprintln(out, "Private monitoring metadata/images/replay/deletion/purge status: examctl web monitoring help.")
+	fmt.Fprintln(out, "Private monitoring metadata/images/replay/complete export/deletion/purge status: examctl web monitoring help.")
 }
 
 func webCategory(args []string) string {

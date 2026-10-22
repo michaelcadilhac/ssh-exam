@@ -687,7 +687,17 @@ the approval is not a production change or a completed investigation.
   browser checks pass. The fault fixture waits out the original
   window instead of disabling/resetting enforcement. Not deployed.
 
-- [ ] **Complete monitoring management and resilient physical purge.**
+- [x] **Complete monitoring management and resilient physical purge.**
+  Implemented/tested locally October22; **not deployed**. Shared web/root
+  monitoring readers, reviewed deletion, durable isolated purge/status/inventory
+  and complete private export are now covered by supported workflows. Final414
+  app checks/79files, full native race/resource/build/typecheck and all113 fresh
+  frozen-artifact browser checks pass. All140 source/runtime hashes match;
+  see docs/monitoring-export-qualification.md. Protected submissions, deadlines,
+  holds, credentials and60-day monitoring policy are unchanged. This completes
+  the local workflow/purge item, not whole-host capacity certification, hardware/
+  process isolation for media reads, production rollout or complete examctl.
+  Earlier incremental checkpoints below record the work's chronology.
   October 21 local correctness increment prevents late legacy callbacks from
   recreating tombstoned recordings and contains retention permission/inventory
   failures instead of crashing the gateway or blocking later attempts. Seven
@@ -758,6 +768,19 @@ the approval is not a production change or a completed investigation.
   static/build/typecheck and49 frozen-artifact browser checks pass. All18 hashes
   match; see docs/monitoring-image-qualification.md. One image is not a whole export; C1gc2 and this
   checkbox remain open. See docs/monitoring-export-plan.md and monitoring-cli.md.
+  C1gc2's complete-copy workflow is now wired locally and in final qualification:
+  `examctl web monitoring export ATTEMPT --output NEW_DIR`, separate named
+  authorization, bounded purpose-signed stream, original/derived captures, exact
+  raw recording prefixes/tails, history and hash manifest. Actual streaming TLS/
+  root CLI, bad signed packets, truncation/trailing data, destination races,
+  append/overwrite/history/deletion faults and real socket cleanup checks pass.
+  Held export IO preserves real authenticated SSH, signed renewals, new panes,
+  captures and health in the synthetic fixture. Initial full413 application checks
+  pass; final qualification now passes414 application checks, full native race/
+  resource/static/build/typecheck and113 fresh browser checks with140 identical
+  source/runtime hashes. This increment and the monitoring workflow/purge item
+  are complete locally, not deployed. No protected-submission/hold/deadline or
+  retention change. See docs/monitoring-export-qualification.md for exact status.
 
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires

@@ -53,7 +53,7 @@ Use show's deletionReview, retain the request/child intent for lost replies and
 inspect fresh physical status separately. Local C1gb4 adds bounded `purges`
 list/filter/pagination and read-only `purge-status ATTEMPT`, including retired
 preparation jobs. These metadata outcomes are snapshots: NEW request for fresh
-status, never a filesystem proof. Full export remains open; see
+status, never a filesystem proof. Complete-copy export is described below; see
 monitoring-purge-isolation.md and monitoring-cli.md.
 The local C1gc1 candidate adds `web monitoring image ATTEMPT FRAME [--thumbnail]
 --output NEW_FILE`, with separate monitoring.image authorization, the shared web
@@ -61,6 +61,16 @@ image reader/capacity, transient private-read receipts and scoped digest checks
 before output. A listed frame must belong to the named attempt. Output is one
 new0600 JPEG, never a complete export; downloaded copies require private operator
 retention. See monitoring-cli.md for limits and current qualification status.
+The local C1gc2 candidate adds `web monitoring export ATTEMPT --output NEW_DIR`:
+separate monitoring.export authorization, a bounded purpose-signed stream,
+originals/thumbnails/exact raw recordings/history, hashes and no-replace0700
+private publication. Complete signed end plus clean EOF, successful flush and
+exit0/confirmed:true are required. Failures retain private incomplete/unconfirmed
+output and explain same-request retry with a NEW directory. Never concatenate
+old partial copies. This is an observed inventory/prefix copy, not a globally
+atomic exam snapshot, protected submission or permission to work. Downloaded
+copies have independent operator retention. See monitoring-cli.md and
+monitoring-export-plan.md for boundaries and current qualification.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native

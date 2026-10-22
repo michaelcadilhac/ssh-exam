@@ -493,6 +493,18 @@ protected copy locally; `export-status` reports SSH-server storage and any histo
 record. Legacy pause metadata remains readable. `resume-export` rejects attempts to re-enable
 automatic transfers. Signed completion/status and monitoring callbacks continue independently.
 
+Gateway monitoring is separate from protected submissions. The local candidate
+`examctl web monitoring export ATTEMPT --output NEW_DIR` retrieves original/derived
+captures, raw recording prefixes (including incomplete tails), metadata/history
+and a hash manifest through the existing root-agent authenticated outbound HTTPS
+route. It requires separate monitoring.export authorization and matching gateway/
+CLI; it never uploads or copies protected archive bytes. Destination must be NEW
+under a real private parent. Require exit0/confirmed:true, not just existing files;
+failures retain explicitly incomplete/unconfirmed private output. Retry the printed
+request UUID with another NEW destination. Downloaded monitoring has independent
+operator retention and is not a protection/freeze/permission proof. See
+docs/monitoring-cli.md and docs/monitoring-export-plan.md. Local only, not deployed.
+
 `--active` means started and unfinished, including locked/finalizing/collection-failed.
 The full list also shows preparations, completed submissions and their independent access holds.
 `start` activates an already prepared attempt; it never creates an enrollment or resets time.

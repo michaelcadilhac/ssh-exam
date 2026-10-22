@@ -30,6 +30,8 @@ import { InterruptionManagement } from "./interruption-management.js";
 import { MonitoringManagement } from "./monitoring-management.js";
 import { TemplateCatalog } from "./template-catalog.js";
 import { Monitoring } from "./monitoring.js";
+import { monitoringExportFailure } from "./monitoring-export.js";
+import { monitoringExportContentType } from "../../../packages/protocol/monitoring-export.js";
 import {
   attemptShow,
   clockBatch,
@@ -81,7 +83,7 @@ export function registerAgentManagement(
   app.post(
     "/api/agent/management",
     { bodyLimit: 12 * 1024 * 1024 },
-    async (req) => {
+    async (req, reply) => {
       const payload = req.body;
       if (!Buffer.isBuffer(payload))
         throw Error("Raw signed management request required");
@@ -465,6 +467,39 @@ export function registerAgentManagement(
         return result;
       })();
       let response = outcome;
+      if (outcome.ok && r.operation === "monitoring.export") {
+        const abort = new AbortController();
+        const canceled = () => abort.abort();
+        const timer = setTimeout(canceled, 30 * 60 * 1000);
+        timer.unref();
+        req.raw.once("aborted", canceled);
+        reply.raw.once("close", canceled);
+        const detach = () => {
+          clearTimeout(timer);
+          req.raw.removeListener("aborted", canceled);
+          reply.raw.removeListener("close", canceled);
+        };
+        try {
+          const stream = await monitoringReads.exports.open(
+            r.body,
+            outcome.result,
+            actor,
+            { agent: r.agent, request: r.request, nonce: r.nonce },
+            () => agent.exportSigner(),
+            abort.signal,
+          );
+          stream.once("close", detach);
+          return reply.type(monitoringExportContentType).send(stream);
+        } catch (error) {
+          detach();
+          const failure = monitoringExportFailure(error);
+          response = {
+            ok: false,
+            status: failure.status,
+            error: failure.message,
+          };
+        }
+      }
       if (
         outcome.ok &&
         r.operation.startsWith("monitoring.") &&
@@ -472,6 +507,7 @@ export function registerAgentManagement(
           "monitoring.delete",
           "monitoring.purges",
           "monitoring.purge",
+          "monitoring.export",
         ].includes(r.operation)
       ) {
         try {

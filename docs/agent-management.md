@@ -75,7 +75,12 @@ receipt is cached. A retry re-reads unchanged retained history after revision an
 tombstone checks, or refuses changed/deleted data; it never returns private text
 from permanent outcomes. See interruption-management.md for paginated review.
 Monitoring retries reread retained bytes and the original inventory watermark,
-without caching private payloads; see monitoring-cli.md.
+without caching private payloads; see monitoring-cli.md. The separately named
+monitoring.export operation uses one bounded purpose-signed NDJSON stream, not
+the ordinary single-JSON reply. Each packet is bound to the same request/nonce,
+agent/attempt and increasing sequence; clean EOF and private no-replace output
+publication are required before CLI success. Only inventory/count watermarks are
+durable; no images/transcripts or archive payloads enter request receipts.
 List is bounded/paginated (default 100, maximum 200); returned config revision
 hashes fence conditional updates. Stable partial-update bodies retain exact
 request-ID retry semantics without reconstructing intent from newer defaults.

@@ -2,6 +2,7 @@ import { hash, now, type Store } from "./db.js";
 import type { Monitoring } from "./monitoring.js";
 import { monitoringPurgeStatus } from "./monitoring-purge-jobs.js";
 import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
+import { MonitoringExport } from "./monitoring-export.js";
 import {
   monitoringList,
   monitoringReplay,
@@ -19,11 +20,14 @@ const retention =
   "transient private read; permanent retry receipt contains no monitoring payload; deletion is rechecked on every retry";
 
 export class MonitoringManagement {
+  readonly exports: MonitoringExport;
   constructor(
     private store: Store,
     private monitoring: Monitoring,
     private media = new MonitoringMedia(store),
-  ) {}
+  ) {
+    this.exports = new MonitoringExport(store, media);
+  }
 
   // Synchronous final publication fence: callers must repeat this after the
   // asynchronous read/continuation and immediately before sending/signing bytes.
@@ -267,6 +271,7 @@ export class MonitoringManagement {
   receipt(operation: string, input: unknown) {
     const b = parseMonitoring(operation, input);
     this.attempt(b.id, operation !== "monitoring.show");
+    if (operation === "monitoring.export") return this.exports.receipt(input);
     if (operation === "monitoring.image") {
       const image = this.assertImageRetained(input);
       return {

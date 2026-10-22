@@ -163,6 +163,22 @@ web pinned-reader protections and shared capacity, and qualify deletion races an
 private outputs. Previously downloaded copies have separate operator retention.
 This paragraph authorizes no configuration edit, deployment or agent consolidation.
 
+C1gc2 complete monitoring export also needs no schema migration. Any separately
+authorized future paired gateway/CLI release must explicitly allow only the new
+monitoring.export operation for intended root-machine identities; ordinary read
+permissions do not imply it. Qualify Linux/procfs/private media storage, shared
+reader capacity, exact raw recording prefixes, slow/backpressured streaming,
+delete/retry fences, client death and private no-replace publication. Preserve
+inventory-only receipts/tombstones through backup/rollback; never cache private
+signed packets or restore deleted monitoring to make an old request succeed.
+Old gateway/CLI versions refuse this purpose-stream workflow. Keep a compatible
+pinned/tombstone-aware reader if rolling back export support. Exports already
+downloaded cannot be recalled by gateway retention and require private operator
+storage/backup policy. On CLI failure preserve incomplete/unconfirmed directories;
+retry using the printed request and a NEW destination. Do not delete partial
+copies automatically or infer work/protection authority from copied media.
+This remains local qualification, not rollout or production configuration change.
+
 The root CLI output-order follow-up needs no migration or new permission. Pair
 normal gateway/CLI versions, retain exact request/child intents and require
 nested target/intent/status validation before output. Only fully validated partial

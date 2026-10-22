@@ -74,7 +74,7 @@ func TestMonitoringImageScopeLengthAndDigestBeforeOutput(t *testing.T) {
 func TestMonitoringHelpAndSyntaxWithoutConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "monitoring"}, {"web", "monitoring", "help"}, {"--config", "/missing", "web", "monitoring", "--help"}} {
 		out, code := cliProcess(t, args...)
-		for _, want := range []string{"Usage:", "--through", "--offset", "--request", "1 MiB", "transient", "0600", "image ATTEMPT FRAME", "--thumbnail", "transfer digest", "Exit status:"} {
+		for _, want := range []string{"Usage:", "--through", "--offset", "--request", "1 MiB", "transient", "0600", "image ATTEMPT FRAME", "--thumbnail", "transfer digest", "export ATTEMPT", "--output NEW_DIR", "30-minute", "15-second", "INCOMPLETE", "Exit status:"} {
 			if code != 0 || !strings.Contains(out, want) {
 				t.Fatal("missing monitoring help", want, code, out)
 			}
@@ -106,6 +106,10 @@ func TestMonitoringHelpAndSyntaxWithoutConfiguration(t *testing.T) {
 		{"web", "monitoring", "image", "a", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "--offset", "0"},
 		{"web", "monitoring", "image", "a", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "--output="},
 		{"web", "monitoring", "show", "a", "--thumbnail"},
+		{"web", "monitoring", "export", "a"},
+		{"web", "monitoring", "export", "a", "--output", "-"},
+		{"web", "monitoring", "export", "a", "--output", "new", "--section", "frames"},
+		{"web", "monitoring", "export", "a", "--output", "new", "--thumbnail"},
 	} {
 		out, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(out, "help") || strings.Contains(out, "Load root") {

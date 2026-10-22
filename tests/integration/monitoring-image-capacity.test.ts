@@ -16,6 +16,7 @@ const hold = vi.hoisted(() => ({
   enabled: false,
   entered: 0,
   wait: Promise.resolve(),
+  closeUnknown: false,
 }));
 vi.mock("node:fs/promises", async (original) => {
   const actual = await original<typeof import("node:fs/promises")>();
@@ -26,6 +27,11 @@ vi.mock("node:fs/promises", async (original) => {
       if (!hold.enabled || !String(path).endsWith(".jpg")) return file;
       return new Proxy(file, {
         get(target, property) {
+          if (property === "close" && hold.closeUnknown)
+            return async () => {
+              await target.close();
+              throw Error("PRIVATE-CLOSE-FAULT-MUST-NOT-PRINT");
+            };
           if (property === "read")
             return async (...args: any[]) => {
               hold.entered++;
@@ -134,9 +140,45 @@ it("shares the same sixteen live image reads between root management and web rev
         expect(completed[i].rawPayload).toEqual(f.data);
       }
     }
+    hold.enabled = true;
+    hold.wait = Promise.resolve();
+    hold.closeUnknown = true;
+    const unconfirmed = await f.app.inject({ url: f.url, headers: f.headers });
+    expect(unconfirmed.statusCode).toBe(503);
+    expect(unconfirmed.json().error).toContain("cleanup");
+    expect(unconfirmed.body).not.toContain("PRIVATE-CLOSE-FAULT");
+    hold.closeUnknown = false;
+    hold.enabled = false;
+    expect(
+      (await f.app.inject({ url: f.url, headers: f.headers })).statusCode,
+    ).toBe(200);
+    // The unknown close retains one bounded slot; it cannot be recycled forever.
+    hold.enabled = true;
+    hold.entered = 0;
+    hold.wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const limited: Promise<any>[] = [];
+    for (let i = 0; i < 15; i++) {
+      const read = f.app.inject({ url: f.url, headers: f.headers });
+      limited.push(read);
+      pending.push(read);
+    }
+    await vi.waitFor(() => expect(hold.entered).toBe(15), { timeout: 3000 });
+    expect(
+      (await f.app.inject({ url: f.url, headers: f.headers })).statusCode,
+    ).toBe(503);
+    release();
+    hold.enabled = false;
+    expect(
+      (await Promise.all(limited)).every(
+        (response) => response.statusCode === 200,
+      ),
+    ).toBe(true);
   } finally {
     release();
     hold.enabled = false;
+    hold.closeUnknown = false;
     await Promise.allSettled(pending);
     await f.app.close();
     rmSync(dir, { recursive: true, force: true });

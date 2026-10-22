@@ -1516,7 +1516,38 @@ canonical base64, size and digest before any CLI stdout/file creation; explicit
 files are exclusive0600. Legacy thumbnail transfer hashes do not establish
 independent capture provenance. Downloads are private operator copies, not
 automatically erased by gateway retention. No timing/access/submission policy or
-schema change; whole-media export remains separate. See docs/monitoring-cli.md.
+schema change; whole-media export is a separate workflow. See docs/monitoring-cli.md.
+
+C1gc2's local candidate adds root `web monitoring export ATTEMPT --output NEW_DIR`
+under separate explicit monitoring.export authorization. The existing outbound
+management route returns one bounded purpose-signed NDJSON stream, scoping every
+packet to agent/request/nonce/attempt/sequence and checking retained status after
+async boundaries immediately before publication. Durable receipts contain only
+append-watermarked inventory/counts, never student media/text. Original/derived
+captures, whitelisted metadata/history and exact pinned recording prefixes,
+including incomplete binary tails, are streamed with256KiB chunks,4MiB event and
+8MiB line bounds; metadata is paginated. A second descriptor-prefix hash pass
+refuses observed overwrite/truncation, and later appends are excluded. This is
+an interval observation, not a globally atomic snapshot or immutable recording.
+One actual export/cleanup owner and shared16 media slots bound work without
+blocking capture/SSH/health. Close uncertainty retains a bounded poisoned slot,
+not ignored cleanup and unbounded recycling. No process/hardware IO sandbox is
+claimed. Overall30-minute/network-byte-progress15-second transfer budgets never
+alter student leases or clocks.
+
+The native CLI validates signed packets and nested identity/order/offset/hash/
+count fields before private output; strict canonical encoding, clean EOF after
+the end packet, checked file/directory flushes and no-replace rename precede
+success. Destination parents are pinned/no-follow; newly created directories0700,
+files0600, UUID-derived names only. Failure retains an incomplete private staging
+directory; post-rename durability/close uncertainty may leave a final directory
+but still returns exit1/UNCONFIRMED. Only exit0/confirmed:true reports completion,
+not a manifest field or an existing directory alone. Exact request retries keep
+inventory but reread bytes into a NEW destination; never merge partial outputs.
+Downloaded copies need independent operator retention and cannot be recalled by
+gateway deletion. No protected archive, account restriction, credential, deadline,
+continuation or retention policy changes. See docs/monitoring-export-plan.md for
+current qualification and docs/monitoring-cli.md for operator recovery. Not deployed.
 
 The root client must validate nested resource scope before any stdout or output
 file creation, not only before returning its exit status. An authenticated signed

@@ -35,6 +35,7 @@ export const managementOperations = [
   "monitoring.list",
   "monitoring.replay",
   "monitoring.image",
+  "monitoring.export",
   "monitoring.delete",
   "monitoring.purges",
   "monitoring.purge",

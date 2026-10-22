@@ -1,8 +1,8 @@
-# Bounded monitoring inspection and replay
+# Monitoring inspection, private export and reviewed deletion
 
-October 21, 2026. C1ga reads, C1gb2 durable isolated purge/status and C1gb3 reviewed
-deletion are implemented/tested locally; **not deployed**. This is not complete
-monitoring management: full export remains open. C1gb4 adds the read-only purge
+October 22, 2026. C1ga reads, C1gb2 durable isolated purge/status and C1gb3 reviewed
+deletion are implemented/tested locally; **not deployed**. C1gc2's complete private
+export is also implemented/tested locally. C1gb4 adds the read-only purge
 inventory below, including retired preflights. Existing
 60-day monitoring retention and independent protected-submission retention are
 unchanged.
@@ -13,7 +13,8 @@ Start with `examctl web monitoring help`; help and syntax need no root/config.
 Actual requests use root's existing Ed25519 agent identity, verified outbound
 HTTPS and explicit default-deny `monitoring.show`, `monitoring.list` and
 `monitoring.replay` read authorization, plus separate `monitoring.delete` for
-deletion. No new listener, credential or
+deletion, `monitoring.image` for individual images and `monitoring.export` for
+complete copies. No new listener, credential or
 student authentication is introduced. Browser role/Origin/CSRF remain unchanged.
 
 ```sh
@@ -22,6 +23,7 @@ sudo examctl web monitoring list ATTEMPT --section frames --limit 50
 sudo examctl web monitoring list ATTEMPT --section terminals
 sudo examctl web monitoring replay ATTEMPT PANE --offset 0
 sudo examctl web monitoring replay ATTEMPT PANE --offset 0 --output ./replay-batch.ndjson
+sudo examctl web monitoring export ATTEMPT --output ./new-private-monitoring
 sudo examctl web monitoring delete ATTEMPT --confirm USERNAME --revision HASH --reason 'Reviewed retention request'
 ```
 
@@ -131,8 +133,86 @@ digest tests pass ten race repeats. Final qualification passes all400 applicatio
 tests/75files (81.46s), full native race/resource checks (core169.499s/CLI7.090s),
 static build/vet/typecheck/build and all49 selected admin/review/actual-SSH browser
 checks (3.5m). All18 frozen hashes match; documentation screenshots are unchanged.
-See monitoring-image-qualification.md for exact evidence. Whole export remains
-C1gc2; see monitoring-export-plan.md. No operation/configuration is deployed.
+See monitoring-image-qualification.md for that increment's exact evidence.
+C1gc2's complete-copy workflow is below; see monitoring-export-plan.md for its
+separate qualification status. No operation/configuration is deployed.
+
+## Complete private copy (C1gc2, implemented/tested locally)
+
+```sh
+sudo examctl web monitoring show ATTEMPT
+sudo examctl web monitoring export ATTEMPT --output /private/review/new-copy
+# If a reply/copy was lost, retain the printed UUID but use another NEW directory:
+sudo examctl web monitoring export ATTEMPT --request REQUEST_UUID --output /private/review/retry-copy
+```
+
+Use an existing real parent directory, without symlink components. The command
+refuses existing destinations, stdout and unsafe/linked parents. It creates a
+new0700 staging directory with0600 files: original JPEGs in frames/, derived
+JPEGs in thumbnails/, exact raw recordings in terminals/, four metadata NDJSON
+files, a files.ndjson hash/size index and manifest.json. Terminal copies include
+incomplete/malformed binary tails; use replay for parsed complete events. Never
+open arbitrary raw transcripts as executable content. The short success JSON
+contains scope, counts, destination and manifest SHA256, not media or student text.
+
+The existing fixed outbound HTTPS route streams purpose-signed packets. Each is
+checked against the pinned gateway key, agent, request, fresh nonce, attempt,
+sequence and bounded format before private output. Per-file offsets, lengths,
+UUID-only names, hashes, section order and final inventory/counts are also checked.
+An authenticated end packet alone is insufficient: clean stream EOF is required.
+The command flushes files/metadata and publishes with no-replace rename only
+after successful verification. It never overwrites another creator's destination.
+
+Completion requires exit0 and confirmed:true. Do not infer it from a directory,
+an individual manifest's complete field or some downloaded frames. An early
+failure leaves a private ssh-exam-monitoring-UUID.incomplete directory and
+INCOMPLETE marker; nothing is silently removed or combined on retry. A late
+publication/sync/close failure may leave the requested final directory, possibly
+without the marker: stderr explicitly says UNCONFIRMED, exit1 and no success
+receipt. Preserve and inspect such output; do not treat it as a successful copy.
+Do not delete protected submissions, holds, gateway tombstones or request records
+to make an export retry succeed.
+
+Inventory is append-watermarked at the original request; an exact request retry
+keeps those watermarks/counts but rereads retained bytes. A NEW request includes
+new inventory. Each recording copies its initial descriptor-pinned byte prefix,
+excludes later appends and independently rereads/hashes that prefix before file
+completion; observed overwrite/truncation refuses. A retry may observe a different
+recording prefix. Attempt facts/history and source bytes are observed during the
+copy, not a globally atomic exam snapshot, archive verification or work permission.
+Retention/deletion invalidates both initial and retried reads; checks run after
+asynchronous boundaries and immediately before each signed private publication.
+Original image hashes check stored uploads; legacy thumbnail transfer hashes do
+not establish independent capture provenance.
+
+One stream/cleanup owner and the shared sixteen media-reader slots bound gateway
+work. Source chunks are at most256KiB, signed event payloads4MiB and lines8MiB;
+metadata is paginated, with oversize history refused rather than truncated.
+Export has a30-minute overall budget and15-second network-read progress timeout,
+not a student heartbeat/authorization timer; local output IO is not counted as
+network silence. Capture/SSH/health remain independent. No server archive/private
+payload cache is created. These async descriptor reads are NOT a process/hardware
+storage-failure sandbox. Canceled IO retains ownership until actual cleanup;
+uncertain close refuses reuse. For busy or cleanup errors inspect private gateway
+diagnostics and current show; never clear state/restart production to bypass it.
+
+Every export needs independent explicit monitoring.export authorization. Existing
+browser authentication and review/deletion rules do not change. Private payloads
+never enter durable management outcomes/audit; only inventory/request metadata
+does. Gateway60-day deletion cannot erase previously downloaded copies. Store
+exports privately and apply the institution's separate retention/backup policy.
+This is monitoring only: protected archive bytes remain on the class server and
+require the separate native manifest/export workflow. No schema, clocks, holds,
+student credentials, continuation approval or protection policy is changed.
+
+Final C1gc2 qualification:414 app checks/79files (85.99s), full native uncached
+race/resource/namespace/compiler/default-size tests, static build/vet/typecheck/
+build and113 fresh combined browser checks (12.8m) pass. All140 runtime/source
+hashes match before/after; nine generated screenshots are restored to the verified
+baseline. Actual TLS/root CLI, socket abort, held IO with real authenticated SSH/
+signed renewals/capture and output/storage/protocol failures are covered. See
+monitoring-export-qualification.md. This is local qualification, not deployment,
+whole-host capacity certification or complete wider examctl management.
 
 ## Reviewed deletion (C1gb3 local candidate)
 

@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
-import { randomUUID, sign, verify } from "node:crypto";
+import { readFileSync, constants } from "node:fs";
+import { open } from "node:fs/promises";
+import { createPrivateKey, randomUUID, sign, verify } from "node:crypto";
 import type { Config } from "../../../packages/config/index.js";
 import type { Store } from "./db.js";
 // Losing the student command transport is not evidence of a class-agent outage.
@@ -73,6 +74,67 @@ export class Agent {
         readFileSync(this.config.signingKey),
       ).toString("base64"),
     };
+  }
+  // One bounded asynchronous signing-key snapshot per long read operation.
+  // Never perform a fresh synchronous key-file read for every export chunk.
+  // The configured key path retains its existing link/readability semantics.
+  async exportSigner() {
+    let file: Awaited<ReturnType<typeof open>> | undefined;
+    let bytes: Buffer | undefined;
+    try {
+      file = await open(
+        this.config.signingKey,
+        constants.O_RDONLY | constants.O_NONBLOCK,
+      );
+      const before = await file.stat();
+      if (!before.isFile() || before.size < 1 || before.size > 16384)
+        throw Error();
+      bytes = Buffer.alloc(before.size + 1);
+      let count = 0;
+      while (count < bytes.length) {
+        const read = await file.read(bytes, count, bytes.length - count, count);
+        if (!read.bytesRead) break;
+        count += read.bytesRead;
+      }
+      const after = await file.stat();
+      if (
+        count !== before.size ||
+        after.size !== before.size ||
+        after.mtimeMs !== before.mtimeMs ||
+        after.ctimeMs !== before.ctimeMs
+      )
+        throw Error();
+      const key = createPrivateKey(bytes.subarray(0, count));
+      if (key.asymmetricKeyType !== "ed25519") throw Error();
+      return (body: object) => {
+        const payload = Buffer.from(JSON.stringify(body));
+        return {
+          payload: payload.toString("base64"),
+          signature: sign(null, payload, key).toString("base64"),
+        };
+      };
+    } catch {
+      throw Object.assign(
+        Error(
+          "Monitoring export signer unavailable; inspect the configured gateway signing key and storage, preserve private partial output and retry with a new destination",
+        ),
+        { statusCode: 503 },
+      );
+    } finally {
+      bytes?.fill(0);
+      if (file) {
+        try {
+          await file.close();
+        } catch {
+          throw Object.assign(
+            Error(
+              "Monitoring export signer cleanup unconfirmed; inspect private gateway storage diagnostics before another export",
+            ),
+            { statusCode: 503, exportCode: "cleanup" },
+          );
+        }
+      }
+    }
   }
   verifyCallback(payload: Buffer, signature: string) {
     if (

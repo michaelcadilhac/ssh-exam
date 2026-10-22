@@ -63,6 +63,7 @@ export const monitoringReplay = monitoringShow.extend({
 export function parseMonitoring(operation: string, input: unknown) {
   switch (operation) {
     case "monitoring.show":
+    case "monitoring.export":
       return monitoringShow.parse(input);
     case "monitoring.list":
       return monitoringList.parse(input);
