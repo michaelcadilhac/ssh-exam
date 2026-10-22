@@ -26,6 +26,9 @@ export class BrowserSSH {
   private readyPanes = new Set<string>();
   private earlyInputs = new Map<string, string[]>();
   private inputChains = new Map<string, Promise<any>>();
+  // Capture before queuing; a closed pane's late writes/rejections must not
+  // target a replacement using the same UI identifier. Not a native input epoch.
+  private paneInputOwners = new Map<string, object>();
   get active() {
     return !!this.worker && !this.stopped;
   }
@@ -125,6 +128,7 @@ export class BrowserSSH {
         this.readyPanes.delete(m.pane);
         this.earlyInputs.delete(m.pane);
         this.inputChains.delete(m.pane);
+        this.paneInputOwners.delete(m.pane);
       }
       this.emit(m);
     };
@@ -262,6 +266,8 @@ export class BrowserSSH {
     if (m.type === "close") {
       this.readyPanes.delete(m.pane);
       this.earlyInputs.delete(m.pane);
+      this.inputChains.delete(m.pane);
+      this.paneInputOwners.delete(m.pane);
       const opening = this.openingPanes.get(m.pane);
       if (opening) opening.closed = true;
       // The server authorizes close and then asks the worker once. Do not race
@@ -288,11 +294,17 @@ export class BrowserSSH {
     }
     const epoch = this.inputEpoch;
     const lifecycle = this.lifecycle;
+    let owner = this.paneInputOwners.get(pane);
+    if (!owner) {
+      owner = {};
+      this.paneInputOwners.set(pane, owner);
+    }
     const chain = (this.inputChains.get(pane) || Promise.resolve())
       .then(() => {
         if (
           lifecycle === this.lifecycle &&
           epoch === this.inputEpoch &&
+          this.paneInputOwners.get(pane) === owner &&
           this.inputEnabled &&
           this.controlReady &&
           this.readyPanes.has(pane)
@@ -303,6 +315,7 @@ export class BrowserSSH {
         if (
           lifecycle === this.lifecycle &&
           epoch === this.inputEpoch &&
+          this.paneInputOwners.get(pane) === owner &&
           !this.stopped
         )
           this.emit({ type: "closed", pane });
@@ -358,6 +371,7 @@ export class BrowserSSH {
     this.readyPanes.clear();
     this.earlyInputs.clear();
     this.inputChains.clear();
+    this.paneInputOwners.clear();
     for (const p of this.callbacks.values())
       p.reject(Error("SSH connection ended"));
     this.callbacks.clear();

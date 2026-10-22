@@ -66,6 +66,7 @@ it("logout clears workers, control socket, callbacks, reply cache and authentica
     "controlReplies",
     "openingPanes",
     "inputChains",
+    "paneInputOwners",
     "buffers",
   ])
     expect(c[name].size).toBe(0);
@@ -131,6 +132,56 @@ it("terminal close uses the authorized server path once and drops queued input t
   ).toEqual([]);
   expect(c.readyPanes.has("two")).toBe(true);
   client.close();
+});
+it("natural exit fences old unsent input and late RPC errors from a replacement pane without blocking another pane", async () => {
+  const { client, c, events, start } = fixture();
+  const { worker } = await start();
+  client.setInputEnabled(true);
+  c.readyPanes.add("same");
+  c.readyPanes.add("independent");
+  client.terminal({ type: "input", pane: "same", data: "in-flight" });
+  await flush();
+  const first = worker.requests.at(-1);
+  expect(first.op).toBe("input");
+  client.terminal({ type: "input", pane: "same", data: "stale-unsent" });
+  const oldChain = c.inputChains.get("same");
+  worker.respond({ type: "closed", pane: "same" });
+  client.handle({
+    type: "browser-request",
+    id: "replacement-open",
+    op: "open",
+    args: { pane: "same" },
+  });
+  const open = worker.requests.at(-1);
+  worker.respond({ type: "rpc-result", id: open.id, result: {} });
+  await flush();
+  expect(c.readyPanes.has("same")).toBe(true);
+  client.terminal({ type: "input", pane: "independent", data: "healthy" });
+  client.terminal({ type: "input", pane: "same", data: "fresh" });
+  await flush();
+  expect(
+    worker.requests
+      .filter((r: any) => r.op === "input")
+      .map((r: any) => r.args),
+  ).toEqual([
+    { pane: "same", data: "in-flight" },
+    { pane: "independent", data: "healthy" },
+    { pane: "same", data: "fresh" },
+  ]);
+  events.length = 0;
+  worker.respond({
+    type: "rpc-result",
+    id: first.id,
+    error: "old pane exited",
+  });
+  await oldChain;
+  await flush();
+  expect(events).toEqual([]);
+  expect(c.readyPanes.has("same")).toBe(true);
+  expect(c.readyPanes.has("independent")).toBe(true);
+  client.close();
+  await flush();
+  expect(c.paneInputOwners.size).toBe(0);
 });
 it("worker postMessage and control send failures do not retain callbacks or throw in reply handlers", async () => {
   const { client, c, start } = fixture();

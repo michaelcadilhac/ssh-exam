@@ -531,6 +531,13 @@ the approval is not a production change or a completed investigation.
   not actual C3
   buffers/freeze; this checkbox stays open. See docs/student-continuation-status.md.
 
+  A separate confirmed browser queue bug is fixed/tested locally: closing a pane
+  invalidates unsent input and late errors before a replacement reuses its UI ID.
+  Both old success/failure cases are RED; all398 app and113 fresh browser checks
+  pass after the fix. This cannot recall bytes already sent to the worker/SSH;
+  native per-pane epochs and complete C3 barriers remain required. See
+  docs/browser-input-lifetime.md. No native retention mode is enabled.
+
 - [ ] **Keep the existing SSH connection alive through policy lockouts.**
   When a student leaves fullscreen or another condition locks the attempt, retain
   the authenticated SSH transports for as long as the same page remains open and

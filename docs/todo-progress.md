@@ -8,6 +8,28 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Next C3 qualification increment is in progress, not a live mode: a private guest
+test combines actual root cgroup freeze/UID inspection with the unused local
+PTY gate/discard. It will check repeated preservation of synthetic in-memory
+state/PIDs, a background descendant stopping/resuming, real queued old PTY input
+and late old-epoch refusal, plus refusal of an uncontained same-UID process.
+These are controlled memory/IO fixtures, not actual editor or retained SSH
+workflow qualification. Closed native admission, cross-process epoch/authority
+transitions, asynchronous-kernel IO and positive live recovery remain open.
+The first Q4 guest run passes five repeats (0.56..0.80s each), covering15 actual
+freeze/discard/thaw cycles with preserved host/base state. Private evidence:
+/var/tmp/ssh-exam-overlay-xhhzhgov; test artifact e8520e363b0ff6589f9c2346c45fe8e766ff46d0c27b47ced32ef8450e58f031.
+A deliberate TEST-ONLY missing-discard mutant makes all five repetitions RED:
+the thawed reader receives STALE, not FRESH. Host/base preservation still passes;
+evidence /var/tmp/ssh-exam-overlay-xckp4pge. The mutant is removed. Final rebuild
+and qualification are in progress, with read-only guest kernel/async-IO setup
+observations added (availability is not async-IO freeze qualification). No runtime
+product source is mutated.
+Kernel-source investigation is separate:
+cgroup.freeze confirmation is asynchronous; process/mount moves and privileged
+kernel IO cannot be assumed covered from a live SSH pidfd or CPU pause alone.
+No syscall restriction or host clock/service/configuration change is introduced.
+
 Actual SSH-owner qualification is being added as a separate opt-in disposable
 guest profile. The local helper compiles as a Go test executable only (not an
 installed native command); it refuses non-fixture/non-nspawn contexts. It will
@@ -41,6 +63,11 @@ checks pass, including worker-reported natural exit and an unaffected sibling.
 This separate source change is NOT in the currently frozen browser
 build and must receive its own build/browser qualification before being committed
 as tested. It does not fence already-sent worker/SSH bytes or enable C3.
+Fresh qualification now passes all398 application checks/74files (80.82s),
+typecheck/build; all113 fresh browser checks pass (12.7m). All nine runtime hashes
+match before/after, and nine generated screenshots are restored to their verified
+baseline. See browser-input-lifetime.md. This browser-only fix is locally tested;
+the wider native C3 TODO remains open and nothing is deployed.
 
 Continuation after2928bc0: the paused student page is being given bounded,
 attempt/generation/review-revision-scoped approval presentation. Source inspection

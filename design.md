@@ -1627,6 +1627,13 @@ feedback; a new interruption clears it. The actual legacy disconnect path remain
 unchanged. Retained-path UI fixtures are not native buffer/freeze qualification.
 See docs/student-continuation-status.md for status and compatibility boundaries.
 
+The local browser queue also captures an ephemeral per-pane object before its
+first asynchronous continuation. Close/exit/logout invalidate it, so old unsent
+chunks or late failures cannot target a replacement with the same UI pane ID.
+This is not the root-owned native packet epoch and cannot recall already-posted
+worker/SSH bytes. Qualification and remaining C3 boundaries are in
+docs/browser-input-lifetime.md; no retained mode is enabled by this client fence.
+
 ### Approved unified-grant design (October 20; implementation pending)
 
 Keep one ordinary attempt as the default. Explicit individual/bulk additional

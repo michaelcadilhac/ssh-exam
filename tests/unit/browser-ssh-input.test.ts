@@ -92,3 +92,47 @@ it("a delayed control acknowledgment after 15 seconds terminates SSH rather than
   expect(c.disconnected).toBe(0);
   expect(events).toContainEqual({ type: "loss" });
 });
+
+for (const fail of [false, true])
+  it(`does not forward queued bytes or a late ${fail ? "failure" : "success"} to a replacement pane with the same identifier`, async () => {
+    const { client, c, request } = fixture(),
+      events: any[] = [];
+    client.subscribe((m) => events.push(m));
+    let settle!: () => void;
+    const pending = new Promise((resolve, reject) => {
+      settle = () => (fail ? reject(Error("old pane ended")) : resolve({}));
+    });
+    request.mockImplementation(async (...values: unknown[]) => {
+      const [op, args] = values as [string, { data?: string }];
+      if (op === "input" && args.data === "already-in-flight") return pending;
+      return {};
+    });
+    c.readyPanes.add("same");
+    client.terminal({ type: "input", pane: "same", data: "already-in-flight" });
+    await Promise.resolve();
+    client.terminal({ type: "input", pane: "same", data: "stale-unsent" });
+    const oldChain = c.inputChains.get("same");
+    client.terminal({ type: "close", pane: "same" });
+    client.handle({
+      type: "browser-request",
+      id: "replacement-open",
+      op: "open",
+      args: { pane: "same" },
+    });
+    for (let n = 0; n < 8; n++) await Promise.resolve();
+    expect(c.readyPanes.has("same")).toBe(true);
+    settle();
+    await oldChain;
+    for (let n = 0; n < 8; n++) await Promise.resolve();
+    expect(request.mock.calls.filter(([op]) => op === "input")).toEqual([
+      ["input", { pane: "same", data: "already-in-flight" }],
+    ]);
+    expect(events.filter((m) => m.type === "closed")).toEqual([]);
+    client.terminal({ type: "input", pane: "same", data: "fresh" });
+    await c.inputChains.get("same");
+    expect(request).toHaveBeenLastCalledWith("input", {
+      pane: "same",
+      data: "fresh",
+    });
+    client.close();
+  });
