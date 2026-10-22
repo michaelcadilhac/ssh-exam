@@ -90,6 +90,10 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "panes" {
+		panesHelp(w)
+		return true
+	}
 	if topic == "administrators" {
 		webAdministratorsHelp(w)
 		return true
@@ -157,6 +161,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprintln(w, "Immutable local templates: templates validate/install/list/show/verify/jobs/clean; templates sync records a signed gateway source attestation, not a grant. Use examctl templates help and web templates help.")
 		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM] (offline inspection, not unified grant issuance).")
 		fmt.Fprintln(w, "Workspace retention metadata/holds: workspaces list/show/hold/release-hold; use examctl help workspaces (no deletion enabled).")
+		fmt.Fprintln(w, "Native targeted panes: panes list/show/close; read-only snapshots and durably audited revision-fenced closure. Use examctl help panes; clocks/holds/other panes are preserved.")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")
 		fmt.Fprintln(w, "Gateway roster/CSV: web students; use examctl web students help.")
 		fmt.Fprintln(w, "Gateway administrators: web administrators list/show/create; use examctl web administrators help (secret-safe input, no credential reset/overwrite).")

@@ -8,6 +8,32 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Descriptor correction is local commita50067b, fully qualified as recorded below.
+C1 native pane management is implemented/tested locally: no-write bounded list/show,
+source/owner/incarnation-scoped reviewed revision, checked durable root audit and
+shared targeted close without preflight/account/clock side effects. Required
+help/refusal regression was RED; final426 app90.89s, full native race/resource/
+namespace/compiler/default-size core181.090s/CLI14.107s, static/vet/typecheck and35
+Python tests pass. Ten pane/audit race repeats pass2.206s. Exact-artifact guest
+ACK/two-shell/root-CLI passes three repeats1.58/0.99/0.79s with host/base preserved;
+same exact artifact also passes40 guest enforcement and11 collector-death/
+healthy-peer assertions (23 renewals,max0.0923081s, exact40MiB retry); every
+host/base preservation check passes. All174 prior browser
+source/runtime hashes match; no web rebuild. Exact acceptance/hashes/compatibility
+and failed fixture evidence are in native-pane-management.md. C10/C11/legacy unused-enrollment choices have been
+re-presented asynchronously; independent correctness work continues without assuming answers.
+
+Next confirmed-correctness investigation: recoveryReference opens legacy grant
+files with blocking O_RDONLY under the shared state lock and reads consumed
+markers through unbounded/following ReadFile. The separate deletion catalog already
+has bounded no-follow/nonblocking file checks. Reproduce special/unsafe metadata
+before changing shared validation. Seven actual Begin-process regressions are now
+RED: two FIFO stalls and five accepted unsafe/ambiguous records; a valid source
+reaches the explicitly mocked OS-guard boundary without starting time. An initial
+fixture stopped at earlier readiness rather than testing the suspect read; it
+was corrected before recording RED. Do not treat malformed authority as missing,
+fall back to starter files, change intervals or rewrite legacy grants/history.
+
 Pane-admission correction is local commitfad7e51. Next correctness investigation:
 local gate receives SCM_RIGHTS before JSON/account/SSH/capability validation but
 only adopts/closes them on the later accepted-pane path. Reproduce malformed,

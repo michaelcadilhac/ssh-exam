@@ -67,6 +67,9 @@ func main() {
 	if webCategory(os.Args[1:]) == "workspaces" {
 		os.Exit(workspacesMain(os.Args[1:]))
 	}
+	if webCategory(os.Args[1:]) == "panes" {
+		os.Exit(panesMain(os.Args[1:]))
+	}
 	if webCategory(os.Args[1:]) == "templates" {
 		os.Exit(templatesMain(os.Args[1:]))
 	}

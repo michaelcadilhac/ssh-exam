@@ -152,18 +152,30 @@ type Capability struct {
 	Expires   int64  `json:"expires"`
 }
 type State struct {
-	Accounts         map[string]Account    `json:"accounts,omitempty"`
-	Attempts         map[string]*Attempt   `json:"attempts"`
-	Caps             map[string]Capability `json:"capabilities"`
-	Registrations    map[string]string     `json:"registrations"`
-	Commands         map[string]int64      `json:"commands,omitempty"`
-	Sequence         int64                 `json:"sequence,omitempty"`
-	Events           []CallbackEvent       `json:"events,omitempty"`
-	Reported         map[string]string     `json:"reported,omitempty"`
-	Exports          map[string]bool       `json:"exports,omitempty"`
-	ExportPauses     map[string]string     `json:"export_pauses,omitempty"`
-	RecordingOffsets map[string]int64      `json:"recording_offsets,omitempty"`
-	ManifestReceipts map[string]string     `json:"manifest_receipts,omitempty"`
+	PaneInstances    map[string]PaneInstance `json:"pane_instances,omitempty"`
+	Accounts         map[string]Account      `json:"accounts,omitempty"`
+	Attempts         map[string]*Attempt     `json:"attempts"`
+	Caps             map[string]Capability   `json:"capabilities"`
+	Registrations    map[string]string       `json:"registrations"`
+	Commands         map[string]int64        `json:"commands,omitempty"`
+	Sequence         int64                   `json:"sequence,omitempty"`
+	Events           []CallbackEvent         `json:"events,omitempty"`
+	Reported         map[string]string       `json:"reported,omitempty"`
+	Exports          map[string]bool         `json:"exports,omitempty"`
+	ExportPauses     map[string]string       `json:"export_pauses,omitempty"`
+	RecordingOffsets map[string]int64        `json:"recording_offsets,omitempty"`
+	ManifestReceipts map[string]string       `json:"manifest_receipts,omitempty"`
+}
+
+// PaneInstance records observed system-manager activation of one unique unit.
+// It is not live execution/monitoring authority, freeze proof or restart recovery.
+// Never backfill this observation from a legacy unit name or restored snapshot.
+type PaneInstance struct {
+	Attempt string `json:"attempt"`
+	Pane    string `json:"pane"`
+	ID      string `json:"id"`
+	Boot    string `json:"boot"`
+	ReadyAt int64  `json:"ready_at"`
 }
 type Engine struct {
 	accountMu           sync.RWMutex
@@ -433,17 +445,13 @@ func (e *Engine) save() error {
 	return err
 }
 func (e *Engine) Audit(action, id string, reason ...string) {
-	f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err == nil {
-		defer f.Close()
-		event := map[string]any{"at": Millis(), "action": action, "attempt": id}
-		if len(reason) > 0 {
-			event["reason"] = reason[0]
-		}
-		b, _ := json.Marshal(event)
-		f.Write(append(b, '\n'))
-		f.Sync()
+	event := map[string]any{"at": Millis(), "action": action, "attempt": id}
+	if len(reason) > 0 {
+		event["reason"] = reason[0]
 	}
+	// Legacy callers remain best-effort. Explicit root management calls use the
+	// checked helper directly and refuse before their destructive side effect.
+	_ = e.appendNativeManagementAudit(event)
 }
 func (e *Engine) Find(id string) (*Attempt, error) {
 	a := e.state.Attempts[id]

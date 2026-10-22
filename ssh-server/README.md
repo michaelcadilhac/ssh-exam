@@ -458,6 +458,21 @@ unsaved editor state is lost. The local deadline watchdog stays independent.
 
 ## Local examctl administration
 
+Local pane-management candidate (not deployed): `examctl help panes` explains
+bounded offline `panes list ATTEMPT`, `panes show ATTEMPT PANE` and reviewed
+`panes close ATTEMPT PANE --revision SNAPSHOT --reason TEXT`. Reads never initialize,
+reconcile, repair, load keys or contact services; `--state DIR` permits inspection
+without config. Close needs real/effective root, the current exact pane revision
+and8..1000 UTF-8 bytes of reason; audit must succeed before revocation/control.
+It irreversibly terminates only that recorded pane/descendants (unsaved buffers
+may be lost), not peers, clocks, account restrictions, grants or protected work.
+After a lost reply inspect again, retaining the OLD reviewed revision; never
+silently adopt a replacement. Legacy/startup-unverified scopes remain tracked and
+refuse close rather than invent readiness. Matching native launchers and verified
+drain are future compatibility prerequisites; no service change is authorized.
+This is not C3 retained SSH or proof of cleanup eligibility. See
+docs/native-pane-management.md for the full safety/qualification record.
+
 The local configuration-inspection candidate works without initializing native
 state or contacting a service: `examctl config show` reads selected metadata with
 path redaction; `examctl config validate --config /private/staged-agent.json`

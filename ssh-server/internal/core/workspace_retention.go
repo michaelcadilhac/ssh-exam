@@ -392,18 +392,43 @@ func (e *Engine) WorkspaceRetentions(exam, after string, limit int) (WorkspaceRe
 // Returning/fsynced audit is required for operator holds. Native Audit is best
 // effort and must not turn an audit failure into an acknowledged hold release.
 func (e *Engine) auditWorkspaceRetention(action string, a *Attempt, reason string, revision int64) error {
-	b, err := json.Marshal(map[string]any{"at": Millis(), "action": action, "attempt": a.ID, "reason": reason, "revision": revision, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid()})
+	return e.appendNativeManagementAudit(map[string]any{"at": Millis(), "action": action, "attempt": a.ID, "reason": reason, "revision": revision, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid()})
+}
+
+func (e *Engine) appendNativeManagementAudit(event map[string]any) error {
+	b, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0600)
+	f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0600)
 	if err != nil {
 		return err
 	}
 	info, err := f.Stat()
 	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || info.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || info.Sys().(*syscall.Stat_t).Nlink != 1 {
 		f.Close()
-		return errors.New("unsafe retention audit file; hold unchanged")
+		return errors.New("unsafe native management audit file; requested control unchanged")
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		f.Close()
+		return errors.New("native audit busy; requested control unchanged")
+	}
+	// Close releases this exact open-file-description lock. Never defer a raw
+	// numeric unlock past Close, where another goroutine could reuse that fd.
+	info, err = f.Stat()
+	if err != nil {
+		f.Close()
+		return err
+	}
+	if info.Size() > 0 {
+		var last [1]byte
+		if _, err := f.ReadAt(last[:], info.Size()-1); err != nil {
+			f.Close()
+			return err
+		}
+		if last[0] != '\n' {
+			b = append([]byte{'\n'}, b...)
+		}
 	}
 	_, err = f.Write(append(b, '\n'))
 	if err == nil {

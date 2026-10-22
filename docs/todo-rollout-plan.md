@@ -11,6 +11,18 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The local native pane candidate adds unique incarnation-bearing unit names and
+persisted activation observations (`pane_instances`), plus checked serialized
+main-audit appends. New root close and shared student close refuse legacy or
+startup-unverified units without discarding tracking. Before any separately
+authorized rollout, verify drain of old launchers/workloads/tokens and every
+temporary agent owner, preserve state/audit/holds/work/submissions, and qualify
+matching binaries. Do not deploy only a CLI over live old launchers or backfill
+activation observations. Downgrade can discard observations/reuse names; preserve
+records and keep admission closed for a compatible drained repair, never restore
+old state over newer work or clear metadata to force close. This does not enable
+C3 retained lockouts or authorize deployment/consolidation.
+
 Critical monitoring-liveness redesign now precedes nonessential expansion. H2a's
 local contact/queue candidate requires no schema/config migration and does not
 enable technical holds, automatic thaw or C3 buffer preservation. Old browsers

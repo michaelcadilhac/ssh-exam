@@ -229,7 +229,7 @@ func (e *Engine) local(c *net.UnixConn) {
 		if errno != 0 {
 			return errors.New("not a terminal descriptor")
 		}
-		unit = "exam-" + a.ID + "-" + cap.Pane + ".scope"
+		unit = "exam-" + a.ID + "-" + cap.Pane + "-" + ManagementID() + ".scope"
 		id = a.ID
 		work := filepath.Join(e.Config.Work, a.ID, "work")
 		if practice {
@@ -342,6 +342,15 @@ func (e *Engine) local(c *net.UnixConn) {
 			launch = nil
 			return true, errors.New("workload scope failed readiness; pane denied")
 		}
+		_, _, instance, valid := recordedPaneIdentity(a.ID, unit)
+		currentBoot := boot()
+		if !valid || instance == "" || currentBoot == "" {
+			return true, errors.New("pane readiness identity unavailable; preserve tracked scope for recovery")
+		}
+		if e.state.PaneInstances == nil {
+			e.state.PaneInstances = map[string]PaneInstance{}
+		}
+		e.state.PaneInstances[unit] = PaneInstance{Attempt: a.ID, Pane: cap.Pane, ID: instance, Boot: currentBoot, ReadyAt: Millis()}
 		e.Audit("pane-admitted", a.ID)
 		return true, nil
 	})
@@ -378,6 +387,7 @@ func (e *Engine) local(c *net.UnixConn) {
 				}
 			}
 			a.Units = units
+			delete(e.state.PaneInstances, unit)
 		}
 		return nil
 	})

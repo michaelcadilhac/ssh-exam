@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"os"
@@ -152,20 +151,7 @@ func (e *Engine) overrideSecuredAccess(id, reason string) (any, error) {
 		if original == 0 {
 			original = a.Deadline
 		}
-		event, err := json.Marshal(map[string]any{"at": Millis(), "action": "emergency-access-override", "attempt": id, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER"), "reason": reason, "original_deadline": original, "current_deadline": a.Deadline})
-		if err != nil {
-			return err
-		}
-		f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-		if err != nil {
-			return err
-		}
-		_, err = f.Write(append(event, '\n'))
-		if err == nil {
-			err = f.Sync()
-		}
-		f.Close()
-		if err != nil {
+		if err := e.appendNativeManagementAudit(map[string]any{"at": Millis(), "action": "emergency-access-override", "attempt": id, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER"), "reason": reason, "original_deadline": original, "current_deadline": a.Deadline}); err != nil {
 			return err
 		}
 		if e.temporaryPolicy(a) && a.PolicyGeneration != "" && a.PolicyState != "NORMAL" {

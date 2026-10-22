@@ -281,3 +281,12 @@ preservation check passes. Exact hashes, real descriptor-leak RED, unchanged
 authority/protocol checks and separate browser evidence:
 native-gate-descriptors.md. No deployment, restart of an installed host service,
 student record change, C3 enablement or temporary-agent consolidation occurs.
+
+The next native pane-management candidate passes three actual ACK/two-shell/root-
+CLI repetitions,40 full enforcement assertions and11 collector-death/healthy-peer
+assertions (23 renewals,max0.0923081s, exact40MiB retry). Every host/base
+preservation check passes. New exact hashes and evidence directories are in
+native-pane-management.md. New unit incarnations/observed activation metadata
+prevent a stale reviewed close from controlling a replacement; this is explicit
+pane termination, not retained-lockout freeze or all-writer cleanup proof. No
+production service/config/account/student-record change or deployment occurs.

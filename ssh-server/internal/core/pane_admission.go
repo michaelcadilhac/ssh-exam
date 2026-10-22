@@ -29,7 +29,7 @@ func paneLaunchAuthority(a *Attempt) Attempt {
 
 func paneRecorded(a *Attempt, pane string) bool {
 	for _, unit := range a.Units {
-		if unit == "exam-"+a.ID+"-"+pane+".scope" || unit == "exam-"+a.ID+"-"+pane+".service" {
+		if id, _, _, ok := recordedPaneIdentity(a.ID, unit); ok && id == pane {
 			return true
 		}
 	}
@@ -42,6 +42,39 @@ func (e *Engine) revokePaneAdmissions(id, pane string) {
 			delete(e.state.Caps, hash)
 		}
 	}
+}
+
+// Shared by signed student close and reviewed root close. The caller holds
+// WithState; this changes only the target's admissions and recorded units.
+func (e *Engine) closePaneLocked(a *Attempt, pane string) (any, error) {
+	if !attemptID.MatchString(pane) {
+		return nil, errors.New("invalid pane identity")
+	}
+	e.revokePaneAdmissions(a.ID, pane)
+	closed := *a
+	closed.Units = nil
+	remaining := []string{}
+	for _, unit := range a.Units {
+		if id, _, _, ok := recordedPaneIdentity(a.ID, unit); ok && id == pane {
+			closed.Units = append(closed.Units, unit)
+		} else {
+			remaining = append(remaining, unit)
+		}
+	}
+	currentBoot := boot()
+	for _, unit := range closed.Units {
+		if !paneInstanceReady(e.state, a, unit, currentBoot) {
+			return nil, errors.New("pane startup/incarnation is unverified; admissions revoked and recorded scopes retained; inspect native state and matching versions, preserving work and tracking")
+		}
+	}
+	if err := e.terminateWriters(&closed); err != nil {
+		return nil, errors.New("recorded pane workload termination unconfirmed; admissions revoked and scopes retained")
+	}
+	a.Units = remaining
+	for _, unit := range closed.Units {
+		delete(e.state.PaneInstances, unit)
+	}
+	return map[string]bool{"closed": true}, nil
 }
 
 // Called only inside WithState; no network IO or process launch occurs here.
@@ -96,7 +129,8 @@ func (e *Engine) launchAcknowledgedPane(p *paneLaunchAdmission, token, name, uni
 		if !p.unchanged(cap, a, account) {
 			return errors.New("pane authority changed during acknowledgement; refresh and reopen this pane")
 		}
-		if unit != "exam-"+a.ID+"-"+cap.Pane+".scope" && unit != "exam-"+a.ID+"-"+cap.Pane+".service" || !e.recordedUnitAllowed(a, unit) {
+		unitPane, _, instance, validUnit := recordedPaneIdentity(a.ID, unit)
+		if !validUnit || unitPane != cap.Pane || instance == "" || !e.recordedUnitAllowed(a, unit) {
 			return errors.New("invalid pane workload unit")
 		}
 		delete(e.state.Caps, Hash([]byte(token)))

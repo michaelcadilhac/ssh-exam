@@ -1633,6 +1633,19 @@ an OS/process fault sandbox, secure erasure or a new retention/clock/hold policy
 
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 
+Local C1 pane management adds offline `panes list/show` through bounded pinned
+read-only state before initialization, and `panes close ATTEMPT PANE --revision
+SNAPSHOT --reason TEXT` with checked durable root/machine audit before control.
+Root and student close share exact-target admission revocation/termination;
+unconfirmed scopes stay tracked. New unit incarnations and observed activation
+metadata fence replacement and startup races. Legacy/unverified units have no
+root close revision and are never silently adopted; mixed launchers require a
+separately authorized verified drain. Metadata is not live work permission,
+all-UID writer absence or cleanup proof. Explicit close destroys that pane's
+unsaved buffers, never changes clocks/holds/grants/history or closes other panes;
+it is not retained-lockout freeze. See docs/native-pane-management.md for help,
+tests and compatibility. This candidate is local only, not deployed.
+
 Local C1h adds explicit root-only offline `config show/validate --config FILE`
 before Engine initialization. It shares structural policy with the unchanged
 runtime loader, but reads selected config/keys through bounded pinned no-follow/

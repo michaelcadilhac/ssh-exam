@@ -267,6 +267,15 @@ func decodeReadOnlyLease(b []byte, id string) (executionLease, bool) {
 	return lease, true
 }
 
+func readOnlyStateFile(root *os.File) (State, []byte, error) {
+	var state State
+	b, err := readOnlyFile(root, "state.json", readOnlyStateMaxBytes)
+	if err != nil || !validReadOnlyJSON(b) || json.Unmarshal(b, &state) != nil || state.Attempts == nil || state.Caps == nil || state.Registrations == nil {
+		return state, nil, errReadOnlySnapshot
+	}
+	return state, b, nil
+}
+
 func ObserveNativeReadOnly(stateDir string, q ReadOnlyQuery) (ReadOnlySnapshot, error) {
 	var result ReadOnlySnapshot
 	if err := q.Validate(); err != nil {
@@ -277,13 +286,9 @@ func ObserveNativeReadOnly(stateDir string, q ReadOnlyQuery) (ReadOnlySnapshot, 
 		return result, err
 	}
 	defer root.Close()
-	b, err := readOnlyFile(root, "state.json", readOnlyStateMaxBytes)
-	if err != nil || !validReadOnlyJSON(b) {
-		return result, errReadOnlySnapshot
-	}
-	var state State
-	if json.Unmarshal(b, &state) != nil || state.Attempts == nil || state.Caps == nil || state.Registrations == nil {
-		return result, errReadOnlySnapshot
+	state, b, err := readOnlyStateFile(root)
+	if err != nil {
+		return result, err
 	}
 	ids := []string{}
 	for id, a := range state.Attempts {

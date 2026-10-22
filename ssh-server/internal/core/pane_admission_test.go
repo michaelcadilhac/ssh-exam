@@ -108,7 +108,7 @@ func paneAdmissionFixture(t *testing.T) (*Engine, ed25519.PrivateKey, Command, s
 }
 
 func launchTestPane(e *Engine, token string, pending *paneLaunchAdmission, start func(*Attempt, Capability) (bool, error)) error {
-	return e.launchAcknowledgedPane(pending, token, "student", "exam-"+finalID+"-"+finalID+".scope", func(Account) (string, error) { return "ssh-a", nil }, start)
+	return e.launchAcknowledgedPane(pending, token, "student", "exam-"+finalID+"-"+finalID+"-"+ManagementID()+".scope", func(Account) (string, error) { return "ssh-a", nil }, start)
 }
 
 func TestPaneAcknowledgementOutsideStateLockAndLateSignedCloseRefusesLaunch(t *testing.T) {

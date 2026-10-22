@@ -203,6 +203,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				productionReady = false
 			}
 			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "private-workspace-staging", "collection-limits-v1", "immutable-template-versions-v1", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result.(map[string]any)["capabilities"] = append(result.(map[string]any)["capabilities"].([]string), "unique-pane-incarnations-v1", "reviewed-native-pane-control-v1")
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -352,27 +353,8 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			e.revokePaneAdmissions(a.ID, r.Pane)
 			result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + 15000})
 		case "close-pane":
-			if !attemptID.MatchString(r.Pane) {
-				return errors.New("invalid pane identity")
-			}
-			// Revoke queued, not-yet-launched admissions even when terminating an
-			// existing workload fails. WithState durably saves errors as well.
-			e.revokePaneAdmissions(a.ID, r.Pane)
-			closed := *a
-			closed.Units = nil
-			remaining := []string{}
-			for _, unit := range a.Units {
-				if unit == "exam-"+a.ID+"-"+r.Pane+".scope" || unit == "exam-"+a.ID+"-"+r.Pane+".service" {
-					closed.Units = append(closed.Units, unit)
-				} else {
-					remaining = append(remaining, unit)
-				}
-			}
-			if err := e.terminateWriters(&closed); err != nil {
-				return err
-			}
-			a.Units = remaining
-			result = map[string]bool{"closed": true}
+			result, err = e.closePaneLocked(a, r.Pane)
+			return err
 		case "lock-attempt":
 			if a.State == "LOCKED" && r.Generation > a.Generation {
 				a.Generation = r.Generation

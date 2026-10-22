@@ -6,7 +6,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net"
@@ -36,8 +38,8 @@ func TestPaneAcknowledgementSSHHelper(t *testing.T) {
 	if !strings.HasPrefix(socket, "/var/lib/qualification-pane-ack-") || filepath.Base(socket) != "gate.sock" {
 		os.Exit(77)
 	}
-	if os.Getenv("SSH_ORIGINAL_COMMAND") == "exam-control" {
-		os.Args = []string{os.Args[0], "-c", "exam-control"}
+	if command := os.Getenv("SSH_ORIGINAL_COMMAND"); command == "exam-control" || command == "exam-gateway" {
+		os.Args = []string{os.Args[0], "-c", command}
 		if err := Gate(socket); err != nil {
 			os.Exit(1)
 		}
@@ -328,4 +330,213 @@ func TestPaneAcknowledgementGuest(t *testing.T) {
 		t.Fatal("late real SSH ACK launched code or changed preflight/clock authority")
 	}
 	t.Log("actual authenticated SSH/Unix-credential pane ACK wait leaves signed inspection/close responsive; late ACK refused, no workload/interval started")
+
+	// Actual supported root CLI + two real practice shells. No interval/grant
+	// is begun. These scopes/keys/configuration exist ONLY in this new fixture.
+	cliConfig := engine.Config
+	cliConfig.TemporaryAccountPolicy = false
+	cliConfig.CallbackURL = "https://127.0.0.1:9"
+	cliConfig.CallbackKey = filepath.Join(private, "synthetic-callback.key")
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cliConfig.CallbackKey, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0600); err != nil {
+		t.Fatal(err)
+	}
+	configFile := filepath.Join(private, "cli-config.json")
+	configData, _ := json.Marshal(cliConfig)
+	if err := os.WriteFile(configFile, configData, 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		// Stop only scopes recorded by THIS private fixture before removing its
+		// mounted sources/socket. A failed shell assertion must not poison the
+		// next repetition's honest normal-root endpoint inventory.
+		_ = listener.Close()
+		state, err := readStateSnapshot(config.State)
+		if err != nil {
+			t.Error("owned scope cleanup state unavailable", err)
+			return
+		}
+		a := state.Attempts[id]
+		if a == nil {
+			return
+		}
+		for _, unit := range a.Units {
+			_, _, instance, valid := recordedPaneIdentity(id, unit)
+			if !valid || instance == "" {
+				t.Error("refuse unexpected cleanup scope")
+				continue
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			_ = exec.CommandContext(ctx, "/usr/bin/systemctl", "kill", "--signal=KILL", unit).Run()
+			_ = exec.CommandContext(ctx, "/usr/bin/systemctl", "stop", unit).Run()
+			cancel()
+		}
+		until := time.Now().Add(3 * time.Second)
+		for time.Now().Before(until) {
+			next, err := readStateSnapshot(config.State)
+			if err == nil && len(next.Attempts[id].Units) == 0 {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		// Retain the actual failed output if teardown cannot be confirmed.
+		t.Error("owned native scope tracking cleanup not confirmed")
+	})
+	type shell struct {
+		id      string
+		input   io.WriteCloser
+		output  *bufio.Reader
+		command *exec.Cmd
+		ended   chan error
+	}
+	readMarker := func(reader *bufio.Reader, want string, prefix bool) {
+		t.Helper()
+		result := make(chan error, 1)
+		var transcript releaseSSHLog
+		go func() {
+			for n := 0; n < 32; n++ {
+				line, err := reader.ReadString('\n')
+				if len(transcript.String()) < 32768 {
+					_, _ = transcript.Write([]byte(line))
+				}
+				if err != nil {
+					result <- err
+					return
+				}
+				// Interactive Bash can prefix real output with bracketed-paste
+				// control bytes. Require the exact printed marker + newline;
+				// the echoed printf argument contains literal \\n, not this.
+				if (!prefix && (strings.Contains(line, want+"\r\n") || strings.Contains(line, want+"\n"))) || (prefix && strings.HasPrefix(strings.TrimSpace(line), want)) {
+					result <- nil
+					return
+				}
+			}
+			result <- fmt.Errorf("bounded shell marker missing")
+		}()
+		select {
+		case err := <-result:
+			if err != nil {
+				t.Fatal("actual shell marker", want, err, transcript.String(), daemonLog.String())
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("actual shell marker timeout", want, transcript.String(), daemonLog.String())
+		}
+	}
+	startShell := func(marker string) *shell {
+		t.Helper()
+		p := ManagementID()
+		token := command("issue-channel-admission", Request{ID: id, Username: "examq", Transport: transport, Pane: p, Purpose: "practice"}).(map[string]any)["token"].(string)
+		cmd := exec.Command("/usr/bin/ssh", append(append([]string{}, args...), "-tt", "examq@127.0.0.1", "exam-gateway")...)
+		in, err := cmd.StdinPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := cmd.StdoutPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd.Stderr = &daemonLog
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		ch := make(chan error, 1)
+		go func() { ch <- cmd.Wait() }()
+		s := &shell{id: p, input: in, output: bufio.NewReaderSize(out, 65536), command: cmd, ended: ch}
+		t.Cleanup(func() {
+			_ = in.Close()
+			_ = cmd.Process.Kill()
+			select {
+			case <-ch:
+			case <-time.After(3 * time.Second):
+				t.Error("owned real shell client cleanup unconfirmed")
+			}
+		})
+		readMarker(s.output, "EXAM-GATE/1", false)
+		request, _ := json.Marshal(LocalRequest{Token: token})
+		if _, err := in.Write(append(request, '\n')); err != nil {
+			t.Fatal(err)
+		}
+		readMarker(s.output, "EXAM-READY ", true)
+		if _, err := fmt.Fprintf(in, "printf '%s\\n'\n", marker); err != nil {
+			t.Fatal(err)
+		}
+		readMarker(s.output, marker, false)
+		return s
+	}
+	first, peer := startShell("FIRST-REAL-SHELL"), startShell("PEER-REAL-SHELL")
+	// Observe activation, never manufacture an incarnation/readiness record.
+	untilReadyPane := time.Now().Add(5 * time.Second)
+	for {
+		view, err := ObserveNativePanes(config.State, NativePaneQuery{Attempt: id, Pane: first.id, Limit: 1})
+		if err == nil && len(view.Panes) == 1 && !view.Panes[0].Unsafe && len(view.Panes[0].Incarnations) == 1 {
+			break
+		}
+		if time.Now().After(untilReadyPane) {
+			t.Fatal("actual unit activation proof unavailable", err, view)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err := fmt.Fprint(first.input, "( while :; do printf x >> detached; sleep 0.02; done ) >/dev/null 2>&1 &\n"); err != nil {
+		t.Fatal(err)
+	}
+	counter := filepath.Join(config.State, "practice", id, "detached")
+	untilWriter := time.Now().Add(3 * time.Second)
+	for {
+		info, err := os.Stat(counter)
+		if err == nil && info.Size() > 0 {
+			break
+		}
+		if time.Now().After(untilWriter) {
+			t.Fatal("owned detached writer did not run", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cli := func(args ...string) []byte {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "/usr/local/sbin/examctl", append([]string{"--config", configFile}, args...)...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatal("actual native pane CLI", err, string(out))
+		}
+		return out
+	}
+	var reviewed NativePanesSnapshot
+	if json.Unmarshal(cli("panes", "show", id, first.id), &reviewed) != nil || len(reviewed.Panes) != 1 || reviewed.Panes[0].Unsafe || reviewed.Panes[0].Revision == "" {
+		t.Fatal("actual reviewed pane CLI metadata", reviewed)
+	}
+	var closed NativePaneCloseResult
+	if json.Unmarshal(cli("panes", "close", id, first.id, "--revision", reviewed.Panes[0].Revision, "--reason", "Explicit synthetic target shell closure"), &closed) != nil || !closed.RecordedTargetsQuiesced || closed.ClockChanged || closed.AccessReleased {
+		t.Fatal("actual root target close", closed)
+	}
+	beforeStop, err := os.Stat(counter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(100 * time.Millisecond)
+	afterStop, err := os.Stat(counter)
+	if err != nil || beforeStop.Size() != afterStop.Size() {
+		t.Fatal("target detached writer survived reviewed close", err)
+	}
+	if _, err := fmt.Fprint(peer.input, "printf 'PEER-SURVIVES-ROOT-CLOSE\\n'\n"); err != nil {
+		t.Fatal(err)
+	}
+	readMarker(peer.output, "PEER-SURVIVES-ROOT-CLOSE", false)
+	current, err := readStateSnapshot(config.State)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a := current.Attempts[id]; a.State != "PREPARING" || a.Start != 0 || a.Deadline != 0 || a.OriginalDeadline != 0 || a.PolicyRestoreAuthorized || len(a.Units) != 1 || !paneRecorded(a, peer.id) {
+		t.Fatal("target CLI close affected peer/preflight/clock authority")
+	}
+	var peerView NativePanesSnapshot
+	if json.Unmarshal(cli("panes", "show", id, peer.id), &peerView) != nil || len(peerView.Panes) != 1 || peerView.Panes[0].Unsafe {
+		t.Fatal("peer snapshot unavailable", peerView)
+	}
+	cli("panes", "close", id, peer.id, "--revision", peerView.Panes[0].Revision, "--reason", "Explicit synthetic peer cleanup")
+	t.Log("actual static root CLI durably audits and closes one unique recorded scope plus detached writer while a second real SSH shell survives; no interval/hold/grant changed")
 }

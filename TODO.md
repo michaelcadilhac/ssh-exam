@@ -302,11 +302,16 @@ An administrator should be able to discover and finish a workflow using
   all gaps. Include bulk operations and inspection of confirmed versus pending
   changes. Make the CLI and web UI agree after either changes a setting. Carry
   this firm policy into the canonical design and operator documentation.
-  October22 inspection also identifies a per-pane root-management gap: signed
-  student close now revokes pending tokens safely, but discoverable root CLI
-  inspection/targeted close with audited reason remains to implement. Do not
-  require direct state edits, confuse a pane UUID with an attempt or recommend
-  whole-attempt termination as a substitute for targeted management.
+  October22 per-pane CLI candidate now implements bounded no-write `panes
+  list/show` and reviewed `panes close` with checked durable root/machine audit,
+  scoped revisions, unique native incarnations and shared targeted student close.
+  Legacy/startup-unverified records refuse rather than discard tracking. Final426
+  app/full native race/resource/build and actual guest ACK/two-shell/root-CLI pass;
+  the same exact candidate also passes40 guest enforcement and11 real collector-
+  death/healthy-peer assertions, all host/base preservation passing. Exact tests/hashes
+  and future drained mixed-version/rollback gates are in docs/native-pane-management.md.
+  Manual close can lose that pane's buffers; it is not C3 retained lockout freeze.
+  No deployment, direct state editing or whole-attempt substitute is implied.
 
 - [ ] **Redesign help around discoverable management workflows.**
   Administrator candidate help covers full privilege consequences, named

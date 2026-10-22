@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -58,23 +57,7 @@ func (e *Engine) OpenExport(id string) (*os.File, error) {
 		if err != nil {
 			return err
 		}
-		event, err := json.Marshal(map[string]any{"at": Millis(), "action": "administrator-export", "attempt": id, "checksum": a.Checksum, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER")})
-		if err != nil {
-			return err
-		}
-		f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-		if err != nil {
-			return err
-		}
-		_, err = f.Write(append(event, '\n'))
-		if err == nil {
-			err = f.Sync()
-		}
-		closeErr := f.Close()
-		if err != nil {
-			return err
-		}
-		return closeErr
+		return e.appendNativeManagementAudit(map[string]any{"at": Millis(), "action": "administrator-export", "attempt": id, "checksum": a.Checksum, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER")})
 	})
 	if err != nil && archive != nil {
 		archive.Close()
@@ -119,17 +102,7 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 			return err
 		}
 		if reason != "" {
-			event, _ := json.Marshal(map[string]any{"at": Millis(), "action": "administrator-" + op, "attempt": id, "reason": reason, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER")})
-			f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-			if err != nil {
-				return err
-			}
-			_, err = f.Write(append(event, '\n'))
-			if err == nil {
-				err = f.Sync()
-			}
-			f.Close()
-			if err != nil {
+			if err := e.appendNativeManagementAudit(map[string]any{"at": Millis(), "action": "administrator-" + op, "attempt": id, "reason": reason, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER")}); err != nil {
 				return err
 			}
 		}
@@ -194,17 +167,7 @@ func (e *Engine) ExportDelivery(id string, paused *bool, reason string) (any, er
 			if *paused {
 				action = "pause-archive-export"
 			}
-			event, _ := json.Marshal(map[string]any{"at": Millis(), "action": action, "attempt": id, "reason": reason, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER")})
-			f, err := os.OpenFile(filepath.Join(e.Config.State, "audit.ndjson"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-			if err != nil {
-				return err
-			}
-			_, err = f.Write(append(event, '\n'))
-			if err == nil {
-				err = f.Sync()
-			}
-			f.Close()
-			if err != nil {
+			if err := e.appendNativeManagementAudit(map[string]any{"at": Millis(), "action": action, "attempt": id, "reason": reason, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid(), "sudo_user": os.Getenv("SUDO_USER")}); err != nil {
 				return err
 			}
 			if e.state.ExportPauses == nil {
