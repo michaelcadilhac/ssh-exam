@@ -71,3 +71,26 @@ typecheck. The six exact browser artifact hashes remain unchanged from H4a's
 subsequent ownership/publisher increments or privileged retained mode.
 The production initiating fault remains unproven. Deployment and temporary-agent
 consolidation remain proposals only.
+
+## Private actor-exclusion claim (next locally tested increment)
+
+`monitoring_claim.go` opens only an existing protected native state directory and
+its dedicated private coordination directory. Each known attempt has a persistent
+empty lock inode: never truncate, replace, unlink or explicitly unlock it. Claim
+acquisition uses nonblocking flock, strict file ownership/mode/link/type checks and
+post-acquisition inode matching. Unsafe state, links, FIFOs and malformed targets
+are refused without repairing permissions or initializing missing agent state.
+Filesystem setup itself is not claimed to be nonblocking and stays outside the
+authority lock. The claim's current predicate is memory-only, not peer proof.
+
+Publisher descriptors share that open-file description and retain exclusion after
+coordinator death. Close holders, do not LOCK_UN the shared description. Actual
+two-child SIGKILL tests prove a surviving publisher excludes replacement until
+it too exits, while another attempt remains independent. An explicit-unlock mutant
+fails both survivor regressions; the mutant was removed. Four substantive cases
+plus twelve unsafe-target variants pass twenty race repeats (1.55s). Full frozen
+native race/resource/namespace/compiler/default-size qualification passes
+(core171.82s/CLI6.59s); static build/vet pass. This is not a live root actor,
+authenticated SSH/ACTIVE verifier or all-writer hold, and no runtime seal factory
+uses it. Bounded provisional publication remains the next separate increment;
+see native-monitoring-publication.md. No production operation was performed.

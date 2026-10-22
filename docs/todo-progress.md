@@ -8,6 +8,21 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Continuation after9284522: private per-attempt ownership claims are being
+qualified separately. Persistent empty private lock inodes are never truncated,
+removed, replaced or explicitly unlocked. A publisher inherits the same open-file
+description so it continues excluding replacement actors after coordinator death.
+Four substantive cases (including twelve unsafe-target variants), actual child
+SIGKILL/survivor tests and twenty race repeats pass (1.55s). An explicit-unlock
+mutant made both survivor regressions RED, then was removed. Static build/vet pass;
+frozen claim-only full native race/resource/namespace/compiler/default-size
+qualification passes (core171.82s/CLI6.59s). These results precede and do not
+qualify the next publisher increment. No live caller creates a seal from this
+claim; actual root SSH/ACTIVE verification and all-writer containment remain open.
+Next: independent bounded provisional publication, not the collection/template
+pool. The launch design must preserve inherited claims; see
+native-monitoring-publication.md. No production is accessed or modified.
+
 October22 continuation aftercdaf37b: a private unused per-attempt monitoring
 authority/publication arbiter is under qualification in monitoring_authority.go.
 Source investigation shows a durable file/lock alone is insufficient: fsync may
