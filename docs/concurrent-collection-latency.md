@@ -78,7 +78,9 @@ does not invalidate the three earlier storage-latency failures. Final-repeat log
 actual privileged worst-case simultaneous workloads, target storage capacity and
 coordinated critical monitoring/containment qualification remain OPEN.
 
-Next: resolve the consequential C10 renewal-durability choice, then qualify the
+The instructor subsequently approved C10: verified live renewal need not wait for
+disk sync; restart requires fresh verification and durable starts/deadlines/
+ownership/audit remain mandatory. Next: implement that split and qualify the
 coordinated native authority/journal/containment implementation. Do not delete
 nonce commits or relax durable starts/deadlines/owner epochs/audit as an incidental
 performance fix. Keep the false-positive and all-writer/input acceptance gates

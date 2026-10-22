@@ -379,7 +379,7 @@ completed attempts. See monitoring-liveness-plan.md: H1/H2a is a partial local
 contact-path candidate; full native evidence, alternate path and C3 verified
 containment/thaw are not implemented or deployed.
 
-## Active-renewal durability (C10 proposed October22; awaiting decision)
+## Active-renewal durability (C10 approved October22)
 
 Independent storage-worker investigation exposes another false-hold mechanism:
 requiring a durable disk commit on every execution renewal can exhaust existing
@@ -387,7 +387,7 @@ authority during a filesystem stall, even while full monitoring and the same
 authenticated ownership remain verifiable. The private arbiter/publisher still
 models publication-before-acceptance; no live code uses it.
 
-Recommended split, asked of the instructor: renew execution in the positively
+The instructor approved the recommended split: renew execution in the positively
 verified live native coordinator without waiting for disk sync. Keep grants,
 authoritative deadlines, ownership/epoch transitions and audit durable. Renewals
 remain bounded by the original15s complete-evidence window and current deadline;
@@ -397,10 +397,36 @@ require the verified freeze/recovery protocol before working again. This may
 lose immediate durable confirmation of the last renewal, which must be reported
 as unknown/pending rather than fabricated or accused as misconduct.
 
-The alternative is durable per-renewal commit, accepting technical holds during
-storage stalls despite healthy monitoring. No answer is assumed. C9 technical
+Mandatory durable per-renewal commit, with technical holds during storage stalls
+despite healthy monitoring, is not the selected policy. C9 technical
 recovery, genuine policy/authentication rules, original/current deadlines,
 protected history and account restrictions remain unchanged. Independent local
 work continues; no production or live mode is altered. The publisher remains
 useful for durable transitions under either choice. Fair bounded scheduling and
 measured admission capacity are prerequisites, not inferred from two flock slots.
+
+The simultaneous default-size collection experiment measured signed operations
+delayed up to2.7s, with the longest traced exchange dominated by fsync/rename.
+This supports the availability tradeoff, not a diagnosis of the production
+incident. Refactor the unused publication-before-acceptance arbiter before any
+live integration. No installed lease, timeout or watchdog behavior changes from
+the approval alone.
+
+## Stop-assisted retained-workload freezing (C11 development approved October22)
+
+The instructor approved developing and fully qualifying the stop-assisted
+approach. Cgroup-only freezing canceled12 linked asynchronous writes in the
+isolated experiment; narrow stop-assisted IO/editor/dead-leader tests preserve
+those writes, memory and originally stopped jobs. These are not a completed
+all-writer freeze, root admission or retained-SSH implementation.
+
+The coordinated barrier must close pending/new launches, revoke and drain every
+pane's input, identify/pin every writer including surviving worker threads,
+preserve pre-existing job stops, verify stopped/frozen coverage and discard old
+input before any authorized thaw. Include actual editors, deferred IO, competing
+launches, process/thread exit/reuse, namespace escapes, failures/restarts and
+deadline/ownership races. Failed/unknown containment remains fail closed. Do not
+introduce a syscall restriction or kernel change to make tests pass. C3/C9,
+deadlines, account holds and credential cleanup remain unchanged. This approval
+authorizes local development/guarded testing only, not deployment or production
+signals. See native-async-io-investigation.md and monitoring-liveness-plan.md.

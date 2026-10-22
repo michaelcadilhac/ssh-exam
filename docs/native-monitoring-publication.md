@@ -34,7 +34,7 @@ arbiter's cutoff. Publication and original receipts remain distinct from verifie
 all-writer freeze/input-discard/held recovery. Those coordinated prerequisites,
 CLI/web diagnostics and privileged end-to-end qualification remain open.
 
-## October22 local candidate and outstanding authority choice
+## October22 local candidate and subsequently approved authority choice
 
 The private publisher now has strict bounded request/reply metadata, pinned
 private storage, immutable copied ticket bytes and atomic provisional publication.
@@ -69,15 +69,15 @@ fuzz executions (11.01s). The existing parent exam.slice has a local systemd
 CPUAccounting-deprecation warning; no new publisher-unit error. Exact browser
 assets remain unchanged from H4a's91-check run; no rebuild or client import.
 
-**Consequential choice asked, not yet answered:** mandatory disk sync on every
+**C10 approved October22:** mandatory disk sync on every
 renewal can still create a technical hold during a storage stall despite complete
-fresh monitoring. Recommended split: active renewals commit in the current
+fresh monitoring. The instructor selected the split: active renewals commit in the current
 verified native actor without waiting for storage; deadlines, grants, owner/epoch
 transitions and audit remain durable, and restart never restores positive work
 permission from disk. Verified freeze/recovery remains mandatory. The alternative
-is durable-per-renewal commit with its explicit availability cost. Do not enable
+was durable-per-renewal commit with its explicit availability cost. Do not enable
 either incomplete model or quietly relax the15s evidence bound. The existing
-private arbiter still models publication-before-acceptance pending this choice;
+private arbiter still models publication-before-acceptance and must be refactored;
 this worker can serve durable transitions regardless of the renewal choice.
 
 Before wiring, also supply fair bounded scheduling/coalescing across owners and

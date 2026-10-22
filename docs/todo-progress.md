@@ -8,6 +8,15 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+October22 decisions received: C10 now authorizes positively verified renewals in
+the current live root authority without waiting for disk sync. Restart requires
+fresh verification; grants/starts/deadlines/ownership/epochs/audit remain durable.
+C11 now authorizes development/full qualification of stop-assisted freezing,
+preserving originally stopped jobs. Neither approval enables a live mode or
+authorizes deployment/signals on production. Historical awaiting-decision entries
+below describe their earlier checkpoints; see todo-design-decisions.md for the
+current decisions. Legacy unused-enrollment migration remains unanswered.
+
 Saved-work process-death/CLI/watchdog qualification is now local commit6cfd9d4.
 The next independent C7 correctness regression now confirms actual isolated
 ENOSPC leaves an empty consumption marker and prevents supported root CLI repair;

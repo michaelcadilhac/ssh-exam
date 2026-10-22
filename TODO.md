@@ -108,6 +108,12 @@ full privileged qualification or deployment authorization.
   an old snapshot racing a healthy renewal. The critical item stays unchecked.
   Production remains unchanged; deployment is not authorized. Prioritize this
   correctness work over noncritical feature expansion when development resumes.
+  October22 C10/C11 are now approved: verified renewals take effect in the live
+  root authority without waiting for disk sync, while restart requires fresh
+  verification and durable starts/deadlines/ownership/audit remain mandatory;
+  develop and fully qualify stop-assisted freezing, preserving originally stopped
+  jobs. Earlier awaiting-decision notes below are historical. Neither approval is
+  implementation, completed barrier qualification or deployment authorization.
   H4a/C3 now has a private unused framed-input codec and canonical cross-language
   byte fixture. Actual encrypted SSH-channel and raw Linux PTY tests cover binary
   control keys, UTF-8, fragmentation, truncation, malformed headers and bounded
