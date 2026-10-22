@@ -919,6 +919,14 @@ the approval is not a production change or a completed investigation.
   process-name killing. Review documentation that still refers to only two gates.
 
 - [ ] **Isolate collection failure from the shared agent and other students.**
+  October22 local verification follow-up closes a missing aggregate zero-swap
+  readiness check; individual workers and the supplied pool already disabled
+  swap. Exact-property missing/nonzero refusal is tested through actual CLI and
+  real guest kernel limits, plus same-candidate11 worker-death/healthy-SSH and39
+  enforcement assertions with host/base preservation. Full414 app/native race/
+  resource/build and140 unchanged web-artifact hashes pass; see
+  docs/collection-pool-readiness.md. This does not close remaining capacity/stress
+  qualification or deploy anything; preserve the original interval/holds/history.
   Partial local implementation October 21: supervised bounded native workers,
   per-attempt locks, short fenced protection/cleanup commits and isolated export/
   release checks. Actual fatal child, systemd OOM/runtime, permission and isolated

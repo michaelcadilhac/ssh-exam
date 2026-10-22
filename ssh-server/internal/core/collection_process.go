@@ -117,8 +117,8 @@ func validateCollectionSlice(output string) error {
 	}
 	memory, memoryErr := strconv.ParseUint(properties["MemoryMax"], 10, 64)
 	tasks, tasksErr := strconv.ParseUint(properties["TasksMax"], 10, 64)
-	if properties["LoadState"] != "loaded" || memoryErr != nil || tasksErr != nil || memory == 0 || memory > 512*1024*1024 || tasks < 2 || tasks > 96 {
-		return errors.New("collection resource slice unavailable or unbounded: install exam-collection.slice, run systemctl daemon-reload, then retry collection; account remains restricted")
+	if properties["LoadState"] != "loaded" || memoryErr != nil || tasksErr != nil || memory == 0 || memory > 512*1024*1024 || tasks < 2 || tasks > 96 || properties["MemorySwapMax"] != "0" {
+		return errors.New("collection resource slice unavailable or unbounded: loaded pool, MemoryMax<=512MiB, TasksMax=2..96 and explicit MemorySwapMax=0 must all be confirmed. Inspect the supplied exam-collection.slice during an authorized drained maintenance workflow, then retry collection; do not raise limits or clear state; account remains restricted")
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func validateCollectionSlice(output string) error {
 func collectionResourceBounds() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	bounds, err := exec.CommandContext(ctx, "/usr/bin/systemctl", "show", "exam-collection.slice", "--property=LoadState", "--property=MemoryMax", "--property=TasksMax").Output()
+	bounds, err := exec.CommandContext(ctx, "/usr/bin/systemctl", "show", "exam-collection.slice", "--property=LoadState", "--property=MemoryMax", "--property=MemorySwapMax", "--property=TasksMax").Output()
 	if err != nil {
 		return fmt.Errorf("inspect collection resource slice before retrying: %w", err)
 	}

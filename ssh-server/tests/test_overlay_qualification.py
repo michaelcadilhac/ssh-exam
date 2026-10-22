@@ -139,6 +139,12 @@ class OverlayTests(unittest.TestCase):
             '-test.run=^TestTemplateCatalogSystemManagerGuest$', '-test.v', '-test.count=1',
             '-test.timeout=240s'])
 
+    def test_collection_pool_profile_is_scoped_bounded_and_repeated(self):
+        self.assertEqual(guest.collection_pool_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestCollectionPoolReadinessGuest$', '-test.v', '-test.count=3',
+            '-test.timeout=90s'])
+
 
 if __name__ == '__main__':
     unittest.main()

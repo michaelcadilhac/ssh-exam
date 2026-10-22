@@ -362,12 +362,12 @@ func TestCollectionResourceAndProtocolContracts(t *testing.T) {
 			t.Fatal("resource boundary missing", required)
 		}
 	}
-	for _, invalid := range []string{"", "LoadState=not-found", "LoadState=loaded\nMemoryMax=infinity\nTasksMax=96", "LoadState=loaded\nMemoryMax=1073741824\nTasksMax=96", "LoadState=loaded\nMemoryMax=536870912\nTasksMax=infinity"} {
+	for _, invalid := range []string{"", "LoadState=not-found\nMemorySwapMax=0", "LoadState=loaded\nMemoryMax=infinity\nMemorySwapMax=0\nTasksMax=96", "LoadState=loaded\nMemoryMax=1073741824\nMemorySwapMax=0\nTasksMax=96", "LoadState=loaded\nMemoryMax=536870912\nMemorySwapMax=0\nTasksMax=infinity"} {
 		if validateCollectionSlice(invalid) == nil {
 			t.Fatal("accepted missing/unbounded collection slice", invalid)
 		}
 	}
-	if err := validateCollectionSlice("LoadState=loaded\nMemoryMax=536870912\nTasksMax=96"); err != nil {
+	if err := validateCollectionSlice("LoadState=loaded\nMemoryMax=536870912\nMemorySwapMax=0\nTasksMax=96"); err != nil {
 		t.Fatal(err)
 	}
 	for _, invalid := range []string{`{`, `{}`, `{"version":1,"unknown":true}`, strings.Repeat("x", 8193)} {
@@ -375,6 +375,22 @@ func TestCollectionResourceAndProtocolContracts(t *testing.T) {
 		if decodeWorkerFrame(strings.NewReader(invalid), 8192, &reply) == nil && invalid != `{}` {
 			t.Fatal("accepted invalid worker frame")
 		}
+	}
+}
+
+func TestCollectionPoolMustExplicitlyProveNoSwap(t *testing.T) {
+	base := "LoadState=loaded\nMemoryMax=536870912\nTasksMax=96\n"
+	for _, value := range []string{"", "infinity", "1024", "-1", "garbled"} {
+		reply := base
+		if value != "" {
+			reply += "MemorySwapMax=" + value + "\n"
+		}
+		if validateCollectionSlice(reply) == nil {
+			t.Fatalf("aggregate swap limit not proven: %q", value)
+		}
+	}
+	if err := validateCollectionSlice(base + "MemorySwapMax=0\n"); err != nil {
+		t.Fatal("explicit no-swap pool refused", err)
 	}
 }
 

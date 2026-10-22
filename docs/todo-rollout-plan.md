@@ -310,6 +310,18 @@ versioned gateway/native artifacts without changing the running services.
 
 ## Drain and backup evidence
 
+The October22 aggregate collection readiness follow-up requires confirmed
+MemorySwapMax=0 alongside the existing512MiB/96-task pool ceilings. Supplied
+slice/individual workers already declare zero swap; this adds the missing
+readiness/dispatch verification, not a resource increase. Future separately
+authorized install must pair candidate binaries with the bounded supplied slice
+after drain and verify actual controller/health; unsupported/missing/nonzero
+proof refuses rather than falling back. Keep all original holds/archives/state
+and retry only after the stated cause is repaired. Do not relax resource limits
+or restart a live agent to clear a refusal. Exact candidate passes actual guest
+kernel0/nonzero/0 readiness,11 worker-death and39 enforcement assertions with
+host/base preservation; see collection-pool-readiness.md. Nothing is deployed.
+
 C1h native configuration show/validate is offline observation only and adds no
 schema/state/config migration or service action. Its bounded strict selected-file
 and key checks may refuse unknown legacy fields, symlinked components, unsafe

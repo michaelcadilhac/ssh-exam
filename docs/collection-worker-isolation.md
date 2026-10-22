@@ -33,6 +33,21 @@ Per-worker limits are 256 MiB RAM, no swap, 32 tasks, 100% CPU quota, nice 10 an
 exam-collection.slice caps aggregate memory at 512 MiB and tasks at 96. Workers
 are never placed in frozen student scopes or the PTY-owning daemon's cgroup.
 Production readiness and launches refuse an absent/unbounded aggregate slice.
+October22 local follow-up additionally requests and requires an explicit
+MemorySwapMax=0 for that aggregate slice in the existing single bounded query.
+The earlier readiness parser did not check that field, although the supplied
+slice and every worker already disabled swap. Missing/nonzero/unbounded swap
+proof now refuses readiness/new worker dispatch with exact limit and authorized
+drained-maintenance guidance; it never raises limits, clears state or restarts
+a service. This is a confirmed configuration-verification gap, not the proven
+production crash cause. Per-worker memory/tasks/runtime/no-swap, original/current
+deadlines, access restrictions and protected submissions are unchanged. Actual
+CLI/private namespace and guarded guest qualification now pass: three actual
+kernel-limit/readiness cycles, all11 real worker-death/healthy-SSH assertions and
+all39 broader enforcement assertions on the same exact candidate, with host/base
+preservation. Full414 app, native race/resource/default-size, build/vet and140
+unchanged web-artifact hashes pass. See collection-pool-readiness.md. Implemented/
+tested locally only; no deployed or worst-case capacity claim.
 The parent supervises systemd's exit and timeout; killing only systemd-run is not
 treated as proof that its worker died. The surviving worker's flock prevents
 overlap until it actually exits. No fatal worker failure propagates as an

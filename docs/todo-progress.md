@@ -71,6 +71,51 @@ increment: workers already enforce zero swap, but aggregate slice readiness does
 not request/check the supplied MemorySwapMax=0 property. Tighten that existing
 bound without changing worker limits, timing, history, holds or live services;
 require parser RED plus actual isolated CLI/readiness refusal and full regressions.
+C1h is local commit0c4b11a. The following collection-pool check is a separate
+confirmed source gap, not an explanation of the production crash: individual
+workers already set MemorySwapMax=0 and the supplied aggregate slice also does,
+but readiness/launch guard neither requests nor validates that aggregate field.
+Add exact-property refusal for absent/nonzero/unbounded values, preserve the
+existing single bounded systemctl query and all worker limits, and exercise the
+actual compiled CLI readiness with a private user/mount-namespace adapter. Do not
+edit/reload any installed slice or production service; local tests only.
+The aggregate no-swap regression is RED on the prior parser (missing field
+accepted); restored candidate requires/request MemorySwapMax=0 in the same
+two-second query. Focused parser/actual compiled CLI checks pass: private mapped
+user/mount adapter proves exact query, missing/nonzero/unbounded refusal and fresh
+zero recovery without contacting a host manager or touching saved work/attempts.
+A separate collection-pool disposable guest profile is being added to check the
+real guest kernel property and actual CLI readiness before/after an overlay-only
+temporary nonzero setting and repair. It retains all host/base idle/preservation
+guards; no installed-host action or outcome is assumed. Full qualification pending.
+The actual collection-pool guest profile now passes three exact-artifact cycles
+3.82s/2.80s/2.81s: real kernel memory.swap.max0/healthy CLI, overlay-only runtime
+1048576/refused CLI, restored0/healthy CLI. Native authority and host/base
+preservation pass; private evidence /var/tmp/ssh-exam-overlay-j5zfm945.
+Agent03d74a468ca23f6118132797f81acc3ea11a3a639240acd0953a0f3e22f338e4;
+examctlca86cafae31abe7eec400c3518738e0952cd4828f5f4188a2f5dcb3f8f0b21d2;
+testd72c22aca4c5faee2509348c6a753ea53b1e8f607a474e2869b6d4d3e4975b34.
+Full414 app/79files passes86.76s;32 Python and focused repeated native/root-CLI/
+all-profile host refusals pass, static build/vet pass. Full native compatibility
+and exact-candidate worker-death/healthy privileged SSH regression are running;
+broader enforcement repeat remains pending. See collection-pool-readiness.md.
+No production configuration/service action or deployed/completed-TODO claim.
+Collection-pool full local native qualification passes core169.485s/CLI8.439s;
+all414 app/79files86.76s,32 Python, focused native/actual CLI/host refusals and
+build/vet pass. Exact candidate worker-isolation guest passes all11 assertions,
+with23 uninterrupted peer renewals/max0.0814354s, protected retry of all original
+40MiB, unchanged PTY/new admission/owners/generation/deadlines and correct account
+restoration. Host/base preservation passes; evidence
+/var/tmp/ssh-exam-overlay-hv2g85b7. Full enforcement guest repeat now runs against
+the same exact artifact; no production or consolidated service is changed.
+The same collection-pool candidate now also passes all39 normal-filesystem
+enforcement assertions with host/base preservation; evidence
+/var/tmp/ssh-exam-overlay-uh4nayi8. All140 source/runtime hashes remain exactly the
+113-browser/12.8m artifact; no web/UI edit/rebuild occurs. Aggregate no-swap guard
+is implemented/tested locally (full app414/79files86.76s, native core169.485s/
+CLI8.439s, build/vet,32 Python, focused root-CLI/guard repeats and real guest
+property/worker-death/enforcement). Broader C6 capacity and critical C3 remain open;
+this is not deployment or permission for service consolidation.
 
 Q5 investigation afterb8587b9: basic/SQPOLL io_uring is demonstrably
 available to the synthetic UID, so test deferred pipe-read/linked-file-write and
