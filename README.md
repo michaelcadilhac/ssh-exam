@@ -15,6 +15,14 @@ Prerequisites: Node **26.x** (verified 26.11.1), npm, OpenSSL, GNU tar and deskt
 the native components. Dependencies are pinned in package.json and package-lock.json.
 Installation automatically applies a checked ssh2 zero-prompt compatibility patch.
 
+Local gateway build/tests also require Linux, GCC and Node-API development
+headers. `npm run build:clock` builds the checked boot-elapsed evidence-clock
+addon; build/pretest/predev run it automatically. The Docker build compiles its
+own binary; use the Linux container for server builds on other hosts. There is
+no approximate clock fallback. This supports an unused monitoring candidate,
+not enabled retained-SSH/recovery behavior; see
+[gateway clock qualification](docs/gateway-monitoring-clock.md).
+
 After changing Node major versions, run `npm ci` before building or starting the app.
 The SQLite native module must be installed for the active Node runtime; do not reuse
 `node_modules` built under Node 24. No temporary Node installation is needed with Node 26.

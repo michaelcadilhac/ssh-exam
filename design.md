@@ -1585,6 +1585,15 @@ thaw. Native packet epochs must also be fresh per pane incarnation, distinct fro
 the attempt authorization epoch, including a replacement with the same UI pane
 UUID. No runtime path or capability enables these components yet.
 
+October22 gateway clock candidate uses checked integer CLOCK_BOOTTIME through
+a tiny Linux Node-API reader, never a coarse/performance/wall-clock fallback.
+An unknown observation interval cannot mature an old blur into a confirmed policy
+lock or restart unfocused grace; current complete monitoring/coverage is still
+mandatory. The ledger remains unused by live routes, leases and recovery.
+Local regression/build/browser results and the open container qualification gate
+are in docs/gateway-monitoring-clock.md. This does not alter legacy deadlines or
+enable C3; current native peer/epoch/admission/input/freeze integration is pending.
+
 The instructor approved retaining authenticated SSH and preserving shells/editor
 buffers through a verified freeze during policy lockouts. This supersedes the
 always-disconnect policy for viable transports on the same still-open page only

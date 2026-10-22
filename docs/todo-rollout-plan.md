@@ -77,6 +77,15 @@ peer verification and the approved renewal-durability decision, followed by all
 input/freeze/recovery gates. Current user-scope/root-mapped tests are narrower.
 Preserve control records with state/audit; no new mode or deployment is enabled.
 
+The unused gateway clock/coverage increment adds a native Node-API8 artifact to
+the Linux gateway build. Compile it in the pinned target image, exclude host-built
+addons from Docker context and preserve it with the matching server modules.
+Require actual image build/load and runtime compatibility before including it in
+a release; the current local Docker client has no engine/socket, so image
+qualification is not claimed. The host-built reader, build and91-browser suite
+pass with exact hashes in gateway-monitoring-clock.md. This enables no issuer,
+lease or recovery mode. Do not infer preserved buffers from installing the addon.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

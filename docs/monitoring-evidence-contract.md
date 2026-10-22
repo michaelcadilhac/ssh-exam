@@ -193,13 +193,17 @@ compiler tests pass (core168.0s/CLI7.7s), static build/vet and26 focused cross-l
 HTTP/WS/SSH application checks pass (11.85s). This qualifies the private primitives,
 not live journal/alternate transport/clock policy or privileged suspend containment.
 
-The gateway ledger is still unused and its default performance.now clock remains
-an enablement dependency. The pinned
+The gateway ledger is still unused. Earlier default performance.now was an
+enablement dependency; the October22 local candidate now replaces it with a
+checked Linux CLOCK_BOOTTIME Node-API reader. Initial native/UBSan/typed-error/
+coverage/interoperability checks pass, full qualification is in progress and
+Docker packaging is unverified while no local engine is available. See
+gateway-monitoring-clock.md. The pinned
 [Node26.12/libuv Linux source](https://raw.githubusercontent.com/nodejs/node/v26.12.0/deps/uv/src/unix/linux.c)
 uses CLOCK_MONOTONIC for high-resolution time. Its uptime interface prefers coarse
 /proc/uptime and falls back to whole-second CLOCK_BOOTTIME; a blind os.uptime
-substitution would not establish the precision/age/focus guarantees. Select and
-qualify explicit suspend/failure/precision handling or native challenge anchors
+substitution would not establish the precision/age/focus guarantees. Qualify the
+explicit suspend/failure/precision handling and native challenge anchors
 before making this a live issuer. Do not count a suspended host interval as
 continuous positively observed coverage, fabricate history on restart or shorten
 the approved focus grace through an unexamined coarse-clock conversion. No host

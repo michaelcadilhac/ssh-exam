@@ -242,6 +242,37 @@ it("preserves focus grace across repeated reports, clips evidence to its cutoff 
   expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
 });
 
+it("does not mature stale blur across an unknown monitoring gap into a policy violation or restart its grace", () => {
+  const f = fixture();
+  f.full({ ...ready, focus: false });
+  const original = f.ledger.issueForNativeChallenge(f.binding, f.request());
+  // No observations across this interval: e.g. a suspended gateway. Required
+  // monitoring expires at15s, BEFORE the20s focus grace. Time alone proves no
+  // continuous blur; work still stops and the old coverage cannot be restored.
+  f.at(21000);
+  expect(f.ledger.inspect(f.binding)).toMatchObject({
+    state: "technical-gap",
+    gaps: 1,
+  });
+  f.full({ ...ready, focus: false });
+  expect(f.ledger.inspect(f.binding)).toMatchObject({
+    state: "technical-gap",
+    gaps: 1,
+  });
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/technical-gap/);
+  f.policy(ready);
+  const fresh = f.ledger.issueForNativeChallenge(f.binding, f.request());
+  expect(fresh.coverage_epoch).not.toBe(original.coverage_epoch);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(
+      f.binding,
+      f.request(original.coverage_epoch, original.sequence),
+    ),
+  ).toThrow(/technical-gap/);
+});
+
 it("accepts focus restored within grace, retains coverage and inherits webcam policy only from registration", () => {
   const f = fixture(false);
   f.full({ ...ready, webcam: false, focus: false });

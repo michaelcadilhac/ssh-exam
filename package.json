@@ -7,9 +7,12 @@
     "node": "26.x"
   },
   "scripts": {
+    "build:clock": "node scripts/build-monitoring-clock.cjs",
+    "predev": "npm run build:clock",
     "dev": "tsx apps/server/src/main.ts",
-    "build": "node scripts/build-browser-ssh.cjs && vite build --config apps/web/vite.config.ts && tsc -p tsconfig.server.json",
+    "build": "npm run build:clock && node scripts/build-browser-ssh.cjs && vite build --config apps/web/vite.config.ts && tsc -p tsconfig.server.json",
     "start": "node dist/apps/server/src/main.js",
+    "pretest": "npm run build:clock",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:browser": "playwright test",

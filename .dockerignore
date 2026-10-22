@@ -9,5 +9,7 @@ deploy/config
 deploy/trust
 deploy/mail
 ssh-server/bin
+apps/server/native/*.node
+apps/server/native/.clock-build-*
 *.key
 *.pem

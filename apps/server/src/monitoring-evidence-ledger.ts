@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { monitoringBootTimeMS } from "./monitoring-clock.js";
 import { FOCUS_GRACE_MS } from "../../../packages/protocol/focus-grace.js";
 import {
   MONITORING_CHALLENGE_WINDOW_MS,
@@ -36,6 +37,7 @@ type Entry = {
   challengeOrdinal: number;
   policy?: { issued: number; ordinal: number };
   focusLost?: number;
+  focusUnverified: boolean;
   blocked: boolean;
   frames: Map<
     "screen" | "webcam",
@@ -80,7 +82,7 @@ export class MonitoringEvidenceLedger {
   private lastClock = 0;
   constructor(
     private agent: string,
-    private clock: () => number = () => performance.now(),
+    private clock: () => number = monitoringBootTimeMS,
     private limit = 32,
   ) {
     if (
@@ -92,7 +94,12 @@ export class MonitoringEvidenceLedger {
       refuse("capacity");
   }
   private now() {
-    const now = this.clock();
+    let now: number;
+    try {
+      now = this.clock();
+    } catch {
+      return refuse("clock");
+    }
     if (
       !Number.isFinite(now) ||
       now < this.lastClock ||
@@ -138,6 +145,7 @@ export class MonitoringEvidenceLedger {
       challenges: new Map(),
       challengeOrdinal: 0,
       blocked: false,
+      focusUnverified: false,
       frames: new Map(),
       sequence: 0,
       gaps: 0,
@@ -156,10 +164,35 @@ export class MonitoringEvidenceLedger {
     e.coverageEpoch = undefined;
     e.coverageUntil = undefined;
   }
+  private componentUntil(e: Entry) {
+    const required = e.webcam
+      ? (["screen", "webcam"] as const)
+      : (["screen"] as const);
+    if (!e.policy || required.some((source) => !e.frames.has(source)))
+      return -1;
+    return Math.min(
+      e.policy.issued + MONITORING_EVIDENCE_WINDOW_MS,
+      ...required.map(
+        (source) =>
+          e.frames.get(source)!.issued + MONITORING_EVIDENCE_WINDOW_MS,
+      ),
+    );
+  }
   private touch(e: Entry, now: number) {
-    if (e.focusLost !== undefined && now - e.focusLost >= FOCUS_GRACE_MS)
-      e.blocked = true;
-    if (e.blocked || (e.coverageUntil !== undefined && now >= e.coverageUntil))
+    if (e.focusLost !== undefined) {
+      const observedUntil = this.componentUntil(e);
+      // An expired observation cannot prove continuous blur through an earlier
+      // unknown interval. Keep work blocked, not a fabricated policy violation.
+      if (observedUntil <= e.focusLost + FOCUS_GRACE_MS && now >= observedUntil)
+        e.focusUnverified = true;
+      if (!e.focusUnverified && now - e.focusLost >= FOCUS_GRACE_MS)
+        e.blocked = true;
+    }
+    if (
+      e.blocked ||
+      e.focusUnverified ||
+      (e.coverageUntil !== undefined && now >= e.coverageUntil)
+    )
       this.gap(e);
   }
   issueBrowserChallenge(binding: MonitoringEvidenceBinding, purpose: Purpose) {
@@ -196,7 +229,7 @@ export class MonitoringEvidenceLedger {
     return c;
   }
   private recompute(e: Entry, now: number) {
-    if (e.blocked) {
+    if (e.blocked || e.focusUnverified) {
       this.gap(e);
       return;
     }
@@ -251,7 +284,10 @@ export class MonitoringEvidenceLedger {
       return;
     }
     if (!r.focus) e.focusLost ??= now;
-    else e.focusLost = undefined;
+    else {
+      e.focusLost = undefined;
+      e.focusUnverified = false;
+    }
     e.policy = { issued: c.issued, ordinal: c.ordinal };
     this.recompute(e, now);
   }

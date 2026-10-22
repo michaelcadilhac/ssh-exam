@@ -8,6 +8,45 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+While clock/browser artifacts are frozen, a separate unused native process-lifetime
+guard is under qualification. Exact kernel pidfds are bracketed by full boot/start/
+UID-tuple/executable snapshots; current checks are nonblocking, never PID-only or
+cached positive flags. Stalled/stopped processes and other command exits are not
+auth loss; handle uncertainty and explicit close are distinct. Six substantive
+cases pass20 native race repeats (2.63s), including actual owned-child stop/continue/
+death/reap, JSON/identity/close races, fake root-peer refusal and a pending synthetic
+authority fence. No positive actual SSH/PAM proof or live ACTIVE seal factory is
+claimed. No actual SSH service or exam process is signalled. See
+native-monitoring-process.md. Full frozen native race/resource/namespace/compiler/
+default-size qualification passes (core172.99s/CLI7.29s); static build/vet pass.
+These are lifetime/model fences, not actual positive SSH authentication, native
+registration/epochs or all-writer containment; the ACTIVE seal factory stays absent.
+
+Continuation after9cf1511: the unused gateway evidence ledger now has a local
+checked CLOCK_BOOTTIME C Node-API8 reader, build/container packaging and typed
+clock errors; no live signer/route/mode uses it. Actual Node reads/restart, C
+integer-boundary UBSan, invalid APIs/errors, default-ledger, existing policy/
+coverage and compiled-Go interoperability checks pass28 tests. A raw-error-path
+mutant fails the typed-clock test; removed. A separate RED regression confirms
+stale blur after an earlier monitoring gap was misclassified as policy-blocked;
+the candidate keeps it technical, never resets unfocused grace and preserves
+coverage-gap identities/native rejection. Continuous fresh20s blur remains
+enforced. No actual host time/suspend is changed and no production cause is
+claimed. Frozen qualification passes389 app tests/72files (79.72s), typecheck,
+complete build/packaged native load and all91 browser checks (11.4m). All nine
+recorded WASM/runtime/JS/CSS/worker/HTML/native-addon/server-module hashes match
+before/after. Go's rebuilt WASM contains newer repository metadata; it is NOT
+assigned H4a's earlier qualification. See gateway-monitoring-clock.md for exact
+hashes and remaining gates. Nine generated screenshots are restored to their
+verified clean baseline. These increments are being committed separately;
+nothing is deployed and the critical TODO remains open.
+
+Docker packaging qualification is currently blocked by absent local engine:
+the Docker command exists, its sole context is local unix:///var/run/docker.sock,
+but the socket is absent. No missing command has occurred. Do not start/restart
+services or use a remote/production daemon to conceal that gap. Independent
+local tests continue; native source/header builds pass on the current Linux host.
+
 Continuation afterf8fcb89: private bounded provisional publication is under
 qualification; see native-monitoring-publication.md. Actual child death, late/
 malformed replies, concurrent retry, independent second-owner publication and

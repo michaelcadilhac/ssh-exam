@@ -1,6 +1,8 @@
 node_modules/
 dist/
 apps/web/public/ssh/
+apps/server/native/*.node
+apps/server/native/.clock-build-*/
 var/
 .env
 *.key

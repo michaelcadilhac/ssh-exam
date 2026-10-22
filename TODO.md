@@ -179,6 +179,13 @@ full privileged qualification or deployment authorization.
   durability versus live-authority availability is now an explicit pending design
   question; fair scheduling, actual native peers, C3 barriers and combined
   qualification remain open. See docs/native-monitoring-publication.md.
+  Gateway clock/unknown-focus groundwork now passes389 application checks,
+  native-clock/UBSan/compiled-Go checks, full native compatibility, build/typecheck
+  and all91 browser checks with nine exact artifact hashes. A RED stale-blur-
+  after-gap classification is fixed without extending focus grace or authorizing
+  unknown work. The evidence ledger remains unused; no live retained mode or
+  automatic recovery is enabled. Container packaging remains unverified until a
+  local Docker engine is available. See docs/gateway-monitoring-clock.md.
 
 ## Firm design policy: examctl is the complete management interface
 
