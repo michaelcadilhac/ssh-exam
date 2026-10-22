@@ -211,6 +211,13 @@ func LoadConfig(p string) (Config, error) {
 	if e != nil {
 		return c, e
 	}
+	return validateNativeConfig(c, true)
+}
+
+// Legacy runtime keeps every existing key/filesystem check. Explicit offline
+// observation reuses structural policy, then checks its own bounded pinned key
+// descriptors rather than reopening unbounded files through the legacy loader.
+func validateNativeConfig(c Config, checkKeyFiles bool) (Config, error) {
 	if !identifier.MatchString(c.AgentID) || c.GatewayPublicKey == "" || c.CallbackKey == "" {
 		return c, errors.New("configure agent_id, gateway_public_key and callback_key; the old control API is unsupported")
 	}
@@ -226,15 +233,17 @@ func LoadConfig(p string) (Config, error) {
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
 		return c, errors.New("callback_url must be a fixed HTTPS origin")
 	}
-	if _, err = publicKey(c.GatewayPublicKey); err != nil {
-		return c, err
-	}
-	key, err := privateKey(c.CallbackKey)
-	if err != nil {
-		return c, err
-	}
-	for i := range key {
-		key[i] = 0
+	if checkKeyFiles {
+		if _, err = publicKey(c.GatewayPublicKey); err != nil {
+			return c, err
+		}
+		key, err := privateKey(c.CallbackKey)
+		if err != nil {
+			return c, err
+		}
+		for i := range key {
+			key[i] = 0
+		}
 	}
 	if (len(c.Accounts) == 0 && !c.TemporaryAccountPolicy) || !filepath.IsAbs(c.State) || !filepath.IsAbs(c.Work) || !filepath.IsAbs(c.Rootfs) {
 		return c, errors.New("absolute paths and locally approved accounts required")
@@ -277,7 +286,7 @@ func LoadConfig(p string) (Config, error) {
 			}
 		}
 	}
-	if os.Geteuid() == 0 {
+	if checkKeyFiles && os.Geteuid() == 0 {
 		for _, p := range []string{c.GatewayPublicKey, c.CallbackKey} {
 			info, err := os.Stat(p)
 			if err != nil || !filepath.IsAbs(p) || !info.Mode().IsRegular() || info.Sys().(*syscall.Stat_t).Uid != 0 || info.Mode().Perm()&0022 != 0 || (p == c.CallbackKey && info.Mode().Perm()&0077 != 0) {

@@ -70,6 +70,9 @@ func main() {
 	if webCategory(os.Args[1:]) == "templates" {
 		os.Exit(templatesMain(os.Args[1:]))
 	}
+	if webCategory(os.Args[1:]) == "config" {
+		os.Exit(configurationMain(os.Args[1:]))
+	}
 	topic, help := helpRequest(os.Args[1:])
 	if help {
 		if !printHelp(os.Stdout, topic) {

@@ -458,6 +458,16 @@ unsaved editor state is lost. The local deadline watchdog stays independent.
 
 ## Local examctl administration
 
+The local configuration-inspection candidate works without initializing native
+state or contacting a service: `examctl config show` reads selected metadata with
+path redaction; `examctl config validate --config /private/staged-agent.json`
+additionally checks bounded pinned keys/optional CAs. Use `examctl help config`.
+Explicit --paths includes configured paths, never key material. An offline valid
+candidate is NOT loaded configuration, enforcement readiness or work permission;
+applied is always false and no apply/restart workflow is enabled. Preserve files,
+keys, state and holds; use separately authorized drained maintenance for changes.
+See docs/native-configuration-inspection.md for exact scope/current qualification.
+
 All operations require root; help is available without privilege. Unflagged legacy
 native workflows share watchdog state/locks and may reconcile during list/info.
 The explicit local `--read-only` observation path takes no state lock or write;

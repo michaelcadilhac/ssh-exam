@@ -71,6 +71,14 @@ old partial copies. This is an observed inventory/prefix copy, not a globally
 atomic exam snapshot, protected submission or permission to work. Downloaded
 copies have independent operator retention. See monitoring-cli.md and
 monitoring-export-plan.md for boundaries and current qualification.
+The local native configuration candidate adds `config show` and `config validate
+--config FILE`, with default path redaction and explicit --paths metadata. It
+never initializes state, opens a control socket, reconciles holds/deadlines or
+applies/restarts. Show needs no signing-key read; validate adds bounded pinned
+key/optional-CA checks. Observe a separately staged file with --config, never
+mistake validated:true for runtime readiness or applied configuration. See
+native-configuration-inspection.md for limits/current qualification. Configuration
+mutations/gateway configuration remain pending; no ad hoc edit workflow is added.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native

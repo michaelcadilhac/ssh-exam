@@ -33,6 +33,45 @@ the narrow real catalog CLI/system-manager gate, not version-bound guest Begin,
 unified grants, legacy migration, C8 retirement or deployment. Failed fixture
 runs remain explicitly recorded below and in template-guest-qualification.md.
 
+Next independent C1h increment is bounded read-only native configuration show/
+candidate validation. Existing LoadConfig/legacy diagnosis are not safe inspection
+substitutes; no supported config command exists. Help/actual CLI RED regression
+and acceptance plan are in native-configuration-inspection.md. No configuration
+apply, service probe/restart, state initialization or new credential workflow is
+authorized by a successful check. Root-administrator creation also remains an
+unimplemented CLI gap; investigate secret-safe retries before adding it.
+C1h now wires root config show/validate before Engine initialization. The missing
+CLI-help workflow is RED on the old command; new help/syntax, root refusal and
+actual compiled root-mapped CLI pass. Configuration observation does not open keys;
+validate adds pinned bounded key/optional-CA checks. Unknown/duplicate/deep/invalid
+JSON, links/parents/hardlinks/FIFO/unsafe modes/oversize, missing/damaged keys and
+observed mutations refuse safely. Invalid known values (including pasted URL
+credentials) cannot leak even with explicit path output. System root is refused
+as private state/work/catalog metadata, distinct from supported rootfs=/.
+Five actual CLI/native repeats pass. Full414-app/79files passes88.93s; initial
+full native compatibility is running. Final extra mutation/broken-state cases,
+native repeat/static/vet and exact unchanged-browser-artifact evidence remain
+pending. No completed-TODO/deployed/configuration-apply claim. The initial atime
+assertion was a test-order defect: its own generic /proc/fd content comparison
+ran before the atime check. Measuring the reader before that separate test read
+passes repeated checks; no atime assertion or O_NOATIME guard was removed.
+Final native C1h repeat passes core174.276s/CLI6.514s with all race/resource/
+namespace/compiler/default-size opt-ins; static build/vet pass. The final extra
+CLI/core cases pass five repeats (CLI4.010s/core1.158s). All140 browser source/
+runtime hashes match the prior113-check/12.8m run exactly; no web/UI/compiled
+artifact edit or rebuild occurs. Full application final repeat and C1h commit
+are in progress. No config apply, production probe/change or completed-TODO claim.
+C1h final application repeat now passes414/79files (86.57s); full native final
+core174.276s/CLI6.514s, build/vet and all nine top-level configuration regressions
+five times pass. All140 exact web artifact/source hashes remain identical to the
+113-browser/12.8m run; no web rebuild or deployed/native privilege claim. Read-only
+configuration observation/candidate validation is implemented/tested locally,
+not full configuration management or apply. Next confirmed collection-safety
+increment: workers already enforce zero swap, but aggregate slice readiness does
+not request/check the supplied MemorySwapMax=0 property. Tighten that existing
+bound without changing worker limits, timing, history, holds or live services;
+require parser RED plus actual isolated CLI/readiness refusal and full regressions.
+
 Q5 investigation afterb8587b9: basic/SQPOLL io_uring is demonstrably
 available to the synthetic UID, so test deferred pipe-read/linked-file-write and
 timer-hardlinked-write, with explicit unfrozen baselines and forced-worker

@@ -90,6 +90,10 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "config" {
+		configurationHelp(w)
+		return true
+	}
 	if topic == "templates" {
 		templatesHelp(w)
 		return true
@@ -145,6 +149,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprint(w, "Usage: examctl help [COMMAND] | sudo examctl [FLAGS] COMMAND [TARGET]\n\nInspect:       list, info, health, accounts\nAttempts:      start, pause, stop (finish), cancel, retry\nWorkspace:     workspace-prepare, workspace-repair\nSubmissions:   manifest, export, delete\nAccess:        reconcile, override-access\nAgent:         agent start|stop|restart|status\nCompatibility: export-status, pause-export, resume-export (disabled)\n\nIncident observation: list --read-only -> info ATTEMPT --read-only -> review reported causes\nOnly after deliberate recovery authorization: reconcile -> info ATTEMPT --read-only\nSubmission deletion is separate from exam-definition deletion and account release.\nRead examctl help COMMAND before mutations; examctl help management describes remaining coverage gaps.\nUse examctl help collection for worker/resource/pending-state recovery.\n\n")
 	}
 	if topic == "" {
+		fmt.Fprintln(w, "Offline native configuration/candidate checks: config show/validate; use examctl config help. No configuration apply or service action.")
 		fmt.Fprintln(w, "Immutable local templates: templates validate/install/list/show/verify/jobs/clean; templates sync records a signed gateway source attestation, not a grant. Use examctl templates help and web templates help.")
 		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM] (offline inspection, not unified grant issuance).")
 		fmt.Fprintln(w, "Workspace retention metadata/holds: workspaces list/show/hold/release-hold; use examctl help workspaces (no deletion enabled).")

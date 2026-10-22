@@ -310,6 +310,18 @@ versioned gateway/native artifacts without changing the running services.
 
 ## Drain and backup evidence
 
+C1h native configuration show/validate is offline observation only and adds no
+schema/state/config migration or service action. Its bounded strict selected-file
+and key checks may refuse unknown legacy fields, symlinked components, unsafe
+metadata or private-storage roots; preserve the files and investigate, never
+chmod/rewrite/move live configuration to make a diagnostic pass. Default path
+redaction and safe invalid-value errors protect private output. A validated
+candidate has not been applied, atomically snapshotted or checked against loaded
+services/enforcement. Future apply must recheck the reviewed hash/keys and actual
+controls during the authorized drain. Rolling back this CLI feature loses safe
+inspection; it must not justify unflagged reconciling list/info as a read-only
+replacement. See native-configuration-inspection.md. No rollout is executed.
+
 1. Obtain a separately authorized window. Prevent new admissions through the
    existing agreed maintenance procedure; maintenance alone is not a drain.
 2. Enumerate every attempt via dashboard and native `examctl list`/`info`, not

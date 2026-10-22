@@ -1604,6 +1604,22 @@ an OS/process fault sandbox, secure erasure or a new retention/clock/hold policy
 
 `examctl` is a root-only class-server command. It uses the same persisted state and inter-process lock as the shared gate, watchdog and collector; it works while the SSH gate service is stopped. `list` shows all attempts, `list --active` shows started unfinished attempts (including locked/finalizing/failed), and `--exam EXAM` filters by exam ID. `info ATTEMPT` reports the original interval, submission/access states and recovery errors. `start` activates an already prepared attempt without changing an existing start/deadline; `pause` disconnects workloads; `stop`/`finish` collect immediately and retain the original access hold; `cancel` applies only before start; `retry` retries collection; `manifest`/`export` verify and retrieve protected artifacts; `delete` requires released access. Mutations require an audited administrator reason. `override-access` remains separately audited, root-only, and requires verified protection/termination.
 
+Local C1h adds explicit root-only offline `config show/validate --config FILE`
+before Engine initialization. It shares structural policy with the unchanged
+runtime loader, but reads selected config/keys through bounded pinned no-follow/
+nonblocking/no-atime descriptors and never touches state/work, locks/audit,
+network/services, deadlines, holds or installed configuration. Show does not open
+keys; paths are redacted unless explicitly requested, and invalid known values
+are never echoed even then. Validate checks key/optional-CA format and safe files,
+not live admission/clock/PAM/guard/readiness. Structural/validated/applied flags
+separate observations, with applied always false. Unknown/duplicate/deep JSON,
+unsafe files and observed mutation refuse. Selected private state/work/catalog
+root / refuses independently of the supported read-only student rootfs=/.
+Reads are interval observations, not an atomic set or proof of loaded config.
+Future apply must recheck the reviewed candidate/hash during a separately
+authorized drain; no apply/restart command is enabled by this increment. See
+docs/native-configuration-inspection.md for current qualification. Not deployed.
+
 `examctl agent start|stop|restart|status` manages only the shared SSH gate service. Start/restart also ensure the independent watchdog and reconciliation timer are running. Stop leaves both running and closes student gate access; it is not a way to cancel deadlines. Do not reset state, kill the watchdog, change account shells or restore access as an exam stop mechanism.
 
 Student Finish requires an active retained SSH transport. A disconnected or locked student must complete authorized fresh SSH recovery before finishing early, or let the currently committed deadline freeze work and collect after authenticated timing verification. Instructors cannot stop attempts from the web dashboard. Local deadline cutoff runs every second, with a separate brief timing barrier and independent freeze checks so HTTP deliveries or collection compression cannot delay another attempt's cutoff. A powered-off class server cannot execute collection at that instant; persistent reconciliation runs on return and access stays denied in the meantime.
