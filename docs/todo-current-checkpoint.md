@@ -56,11 +56,46 @@ Full native race/resource/namespace/compiler/default-size core304.305s/CLI39.164
 435 app/83 files108.19s and22 post-build browser checks1.1m pass. App/WASM/static
 build/vet/typecheck/diff pass. Unit verification initially hit sandbox EPERM, then
 passes local-test escalation with a non-security CPUAccounting compatibility
-warning. All runners finished. Local commit follows this documentation update;
+warning. All runners finished. Local commit is6b5cdd9;
 exact evidence and the prequalification state/failure review are in
-terminal-supervision.md. Next: inspect the timed recording/lifetime boundary and
-deliver its bounded owner/event/restart integration without per-student global
-Engine copies; preserve the existing recording/authority/expiry guarantees.
+terminal-supervision.md.
+
+## Validated follow-up: delayed terminal-recording faults
+
+Tracing the actual timed Engine.local bridge exposed an unfenced asynchronous
+lock-attempt callback. Actual Unix/PTY tests reproduce stale generation and closed
+pane failures locking a replacement (RED2.183s); the current-failure positive
+control passes. An initial test-only integer type mismatch was corrected before
+this reproduction. Bound the callback to its original authenticated generation,
+interval and exact tracked pane; contain only the old unique scope and coalesce
+output/resize/close faults. No new durable/pending state or retained-mode enablement.
+Acceptance: retired faults cannot lock replacements, genuine current failures
+still enforce recording, deadlines/holds unchanged; exercise actual gate/PTY,
+late close and clock-extension controls, focused then full native race/build.
+Expanded six-case actual gate controls plus practice/recording-quota checks pass
+three focused race repeats21.954s;35 affected callback/lifecycle/actual SSH cases
+pass10.37s. Full native race/resource/namespace/compiler/default-size passes
+core291.006s/CLI21.908s; static build/vet/diff pass. All runners finished; local
+commit follows these receipts. No app/browser source/artifact rebuild; prior broad receipts cover their
+unchanged surfaces only. Removing exact tracked-unit membership makes the
+orphan-proof test RED0.734s; the mutant is restored. The full-IO-join experiment
+was withdrawn after its legacy input EOF dependency surfaced; only already-
+observed faults are joined, preserving current enforcement without raw-IO changes.
+Details, state review and failure receipts: terminal-recording-faults.md. No
+root-guest claim is inherited from an older artifact.
+
+Next bounded milestone: actual timed Engine.local/Unix/PTY recording isolation.
+Inspection finds Engine.monitorMu shared across attempts around their independent
+recording flocks/IO. Reproduce one held attempt lock blocking a healthy attempt's
+actual terminal in the SAME coordinator, then remove global serialization while
+preserving per-attempt cross-process quota and record-before-forward enforcement.
+Acceptance: healthy pane/signed controls continue, blocked output never bypasses
+recording, exact memory/interval/hold survives release; test actual gate plus quota
+races, then native race/build at boundary. Only if reproduced, separate the
+recorder's necessary storage/budget context from global Engine metadata; current
+bridge is its runtime caller. No unused helper chain, new retention capability or
+policy choice. After that integrated fix resume timed C12 event/restart/lifecycle
+work (retained-workload-barrier-plan.md). Root tests remain guarded.
 
 Critical gaps: root owner/input epochs and role agreement, timed C12 supervision,
 stop-assisted all-writer/input barrier and authorized C9 recovery. Current
@@ -82,7 +117,7 @@ from selected current settings, never invented history. C14 finite operator
 sandbox window/repeatable saved grants. C15 fresh authenticated native outbound
 HTTPS agreement at unified Begin; no offline revocable permit/browser relay.
 
-The pinned raw read-only csc-sys guard reports BUSY at22:46UTC October22. No new
+The pinned raw read-only csc-sys guard again reports BUSY after23:10UTC October22. No new
 upload/guest. Only the previously approved old bundle exists remotely; it predates
 this runtime and cannot qualify it. Current root installed-bootstrap/SSH/PAM/
 cgroup/hardening and new exact-source guest checks remain pending. Busy/uncertain

@@ -347,6 +347,7 @@ func (e *Engine) local(c *net.UnixConn) {
 			pending.supervisor.process.close()
 		}
 	}()
+	var awaitRecordingFault func()
 	bridge := func(process *paneBootstrapPeer) error {
 		if process != nil && pending.capability.Purpose == "practice" {
 			_, err := e.handoffTerminal(c, original, master, pending, unit, process.process)
@@ -356,7 +357,9 @@ func (e *Engine) local(c *net.UnixConn) {
 			bridgePTY(original, master, done)
 			return nil
 		}
-		return e.bridgeRecordedPTY(original, master, done, id, pending.capability.Pane, unit)
+		var err error
+		awaitRecordingFault, err = e.bridgeRecordedPTY(original, master, done, pending.authority, pending.capability.Pane, unit)
+		return err
 	}
 	if strings.HasSuffix(unit, ".scope") {
 		_, err = e.launchClosedLocalPane(pending, r.Token, name, unit, identify, launch, bridge)
@@ -436,6 +439,12 @@ func (e *Engine) local(c *net.UnixConn) {
 		e.Audit("pane-cleanup-unconfirmed", id)
 		json.NewEncoder(c).Encode(map[string]string{"error": "pane ended; workload scope retained for watchdog cleanup"})
 		return
+	}
+	if awaitRecordingFault != nil {
+		// A real fault publishes its pending notice BEFORE closing the old PTY.
+		// Resolve that fault outside shared state before normal metadata cleanup
+		// could hide it. This does not join or change the legacy raw IO lifetime.
+		awaitRecordingFault()
 	}
 	e.WithState(func() error {
 		a, _ := e.Find(id)

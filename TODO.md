@@ -378,6 +378,16 @@ docs/terminal-supervision.md for state/failure review and remaining root-role
 qualification blocked by the BUSY guard. This does not finish C12/R2, enable C3/C9
 or close the critical TODO. No deployment, upload or temporary-agent consolidation.
 
+October22 timed-recording correctness follow-up is implemented/tested locally:
+an asynchronous failure from a retired pane/session can no longer lock its
+replacement. A pending real failure is resolved before normal proof retirement;
+current recording loss still enforces, including after a clock extension. Actual
+Unix/PTY generation/transport/close/orphan-proof regressions, a detected tracking-
+fence mutant, full native races/resources/build and35 affected callback/SSH checks
+pass. See docs/terminal-recording-faults.md for evidence, withdrawn IO-join scope
+and remaining lifecycle limits. No new retained mode, deadline/hold change or
+production fix; this does not identify the initiating heartbeat incident cause.
+
 ## Firm design policy: examctl is the complete management interface
 
 **If an exam-management operation can be done, it must be doable through

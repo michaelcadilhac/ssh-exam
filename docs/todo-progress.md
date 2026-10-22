@@ -3,6 +3,17 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 stale recording-fault fix: actual timed Unix/PTY failures no longer
+lock replacement panes/authenticated generations. Current loss remains enforced
+after native clock extension; pending fault resolution precedes normal metadata
+retirement, without changing legacy raw IO. Old behavior is RED2.183s, missing
+exact-tracking mutant RED0.734s; three final focused races pass21.954s. Full native
+races/resources core291.006s/CLI21.908s,35 affected callback/SSH/lifecycle checks
+10.37s and static build/vet pass. Unchanged app/browser surfaces retain the prior
+broad evidence, not a claim of new native qualification. Failed/withdrawn full-IO
+join and positive-control corrections are recorded in terminal-recording-faults.md.
+No push, upload, deployment, consolidation or completed critical/C12 claim.
+
 October22 C12a integrated outcome: ordinary Practice sockets/PTYs now survive
 whole coordinator-cgroup death in one bounded independent supervisor per attempt;
 same process/memory survives in two panes. Positive supervisor death contains its

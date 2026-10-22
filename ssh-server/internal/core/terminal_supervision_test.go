@@ -226,9 +226,10 @@ func TestTerminalCoordinatorChild(t *testing.T) {
 	}
 	setup := os.NewFile(3, "coordinator-test-config")
 	var input struct {
-		Config    Config
-		PID, UID  int
-		Transport string
+		Config                  Config
+		PID, UID                int
+		Transport               string
+		RecordingFailureBarrier string
 	}
 	if json.NewDecoder(setup).Decode(&input) != nil {
 		os.Exit(90)
@@ -250,6 +251,22 @@ func TestTerminalCoordinatorChild(t *testing.T) {
 			return "", errors.New("wrong actual test Unix peer")
 		}
 		return input.Transport, nil
+	}
+	if input.RecordingFailureBarrier != "" {
+		e.terminalFailureCheckpoint = func(stage string) {
+			if err := os.WriteFile(input.RecordingFailureBarrier+"."+stage, []byte("actual-recording-fault"), 0600); err != nil {
+				os.Exit(98)
+			}
+			if stage == "before-state" {
+				for until := time.Now().Add(5 * time.Second); time.Now().Before(until); {
+					if _, err := os.Stat(input.RecordingFailureBarrier + ".release"); err == nil {
+						return
+					}
+					time.Sleep(5 * time.Millisecond)
+				}
+				os.Exit(99)
+			}
+		}
 	}
 	var groups sync.Map
 	e.paneBootstrapStart = func(launch *exec.Cmd, control *net.UnixConn, exe *os.File, unit string, proof PaneInstance) (*paneBootstrapPeer, bool, error) {
@@ -325,6 +342,12 @@ func TestActualTimedPaneKeepsCoordinatorRecordingBoundary(t *testing.T) {
 	testPracticeSupervisorWorkflow(t, "timed", nil, nil)
 }
 
+func TestActualTimedRecordingFaultCannotLockReplacement(t *testing.T) {
+	for _, mode := range []string{"generation", "transport", "pane", "orphan-proof", "current", "extended-current"} {
+		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-fault-"+mode, nil, nil) })
+	}
+}
+
 // Two independent synthetic roots use the same unprivileged Unix UID. This
 // proves process/scope/actual-gate isolation, not production multi-UID admission.
 func TestActualPracticeSupervisorFailureIsAttemptScoped(t *testing.T) {
@@ -347,7 +370,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	}
 	purpose := "practice"
 	var originalStart, originalDeadline int64
-	if mode == "timed" {
+	if strings.HasPrefix(mode, "timed") {
 		purpose = "exam"
 		e.Config.Templates = t.TempDir()
 		if err := os.MkdirAll(filepath.Join(e.Config.Templates, "v1", "materials"), 0700); err != nil {
@@ -431,10 +454,16 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		stop()
 	}()
 	if err := json.NewEncoder(write).Encode(struct {
-		Config    Config
-		PID, UID  int
-		Transport string
-	}{e.Config, os.Getpid(), r.UID, r.Transport}); err != nil {
+		Config                  Config
+		PID, UID                int
+		Transport               string
+		RecordingFailureBarrier string
+	}{e.Config, os.Getpid(), r.UID, r.Transport, func() string {
+		if strings.HasPrefix(mode, "timed-fault-") {
+			return filepath.Join(e.Config.State, "synthetic-recording-barrier")
+		}
+		return ""
+	}()}); err != nil {
 		t.Fatal(err)
 	}
 	write.Close()
@@ -518,6 +547,88 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	if err != nil || len(view.Panes) != 2 {
 		t.Fatal("actual two-pane inventory unavailable", view, err)
 	}
+	if strings.HasPrefix(mode, "timed-fault-") {
+		barrier := filepath.Join(e.Config.State, "synthetic-recording-barrier")
+		waitMarker := func(stage string) {
+			t.Helper()
+			for until := time.Now().Add(4 * time.Second); time.Now().Before(until); {
+				if b, err := os.ReadFile(barrier + "." + stage); err == nil && string(b) == "actual-recording-fault" {
+					return
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			t.Fatal("actual recording failure never reached "+stage, diagnostics.String())
+		}
+		// Remove only this synthetic log's pathname. The pinned old file survives;
+		// the real recorder's quota traversal must fail before forwarding output.
+		if err := os.Rename(filepath.Join(e.Config.State, "monitoring", r.ID), filepath.Join(e.Config.State, "synthetic-recording-backup")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := unix.Write(fd, []byte("check\n")); err != nil {
+			t.Fatal(err)
+		}
+		waitMarker("before-state")
+		expectedDeadline := originalDeadline
+		if mode == "timed-fault-pane" {
+			if _, err := e.Call("close-pane", Request{ID: r.ID, Pane: finalID}); err != nil {
+				t.Fatal("actual targeted close failed", err)
+			}
+		}
+		if mode == "timed-fault-extended-current" {
+			if _, err := e.Call("reset-clock", Request{ID: r.ID, ResetID: ManagementID(), Actor: "synthetic-instructor", RequestedAt: Millis(), ExtendSeconds: 60, Deadline: originalDeadline}); err != nil {
+				t.Fatal("actual clock extension failed", err)
+			}
+			expectedDeadline += 60000
+		}
+		var expectedGeneration int
+		if err := e.WithState(func() error {
+			a := e.state.Attempts[r.ID]
+			if a.State != "ACTIVE" {
+				return errors.New("fixture missed active recording fault")
+			}
+			if mode == "timed-fault-generation" {
+				a.Generation++
+				a.Transport = "synthetic-new-authenticated-owner"
+			}
+			if mode == "timed-fault-transport" {
+				a.Transport = "synthetic-replaced-owner"
+			}
+			if mode == "timed-fault-orphan-proof" {
+				units := []string{}
+				for _, unit := range a.Units {
+					pane, _, _, _ := recordedPaneIdentity(a.ID, unit)
+					if pane != finalID {
+						units = append(units, unit)
+					}
+				}
+				a.Units = units // Leave the otherwise valid proof to test exact tracking.
+			}
+			expectedGeneration = a.Generation
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(barrier+".release", []byte("release-old-failure"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		waitMarker("after-state")
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := state.Attempts[r.ID]
+		if mode == "timed-fault-current" || mode == "timed-fault-extended-current" {
+			if a.State != "LOCKED" || a.Generation != expectedGeneration+1 || a.Reason != "Class-server terminal recording failure" {
+				t.Fatal("current real recording loss was not enforced", a)
+			}
+		} else if a.State != "ACTIVE" || a.Generation != expectedGeneration {
+			t.Fatal("delayed retired recording failure locked a replacement", a)
+		}
+		if a.Start != originalStart || a.Deadline != expectedDeadline || a.OriginalDeadline != originalDeadline || a.AccessState != "HELD" {
+			t.Fatal("recording failure changed original interval/hold", a)
+		}
+		return
+	}
 	if mode == "timed" {
 		for _, pane := range view.Panes {
 			if len(pane.RecordedSupervisors) != 0 {
@@ -537,7 +648,9 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			}
 			var ended map[string]any
 			if err := json.NewDecoder(connection).Decode(&ended); err != nil || ended["ended"] != true {
-				t.Fatal("legacy recorded pane failed", ended, err)
+				_ = exec.Command("/usr/bin/systemctl", "--user", "kill", "--signal=QUIT", coordinatorUnit).Run()
+				_ = coordinator.Wait()
+				t.Fatal("legacy recorded pane failed", ended, err, diagnostics.String())
 			}
 		}
 		for _, pane := range []string{finalID, secondPane} {

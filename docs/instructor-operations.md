@@ -192,6 +192,14 @@ refusal; that can lose buffers. Timed recording/supervision remains on the old
 path and the full critical fix is unfinished. See terminal-supervision.md; no
 new role/slice has been installed and root qualification remains guarded.
 
+Local timed-recorder follow-up (not deployed) prevents an old pane's delayed
+recording error from locking a replacement authenticated session/pane. A retired
+fault remains in native audit; genuine current loss still requires storage/quota
+repair and the existing continuation workflow, even after a clock extension.
+Use `examctl info ATTEMPT --read-only` and `examctl panes show ATTEMPT PANE`; never
+clear state or reset time to hide recording failure. This is not retained SSH or
+a diagnosis of the heartbeat incident. See terminal-recording-faults.md.
+
 Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
 view of exact agent/name/hash metadata and first/latest attestation timestamps.
 The catalog view does not choose a version, edit defaults, issue grants or prove

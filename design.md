@@ -129,6 +129,14 @@ the original coordinator recording path: timed owner/event/restart integration,
 input epochs and C3 freeze remain open. No retained mode or automatic recovery is
 enabled. See docs/terminal-supervision.md for scope review, tests and root gates.
 
+The local timed-recording correctness follow-up fences asynchronous faults to
+their original authenticated generation/account/interval and exact tracked pane
+incarnation. Normal cleanup resolves an already-observed fault before retiring
+its proof; retired faults audit without locking a replacement. Genuine current
+recording loss still locks, including after a clock extension. This changes no
+deadlines, holds, raw-input lifetime or retained-mode capability. See
+docs/terminal-recording-faults.md for scope, state review and current verification.
+
 ## 2. Product context and defaults
 
 The local new-preflight workflow also isolates readiness/home copying from shared

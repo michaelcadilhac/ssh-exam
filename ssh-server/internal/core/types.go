@@ -188,33 +188,34 @@ type PaneInstance struct {
 	Cancelled       bool  `json:"cancelled,omitempty"`
 }
 type Engine struct {
-	accountMu           sync.RWMutex
-	accounts            map[string]Account
-	policyRun           func(string, string, string, string) ([]byte, error)
-	transportUptime     func(int) (float64, error)
-	Config              Config
-	mu                  sync.Mutex
-	healthMu            sync.Mutex
-	paneSetupMu         sync.Mutex
-	paneLaunchMu        sync.Mutex
-	monitorMu           sync.Mutex
-	state               State
-	quiesce             func(*Attempt) error
-	terminate           func(*Attempt) error
-	cutoff              func(*Attempt) error
-	collectionRun       func(string, string) error
-	workerCommand       func(string) []string
-	workerTimeout       time.Duration
-	workspaceCheckpoint func(string) error // Test-only fault barriers, never configurable.
-	activationPrepare   func(*Attempt) error
-	preparationReady    func() (bool, []string)
-	preparationHome     func(*Attempt) error
-	paneIdentity        func(int, int) (string, error) // Test-only dependency seams, never configurable.
-	paneSetupCheckpoint func() error
-	paneStart           func() error
-	paneBootstrapStart  func(*exec.Cmd, *net.UnixConn, *os.File, string, PaneInstance) (*paneBootstrapPeer, bool, error)
-	healthProbe         func() (bool, []string) // Test-only dependency seam; never configurable.
-	templateVerify      func(Settings) error    // Test replacement never exposed in config/environment.
+	accountMu                 sync.RWMutex
+	accounts                  map[string]Account
+	policyRun                 func(string, string, string, string) ([]byte, error)
+	transportUptime           func(int) (float64, error)
+	Config                    Config
+	mu                        sync.Mutex
+	healthMu                  sync.Mutex
+	paneSetupMu               sync.Mutex
+	paneLaunchMu              sync.Mutex
+	monitorMu                 sync.Mutex
+	state                     State
+	quiesce                   func(*Attempt) error
+	terminate                 func(*Attempt) error
+	cutoff                    func(*Attempt) error
+	collectionRun             func(string, string) error
+	workerCommand             func(string) []string
+	workerTimeout             time.Duration
+	workspaceCheckpoint       func(string) error // Test-only fault barriers, never configurable.
+	activationPrepare         func(*Attempt) error
+	preparationReady          func() (bool, []string)
+	preparationHome           func(*Attempt) error
+	paneIdentity              func(int, int) (string, error) // Test-only dependency seams, never configurable.
+	paneSetupCheckpoint       func() error
+	paneStart                 func() error
+	paneBootstrapStart        func(*exec.Cmd, *net.UnixConn, *os.File, string, PaneInstance) (*paneBootstrapPeer, bool, error)
+	terminalFailureCheckpoint func(string)            // Test-only recorder fault barriers; never configurable.
+	healthProbe               func() (bool, []string) // Test-only dependency seam; never configurable.
+	templateVerify            func(Settings) error    // Test replacement never exposed in config/environment.
 }
 
 // Tests replace this factory in test-only code. There is no configuration or

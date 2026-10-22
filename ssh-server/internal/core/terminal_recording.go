@@ -3,6 +3,7 @@ package core
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
@@ -127,20 +128,51 @@ func (w recordedWriter) Write(p []byte) (int, error) {
 	}
 	return w.target.Write(p)
 }
-func (e *Engine) bridgeRecordedPTY(original, master *os.File, done <-chan struct{}, id, pane, unit string) error {
+func (e *Engine) bridgeRecordedPTY(original, master *os.File, done <-chan struct{}, authority Attempt, pane, unit string) (func(), error) {
+	id := authority.ID
 	r, err := e.newRecorder(id, pane)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	var failOnce sync.Once
+	faultStarted, faultFinished := make(chan struct{}), make(chan struct{})
 	failed := func() {
-		master.Close()
-		go func() {
-			exec.Command("/usr/bin/systemctl", "kill", "--signal=KILL", unit).Run()
-			e.WithState(func() error {
-				_, err := e.callLocked("lock-attempt", Request{ID: id, Reason: "Class-server terminal recording failure"})
-				return err
-			})
-		}()
+		failOnce.Do(func() {
+			close(faultStarted) // Publish before PTY closure can trigger normal reaping.
+			master.Close()      // This pinned old PTY cannot alias a replacement pane.
+			go func() {
+				defer close(faultFinished)
+				// Unit names include a unique native incarnation. Contain this
+				// failed recorder's exact old scope before waiting for metadata.
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				exec.CommandContext(ctx, "/usr/bin/systemctl", "kill", "--signal=KILL", unit).Run()
+				cancel()
+				if e.terminalFailureCheckpoint != nil {
+					e.terminalFailureCheckpoint("before-state")
+				}
+				e.WithState(func() error {
+					a := e.state.Attempts[id]
+					tracked := false
+					if a != nil {
+						for _, recorded := range a.Units {
+							tracked = tracked || recorded == unit
+						}
+					}
+					// An old close/resize/output completion is not evidence about
+					// a later authenticated generation, replacement pane or expired
+					// interval. Clock extensions do not retire the current recorder.
+					if !tracked || a.State != "ACTIVE" || expired(a) || a.Generation != authority.Generation || a.Transport != authority.Transport || a.Username != authority.Username || a.UID != authority.UID || a.Start != authority.Start || a.Boot != authority.Boot || e.state.Registrations[a.Transport] != a.Username || (!paneInstanceReady(e.state, a, unit, boot()) && !paneInstanceClosed(e.state, a, unit, boot())) {
+						e.Audit("retired-terminal-recording-fault", id, pane, unit)
+						return nil
+					}
+					_, err := e.callLocked("lock-attempt", Request{ID: id, Reason: "Class-server terminal recording failure"})
+					return err
+				})
+				if e.terminalFailureCheckpoint != nil {
+					e.terminalFailureCheckpoint("after-state")
+				}
+			}()
+		})
 	}
 	var wg sync.WaitGroup
 	// Preserve the existing privacy policy: record terminal output, not raw keys.
@@ -177,7 +209,13 @@ func (e *Engine) bridgeRecordedPTY(original, master *os.File, done <-chan struct
 			}
 		}
 	}()
-	return nil
+	return func() {
+		select {
+		case <-faultStarted:
+			<-faultFinished
+		default:
+		}
+	}, nil
 }
 
 // Push trusted recorded bytes only. Offsets are durable, deliveries idempotent;

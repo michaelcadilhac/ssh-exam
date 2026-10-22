@@ -70,6 +70,22 @@ caller-selected file paths, arbitrary root commands or a new inbound network API
 The helper needs only measured necessary privileges; do not silently widen agent
 capabilities, weaken NoNewPrivileges or install units to make a fixture pass.
 
+The next integrated C12b boundary is the actual timed Engine.local pane, not
+another observer/helper: move its trusted output recorder into the existing
+attempt supervisor with only pinned recording storage/budget, never a global
+Engine/config/keys. Canonical metadata needs bounded, incarnation/generation-bound
+fault/exit reports which survive coordinator loss, with durable acknowledgement,
+stale-completion refusal and supported pane CLI inspection/cancellation. A report
+is not live monitoring authority or exec permission. Bound pending reports; refuse
+new handoffs rather than silently dropping a fault or creating indefinite account
+reservations. Preserve every recorded output/quota/privacy rule and original
+deadline/hold. Qualify normal EOF, backpressure, abrupt transport/owner death,
+recording/storage failure and restart through this real entry before claiming
+timed C12 delivered. The separate stale-recorder-fault fix deliberately joins
+only already-observed fault decisions; it does not establish a full raw-IO drain
+or final-recording/close-ack contract (terminal-recording-faults.md). Do not fold
+R2/C3/C9 enablement or unrelated grant work into this bounded lifetime milestone.
+
 Keep actor and pane lifetime claims distinct. Existing provisional publishers
 inherit the actor claim so a surviving writer excludes an overlapping owner;
 retained pane supervisors must not inherit that same open-file description or

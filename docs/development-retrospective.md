@@ -61,3 +61,13 @@ restart integration is ready. This is an explicitly incomplete C12, not a new
 claim that the critical fix works. Tool churn also exposed duplicated cwd prefixes
 and out-of-order patch hunks. AGENTS.md now requires current plain-text context,
 consistent paths and ordered per-target patches instead of repeated guessed fixes.
+
+The next timed-recording trace found a confirmed stale asynchronous lock bug.
+Its first fencing-only correction also hid current loss because normal cleanup
+could retire the proof first; the positive-control regression correctly refused
+that candidate. An attempted full IO join then grew into legacy blocking-input/
+backpressure lifecycle work. That extra lifecycle change was withdrawn, not
+declared qualified from its narrow success. The fix joins only a fault already
+observed before PTY closure, outside shared state, and tests both stale and current
+outcomes. Keep the fault fix separate from the next complete timed-owner lifecycle;
+do not let every neighboring cleanup issue become a prerequisite of a bounded fix.
