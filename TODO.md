@@ -99,6 +99,13 @@ full privileged qualification or deployment authorization.
   static/build/typecheck and bounded signed-metadata fuzz); it cannot renew or thaw anything.
   Root epochs, complete evidence/coverage and durable receipt/commit plus C3
   containment remain prerequisites. See docs/monitoring-evidence-contract.md.
+  H3b's bounded internal ledger now has coverage-gap identity, current component
+  freshness, original retry receipts and sticky genuine policy loss, with22
+  focused/compiled-Go interoperability checks and full 383 app/native race/resource
+  qualification passing. It is not a live issuer; verified epoch handover/native
+  journal/callback/C3
+  integration remain open. Independent monitoring cutoff must not blind-freeze
+  an old snapshot racing a healthy renewal. The critical item stays unchecked.
   Production remains unchanged; deployment is not authorized. Prioritize this
   correctness work over noncritical feature expansion when development resumes.
 

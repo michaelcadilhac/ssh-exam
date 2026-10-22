@@ -18,8 +18,8 @@ func evidenceFixture(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey, monit
 		t.Fatal(err)
 	}
 	o := monitoringOwner{Attempt: finalID, Exam: "synthetic", Username: "student", UID: 10001, TransportHash: strings.Repeat("a", 64), Boot: "11111111-1111-4111-8111-111111111111", PageEpoch: strings.Repeat("b", 64), InputEpoch: strings.Repeat("c", 64), Generation: 0, ClockRevision: 0}
-	c := monitoringChallenge{Agent: "class", Nonce: strings.Repeat("d", 64), Owner: o, IssuedUptimeMS: 10000, ExpiresUptimeMS: 15000, AuthorityUntilMS: 16000, DeadlineUptimeMS: 100000, AfterSequence: 3}
-	p := monitoringEvidence{Type: "monitoring-execution-evidence-v1", Audience: c.Agent, Nonce: c.Nonce, Owner: o, Sequence: 4, AgeMS: 1000, Complete: true}
+	c := monitoringChallenge{Agent: "class", Nonce: strings.Repeat("d", 64), Owner: o, IssuedUptimeMS: 10000, ExpiresUptimeMS: 15000, AuthorityUntilMS: 16000, DeadlineUptimeMS: 100000, AfterSequence: 3, CoverageEpoch: strings.Repeat("e", 64)}
+	p := monitoringEvidence{Type: "monitoring-execution-evidence-v1", Audience: c.Agent, Nonce: c.Nonce, Owner: o, Sequence: 4, AgeMS: 1000, Complete: true, CoverageEpoch: c.CoverageEpoch}
 	return pub, key, c, p
 }
 
@@ -73,6 +73,7 @@ func TestMonitoringEvidenceFencesEveryOwnershipAndPolicyField(t *testing.T) {
 		"input":             func(v *monitoringEvidence) { v.Owner.InputEpoch = strings.Repeat("e", 64) },
 		"generation":        func(v *monitoringEvidence) { v.Owner.Generation++ },
 		"clock":             func(v *monitoringEvidence) { v.Owner.ClockRevision++ },
+		"coverage_gap":      func(v *monitoringEvidence) { v.CoverageEpoch = strings.Repeat("f", 64) },
 		"incomplete":        func(v *monitoringEvidence) { v.Complete = false },
 		"old_sequence":      func(v *monitoringEvidence) { v.Sequence = c.AfterSequence },
 		"overflow_sequence": func(v *monitoringEvidence) { v.Sequence = monitoringEvidenceMaxSequence + 1 },
@@ -197,13 +198,33 @@ func TestMonitoringEvidenceSharedWireFixture(t *testing.T) {
 	}
 }
 
+func TestMonitoringEvidenceCoverageBindingCannotBeResetAfterBootstrap(t *testing.T) {
+	pub, key, c, proof := evidenceFixture(t)
+	c.CoverageEpoch = ""
+	if _, err := verifyMonitoringEvidence(signEvidence(t, key, proof), pub, c, 12000); err == nil {
+		t.Fatal("established coverage was silently reset")
+	}
+	c.AfterSequence = 0
+	v, err := verifyMonitoringEvidence(signEvidence(t, key, proof), pub, c, 12000)
+	if err != nil || v.CoverageEpoch != proof.CoverageEpoch {
+		t.Fatal("initial active evidence did not bind coverage", v, err)
+	}
+	c.CoverageEpoch = v.CoverageEpoch
+	c.AfterSequence = v.Sequence
+	proof.Sequence++
+	proof.CoverageEpoch = strings.Repeat("f", 64)
+	if _, err := verifyMonitoringEvidence(signEvidence(t, key, proof), pub, c, 12000); err == nil {
+		t.Fatal("new observations hid a prior coverage gap")
+	}
+}
+
 func FuzzMonitoringEvidenceSignedMetadata(f *testing.F) {
 	pub, key, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		f.Fatal(err)
 	}
 	o := monitoringOwner{Attempt: finalID, Exam: "synthetic", Username: "student", UID: 10001, TransportHash: strings.Repeat("a", 64), Boot: "11111111-1111-4111-8111-111111111111", PageEpoch: strings.Repeat("b", 64), InputEpoch: strings.Repeat("c", 64)}
-	c := monitoringChallenge{Agent: "class", Nonce: strings.Repeat("d", 64), Owner: o, IssuedUptimeMS: 10000, ExpiresUptimeMS: 15000, AuthorityUntilMS: 16000, DeadlineUptimeMS: 100000, AfterSequence: 3}
+	c := monitoringChallenge{Agent: "class", Nonce: strings.Repeat("d", 64), Owner: o, IssuedUptimeMS: 10000, ExpiresUptimeMS: 15000, AuthorityUntilMS: 16000, DeadlineUptimeMS: 100000, AfterSequence: 3, CoverageEpoch: strings.Repeat("e", 64)}
 	b, err := os.ReadFile("../../../tests/fixtures/monitoring-evidence.json")
 	if err != nil {
 		f.Fatal(err)
@@ -216,7 +237,7 @@ func FuzzMonitoringEvidenceSignedMetadata(f *testing.F) {
 			return
 		}
 		v, err := verifyMonitoringEvidence(signEvidenceBytes(key, payload), pub, c, 12000)
-		if err == nil && (v.Owner != o || v.Nonce != c.Nonce || v.Sequence <= c.AfterSequence || v.Sequence > monitoringEvidenceMaxSequence || v.UntilUptimeMS <= 12000 || v.UntilUptimeMS > 25000 || v.UntilUptimeMS > c.DeadlineUptimeMS) {
+		if err == nil && (v.Owner != o || v.Nonce != c.Nonce || v.CoverageEpoch != c.CoverageEpoch || v.Sequence <= c.AfterSequence || v.Sequence > monitoringEvidenceMaxSequence || v.UntilUptimeMS <= 12000 || v.UntilUptimeMS > 25000 || v.UntilUptimeMS > c.DeadlineUptimeMS) {
 			t.Fatal("malformed signed input produced invalid candidate", v)
 		}
 	})

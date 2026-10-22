@@ -50,7 +50,11 @@ all arithmetic, including near-MaxInt64 native times. These five-second challeng
 and fifteen-second evidence limits do not change any live timeout or grant.
 
 The private verifier returns a `monitoringPermitCandidate`, not a state transition
-or applied lease. The caller must still atomically recheck current native identity,
+or applied lease. It deliberately requires unexpired prior ACTIVE authority and
+does not validate held recovery/thaw. Never invent a new prior-authority interval
+to reuse this helper for a held attempt; that needs a separate purpose-bound
+decision with verified C3 receipts, lineage and current complete coverage.
+The caller must still atomically recheck current native identity,
 registration, state, boot, generation, clock/deadline and current gate epochs;
 durably bind/consume the exact request and sequence; and publish the original
 fixed outcome. A changed proof under the same accepted challenge must not replace
@@ -84,6 +88,76 @@ typecheck/build pass. Browser JS/CSS/WASM asset hashes are unchanged from the91-
 check H2a/C2a4 run: the new contracts are not imported by the live client. These
 are primitive-level checks, not alternate-path end-to-end qualification. See
 todo-progress.md; no new browser runtime is imported.
+
+## Unwired bounded coverage ledger candidate (H3b)
+
+The new `apps/server/src/monitoring-evidence-ledger.ts` is also internal and unused
+by live routes, signers, native commands or state transitions. Its opaque bindings
+can be created only by a future trusted caller after authenticating the current
+page/session and verifying the current native ACTIVE owner. A JSON body cannot
+manufacture a binding. Actual JPEG/source/page/capture-challenge validation must
+precede the `confirmValidatedFrame` call; a frame-sequence object alone does not
+prove that this prerequisite happened. No current frame handler calls the ledger.
+
+Complete evidence combines every required challenged frame with challenged
+fullscreen/visibility/keyboard/capture readiness and the existing focus grace.
+Each component's server challenge issue time bounds its freshness: late receipt
+does not refresh old observations. Inherited webcam requirements are fixed at
+trusted registration, not supplied by a later heartbeat. Frame traffic alone
+cannot replace missing/expired policy evidence. Focus grace is twenty seconds,
+cannot restart on repeated blur reports and clips the remaining evidence budget.
+Confirmed readiness loss is sticky for this owner, not automatically repaired by
+later good messages. Retirement/replacement requires explicit trusted ownership;
+new data cannot silently supersede the old binding or change webcam policy.
+
+An uninterrupted overlapping complete-evidence interval has a random
+`coverage_epoch`. A gap expires that identity; fresh complete observations after
+the gap receive a NEW one, with an incremented gap counter. The strict shared
+wire proof now includes that coverage identity, and native verification requires
+the retained identity to match. Fresh frames cannot silently prove an unknown
+earlier interval. Initial bootstrap may leave the expected identity empty only
+when no evidence has yet been consumed (`after_sequence=0`), under native ACTIVE/
+unexpired authority. It is never a held/thaw bootstrap or a way to reset a retained
+watermark/coverage identity. The future caller must enforce this phase distinction.
+
+Exact native challenge retries preserve their first immutable proof age/sequence,
+not a newly sampled observation. A changed request conflicts, a request at least
+five seconds old refuses, and a cached bootstrap proof cannot be returned as
+current after coverage changed. That last case was reproduced by a failing ledger
+regression before correction, even though the independent native transit-budget
+check would also reject an expired permission. Untrusted errors do not echo scope
+contents. Limits are explicit: default32 owners (maximum512), sixteen outstanding
+browser challenges per owner and32 retained native receipts per owner. Capacity
+failure never evicts another current student. Negative/backwards/nonfinite clocks
+refuse; all enforcement/coverage accounting is monotonic, not wall-clock time.
+
+The ledger is intentionally transient: process restart does not reconstruct
+positive coverage from database/image timestamps. Durable native replay/receipt
+and epoch commit remain separate work. Verified clock/input epoch handover must
+also be designed explicitly: this candidate refuses implicit owner changes rather
+than claiming it already preserves coverage across C3 freeze/thaw. Those are
+required for the final automatic-recovery protocol, not optional follow-ups.
+
+Focused checks now include18 ledger cases, three shared-contract cases and actual
+Node-signed proofs through a compiled private Go test-binary interface. They cover
+scope/signature rejection, original allowance after retry, expired requests and
+coverage changes while all other native checks are held valid. A deterministic
+five-minute model with two-second policy/five-second capture cadence, independent
+sample delays up to700ms and another700ms native round trip records zero modelled
+false holds within that stated envelope. This is not a real-network/privileged
+availability guarantee. All 383 application tests/71 files pass (80.49s), fresh
+native race/resource/namespace/compiler tests pass (core173.0s/CLI6.6s), static
+build/vet and typecheck/build pass. The revised coverage-bound parser also passes
+a separate two-worker 10-second fuzz run (268 executions). Browser assets remain
+unchanged from the 91-check H2a/C2a4 run; no live caller imports this ledger. This
+does not qualify a production callback, native commit or held recovery.
+
+Additional native source boundary identified: independent `Cutoff` freezes
+deadlines; monitoring-expiry state reconciliation still occurs in `Tick` under
+shared state. A future monitoring cutoff/hold needs an independent per-attempt
+lease/revocation/input barrier. Blindly freezing from an old snapshot can race a
+healthy renewal and strand ACTIVE work frozen, so do not wire such a shortcut.
+Preserve the existing independent authoritative deadline cutoff throughout.
 
 ## Next dependencies before any enablement
 

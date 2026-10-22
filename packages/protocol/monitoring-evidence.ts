@@ -33,6 +33,7 @@ export const monitoringEvidence = z
     audience: name,
     nonce: digest,
     owner: monitoringOwner,
+    coverage_epoch: digest,
     sequence: counter.refine(
       (n) => n > 0,
       "Evidence sequence must be positive",
@@ -47,3 +48,18 @@ export const monitoringEvidence = z
   .strict();
 export type MonitoringOwner = z.infer<typeof monitoringOwner>;
 export type MonitoringEvidence = z.infer<typeof monitoringEvidence>;
+
+export const nativeMonitoringChallenge = z
+  .object({
+    type: z.literal("monitoring-execution-challenge-v1"),
+    agent: name,
+    nonce: digest,
+    owner: monitoringOwner,
+    after_sequence: counter,
+    coverage_epoch: z.union([digest, z.literal("")]),
+  })
+  .strict()
+  .refine(
+    (v) => v.coverage_epoch !== "" || v.after_sequence === 0,
+    "Established monitoring coverage must be named explicitly",
+  );

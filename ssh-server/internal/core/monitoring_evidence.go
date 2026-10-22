@@ -4,6 +4,8 @@ package core
 // lease journal or state transition calls this code. Successful verification is
 // NOT permission to work: the eventual caller must atomically recheck native
 // state/ownership, consume the challenge/sequence durably and enforce C3 gates.
+// This verifier requires unexpired prior ACTIVE authority. It is NOT a held
+// recovery/thaw primitive; never fabricate a new AuthorityUntilMS to reuse it.
 
 import (
 	"bytes"
@@ -47,22 +49,25 @@ type monitoringChallenge struct {
 	AuthorityUntilMS int64
 	DeadlineUptimeMS int64
 	AfterSequence    uint64
+	CoverageEpoch    string
 }
 
 type monitoringEvidence struct {
-	Type     string          `json:"type"`
-	Audience string          `json:"audience"`
-	Nonce    string          `json:"nonce"`
-	Owner    monitoringOwner `json:"owner"`
-	Sequence uint64          `json:"sequence"`
-	AgeMS    int64           `json:"age_ms"`
-	Complete bool            `json:"complete"`
+	Type          string          `json:"type"`
+	Audience      string          `json:"audience"`
+	Nonce         string          `json:"nonce"`
+	Owner         monitoringOwner `json:"owner"`
+	CoverageEpoch string          `json:"coverage_epoch"`
+	Sequence      uint64          `json:"sequence"`
+	AgeMS         int64           `json:"age_ms"`
+	Complete      bool            `json:"complete"`
 }
 
 type monitoringPermitCandidate struct {
 	Owner         monitoringOwner
 	Nonce         string
 	Sequence      uint64
+	CoverageEpoch string
 	UntilUptimeMS int64
 }
 
@@ -113,6 +118,12 @@ func decodeMonitoringObject(payload []byte, out any, keys []string) (map[string]
 // ordinary cross-host wall-clock skew cannot invent permission or a false gap.
 func verifyMonitoringEvidence(frame SignedFrame, key ed25519.PublicKey, challenge monitoringChallenge, nowUptimeMS int64) (monitoringPermitCandidate, error) {
 	bad := func() (monitoringPermitCandidate, error) { return monitoringPermitCandidate{}, errMonitoringEvidence }
+	// Bootstrap is possible only before any evidence has been consumed. The
+	// future caller must require ACTIVE/unexpired authority, never hold/thaw.
+	// Once bound, a fresh frame/proof cannot conceal a coverage gap.
+	if (challenge.CoverageEpoch == "" && challenge.AfterSequence != 0) || (challenge.CoverageEpoch != "" && !monitoringDigest.MatchString(challenge.CoverageEpoch)) {
+		return bad()
+	}
 	if len(key) != ed25519.PublicKeySize || !identifier.MatchString(challenge.Agent) || !monitoringDigest.MatchString(challenge.Nonce) || !validMonitoringOwner(challenge.Owner) || challenge.IssuedUptimeMS < 0 || nowUptimeMS < challenge.IssuedUptimeMS || challenge.ExpiresUptimeMS <= challenge.IssuedUptimeMS || challenge.ExpiresUptimeMS-challenge.IssuedUptimeMS > monitoringChallengeWindowMS || nowUptimeMS >= challenge.ExpiresUptimeMS || nowUptimeMS >= challenge.AuthorityUntilMS || nowUptimeMS >= challenge.DeadlineUptimeMS || challenge.AfterSequence >= monitoringEvidenceMaxSequence || len(frame.Payload) > base64.StdEncoding.EncodedLen(monitoringEvidenceMaxBytes) || len(frame.Signature) != base64.StdEncoding.EncodedLen(ed25519.SignatureSize) {
 		return bad()
 	}
@@ -125,14 +136,14 @@ func verifyMonitoringEvidence(frame SignedFrame, key ed25519.PublicKey, challeng
 		return bad()
 	}
 	var proof monitoringEvidence
-	fields, err := decodeMonitoringObject(payload, &proof, []string{"type", "audience", "nonce", "owner", "sequence", "age_ms", "complete"})
+	fields, err := decodeMonitoringObject(payload, &proof, []string{"type", "audience", "nonce", "owner", "coverage_epoch", "sequence", "age_ms", "complete"})
 	if err != nil {
 		return bad()
 	}
 	if _, err = decodeMonitoringObject(fields["owner"], &proof.Owner, []string{"attempt", "exam", "username", "uid", "transport_hash", "boot", "page_epoch", "input_epoch", "generation", "clock_revision"}); err != nil {
 		return bad()
 	}
-	if proof.Type != "monitoring-execution-evidence-v1" || proof.Audience != challenge.Agent || proof.Nonce != challenge.Nonce || proof.Owner != challenge.Owner || !proof.Complete || proof.Sequence <= challenge.AfterSequence || proof.Sequence > monitoringEvidenceMaxSequence || proof.AgeMS < 0 || proof.AgeMS >= monitoringEvidenceWindowMS {
+	if proof.Type != "monitoring-execution-evidence-v1" || proof.Audience != challenge.Agent || proof.Nonce != challenge.Nonce || proof.Owner != challenge.Owner || !monitoringDigest.MatchString(proof.CoverageEpoch) || (challenge.CoverageEpoch != "" && proof.CoverageEpoch != challenge.CoverageEpoch) || !proof.Complete || proof.Sequence <= challenge.AfterSequence || proof.Sequence > monitoringEvidenceMaxSequence || proof.AgeMS < 0 || proof.AgeMS >= monitoringEvidenceWindowMS {
 		return bad()
 	}
 	remaining := monitoringEvidenceWindowMS - proof.AgeMS
@@ -143,5 +154,5 @@ func verifyMonitoringEvidence(frame SignedFrame, key ed25519.PublicKey, challeng
 	if nowUptimeMS-challenge.IssuedUptimeMS >= remaining {
 		return bad()
 	}
-	return monitoringPermitCandidate{Owner: proof.Owner, Nonce: proof.Nonce, Sequence: proof.Sequence, UntilUptimeMS: challenge.IssuedUptimeMS + remaining}, nil
+	return monitoringPermitCandidate{Owner: proof.Owner, Nonce: proof.Nonce, Sequence: proof.Sequence, CoverageEpoch: proof.CoverageEpoch, UntilUptimeMS: challenge.IssuedUptimeMS + remaining}, nil
 }

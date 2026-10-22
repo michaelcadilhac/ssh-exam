@@ -14,6 +14,7 @@
     "generation": 0,
     "clock_revision": 0
   },
+  "coverage_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
   "sequence": 4,
   "age_ms": 1000,
   "complete": true

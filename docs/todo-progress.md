@@ -8,6 +8,27 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Critical continuation afterf26234b: H3b bounded, internal/unwired evidence ledger
+and explicit continuous-coverage identity are under qualification. Complete
+challenged policy plus required validated-frame metadata never freshen on receipt;
+frames alone cannot extend expired readiness. Focus grace remains20s, repeated
+blur cannot reset it and actual condition loss is sticky. Owner/receipt/challenge
+limits are explicit and one owner cannot evict another. Unknown gaps rotate the
+coverage identity; native verification rejects crossing it. A failing old-bootstrap-
+receipt-across-gap regression was fixed. A private compiled Go test binary accepts
+real Node-signed ledger proofs and rejects changed scope/signature/expiry/coverage.
+All22 focused cases pass, including a five-minute deterministic cadence/latency
+model with zero false holds in its declared envelope. This is not a production
+endpoint or privileged availability claim. Full app repeat passes 383 tests/71
+files (80.49s); native race/resource/namespace/compiler passes core173.0s/CLI6.6s,
+static build/vet and typecheck/build pass. Coverage-bound metadata fuzz passes 268
+executions in 10 seconds with two workers. Browser assets are unchanged from the
+91-check run. Verified epoch handover, durable native receipt/revocation, alternate
+routes and C3 input/writer containment remain open; no thaw is enabled. Native
+Cutoff's current independent boundary is deadlines, not a safe standalone
+monitoring-expiry transition; investigate/fence that with C3, never blind-freeze
+a possibly superseded snapshot. See monitoring-evidence-contract.md.
+
 Critical continuation after7930f84 (H2a contact isolation) and9b26217 (separately
 qualified preserved C2a4): H2b/H3 signed-evidence candidate is internal/unwired.
 Strict Go/TypeScript scope, required/null/duplicate/unknown fields, bounded signed

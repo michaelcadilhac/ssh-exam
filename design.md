@@ -1984,6 +1984,18 @@ or thaw. Root epoch/coverage/receipt/journal integration and C3 barriers remain
 mandatory and unimplemented. See docs/monitoring-evidence-contract.md; no runtime
 path, capability, configuration, management operation or production change uses it.
 
+H3b's internal unused ledger combines current challenged policy/required validated
+frame metadata, preserves20s focus grace and retains actual condition loss as a
+policy block. Unknown coverage gaps rotate a signed coverage identity; native
+proof verification cannot silently cross it. Bootstrap is only for an ACTIVE
+unexpired owner with no previously consumed evidence, never a hold/thaw reset.
+Bound owner/challenge/receipt storage, retain original retry age and refuse
+implicit owner/webcam/input/clock changes. Node/compiled-private-Go interface and
+model checks pass; native durable replay/epochs, verified handover, actual alternate
+routes and C3 all-writer/input containment remain unimplemented. No live caller or
+automatic resume is enabled. A standalone monitoring cutoff must coordinate
+lease/revocation barriers; freezing an old snapshot can itself create false holds.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.

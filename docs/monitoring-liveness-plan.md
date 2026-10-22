@@ -97,6 +97,17 @@ minting a new window on reply/retry. It grants no work and does not implement th
 missing issuer, coverage ledger, epochs, durable commit or hold/thaw. See
 [monitoring-evidence-contract.md](monitoring-evidence-contract.md).
 
+H3b also has an internal bounded evidence/coverage ledger candidate, not a live
+issuer: required challenged components, immutable retry age, sticky actual-policy
+loss, unchanged focus grace and a coverage identity that changes after unknown
+gaps. The native candidate now rejects a replacement coverage identity. Initial
+bootstrap is limited to unexpired ACTIVE authority with no consumed evidence;
+never use it to thaw/reset a held context. Implicit owner/input/clock changes
+refuse pending a verified transition protocol. Compiled private Go/Node proof
+  interoperability and22 focused cases pass; full383 app and native race/resource
+  qualification pass, with unchanged browser assets. This remains internal only.
+This neither closes H3 nor supplies missing native journals/C3 barriers/routes.
+
 1. **Browser contact:** acknowledge a valid current page's monitoring message
    promptly without waiting for SSH/collection/management work. This acknowledgement
    proves receipt only; it must never enable input, thaw workloads or extend a
