@@ -11,6 +11,18 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+Critical monitoring-liveness redesign now precedes nonessential expansion. H2a's
+local contact/queue candidate requires no schema/config migration and does not
+enable technical holds, automatic thaw or C3 buffer preservation. Old browsers
+ignore contact-only receipts and retain final state responses; qualify both
+message types with the actual browser/native candidates. Its independent queue
+does not prove native renewal delivery under a stalled command. Full alternate-
+path/epoch/verified-freeze capability agreement across browser, gateway/worker,
+native gate/PTY owners and watchdog is a separate release gate. Do not present
+H2a as the completed reliability fix or increase a timeout to pass qualification.
+Keep the existing drained-only temporary-agent consolidation and rollback gates.
+See monitoring-liveness-plan.md; nothing is deployed or migrated here.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

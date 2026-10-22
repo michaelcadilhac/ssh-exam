@@ -176,7 +176,7 @@ it.each(["deadline", "pause", "finish", "failure"])(
             visible: true,
           },
         },
-        (m) => m.confirmation === confirmation,
+        (m) => m.type === "state" && m.confirmation === confirmation,
       );
       await vi.waitFor(() => expect(rejectRenewal).toBeTypeOf("function"));
       if (kind === "deadline") {

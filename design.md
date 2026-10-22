@@ -1923,7 +1923,7 @@ Stored durations remain seconds and timestamps remain absolute Unix milliseconds
 
 ### Monitoring isolation from native cleanup
 
-October 21 critical redesign requirement (planning only): the instructor requires
+October 21 critical redesign requirement (partial local candidate): the instructor requires
 eliminating false lockouts caused by heartbeat/control latency. A timeout alone
 does not prove a policy violation, capture failure or SSH transport loss. The
 installed serial session handler can await a 120-second SSH command while native
@@ -1938,12 +1938,25 @@ authenticated evidence, scoped replay-safe recovery, technical safety holds and
 real-interface fault acceptance. Contact, images, PTY bytes and SSH keepalive alone
 must never authorize work. Unverifiable monitoring still fails closed; C3 verified
 freeze/input revocation must preserve viable transports/buffers without writers.
-Automatic recovery of a positively verified infrastructure-only hold is proposed,
-not approved or enabled, and cannot bypass policy-lock continuation authorization.
+The instructor subsequently approved automatic recovery of a positively verified
+infrastructure-only hold under the plan's full ownership/readiness/coverage and
+containment conditions. Implementation/enablement remain pending; actual policy
+violations and authentication loss retain their existing recovery requirements.
 No automatic refunds, deadline changes or completed-attempt reopening. Absolute
 uninterrupted availability under arbitrary partitions cannot also guarantee no
-unverified work; document and test the supported fault envelope explicitly. No
-implementation, qualification or production change is claimed by this proposal.
+unverified work; document and test the supported fault envelope explicitly.
+
+H2a's local candidate adds bounded independent monitoring/policy handling outside
+ordered terminal operations, with handler-local snapshots and current socket/page
+fences. Its distinct monitoring-contact receipt proves only a one-use round trip
+on the already bound socket. It cannot bind a page, apply state or thaw/arm work;
+native renewal remains separately authoritative. Old clients ignore it and retain
+final state replies. Cancel connections and drain session handlers before closing
+SQLite. Real HTTP/SSH/WS regression and browser receipt-authority/lost-state tests
+pass locally, including all91 combined browser checks and fresh full native race/
+resource checks. Native expiry during a
+stalled renewal, alternate evidence/receipts and C3 verified hold/thaw remain open;
+this does not complete the critical TODO or change production.
 
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local

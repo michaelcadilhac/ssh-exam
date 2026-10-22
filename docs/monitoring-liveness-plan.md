@@ -1,8 +1,9 @@
 # Critical monitoring-liveness redesign plan
 
-Recorded October 21, 2026 (America/Chicago). Planning only: no implementation,
-new regression qualification, production mutation or deployment. Student incident
-records remain outside the repository. This is the critical TODO priority before
+Recorded October 21, 2026 (America/Chicago). Automatic technical-only recovery is
+now approved under the conditions below; implementation and regression
+qualification are in progress locally. No production mutation or deployment.
+Student incident records remain outside the repository. This is the critical TODO priority before
 nonessential feature expansion, not a claim that the investigation is complete.
 
 ## Requirement and evidence boundary
@@ -49,6 +50,45 @@ queue blocking, a particular socket, or student behavior as its proven cause.
 
 ## Proposed protocol and state separation
 
+### H1 reproduction and H2a contact-lane candidate (local, partial)
+
+The new real HTTP/WebSocket/SSH regression reproduces the old serial handler:
+fresh screen/webcam POSTs succeed and the authenticated SSH terminal channel
+echoes a probe, but no monitoring confirmation arrives while one signed renewal
+reply is deliberately held. The initial expected confirmation assertion fails on
+the old handler. The SSH fixture uses a simulated shell/native policy, not actual
+privileged freezer enforcement; this does not establish the production initiating
+fault or complete H1's per-hop/native investigation.
+
+The H2a candidate processes authenticated monitoring, focus and incident reports
+independently of ordered terminal operations, with full schema/current socket and
+page checks, handler-local snapshots and a bounded outstanding count. At most one
+ordinary native renewal per attempt remains in flight. A distinct
+`monitoring-contact` reply carries only attempt identity and a one-use socket
+confirmation, never native permission/state. It does not bind a page, apply an
+attempt snapshot or thaw/arm a paused workspace. Old clients ignore the new type
+and continue to receive final state replies. Shutdown now drains bounded pending
+session tasks after connection cancellation and before closing SQLite; the new
+fault test exposed, then verified removal of, an unhandled closed-DB race.
+
+Nine focused real-interface/race tests and all361 application tests pass locally.
+Three browser checks verify contact cannot bind/thaw and real WASM SSH input
+survives 17.5 seconds of lost final browser state confirmations while native
+fixture renewals and HTTP uploads continue. Native policy is simulated in those
+browser checks. All91 combined browser checks pass (11.2m), fresh full native
+race/resource/namespace/compiler tests pass (core167.9s/CLI5.9s), and static native
+build/vet plus application typecheck/build pass. These qualify H2a's narrow scope,
+not alternate delivery or C3 containment.
+
+This is **not** the complete renewal/technical-hold fix: the long native-command
+budget, clock-command interference, in-flight renewal ownership/recovery,
+alternate evidence, native receipt/freshness/epoch rules, all-writer C3 containment
+and technical-hold classification/thaw remain outstanding. If the native renewal
+itself never arrives, the native lease can still expire. Contact receipts must
+never conceal that fact. No production behavior has changed.
+
+### Remaining protocol
+
 1. **Browser contact:** acknowledge a valid current page's monitoring message
    promptly without waiting for SSH/collection/management work. This acknowledgement
    proves receipt only; it must never enable input, thaw workloads or extend a
@@ -87,8 +127,9 @@ queue blocking, a particular socket, or student behavior as its proven cause.
    outlasts that authorization, enter a verified technical safety hold. Preserve
    viable transport/shells/buffers and block all writers/input through C3. Failed
    containment remains fail closed, with an explicit operational fault.
-7. **Recovery:** introduce a separate technical-hold transition only after the
-   decision below. A late heartbeat or contact acknowledgement must not thaw a
+7. **Recovery:** introduce the approved separate technical-hold transition only
+   after its evidence and containment prerequisites pass. A late heartbeat or
+   contact acknowledgement must not thaw a
    paused generation. Recheck complete readiness, identity/ownership, input epoch,
    policy history, current deadline and native freeze/receipt before any transition.
    Genuine policy locks keep their continuation rules; actual ownership loss keeps
@@ -100,19 +141,20 @@ as the baseline; any requested bound change needs an explicit policy decision an
 evidence, not a silent reliability workaround. Do not retain older authorization
 past that bound merely because a contact reply, frame or keepalive arrived.
 
-## Consequential choice still requiring a decision
+## Approved technical-hold recovery policy
 
-Recommended: automatically recover an infrastructure-only technical hold **only**
+Approved by the instructor October 21: automatically recover an infrastructure-only
+technical hold **only**
 when the system positively verifies the same authenticated ownership and complete,
 uninterrupted authorized monitoring coverage, all current readiness, no actual
 policy violation, no input from a retired epoch, and an unexpired attempt. Missing
 coverage is not cured by a fresh frame or a reconnect. Treat an unproven gap as a
 technical interruption requiring the existing explicit recovery/review policy,
-without accusing the student. Alternative: require instructor approval after every
-technical hold, which retains the disruptive manual recovery cycle.
+without accusing the student. Requiring instructor approval after every positively
+verified technical-only hold is not the selected policy.
 
-Automatic technical-hold thaw is not included in C3's approved policy-lock thaw;
-it must be explicitly agreed before implementation/enablement. If uninterrupted
+This approval supplements C3's approved policy-lock thaw; actual policy violations
+and authentication loss retain their existing recovery requirements. If uninterrupted
 coverage cannot be established in a proposed protocol, mark automatic recovery
 ineligible rather than quietly weakening the requirement. No automatic refund,
 clock stop, deadline change or completed-attempt reopening is proposed. The
@@ -122,14 +164,15 @@ original/current deadline, protected-submission and account-hold rules remain.
 
 | Milestone | Dependency | Required outcome and tests | Status |
 | --- | --- | --- | --- |
-| H1: reproduce and observe | Read-only investigation; synthetic environment | Red regression on the old code for a stalled renewal with healthy captures/PTYs; per-hop evidence identifies where progress stops; inventory every timeout/rebind path | Initial code inspection only; initiating fault and reproduction open |
-| H2: isolate receipt and renewal | H1 | Bounded independent ingestion/acknowledgement/scheduler; scoped idempotent receipt recovery; no serial head-of-line blocking, fabricated native permission or stale-result transition | Proposed, not implemented/tested |
-| H3: alternate evidence and recovery contract | H1/H2; explicit recovery decision | Demonstrate a complete authenticated alternate path, precise freshness/coverage and expiry rules; outage classification, UI, deduplicated operational alerts and CLI/web parity | Proposed; transport details and recovery decision open |
+| H1: reproduce and observe | Read-only investigation; synthetic environment | Red regression on the old code for a stalled renewal with healthy captures/PTYs; per-hop evidence identifies where progress stops; inventory every timeout/rebind path | Serial blockage reproduced; native/per-hop investigation and initiating fault still open |
+| H2: isolate receipt and renewal | H1 | Bounded independent ingestion/acknowledgement/scheduler; scoped idempotent receipt recovery; no serial head-of-line blocking, fabricated native permission or stale-result transition | H2a contact/queue candidate locally tested; scheduler/receipt/native work open |
+| H3: alternate evidence and recovery contract | H1/H2; approved technical-only recovery | Demonstrate a complete authenticated alternate path, precise freshness/coverage and expiry rules; outage classification, UI, deduplicated operational alerts and CLI/web parity | Recovery policy approved; transport details/implementation/qualification open |
 | H4: nondestructive containment | H2/H3 plus C3 input-epoch/all-writer/liveness implementation | Freeze verified before claiming safe hold, trusted supervisors unfrozen, no queued input at thaw, viable shells/buffers retained; genuine locks and ownership loss remain enforced | C3 approved; coordinated implementation/qualification open |
 | H5: combined release qualification | H1–H4 | Full fault matrix below, native race/build and application/browser integration; documented budgets, compatibility, rollout and rollback | Not started; no deployment authorization |
 
-H1/H2 diagnostics and proof work can proceed locally while the recovery decision
-is pending. Do not enable an incomplete hold/thaw protocol, label a timeout as a
+H1/H2 diagnostics and proof work proceed locally first. The recovery-policy
+decision is no longer a blocker. Do not enable an incomplete hold/thaw protocol,
+label a timeout as a
 policy violation, or claim a short-term queue fix completes H3–H5. The previously
 completed M2 deadline/intentional-action race fixes cover narrower cases and do
 not close this item.

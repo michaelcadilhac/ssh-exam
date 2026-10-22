@@ -8,6 +8,35 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Critical-priority continuation: the instructor approved automatic recovery of
+positively verified infrastructure-only technical holds, retaining current
+recovery requirements for actual policy violations/authentication loss. H1/H2 in
+monitoring-liveness-plan.md now precede nonessential expansion: reproduce the
+serial session/SSH-renewal acknowledgement blockage with real authenticated
+WebSocket/SSH/PTY and independent HTTP captures, then isolate bounded contact and
+renewal handling without manufacturing native work permission. H3 alternate
+evidence and H4/C3 all-writer/input-epoch verified containment remain prerequisites
+for complete nondestructive automatic recovery; no partial queue change completes
+the critical TODO. C2a4's existing uncommitted implementation is preserved, not
+discarded or falsely marked qualified/committed. No production work is authorized.
+
+H1/H2a candidate: the old serial handler fails the real-interface confirmation
+regression while fresh screen/webcam HTTP uploads and an authenticated SSH terminal
+channel still work (simulated shell/policy, not privileged native enforcement).
+Independent bounded monitoring/policy handling now returns contact-only one-use
+receipts without waiting for SSH or terminal operations. Handler-local snapshots,
+current socket/page fences and connection-cancel/handler-drain shutdown protect
+stale ownership and remove a newly exposed closed-DB unhandled rejection. Nine
+focused tests and all361 application tests pass (79.97s), typecheck/build pass;
+three receipt-authority/actual WASM SSH browser tests plus four preserved catalog
+UI checks pass together (32.8s). All91 combined browser checks pass (11.2m) against
+the frozen gateway/browser candidate. Full native race/resource/namespace/compiler
+qualification passes (core167.9s/CLI5.9s); static build/vet pass. H2's
+native renewal/receipt scheduling, H3 alternate evidence and H4/C3 freeze/input
+epochs remain open. No native safety hold or automatic thaw is enabled, and a
+native lease can still expire if all renewal paths stall. This checkpoint does
+not close the critical item; the production initiating fault remains unproven.
+
 Active continuation after validated local commit **4b29df3**: C2a3 exact-version
 reader binding. Add optional omitted legacy settings/source hash fields; preserve
 historical JSON/hash/receipt compatibility. Stage work only from the recorded

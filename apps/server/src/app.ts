@@ -177,6 +177,8 @@ export async function createApp(
     }
   >();
   const sockets = new Map<string, WebSocket>();
+  const sessionTasks = new Set<Promise<void>>();
+  let closingSessions = false;
   life.onEnd = (a) => {
     const ws = sockets.get(a.id);
     if (ws) send(ws, { type: "state", attempt: a, serverNow: now() });
@@ -2123,290 +2125,353 @@ export async function createApp(
       });
       return;
     }
-    let a: Attempt | undefined;
+    let boundAttemptID: string | undefined;
+    let boundPageHash: string | undefined;
     let owned = false;
     let outstanding = 0;
     let messageChain = Promise.resolve();
+    const handleMessage = async (rawMessage: any) => {
+      // Each handler owns its snapshot. An old awaited command must not replace
+      // another handler's identity, generation or error/revocation fence.
+      let a: Attempt | undefined;
+      let openingPane: string | undefined;
+      try {
+        if (closingSessions) return;
+        a = boundAttemptID ? store.attempt(boundAttemptID) : undefined;
+        if (!a) {
+          const bind = z
+            .object({
+              v: z.literal(1),
+              type: z.literal("bind"),
+              attempt: z.string().uuid(),
+              page: z.string().length(64),
+              binding: z.string().uuid().optional(),
+            })
+            .parse(rawMessage);
+          a = store.attempt(bind.attempt);
+          if (
+            a.username !== session.username ||
+            a.exam !== session.exam ||
+            a.page_hash !== hash(bind.page)
+          )
+            throw Error("Page does not own attempt");
+          const old = sockets.get(a.id);
+          if (old && old !== ws) {
+            await life.lock(a.id, "Second page attempted WebSocket takeover");
+            throw Error("Existing page owns attempt");
+          }
+          if (
+            a.last_contact &&
+            now() - a.last_contact > 15000 &&
+            a.state === "ACTIVE"
+          )
+            await life.lock(a.id, "Connection grace expired");
+          sockets.set(a.id, ws);
+          boundAttemptID = a.id;
+          boundPageHash = a.page_hash!;
+          owned = true;
+          send(ws, {
+            type: "state",
+            binding: bind.binding,
+            attempt: store.attempt(a.id),
+            serverNow: now(),
+            authenticationGap: authenticationGap(a.id),
+          });
+          return;
+        }
+        if (sockets.get(a.id) !== ws || ws.readyState !== WebSocket.OPEN)
+          return;
+        a = store.attempt(a.id);
+        if (a.page_hash !== boundPageHash)
+          throw Error(
+            "Page no longer owns attempt; reconnect with authorization",
+          );
+        const m = messageSchema.parse(rawMessage);
+        if (m.type === "open") openingPane = m.pane;
+        const conn = connections.get(`${a.exam}:${a.username}`);
+        if (m.type === "incident") {
+          app.log.warn(
+            {
+              attempt: a.id,
+              exam: a.exam,
+              username: a.username,
+              reason: m.reason,
+              diagnostics: m.diagnostics,
+            },
+            "Student exam paused",
+          );
+          if (m.diagnostics)
+            store.audit(
+              "browser",
+              "monitoring-diagnostics",
+              a.id,
+              JSON.stringify(m.diagnostics),
+            );
+          await life.lock(a.id, m.reason);
+          send(ws, {
+            type: "state",
+            attempt: store.attempt(a.id),
+            serverNow: now(),
+            authenticationGap: authenticationGap(a.id),
+          });
+          return;
+        }
+        if (m.type === "focus") {
+          await reportFocus(life, a.id, m.focused);
+          send(ws, {
+            type: "state",
+            attempt: store.attempt(a.id),
+            serverNow: now(),
+            authenticationGap: authenticationGap(a.id),
+          });
+          return;
+        }
+        if (m.type === "preflight-contact") {
+          if (a.state === "PREPARING" && conn?.alive)
+            store.db
+              .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
+              .run(now(), a.id);
+          send(ws, {
+            type: "state",
+            confirmation: m.confirmation,
+            attempt: store.attempt(a.id),
+            serverNow: now(),
+            authenticationGap: authenticationGap(a.id),
+          });
+          return;
+        }
+        if (m.type === "heartbeat") {
+          // Receipt is not execution authorization. Do not make browser
+          // contact wait for SSH, a clock reset or a native commit/reply.
+          // Old clients ignore this distinct type and still receive state.
+          if (a.state === "ACTIVE" && m.confirmation)
+            send(ws, {
+              type: "monitoring-contact",
+              attempt: a.id,
+              confirmation: m.confirmation,
+            });
+          if (!life.expireDeadline(a.id))
+            await reportFocus(life, a.id, m.ready.focus);
+          if (closingSessions) return;
+          a = store.attempt(a.id);
+          if (
+            sockets.get(a.id) !== ws ||
+            a.page_hash !== boundPageHash ||
+            connections.get(`${a.exam}:${a.username}`) !== conn
+          )
+            return;
+          if (a.state === "PREPARING")
+            store.db
+              .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
+              .run(now(), a.id);
+          if (a.state === "ACTIVE") {
+            if (
+              !conn?.alive ||
+              !healthy(a) ||
+              (JSON.parse(a.settings).webcam && !m.ready.webcam)
+            ) {
+              await life.lock(a.id, "Required SSH/capture health lost");
+            } else {
+              store.db
+                .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
+                .run(now(), a.id);
+              if (!leases.has(a.id)) {
+                leases.add(a.id);
+                let renewing = a;
+                try {
+                  const reset = clocks.pending(a.id);
+                  if (reset) {
+                    try {
+                      life.acceptRemote(await agent.call("reset-clock", reset));
+                    } catch {
+                      /* Remains queued for authenticated timing recovery. */
+                    }
+                  }
+                  renewing = store.attempt(a.id);
+                  if (renewing.state === "ACTIVE" && !life.expireDeadline(a.id))
+                    await agent.call("renew-execution-lease", { id: a.id });
+                } catch (error) {
+                  if (closingSessions) return;
+                  // A failed worker already paused this generation. A late lease
+                  // failure must neither repeat its pause nor interrupt a new login.
+                  await life.renewalFailed(
+                    renewing,
+                    () =>
+                      connections.get(
+                        `${renewing.exam}:${renewing.username}`,
+                      ) === conn && sockets.get(renewing.id) === ws,
+                    error,
+                  );
+                } finally {
+                  leases.delete(a.id);
+                }
+              }
+            }
+          }
+          send(ws, {
+            type: "state",
+            confirmation: m.confirmation,
+            attempt: store.attempt(a.id),
+            serverNow: now(),
+            authenticationGap: authenticationGap(a.id),
+          });
+          return;
+        }
+        if (
+          !["ACTIVE", "PREPARING"].includes(a.state) ||
+          (a.state === "ACTIVE" &&
+            (!a.deadline ||
+              a.deadline <= now() ||
+              now() - (a.last_contact || 0) > 15000)) ||
+          !conn?.alive
+        ) {
+          // Window layout/close events can arrive after pause or finalization.
+          // They are harmless housekeeping; input/open still fail closed.
+          if (m.type === "resize" || m.type === "close") return;
+          throw Error("Terminal interaction disabled");
+        }
+        if (m.type === "open") {
+          if (
+            conn.panes.size >= JSON.parse(a.settings).terminals ||
+            conn.panes.has(m.pane)
+          )
+            throw Error("Terminal limit exceeded");
+          const practice = a.state === "PREPARING";
+          const c = await conn.open(
+            a.id,
+            m.pane,
+            practice ? "practice" : "exam",
+          );
+          if (closingSessions) return;
+          if (!conn.panes.has(m.pane)) {
+            send(ws, { type: "closed", pane: m.pane });
+            return;
+          }
+          if (!practice && !(conn instanceof BrowserConnection))
+            monitoring.record(a.id, m.pane, { event: "open" });
+          c.on("data", (bytes: Buffer) => {
+            const current = store.attempt(a!.id);
+            try {
+              if (!practice)
+                monitoring.record(a!.id, m.pane, {
+                  event: "output",
+                  data: bytes.toString("base64"),
+                });
+            } catch {
+              void life.lock(a!.id, "Recording storage failure");
+              return;
+            }
+            if (
+              (current.state === "PREPARING" ||
+                (current.state === "ACTIVE" && current.deadline! > now())) &&
+              sockets.get(current.id)?.readyState === WebSocket.OPEN
+            )
+              send(sockets.get(current.id)!, {
+                type: "output",
+                pane: m.pane,
+                data: bytes.toString("base64"),
+              });
+          });
+          c.on("close", () => {
+            const target = sockets.get(a!.id);
+            if (target) send(target, { type: "closed", pane: m.pane });
+          });
+          send(ws, { type: "opened", pane: m.pane });
+          c.resume();
+        } else {
+          const c = conn.panes.get(m.pane);
+          if (!c) {
+            if (m.type === "resize" || m.type === "close") return;
+            throw Error("Unknown pane");
+          }
+          if (m.type === "input") {
+            if (m.generation !== a.generation)
+              throw Error("Stale input generation");
+            if (c.writableLength > 65536) throw Error("PTY backpressure");
+            c.write(m.data);
+          }
+          if (m.type === "resize") {
+            c.setWindow(m.rows, m.cols, 0, 0);
+            if (a.state === "ACTIVE" && !(conn instanceof BrowserConnection))
+              monitoring.record(a.id, m.pane, {
+                event: "resize",
+                cols: m.cols,
+                rows: m.rows,
+              });
+          }
+          if (m.type === "close") {
+            await c.close();
+            if (a.state === "ACTIVE" && !(conn instanceof BrowserConnection))
+              monitoring.record(a.id, m.pane, { event: "close" });
+          }
+        }
+      } catch (e) {
+        if (closingSessions) return;
+        // Finalization/pause may close SSH while an open request awaits
+        // admission. Remove its optimistic window without covering the receipt.
+        if (
+          openingPane &&
+          a &&
+          !["ACTIVE", "PREPARING"].includes(store.attempt(a.id).state)
+        ) {
+          send(ws, { type: "closed", pane: openingPane });
+          return;
+        }
+        send(ws, {
+          type: "error",
+          error: (e as Error).message,
+          pane: openingPane,
+        });
+      } finally {
+        outstanding--;
+      }
+    };
     ws.on("message", (data) => {
       if (++outstanding > 64) {
         ws.close(1008, "Input queue exceeded");
         return;
       }
-      messageChain = messageChain.then(async () => {
-        let openingPane: string | undefined;
-        try {
-          const rawMessage = JSON.parse(data.toString());
-          if (!a) {
-            const bind = z
-              .object({
-                v: z.literal(1),
-                type: z.literal("bind"),
-                attempt: z.string().uuid(),
-                page: z.string().length(64),
-                binding: z.string().uuid().optional(),
-              })
-              .parse(rawMessage);
-            a = store.attempt(bind.attempt);
-            if (
-              a.username !== session.username ||
-              a.exam !== session.exam ||
-              a.page_hash !== hash(bind.page)
-            )
-              throw Error("Page does not own attempt");
-            const old = sockets.get(a.id);
-            if (old && old !== ws) {
-              await life.lock(a.id, "Second page attempted WebSocket takeover");
-              throw Error("Existing page owns attempt");
-            }
-            if (
-              a.last_contact &&
-              now() - a.last_contact > 15000 &&
-              a.state === "ACTIVE"
-            )
-              await life.lock(a.id, "Connection grace expired");
-            sockets.set(a.id, ws);
-            owned = true;
-            send(ws, {
-              type: "state",
-              binding: bind.binding,
-              attempt: store.attempt(a.id),
-              serverNow: now(),
-              authenticationGap: authenticationGap(a.id),
-            });
-            return;
-          }
-          if (sockets.get(a.id) !== ws || ws.readyState !== WebSocket.OPEN)
-            return;
-          a = store.attempt(a.id);
-          const m = messageSchema.parse(rawMessage);
-          if (m.type === "open") openingPane = m.pane;
-          const conn = connections.get(`${a.exam}:${a.username}`);
-          if (m.type === "incident") {
-            app.log.warn(
-              {
-                attempt: a.id,
-                exam: a.exam,
-                username: a.username,
-                reason: m.reason,
-                diagnostics: m.diagnostics,
-              },
-              "Student exam paused",
+      let rawMessage: any;
+      try {
+        rawMessage = JSON.parse(data.toString());
+      } catch {
+        outstanding--;
+        send(ws, { type: "error", error: "Invalid session message JSON" });
+        return;
+      }
+      // Binding and terminal operations keep their order. Monitoring and policy
+      // reports must not queue behind an SSH renewal, pane open/close or PTY I/O.
+      // Full schema, current socket/page ownership and policy checks still run
+      // inside the handler; one native renewal per attempt remains in flight.
+      let task: Promise<void>;
+      if (
+        owned &&
+        boundAttemptID &&
+        ["heartbeat", "preflight-contact", "focus", "incident"].includes(
+          rawMessage?.type,
+        )
+      )
+        task = handleMessage(rawMessage);
+      else
+        task = messageChain = messageChain.then(() =>
+          handleMessage(rawMessage),
+        );
+      sessionTasks.add(task);
+      void task.then(
+        () => sessionTasks.delete(task),
+        () => {
+          sessionTasks.delete(task);
+          if (!closingSessions)
+            app.log.error(
+              { event: "session-handler-failed", attempt: boundAttemptID },
+              "Session processing failed; native execution authorization remains authoritative",
             );
-            if (m.diagnostics)
-              store.audit(
-                "browser",
-                "monitoring-diagnostics",
-                a.id,
-                JSON.stringify(m.diagnostics),
-              );
-            await life.lock(a.id, m.reason);
-            send(ws, {
-              type: "state",
-              attempt: store.attempt(a.id),
-              serverNow: now(),
-              authenticationGap: authenticationGap(a.id),
-            });
-            return;
-          }
-          if (m.type === "focus") {
-            await reportFocus(life, a.id, m.focused);
-            send(ws, {
-              type: "state",
-              attempt: store.attempt(a.id),
-              serverNow: now(),
-              authenticationGap: authenticationGap(a.id),
-            });
-            return;
-          }
-          if (m.type === "preflight-contact") {
-            if (a.state === "PREPARING" && conn?.alive)
-              store.db
-                .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
-                .run(now(), a.id);
-            send(ws, {
-              type: "state",
-              confirmation: m.confirmation,
-              attempt: store.attempt(a.id),
-              serverNow: now(),
-              authenticationGap: authenticationGap(a.id),
-            });
-            return;
-          }
-          if (m.type === "heartbeat") {
-            if (!life.expireDeadline(a.id))
-              await reportFocus(life, a.id, m.ready.focus);
-            a = store.attempt(a.id);
-            if (a.state === "PREPARING")
-              store.db
-                .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
-                .run(now(), a.id);
-            if (a.state === "ACTIVE") {
-              if (
-                !conn?.alive ||
-                !healthy(a) ||
-                (JSON.parse(a.settings).webcam && !m.ready.webcam)
-              ) {
-                await life.lock(a.id, "Required SSH/capture health lost");
-              } else {
-                store.db
-                  .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
-                  .run(now(), a.id);
-                if (!leases.has(a.id)) {
-                  leases.add(a.id);
-                  let renewing = a;
-                  try {
-                    const reset = clocks.pending(a.id);
-                    if (reset) {
-                      try {
-                        life.acceptRemote(
-                          await agent.call("reset-clock", reset),
-                        );
-                      } catch {
-                        /* Remains queued for authenticated timing recovery. */
-                      }
-                    }
-                    renewing = store.attempt(a.id);
-                    if (
-                      renewing.state === "ACTIVE" &&
-                      !life.expireDeadline(a.id)
-                    )
-                      await agent.call("renew-execution-lease", { id: a.id });
-                  } catch (error) {
-                    // A failed worker already paused this generation. A late lease
-                    // failure must neither repeat its pause nor interrupt a new login.
-                    await life.renewalFailed(
-                      renewing,
-                      () =>
-                        connections.get(
-                          `${renewing.exam}:${renewing.username}`,
-                        ) === conn && sockets.get(renewing.id) === ws,
-                      error,
-                    );
-                  } finally {
-                    leases.delete(a.id);
-                  }
-                }
-              }
-            }
-            send(ws, {
-              type: "state",
-              confirmation: m.confirmation,
-              attempt: store.attempt(a.id),
-              serverNow: now(),
-              authenticationGap: authenticationGap(a.id),
-            });
-            return;
-          }
-          if (
-            !["ACTIVE", "PREPARING"].includes(a.state) ||
-            (a.state === "ACTIVE" &&
-              (!a.deadline ||
-                a.deadline <= now() ||
-                now() - (a.last_contact || 0) > 15000)) ||
-            !conn?.alive
-          ) {
-            // Window layout/close events can arrive after pause or finalization.
-            // They are harmless housekeeping; input/open still fail closed.
-            if (m.type === "resize" || m.type === "close") return;
-            throw Error("Terminal interaction disabled");
-          }
-          if (m.type === "open") {
-            if (
-              conn.panes.size >= JSON.parse(a.settings).terminals ||
-              conn.panes.has(m.pane)
-            )
-              throw Error("Terminal limit exceeded");
-            const practice = a.state === "PREPARING";
-            const c = await conn.open(
-              a.id,
-              m.pane,
-              practice ? "practice" : "exam",
-            );
-            if (!conn.panes.has(m.pane)) {
-              send(ws, { type: "closed", pane: m.pane });
-              return;
-            }
-            if (!practice && !(conn instanceof BrowserConnection))
-              monitoring.record(a.id, m.pane, { event: "open" });
-            c.on("data", (bytes: Buffer) => {
-              const current = store.attempt(a!.id);
-              try {
-                if (!practice)
-                  monitoring.record(a!.id, m.pane, {
-                    event: "output",
-                    data: bytes.toString("base64"),
-                  });
-              } catch {
-                void life.lock(a!.id, "Recording storage failure");
-                return;
-              }
-              if (
-                (current.state === "PREPARING" ||
-                  (current.state === "ACTIVE" && current.deadline! > now())) &&
-                sockets.get(current.id)?.readyState === WebSocket.OPEN
-              )
-                send(sockets.get(current.id)!, {
-                  type: "output",
-                  pane: m.pane,
-                  data: bytes.toString("base64"),
-                });
-            });
-            c.on("close", () => {
-              const target = sockets.get(a!.id);
-              if (target) send(target, { type: "closed", pane: m.pane });
-            });
-            send(ws, { type: "opened", pane: m.pane });
-            c.resume();
-          } else {
-            const c = conn.panes.get(m.pane);
-            if (!c) {
-              if (m.type === "resize" || m.type === "close") return;
-              throw Error("Unknown pane");
-            }
-            if (m.type === "input") {
-              if (m.generation !== a.generation)
-                throw Error("Stale input generation");
-              if (c.writableLength > 65536) throw Error("PTY backpressure");
-              c.write(m.data);
-            }
-            if (m.type === "resize") {
-              c.setWindow(m.rows, m.cols, 0, 0);
-              if (a.state === "ACTIVE" && !(conn instanceof BrowserConnection))
-                monitoring.record(a.id, m.pane, {
-                  event: "resize",
-                  cols: m.cols,
-                  rows: m.rows,
-                });
-            }
-            if (m.type === "close") {
-              await c.close();
-              if (a.state === "ACTIVE" && !(conn instanceof BrowserConnection))
-                monitoring.record(a.id, m.pane, { event: "close" });
-            }
-          }
-        } catch (e) {
-          // Finalization/pause may close SSH while an open request awaits
-          // admission. Remove its optimistic window without covering the receipt.
-          if (
-            openingPane &&
-            a &&
-            !["ACTIVE", "PREPARING"].includes(store.attempt(a.id).state)
-          ) {
-            send(ws, { type: "closed", pane: openingPane });
-            return;
-          }
-          send(ws, {
-            type: "error",
-            error: (e as Error).message,
-            pane: openingPane,
-          });
-        } finally {
-          outstanding--;
-        }
-      });
+        },
+      );
     });
     ws.on("close", () => {
-      if (a && owned && sockets.get(a.id) === ws) sockets.delete(a.id);
+      if (boundAttemptID && owned && sockets.get(boundAttemptID) === ws)
+        sockets.delete(boundAttemptID);
     });
   });
   for (const row of store.db
@@ -2541,6 +2606,7 @@ export async function createApp(
     );
   }
   app.addHook("preClose", async () => {
+    closingSessions = true;
     // Close pending authentication before HTTP shutdown waits for upgraded sockets.
     for (const p of pending.values()) p.connection?.close();
     for (const client of wss.clients) client.terminate();
@@ -2557,6 +2623,9 @@ export async function createApp(
     for (const client of wss.clients) client.terminate();
     wss.close();
     agent.close();
+    // Connection.close rejects in-flight IPC/SSH operations. Drain their bounded
+    // handlers before closing SQLite; late replies must not use a closed DB.
+    await Promise.allSettled([...sessionTasks]);
     store.close();
   });
   return { app, store, life };

@@ -118,6 +118,18 @@ using the root agent identity. See interruption-management.md for private read
 retention, revisions and compatibility. Existing deployed behavior is unchanged.
 The review stays current even if its attempt no longer matches the roster filter.
 
+Local monitoring-liveness candidate H2a (not deployed): a separate contact receipt
+keeps browser liveness independent of a delayed final SSH/state reply and blocked
+terminal operations. It is not native execution permission, a clock change or
+resume approval. The broader native alternate-path/technical-hold/C3 freeze work
+is unfinished; do not tell students that infrastructure-only automatic recovery
+or preserved editor buffers is installed. A timeout alone does not establish
+student misconduct, capture loss or a disconnected SSH transport. Diagnose the
+specific path and distinguish observed facts from uncertainty; independent image
+uploads are not, by themselves, proof of complete authorized monitoring. The
+approved technical-only automatic recovery policy and remaining qualification
+are in monitoring-liveness-plan.md. Production recovery requirements are unchanged.
+
 Submission distinguishes collection pending/failed from a verified protected copy. It
 shows collection/execution/protection timestamps, file and omission counts/reasons, manifest/checksum, and server-access recovery/release dates; no
 archive downloads are offered. Monitoring deletion requires explicit confirmation naming

@@ -63,9 +63,10 @@ full privileged qualification or deployment authorization.
      on C3's verified all-writer freeze, input-epoch revocation and retained viable
      SSH/PTYs. Transport uncertainty must not routinely kill editors or force MFA.
      Preserve genuine policy locks, actual authentication loss and deadline rules.
-  4. Decide the consequential technical-hold recovery policy before enabling it:
-     recommend automatic recovery only when the same ownership, current complete
-     monitoring and uninterrupted authorized coverage are positively verified,
+  4. Implement the October 21 approved technical-hold recovery policy only after
+     its evidence/containment prerequisites pass: automatic recovery requires
+     positively verified same ownership, current complete monitoring and
+     uninterrupted authorized coverage,
      with no actual policy violation or authentication loss. Otherwise retain
      explicit review/recovery; never silently override C3 continuation approval.
      No automatic clock refunds, deadline extension or completed-attempt reopening.
@@ -76,10 +77,23 @@ full privileged qualification or deployment authorization.
      Require full integration, native race/build and browser evidence before any
      future drained rollout. Mixed versions must refuse unsafe enablement.
 
-  **Status:** investigation and implementation plan recorded; initiating cause,
-  recovery-policy decision, implementation and new regression qualification are
-  outstanding. This is not covered by the completed expiry/admin-action race
-  fixes below. No fix is implemented, tested or deployed by this planning entry.
+  **Status:** automatic recovery of positively verified infrastructure-only holds
+  is now approved;
+  actual policy violations/authentication loss retain their existing recovery
+  requirements. H1 reproduces serial acknowledgement blockage with fresh HTTP
+  screen/webcam uploads and a real authenticated SSH terminal channel (simulated
+  shell/policy, not privileged containment). The old handler fails the regression.
+  H2a candidate adds independent bounded monitoring/policy handling, typed contact-
+  only receipts, page fences and shutdown draining. Nine focused interface/race
+  checks and all361 application tests pass locally; three fresh browser checks
+  cover receipt authority and actual WASM SSH with final state replies lost for
+  17.5 seconds. All91 combined browser checks pass (11.2m); full native race/
+  resource/namespace/compiler checks pass (core167.9s/CLI5.9s), build/vet/typecheck
+  pass. H2a does not prevent
+  native lease expiry when every renewal path stalls and does not implement
+  technical hold/thaw. Native evidence/receipt recovery, alternate monitoring,
+  input epochs and C3 verified containment remain open; this item stays unchecked.
+  The initiating production fault remains unproven. No fix is deployed.
   Production remains unchanged; deployment is not authorized. Prioritize this
   correctness work over noncritical feature expansion when development resumes.
 

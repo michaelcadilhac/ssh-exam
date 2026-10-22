@@ -4,6 +4,7 @@ Updated 2026-10-21, local source inspection and instructor decisions. **C1–C8 
 approved for local implementation. The instructor subsequently revoked the
 conditional deployment authorization: do not deploy or execute service
 consolidation at the end of this work. Nothing here is a deployment receipt.**
+The instructor also approved the technical-only automatic recovery policy below.
 Investigation remains open until decisions
 and acceptance evidence exist.
 
@@ -351,10 +352,28 @@ workflows and conflict/retry tests remain outstanding.
 
 ## Implementation/deployment authorization (October 21)
 
-The instructor resumed TODO under all eight decisions and authorized deployment
+The instructor initially resumed TODO under all eight decisions and authorized deployment
 to csc-sys after all required tests succeed, without another approval request.
 This supersedes the blanket local-only deployment deferral for that target, not
 the prohibition on interrupting exams, weakening safeguards or changing student
 records as a shortcut. Verify drain, backups, artifacts and compatibility before
 cutover. No production change or temporary-service consolidation is recorded as
-having happened. Resolve the actual gateway/agent host boundary before deployment.
+having happened. The instructor subsequently revoked that authorization: **local
+development/testing only; do not deploy at the end or consolidate live agents.**
+Only separately authorized isolated qualification that leaves the current install
+and running exams untouched is allowed on csc-sys. The current work is local.
+
+## Technical-only monitoring recovery (approved October 21)
+
+The instructor approved automatic recovery of a positively verified infrastructure-
+only technical hold, not automatic recovery of actual policy violations or lost
+authentication. Require the same authenticated ownership, complete current
+monitoring and uninterrupted authorized coverage, no input from a retired epoch,
+verified all-writer containment and an unexpired attempt. A timeout or fresh
+camera/terminal bytes alone cannot establish those facts. Unproven gaps retain
+explicit recovery/review without being mislabeled student misconduct. Genuine
+policy locks and actual ownership loss keep their existing authorization/fresh-
+authentication rules. No automatic refund, clock stop/extension or reopening of
+completed attempts. See monitoring-liveness-plan.md: H1/H2a is a partial local
+contact-path candidate; full native evidence, alternate path and C3 verified
+containment/thaw are not implemented or deployed.

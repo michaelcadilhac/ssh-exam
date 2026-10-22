@@ -671,6 +671,19 @@ export function Workspace({
       s.onmessage = (e) => {
         if (!mounted || ws.current !== s) return;
         const m = JSON.parse(e.data);
+        if (m.type === "monitoring-contact") {
+          // A page-bound receipt confirms contact, not native execution or
+          // readiness. Never apply a snapshot, arm input, bind or thaw here.
+          if (
+            m.attempt === id &&
+            bound.current &&
+            online.current &&
+            controlReady.current &&
+            confirmation.confirm(m.confirmation)
+          )
+            lastAck.current = performance.now();
+          return;
+        }
         if (m.type === "state") {
           if (m.attempt?.id !== id) return;
           const fresh = confirmation.confirm(m.confirmation ?? m.binding);
