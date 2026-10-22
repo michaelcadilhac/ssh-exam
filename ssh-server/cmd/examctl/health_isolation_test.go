@@ -20,6 +20,15 @@ import (
 )
 
 func TestHealthActualCompiledRootCLIReleasesStateDuringHeldManagerQuery(t *testing.T) {
+	testHealthActualCompiledRootCLIWithHeldDependency(t, false)
+}
+
+func TestHealthActualCompiledRootCLIBoundsHungAccountLookup(t *testing.T) {
+	testHealthActualCompiledRootCLIWithHeldDependency(t, true)
+}
+
+func testHealthActualCompiledRootCLIWithHeldDependency(t *testing.T, holdNSS bool) {
+	t.Helper()
 	if os.Getenv("EXAM_MANAGEMENT_USERNS") != "1" {
 		t.Skip("requires explicitly authorized isolated root user/mount namespace")
 	}
@@ -65,12 +74,16 @@ func TestHealthActualCompiledRootCLIReleasesStateDuringHeldManagerQuery(t *testi
 	if err := os.WriteFile(adapter, adapterData, 0700); err != nil {
 		t.Fatal(err)
 	}
-	gate := filepath.Join(dir, "health-probe-gate")
+	prefix, holdOption := "health", "hold"
+	if holdNSS {
+		prefix, holdOption = "nss", "hold_nss"
+	}
+	gate := filepath.Join(dir, prefix+"-probe-gate")
 	if err := syscall.Mkfifo(gate, 0600); err != nil {
 		t.Fatal(err)
 	}
 	policy := filepath.Join(dir, "policy.json")
-	write(policy, map[string]any{"swap": "0", "capture": filepath.Join(dir, "captured-query.json"), "hold": true})
+	write(policy, map[string]any{"swap": "0", "capture": filepath.Join(dir, "captured-query.json"), holdOption: true})
 	binary := filepath.Join(dir, "examctl")
 	build := exec.Command("go", "build", "-o", binary, ".")
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
@@ -93,7 +106,7 @@ func TestHealthActualCompiledRootCLIReleasesStateDuringHeldManagerQuery(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
 	health := exec.CommandContext(ctx, "/usr/bin/unshare", "--user", "--map-root-user", "--mount", "/usr/bin/python3", adapter, "--enter", adapter, inode("/proc/self/ns/user"), inode("/proc/self/ns/mnt"), binary, "--config", config, "health")
 	health.Env = append(os.Environ(), "EXAM_COLLECTION_READINESS_FIXTURE="+policy)
@@ -114,7 +127,7 @@ func TestHealthActualCompiledRootCLIReleasesStateDuringHeldManagerQuery(t *testi
 	}()
 	until := time.Now().Add(3 * time.Second)
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "health-probe-entered")); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, prefix+"-probe-entered")); err == nil {
 			break
 		}
 		select {
@@ -136,15 +149,30 @@ func TestHealthActualCompiledRootCLIReleasesStateDuringHeldManagerQuery(t *testi
 	if infoErr != nil || json.Unmarshal(infoOut, &observed) != nil || observed.ID != id || observed.Deadline != a.Deadline || observed.AccessState != "HELD" {
 		t.Error("real root CLI inspection waited behind health or changed target", infoErr, string(infoOut))
 	}
-	fd, err := syscall.Open(gate, syscall.O_WRONLY|syscall.O_NONBLOCK|syscall.O_CLOEXEC, 0)
-	if err != nil {
-		t.Fatal("owned readiness hold expired before release", err)
+	settled := false
+	if holdNSS {
+		select {
+		case err := <-done:
+			done <- err
+			settled = true
+			if err != nil || !bytes.Contains(output.Bytes(), []byte("account lookup unavailable")) {
+				t.Error("hung account lookup did not fail closed with an actionable readiness issue", err, output.String(), diagnostics.String())
+			}
+		case <-time.After(6 * time.Second):
+			t.Error("readiness account lookup has no bounded wait")
+		}
 	}
-	writer := os.NewFile(uintptr(fd), "private-readiness-release")
-	_, err = writer.Write([]byte("1"))
-	writer.Close()
-	if err != nil {
-		t.Fatal(err)
+	if !settled {
+		fd, err := syscall.Open(gate, syscall.O_WRONLY|syscall.O_NONBLOCK|syscall.O_CLOEXEC, 0)
+		if err != nil {
+			t.Fatal("owned readiness hold expired before release", err)
+		}
+		writer := os.NewFile(uintptr(fd), "private-readiness-release")
+		_, err = writer.Write([]byte("1"))
+		writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	select {
 	case err := <-done:

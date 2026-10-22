@@ -85,23 +85,7 @@ func (e *Engine) productionReady() (bool, []string) {
 	if !clockSynchronized() {
 		missing = append(missing, "clock synchronization not verified")
 	}
-	for name, account := range e.Config.Accounts {
-		output, err := exec.Command("/usr/bin/getent", "passwd", name).Output()
-		fields := strings.Split(strings.TrimSpace(string(output)), ":")
-		valid := err == nil && len(fields) == 7
-		if valid {
-			uid, parseErr := strconv.Atoi(fields[2])
-			valid = parseErr == nil && uid == account.UID
-		}
-		if valid && account.SandboxOnly {
-			valid = fields[5] == account.Home && fields[6] == account.Shell
-		} else if valid {
-			valid = fields[6] == "/usr/local/libexec/exam-login"
-		}
-		if !valid {
-			missing = append(missing, "account UID/login policy differs from root registry: "+name)
-		}
-	}
+	missing = append(missing, configuredAccountReadiness(e.Config.Accounts)...)
 	if e.Config.TemporaryAccountPolicy {
 		if _, err := e.handoffSigner(); err != nil {
 			missing = append(missing, "protected SSH handoff CA unavailable")

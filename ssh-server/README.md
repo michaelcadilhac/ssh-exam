@@ -477,6 +477,16 @@ unsaved editor state is lost. The local deadline watchdog stays independent.
 
 ## Local examctl administration
 
+Local health/readiness corrections (not deployed): `examctl help health` explains
+outside-state observations, unavailable/busy versus permission and uncached Begin
+guards. Configured-account NSS lookups share a five-second budget, bounded4KiB
+stdout per account and250ms retained-pipe drain. A provider timeout/failure is
+unavailable verification, not a confirmed account change or student violation.
+Verify NSS and retry `examctl health`; inspect `examctl agent status` without
+restarting active exams. These are not bounds on every filesystem/state/checker
+operation or a host-wide probe/process limit. See docs/native-health-isolation.md
+and docs/native-readiness-accounts.md for exact local/remaining guest evidence.
+
 Local pane-management candidate (not deployed): `examctl help panes` explains
 bounded offline `panes list ATTEMPT`, `panes show ATTEMPT PANE` and reviewed
 `panes close ATTEMPT PANE --revision SNAPSHOT --reason TEXT`. Reads never initialize,

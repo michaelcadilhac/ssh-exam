@@ -7,6 +7,7 @@ import ctypes
 import json
 import os
 from pathlib import Path
+import select
 import stat
 import sys
 
@@ -36,9 +37,36 @@ if args and args[0] == '--enter':
     mount(adapter, '/usr/bin/getent', 4096)  # Synthetic NSS only; never query host accounts.
     os.execv(command[0], command)
 
+policy_path = Path(os.environ['EXAM_COLLECTION_READINESS_FIXTURE'])
+info = policy_path.lstat()
+assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1
+assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_size <= 4096
+policy = json.loads(policy_path.read_text())
+assert set(policy) in ({'swap', 'capture'}, {'swap', 'capture', 'hold'},
+                       {'swap', 'capture', 'hold_nss'})
+capture = Path(policy['capture'])
+assert capture.parent == policy_path.parent and capture.name == 'captured-query.json'
+assert not capture.is_symlink()
+
 if os.path.basename(sys.argv[0]) == 'getent':
     assert os.getuid() == os.geteuid() == 0
     assert args == ['passwd', 'synthetic']
+    if 'hold_nss' in policy:
+        assert policy['hold_nss'] is True
+        gate = policy_path.parent / 'nss-probe-gate'
+        info = gate.lstat()
+        assert stat.S_ISFIFO(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1
+        assert stat.S_IMODE(info.st_mode) == 0o600
+        fd = os.open(gate, os.O_RDWR | os.O_NONBLOCK | os.O_NOFOLLOW)
+        entered = policy_path.parent / 'nss-probe-entered'
+        marker = os.open(entered, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        os.write(marker, b'entered\n')
+        os.close(marker)
+        # Bounded test-only hold, including on an original-bug failure. No
+        # installed account/NSS provider is modified or contacted.
+        assert select.select([fd], [], [], 10)[0], 'Synthetic NSS hold timed out'
+        assert os.read(fd, 1) == b'1'
+        os.close(fd)
     print('synthetic:x:20001:20001::/home/synthetic:/usr/local/libexec/exam-login')
     sys.exit(0)
 
@@ -46,15 +74,6 @@ assert os.path.basename(sys.argv[0]) == 'systemctl'
 expected = ['show', 'exam-collection.slice', '--property=LoadState',
             '--property=MemoryMax', '--property=MemorySwapMax', '--property=TasksMax']
 assert args == expected, 'Readiness must explicitly request every existing pool bound'
-policy_path = Path(os.environ['EXAM_COLLECTION_READINESS_FIXTURE'])
-info = policy_path.lstat()
-assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1
-assert stat.S_IMODE(info.st_mode) == 0o600 and info.st_size <= 4096
-policy = json.loads(policy_path.read_text())
-assert set(policy) in ({'swap', 'capture'}, {'swap', 'capture', 'hold'})
-capture = Path(policy['capture'])
-assert capture.parent == policy_path.parent and capture.name == 'captured-query.json'
-assert not capture.is_symlink()
 capture.write_text(json.dumps(args) + '\n')
 if 'hold' in policy:
     assert policy['hold'] is True

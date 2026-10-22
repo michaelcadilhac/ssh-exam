@@ -79,6 +79,15 @@ guards remain fresh and unchanged. See docs/native-health-isolation.md for local
 and exact-artifact guest evidence and the remaining guarded worker regression.
 Preparation/startup/home-copy waits and durable-storage delays remain open.
 
+The following local configured-account readiness correction uses one five-second
+NSS lookup budget across the entire static registry, bounded4096-byte output and
+250ms retained-pipe drain. Unavailable/oversized/late results refuse verification
+with actionable diagnostics, not an assertion of changed account policy or
+student misconduct. Current UID/managed-shell and sandbox-home/shell checks remain
+fresh and uncached. This does not bound all readiness IO or change ongoing
+monitoring; see docs/native-readiness-accounts.md for actual CLI/local evidence
+and pending new exact-artifact guest qualification. No deployment is authorized.
+
 ## 2. Product context and defaults
 
 The instructor administers a programming exam on a Unix/Linux class server. Questions, tools, documentation, student files, and submission collection are server-side. The instructor has root access on that server. Students use their personal computers at home or supervised computers in person.
