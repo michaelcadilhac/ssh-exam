@@ -10,6 +10,14 @@ Wait, then deliberately sign in again—do not retain/retry credentials automati
 or reset restrictions to work around the limit. This message correction is not
 deployed and does not change instructor authorization requirements.
 
+Critical local monitoring work is staged, not deployed. Contact-only browser
+receipts are not native work permission. Signed evidence/coverage and framed
+terminal-input candidates are currently unwired; they do not make a timeout safe
+to ignore, retain an editor through a lockout or allow automatic continuation.
+Verified all-writer freeze, input revocation/discard, current ownership and the
+approved full recovery conditions must pass together before any new mode can be
+enabled. See monitoring-liveness-plan.md and retained-ssh-input-protocol.md.
+
 First select an exam in the top bar. The exam toolbar contains **Exam settings** and
 **Add student**; **New exam** remains beside the exam picker. Global **Administration**
 contains **Alerts**, **Add administrator** and **Sign out**. Notification setup and SMTP

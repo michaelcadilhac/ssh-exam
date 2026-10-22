@@ -8,6 +8,27 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Critical continuation after7f443b1: H4a/C3 unused framed-input codecs, canonical
+byte fixture and delivery/revocation controller design are under local
+qualification. Real encrypted SSH-channel and raw Linux PTY checks preserve
+binary control/UTF-8 bytes; invalid/oversized headers refuse before reading bodies,
+truncation exposes no partial input and empty input has no authority. The32KiB
+limit matches existing worker bytes and accepts current8000-code-unit Unicode
+pastes. Decoder fuzz passes176647 executions/10s/two workers; focused Go race
+passes. All383 app checks/71files pass (82.03s); full native race/resource/namespace/
+compiler checks pass (core163.9s/CLI6.0s), static build/vet and app typecheck/build
+pass. All91 browser checks pass again (11.2m), with exact WASM/runtime/JS/CSS/
+worker/HTML hashes verified unchanged before/after the frozen run.
+The earlier H2b/H3b unchanged-WASM claims below were unsupported and are corrected:
+printed JS/CSS/worker filenames matched, but no earlier WASM hash comparison was
+made. Rebuilt H4a WASM SHA256 is
+071ee17c59ff7c39d44eec6514def75ba15b627ef541f23431003e4a036a54ad.
+No runtime input bridge, capability, policy or authority path uses these codecs.
+Root durable epoch/lease/revocation control, authenticated negotiation, all-writer
+freeze/input discard and technical-hold recovery remain open. Continue with the
+per-pane revocation/drain controller; never wait behind IO under its mutex or
+claim an undrained write is safely stopped. See retained-ssh-input-protocol.md.
+
 Critical continuation afterf26234b: H3b bounded, internal/unwired evidence ledger
 and explicit continuous-coverage identity are under qualification. Complete
 challenged policy plus required validated-frame metadata never freshen on receipt;
@@ -22,8 +43,11 @@ model with zero false holds in its declared envelope. This is not a production
 endpoint or privileged availability claim. Full app repeat passes 383 tests/71
 files (80.49s); native race/resource/namespace/compiler passes core173.0s/CLI6.6s,
 static build/vet and typecheck/build pass. Coverage-bound metadata fuzz passes 268
-executions in 10 seconds with two workers. Browser assets are unchanged from the
-91-check run. Verified epoch handover, durable native receipt/revocation, alternate
+executions in 10 seconds with two workers. Printed JS/CSS/worker filenames were
+unchanged from the 91-check run; WASM hashes were not compared. This is not
+evidence that the rebuilt WASM artifact was qualified by that earlier run.
+Fresh exact-artifact browser qualification follows in H4a. Verified epoch handover,
+durable native receipt/revocation, alternate
 routes and C3 input/writer containment remain open; no thaw is enabled. Native
 Cutoff's current independent boundary is deadlines, not a safe standalone
 monitoring-expiry transition; investigate/fence that with C3, never blind-freeze
@@ -38,7 +62,9 @@ three shared-contract tests pass; short two-worker fuzz passes376 executions.
 No lease, callback, live route, thaw, capability or configuration uses it. Full
 app repeat passes364 tests/69 files (79.49s); full native race/resource/namespace/
 compiler repeat passes core169.7s/CLI6.5s. Static build/vet, typecheck/build pass;
-browser assets retain the H2a/C2a4 run's hashes, with no live client import. Owner epoch
+printed JS/CSS/worker filenames match H2a/C2a4, with no live client import. WASM
+identity was not compared and the earlier browser run does not qualify that
+rebuilt artifact. Owner epoch
 assignment, coverage/receipt ledger, alternate exchange and C3 verified input/
 writer containment remain prerequisites; no automatic recovery is enabled. See
 monitoring-evidence-contract.md. Continue beyond this internal checkpoint.

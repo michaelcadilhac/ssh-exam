@@ -1,0 +1,7 @@
+{
+  "epoch": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pane": "12345678-1234-1234-1234-123456789abc",
+  "sequence": 1,
+  "data_base64": "YQMADQr/8J+TqQ==",
+  "wire_hex": "4558494e01000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa12345678123412341234123456789abc00000000000000010000000a6103000d0afff09f93a9"
+}

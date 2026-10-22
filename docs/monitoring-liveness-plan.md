@@ -104,9 +104,19 @@ gaps. The native candidate now rejects a replacement coverage identity. Initial
 bootstrap is limited to unexpired ACTIVE authority with no consumed evidence;
 never use it to thaw/reset a held context. Implicit owner/input/clock changes
 refuse pending a verified transition protocol. Compiled private Go/Node proof
-  interoperability and22 focused cases pass; full383 app and native race/resource
-  qualification pass, with unchanged browser assets. This remains internal only.
+interoperability and22 focused cases pass; full383 app and native race/resource
+qualification pass. Printed JS/CSS/worker filenames were unchanged, but WASM
+identity against the prior browser run was not established. Fresh exact-artifact
+browser qualification is required; this remains internal only.
 This neither closes H3 nor supplies missing native journals/C3 barriers/routes.
+
+H4a now adds private unused native/browser-Go framed-input codecs with a canonical
+binary fixture and actual raw-PTY/encrypted-SSH checks. The existing32KiB UTF-8
+worker cap is preserved, including large Unicode pastes. Decode is not permission:
+root durable epochs, per-pane revocation/drain, all-writer freeze and input queue
+discard, authenticated mode negotiation and held-recovery integration are still
+required together. Current bridges remain raw; no capability enables retention.
+See [retained-ssh-input-protocol.md](retained-ssh-input-protocol.md).
 
 1. **Browser contact:** acknowledge a valid current page's monitoring message
    promptly without waiting for SSH/collection/management work. This acknowledgement

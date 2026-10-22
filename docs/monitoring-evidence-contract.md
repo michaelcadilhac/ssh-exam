@@ -84,8 +84,10 @@ rules. A short two-worker fuzz run passed 376 executions; this is limited parser
 evidence, not an absolute no-fault guarantee or real network qualification.
 All364 application tests/69 files pass (79.49s), full native race/resource/
 namespace/compiler tests pass (core169.7s/CLI6.5s), static build/vet and application
-typecheck/build pass. Browser JS/CSS/WASM asset hashes are unchanged from the91-
-check H2a/C2a4 run: the new contracts are not imported by the live client. These
+typecheck/build pass. The printed JS/CSS/worker filenames were unchanged from the
+91-check H2a/C2a4 run; WASM identity was not compared, so that run must not be
+claimed to qualify the rebuilt WASM artifact. The new contracts are not imported
+by the live client. These
 are primitive-level checks, not alternate-path end-to-end qualification. See
 todo-progress.md; no new browser runtime is imported.
 
@@ -148,8 +150,10 @@ false holds within that stated envelope. This is not a real-network/privileged
 availability guarantee. All 383 application tests/71 files pass (80.49s), fresh
 native race/resource/namespace/compiler tests pass (core173.0s/CLI6.6s), static
 build/vet and typecheck/build pass. The revised coverage-bound parser also passes
-a separate two-worker 10-second fuzz run (268 executions). Browser assets remain
-unchanged from the 91-check H2a/C2a4 run; no live caller imports this ledger. This
+a separate two-worker 10-second fuzz run (268 executions). Printed JS/CSS/worker
+filenames were unchanged; WASM identity was not established against the earlier
+91-check run. A fresh exact-artifact browser qualification is required after
+rebuilding. No live caller imports this ledger. This
 does not qualify a production callback, native commit or held recovery.
 
 Additional native source boundary identified: independent `Cutoff` freezes

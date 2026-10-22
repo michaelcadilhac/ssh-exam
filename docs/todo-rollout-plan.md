@@ -23,6 +23,16 @@ H2a as the completed reliability fix or increase a timeout to pass qualification
 Keep the existing drained-only temporary-agent consolidation and rollback gates.
 See monitoring-liveness-plan.md; nothing is deployed or migrated here.
 
+H4a's unused input codec changes no live bridge or compatibility claim. Never
+activate framed input on one side of a raw-input channel or infer support by
+sniffing bytes. Future mode/epoch negotiation must be authenticated and require
+matching browser worker, proxy, native gate, every retained PTY owner and watchdog.
+Reject unsafe mixed versions before Begin/retained resume with actionable guidance;
+do not terminate existing exams to retrofit them. Qualify the actual WASM binary,
+not merely its JS loader filename: record hashes before/after frozen browser
+tests and rebuild/retest if that artifact changes. The initial H2b/H3b record has
+been corrected because the earlier WASM identity was not compared.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

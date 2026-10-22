@@ -108,6 +108,17 @@ full privileged qualification or deployment authorization.
   an old snapshot racing a healthy renewal. The critical item stays unchecked.
   Production remains unchanged; deployment is not authorized. Prioritize this
   correctness work over noncritical feature expansion when development resumes.
+  H4a/C3 now has a private unused framed-input codec and canonical cross-language
+  byte fixture. Actual encrypted SSH-channel and raw Linux PTY tests cover binary
+  control keys, UTF-8, fragmentation, truncation, malformed headers and bounded
+  payloads. The32KiB cap preserves the existing worker limit and supported Unicode
+  pastes. Full native race/resource/namespace/compiler tests and all383 application
+  checks pass; all91 browser checks pass again (11.2m) with exact WASM/runtime/
+  JS/CSS/worker/HTML hashes unchanged before/after the run. No live
+  bridge/worker input caller or capability uses it. Root epochs, per-pane revocation
+  acknowledgements, queue discard, all-writer freeze and coordinated recovery are
+  still required; a codec alone cannot preserve editor buffers safely. See
+  docs/retained-ssh-input-protocol.md. This critical item remains unchecked.
 
 ## Firm design policy: examctl is the complete management interface
 

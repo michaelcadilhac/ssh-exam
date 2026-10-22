@@ -1996,6 +1996,17 @@ routes and C3 all-writer/input containment remain unimplemented. No live caller 
 automatic resume is enabled. A standalone monitoring cutoff must coordinate
 lease/revocation barriers; freezing an old snapshot can itself create false holds.
 
+H4a/C3 adds private, unused browser-Go/native framed-input codecs sharing a
+canonical binary fixture. Preserve the existing32KiB UTF-8 byte limit, control
+bytes and large Unicode pastes. Input epoch and pane sequence must be stamped
+before the first asynchronous key queue, never assigned at dequeue. Decoding is
+not authority: a native current-epoch/replay/deadline/revocation controller and
+verified all-writer/input-discard barriers remain mandatory. Revocation must not
+wait behind a blocked PTY write; its drain acknowledgement must not claim success
+until that write actually stops. No runtime bridge, mode negotiation or advertised
+capability uses the codec yet. See docs/retained-ssh-input-protocol.md; this is not
+buffer-retention or automatic-recovery enablement.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.
