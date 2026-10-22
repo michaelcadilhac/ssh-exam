@@ -197,7 +197,6 @@ type Engine struct {
 	healthMu                  sync.Mutex
 	paneSetupMu               sync.Mutex
 	paneLaunchMu              sync.Mutex
-	monitorMu                 sync.Mutex
 	state                     State
 	quiesce                   func(*Attempt) error
 	terminate                 func(*Attempt) error

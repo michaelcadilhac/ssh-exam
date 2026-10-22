@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func TestSSHReceiptBindsVerifiedIdentityAndRequest(t *testing.T) {
@@ -174,5 +176,91 @@ func TestIndependentPaneProcessesCannotRacePastSharedRecordingBudget(t *testing.
 	b, _ := second.file.Stat()
 	if accepted != 1 || a.Size()+b.Size() > 1024*1024 {
 		t.Fatal("cross-process quota race")
+	}
+}
+
+func TestRecordingIOAdmissionBoundsActualAppendAndReleasesCapacity(t *testing.T) {
+	e := &Engine{Config: Config{State: t.TempDir()}}
+	r, err := e.newRecorder(finalID, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.file.Close()
+	lock, err := os.OpenFile(filepath.Join(e.Config.State, "monitoring", finalID+".lock"), os.O_RDWR, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lock.Close()
+	before, err := r.file.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cap(terminalRecordingIO) != terminalRecordingIOSlots || len(terminalRecordingIO) != 0 {
+		t.Fatal("unexpected recording admission state; do not clear someone else's slots")
+	}
+	for i := 0; i < terminalRecordingIOSlots; i++ {
+		terminalRecordingIO <- struct{}{}
+	}
+	external := terminalRecordingIOSlots
+	finished := make(chan struct{})
+	var writeErr error
+	go func() {
+		writeErr = r.record(map[string]any{"event": "output", "data": "bounded-admission"})
+		close(finished)
+	}()
+	defer func() {
+		if external == terminalRecordingIOSlots {
+			<-terminalRecordingIO
+			external--
+		}
+		select {
+		case <-finished:
+			for i := 0; i < external; i++ {
+				<-terminalRecordingIO
+			}
+		case <-time.After(3 * time.Second):
+			t.Error("recording worker did not release owned admission after capacity was returned")
+		}
+	}()
+	observed := false
+	for until := time.Now().Add(time.Second); time.Now().Before(until); {
+		select {
+		case <-finished:
+			t.Fatal("recording bypassed saturated IO admission")
+		default:
+		}
+		err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == syscall.EWOULDBLOCK {
+			observed = true
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_UN); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if !observed {
+		t.Fatal("writer never reached its actual attempt lock before admission")
+	}
+	blocked, err := r.file.Stat()
+	if err != nil || blocked.Size() != before.Size() {
+		t.Fatal("append happened before IO admission", err)
+	}
+	<-terminalRecordingIO
+	external--
+	select {
+	case <-finished:
+	case <-time.After(3 * time.Second):
+		t.Fatal("one returned slot did not permit the real append/sync")
+	}
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
+	after, err := os.ReadFile(r.file.Name())
+	if err != nil || !bytes.Contains(after, []byte("bounded-admission")) || len(terminalRecordingIO) != external {
+		t.Fatal("append missing or IO capacity leaked", err)
 	}
 }

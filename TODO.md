@@ -388,6 +388,16 @@ pass. See docs/terminal-recording-faults.md for evidence, withdrawn IO-join scop
 and remaining lifecycle limits. No new retained mode, deadline/hold change or
 production fix; this does not identify the initiating heartbeat incident cause.
 
+October22 another confirmed timed-recording bug is fixed/tested locally: a held
+attempt quota lock no longer stalls another already-open terminal in the SAME
+coordinator. Per-attempt cross-process quota and durable record-before-forward
+remain; recording IO is bounded to16 transactions, after nonblocking attempt-lock
+admission. Actual two-terminal memory/interval/hold, saturation/quota and detected
+slot-order mutation controls pass, with full native races/resources/build. See
+docs/terminal-recording-isolation.md for evidence and limits. This is not full
+timed C12, disk-wide isolation, class-capacity proof or the production incident
+cause. No deployed change; the critical item and broad TODO count remain open.
+
 ## Firm design policy: examctl is the complete management interface
 
 **If an exam-management operation can be done, it must be doable through

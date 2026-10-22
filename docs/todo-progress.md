@@ -3,6 +3,17 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 recording-isolation outcome: a real held quota flock no longer stalls
+another attempt's existing terminal in the same coordinator. The recorder retains
+only storage/budget/IDs; nonblocking attempt-flock waits precede a16-transaction
+IO bound, preserving quota and durable recording. Actual two-terminal old behavior
+is RED1.937s and wrong slot ordering RED2.940s; a missing-home setup failure is
+retained separately. Three final focused race repeats pass25.190s, full native
+race/resource/namespace/compiler/default-size core295.622s/CLI25.171s and static
+build/vet/diff pass. No unchanged app/browser rebuild/rerun; no new guest/upload/
+deployment. Full scope/state review and limits: terminal-recording-isolation.md.
+Timed C12 lifecycle, R2/C3/C9 and remaining broad TODOs stay open (11/38).
+
 October22 stale recording-fault fix: actual timed Unix/PTY failures no longer
 lock replacement panes/authenticated generations. Current loss remains enforced
 after native clock extension; pending fault resolution precedes normal metadata

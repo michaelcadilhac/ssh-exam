@@ -226,10 +226,11 @@ func TestTerminalCoordinatorChild(t *testing.T) {
 	}
 	setup := os.NewFile(3, "coordinator-test-config")
 	var input struct {
-		Config                  Config
-		PID, UID                int
-		Transport               string
-		RecordingFailureBarrier string
+		Config                                     Config
+		PID, UID                                   int
+		Transport                                  string
+		RecordingFailureBarrier                    string
+		RecordingLockBarrier, RecordingLockAttempt string
 	}
 	if json.NewDecoder(setup).Decode(&input) != nil {
 		os.Exit(90)
@@ -265,6 +266,20 @@ func TestTerminalCoordinatorChild(t *testing.T) {
 					time.Sleep(5 * time.Millisecond)
 				}
 				os.Exit(99)
+			}
+		}
+	}
+	if input.RecordingLockBarrier != "" {
+		// Tighten the production bound to ONE slot in this child only. A blocked
+		// attempt flock must consume zero; otherwise the healthy actual gate stalls.
+		terminalRecordingIO = make(chan struct{}, 1)
+		terminalRecordingLockProbe = func(id string) {
+			if id == input.RecordingLockAttempt {
+				if _, err := os.Stat(input.RecordingLockBarrier + ".armed"); err == nil {
+					if err := os.WriteFile(input.RecordingLockBarrier+".entered", []byte("actual-recording-lock"), 0600); err != nil {
+						os.Exit(100)
+					}
+				}
 			}
 		}
 	}
@@ -348,6 +363,10 @@ func TestActualTimedRecordingFaultCannotLockReplacement(t *testing.T) {
 	}
 }
 
+func TestActualRecordingLockDoesNotBlockAnotherAttemptInSameCoordinator(t *testing.T) {
+	testPracticeSupervisorWorkflow(t, "timed-isolation", nil, nil)
+}
+
 // Two independent synthetic roots use the same unprivileged Unix UID. This
 // proves process/scope/actual-gate isolation, not production multi-UID admission.
 func TestActualPracticeSupervisorFailureIsAttemptScoped(t *testing.T) {
@@ -369,6 +388,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		t.Fatal(err)
 	}
 	purpose := "practice"
+	secondID := r.ID
 	var originalStart, originalDeadline int64
 	if strings.HasPrefix(mode, "timed") {
 		purpose = "exam"
@@ -385,6 +405,26 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			a.BrowserSSH = true
 			commitStart(a, Millis(), uptime(), boot())
 			originalStart, originalDeadline = a.Start, a.Deadline
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if mode == "timed-isolation" {
+		secondID = ManagementID()
+		// This is a recording-scheduler fixture, NOT permission to admit two
+		// concurrent attempts for one UID. Root multi-UID admission is not mocked
+		// into a qualification claim: both real gates use this local Unix UID.
+		if err := os.MkdirAll(filepath.Join(e.Config.Work, secondID, "work"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.prepareHome(&Attempt{ID: secondID, Username: r.Username, UID: r.UID, Settings: r.Settings}); err != nil {
+			t.Fatal(err)
+		}
+		if err := e.WithState(func() error {
+			second := *e.state.Attempts[r.ID]
+			second.ID, second.Units = secondID, nil
+			e.state.Attempts[secondID] = &second
 			return nil
 		}); err != nil {
 			t.Fatal(err)
@@ -436,16 +476,25 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		stopCoordinator()
 		_ = coordinator.Wait()
 		state, err := readStateSnapshot(e.Config.State)
-		if err == nil && state.Attempts[r.ID] != nil {
-			for _, unit := range state.Attempts[r.ID].Units {
-				if _, _, _, ok := recordedPaneIdentity(r.ID, unit); !ok {
-					t.Error("foreign test unit")
+		if err == nil {
+			ids := []string{r.ID}
+			if secondID != r.ID {
+				ids = append(ids, secondID)
+			}
+			for _, id := range ids {
+				if state.Attempts[id] == nil {
 					continue
 				}
-				cleanup, stop := context.WithTimeout(context.Background(), 3*time.Second)
-				_ = exec.CommandContext(cleanup, "/usr/bin/systemctl", "--user", "stop", unit).Run()
-				_ = exec.CommandContext(cleanup, "/usr/bin/systemctl", "--user", "reset-failed", unit).Run()
-				stop()
+				for _, unit := range state.Attempts[id].Units {
+					if _, _, _, ok := recordedPaneIdentity(id, unit); !ok {
+						t.Error("foreign test unit")
+						continue
+					}
+					cleanup, stop := context.WithTimeout(context.Background(), 3*time.Second)
+					_ = exec.CommandContext(cleanup, "/usr/bin/systemctl", "--user", "stop", unit).Run()
+					_ = exec.CommandContext(cleanup, "/usr/bin/systemctl", "--user", "reset-failed", unit).Run()
+					stop()
+				}
 			}
 		}
 		cleanup, stop := context.WithTimeout(context.Background(), 3*time.Second)
@@ -454,16 +503,22 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		stop()
 	}()
 	if err := json.NewEncoder(write).Encode(struct {
-		Config                  Config
-		PID, UID                int
-		Transport               string
-		RecordingFailureBarrier string
+		Config                                     Config
+		PID, UID                                   int
+		Transport                                  string
+		RecordingFailureBarrier                    string
+		RecordingLockBarrier, RecordingLockAttempt string
 	}{e.Config, os.Getpid(), r.UID, r.Transport, func() string {
 		if strings.HasPrefix(mode, "timed-fault-") {
 			return filepath.Join(e.Config.State, "synthetic-recording-barrier")
 		}
 		return ""
-	}()}); err != nil {
+	}(), func() string {
+		if mode == "timed-isolation" {
+			return filepath.Join(e.Config.State, "synthetic-recording-lock")
+		}
+		return ""
+	}(), r.ID}); err != nil {
 		t.Fatal(err)
 	}
 	write.Close()
@@ -505,9 +560,18 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	if err != nil {
 		t.Fatal("baseline did not exercise memory response", before, err)
 	}
+	line := func(out string) string {
+		for _, v := range strings.Split(out, "\n") {
+			if strings.HasPrefix(v, "BUFFER:") {
+				return strings.TrimSpace(v)
+			}
+		}
+		return ""
+	}
 	// A second real pane must attach to the SAME independently bounded owner.
 	secondPane := ManagementID()
 	cmd.Nonce, cmd.Body.Pane = Token(), secondPane
+	cmd.Body.ID = secondID
 	secondIssued, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
 	if err != nil {
 		t.Fatal(err)
@@ -544,8 +608,69 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		t.Fatal("second shell never executed", out, err, diagnostics.String())
 	}
 	view, err := ObserveNativePanes(e.Config.State, NativePaneQuery{Attempt: r.ID, Limit: 10})
-	if err != nil || len(view.Panes) != 2 {
+	wantPanes := 2
+	if mode == "timed-isolation" {
+		wantPanes = 1
+	}
+	if err != nil || len(view.Panes) != wantPanes {
 		t.Fatal("actual two-pane inventory unavailable", view, err)
+	}
+	if mode == "timed-isolation" {
+		if _, err := unix.Write(fd2, []byte("check\n")); err != nil {
+			t.Fatal(err)
+		}
+		healthyBefore, err := supervisionReadUntil(fd2, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
+		if err != nil {
+			t.Fatal("healthy baseline missed its actual memory response", healthyBefore, err)
+		}
+		lock, err := os.OpenFile(filepath.Join(e.Config.State, "monitoring", r.ID+".lock"), os.O_RDWR, 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer lock.Close()
+		if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
+			t.Fatal("test did not acquire the real attempt lock", err)
+		}
+		defer unix.Flock(int(lock.Fd()), unix.LOCK_UN)
+		barrier := filepath.Join(e.Config.State, "synthetic-recording-lock")
+		if err := os.WriteFile(barrier+".armed", []byte("block-only-first-attempt"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := unix.Write(fd, []byte("check\n")); err != nil {
+			t.Fatal(err)
+		}
+		observed := false
+		for until := time.Now().Add(time.Second); time.Now().Before(until); {
+			if data, err := os.ReadFile(barrier + ".entered"); err == nil && string(data) == "actual-recording-lock" {
+				observed = true
+				break
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		if !observed {
+			t.Fatal("fixture never reached the real blocked recorder")
+		}
+		if _, err := unix.Write(fd2, []byte("check\n")); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := supervisionReadUntil(fd2, "BUFFER:synthetic-buffer-not-on-disk:", 2*time.Second); err != nil || line(out) == "" || line(out) != line(healthyBefore) {
+			t.Fatal("one held recording lock stalled another attempt in the same coordinator", out, err)
+		}
+		if out, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", 100*time.Millisecond); err == nil {
+			t.Fatal("blocked output bypassed durable recording", out)
+		}
+		for _, id := range []string{r.ID, secondID} {
+			control := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "renew-execution-lease", Username: r.Username, Transport: r.Transport, Body: Request{ID: id}}
+			if _, err := e.Command(signedCommand(key, control), r.Username, r.Transport); err != nil {
+				t.Fatal("signed peer-state renewal stalled/refused", err)
+			}
+		}
+		if err := unix.Flock(int(lock.Fd()), unix.LOCK_UN); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second); err != nil || line(out) == "" || line(out) != line(before) {
+			t.Fatal("blocked original shell lost its memory after lock release", out, err)
+		}
 	}
 	if strings.HasPrefix(mode, "timed-fault-") {
 		barrier := filepath.Join(e.Config.State, "synthetic-recording-barrier")
@@ -629,7 +754,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		}
 		return
 	}
-	if mode == "timed" {
+	if mode == "timed" || mode == "timed-isolation" {
 		for _, pane := range view.Panes {
 			if len(pane.RecordedSupervisors) != 0 {
 				t.Fatal("unqualified timed supervision was enabled", view)
@@ -653,8 +778,12 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 				t.Fatal("legacy recorded pane failed", ended, err, diagnostics.String())
 			}
 		}
-		for _, pane := range []string{finalID, secondPane} {
-			b, err := os.ReadFile(filepath.Join(e.Config.State, "monitoring", r.ID, pane+".ndjson"))
+		for i, pane := range []string{finalID, secondPane} {
+			id := r.ID
+			if i == 1 {
+				id = secondID
+			}
+			b, err := os.ReadFile(filepath.Join(e.Config.State, "monitoring", id, pane+".ndjson"))
 			if err != nil || !bytes.Contains(b, []byte(`"event":"output"`)) {
 				t.Fatal("timed output was not durably recorded", err)
 			}
@@ -663,9 +792,11 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		if err != nil {
 			t.Fatal(err)
 		}
-		a := state.Attempts[r.ID]
-		if a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline || a.State != "ACTIVE" || a.AccessState != "HELD" {
-			t.Fatal("timed boundary changed interval or restrictions", a)
+		for _, id := range []string{r.ID, secondID} {
+			a := state.Attempts[id]
+			if a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline || a.State != "ACTIVE" || a.AccessState != "HELD" {
+				t.Fatal("timed boundary changed interval or restrictions", a)
+			}
 		}
 		return
 	}
@@ -789,14 +920,6 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	after, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
 	if err != nil {
 		t.Fatalf("coordinator death lost the actual PTY/shell memory: %v output=%q", err, after)
-	}
-	line := func(out string) string {
-		for _, v := range strings.Split(out, "\n") {
-			if strings.HasPrefix(v, "BUFFER:") {
-				return strings.TrimSpace(v)
-			}
-		}
-		return ""
 	}
 	if line(before) == "" || line(before) != line(after) {
 		t.Fatal("shell/memory incarnation changed", before, after)

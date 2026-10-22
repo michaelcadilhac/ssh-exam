@@ -200,6 +200,13 @@ Use `examctl info ATTEMPT --read-only` and `examctl panes show ATTEMPT PANE`; ne
 clear state or reset time to hide recording failure. This is not retained SSH or
 a diagnosis of the heartbeat incident. See terminal-recording-faults.md.
 
+The next local recorder candidate keeps one attempt's quota lock from stalling
+another attempt's already-open terminal output in the same coordinator. Budgets,
+privacy and record-before-forward remain enforced; per-process IO admission is
+bounded. It is not disk-wide isolation or a new reason to ignore missing monitoring.
+Existing inspection/close/continuation workflows are unchanged. Do not clear
+quota locks or restart the shared agent; see terminal-recording-isolation.md.
+
 Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
 view of exact agent/name/hash metadata and first/latest attestation timestamps.
 The catalog view does not choose a version, edit defaults, issue grants or prove

@@ -137,6 +137,15 @@ recording loss still locks, including after a clock extension. This changes no
 deadlines, holds, raw-input lifetime or retained-mode capability. See
 docs/terminal-recording-faults.md for scope, state review and current verification.
 
+The subsequent local recording-isolation candidate removes the cross-attempt
+Engine recording mutex while retaining per-recorder/per-attempt cross-process
+quota serialization and durable record-before-forward. Only storage/budget/IDs
+enter the recorder. Nonblocking attempt-flock waits precede a16-operation native
+IO admission bound; a held attempt cannot monopolize it. Actual same-coordinator
+terminal, quota, saturation and mutation controls are in
+docs/terminal-recording-isolation.md. This is not complete timed supervision,
+OS-wide IO isolation, class-capacity qualification or a deployed incident fix.
+
 ## 2. Product context and defaults
 
 The local new-preflight workflow also isolates readiness/home copying from shared

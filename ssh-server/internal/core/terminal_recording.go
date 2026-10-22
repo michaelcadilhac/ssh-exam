@@ -21,6 +21,16 @@ import (
 
 const defaultTerminalRecordingLimitMiB int64 = 2048
 
+// Bound concurrently blocking recording IO, not unrelated attempts behind one
+// mutex. Waiting for another process's attempt flock must not consume a slot.
+const terminalRecordingIOSlots = 16
+
+var terminalRecordingIO = make(chan struct{}, terminalRecordingIOSlots)
+
+// Test-only observation of the actual recorder before its per-attempt flock.
+// No config/environment setting or installed role can supply this callback.
+var terminalRecordingLockProbe func(string)
+
 func (e *Engine) terminalRecordingLimit() int64 {
 	limit := e.Config.TerminalRecordingLimitMiB
 	if limit == 0 {
@@ -30,7 +40,8 @@ func (e *Engine) terminalRecordingLimit() int64 {
 }
 
 type terminalRecorder struct {
-	e        *Engine
+	state    string
+	limit    int64
 	mu       sync.Mutex
 	file     *os.File
 	id, pane string
@@ -38,10 +49,17 @@ type terminalRecorder struct {
 }
 
 func (e *Engine) newRecorder(id, pane string) (*terminalRecorder, error) {
-	if !attemptID.MatchString(id) || !attemptID.MatchString(pane) {
+	return newTerminalRecorder(e.Config.State, e.terminalRecordingLimit(), id, pane)
+}
+
+// The live recorder needs only its private storage root/budget, never the global
+// Engine/attempt map or its cross-attempt mutexes. The existing timed gate is the
+// runtime caller; this is not an unused supervisor prototype.
+func newTerminalRecorder(state string, limit int64, id, pane string) (*terminalRecorder, error) {
+	if !attemptID.MatchString(id) || !attemptID.MatchString(pane) || limit <= 0 {
 		return nil, errors.New("invalid recording scope")
 	}
-	dir := filepath.Join(e.Config.State, "monitoring", id)
+	dir := filepath.Join(state, "monitoring", id)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
@@ -49,12 +67,12 @@ func (e *Engine) newRecorder(id, pane string) (*terminalRecorder, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := &terminalRecorder{e: e, file: file, id: id, pane: pane, started: time.Now()}
+	r := &terminalRecorder{state: state, limit: limit, file: file, id: id, pane: pane, started: time.Now()}
 	if err := r.record(map[string]any{"event": "open"}); err != nil {
 		file.Close()
 		return nil, err
 	}
-	for _, directory := range []string{dir, filepath.Dir(dir), e.Config.State} {
+	for _, directory := range []string{dir, filepath.Dir(dir), state} {
 		f, err := os.Open(directory)
 		if err != nil {
 			file.Close()
@@ -72,19 +90,35 @@ func (e *Engine) newRecorder(id, pane string) (*terminalRecorder, error) {
 func (r *terminalRecorder) record(v map[string]any) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.e.monitorMu.Lock()
-	defer r.e.monitorMu.Unlock()
-	// Every pane has its own agent process: a process-local mutex alone cannot
-	// enforce the shared quota. Keep this lock outside the delivered log tree.
-	lock, err := os.OpenFile(filepath.Join(r.e.Config.State, "monitoring", r.id+".lock"), os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW, 0600)
+	// Panes can live in separate native processes. Serialize only this attempt's
+	// quota/append/sync, never unrelated students through an Engine-wide mutex.
+	// Keep the cross-process lock outside the delivered log tree.
+	lock, err := os.OpenFile(filepath.Join(r.state, "monitoring", r.id+".lock"), os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW, 0600)
 	if err != nil {
 		return err
 	}
 	defer lock.Close()
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
-		return err
+	if terminalRecordingLockProbe != nil {
+		terminalRecordingLockProbe(r.id)
+	}
+	for {
+		err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			break
+		}
+		if errors.Is(err, syscall.EINTR) {
+			continue
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) && !errors.Is(err, syscall.EAGAIN) {
+			return err
+		}
+		// A Go timer, not one blocked OS thread per waiting pane. This lock
+		// wait never owns global state or a recording IO slot.
+		time.Sleep(10 * time.Millisecond)
 	}
 	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	terminalRecordingIO <- struct{}{}
+	defer func() { <-terminalRecordingIO }()
 	var total int64
 	entries, err := os.ReadDir(filepath.Dir(r.file.Name()))
 	if err != nil {
@@ -105,7 +139,7 @@ func (r *terminalRecorder) record(v map[string]any) error {
 		return err
 	}
 	line = append(line, '\n')
-	if total+int64(len(line)) > r.e.terminalRecordingLimit() {
+	if total+int64(len(line)) > r.limit {
 		return errors.New("terminal recording limit reached")
 	}
 	if _, err = r.file.Write(line); err != nil {
