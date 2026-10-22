@@ -272,3 +272,12 @@ StrictModes fixture. This is not an ACTIVE retained-SSH/buffer-freeze test.
 Exact artifact/evidence/failed-build details and full regressions are in
 pane-admission-isolation.md. No installed host service/account/configuration,
 student record, deadline or production authority is changed.
+
+The subsequent received-descriptor correction has NEW product/test hashes; do
+not reuse the preceding native artifact's qualification. Its actual pane-ack
+profile passes three repeats, full enforcement passes40 assertions and worker-
+isolation passes11 with23 healthy renewals/max0.0823481s. Every host/base
+preservation check passes. Exact hashes, real descriptor-leak RED, unchanged
+authority/protocol checks and separate browser evidence:
+native-gate-descriptors.md. No deployment, restart of an installed host service,
+student record change, C3 enablement or temporary-agent consolidation occurs.

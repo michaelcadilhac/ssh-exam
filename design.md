@@ -1677,6 +1677,16 @@ compatibility pass locally; see docs/pane-admission-isolation.md. Filesystem and
 system-manager startup/readiness waits remain serialized, not solved. This is not
 a closed root pending-launch/freeze protocol, C3 retention or deployment.
 
+The local socket handler also immediately owns every kernel-returned SCM_RIGHTS
+descriptor before JSON/account/SSH/capability checks. Refusals close all received
+rights, including an installed truncated prefix. Ordinary/control requests carry
+none; a pane carries exactly one and transfers its ownership once into the normal
+PTY lifetime cleanup. Incomplete/unknown/extra control messages fail closed.
+Actual descriptor/PTY, native race/resource and new exact-artifact SSH/PAM/worker
+checks pass locally; see docs/native-gate-descriptors.md. This fixes a confirmed
+permanent descriptor leak, not every connection-flood/availability failure or
+the initiating production incident. No installed policy or service is changed.
+
 October22 local native coordination adds an unused authority/publication arbiter
 only; see docs/native-monitoring-authority.md. Its live decision cannot wait for
 storage, and provisional disk records alone cannot restore authority after restart.

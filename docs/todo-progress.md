@@ -8,6 +8,28 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Pane-admission correction is local commitfad7e51. Next correctness investigation:
+local gate receives SCM_RIGHTS before JSON/account/SSH/capability validation but
+only adopts/closes them on the later accepted-pane path. Reproduce malformed,
+unapproved, ordinary/control, early pane refusal and truncated/extra-descriptor
+paths with exact owned synthetic inodes. All seven are RED (one or two leaked
+descriptors each). The candidate now owns/closes returned rights immediately and
+transfers a valid single PTY once; actual truncation, CLOEXEC, short headers,
+idempotent cleanup and valid protocol regressions pass. Twenty final focused race
+repeats10.099s, five actual gate/PTY repeats16.345s, all426 app90.80s, static/vet
+and35 Python checks pass. New exact-artifact actual SSH ACK/late-close profile
+passes three times with host/base preservation. Full final native race/resource/
+namespace/compiler/default-size now passes core180.278s/CLI8.009s; exact-artifact
+guest passes40 SSH/PAM/Begin/enforcement and11 collector-death/healthy-peer
+assertions (23 peer renewals,max0.0823481s), all host/base preservation passing.
+All174 prior114-browser source/runtime hashes match; no web rebuild. A test-layer
+initialization assertion was corrected without weakening leak/authority checks;
+see native-gate-descriptors.md for evidence, exact hashes and policy boundaries.
+No production cause, deployment, C3 enablement or global capacity claim. The next
+independent C1 increment is targeted root pane management; investigated workflow,
+snapshot fences, auditing, no-write inspection and acceptance are in
+native-pane-management.md. That proposal is not yet implementation/completion.
+
 After test-only commitd53de3f, the next confirmed correctness milestone isolates
 client ready/ACK network IO from pane admission's global state transaction and
 revokes unused pane capabilities on close. Signed renewals already bypass that

@@ -105,12 +105,26 @@ func (e *Engine) local(c *net.UnixConn) {
 	}
 	buf := make([]byte, 65536)
 	oob := make([]byte, syscall.CmsgSpace(4))
-	n, on, _, _, err := c.ReadMsgUnix(buf, oob)
+	n, on, flags, _, err := c.ReadMsgUnix(buf, oob)
+	descriptors, descriptorErr := receiveGateDescriptors(oob[:on], flags)
+	defer descriptors.close()
 	if err != nil {
+		return
+	}
+	if descriptorErr != nil {
+		json.NewEncoder(c).Encode(map[string]string{"error": descriptorErr.Error()})
 		return
 	}
 	var r LocalRequest
 	if json.Unmarshal(buf[:n], &r) != nil {
+		return
+	}
+	if (r.Command != nil || r.Ordinary) && len(descriptors.files) != 0 {
+		json.NewEncoder(c).Encode(map[string]string{"error": "ordinary/control requests take no descriptors; use matching exam-login/agent"})
+		return
+	}
+	if r.Command == nil && !r.Ordinary && len(descriptors.files) != 1 {
+		json.NewEncoder(c).Encode(map[string]string{"error": "exactly one PTY required; reopen using the supported exam client"})
 		return
 	}
 	var account Account
@@ -201,15 +215,10 @@ func (e *Engine) local(c *net.UnixConn) {
 			}
 		}
 		practice := cap.Purpose == "practice"
-		messages, err := syscall.ParseSocketControlMessage(oob[:on])
-		if err != nil || len(messages) != 1 {
-			return errors.New("PTY descriptor required")
+		fd, err := descriptors.takeOnly()
+		if err != nil {
+			return err
 		}
-		fds, err := syscall.ParseUnixRights(&messages[0])
-		if err != nil || len(fds) != 1 {
-			return errors.New("exactly one PTY required")
-		}
-		fd := os.NewFile(uintptr(fds[0]), "pty")
 		original = fd
 		master, slave, err = openPTY()
 		if err != nil {

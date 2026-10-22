@@ -237,6 +237,14 @@ full privileged qualification or deployment authorization.
   peer assertions, with host/base preservation. Exact hashes and limitations:
   docs/pane-admission-isolation.md. Startup/readiness/filesystem waits, C10/C11,
   retained SSH and the initiating incident remain open; no fix is deployed.
+  A separate local resource regression confirms received socket descriptors leaked
+  on seven rejected/non-pane request paths. The candidate immediately owns/closes
+  all returned rights, rejects truncation/extra rights and transfers one valid PTY
+  exactly once. Twenty race repeats, actual PTY/descriptor checks,426 app, full
+  native race/resource/build,35 Python and new exact-artifact actual SSH ACK,
+  40 enforcement and11 collector-death/healthy-peer assertions pass; every host/base
+  preservation check passes. Details: docs/native-gate-descriptors.md. This is not
+  global connection-flood capacity, C3 completion, a production diagnosis or deployment.
 
 ## Firm design policy: examctl is the complete management interface
 
