@@ -163,6 +163,16 @@ web pinned-reader protections and shared capacity, and qualify deletion races an
 private outputs. Previously downloaded copies have separate operator retention.
 This paragraph authorizes no configuration edit, deployment or agent consolidation.
 
+October22 C2a5 separately passes the actual root template CLI/system-manager gate
+in two guarded disposable guest runs with128MiB sources, exact retries/refusals,
+published-job cleanup, live kernel slice-limit and host/base preservation checks.
+This is candidate qualification, not installation or authority for gateway grant
+issuance/version-bound Begin. Preserve the separate catalog/slice/registry and
+all legacy sources/markers/history during any future separately authorized paired
+migration. The exact narrow evidence and earlier failed fixtures are in
+template-guest-qualification.md; it does not remove legacy migration, combined
+capacity, Docker packaging or deployment/temporary-agent drain gates.
+
 C1gc2 complete monitoring export also needs no schema migration. Any separately
 authorized future paired gateway/CLI release must explicitly allow only the new
 monitoring.export operation for intended root-machine identities; ordinary read

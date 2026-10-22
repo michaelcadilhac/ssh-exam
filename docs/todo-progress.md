@@ -20,6 +20,19 @@ capacity certification. Exact evidence: monitoring-export-qualification.md.
 Independent template-system-manager qualification is tracked separately below.
 No missing command, production operation, push or deployment occurred.
 
+C2a5's final guest-only increment now passes actual template CLI validate/install/
+show/verify/list/jobs/clean against the real system manager and bounded supplied
+slice. Two exact-artifact128MiB runs pass4.21s each, with host/base preservation:
+/var/tmp/ssh-exam-overlay-gc3qjte_ and /var/tmp/ssh-exam-overlay-q72z3s0n.
+Testf6cf8fe6c4254618db901b116ce4ca0f3f03c4af8e440bfeeb5ac67fe239edbc;
+examctlde4679447bc1f869c2e6c2f0db79d8b0518bc0aba67dede97604dca76e387098.
+All31 Python checks,20 host-refusal/preservation repeats, final full native
+race/resource/namespace/compiler/default-size (core171.016s/CLI6.960s) and static
+build/vet pass. Product/browser runtime hashes remain unchanged; this qualifies
+the narrow real catalog CLI/system-manager gate, not version-bound guest Begin,
+unified grants, legacy migration, C8 retirement or deployment. Failed fixture
+runs remain explicitly recorded below and in template-guest-qualification.md.
+
 Q5 investigation afterb8587b9: basic/SQPOLL io_uring is demonstrably
 available to the synthetic UID, so test deferred pipe-read/linked-file-write and
 timer-hardlinked-write, with explicit unfrozen baselines and forced-worker
@@ -1146,7 +1159,7 @@ escalation. Generated screenshot changes must not become product changes.
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
-| D1c: immutable template/material versions | D1a + C2 fixed issuance | Supported native catalog/CLI, atomic bounded worker installation, all-reader exact version binding and authenticated metadata visibility; mutation/crash/restart/practice confidentiality/CLI/race/integration tests | C2a2 catalog/publication/CLI and C2a3 optional native reader binding pass locally. Current gateway snapshots remain legacy; signed acknowledgement/selection, privileged system-manager gate and full investigation remain open; see template-catalog.md and template-grant-investigation.md |
+| D1c: immutable template/material versions | D1a + C2 fixed issuance | Supported native catalog/CLI, atomic bounded worker installation, all-reader exact version binding and authenticated metadata visibility; mutation/crash/restart/practice confidentiality/CLI/race/integration tests | C2a2 catalog/publication/CLI, C2a3 optional native readers, C2a4 signed metadata acknowledgement and C2a5 actual system-manager CLI/128MiB guest gate pass locally. Current gateway snapshots remain legacy; issuance/claim/Begin, version-bound guest Begin, legacy migration and full investigation stay open. See template-catalog.md, template-guest-qualification.md and template-grant-investigation.md |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; source investigation confirms both PTY input bridges need a revocation/queued-input barrier, not just omitted termination. Coordinated implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore, default-size worker and full local regression pass in 7ef7ac5; manual cleanup and privileged/concurrent sizing remain open |
 | C4a: workspace metadata and operator holds | C4 + D1a fences | Known-attempt inventory, exact private identity, separate durable hold revisions/loss markers, audit failure and stale/busy refusals, no eligibility/deletion claim; actual CLI/native race/build | Implemented/tested locally: actual namespace-root CLI/help, frozen full native race/resource/compiler/default-size opt-ins, static build/vet, 320 app tests and unchanged typechecked/built browser assets. Fresh proof/cleanup remain open; not deployed |

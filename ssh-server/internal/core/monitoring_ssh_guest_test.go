@@ -30,6 +30,7 @@ func TestMonitoringSSHProcessGuestRefusesUnqualifiedHost(t *testing.T) {
 		{"TestMonitoringAsyncIOGuest", "EXAM_MONITORING_ASYNCIO_GUEST"},
 		{"TestMonitoringAsyncIOStoppedGuest", "EXAM_MONITORING_ASYNCIO_STOPPED_GUEST"},
 		{"TestMonitoringEditorGuest", "EXAM_MONITORING_EDITOR_GUEST"},
+		{"TestTemplateCatalogSystemManagerGuest", "EXAM_TEMPLATE_CATALOG_GUEST"},
 	} {
 		t.Run(item.test, func(t *testing.T) {
 			command := exec.Command("/usr/bin/env", item.optIn+"=1", "GORACE=atexit_sleep_ms=0", os.Args[0], "-test.run=^"+item.test+"$", "-test.count=1")

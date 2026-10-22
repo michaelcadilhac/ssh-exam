@@ -132,6 +132,13 @@ class OverlayTests(unittest.TestCase):
             '-test.run=^TestMonitoringEditorGuest$', '-test.v', '-test.count=10',
             '-test.timeout=60s'])
 
+    def test_catalog_profile_uses_actual_slice_and_manifested_test_only(self):
+        self.assertEqual(overlay.FILES['exam-template.slice'], ('/etc/systemd/system/exam-template.slice', 0o644))
+        self.assertEqual(guest.template_catalog_command(), [
+            '/run/ssh-exam-qualification-input/core-qualification.test',
+            '-test.run=^TestTemplateCatalogSystemManagerGuest$', '-test.v', '-test.count=1',
+            '-test.timeout=240s'])
+
 
 if __name__ == '__main__':
     unittest.main()

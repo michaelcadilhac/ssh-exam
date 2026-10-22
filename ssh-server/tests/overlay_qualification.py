@@ -34,6 +34,7 @@ FILES = {
     'check-isolation': ('/usr/local/sbin/exam-check-isolation', 0o755),
     'qualification_callbacks.py': ('/root/qualification-callbacks.py', 0o600),
     'exam-collection.slice': ('/etc/systemd/system/exam-collection.slice', 0o644),
+    'exam-template.slice': ('/etc/systemd/system/exam-template.slice', 0o644),
     'linux_qualification.py': (None, 0o600),
     'overlay_guest.py': (None, 0o600),
     'core-qualification.test': (None, 0o755),
@@ -283,7 +284,7 @@ if __name__ == '__main__':
     parser.add_argument('--guest', type=Path, required=True)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--username', default='examq')
-    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor'), default='enforcement')
+    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):

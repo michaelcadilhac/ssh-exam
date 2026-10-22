@@ -68,6 +68,14 @@ user/mount namespaces, not privileged system-manager qualification. Full361 app,
 with the H2a contact candidate; see todo-progress.md. Unified grant selection and
 privileged combined guest qualification remain open. Nothing is deployed.
 
+October22 C2a5 adds a separate guarded template-catalog guest profile using the
+actual root CLI/system manager and supplied slice, no adapter. The128MiB workflow
+and exact retries/refusals/published-job cleanup pass with host/base preservation;
+two final exact-artifact runs and full native compatibility pass. See template-guest-qualification.md
+for exact artifacts, failed fixture evidence and narrow limits. This does not
+qualify unified issuance or actual version-bound Begin. The earlier privilege
+deferral above records that earlier checkpoint, not this new test's status.
+
 ## Supported workflow
 
 Use `examctl templates help` or `examctl help templates`; help and syntax checks
@@ -86,9 +94,10 @@ private worker flags, JSON editing or an incident script as management interface
 4. Inspect `templates list`, `templates show NAME HASH` and `templates verify
    NAME HASH`. Show/list read metadata; verify streams the actual installed bytes.
 
-Successful JSON includes explicit `verified`, `installed`,
-`gateway_confirmed=false` and observation time. Nothing currently reports gateway
-confirmation. No `latest` selection, published-version deletion, student upload,
+Successful native catalog JSON includes explicit `verified`, `installed`,
+`gateway_confirmed=false` and observation time. Only the separate explicit sync
+workflow reports a signed timestamped gateway acknowledgement, never installation
+alone or live availability. No `latest` selection, published-version deletion, student upload,
 new listener or webserver filesystem copy exists. Exact `NAME` plus lowercase
 64-hex `HASH` identifies a version. Changed bytes, ordinary mode or precise mtime
 produce a different hash; old versions are never overwritten.

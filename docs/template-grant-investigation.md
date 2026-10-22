@@ -1,6 +1,6 @@
 # Template versions before unified grants
 
-October 21, 2026. **Investigation in progress; foundations partially implemented
+October 22, 2026. **Investigation in progress; foundations partially implemented
 locally, unified model not implemented or deployed.**
 C2/C5/C7 already approve unified grants, settings/material/source fixed at
 issuance, explicit unused revisions, finite independent Begin windows, effective
@@ -17,6 +17,17 @@ than a silently deferred or mutable grant. Additional grants remain fixed when
 explicitly authorized. Migration of existing enrollments and exact catalog/claim
 protocols remain engineering work; this decision alone completes no investigation
 or implementation. Independent purge work continues.
+
+Current foundation status: C2a2 local catalog/CLI, C2a3 optional exact-version
+native readers and C2a4 signed registry/inspection are implemented/tested locally.
+C2a5 now qualifies the actual root template CLI against the real system manager
+and supplied bounded slice in the guarded disposable guest, including128MiB
+import, retries/refusals and published-job cleanup preserving installed versions.
+Two exact final runs plus host/base preservation and native compatibility pass;
+see template-guest-qualification.md. This is not unified issuance/claim/Begin,
+version-bound guest Begin, legacy migration or C8 retirement. No production
+source/grant/record is changed. Earlier checkpoint statements below retain their
+narrow historical evidence and are superseded only by these specified increments.
 
 ## Confirmed implementation constraints
 
@@ -62,7 +73,8 @@ after-read mutation with restored mtime, the 10,000-entry boundary/depth 32, rea
 same-device bind mounts and 128 MiB streaming without proportional allocation.
 No existing reader or settings hash was changed. Full qualification is in
 todo-progress.md. C2a2 now adds the separate local worker/CLI catalog below;
-all-reader binding and catalog acknowledgement remain unimplemented. Do not
+all-reader binding and catalog acknowledgement were still unimplemented at that
+checkpoint; C2a3/C2a4 now provide the optional foundations described above. Do not
 mark the catalog investigation complete from this primitive or the proposal below.
 
 C2a1 now also implements an **internal, unwired private-copy primitive**, not
@@ -102,8 +114,10 @@ fresh full native race qualification passes (core155.8s/CLI5.7s), application
 The compiled CLI tests use a private synthetic manager interface; actual local
 user-systemd tests independently enforce OOM/runtime and a 128 MiB import with
 live kernel-control observations. Privileged system-manager guest qualification
-is pending: the read-only csc-sys precheck found two live/unresolved attempts,
-so no guest was started. See template-catalog.md for exact scope and recovery.
+was initially deferred: the read-only csc-sys precheck found two live/unresolved
+attempts, so no guest was started then. C2a5 now passes the separate guarded CLI/
+system-manager gate, not unified/version-bound Begin. See template-catalog.md and
+template-guest-qualification.md for exact scope and recovery.
 
 Next all-reader increment must also cover the old engine.initialize helper
 (now referenced only by legacy recovery tests),

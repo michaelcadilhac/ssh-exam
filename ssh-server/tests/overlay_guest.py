@@ -134,6 +134,12 @@ def monitoring_editor_command():
             '-test.timeout=60s']
 
 
+def template_catalog_command():
+    return [str(INPUT / 'core-qualification.test'),
+            '-test.run=^TestTemplateCatalogSystemManagerGuest$', '-test.v', '-test.count=1',
+            '-test.timeout=240s']
+
+
 def main():
     assert os.geteuid() == 0
     assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
@@ -197,6 +203,13 @@ def main():
         assert username == 'examq', 'Exact synthetic editor fixture required'
         environment = {**os.environ, 'EXAM_MONITORING_EDITOR_GUEST': '1'}
         result = subprocess.run(monitoring_editor_command(), env=environment, timeout=75)
+        if result.returncode:
+            return result.returncode
+        profiles = ()
+    elif settings.get('profile') == 'template-catalog':
+        assert username == 'examq', 'Exact synthetic catalog fixture required'
+        environment = {**os.environ, 'EXAM_TEMPLATE_CATALOG_GUEST': '1'}
+        result = subprocess.run(template_catalog_command(), env=environment, timeout=255)
         if result.returncode:
             return result.returncode
         profiles = ()
