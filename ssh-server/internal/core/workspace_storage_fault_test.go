@@ -22,6 +22,7 @@ import (
 type workspaceStorageFaultResult struct {
 	Unstarted      bool   `json:"unstarted"`
 	CausePreserved bool   `json:"cause_preserved"`
+	FaultError     string `json:"fault_error"`
 	PartialMarker  bool   `json:"partial_marker"`
 	RepairError    string `json:"repair_error"`
 	Start          int64  `json:"start"`
@@ -47,7 +48,7 @@ func TestSavedWorkspaceActualStorageFaultsPreserveRepairAndHealthyPeer(t *testin
 	if cli == "" {
 		cli = "--no-cli"
 	}
-	for _, fault := range []string{"preflight-consumption-read-only", "consumption-disk-full", "consumption-read-only", "rename-read-only", "initialized-read-only"} {
+	for _, fault := range []string{"preflight-staging-disk-full", "preflight-staging-read-only", "preflight-receipt-read-only", "preflight-consumption-read-only", "consumption-disk-full", "consumption-read-only", "rename-read-only", "initialized-read-only"} {
 		t.Run(fault, func(t *testing.T) {
 			e, target, grant := recoveryFixture(t)
 			e.Config.AgentID, e.Config.CallbackURL = base.AgentID, base.CallbackURL
@@ -66,8 +67,14 @@ func TestSavedWorkspaceActualStorageFaultsPreserveRepairAndHealthyPeer(t *testin
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := e.Call("prepare-workspace", Request{ID: target.ID}); err != nil {
-				t.Fatal(err)
+			if strings.HasPrefix(fault, "preflight-staging-") || fault == "preflight-receipt-read-only" {
+				if err := os.MkdirAll(e.workspaceBase(target.ID), 0700); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if _, err := e.Call("prepare-workspace", Request{ID: target.ID}); err != nil {
+					t.Fatal(err)
+				}
 			}
 			original := map[string][]byte{}
 			for _, name := range []string{"submission.tar.gz", "manifest.json"} {
@@ -89,7 +96,16 @@ func TestSavedWorkspaceActualStorageFaultsPreserveRepairAndHealthyPeer(t *testin
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancel()
-			command := exec.CommandContext(ctx, "/usr/bin/unshare", "--user", "--map-root-user", "--mount", os.Args[0], "-test.run=^TestSavedWorkspaceStorageFaultChild$", "--", configPath, target.ID, fault, workspaceStorageNamespace(t, "/proc/self/ns/user"), workspaceStorageNamespace(t, "/proc/self/ns/mnt"), cli)
+			mapping := []string{"--map-root-user"}
+			if strings.HasPrefix(fault, "preflight-staging-") || fault == "preflight-receipt-read-only" {
+				// Real extraction must retain the fixture account's numeric UID/GID;
+				// the root mapping used for metadata-only CLI repair cannot chown an
+				// unmapped host UID. Retain namespace-only mount capabilities.
+				mapping = []string{"--map-current-user", "--keep-caps"}
+			}
+			arguments := append([]string{"--user"}, mapping...)
+			arguments = append(arguments, "--mount", os.Args[0], "-test.run=^TestSavedWorkspaceStorageFaultChild$", "--", configPath, target.ID, fault, workspaceStorageNamespace(t, "/proc/self/ns/user"), workspaceStorageNamespace(t, "/proc/self/ns/mnt"), cli)
+			command := exec.CommandContext(ctx, "/usr/bin/unshare", arguments...)
 			command.Env = append(os.Environ(), "EXAM_SAVED_WORKSPACE_STORAGE_CHILD=1", "GORACE=atexit_sleep_ms=0")
 			var output bytes.Buffer
 			command.Stdout, command.Stderr = &output, &output
@@ -156,7 +172,15 @@ func TestSavedWorkspaceActualStorageFaultsPreserveRepairAndHealthyPeer(t *testin
 						t.Fatal("preflight storage refusal changed protected source", err)
 					}
 				}
-				t.Logf("actual readonly consumption probe refused before Begin; healthy signed renewal=%s, source/allowance unchanged", controlElapsed)
+				if state, err := readStateSnapshot(e.Config.State); err != nil || state.Attempts[target.ID].Workspace == nil {
+					t.Fatal("storage repair did not complete private staging", err)
+				}
+				// The repaired stage must be usable in the parent view, not just a
+				// receipt for a discarded private tmpfs inode.
+				if err := e.WithState(func() error { return e.workspaceForBegin(e.state.Attempts[target.ID]) }); err != nil {
+					t.Fatal("repaired unstarted workspace is not eligible for Begin", err)
+				}
+				t.Logf("actual %s refused before Begin; healthy signed renewal=%s, source/allowance unchanged, repaired stage verified", fault, controlElapsed)
 				return
 			}
 			restarted, err := New(e.Config)
@@ -194,13 +218,14 @@ func TestSavedWorkspaceStorageFaultChild(t *testing.T) {
 		t.Skip("private namespace storage child only")
 	}
 	args := os.Args[len(os.Args)-6:]
-	if os.Getuid() != 0 || os.Geteuid() != 0 || workspaceStorageNamespace(t, "/proc/self/ns/user") == args[3] || workspaceStorageNamespace(t, "/proc/self/ns/mnt") == args[4] {
+	stagingFault := strings.HasPrefix(args[2], "preflight-staging-") || args[2] == "preflight-receipt-read-only"
+	if os.Getuid() != os.Geteuid() || (!stagingFault && os.Getuid() != 0) || workspaceStorageNamespace(t, "/proc/self/ns/user") == args[3] || workspaceStorageNamespace(t, "/proc/self/ns/mnt") == args[4] {
 		t.Fatal("refuse host user/mount namespace")
 	}
 	mapping, err := os.ReadFile("/proc/self/uid_map")
 	fields := strings.Fields(string(mapping))
-	if err != nil || len(fields) != 3 || fields[0] != "0" || fields[2] != "1" {
-		t.Fatal("not a private single-UID root mapping")
+	if err != nil || len(fields) != 3 || fields[0] != strconv.Itoa(os.Getuid()) || fields[2] != "1" {
+		t.Fatal("not a private single-UID mapping")
 	}
 	if err := syscall.Mount("", "/", "", syscall.MS_REC|syscall.MS_PRIVATE, ""); err != nil {
 		t.Fatal(err)
@@ -240,20 +265,26 @@ func TestSavedWorkspaceStorageFaultChild(t *testing.T) {
 	}
 	fillPath := ""
 	switch args[2] {
-	case "consumption-disk-full":
+	case "consumption-disk-full", "preflight-staging-disk-full":
+		mountPath := catalog
 		grantName := filepath.Base(recoveryName(target))
 		grant, err := os.ReadFile(filepath.Join(catalog, grantName))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := syscall.Mount("tmpfs", catalog, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_NOEXEC, "size=8k,nr_inodes=64,mode=0700"); err != nil {
+		if args[2] == "preflight-staging-disk-full" {
+			mountPath = base
+		}
+		if err := syscall.Mount("tmpfs", mountPath, "tmpfs", syscall.MS_NOSUID|syscall.MS_NODEV|syscall.MS_NOEXEC, "size=8k,nr_inodes=64,mode=0700"); err != nil {
 			t.Fatal(err)
 		}
-		mounted = catalog
-		if err := os.WriteFile(filepath.Join(catalog, grantName), grant, 0600); err != nil {
-			t.Fatal(err)
+		mounted = mountPath
+		if mountPath == catalog {
+			if err := os.WriteFile(filepath.Join(catalog, grantName), grant, 0600); err != nil {
+				t.Fatal(err)
+			}
 		}
-		fillPath = filepath.Join(catalog, "synthetic-owned-fill")
+		fillPath = filepath.Join(mountPath, "synthetic-owned-fill")
 		fill, err := os.OpenFile(fillPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 		if err != nil {
 			t.Fatal(err)
@@ -268,6 +299,17 @@ func TestSavedWorkspaceStorageFaultChild(t *testing.T) {
 	case "consumption-read-only", "preflight-consumption-read-only":
 		if err := readOnly(catalog); err != nil {
 			t.Fatal(err)
+		}
+	case "preflight-staging-read-only":
+		if err := readOnly(base); err != nil {
+			t.Fatal(err)
+		}
+	case "preflight-receipt-read-only":
+		e.workspaceCheckpoint = func(current string) error {
+			if current == "copied" {
+				return readOnly(base)
+			}
+			return nil
 		}
 	case "rename-read-only", "initialized-read-only":
 		phase := "recovery-consumed"
@@ -291,8 +333,8 @@ func TestSavedWorkspaceStorageFaultChild(t *testing.T) {
 	if faultErr == nil {
 		t.Fatal("actual storage fault did not stop publication")
 	}
-	result := workspaceStorageFaultResult{Unstarted: op == "prepare-workspace", CausePreserved: errors.Is(faultErr, syscall.EROFS), Retained: "saved answer"}
-	if args[2] == "consumption-disk-full" {
+	result := workspaceStorageFaultResult{Unstarted: op == "prepare-workspace", CausePreserved: errors.Is(faultErr, syscall.EROFS), FaultError: faultErr.Error(), Retained: "saved answer"}
+	if strings.HasSuffix(args[2], "disk-full") {
 		result.CausePreserved = errors.Is(faultErr, syscall.ENOSPC)
 	}
 	marker, markerErr := e.readRecoveryConsumption(target)
@@ -330,7 +372,8 @@ func TestSavedWorkspaceStorageFaultChild(t *testing.T) {
 		if err := os.Remove(fillPath); err != nil {
 			t.Fatal(err)
 		}
-	} else {
+	}
+	if fillPath == "" || args[2] == "preflight-staging-disk-full" {
 		if err := syscall.Unmount(mounted, 0); err != nil {
 			t.Fatal(err)
 		}

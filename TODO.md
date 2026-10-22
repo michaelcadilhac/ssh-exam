@@ -960,6 +960,15 @@ the approval is not a production change or a completed investigation.
   artifact hardened guest/whole recovery gates remain open. See
   docs/recovery-consumption-atomicity.md.
   No clock/hold/grant-format, account policy or production change is implied.
+  A later separate extraction regression is RED0.476s: real private staging
+  ENOSPC was mislabeled saved-file verification failure. Copy/sync/close errors
+  now retain their IO category; actual hash mismatches still refuse. The expanded
+  eight-scenario storage matrix passes three native race repeats5.349s with
+  source/interval/hold/peer and usable-retry checks. Full native race/resource/
+  namespace/compiler/default-size passes core279.751s/CLI23.357s;426 app96.01s,
+  build/vet and35 Python pass;174 browser hashes still match. See
+  docs/recovery-storage-diagnostics.md. No source, authority,
+  historical marker or production change, and no completed recovery claim.
   C7 approved October 21: recovery uses explicit new attempts from verified saved
   work with instructor-chosen allowances; no automatic refunds or reopening
   completed attempts. Preserve and safely secure the old work/history first;

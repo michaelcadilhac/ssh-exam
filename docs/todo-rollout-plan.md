@@ -29,6 +29,14 @@ application qualification passes; the exact uploaded code-only bundle is verifie
 but host eligibility refuses guest creation. Hardened qualification remains open and
 no rollout, storage migration or temporary-agent consolidation is executed.
 
+The following saved-work copy/fsync/close diagnostic correction has no schema,
+grant, marker or clock migration. Full local native/application checks pass;
+privileged qualification of the exact later artifact remains separate from the
+earlier uploaded atomic-consumption bundle. Restore storage and use supported
+private preparation/committed repair, never replace a source or clear a marker.
+Rollback loses the typed storage diagnosis but must preserve all newer authority
+and work. See recovery-storage-diagnostics.md; no rollout is executed.
+
 The saved-work publication child-death follow-up adds only private non-configurable
 test checkpoints, no source/clock/schema/grant format or policy migration. Its
 actual namespace-root CLI/watchdog/healthy-peer checks are not a substitute for

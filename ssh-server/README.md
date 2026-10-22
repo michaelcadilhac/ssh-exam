@@ -500,6 +500,13 @@ The same36-byte UUID format is retained, but O_TMPFILE/own-procfd publication mu
 be qualified on the actual hardened target. See docs/recovery-consumption-atomicity.md
 for current local tests and remaining gates, not a deployed fix.
 
+The following local extraction correction distinguishes storage copy/sync/close
+failures from saved-file hash mismatches. On ENOSPC/readonly staging failures,
+verify/restore storage and retry the supported private preparation; the printed
+refusal preserves the cause and unchanged-clock status. Do not replace a valid
+protected source or remove a marker. See docs/recovery-storage-diagnostics.md;
+this later artifact is not privileged-qualified or deployed.
+
 Local pane-management candidate (not deployed): `examctl help panes` explains
 bounded offline `panes list ATTEMPT`, `panes show ATTEMPT PANE` and reviewed
 `panes close ATTEMPT PANE --revision SNAPSHOT --reason TEXT`. Reads never initialize,

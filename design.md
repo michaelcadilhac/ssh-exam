@@ -94,6 +94,13 @@ for exact evidence, filesystem/procfs requirements and pending hardened-target
 qualification; the guarded host currently has live/unresolved work.
 No deployment or new grant/reopening policy is enabled.
 
+The next saved-work extraction correction distinguishes local copy/fsync/close
+IO failure from a completed-copy hash mismatch, preserving wrapped storage causes
+through shared staging refusals. Real private before-copy disk-full/readonly and
+receipt readonly tests leave time unstarted, sources unchanged and repaired
+staging usable; no verification or ownership guard is relaxed. See
+docs/recovery-storage-diagnostics.md for current evidence and remaining gates.
+
 The local native health workflow validates state and consumes authenticated
 one-use signed nonces before observing readiness outside the global state lock.
 Configuration reporting publishes the observation afterward in a separate short

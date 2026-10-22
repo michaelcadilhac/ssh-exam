@@ -17,6 +17,19 @@ authorizes deployment/signals on production. Historical awaiting-decision entrie
 below describe their earlier checkpoints; see todo-design-decisions.md for the
 current decisions. Legacy unused-enrollment migration remains unanswered.
 
+Recovery atomicity is now local commit2c2b9c3; C10/C11 decisions are1635822.
+An independent expanded staging-storage regression is RED0.476s: actual ENOSPC
+while extracting a valid saved file was masked as verification failure. Copy/
+sync/close failures now preserve their IO causes, without changing hash checks,
+sources or authority. Eight real private-namespace fault scenarios pass three
+race repeats5.349s, including usable repaired stages, signed healthy peers and
+root CLI committed repair. Initial fixture-only unmapped-UID failures were fixed
+before recording the real RED. Static build/vet pass; full native race/resource/
+namespace/compiler/default-size passes core279.751s/CLI23.357s. All426 app/80files
+pass96.01s with both opt-in root CLI tests enabled;35 Python checks pass0.023s
+and all174 browser source/runtime hashes still match the nine-check run.
+See recovery-storage-diagnostics.md. No production change or privileged PASS.
+
 Saved-work process-death/CLI/watchdog qualification is now local commit6cfd9d4.
 The next independent C7 correctness regression now confirms actual isolated
 ENOSPC leaves an empty consumption marker and prevents supported root CLI repair;

@@ -191,7 +191,18 @@ func (e *Engine) restoreRecoveryFiles(a *Attempt, r *RecoveryPreparation, manife
 		_, copyErr := io.CopyN(io.MultiWriter(f, hash), tr, h.Size)
 		syncErr := f.Sync()
 		closeErr := f.Close()
-		if copyErr != nil || syncErr != nil || closeErr != nil || hex.EncodeToString(hash.Sum(nil)) != file.Hash {
+		// Local storage failures are not evidence that the protected source is
+		// corrupt. Retain the category for supported staging/retry diagnostics.
+		if copyErr != nil {
+			return fmt.Errorf("recovery file copy unavailable: %q: %w", h.Name, copyErr)
+		}
+		if syncErr != nil {
+			return fmt.Errorf("recovery file sync unavailable: %q: %w", h.Name, syncErr)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("recovery file close unavailable: %q: %w", h.Name, closeErr)
+		}
+		if hex.EncodeToString(hash.Sum(nil)) != file.Hash {
 			return fmt.Errorf("recovery file verification failed: %q", h.Name)
 		}
 		seen[h.Name] = true
