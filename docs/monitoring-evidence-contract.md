@@ -165,6 +165,50 @@ Preserve the existing independent authoritative deadline cutoff throughout.
 
 ## Next dependencies before any enablement
 
+### Clock-source boundary identified October22 (not closed)
+
+Native `monitoring_clock.go` now has a private unused checked CLOCK_BOOTTIME
+integer-millisecond reader. It includes host suspend, bounds nanoseconds/arithmetic
+and returns an explicit static error instead of zero/default authority. No legacy
+deadline/access/reset calculation calls it. The private input gate now requires
+an error-returning clock, so a failed read cannot silently become an apparently
+valid timestamp. Future native journal/transition callers must preserve this
+error boundary and all original/current deadline and access-release conditions.
+The legacy /proc float reader has unchecked failure handling; replacing its
+failure with zero/infinity or treating an unknown clock as expiration/release
+would be unsafe. Typed operational handling remains part of coordinated C3.
+
+An old input watcher could wait its original long Go timer even after the supplied
+boot clock had advanced past authority. A synthetic-clock RED regression reproduces
+this; bounded100ms wake/rechecks now inspect current authority (also before every
+write). This does not add100ms permission or refresh the original cutoff. It is
+not privileged host-suspend/freeze qualification or a claim of instantaneous
+kernel containment under arbitrary scheduling. Error, jump and renewed-cutoff
+tests must pass together before integrating the native all-writer barrier.
+
+All22 native clock/gate/PTY cases pass20 race repeats (18.94s), including explicit
+positive-value-plus-error rejection, blocked-delivery cancellation and actual local
+kernel clock reads without setting time. Final full native race/resource/namespace/
+compiler tests pass (core168.0s/CLI7.7s), static build/vet and26 focused cross-language/
+HTTP/WS/SSH application checks pass (11.85s). This qualifies the private primitives,
+not live journal/alternate transport/clock policy or privileged suspend containment.
+
+The gateway ledger is still unused and its default performance.now clock remains
+an enablement dependency. The pinned
+[Node26.12/libuv Linux source](https://raw.githubusercontent.com/nodejs/node/v26.12.0/deps/uv/src/unix/linux.c)
+uses CLOCK_MONOTONIC for high-resolution time. Its uptime interface prefers coarse
+/proc/uptime and falls back to whole-second CLOCK_BOOTTIME; a blind os.uptime
+substitution would not establish the precision/age/focus guarantees. Select and
+qualify explicit suspend/failure/precision handling or native challenge anchors
+before making this a live issuer. Do not count a suspended host interval as
+continuous positively observed coverage, fabricate history on restart or shorten
+the approved focus grace through an unexamined coarse-clock conversion. No host
+clock/suspend operation was used in development and this is not evidence that a
+clock fault initiated the production incident. The prior deterministic latency
+model qualifies only its injected running-clock envelope.
+
+### Remaining coordinated integration
+
 1. Authenticated page-bound policy/capture challenge ingestion independent of the
    blocked session socket. Age must cover every required component, not just a
    fresh HTTP upload or keepalive; preserve focus grace and actual policy loss.

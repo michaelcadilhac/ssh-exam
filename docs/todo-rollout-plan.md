@@ -51,6 +51,13 @@ installing that CLI, touching a live agent owner or collecting student data now.
 A future drained full release still needs all native control/monitoring gates and
 the proposed temporary-agent consolidation; no rollout or migration is executed.
 
+The unused native monitoring-clock reader and typed clock-error input gate add no
+live deadline/access/config migration. Do not switch legacy clocks, substitute a
+coarse gateway clock or enable alternate proof issuance during cutover without
+the explicit clock failure/suspend/precision qualification in
+monitoring-evidence-contract.md. A failed clock is unknown authority, never a
+refund, new allowance, collection-expiry proof or ordinary-account release.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

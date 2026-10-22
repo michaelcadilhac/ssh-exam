@@ -8,6 +8,34 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+October22 continuation after9594087: native coordination clock foundation is in
+progress, with all live legacy clock/deadline/access calculations unchanged. A
+private unused checked CLOCK_BOOTTIME integer-millisecond reader rejects read/
+negative/nanosecond-range/overflow failures without inventing time. A RED candidate
+test demonstrates that an existing long Go timer can conceal an elapsed supplied
+boot clock during an in-flight write. The private gate now rechecks current
+authority at most100ms apart (and at every write), retaining current-cutoff renewal
+fences; no authority window is lengthened. Clock callbacks now return explicit
+errors and those also revoke/cancel input without fabricated timestamps or leaked
+syscall details. All22 clock/gate/PTY cases pass20 race repeats (18.94s). Final
+full native race/resource/namespace/compiler checks pass (core168.0s/CLI7.7s),
+static build/vet and26 focused contract/ledger/compiled-Go/HTTP/WS/SSH checks pass
+(11.85s). Browser assets are unchanged; no client import/build occurred.
+No host suspend, clock adjustment or production call is used. Root cross-process
+journal/admission/lease/freeze integration remains next and unimplemented.
+
+Gateway clock inspection is NOT closed: the unused coverage ledger currently uses
+performance.now. Pinned Node26.12/libuv source shows Linux high-resolution time is
+CLOCK_MONOTONIC; os.uptime reads coarse /proc/uptime, falling back to whole-second
+CLOCK_BOOTTIME. Do not blindly substitute it and claim precise evidence ages or
+unchanged focus boundaries. Select/qualify an explicit suspend/failure/precision
+rule or native-anchored evidence before enabling the alternate issuer. Existing
+/proc float uptime also has unchecked failure handling; do not replace it with
+zero/infinity or prematurely finalize/release on an unknown clock. Preserve all
+authoritative deadlines/restrictions and add typed operational failure handling
+with the coordinated native state, not an unsafe shortcut. This is source-derived
+candidate investigation, not evidence of the production initiating fault.
+
 October22 continuation after9af06c7: explicit native `list/info --read-only`
 diagnostics are being implemented/qualified locally before root coordination.
 Source inspection confirms legacy list/info reconcile and Engine.New creates/

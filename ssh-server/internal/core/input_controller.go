@@ -37,7 +37,7 @@ type paneInputDrain struct {
 type paneInputGate struct {
 	mu                  sync.Mutex
 	pane, epoch         string
-	now                 func() int64 // Trusted boot-monotonic milliseconds.
+	now                 func() (int64, error) // Trusted boot-monotonic milliseconds.
 	lastNow, until      int64
 	deadline            int64
 	sequence, revision  uint64
@@ -47,7 +47,7 @@ type paneInputGate struct {
 	drain               *paneInputDrain
 }
 
-func newPaneInputGate(pane string, now func() int64) (*paneInputGate, error) {
+func newPaneInputGate(pane string, now func() (int64, error)) (*paneInputGate, error) {
 	if !monitoringUUID.MatchString(pane) || now == nil {
 		return nil, errPaneInputBarrier
 	}
@@ -90,8 +90,8 @@ func (g *paneInputGate) revokeLocked() *paneInputDrain {
 }
 
 func (g *paneInputGate) clockLocked() (int64, bool) {
-	now := g.now()
-	if now < 0 || now < g.lastNow {
+	now, err := g.now()
+	if err != nil || now < 0 || now < g.lastNow {
 		g.revokeLocked()
 		return 0, false
 	}
@@ -239,7 +239,10 @@ func (g *paneInputGate) watchDelivery(ctx context.Context, delivery *paneInputDe
 			g.mu.Unlock()
 			return
 		}
-		remaining := g.until - now
+		// A Go timer is only a wake hint. The eventual native clock includes
+		// host suspend; timer elapsed time can differ. Bound rechecks so a stale
+		// long timer cannot conceal a newly observed authority/deadline expiry.
+		remaining := min(g.until-now, int64(100))
 		g.mu.Unlock()
 		timer := time.NewTimer(time.Duration(remaining) * time.Millisecond)
 		select {

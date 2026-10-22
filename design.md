@@ -2040,6 +2040,15 @@ diagnostics report scoped JSON/exit1 without asserting expiry/misconduct. Legacy
 unflagged inspections keep reconciliation behavior, now explicitly documented;
 mutating recovery remains separate and audited. See docs/native-read-only-diagnostics.md.
 
+Native coordination clock groundwork remains unused by live paths: checked
+CLOCK_BOOTTIME integer milliseconds and typed input-clock errors, with bounded
+current-cutoff rechecks rather than trusting an old long Go timer. No legacy
+deadline/access/reset path is switched or timestamp invented on failure. Preserve
+the current allowance/focus policy; gateway suspend/failure/precision handling
+remains an alternate-issuer enablement prerequisite. Synthetic clock faults never
+change/suspend the host and do not establish the initiating production cause.
+See docs/monitoring-evidence-contract.md.
+
 Renewal failures are reconciled against the current committed deadline before
 creating any interruption. Expiry while a request is in flight means local
 FINALIZING/pending native collection, not a lease-failure alert or new approval.

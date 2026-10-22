@@ -204,6 +204,17 @@ bridge, attempt state, root journal, callback or capability calls the adapter.
 
 ## Next integration boundary: durable native coordination (not implemented)
 
+Clock groundwork is staged separately: a private unused checked CLOCK_BOOTTIME
+reader and typed clock-error input gate now refuse unknown authority without
+fabricating a timestamp. The gate periodically rechecks its current cutoff at
+most100ms apart instead of trusting a long old Go timer; normal writes and timer
+wakes still recheck authority. A synthetic elapsed-boot-clock regression was RED
+before correction. This is not extra permission, a host clock/suspend test or
+verified all-writer cutoff. Gateway suspend/precision handling remains open before
+alternate proof issuance; see monitoring-evidence-contract.md. Legacy native
+deadline/access calculations remain unchanged until typed failure/transition
+handling can preserve their authoritative rules.
+
 The listener, retained PTY owners, independent watchdog and root examctl may be
 different processes. A process-local map/mutex or the current shared state lock
 cannot be the final barrier. Keep the existing independent deadline cutoff and

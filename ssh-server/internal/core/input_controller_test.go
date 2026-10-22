@@ -20,7 +20,7 @@ func paneGateFixture(t *testing.T) (*paneInputGate, *atomic.Int64, string) {
 	t.Helper()
 	clock := &atomic.Int64{}
 	clock.Store(1000)
-	g, err := newPaneInputGate(testInputPane, clock.Load)
+	g, err := newPaneInputGate(testInputPane, func() (int64, error) { return clock.Load(), nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func requirePaneDrain(t *testing.T, d *paneInputDrain) {
 }
 
 func TestPaneInputGateStartsRevokedAndConsumesOnlyCurrentDrain(t *testing.T) {
-	clock := func() int64 { return 1000 }
+	clock := func() (int64, error) { return 1000, nil }
 	g, err := newPaneInputGate(testInputPane, clock)
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +249,7 @@ func TestPaneInputGateBackwardsClockAndExhaustedRevisionFailClosed(t *testing.T)
 
 func TestPaneInputGateHealthyRenewalDoesNotLetAnOldWriteTimerRevokeCurrentAuthority(t *testing.T) {
 	started := time.Now()
-	g, err := newPaneInputGate(testInputPane, func() int64 { return 1000 + time.Since(started).Milliseconds() })
+	g, err := newPaneInputGate(testInputPane, func() (int64, error) { return 1000 + time.Since(started).Milliseconds(), nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +291,7 @@ func TestPaneInputGateHealthyRenewalDoesNotLetAnOldWriteTimerRevokeCurrentAuthor
 
 func TestPaneInputGateNativeCutoffCancelsEvenAnUnresponsiveDelivery(t *testing.T) {
 	started := time.Now()
-	g, err := newPaneInputGate(testInputPane, func() int64 { return 1000 + time.Since(started).Milliseconds() })
+	g, err := newPaneInputGate(testInputPane, func() (int64, error) { return 1000 + time.Since(started).Milliseconds(), nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,6 +319,99 @@ func TestPaneInputGateNativeCutoffCancelsEvenAnUnresponsiveDelivery(t *testing.T
 	requirePaneDrain(t, g.revoke())
 	if err := g.renew(epoch, 5000); err != errPaneInputHeld {
 		t.Fatal("expired delivery regained permission", err)
+	}
+}
+
+func TestPaneInputGateNoticesElapsedBootClockWhileItsOldTimerHasNotFired(t *testing.T) {
+	clock := &atomic.Int64{}
+	clock.Store(1000)
+	calls := &atomic.Int64{}
+	g, err := newPaneInputGate(testInputPane, func() (int64, error) { now := clock.Load(); calls.Add(1); return now, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { g.revoke() })
+	epoch := strings.Repeat("a", 64)
+	if err := g.arm(g.revoke(), epoch, 16000, 90000); err != nil {
+		t.Fatal(err)
+	}
+	entered := make(chan struct{})
+	finished := make(chan error, 1)
+	go func() {
+		_, err := g.forward(paneGateFrame(epoch, 1, "x"), func(ctx context.Context, _ []byte) (int, error) { close(entered); <-ctx.Done(); return 0, ctx.Err() })
+		finished <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("delivery not entered")
+	}
+	// Arm, initial forward, pre-write and watcher clock reads all occur before
+	// advancing boot time. The watcher has computed a long original timer; this
+	// is deterministic clock-source fault injection, not a host suspend/change.
+	deadline := time.Now().Add(time.Second)
+	for calls.Load() < 4 {
+		if time.Now().After(deadline) {
+			t.Fatal("watcher did not sample initial cutoff")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	g.mu.Lock()
+	clock.Store(16001)
+	g.mu.Unlock()
+	select {
+	case err := <-finished:
+		if err != errPaneInputWrite && err != errPaneInputHeld {
+			t.Fatal("elapsed clock did not revoke input", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("old timer concealed elapsed native boot-clock authority")
+	}
+	requirePaneDrain(t, g.revoke())
+}
+
+func TestPaneInputGateClockReadFailureRevokesWithoutInventingTimeOrLeakingDetails(t *testing.T) {
+	failed := &atomic.Bool{}
+	g, err := newPaneInputGate(testInputPane, func() (int64, error) {
+		if failed.Load() {
+			return 1234, errors.New("PRIVATE-CLOCK-DETAIL")
+		}
+		return 1000, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { g.revoke() })
+	epoch := strings.Repeat("a", 64)
+	if err := g.arm(g.revoke(), epoch, 16000, 90000); err != nil {
+		t.Fatal(err)
+	}
+	entered := make(chan struct{})
+	finished := make(chan error, 1)
+	go func() {
+		_, err := g.forward(paneGateFrame(epoch, 1, "x"), func(ctx context.Context, _ []byte) (int, error) { close(entered); <-ctx.Done(); return 0, ctx.Err() })
+		finished <- err
+	}()
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("delivery not entered")
+	}
+	failed.Store(true)
+	select {
+	case err := <-finished:
+		if err == nil || strings.Contains(err.Error(), "PRIVATE-CLOCK-DETAIL") {
+			t.Fatal("clock failure ignored/leaked", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("clock failure left input running")
+	}
+	requirePaneDrain(t, g.revoke())
+	if err := g.renew(epoch, 5000); err != errPaneInputHeld {
+		t.Fatal("unknown clock renewed permission", err)
+	}
+	if err := g.arm(g.revoke(), strings.Repeat("b", 64), 5000, 90000); err != errPaneInputBarrier {
+		t.Fatal("unknown clock armed new epoch", err)
 	}
 }
 

@@ -152,6 +152,17 @@ full privileged qualification or deployment authorization.
   retain their reconciliation behavior and are explicitly documented. See
   docs/native-read-only-diagnostics.md. This does not close the incident's initiating
   fault, root coordination or the critical item; nothing is deployed.
+  Native clock groundwork now has an unused checked CLOCK_BOOTTIME integer reader
+  and typed clock errors for the private input gate. A RED synthetic clock-jump
+  test exposed an old long Go timer concealing elapsed authority; bounded current-
+  cutoff rechecks fix that candidate defect without extending permission. Native
+  repeats pass all22 clock/gate/PTY cases20 times (18.94s); final full native race/
+  resource checks pass (core168.0s/CLI7.7s), build/vet and26 focused application/
+  cross-language/interface checks pass. Legacy deadlines/access are unchanged.
+  Gateway suspend/failure/precision handling and unsafe legacy /proc clock failure
+  handling must be resolved with coordinated native transitions before enablement.
+  Do not blindly substitute coarse os.uptime, invent time on an error, finalize/
+  release on uncertainty or claim this was the production cause.
 
 ## Firm design policy: examctl is the complete management interface
 
