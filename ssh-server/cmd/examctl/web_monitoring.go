@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"examworkspace/agent/internal/core"
@@ -17,19 +18,30 @@ func webMonitoringHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl web monitoring show ATTEMPT
        sudo examctl web monitoring list ATTEMPT [--section frames|terminals --limit N --after N --through N]
        sudo examctl web monitoring replay ATTEMPT PANE [--offset N --output NEW_FILE|-]
+       sudo examctl web monitoring image ATTEMPT FRAME [--thumbnail --output NEW_FILE|-]
        sudo examctl web monitoring delete ATTEMPT --confirm USERNAME --revision HASH --reason TEXT [--intent UUID]
        sudo examctl web monitoring purges [--status pending|running|retry|verified-absent --limit N --after ATTEMPT]
        sudo examctl web monitoring purge-status ATTEMPT
 
 Read gateway monitoring through existing root-agent signed outbound HTTPS.
-Explicit monitoring.show/list/replay/delete managementOperations authorization is required;
+Explicit monitoring.show/list/replay/image/delete managementOperations authorization is required;
 Purge inventory separately requires monitoring.purges and monitoring.purge.
 default is denied. No student credentials or inbound agent control API.
 show returns counts, retention and attempt metadata, not fresh native protection.
 list returns metadata only: default frames, 50 entries, range 1..200. Choose
 terminals to discover pane IDs for replay. Cursors are nonnegative safe integers;
 --after requires the first page's --through watermark. Keep both when paging;
-new captures after that watermark require a fresh list. No screenshot bytes here.
+new captures after that watermark require a fresh list. No screenshot bytes in list.
+
+image reads ONE listed FRAME UUID belonging to ATTEMPT. Default is the original
+JPEG (maximum 1,500,000 bytes); --thumbnail selects its derived JPEG (maximum 2 MiB).
+The same web-review reader enforces private pinned/no-follow bounded storage,
+retention and shared capacity. Original bytes have the stored upload digest;
+legacy thumbnails have no independent stored provenance hash. The signed result
+contains scoped base64, byte length and a transfer digest, checked before output.
+Default JSON contains private image bytes. --output NEW_FILE writes one binary
+JPEG to a new exclusive 0600 file; '-' emits binary stdout, use only a private
+redirect, never an interactive terminal. This is NOT a whole monitoring export.
 
 replay reads at most 1 MiB of complete NDJSON events starting at --offset bytes
 (default 0). Follow nextOffset; more means another full batch is available now.
@@ -39,8 +51,8 @@ Offsets must follow a newline, never a timestamp or character index. Invalid or
 unavailable storage refuses with diagnosis; monitoring never changes exam clocks,
 holds, approval or protected submissions. Use native manifest/export for submissions.
 
-Default output is JSON. --output applies ONLY to replay and writes ONE batch,
-not a complete media export. '-' streams NDJSON to stdout; NEW_FILE is created
+Default output is JSON. --output applies ONLY to image or replay (ONE batch),
+not a complete media export. Replay '-' streams NDJSON to stdout; NEW_FILE is created
 exclusively with mode 0600, never overwritten. A failed write may leave partial
 output. Review nextOffset/availableBytes in JSON when collecting multiple batches.
 Use a private terminal/destination; output contains sensitive student monitoring.
@@ -87,6 +99,8 @@ Examples:
   sudo examctl web monitoring list ATTEMPT --section terminals
   sudo examctl web monitoring replay ATTEMPT PANE --offset 0
   sudo examctl web monitoring replay ATTEMPT PANE --offset 0 --output ./replay-batch.ndjson
+  sudo examctl web monitoring image ATTEMPT FRAME --output ./new-private-frame.jpg
+  sudo examctl web monitoring image ATTEMPT FRAME --thumbnail --output ./new-private-thumb.jpg
   sudo examctl web monitoring delete ATTEMPT --confirm student01 --revision HASH --reason 'Reviewed monitoring retention request'
   sudo examctl web monitoring purges --status retry --limit 50
   sudo examctl web monitoring purge-status ATTEMPT
@@ -112,6 +126,7 @@ func webMonitoringMain(args []string) int {
 	through := f.Int64("through", 0, "first page watermark")
 	offset := f.Int64("offset", 0, "complete-event byte cursor")
 	output := f.String("output", "", "one replay batch to NEW_FILE or -")
+	thumbnail := f.Bool("thumbnail", false, "image: read derived thumbnail instead of original")
 	confirm := f.String("confirm", "", "reviewed student username")
 	revision := f.String("revision", "", "reviewed deletion hash")
 	reason := f.String("reason", "", "audited reason")
@@ -130,7 +145,7 @@ func webMonitoringMain(args []string) int {
 	}
 	ref := regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 	if len(w) < 2 || w[0] != "monitoring" || (w[1] == "purges" && len(w) != 2) || (w[1] != "purges" && (len(w) < 3 || !ref.MatchString(w[2]))) {
-		return usage("choose show/list/purge-status/delete ATTEMPT, purges, or replay ATTEMPT PANE")
+		return usage("choose show/list/purge-status/delete ATTEMPT, purges, replay ATTEMPT PANE, or image ATTEMPT FRAME")
 	}
 	if (*request != "" && !managementUUID.MatchString(*request)) || (*intent != "" && !managementUUID.MatchString(*intent)) {
 		return usage("request/intent must be UUIDs")
@@ -143,6 +158,9 @@ func webMonitoringMain(args []string) int {
 	}
 	if seen["status"] && w[1] != "purges" {
 		return usage("--status applies only to purges inventory")
+	}
+	if seen["thumbnail"] && w[1] != "image" {
+		return usage("--thumbnail applies only to image ATTEMPT FRAME")
 	}
 	if w[1] != "delete" && (seen["confirm"] || seen["revision"] || seen["reason"] || seen["intent"]) {
 		return usage("read workflow forbids deletion flags")
@@ -182,6 +200,11 @@ func webMonitoringMain(args []string) int {
 			return usage("replay needs ATTEMPT PANE and a nonnegative safe --offset byte cursor; only optional --output NEW_FILE|- and common flags")
 		}
 		b["pane"], b["offset"] = w[3], *offset
+	case "image":
+		if len(w) != 4 || !managementUUID.MatchString(w[3]) || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] || (seen["output"] && *output == "") {
+			return usage("image needs ATTEMPT FRAME UUID from monitoring list, with optional --thumbnail/--output NEW_FILE|- and common flags; no replay/list flags")
+		}
+		b["frame"], b["thumbnail"] = w[3], *thumbnail
 	case "delete":
 		why := strings.TrimSpace(*reason)
 		if len(w) != 3 || !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,31}$`).MatchString(*confirm) || !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(*revision) || len([]rune(why)) < 8 || len([]rune(why)) > 1000 || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] || seen["output"] {
@@ -250,6 +273,10 @@ func validatePurgeResult(operation string, body any, raw json.RawMessage) error 
 }
 
 func validateMonitoringResult(operation string, body any, raw json.RawMessage) error {
+	if operation == "monitoring.image" {
+		_, err := decodeMonitoringImage(body, raw)
+		return err
+	}
 	if operation == "monitoring.purges" || operation == "monitoring.purge" {
 		return validatePurgeResult(operation, body, raw)
 	}
@@ -316,4 +343,72 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 		return invalid
 	}
 	return nil
+}
+
+func decodeMonitoringImage(body any, raw json.RawMessage) ([]byte, error) {
+	var input struct {
+		ID, Frame string
+		Thumbnail bool
+	}
+	var result struct {
+		ID, Frame, Format string
+		Thumbnail         *bool
+		Bytes             *int64
+		SHA256, Data      *string
+	}
+	invalid := errors.New("monitoring image scope/length/digest rejected; no private output written; inspect fresh monitoring list and matching gateway/CLI versions")
+	b, err := json.Marshal(body)
+	if err != nil || json.Unmarshal(b, &input) != nil || json.Unmarshal(raw, &result) != nil || result.ID != input.ID || result.Frame != input.Frame || result.Thumbnail == nil || *result.Thumbnail != input.Thumbnail || result.Format != "jpeg" || result.Bytes == nil || result.SHA256 == nil || result.Data == nil {
+		return nil, invalid
+	}
+	limit := int64(1500000)
+	if input.Thumbnail {
+		limit = 2 * 1024 * 1024
+	}
+	if *result.Bytes < 1 || *result.Bytes > limit || len(*result.Data) != base64.StdEncoding.EncodedLen(int(*result.Bytes)) || !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(*result.SHA256) {
+		return nil, invalid
+	}
+	data, err := base64.StdEncoding.Strict().DecodeString(*result.Data)
+	if err != nil || int64(len(data)) != *result.Bytes || base64.StdEncoding.EncodeToString(data) != *result.Data || core.Hash(data) != *result.SHA256 {
+		return nil, invalid
+	}
+	return data, nil
+}
+
+func writeMonitoringImage(body any, raw json.RawMessage, output string) int {
+	data, err := decodeMonitoringImage(body, raw)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	var writer io.Writer = os.Stdout
+	var file *os.File
+	if output != "-" {
+		file, err = os.OpenFile(output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Create a new private image output (never overwrite):", err)
+			return 1
+		}
+		defer file.Close()
+		writer = file
+	}
+	n, err := writer.Write(data)
+	if err == nil && n != len(data) {
+		err = io.ErrShortWrite
+	}
+	if err == nil && file != nil {
+		err = file.Sync()
+	}
+	if file != nil {
+		closeErr := file.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Image output incomplete; inspect any private partial file before retrying:", err)
+		return 1
+	}
+	fmt.Fprintln(os.Stderr, "One monitoring image only; whole-media export is a separate workflow. Keep this private file under the applicable retention policy")
+	return 0
 }

@@ -477,12 +477,15 @@ export function registerAgentManagement(
         try {
           response = {
             ...outcome,
-            result: monitoringReads.read(
-              r.operation,
-              r.body,
-              outcome.result,
-              actor,
-            ),
+            result:
+              r.operation === "monitoring.image"
+                ? await monitoringReads.image(r.body, outcome.result, actor)
+                : monitoringReads.read(
+                    r.operation,
+                    r.body,
+                    outcome.result,
+                    actor,
+                  ),
           };
         } catch (error) {
           response = {
@@ -512,6 +515,17 @@ export function registerAgentManagement(
       }
       // Sign after the durable transaction. A lost HTTP/signing reply is recovered
       // with the same request ID, not by executing an intent twice.
+      if (response.ok && r.operation === "monitoring.image") {
+        try {
+          monitoringReads.assertImageRetained(r.body);
+        } catch (error) {
+          response = {
+            ok: false,
+            status: (error as any).statusCode || 503,
+            error: (error as Error).message.slice(0, 1500),
+          };
+        }
+      }
       return agent.signTiming({
         version: 1,
         purpose: managementPurpose,

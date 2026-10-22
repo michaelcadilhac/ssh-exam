@@ -4,6 +4,9 @@ import { qualifyClockCLI } from "../fixtures/management-clocks.js";
 import { qualifyInterruptionCLI } from "../fixtures/management-interruptions.js";
 import { qualifyMonitoringCLI } from "../fixtures/management-monitoring.js";
 import { qualifyTemplateCLI } from "../fixtures/management-templates.js";
+import { Monitoring } from "../../apps/server/src/monitoring.js";
+import { MonitoringManagement } from "../../apps/server/src/monitoring-management.js";
+import sharp from "sharp";
 import {
   generateKeyPairSync,
   randomBytes,
@@ -158,6 +161,7 @@ it("requires explicit root-agent management purpose, audience, freshness, pinned
       "monitoring.show",
       "monitoring.list",
       "monitoring.replay",
+      "monitoring.image",
       "monitoring.delete",
       "monitoring.purge",
       "monitoring.purges",
@@ -230,6 +234,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         timeout: 30000,
       });
       let corruptCatalog: string | null = null;
+      let corruptImage: string | null = null;
       server = https.createServer(
         { key: readFileSync(key), cert: readFileSync(cert) },
         (req, res) => {
@@ -245,11 +250,15 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
               })
               .then((reply) => {
                 let raw = reply.rawPayload;
-                if (corruptCatalog && req.url === "/api/agent/management") {
+                if (
+                  (corruptCatalog || corruptImage) &&
+                  req.url === "/api/agent/management"
+                ) {
                   const frame = JSON.parse(raw.toString());
                   const payload = JSON.parse(
                     Buffer.from(frame.payload, "base64").toString(),
                   );
+                  let changed = false;
                   if (
                     payload.operation === corruptCatalog &&
                     payload.ok &&
@@ -258,6 +267,24 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                     payload.result.source.hash = "f".repeat(64);
                     payload.result.note =
                       "PRIVATE-TEMPLATE-SCOPE-DATA-MUST-NOT-PRINT";
+                    changed = true;
+                  }
+                  if (
+                    corruptImage &&
+                    payload.operation === "monitoring.image" &&
+                    payload.ok
+                  ) {
+                    if (corruptImage === "frame")
+                      payload.result.frame = randomUUID();
+                    if (corruptImage === "variant")
+                      payload.result.thumbnail = !payload.result.thumbnail;
+                    if (corruptImage === "digest")
+                      payload.result.sha256 = "a".repeat(64);
+                    payload.result.note =
+                      "PRIVATE-IMAGE-SCOPE-DATA-MUST-NOT-PRINT";
+                    changed = true;
+                  }
+                  if (changed) {
                     const bytes = Buffer.from(JSON.stringify(payload));
                     raw = Buffer.from(
                       JSON.stringify({
@@ -609,7 +636,9 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       delete f.config.smtp;
       await qualifyClockCLI(f, invoke);
       await qualifyInterruptionCLI(f, invoke);
-      await qualifyMonitoringCLI(f, invoke);
+      await qualifyMonitoringCLI(f, invoke, (kind) => {
+        corruptImage = kind;
+      });
       await qualifyTemplateCLI(
         f,
         binary,
@@ -637,6 +666,81 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
   },
   45000,
 );
+
+it("keeps signed image retries payload-free, scopes reads and fences deletion after an async result before publication", async () => {
+  const f = await setup();
+  try {
+    f.config.agent.managementOperations = ["monitoring.image"];
+    f.current.store.db.exec(
+      "INSERT INTO exams VALUES('images','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES('image-a','images','synthetic',1001,'LOCKED','{}'),('image-b','images','other',1002,'LOCKED','{}')",
+    );
+    const data = await sharp({
+      create: { width: 40, height: 30, channels: 3, background: "white" },
+    })
+      .jpeg()
+      .toBuffer();
+    const frame = await new Monitoring(f.current.store).frame(
+      f.current.store.attempt("image-a"),
+      {
+        source: "screen",
+        seq: 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: data.toString("base64"),
+      },
+      "page",
+    );
+    const before = f.current.store.attempt("image-a");
+    const request = randomUUID(),
+      body = { id: "image-a", frame: frame.id };
+    const read = async (b: object = body, r = request) =>
+      f.unpack(
+        await f.post(
+          f.request({ operation: "monitoring.image", body: b, request: r }),
+        ),
+      );
+    const initial = await read();
+    expect(initial.ok).toBe(true);
+    expect(Buffer.from(initial.result.data, "base64")).toEqual(data);
+    expect((await read({ ...body, id: "image-b" }, randomUUID())).status).toBe(
+      404,
+    );
+    expect((await read({ ...body, extra: true }, randomUUID())).ok).toBe(false);
+    const stored = f.current.store.db
+      .prepare("SELECT outcome FROM agent_management_requests WHERE request=?")
+      .get(request) as any;
+    expect(JSON.parse(stored.outcome).result).toEqual({
+      ...body,
+      thumbnail: false,
+      transient: true,
+    });
+    expect(stored.outcome).not.toContain(data.toString("base64"));
+    await f.restart();
+    expect((await read()).result).toEqual(initial.result);
+    const original = MonitoringManagement.prototype.image;
+    const spy = vi
+      .spyOn(MonitoringManagement.prototype, "image")
+      .mockImplementationOnce(async function (
+        this: MonitoringManagement,
+        ...args
+      ) {
+        const value = await original.apply(this, args);
+        new Monitoring(f.current.store).delete("image-a", "teacher");
+        return value;
+      });
+    try {
+      const refused = await read();
+      expect(refused).toMatchObject({ ok: false, status: 410 });
+      expect(JSON.stringify(refused)).not.toContain(data.toString("base64"));
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await read()).status).toBe(410);
+    expect(f.current.store.attempt("image-a")).toEqual(before);
+  } finally {
+    await f.close();
+  }
+});
 
 it("persists replay/idempotency and scope-bound results across restart without repeating management reads", async () => {
   const f = await setup();

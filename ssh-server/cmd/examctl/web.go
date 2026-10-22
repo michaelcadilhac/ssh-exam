@@ -93,7 +93,7 @@ Unknown/unverified replies never imply success; retain the request ID for retry.
 	fmt.Fprintln(out, "Alert inspection/test/manual reminders: examctl web alerts help (list/show/test/remind).")
 	fmt.Fprintln(out, "Gateway attempt/clock workflows: examctl web attempts help; examctl web clocks help.")
 	fmt.Fprintln(out, "Interruption review/authorization: examctl web interruptions help.")
-	fmt.Fprintln(out, "Private monitoring metadata/replay: examctl web monitoring help.")
+	fmt.Fprintln(out, "Private monitoring metadata/images/replay/deletion/purge status: examctl web monitoring help.")
 }
 
 func webCategory(args []string) string {
@@ -309,6 +309,9 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		}
 	}
 	if csvOutput != "" {
+		if operation == "monitoring.image" {
+			return writeMonitoringImage(body, result.Result, csvOutput)
+		}
 		var value struct {
 			Format string `json:"format"`
 			Text   string `json:"text"`

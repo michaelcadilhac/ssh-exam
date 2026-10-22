@@ -153,6 +153,16 @@ make errors disappear. Original upload bounds stay 1,500,000 bytes; thumbnail re
 bounds are 2 MiB. This is bounded async IO, not worker/hardware-failure isolation.
 No production permission edits, rollout or deployment are performed here.
 
+C1gc1's candidate root image workflow likewise needs no schema migration. A future
+authorized paired gateway/CLI release must explicitly allow monitoring.image only
+for intended root-machine identities; existing reads do not imply it. Preserve
+transient metadata request receipts and tombstones; never persist/cache private
+image replies. Old gateways/CLIs refuse the unsupported command. Rollback loses
+the new CLI workflow, not the protected-submission retention policy. Keep existing
+web pinned-reader protections and shared capacity, and qualify deletion races and
+private outputs. Previously downloaded copies have separate operator retention.
+This paragraph authorizes no configuration edit, deployment or agent consolidation.
+
 The root CLI output-order follow-up needs no migration or new permission. Pair
 normal gateway/CLI versions, retain exact request/child intents and require
 nested target/intent/status validation before output. Only fully validated partial

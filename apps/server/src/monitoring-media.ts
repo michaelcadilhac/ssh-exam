@@ -49,7 +49,12 @@ export class MonitoringMedia {
     }
     if (tombstone) throw deleted();
   }
-  async read(id: string, thumbnail: boolean, actor: string) {
+  async read(
+    id: string,
+    thumbnail: boolean,
+    actor: string,
+    expectedAttempt?: string,
+  ) {
     z.string().uuid().parse(id);
     let row: { id: string; attempt: string; hash: string } | undefined;
     try {
@@ -59,7 +64,10 @@ export class MonitoringMedia {
     } catch {
       throw new MonitoringMediaError("storage");
     }
-    if (!row)
+    if (
+      !row ||
+      (expectedAttempt !== undefined && row.attempt !== expectedAttempt)
+    )
       throw Object.assign(
         Error("Monitoring image not found; refresh the monitoring inventory"),
         { statusCode: 404 },

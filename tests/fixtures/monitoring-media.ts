@@ -1,9 +1,10 @@
 import sharp from "sharp";
 import { createApp } from "../../apps/server/src/app.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
+import type { Config } from "../../packages/config/index.js";
 
 // Synthetic data only. No SSH connection, account or installed service is used.
-export async function mediaFixture(dir: string) {
+export async function mediaFixture(dir: string, options: Partial<Config> = {}) {
   const running = await createApp({
     mode: "development",
     origin: "http://127.0.0.1",
@@ -17,6 +18,7 @@ export async function mediaFixture(dir: string) {
       callbackPublicKey: "/missing",
     },
     maintenance: false,
+    ...options,
   });
   try {
     running.store.db.exec(

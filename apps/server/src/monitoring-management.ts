@@ -1,6 +1,7 @@
 import { hash, now, type Store } from "./db.js";
 import type { Monitoring } from "./monitoring.js";
 import { monitoringPurgeStatus } from "./monitoring-purge-jobs.js";
+import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
 import {
   monitoringList,
   monitoringReplay,
@@ -8,6 +9,7 @@ import {
   monitoringDelete,
   monitoringShow,
   monitoringPurges,
+  monitoringImage,
 } from "../../../packages/protocol/monitoring-management.js";
 
 const refuse = (message: string, statusCode = 409): never => {
@@ -20,7 +22,55 @@ export class MonitoringManagement {
   constructor(
     private store: Store,
     private monitoring: Monitoring,
+    private media = new MonitoringMedia(store),
   ) {}
+
+  // Synchronous final publication fence: callers must repeat this after the
+  // asynchronous read/continuation and immediately before sending/signing bytes.
+  assertImageRetained(input: unknown) {
+    const b = monitoringImage.parse(input);
+    try {
+      this.attempt(b.id);
+      if (
+        !this.store.db
+          .prepare("SELECT 1 FROM frames WHERE id=? AND attempt=?")
+          .get(b.frame, b.id)
+      )
+        return refuse(
+          "Monitoring frame not found for this attempt; inspect examctl web monitoring list ATTEMPT --section frames",
+          404,
+        );
+      return b;
+    } catch (error) {
+      if ((error as any)?.statusCode) throw error;
+      throw new MonitoringMediaError("storage");
+    }
+  }
+
+  async image(input: unknown, receipt: any, actor: string) {
+    const b = this.assertImageRetained(input);
+    if (
+      receipt.id !== b.id ||
+      receipt.frame !== b.frame ||
+      receipt.thumbnail !== b.thumbnail ||
+      receipt.transient !== true
+    )
+      return refuse(
+        "Monitoring image receipt scope mismatch; no private bytes returned",
+      );
+    const image = await this.media.read(b.frame, b.thumbnail, actor, b.id);
+    this.assertImageRetained(b);
+    return {
+      id: b.id,
+      frame: b.frame,
+      thumbnail: b.thumbnail,
+      format: "jpeg",
+      bytes: image.data.length,
+      sha256: hash(image.data),
+      data: image.data.toString("base64"),
+      retention,
+    };
+  }
 
   private inventoryRead<T>(read: () => T): T {
     try {
@@ -217,6 +267,15 @@ export class MonitoringManagement {
   receipt(operation: string, input: unknown) {
     const b = parseMonitoring(operation, input);
     this.attempt(b.id, operation !== "monitoring.show");
+    if (operation === "monitoring.image") {
+      const image = this.assertImageRetained(input);
+      return {
+        id: image.id,
+        frame: image.frame,
+        thumbnail: image.thumbnail,
+        transient: true,
+      };
+    }
     if (operation === "monitoring.list") {
       const page = monitoringList.parse(input);
       const table = page.section === "frames" ? "frames" : "recordings";

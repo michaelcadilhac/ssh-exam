@@ -8,6 +8,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
+import sharp from "sharp";
+import { hash } from "../../apps/server/src/db.js";
 
 // Actual compiled CLI/root user namespace -> real TLS gateway. All attempts and
 // recording bytes are synthetic; no installed service/account is touched.
@@ -17,6 +19,7 @@ export async function qualifyMonitoringCLI(
     category: string,
     args: string[],
   ) => Promise<{ stdout: string; stderr: string }>,
+  corruptImage: (kind: string | null) => void,
 ) {
   const id = f.current.store.db
     .prepare(
@@ -40,12 +43,23 @@ export async function qualifyMonitoringCLI(
     data: "PRIVATE-CLI-TERMINAL-日本語",
   });
   media.record(id, peer, { event: "open" });
+  const imageBytes = await sharp({
+    create: { width: 40, height: 30, channels: 3, background: "white" },
+  })
+    .jpeg()
+    .toBuffer();
   for (let seq = 1; seq <= 2; seq++)
-    f.current.store.db
-      .prepare(
-        "INSERT INTO frames VALUES(?,?, 'screen',?,'PRIVATE-PAGE-HASH',?,1,?,40,30,'PRIVATE-FRAME-HASH')",
-      )
-      .run(randomUUID(), id, seq, Date.now(), Date.now());
+    await media.frame(
+      before,
+      {
+        source: "screen",
+        seq,
+        captured: Date.now(),
+        monotonic: 1,
+        data: imageBytes.toString("base64"),
+      },
+      "PRIVATE-PAGE-HASH",
+    );
   const run = async (args: string[]) =>
     JSON.parse((await invoke("monitoring", args)).stdout).result;
   const shown = await run(["show", id]);
@@ -76,6 +90,76 @@ export async function qualifyMonitoringCLI(
   ]);
   expect(last.next).toBeNull();
   expect(last.entries[0].id).not.toBe(first.entries[0].id);
+  const imageRequest = randomUUID();
+  const imageArgs = [
+    "image",
+    id,
+    first.entries[0].id,
+    "--request",
+    imageRequest,
+  ];
+  const image = await run(imageArgs);
+  expect(image).toMatchObject({
+    id,
+    frame: first.entries[0].id,
+    thumbnail: false,
+    format: "jpeg",
+    bytes: imageBytes.length,
+    sha256: hash(imageBytes),
+  });
+  expect(Buffer.from(image.data, "base64")).toEqual(imageBytes);
+  const imageFile = `${f.dir}/new-private-image.jpg`;
+  expect(
+    (await invoke("monitoring", [...imageArgs, "--output", imageFile])).stderr,
+  ).toContain("One monitoring image only");
+  expect(readFileSync(imageFile)).toEqual(imageBytes);
+  expect(statSync(imageFile).mode & 0o777).toBe(0o600);
+  await expect(
+    invoke("monitoring", [...imageArgs, "--output", imageFile]),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("never overwrite"),
+  });
+  const imageLink = `${f.dir}/image-link`;
+  symlinkSync(imageFile, imageLink);
+  await expect(
+    invoke("monitoring", [...imageArgs, "--output", imageLink]),
+  ).rejects.toMatchObject({ code: 1 });
+  expect(readFileSync(imageFile)).toEqual(imageBytes);
+  const thumb = await run(["image", id, first.entries[0].id, "--thumbnail"]);
+  expect(thumb.thumbnail).toBe(true);
+  expect(Buffer.from(thumb.data, "base64")).toEqual(
+    readFileSync(`${f.dir}/monitoring/${id}/${first.entries[0].id}.thumb.jpg`),
+  );
+  const storedImage = JSON.parse(
+    f.current.store.db
+      .prepare("SELECT outcome FROM agent_management_requests WHERE request=?")
+      .get(imageRequest).outcome,
+  );
+  expect(storedImage.result).toEqual({
+    id,
+    frame: first.entries[0].id,
+    thumbnail: false,
+    transient: true,
+  });
+  expect(JSON.stringify(storedImage)).not.toContain(image.data);
+  for (const kind of ["frame", "variant", "digest"]) {
+    corruptImage(kind);
+    const destination = `${f.dir}/rejected-image-${kind}.jpg`;
+    try {
+      for (const output of [[], ["--output", destination]])
+        await expect(
+          invoke("monitoring", [...imageArgs, ...output]),
+        ).rejects.toMatchObject({
+          code: 1,
+          stdout: "",
+          stderr: expect.stringContaining("image scope/length/digest rejected"),
+        });
+      expect(existsSync(destination)).toBe(false);
+    } finally {
+      corruptImage(null);
+    }
+  }
   expect(
     (await run(["list", id, "--section", "terminals"])).entries.map(
       (r: any) => r.pane,
@@ -115,6 +199,7 @@ export async function qualifyMonitoringCLI(
   expect(JSON.parse(stored).result).toEqual({ id, transient: true });
   expect(stored).not.toContain("PRIVATE");
   await f.restart();
+  expect(await run(imageArgs)).toEqual(image);
   expect(await run(args)).toEqual(initial);
   media = new Monitoring(f.current.store);
   media.record(id, pane, { event: "output", data: "appended" });
@@ -260,6 +345,14 @@ export async function qualifyMonitoringCLI(
     stderr: expect.stringContaining("deleted"),
   });
   expect(existsSync(missing)).toBe(false);
+  const deletedImage = `${f.dir}/deleted-image.jpg`;
+  await expect(
+    invoke("monitoring", [...imageArgs, "--output", deletedImage]),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("deleted"),
+  });
+  expect(existsSync(deletedImage)).toBe(false);
   expect((await run(["show", id])).current.monitoringDeleted).toBeTypeOf(
     "number",
   );

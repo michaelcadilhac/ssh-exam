@@ -3,6 +3,10 @@ import { attemptReference } from "./clock-management.js";
 import { username } from "./index.js";
 
 export const monitoringShow = z.object({ id: attemptReference }).strict();
+export const monitoringImage = monitoringShow.extend({
+  frame: z.string().uuid(),
+  thumbnail: z.boolean().default(false),
+});
 export const purgeStatus = z.enum([
   "not-verified",
   "pending",
@@ -64,6 +68,8 @@ export function parseMonitoring(operation: string, input: unknown) {
       return monitoringList.parse(input);
     case "monitoring.replay":
       return monitoringReplay.parse(input);
+    case "monitoring.image":
+      return monitoringImage.parse(input);
     default:
       throw Error("Unsupported monitoring read operation");
   }

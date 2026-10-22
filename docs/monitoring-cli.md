@@ -86,6 +86,54 @@ retention; do not put student text into operator reasons. Deletion does not clai
 that physical purge succeeded: failed purges remain tombstoned for retry. See
 [monitoring-retention-fixes.md](monitoring-retention-fixes.md).
 
+## One image through examctl (C1gc1, local candidate)
+
+```sh
+sudo examctl web monitoring list ATTEMPT --section frames
+sudo examctl web monitoring image ATTEMPT FRAME --output ./new-private-frame.jpg
+sudo examctl web monitoring image ATTEMPT FRAME --thumbnail --output ./new-private-thumb.jpg
+```
+
+FRAME is a listed frame UUID; it must belong to the named ATTEMPT. Separately
+authorize `monitoring.image`; existing show/list/replay permissions do not imply
+private image access. No gateway schema/configuration migration is performed by
+this local implementation. Web review and root management use the same bounded
+reader instance and combined sixteen-read capacity; reads yield outside SQLite.
+The actual original JPEG is at most1,500,000 bytes; the derived thumbnail is at
+most2MiB. Originals are checked against their stored upload digest. Legacy
+thumbnails have no independent stored provenance hash; the signed response's
+SHA256 is transfer integrity, not proof of fresh capture or monitoring readiness.
+
+Default JSON contains scoped base64 bytes, length and digest. The CLI checks
+attempt/frame/original-versus-thumbnail, canonical base64, bounds and digest
+before ANY private stdout/file creation. Explicit output creates a new0600 file
+and refuses an existing file or leaf symlink. `--output -` is binary stdout,
+appropriate only for a deliberate private redirect, not a terminal. A failed
+write may leave an incomplete private file. This is one image, not whole export.
+
+Image reads use transient metadata-only durable receipts; exact retries reread
+retained bytes even after restart. Pinned/no-follow private storage checks are
+shared with web review. Deletion is rechecked after async IO and again immediately
+before signing/publication, so an earlier cached receipt cannot replay deleted
+bytes. Missing/wrong-attempt frames refuse without exposing another attempt;
+link/FIFO/size/digest/storage errors give safe inspection guidance. Downloaded
+copies are sensitive operator records: gateway deletion/expiry cannot erase
+copies already downloaded. Apply institutional storage/retention rules separately.
+Clocks, credentials, holds and protected submissions are unchanged.
+
+Fifteen focused application/interface checks pass, including actual compiled
+root-mapped CLI over real TLS, same-request/restart retry, original/thumbnail
+bytes, exclusive output/symlink/deletion refusal, signed-but-wrong scope/variant/
+digest before any output, shared web/root capacity with actual held descriptor
+reads and responsive health. Disabling only the final publication fence makes
+the deletion-race regression RED; the mutant is removed. Native help/syntax/
+digest tests pass ten race repeats. Final qualification passes all400 application
+tests/75files (81.46s), full native race/resource checks (core169.499s/CLI7.090s),
+static build/vet/typecheck/build and all49 selected admin/review/actual-SSH browser
+checks (3.5m). All18 frozen hashes match; documentation screenshots are unchanged.
+See monitoring-image-qualification.md for exact evidence. Whole export remains
+C1gc2; see monitoring-export-plan.md. No operation/configuration is deployed.
+
 ## Reviewed deletion (C1gb3 local candidate)
 
 First run show and review the displayed student, attempt and deletionReview.

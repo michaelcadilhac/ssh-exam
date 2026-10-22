@@ -749,6 +749,15 @@ the approval is not a production change or a completed investigation.
   application tests, 84 browser-SSH checks, build and typecheck pass; this adds no
   CLI capability/retention change and
   does not complete media export or OS-level read fault isolation. Not deployed.
+  C1gc1 is now implemented/tested locally: discoverable root image/original/thumbnail
+  reads share the existing web reader, capacity and deletion fences. Exact scope,
+  length/digest and private-output validation are tested through the compiled CLI
+  and real TLS; signed mismatches cannot print or create files. A removed final
+  deletion-fence mutant makes the HTTP regression fail; restored before full
+  checks. Fifteen focused, all400 application and full native race/resource checks,
+  static/build/typecheck and49 frozen-artifact browser checks pass. All18 hashes
+  match; see docs/monitoring-image-qualification.md. One image is not a whole export; C1gc2 and this
+  checkbox remain open. See docs/monitoring-export-plan.md and monitoring-cli.md.
 
 - [x] **Harden cleanup against records that never became real preflights.**
   Implemented/tested locally October 20; not deployed. Housekeeping requires

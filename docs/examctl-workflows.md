@@ -55,6 +55,12 @@ list/filter/pagination and read-only `purge-status ATTEMPT`, including retired
 preparation jobs. These metadata outcomes are snapshots: NEW request for fresh
 status, never a filesystem proof. Full export remains open; see
 monitoring-purge-isolation.md and monitoring-cli.md.
+The local C1gc1 candidate adds `web monitoring image ATTEMPT FRAME [--thumbnail]
+--output NEW_FILE`, with separate monitoring.image authorization, the shared web
+image reader/capacity, transient private-read receipts and scoped digest checks
+before output. A listed frame must belong to the named attempt. Output is one
+new0600 JPEG, never a complete export; downloaded copies require private operator
+retention. See monitoring-cli.md for limits and current qualification status.
 Help runs without root or installed configuration. Unknown commands, missing or
 extra targets, missing reasons, invalid flags and ambiguous filters explain the
 relevant help before attempting root/configuration access. Actual native

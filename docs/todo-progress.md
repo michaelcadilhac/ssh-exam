@@ -45,6 +45,22 @@ writes succeed, host/base preservation passes. Evidence
 The application-visible stop/continue versus separately qualified kernel choice
 is now explicitly awaiting instructor input. Independent monitoring-export work
 continues while that and renewal durability are pending; no policy is assumed.
+Q5 investigation is recorded in local commit6d6cf13. Independent increments are
+C1gc1 scoped bounded image parity, then C1gc2 complete private export; ordered
+acceptance/fault criteria are in monitoring-export-plan.md. C1gc1's final local
+qualification is below; C1gc2 and the monitoring-management TODO remain open.
+The C1gc1 candidate now passes15 focused shared-media/HTTP/actual compiled root-
+CLI/TLS checks (3.54s), including same-request/restart/private-output/deleted retry,
+signed scope/variant/digest mismatches before stdout/files and the shared16-reader
+limit across web/root with responsive health outside SQLite. A deliberately
+disabled final publication fence makes the late-deletion test RED; restored.
+Native image/help checks pass ten race repeats. Final all400 application checks/
+75files (81.46s), full native race/resource/namespace/compiler/default-size suite
+(core169.499s/CLI7.090s), static build/vet/typecheck/build and all49 selected browser
+checks (3.5m) pass. All18 runtime/source hashes match before/after; nine screenshot
+baselines are unchanged. See monitoring-image-qualification.md. No full export,
+deployed or completed-TODO claim. Docker remains absent on the local Unix socket
+in the renewed read-only check; no daemon/service/group/permission changes made.
 
 Next C3 qualification increment is in progress, not a live mode: a private guest
 test combines actual root cgroup freeze/UID inspection with the unused local

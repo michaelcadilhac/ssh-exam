@@ -1,15 +1,80 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"examworkspace/agent/internal/core"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
+func TestMonitoringImagePrivateOutputNeverOverwritesOrFollowsAnExistingLink(t *testing.T) {
+	frame := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+	body := map[string]any{"id": "a", "frame": frame, "thumbnail": false}
+	data := []byte("synthetic-private-image")
+	value := map[string]any{"id": "a", "frame": frame, "thumbnail": false, "format": "jpeg", "bytes": len(data), "sha256": core.Hash(data), "data": base64.StdEncoding.EncodeToString(data)}
+	raw, _ := json.Marshal(value)
+	dir := t.TempDir()
+	output, link, rejected := filepath.Join(dir, "image.jpg"), filepath.Join(dir, "link.jpg"), filepath.Join(dir, "rejected.jpg")
+	if writeMonitoringImage(body, raw, output) != 0 {
+		t.Fatal("valid private output refused")
+	}
+	info, err := os.Stat(output)
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatal("unsafe output permissions", err)
+	}
+	if writeMonitoringImage(body, raw, output) != 1 {
+		t.Fatal("overwrote existing private image")
+	}
+	if err := os.Symlink(output, link); err != nil {
+		t.Fatal(err)
+	}
+	if writeMonitoringImage(body, raw, link) != 1 {
+		t.Fatal("followed existing output link")
+	}
+	wrong := map[string]any{"id": "other", "frame": frame, "thumbnail": false}
+	if writeMonitoringImage(wrong, raw, rejected) != 1 {
+		t.Fatal("wrote wrong scope")
+	}
+	if _, err := os.Stat(rejected); !os.IsNotExist(err) {
+		t.Fatal("invalid reply created output", err)
+	}
+	actual, err := os.ReadFile(output)
+	if err != nil || string(actual) != string(data) {
+		t.Fatal("original private output changed", err)
+	}
+}
+
+func TestMonitoringImageScopeLengthAndDigestBeforeOutput(t *testing.T) {
+	frame := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+	body := map[string]any{"id": "a", "frame": frame, "thumbnail": false}
+	data := []byte("synthetic-image-bytes")
+	value := map[string]any{"id": "a", "frame": frame, "thumbnail": false, "format": "jpeg", "bytes": len(data), "sha256": core.Hash(data), "data": base64.StdEncoding.EncodeToString(data)}
+	raw, _ := json.Marshal(value)
+	if err := validateMonitoringResult("monitoring.image", body, raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, patch := range []map[string]any{{"id": "other"}, {"frame": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"}, {"thumbnail": true}, {"thumbnail": nil}, {"format": "ndjson"}, {"bytes": len(data) + 1}, {"bytes": nil}, {"sha256": strings.Repeat("a", 64)}, {"data": "not base64"}, {"data": nil}} {
+		wrong := map[string]any{}
+		for k, v := range value {
+			wrong[k] = v
+		}
+		for k, v := range patch {
+			wrong[k] = v
+		}
+		raw, _ := json.Marshal(wrong)
+		if validateMonitoringResult("monitoring.image", body, raw) == nil {
+			t.Fatal("accepted an unsafe private image", patch)
+		}
+	}
+}
+
 func TestMonitoringHelpAndSyntaxWithoutConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "monitoring"}, {"web", "monitoring", "help"}, {"--config", "/missing", "web", "monitoring", "--help"}} {
 		out, code := cliProcess(t, args...)
-		for _, want := range []string{"Usage:", "--through", "--offset", "--request", "1 MiB", "transient", "0600", "Exit status:"} {
+		for _, want := range []string{"Usage:", "--through", "--offset", "--request", "1 MiB", "transient", "0600", "image ATTEMPT FRAME", "--thumbnail", "transfer digest", "Exit status:"} {
 			if code != 0 || !strings.Contains(out, want) {
 				t.Fatal("missing monitoring help", want, code, out)
 			}
@@ -36,6 +101,11 @@ func TestMonitoringHelpAndSyntaxWithoutConfiguration(t *testing.T) {
 		{"web", "monitoring", "purges", "--limit", "101"},
 		{"web", "monitoring", "purges", "--after", "../private"},
 		{"web", "monitoring", "purge-status", "a", "--status", "retry"},
+		{"web", "monitoring", "image", "a"},
+		{"web", "monitoring", "image", "a", "not-a-uuid"},
+		{"web", "monitoring", "image", "a", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "--offset", "0"},
+		{"web", "monitoring", "image", "a", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "--output="},
+		{"web", "monitoring", "show", "a", "--thumbnail"},
 	} {
 		out, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(out, "help") || strings.Contains(out, "Load root") {

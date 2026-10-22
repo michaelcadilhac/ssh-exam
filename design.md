@@ -1507,6 +1507,17 @@ audit and no-store. The legacy no-offset reader refuses oversized/partial batche
 with incremental guidance, never an unbounded read. No clock/hold/submission or
 60-day policy change. Full export/shared deletion intents remain open.
 
+C1gc1's local candidate exposes the same bounded original/thumbnail image reader
+through root `web monitoring image ATTEMPT FRAME`, separately authorized by name.
+Web/root reads share sixteen total in-flight descriptors outside SQLite; durable
+retry outcomes contain scoped metadata only. Recheck deletion after async reads
+and immediately before signing bytes. Validate exact attempt/frame/variant,
+canonical base64, size and digest before any CLI stdout/file creation; explicit
+files are exclusive0600. Legacy thumbnail transfer hashes do not establish
+independent capture provenance. Downloads are private operator copies, not
+automatically erased by gateway retention. No timing/access/submission policy or
+schema change; whole-media export remains separate. See docs/monitoring-cli.md.
+
 The root client must validate nested resource scope before any stdout or output
 file creation, not only before returning its exit status. An authenticated signed
 outer envelope cannot justify printing a mismatched private review. Clock batch

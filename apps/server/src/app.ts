@@ -131,7 +131,11 @@ export async function createApp(
   life.onPreflightFailure = (details) =>
     app.log.warn(details, "Preflight cleanup failed");
   const clocks = new ClockControl(store, agent, life);
-  const monitoringManagement = new MonitoringManagement(store, monitoring);
+  const monitoringManagement = new MonitoringManagement(
+    store,
+    monitoring,
+    media,
+  );
   const interruptionManagement = new InterruptionManagement(store);
   const alertManagement = new AlertManagement(store, () => !!config.smtp);
   const authAttempts = new Map<string, { at: number; count: number }>();
