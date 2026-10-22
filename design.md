@@ -1381,9 +1381,9 @@ versions and protected/student authority. Retry verifies a published exact versi
 never recopies/replaces it from mutable author paths; unknown interrupted intent
 is visible and only empty/private-metadata cleanup is eligible. No installed-
 version deletion, implicit latest selection or automatic cleanup exists. Results
-explicitly say gateway_confirmed=false. Student readers still resolve legacy
-sources; all-reader exact-version binding, signed metadata acknowledgement and
-unified grants/migration remain separate unfinished dependencies. Focused local
+explicitly say gateway_confirmed=false for native-only installation. C2a3/a4 below
+add optional exact-version readers and explicit metadata acknowledgement;
+unified grant selection/issuance/migration remain unfinished. Focused local
 qualification is not deployment or privileged system-manager qualification;
 see docs/template-catalog.md and docs/todo-progress.md.
 
@@ -1401,6 +1401,22 @@ worker entry, never the student gate. Gateway snapshots remain legacy until
 authenticated version visibility/shared issuance is implemented; no record is
 retroactively versioned. Privileged qualification and the full grant investigation
 remain open. The new native capability is support, not an availability/grant proof.
+
+C2a4 local candidate adds metadata-only `agent_template_versions` (additive020),
+root `templates sync NAME HASH --reason TEXT`, shared root `web templates list/show`
+and read-only administrator catalog inspection. Sync first verifies actual local
+bytes in the bounded native worker and then uses existing signed outbound C1
+management with explicitly named templates.sync/list/show permissions and root
+audit. Browser administrators may read, never attest native bytes. Retain immutable
+logical counters and first/latest creation/attestation/acknowledgement facts, no
+source paths, inventories/question bytes or student credentials. Out-of-order
+attestations cannot regress metadata. Exact retries keep the original observation;
+new requests refresh deliberately. These historical acknowledgements are neither
+live filesystem probes nor source leases, implicit defaults or grants. Validate
+complete nested CLI scope/counters/cursors/flags before output. Actual CLI/TLS/
+native verification/restart, shared HTTP and browser qualification pass locally;
+privileged system-manager and unified grant/source-selection work remain open.
+No production migration/selection or deployment occurs. See template-catalog.md.
 
 Approved C1 design (October 20; partial local implementation): root-run examctl on the
 class server reuses its existing root-owned agent identity for outbound HTTPS

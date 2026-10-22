@@ -19,15 +19,17 @@ func templatesHelp(out io.Writer) {
        sudo examctl templates list [--name NAME --limit N --after NAME@HASH]
        sudo examctl templates show NAME HASH
        sudo examctl templates verify NAME HASH
+       sudo examctl templates sync NAME HASH --reason TEXT [--request UUID]
        sudo examctl templates jobs [--limit N --after JOB_UUID]
        sudo examctl templates clean JOB_UUID --confirm JOB_UUID --reason TEXT
 
-Native root-only immutable template catalog, offline from the gateway. Existing
+Root-only immutable catalog: native workflows are offline; sync additionally uses
+existing signed outbound agent HTTPS to record a gateway attestation. Existing
 legacy template directories and ALL attempts, grants, workspaces, submissions,
 deadlines, account restrictions and monitoring remain unchanged. NO version is
 automatically selected as latest or bound to any student. Current gateway-issued
 snapshots remain legacy; optional native exact-version readers do not issue or
-migrate grants. Installation is LOCAL ONLY:
+migrate grants. Installation alone is LOCAL ONLY:
 gateway_confirmed=false, not proof that the webserver may issue a grant from it.
 No installed-version deletion command is enabled.
 
@@ -42,9 +44,20 @@ First validate, review its info.hash, then install with that exact --expected
 HASH and audited --reason (8..1000 UTF-8 bytes; no credentials/student text).
 Changed source refuses. NAME identifies a template, HASH its exact version;
 changed content creates another version and NEVER overwrites a previous one.
---request is an install UUID, new by default and printed before work starts.
+--request is an install/sync UUID, new by default and printed before work starts.
 Retain it and identical name/hash/limits/reason after a lost reply. Retrying an
 installed version verifies it rather than recopying or replacing bytes.
+
+sync first verifies the installed exact bytes locally, then requires explicit
+templates.sync gateway managementOperations authorization and an audited reason.
+It sends only name/hash/counters/timestamps, never paths/question text. A signed
+acknowledgement is a timestamped source attestation, NOT a live filesystem probe,
+availability lease, selection, grant or deployment. Retry a lost reply with the
+SAME sync request/name/hash/reason; the original acknowledgement/time is retained.
+A NEW sync request deliberately refreshes the observation. Local verification
+can now fail even if an older acknowledgement exists; preserve both facts.
+Use examctl web templates list/show for authenticated gateway observations (NEW
+read request for fresh metadata), not native templates list/show. No auto-issuance.
 
 Import/validation logical bounds: --file-mib defaults 128, range 1..4096;
 --total-mib defaults 512, range 1..16384 and at least per-file. One MiB=1048576 bytes.
@@ -77,7 +90,7 @@ as unrecorded-cleaned; neither status means an installed or confirmed version.
 
 Common --config FILE defaults to /etc/exam-agent/agent.json. No new authentication,
 network listener, student password, ad hoc script or JSON editing is required.
-Help/syntax validation needs no root/configuration; offline reads need the native
+Help/syntax validation needs no root/configuration; native reads need the native
 private state directory, not a running gate service. No production action implied.
 
 Examples:
@@ -86,6 +99,8 @@ Examples:
   sudo examctl templates install midterm /private/authored/midterm --expected HASH --reason 'Reviewed immutable source package'
   sudo examctl templates list --name midterm
   sudo examctl templates verify midterm HASH
+  sudo examctl templates sync midterm HASH --reason 'Reviewed installed source version'
+  sudo examctl web templates show midterm HASH
   sudo examctl templates jobs
   sudo examctl templates clean JOB --confirm JOB --reason 'Remove failed unpublished import only'
 
@@ -104,7 +119,7 @@ func templatesMain(args []string) int {
 	name := f.String("name", "", "list name filter")
 	expected := f.String("expected", "", "reviewed source hash")
 	reason := f.String("reason", "", "audited reason")
-	request := f.String("request", "", "install job UUID")
+	request := f.String("request", "", "install/sync request UUID")
 	confirm := f.String("confirm", "", "exact cleanup job UUID")
 	limit := f.Int("limit", 50, "metadata page size")
 	after := f.String("after", "", "exclusive catalog/job cursor")
@@ -120,7 +135,7 @@ func templatesMain(args []string) int {
 		return 0
 	}
 	if len(w) < 2 || w[0] != "templates" {
-		return usage("choose validate/install/list/show/verify/jobs/clean")
+		return usage("choose validate/install/list/show/verify/sync/jobs/clean")
 	}
 	seen := map[string]bool{}
 	f.Visit(func(flag *flag.Flag) { seen[flag.Name] = true })
@@ -151,12 +166,16 @@ func templatesMain(args []string) int {
 		if b.After != "" && ((b.Action == "jobs" && !managementUUID.MatchString(b.After)) || (b.Action == "list" && !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}@[a-f0-9]{64}$`).MatchString(b.After))) {
 			return usage("list cursor is NAME@HASH; jobs cursor is JOB_UUID")
 		}
-	case "show", "verify":
+	case "show", "verify", "sync":
 		if len(w) != 4 || !ref.MatchString(w[2]) || !hash.MatchString(w[3]) {
-			return usage("show/verify requires NAME and exact 64-hex HASH from templates list")
+			return usage("show/verify/sync requires NAME and exact 64-hex HASH from templates list")
 		}
 		b.Name = w[2]
 		b.Hash = w[3]
+		if b.Action == "sync" {
+			allow("request", "reason")
+			b.Reason = strings.TrimSpace(*reason)
+		}
 	case "validate", "install":
 		allow("file-mib", "total-mib")
 		sourceIndex := 2
@@ -197,11 +216,11 @@ func templatesMain(args []string) int {
 			return usage("--" + key + " is not valid for this template workflow")
 		}
 	}
-	if (b.Action == "install" || b.Action == "clean") && (!utf8.ValidString(b.Reason) || len(b.Reason) < 8 || len(b.Reason) > 1000) {
+	if (b.Action == "install" || b.Action == "clean" || b.Action == "sync") && (!utf8.ValidString(b.Reason) || len(b.Reason) < 8 || len(b.Reason) > 1000) {
 		return usage("provide an audited --reason of 8..1000 UTF-8 bytes")
 	}
 	if seen["request"] && !managementUUID.MatchString(*request) {
-		return usage("--request must be the install job UUID")
+		return usage("--request must be the install/sync request UUID")
 	}
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "Template management requires real/effective root on the class server. Run sudo examctl with identical arguments; help needs no privilege.")
@@ -217,10 +236,19 @@ func templatesMain(args []string) int {
 		id = core.ManagementID()
 	}
 	fmt.Fprintln(os.Stderr, "Template operation/job request ID:", id)
-	result, err := core.TemplateCall(c, b, id)
+	var result any
+	if b.Action == "sync" {
+		result, err = templateSync(c, b, id)
+	} else {
+		result, err = core.TemplateCall(c, b, id)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		fmt.Fprintln(os.Stderr, "Inspect examctl templates jobs and list; no student state or clock was changed. See templates help for exact retry/cleanup.")
+		if b.Action == "sync" {
+			fmt.Fprintln(os.Stderr, "Inspect web templates show NAME HASH with a NEW read request; preserve the sync ID for exact retry. A local verification failure never erases a prior acknowledgement. No grant or student clock changed.")
+		} else {
+			fmt.Fprintln(os.Stderr, "Inspect examctl templates jobs and list; no student state or clock was changed. See templates help for exact retry/cleanup.")
+		}
 		return 1
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {

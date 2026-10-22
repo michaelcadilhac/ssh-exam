@@ -3,6 +3,7 @@ import * as rosterParser from "../../apps/server/src/roster.js";
 import { qualifyClockCLI } from "../fixtures/management-clocks.js";
 import { qualifyInterruptionCLI } from "../fixtures/management-interruptions.js";
 import { qualifyMonitoringCLI } from "../fixtures/management-monitoring.js";
+import { qualifyTemplateCLI } from "../fixtures/management-templates.js";
 import {
   generateKeyPairSync,
   randomBytes,
@@ -228,6 +229,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         cwd: "ssh-server",
         timeout: 30000,
       });
+      let corruptCatalog: string | null = null;
       server = https.createServer(
         { key: readFileSync(key), cert: readFileSync(cert) },
         (req, res) => {
@@ -242,8 +244,38 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                 payload: Buffer.concat(chunks),
               })
               .then((reply) => {
-                res.writeHead(reply.statusCode, reply.headers as any);
-                res.end(reply.rawPayload);
+                let raw = reply.rawPayload;
+                if (corruptCatalog && req.url === "/api/agent/management") {
+                  const frame = JSON.parse(raw.toString());
+                  const payload = JSON.parse(
+                    Buffer.from(frame.payload, "base64").toString(),
+                  );
+                  if (
+                    payload.operation === corruptCatalog &&
+                    payload.ok &&
+                    payload.result?.source
+                  ) {
+                    payload.result.source.hash = "f".repeat(64);
+                    payload.result.note =
+                      "PRIVATE-TEMPLATE-SCOPE-DATA-MUST-NOT-PRINT";
+                    const bytes = Buffer.from(JSON.stringify(payload));
+                    raw = Buffer.from(
+                      JSON.stringify({
+                        payload: bytes.toString("base64"),
+                        signature: sign(
+                          null,
+                          bytes,
+                          f.gatewayKeys.privateKey,
+                        ).toString("base64"),
+                      }),
+                    );
+                  }
+                }
+                res.writeHead(reply.statusCode, {
+                  ...reply.headers,
+                  "content-length": raw.length,
+                } as any);
+                res.end(raw);
               })
               .catch(() => {
                 res.writeHead(500);
@@ -578,6 +610,16 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       await qualifyClockCLI(f, invoke);
       await qualifyInterruptionCLI(f, invoke);
       await qualifyMonitoringCLI(f, invoke);
+      await qualifyTemplateCLI(
+        f,
+        binary,
+        configPath,
+        invoke,
+        run,
+        (operation) => {
+          corruptCatalog = operation;
+        },
+      );
       f.config.agent.managementOperations = [];
       await expect(cli(["show", "midterm"])).rejects.toMatchObject({
         code: 1,

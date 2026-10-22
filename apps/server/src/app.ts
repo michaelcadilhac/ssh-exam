@@ -52,6 +52,7 @@ import { ClockControl } from "./clock-control.js";
 import { InterruptionManagement } from "./interruption-management.js";
 import { assertClockCapabilities } from "./clock-management.js";
 import { registerExamAdmin } from "./exam-admin.js";
+import { registerTemplateAdmin } from "./template-admin.js";
 import { registerAgentManagement } from "./agent-management.js";
 import { ExamDefinitions } from "./exam-definitions.js";
 import { reportFocus } from "./focus-grace.js";
@@ -1329,6 +1330,7 @@ export async function createApp(
     };
   };
   registerExamAdmin(app, store, agent, clocks, principal, describeAttempt);
+  registerTemplateAdmin(app, store, config.agent.id, principal);
   const roster = new RosterManagement(store, describeAttempt);
   app.get("/api/admin/exams/:exam/roster", async (req: any) => {
     principal(req, "admin");

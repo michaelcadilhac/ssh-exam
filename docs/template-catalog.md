@@ -3,11 +3,70 @@
 October 21, 2026: candidate local development, **not deployed**. This is the C2a2
 foundation for fixed-at-issuance grants, not completed unified grants or their
 migration. Current gateway-issued snapshots still use legacy template IDs. C2a3
-now adds native-only optional exact-version readers; no gateway selection or
-grant issuance/migration is enabled by that foundation. Catalog
+now adds native-only optional exact-version readers. C2a4 additionally provides
+signed metadata acknowledgement and read-only gateway inspection; no gateway
+selection or grant issuance/migration is enabled. Native catalog
 installation does not select a version, issue a grant, change an existing attempt,
 or confirm availability to the gateway. Never enter a catalog hash as a legacy
 dashboard Template ID.
+
+## Signed gateway metadata acknowledgement (C2a4, local only)
+
+After installing/verifying an exact version, use the root CLI on the class server:
+
+```sh
+sudo examctl templates sync NAME HASH --reason 'Reviewed exact installed source'
+sudo examctl web templates list --name NAME
+sudo examctl web templates show NAME HASH
+```
+
+Use `templates help` and `web templates help` for complete arguments/examples.
+`sync` first verifies current local bytes in the separate bounded native worker,
+then uses C1's existing outbound signed root-agent management channel. Explicit
+named authorization is required for `templates.sync`, `templates.list` and
+`templates.show`; an ordinary callback signature or browser-admin login does not
+grant source-attestation authority. No new credential or inbound agent API.
+
+The registry stores only the exact agent/name/hash, immutable logical counters,
+first/latest native creation and attestation/acknowledgement timestamps, request
+identity and metadata revision. No source paths, inventories, question bytes or
+student credentials. Out-of-order observations cannot regress the retained row.
+This is historical/as-of root evidence, **not** a live source probe, availability
+lease, default selection or grant. Native full-byte verification before Begin
+remains necessary. Ordinary definitions/enrollments still issue legacy snapshots.
+
+Reuse `--request UUID` for a lost sync reply with identical intent. Exact retries
+retain the original gateway acknowledgement, even after a restart; they do not
+refresh its age. A new sync UUID explicitly refreshes the observation. Fresh
+`web templates show` reads use a NEW read request; a cached receipt is not fresh
+physical availability. A local verification failure sends no new attestation and
+does not erase an older acknowledged row. The combined result distinguishes local
+verification from gateway acknowledgement; neither means deployment or selection.
+
+Administrators may inspect the same read-only metadata via **Administration →
+Template catalog**. Lists default to 50 rows (maximum 200), with exact-name filter
+and exclusive NAME@HASH cursor. These are live pages, not a consistent full export.
+Details retain list navigation/focus and display times in the current device
+timezone. The browser cannot upload/attest, select a default, delete or issue grants.
+Signed CLI reply validators reject wrong scope, missing/extra/null fields,
+inconsistent counters/cursors and invalid flags before printing any private output.
+Reasons use 8..1000 UTF-8 bytes consistently across native/CLI/gateway validation.
+
+Additive migration020 retains metadata without cascading through definitions,
+grants, attempts or submissions; it rewrites none of them. Back up that registry
+with the root native catalog, existing request/audit ledgers and normal state.
+Rollback requires coordinated permission/config/browser/CLI compatibility; retain
+rows and newer records rather than restoring an old database or deleting a source
+to make an older writer work. No production migration or service change occurred.
+
+Qualification includes real compiled CLI/local TLS/native verification/restart,
+default-deny authorization/replay/idempotency, signed wrong-scope output refusal,
+source corruption, shared admin reads, HTTP authority and four browser workflows.
+The compiled CLI verifier test uses a synthetic manager adapter inside private
+user/mount namespaces, not privileged system-manager qualification. Full361 app,
+91 combined browser and fresh native race/resource/namespace/compiler checks pass
+with the H2a contact candidate; see todo-progress.md. Unified grant selection and
+privileged combined guest qualification remain open. Nothing is deployed.
 
 ## Supported workflow
 
@@ -189,6 +248,7 @@ corruption/missing/symlink/no-fallback, actual verifier kill/panic/hang, post-ve
 snapshot races and private read-only bubblewrap material IO tests pass. The last
 uses an existing private target because this workstation has no `/materials`;
 it is not full privileged SSH/PAM/sandbox qualification. Full native/application/
-browser regression status is in todo-progress.md. Privileged guest and signed
-catalog acknowledgement remain open; this increment does not finish the wider
+browser regression status is in todo-progress.md. Privileged guest qualification
+and grant/source selection remain open; C2a4 above adds signed metadata
+acknowledgement, not current availability. These increments do not finish the wider
 investigation or authorize deployment.

@@ -119,6 +119,18 @@ roll forward after drain; never erase/rewrite history to make rollback work.
 Old unversioned attempts retain their old semantics. Gateway confirmation/grant
 migration needs its own future coordinated scope; nothing is deployed here.
 
+C2a4 now adds metadata acknowledgement/read-only inspection, not grant migration:
+additive020 retains exact source observations without student/history mutation.
+Pair native CLI/gateway/browser and explicitly authorize templates.sync/list/show.
+Root sync must verify native bytes before attestation; the browser can only read.
+Preserve registry rows, first/latest observations, management request receipts,
+native catalog and audit in consistent backups. Exact request retries retain age;
+new requests refresh deliberately. Verify the compiled CLI's signed nested scope
+refusal before output, offline/pending behavior and read-only admin catalog.
+An older gateway/CLI loses this workflow, not permission to substitute a mutable
+source; coordinate allowlist compatibility and retain additive rows/newer state.
+No source/default selection, grant, production migration or cutover is enabled.
+
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,
 without retaining/retrying credentials or bypassing approval/holds. No schema

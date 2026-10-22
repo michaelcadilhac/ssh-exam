@@ -130,6 +130,16 @@ uploads are not, by themselves, proof of complete authorized monitoring. The
 approved technical-only automatic recovery policy and remaining qualification
 are in monitoring-liveness-plan.md. Production recovery requirements are unchanged.
 
+Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
+view of exact agent/name/hash metadata and first/latest attestation timestamps.
+It does not choose a version, edit defaults, issue grants or prove current native
+availability. The shared CLI reads are `examctl web templates list/show`; root
+`examctl templates sync NAME HASH --reason TEXT` first verifies local native bytes,
+then requests a signed gateway acknowledgement. Reusing a sync request keeps its
+original timestamp; use a new request to refresh. Browser administrators cannot
+attest class filesystem contents. Current definitions/enrollments remain legacy;
+see template-catalog.md and command help before any future source issuance.
+
 Submission distinguishes collection pending/failed from a verified protected copy. It
 shows collection/execution/protection timestamps, file and omission counts/reasons, manifest/checksum, and server-access recovery/release dates; no
 archive downloads are offered. Monitoring deletion requires explicit confirmation naming

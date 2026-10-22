@@ -89,6 +89,7 @@ Examples:
 Exit status: 0 authenticated result, 1 refusal/operational failure, 2 syntax error.
 Unknown/unverified replies never imply success; retain the request ID for retry.`)
 	fmt.Fprintln(out, "\nRoster/CSV workflows: examctl web students help (list/add/remove/settings/import-preview/import-confirm/export/example).")
+	fmt.Fprintln(out, "Authenticated source attestations: examctl web templates help (list/show); native templates sync verifies before registering metadata.")
 	fmt.Fprintln(out, "Alert inspection/test/manual reminders: examctl web alerts help (list/show/test/remind).")
 	fmt.Fprintln(out, "Gateway attempt/clock workflows: examctl web attempts help; examctl web clocks help.")
 	fmt.Fprintln(out, "Interruption review/authorization: examctl web interruptions help.")
@@ -112,6 +113,9 @@ func webCategory(args []string) string {
 }
 
 func webMain(args []string) int {
+	if webCategory(args) == "templates" {
+		return webTemplatesMain(args)
+	}
 	if webCategory(args) == "monitoring" {
 		return webMonitoringMain(args)
 	}
@@ -290,6 +294,10 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 	// signed outer envelope authenticates the sender, not an accidental wrong
 	// target, cursor or intent inside its result.
 	var partialClock error
+	if err := validateCatalogRead(operation, body, result.Result, c.AgentID); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	for _, validate := range []func(string, any, json.RawMessage) error{validateMonitoringResult, validateClockResult, validateInterruptionResult} {
 		if err := validate(operation, body, result.Result); err != nil {
 			if _, partial := err.(*clockPartialError); partial {

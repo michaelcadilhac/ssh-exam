@@ -12,6 +12,7 @@ import { formatDuration } from "../../../packages/protocol/time.js";
 import { InterruptionHistory } from "./interruption-history.js";
 import { AdminReview } from "./admin-review.js";
 import { AlertDelivery } from "./alert-delivery.js";
+import { TemplateCatalogView } from "./template-catalog.js";
 import {
   attemptStatus,
   attemptElapsed,
@@ -78,6 +79,7 @@ export function Admin({
     [sound, setSound] = useState(false),
     [signingOut, setSigningOut] = useState(false);
   const [alertsError, setAlertsError] = useState("");
+  const [templateCatalog, setTemplateCatalog] = useState(false);
   const [permission, setPermission] = useState(
     typeof Notification === "undefined"
       ? "unavailable"
@@ -335,6 +337,10 @@ export function Admin({
                 setAlertsError("");
                 setAlerts(true);
               },
+            },
+            {
+              label: "Template catalog",
+              onSelect: () => setTemplateCatalog(true),
             },
             {
               label: "Add administrator",
@@ -980,6 +986,20 @@ export function Admin({
             )}
           </section>
         </>
+      )}
+      {templateCatalog && (
+        <Modal
+          title="Template catalog"
+          wide
+          onClose={() => setTemplateCatalog(false)}
+        >
+          <TemplateCatalogView />
+          <div className="actions">
+            <button onClick={() => setTemplateCatalog(false)}>
+              Close catalog
+            </button>
+          </div>
+        </Modal>
       )}
       {creatingAdmin && (
         <CreateAdministrator

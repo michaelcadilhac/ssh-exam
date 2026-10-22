@@ -268,6 +268,20 @@ Existing enrollment migration and implementation remain outstanding.
   Immutable versions are prerequisites for fixed-at-issuance grants; source map,
   ordered increments and acceptance are in docs/template-grant-investigation.md.
 
+  C2a4 metadata visibility is now implemented/tested locally: root `templates sync`
+  verifies local bytes before signed acknowledgement, `web templates list/show`
+  and the read-only administrator catalog share exact-version metadata. Additive
+  migration020 changes no student/grant/attempt/history record. Stable retries
+  preserve acknowledgement age; new requests explicitly refresh, and registry
+  presence is never a live availability lease or automatic selection. Actual
+  compiled CLI/native verifier/TLS/restart, HTTP/unit, four catalog browser and
+  full361 app/91 combined browser/fresh native race checks pass. See
+  docs/template-catalog.md. Later C2a2/a3 notes below describe their earlier narrower
+  checkpoints; signed metadata acknowledgement is no longer unimplemented.
+  Source selection/unified issuance/migration and privileged guest qualification
+  remain open; all changes are local, not deployed. Critical monitoring work
+  remains the active priority.
+
   C2a1 adds an internal, still-unwired exclusive private-copy primitive with
   independent copied-byte/source verification, metadata preservation and flushes.
   Focused race tests include 128 MiB streaming, actual child SIGKILL/fresh retry,

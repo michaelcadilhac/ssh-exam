@@ -28,6 +28,7 @@ import {
 import { AttemptManagement } from "./attempt-management.js";
 import { InterruptionManagement } from "./interruption-management.js";
 import { MonitoringManagement } from "./monitoring-management.js";
+import { TemplateCatalog } from "./template-catalog.js";
 import { Monitoring } from "./monitoring.js";
 import {
   attemptShow,
@@ -57,6 +58,7 @@ export function registerAgentManagement(
   monitoring?: MonitoringManagement,
 ) {
   const definitions = new ExamDefinitions(store);
+  const templates = new TemplateCatalog(store, config.agent.id);
   const roster = new RosterManagement(store, describe);
   const alerts = new AlertManagement(store, () => !!config.smtp);
   const interruptions = new InterruptionManagement(store);
@@ -234,6 +236,28 @@ export function registerAgentManagement(
                   b.reason,
                 ),
               };
+            } else if (r.operation.startsWith("templates.")) {
+              let value: unknown;
+              switch (r.operation) {
+                case "templates.list":
+                  value = templates.page(r.body);
+                  break;
+                case "templates.show":
+                  value = templates.show(r.body);
+                  break;
+                case "templates.sync":
+                  value = templates.sync(r.body, {
+                    agent: r.agent,
+                    actor,
+                    request: r.request,
+                    issued: r.issued,
+                    observed,
+                  });
+                  break;
+                default:
+                  throw Error("Unsupported template catalog operation");
+              }
+              return { ok: true, status: 200, result: value };
             } else if (
               r.operation === "monitoring.purges" ||
               r.operation === "monitoring.purge"
@@ -405,8 +429,9 @@ export function registerAgentManagement(
           JSON.stringify({
             confirmed: result.ok,
             operation: r.operation,
-            target:
-              r.operation === "monitoring.purges"
+            target: r.operation.startsWith("templates.")
+              ? "template-catalog"
+              : r.operation === "monitoring.purges"
                 ? "monitoring-purges"
                 : r.operation.startsWith("attempts.") ||
                     r.operation.startsWith("clocks.") ||

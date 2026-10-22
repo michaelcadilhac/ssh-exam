@@ -37,6 +37,44 @@ epochs remain open. No native safety hold or automatic thaw is enabled, and a
 native lease can still expire if all renewal paths stall. This checkpoint does
 not close the critical item; the production initiating fault remains unproven.
 
+Preserved pre-interruption C2a4 candidate is now qualified locally and being
+checkpointed separately from H2a; the latter remains the critical active priority.
+Root templates sync first runs actual bounded native verification, then signed
+named root-agent management stores metadata-only source observations in020.
+Shared web/root list/show and read-only admin catalog preserve exact source scope,
+as-of status, private output fences and no-selection/no-grant behavior. Exact
+sync retries/restart retain original acknowledgements; new request IDs refresh.
+Confirmed UTF-8 reason-length inconsistency was reproduced then fixed (four
+two-byte characters satisfy eight bytes). All361 app tests (79.97s), all91 combined
+browser checks (11.2m), fresh native race/resource/namespace/compiler tests
+(core167.9s/CLI5.9s), static build/vet and typecheck/build pass. CLI verification uses
+private synthetic manager adapters, distinct from actual local kernel-control
+tests and still-pending privileged system-manager guest qualification. Generated
+screenshots were restored to their pre-run tracked versions. No attempt/grant
+source, window, account restriction, protected byte or production record changed.
+Registry visibility is not live availability, unified grants or deployment.
+
+Earlier implementation plan after validated **965ebb0** (C2a3 binding): C2a4
+authenticated catalog visibility. Reuse C1's existing root-agent signed outbound
+HTTPS management, named default-deny operations, nonce/intent/revision/audit and
+strict pre-output scope validation. A root `templates sync NAME HASH` must first
+verify local actual bytes in the bounded worker, then send only exact-name/hash/
+count metadata and an audited reason; no source paths, inventories/question text,
+student credentials, inbound API or filesystem proxy. Stable request retries keep
+the original acknowledged observation; a new request explicitly refreshes it.
+Store immutable logical version metadata plus bounded timestamped attestation
+facts, not a claim of current liveness or permanent filesystem availability.
+Read-only root `web templates list/show` and authenticated administrator inspection
+must share one service with bounded pagination and explicit as-of/no-grant status.
+No source is implicitly selected, no existing snapshot rewritten, and no new
+grant/definition retirement is enabled. Keep native exact verification before
+Begin. Acceptance: signed authorization/replay/conflict/restart/out-of-order
+attestations, immutable metadata/counters, no private payloads, shared HTTP/CLI
+reads, actual compiled CLI/TLS with private synthetic manager adapters, malicious
+signed wrong-scope stdout-empty refusal, browser inspection, full app/native race/
+build/typecheck qualification and updated operator/rollout docs. This earlier
+plan is now locally implemented/tested as recorded above; no production change.
+
 Active continuation after validated local commit **4b29df3**: C2a3 exact-version
 reader binding. Add optional omitted legacy settings/source hash fields; preserve
 historical JSON/hash/receipt compatibility. Stage work only from the recorded
