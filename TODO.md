@@ -187,9 +187,11 @@ Existing enrollment migration and implementation remain outstanding.
   default single-attempt policy until deliberately changed.
 
 - [ ] **Define clear `/work` initialization choices.**
-  October 21 further source investigation confirms materials/welcome still read
-  mutable template paths after starter staging. Immutable catalog and all-reader
-  version binding are prerequisites for fixed-at-issuance grants; source map,
+  October 21 source investigation confirmed legacy materials/welcome still read
+  mutable template paths after starter staging. The C2a3 native candidate now
+  binds explicit versions consistently; current gateway-issued snapshots remain
+  legacy until authenticated catalog visibility and grant issuance/migration.
+  Immutable versions are prerequisites for fixed-at-issuance grants; source map,
   ordered increments and acceptance are in docs/template-grant-investigation.md.
 
   C2a1 adds an internal, still-unwired exclusive private-copy primitive with
@@ -203,9 +205,24 @@ Existing enrollment migration and implementation remain outstanding.
   typecheck/build/static/vet and 29 browser-SSH checks. Privileged system-manager
   guest evidence remains pending. The csc-sys idle-host guard refuses its two live or
   unresolved attempts. No production source/student path was changed. All-reader
-  binding, signed catalog acknowledgement and unified grants remain unimplemented;
+  native binding is now added below; signed catalog acknowledgement and unified
+  grants remain unimplemented;
   see docs/template-catalog.md. Not deployed; investigation remains open.
   This is an ongoing investigation, not an implemented catalog/grant migration.
+
+  C2a3 now adds native optional exact-version binding for private starter work,
+  normal/admin materials and welcome. Omitted fields preserve legacy JSON/hash/
+  receipt/history compatibility; explicit versions never use mutable fallback
+  or latest. Full byte verification runs in bounded staging and a separate OS
+  worker before Begin, outside shared state; ownership/settings/generation/window
+  fences recheck before any interval/policy commit. Practice reads no catalog.
+  Signed restart/edit/corruption, actual verifier death/hang, stale-snapshot and
+  real read-only namespace IO regressions pass. Full native race/resource/
+  namespace/compiler/default-size suite (core163.1s/CLI7.3s), app350/65 (73.2s),
+  typecheck/build/static/vet and three fresh browser-SSH isolation/cleanup checks
+  pass locally. Gateway confirmation/selection, issuance/migration and privileged
+  system-manager qualification remain open. No deployed or historical snapshot
+  was changed; the full investigation is still open.
   October 21 local increment: ordinary/legacy-saved work stages privately in
   bounded OS workers before Begin, without clock/marker consumption. Exact
   receipt/source/owner fences, atomic no-replace publication and explicit
@@ -223,8 +240,8 @@ Existing enrollment migration and implementation remain outstanding.
   C2a0 additionally has a tested internal, unwired source inspector (safe pinned
   traversal, observed mutation checks, per-tree entry/depth bounds, real same-
   device mount refusal and 128 MiB streaming). C2a2's separate local catalog/CLI
-  candidate is described above; no published-version acknowledgement or all-reader
-  version binding exists yet;
+  and C2a3 native binding candidates are described above; no published-version
+  acknowledgement or gateway version selection exists yet;
   investigation and migration remain open. See template-grant-investigation.md.
   Evaluate starting empty, resetting to a specified template's starter files, and
   preserving saved work by copying a selected prior attempt's verified protected

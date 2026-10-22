@@ -58,7 +58,7 @@ func (r *TemplateResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Ordinary root examctl only; never package init, the student command socket or
+// Ordinary root examctl/exam-agent only; never package init, the student command socket or
 // setuid exam-login. No request contains keys, credentials or complete Config.
 func TemplateWorkerMain(args []string) bool {
 	if len(args) != 1 || args[0] != templateWorkerFlag {
@@ -99,8 +99,13 @@ func runTemplateWorker(in io.Reader, out io.Writer, checkpoint func(string) erro
 			result, err = c.list(b)
 		case "show", "verify":
 			var v *TemplateVersion
-			v, err = c.version(b.Name, b.Hash, b.Action == "verify")
-			result = TemplateResult{Action: b.Action, Info: v, Installed: err == nil, Verified: err == nil && b.Action == "verify", Observed: Millis(), Note: "Immutable local catalog only; NOT gateway-confirmed or selected for any grant. show is metadata, verify streams actual installed bytes"}
+			if b.Action == "verify" && checkpoint != nil {
+				err = checkpoint("verify-started")
+			}
+			if err == nil {
+				v, err = c.version(b.Name, b.Hash, b.Action == "verify")
+			}
+			result = TemplateResult{Action: b.Action, Info: v, Installed: err == nil, Verified: err == nil && b.Action == "verify", Observed: Millis(), Note: "Immutable local catalog only; NOT proof of gateway confirmation. This operation does not select/change any grant. show is metadata, verify streams actual installed bytes"}
 		case "validate":
 			var manifest *templateSourceManifest
 			manifest, err = inspectTemplateSource(b.Source, collectionBounds{File: b.FileMiB * mib, Total: b.TotalMiB * mib}, checkpoint)

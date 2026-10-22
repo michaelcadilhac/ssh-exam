@@ -35,7 +35,10 @@ func (e *Engine) workspaceSource(a *Attempt) (WorkspaceSource, string, error) {
 	if !identifier.MatchString(a.Settings.Template) {
 		return WorkspaceSource{}, "", errors.New("versioned workspace template unavailable")
 	}
-	return WorkspaceSource{Kind: "template", Template: a.Settings.Template}, "", nil
+	if !validTemplateBinding(a.Settings) {
+		return WorkspaceSource{}, "", errors.New("invalid recorded workspace template/version")
+	}
+	return WorkspaceSource{Kind: "template", Template: a.Settings.Template, Version: a.Settings.TemplateVersion}, "", nil
 }
 
 func (e *Engine) workspaceBase(id string) string { return filepath.Join(e.Config.Work, id) }
@@ -142,6 +145,13 @@ func workspaceCollectionNameReady(id, work string) error {
 func (e *Engine) stageWorkspace(snapshot *Attempt) error {
 	if !workspaceFence(snapshot, snapshot) || preflightExpired(snapshot, Millis()) {
 		return errors.New("workspace staging requires a current unstarted preparation")
+	}
+	if snapshot.Settings.TemplateVersion != "" {
+		// This is already a bounded actual-attempt staging worker, not the
+		// shared agent. Verify materials even for saved/retained starter work.
+		if _, err := templateContent(e.Config, snapshot.Settings, true); err != nil {
+			return err
+		}
 	}
 	source, recoveryHash, err := e.workspaceSource(snapshot)
 	if err != nil {
@@ -266,6 +276,14 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64) (any, error)
 		return nil, err
 	}
 	defer accountLock.Close()
+	if snapshot.Settings.TemplateVersion != "" {
+		if e.templateVerify == nil {
+			return nil, errors.New("recorded template verifier unavailable; no interval consumed; inspect matching native binaries and exam-template.slice")
+		}
+		if err := e.templateVerify(snapshot.Settings); err != nil {
+			return nil, fmt.Errorf("recorded template verification failed before Begin; no interval or grant consumed; inspect templates verify NAME HASH and retry only after repair: %w", err)
+		}
+	}
 	// Recheck after acquiring the UID fence and before destructive OS work.
 	if err := e.WithState(func() error {
 		a, err := e.Find(snapshot.ID)

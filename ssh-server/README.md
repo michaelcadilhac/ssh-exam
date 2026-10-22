@@ -7,8 +7,9 @@ not a deployment receipt. Use `examctl help` to discover current commands.
 
 The local immutable catalog candidate provides `examctl templates help` for
 validate/install/list/show/verify/jobs/clean. It uses a separate bounded
-exam-template.slice, not student/collection slots. It is not deployed or connected
-to student readers/grants: every result says `gateway_confirmed=false`. Do not
+exam-template.slice, not student/collection slots. It is not deployed; optional
+native exact-version readers exist but current gateway snapshots remain legacy
+until confirmation/issuance work. Local results say `gateway_confirmed=false`. Do not
 select catalog hashes as legacy dashboard template IDs. See
 [the catalog operator guide](../docs/template-catalog.md) for exact retry, manual
 failed-job cleanup, storage/resource bounds and pending qualification.

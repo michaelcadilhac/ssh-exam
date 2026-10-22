@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -29,15 +28,16 @@ func terminalReadyResponse(result []byte) ([]byte, error) {
 // Read the administrator-controlled materials mounted at /materials in the
 // pane. The outer login gate cannot see that mount. Emit only after admission
 // acknowledgement, before any student shell startup files run.
-func terminalWelcome(templates string, a *Attempt, practice bool) (string, error) {
+func terminalWelcome(config Config, a *Attempt, practice bool) (string, error) {
 	if practice {
 		return "\r\nPractice terminal. The exam clock has not started.\r\n", nil
 	}
-	if !identifier.MatchString(a.Settings.Template) {
-		return "", errors.New("invalid welcome template")
+	materials, err := templateMaterials(config, a.Settings)
+	if err != nil {
+		return "", err
 	}
-	root, err := os.OpenRoot(filepath.Join(templates, a.Settings.Template, "materials"))
-	if errors.Is(err, os.ErrNotExist) {
+	root, err := os.OpenRoot(materials)
+	if errors.Is(err, os.ErrNotExist) && a.Settings.TemplateVersion == "" {
 		return "", nil
 	}
 	if err != nil {

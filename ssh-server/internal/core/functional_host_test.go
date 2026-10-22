@@ -51,8 +51,9 @@ func TestHostWorkloadIsTrackedAndRestrictedToFunctionalIdentity(t *testing.T) {
 	if e.recordedUnitAllowed(a, unit) {
 		t.Fatal("wrong account accepted host service")
 	}
-	args := strings.Join(functionalHostArgs(unit, "admin", Account{GID: 1001, Home: "/home/admin", Shell: "/bin/bash"}, "/protected/attempt/work", a, "pane", false, "/templates", temporaryPaths{Tmp: "/private/exam/tmp", VarTmp: "/private/exam/var-tmp"}), "\n")
-	for _, required := range []string{"--pty", "--uid=admin", "--setenv=TMPDIR=/tmp", " /private/exam/tmp:/tmp /private/exam/var-tmp:/var/tmp", "--property=BindPaths=/protected/attempt/work:/work", "--setenv=HOME=/home/admin", "--property=BindReadOnlyPaths=/templates/materials:/materials"} {
+	a.Settings.Template = "v1"
+	args := strings.Join(functionalHostArgs(unit, "admin", Account{GID: 1001, Home: "/home/admin", Shell: "/bin/bash"}, "/protected/attempt/work", a, "pane", false, Config{Templates: "/templates"}, temporaryPaths{Tmp: "/private/exam/tmp", VarTmp: "/private/exam/var-tmp"}), "\n")
+	for _, required := range []string{"--pty", "--uid=admin", "--setenv=TMPDIR=/tmp", " /private/exam/tmp:/tmp /private/exam/var-tmp:/var/tmp", "--property=BindPaths=/protected/attempt/work:/work", "--setenv=HOME=/home/admin", "--property=BindReadOnlyPaths=/templates/v1/materials:/materials"} {
 		if !strings.Contains(args, required) {
 			t.Fatalf("missing %s", required)
 		}

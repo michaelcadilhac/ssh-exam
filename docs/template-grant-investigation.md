@@ -28,13 +28,14 @@ or implementation. Independent purge work continues.
   enrollment/default settings at preparation and rejects ordinary repeats. Begin
   checks that snapshot's window. Login/status/dashboard/callback paths must select
   the intended grant/attempt, not silently choose the latest row after migration.
-- Native workspace_jobs.go selects a legacy recovery grant or Settings.Template.
-  workspace_stage.go freezes starter **work** with an inventory hash in a private
-  receipt before Begin. There is no immutable material/template catalog at issuance.
-- sandbox_launch.go binds Templates/Settings.Template/materials per pane;
-  functional_host.go does the same for administrator tests. welcome.go separately
-  reads that current template's WELCOME.txt. A template-directory edit can change
-  material/welcome views even after starter staging. All readers need one version.
+- Legacy workspace_jobs.go selects a legacy recovery grant or Settings.Template;
+  starter work is privately staged. C2a3 adds optional explicit source/version
+  hashes for catalog-only native staging, mounts and welcome. Current gateway
+  issuance still has no immutable material/template version at enrollment.
+- Legacy sandbox/admin/welcome readers still use the mutable template directory.
+  Explicit C2a3 snapshots use the same catalog-only hash in all three readers;
+  current gateway snapshots do not yet select it. Never retrofit a version into
+  historical records or treat the local native foundation as completed issuance.
 - The bounded collection-worker protocol requires an attempt UUID and persisted
   snapshot before dispatch. Template installation/hashing must not masquerade as
   attempt collection or perform bulk IO under WithState.
@@ -120,6 +121,20 @@ state refusing material release rather than turning into an optional-banner skip
 No gateway issuance/version selection is exposed until signed catalogue visibility
 and shared web/CLI validation exist. This is an engineering plan, not completed
 binding qualification or a reason to stop independent work.
+
+The C2a3 native candidate now implements that optional binding without enabling
+gateway selection: omitted legacy JSON hashes remain unchanged; explicit hashes
+bind starter receipts, normal/admin mounts and welcome. Actual-version integrity
+is checked in bounded staging and a separate pre-Begin OS verifier, never bulk
+under the shared transaction. Snapshot/generation/ownership/expiry rechecks
+precede the existing short interval/hold/publication commit. The old test-only
+initializer rejects explicit versions, and practice reads no private catalog.
+Focused signed/restart/read-only-mount/no-fallback/corruption and actual verifier
+death/hang/snapshot-race regressions pass locally. Full native repeat passes
+core163.1s/CLI7.3s; application350/65 (73.2s), typecheck/build/static/vet and three
+fresh browser-SSH isolation/cleanup checks (1.6m) pass;
+privileged guest, signed acknowledgement, issuance/claim/Begin migration and the
+legacy-unused-enrollment decision remain open. See template-catalog.md.
 
 Further October 21 source findings (investigation remains open):
 

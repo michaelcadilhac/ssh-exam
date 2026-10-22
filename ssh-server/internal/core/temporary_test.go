@@ -211,7 +211,7 @@ func TestTemporaryMountDestinationsMustBeDirectories(t *testing.T) {
 }
 
 func TestBothLaunchModesMountOnlyAttemptTemporaryStorage(t *testing.T) {
-	a := &Attempt{ID: finalID, Username: "student", WorkPath: "/work"}
+	a := &Attempt{ID: finalID, Username: "student", WorkPath: "/work", Settings: Settings{Template: "v1"}}
 	temp := temporaryPaths{Tmp: "/private/exam/tmp", VarTmp: "/private/exam/var-tmp"}
 	args := sandboxWorkloadArgs("exam-test.scope", "student", Account{UID: 1001, GID: 1001, Shell: "/bin/bash"}, "/private/work", a, "pane", false, Config{State: "/private", Rootfs: "/rootfs", Templates: "/templates"}, temp)
 	joined := strings.Join(args, "\n")
@@ -223,7 +223,7 @@ func TestBothLaunchModesMountOnlyAttemptTemporaryStorage(t *testing.T) {
 	if strings.Contains(joined, "--tmpfs\n/tmp") {
 		t.Fatal("per-pane tmpfs masks attempt temp")
 	}
-	host := strings.Join(functionalHostArgs("exam-test.service", "student", Account{GID: 1001, Shell: "/bin/bash"}, "/private/work", a, "pane", false, "/templates", temp), "\n")
+	host := strings.Join(functionalHostArgs("exam-test.service", "student", Account{GID: 1001, Shell: "/bin/bash"}, "/private/work", a, "pane", false, Config{Templates: "/templates"}, temp), "\n")
 	if !strings.Contains(host, "--property=BindPaths=/private/work:/work /private/exam/tmp:/tmp /private/exam/var-tmp:/var/tmp") || !strings.Contains(host, "--setenv=TMPDIR=/tmp") {
 		t.Fatal("host terminal exposes ordinary temp")
 	}
@@ -340,7 +340,7 @@ func TestPrivateTemporaryMountsInSystemdHostLaunch(t *testing.T) {
 	run := func(script string) {
 		t.Helper()
 		unit := "exam-temporary-check-" + Token()[:12] + ".service"
-		args := functionalHostArgs(unit, "nobody", Account{GID: 65534, Home: "/nonexistent", Shell: "/bin/sh"}, p.Tmp, a, "pane", true, "/unused", p)
+		args := functionalHostArgs(unit, "nobody", Account{GID: 65534, Home: "/nonexistent", Shell: "/bin/sh"}, p.Tmp, a, "pane", true, Config{Templates: "/unused"}, p)
 		// Keep the normal namespace/UID/env options, replacing only the interactive shell.
 		args[len(args)-1] = "-ec"
 		args = append(args, script)

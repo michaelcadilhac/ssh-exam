@@ -1,7 +1,7 @@
 package core
 
-// Catalog inspection primitive. Student readers remain legacy; management bulk
-// calls run only in the separately bounded template OS worker, never the agent;
+// Catalog inspection primitive. Management bulk calls run only in a bounded
+// template OS worker; version-bound staging runs in an actual-attempt worker;
 // never call this while holding WithState or in a PTY-owning process.
 import (
 	"crypto/sha256"

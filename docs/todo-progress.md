@@ -8,6 +8,48 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+Active continuation after validated local commit **4b29df3**: C2a3 exact-version
+reader binding. Add optional omitted legacy settings/source hash fields; preserve
+historical JSON/hash/receipt compatibility. Stage work only from the recorded
+catalog version, bind normal/admin materials and read welcome from that same
+version, with practice bypassing all private catalog reads. Full byte verification
+before Begin must run in a separately bounded OS worker outside WithState, then
+existing ownership/settings/generation/window fences recheck before any interval
+or hold commit. Missing/damaged explicit versions refuse, never mutable fallback.
+The ordinary exam-agent may expose the same private root-only worker entry as
+examctl (never the student gate); no listener or new student privilege. Legacy
+test-only initialize must refuse versioned inputs rather than become an alternate
+mutable copier. Gateway issuance/selection is not enabled until authenticated
+catalog visibility and shared CLI/web changes exist. Acceptance: legacy bytes,
+signed prepare/stage/Begin/restart, author edits/new panes/welcome/mounts, missing/
+corrupt version and actual verifier death/hang, practice confidentiality, healthy
+signed operations plus full native race/build/integration/browser checks. This is
+in progress, not implemented or deployed; the previous checkpoint is not a stop.
+
+C2a3 native candidate is now implemented/tested locally; not deployed or enabled
+for gateway issuance, and privileged system-manager qualification remains pending:
+optional omitted hash fields preserve legacy encodings, version-bound private
+starter receipt/copy, existing-only material/welcome readers and both mount modes,
+separate bounded pre-Begin verifier plus snapshot recheck. Practice never reads
+the catalog; the old test-only initializer refuses versioned inputs. Focused race
+tests pass11.5s, including signed stage/Begin/restart, author/new-version edits,
+missing/corrupt/link refusal, actual verifier SIGKILL/panic/hang, stale snapshot and
+real read-only bubblewrap material IO. A local missing /materials target was a
+fixture error; the test now uses an existing private mountpoint without changing
+the host. Four old launch fixtures also lacked a real mandatory template ID;
+corrected them rather than relaxing validation. The first focused socket/net test
+needed the normal local test sandbox escalation; the rerun passes. No command
+was missing. Full native repeat passes **core163.1s/CLI7.3s**; all350
+application tests pass again (73.2s), typecheck/application-WASM build/static/vet
+pass. All3 fresh browser-SSH isolation/credential-cleanup checks pass (1.6m), in
+addition to the previous29 interface/closure checks. Final catalog/binding/compiled
+CLI repeat passes core13.6s/CLI2.7s after scope-message clarification; static/vet
+pass again. Browser assets retain their prior hashes; no screenshots changed in
+this three-test repeat. Native-only support does not confirm versions or issue/
+migrate grants. Next independent dependency is authenticated bounded catalog
+metadata visibility/acknowledgement and discoverable root/web inspection; do not
+stop because the legacy enrollment migration question or guest gate is pending.
+
 Continuation correction: a validated checkpoint is not a stopping condition for
 the unfinished backlog. The legacy-unused-enrollment decision does not block
 independent work. The resumed C2a2 milestone adds separate resource-bounded native
@@ -65,7 +107,7 @@ browser-only skip (2.3m); that guarded case separately passes in browser-SSH mod
 (16.2s). Generated screenshots are restored, not product edits.
 
 The backlog is NOT complete. The bounded immutable template worker/pool and
-publication/CLI foundation now passes locally. Next dependencies: all-reader binding + signed catalog
+publication/CLI plus optional native all-reader binding now pass locally. Next dependencies: signed catalog
 acknowledgement, then unified grant issuance/revision/claim/Begin/migration and C8;
 independently, coordinated C3 native input/liveness/verified-freeze work, C4 fresh
 archive/usage proof/manual cleanup, full monitoring export and remaining management.
@@ -568,7 +610,7 @@ escalation. Generated screenshot changes must not become product changes.
 | D1: unified attempt grants/workspaces | M0 + instructor decision | Explicit grant policy, source/version freezing, monitoring/start window, 90-minute second attempt, callback/migration/idempotency acceptance cases | C1/C2/C5/C7 approved; implementation, migration, safe source-recovery and crash/race investigation remain open |
 | D1a: isolated private preflight staging | M6a + approved C2/C7 | No clock/marker consumption or exposure before Begin; exact source/owner receipt; bounded copy/restore; crash/retry, cancellation/UID/Begin fences and explicit no-reopen repair; native race, SSH/HTTP/browser/build | Implemented/tested locally: 304 app tests, all three Go-module race checks, native resource opt-ins, static build/vet/typecheck/build and 28 browser/SSH checks; unified grants/privileged qualification/deployment remain open |
 | D1b: legacy source dependency safety | D1a + preservation policy | Supported read-only native catalog; refuse unused/uncertain/unfinished source deletion; serialize consumption/deletion; preserve all markers/child submissions/history; actual CLI, malformed catalogs/worker replies and race/resource checks | Implemented/tested locally: full native race with worker/systemd/user-namespace/CLI opt-ins, static build/vet and actual root-mapped CLI; migration/C8/privileged deployment gates remain open |
-| D1c: immutable template/material versions | D1a + C2 fixed issuance | Supported native catalog/CLI, atomic bounded worker installation, all-reader exact version binding and authenticated metadata visibility; mutation/crash/restart/practice confidentiality/CLI/race/integration tests | C2a0/a1 inspection/copy and C2a2 separate bounded catalog/publication/CLI pass locally; no student binding or gateway confirmation. All-reader mutable-materials gap, privileged system-manager gate and investigation remain open; see template-catalog.md and template-grant-investigation.md |
+| D1c: immutable template/material versions | D1a + C2 fixed issuance | Supported native catalog/CLI, atomic bounded worker installation, all-reader exact version binding and authenticated metadata visibility; mutation/crash/restart/practice confidentiality/CLI/race/integration tests | C2a2 catalog/publication/CLI and C2a3 optional native reader binding pass locally. Current gateway snapshots remain legacy; signed acknowledgement/selection, privileged system-manager gate and full investigation remain open; see template-catalog.md and template-grant-investigation.md |
 | D2: retained SSH during lockouts | M0 + instructor decision | Writer freeze strategy, shell/buffer survival, native containment and ownership/loss cleanup agreed; current fresh-auth policy remains until coherent implementation/test | C3 approved; source investigation confirms both PTY input bridges need a revocation/queued-input barrier, not just omitted termination. Coordinated implementation and containment/liveness qualification remain open |
 | D3: workspace retention and collection limits | M0 + instructor decision | Agree grace/holds/eligibility, CLI dry-run/cleanup and workload limits before deletion/limit policy changes | C4/C6 approved; C6 shared setting/snapshot/collector/restore, default-size worker and full local regression pass in 7ef7ac5; manual cleanup and privileged/concurrent sizing remain open |
 | C4a: workspace metadata and operator holds | C4 + D1a fences | Known-attempt inventory, exact private identity, separate durable hold revisions/loss markers, audit failure and stale/busy refusals, no eligibility/deletion claim; actual CLI/native race/build | Implemented/tested locally: actual namespace-root CLI/help, frozen full native race/resource/compiler/default-size opt-ins, static build/vet, 320 app tests and unchanged typechecked/built browser assets. Fresh proof/cleanup remain open; not deployed |

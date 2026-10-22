@@ -94,6 +94,19 @@ cleanup CLI rather than deleting its receipts or pretending legacy readers are
 version-bound. Later all-reader/grant migration changes rollback requirements and
 must have a separate coordinated plan. Nothing here reloads or installs a unit.
 
+C2a3 adds optional native exact-version readers but no gateway issuance or SQL
+migration. Legacy omitted-field settings/receipt hashes remain unchanged. Before
+ever issuing a versioned snapshot, require the matching native capability,
+root worker entry and separate bounded template slice; qualify real preflight/
+Begin, multiple normal/admin panes, welcome, restart and missing/damaged sources
+in the disposable privileged guest. Preserve catalog plus all versioned attempt/
+receipt/archive metadata in consistent backups. After any versioned attempt
+exists, **do not downgrade to an old state writer**: it can silently discard the
+new hash and select mutable legacy sources. Use a compatible reader/writer or
+roll forward after drain; never erase/rewrite history to make rollback work.
+Old unversioned attempts retain their old semantics. Gateway confirmation/grant
+migration needs its own future coordinated scope; nothing is deployed here.
+
 The sign-in message correction leaves the existing five-starts/account/exam/
 60-second limiter unchanged. It reports a bounded wait and continuing clock,
 without retaining/retrying credentials or bypassing approval/holds. No schema

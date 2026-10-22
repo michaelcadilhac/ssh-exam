@@ -1,8 +1,8 @@
 package core
 
 // Native immutable catalog. It has its own lock/worker namespace and never
-// loads or saves attempt state. Student readers remain legacy until explicitly
-// version-bound in the next increment. Published versions have no delete API.
+// loads or saves attempt state. Readers use only explicitly version-bound
+// snapshots; legacy rows are never upgraded implicitly. No version delete API.
 import (
 	"encoding/json"
 	"errors"
@@ -327,17 +327,9 @@ func validTemplateVersion(v TemplateVersion, name, hash string) bool {
 	return v.Schema == 1 && v.Name == name && v.Hash == hash && identifier.MatchString(name) && templateDigest.MatchString(hash) && v.Entries >= 2 && v.Entries <= 20002 && v.Files >= 0 && v.Files <= v.Entries-2 && v.Files <= 20000 && v.Bytes >= 0 && v.Bytes <= 16384*mib && v.MaxFileBytes >= 0 && v.MaxFileBytes <= 4096*mib && v.MaxFileBytes <= v.Bytes && v.Bytes <= v.MaxFileBytes*int64(v.Files) && v.Created > 0
 }
 func (c *templateCatalog) version(name, hash string, verify bool) (*TemplateVersion, error) {
-	if !identifier.MatchString(name) || !templateDigest.MatchString(hash) {
-		return nil, errors.New("invalid exact template version")
-	}
-	named, err := templatePrivateDirectory(fmt.Sprintf("/proc/self/fd/%d/%s", c.versions.Fd(), name))
+	fd, err := c.versionDirectory(name, hash)
 	if err != nil {
 		return nil, err
-	}
-	defer named.Close()
-	fd, err := templatePrivateDirectory(fmt.Sprintf("/proc/self/fd/%d/%s", named.Fd(), hash))
-	if err != nil {
-		return nil, fmt.Errorf("template version unavailable; use examctl templates list, then show/verify NAME HASH: %w", err)
 	}
 	defer fd.Close()
 	r, err := templatePinnedRoot(fd)
@@ -364,6 +356,22 @@ func (c *templateCatalog) version(name, hash string, verify bool) (*TemplateVers
 		}
 	}
 	return &v, nil
+}
+
+func (c *templateCatalog) versionDirectory(name, hash string) (*os.File, error) {
+	if !identifier.MatchString(name) || !templateDigest.MatchString(hash) {
+		return nil, errors.New("invalid exact template version")
+	}
+	named, err := templatePrivateDirectory(fmt.Sprintf("/proc/self/fd/%d/%s", c.versions.Fd(), name))
+	if err != nil {
+		return nil, err
+	}
+	defer named.Close()
+	fd, err := templatePrivateDirectory(fmt.Sprintf("/proc/self/fd/%d/%s", named.Fd(), hash))
+	if err != nil {
+		return nil, fmt.Errorf("template version unavailable; use examctl templates list, then show/verify NAME HASH: %w", err)
+	}
+	return fd, nil
 }
 
 // Stream directory names in fixed batches; keep only the next bounded page.
@@ -511,7 +519,7 @@ func (c *templateCatalog) readJob(id string, job *TemplateJob) error {
 	return templateReadJSON(r, "job.json", job)
 }
 func (c *templateCatalog) install(b TemplateCommand, id string, checkpoint func(string) error) (TemplateResult, error) {
-	result := TemplateResult{Action: b.Action, Job: id, Observed: Millis(), Note: "Verified immutable local version only; NOT gateway-confirmed, not selected for any grant/attempt. No legacy source or student state changed"}
+	result := TemplateResult{Action: b.Action, Job: id, Observed: Millis(), Note: "Verified immutable local version only; NOT proof of gateway confirmation. This operation does not select/change any grant or attempt. No legacy source or student state changed"}
 	encoded, _ := json.Marshal(struct {
 		Name, Hash, Reason string
 		File, Total        int64

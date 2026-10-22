@@ -199,7 +199,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Config.FunctionalTestAccount != "" {
 				productionReady = false
 			}
-			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "private-workspace-staging", "collection-limits-v1", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
+			result = map[string]any{"ready": ready, "production_ready": productionReady, "functional_test": e.Config.FunctionalTestAccount != "", "host_filesystem": e.Config.HostFilesystem, "administrator_sandbox_accounts": e.sandboxAdministrators(), "missing": missing, "capabilities": []string{"single-sign-in-handoff", "read-only-home", "disposable-application-state", "temporary-account-policy", "browser-ssh-receipts", "agent-terminal-recording", "clock-reset", "clock-extend", "server-only-submissions", "deadline-timing-check", "private-workspace-staging", "collection-limits-v1", "immutable-template-versions-v1", "signed-pane-close", "signed-ssh-control", "durable-status-callbacks", "peer-verified-gate", "fixed-deadline", "interval-access-hold", "all-session-channel-gate", "cgroup-freeze", "isolated-filesystem", "private-network", "protected-collection"}}
 			return nil
 		}
 		if op == "resolve-course-accounts" {
@@ -257,7 +257,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if e.Busy(account.UID) != nil {
 				return errors.New("account already reserved")
 			}
-			if !identifier.MatchString(r.Exam) || !identifier.MatchString(r.Settings.Template) || r.Settings.Duration < 60 || r.Settings.Duration > 21600 || r.Settings.Terminals < 1 || r.Settings.Terminals > 4 {
+			if !identifier.MatchString(r.Exam) || !validTemplateBinding(r.Settings) || r.Settings.Duration < 60 || r.Settings.Duration > 21600 || r.Settings.Terminals < 1 || r.Settings.Terminals > 4 {
 				return errors.New("invalid exam settings")
 			}
 			if _, err := limitsForSettings(r.Settings); err != nil {
@@ -487,6 +487,9 @@ func (e *Engine) issue(c Capability) any {
 	return map[string]string{"token": token}
 }
 func (e *Engine) initialize(a *Attempt) error {
+	if a.Settings.TemplateVersion != "" {
+		return errors.New("legacy initializer cannot initialize a versioned attempt; use the private workspace-prepare/Begin workflow; never copy mutable fallback files")
+	}
 	base := filepath.Join(e.Config.Work, a.ID)
 	if err := os.MkdirAll(base, 0700); err != nil {
 		return err

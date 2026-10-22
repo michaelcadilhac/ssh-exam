@@ -20,6 +20,7 @@ import (
 type WorkspaceSource struct {
 	Kind     string `json:"kind"`
 	Template string `json:"template,omitempty"`
+	Version  string `json:"version,omitempty"`
 	Attempt  string `json:"attempt,omitempty"`
 	Checksum string `json:"checksum,omitempty"`
 }
@@ -61,20 +62,23 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 	contentHash := ""
 	switch source.Kind {
 	case "empty":
-		if source.Template != "" || source.Attempt != "" || source.Checksum != "" {
+		if source.Template != "" || source.Version != "" || source.Attempt != "" || source.Checksum != "" {
 			return nil, errors.New("empty workspace cannot name another source")
 		}
 	case "template":
-		if !identifier.MatchString(source.Template) || source.Attempt != "" || source.Checksum != "" {
+		if !identifier.MatchString(source.Template) || (source.Version != "" && !templateDigest.MatchString(source.Version)) || source.Attempt != "" || source.Checksum != "" {
 			return nil, errors.New("select one versioned workspace template")
 		}
-		var err error
-		contentHash, err = copyPrivateTemplate(filepath.Join(e.Config.Templates, source.Template, "work"), dest, account, limits)
+		root, err := templateContent(e.Config, Settings{Template: source.Template, TemplateVersion: source.Version}, true)
+		if err != nil {
+			return nil, err
+		}
+		contentHash, err = copyPrivateTemplate(filepath.Join(root, "work"), dest, account, limits)
 		if err != nil {
 			return nil, err
 		}
 	case "saved":
-		if !attemptID.MatchString(source.Attempt) || len(source.Checksum) != 64 || source.Template != "" {
+		if !attemptID.MatchString(source.Attempt) || len(source.Checksum) != 64 || source.Template != "" || source.Version != "" {
 			return nil, errors.New("saved workspace requires an exact attempt/checksum")
 		}
 		prior := e.state.Attempts[source.Attempt]

@@ -1,14 +1,13 @@
 package core
 
 import (
-	"path/filepath"
 	"strconv"
 	"time"
 )
 
 // Called only after root-configured functional-account and channel authorization.
 // Host access is intentionally unsuitable for production exam isolation.
-func functionalHostArgs(unit, name string, account Account, work string, a *Attempt, pane string, practice bool, templates string, temporary temporaryPaths) []string {
+func functionalHostArgs(unit, name string, account Account, work string, a *Attempt, pane string, practice bool, config Config, temporary temporaryPaths) []string {
 	args := []string{"--quiet", "--pty", "--wait", "--collect", "--service-type=exec", "--unit=" + unit, "--slice=exam.slice",
 		"--uid=" + name, "--gid=" + strconv.Itoa(account.GID),
 		"--property=Delegate=no", "--property=MemoryMax=1G", "--property=TasksMax=128", "--property=CPUQuota=100%",
@@ -20,7 +19,11 @@ func functionalHostArgs(unit, name string, account Account, work string, a *Atte
 		"--setenv=EXAM_ATTEMPT_ID=" + a.ID, "--setenv=EXAM_PANE_ID=" + pane,
 		"--setenv=EXAM_DEADLINE=" + time.UnixMilli(a.Deadline).UTC().Format(time.RFC3339)}
 	if !practice {
-		args = append(args, "--property=BindReadOnlyPaths="+filepath.Join(templates, a.Settings.Template, "materials")+":/materials")
+		materials, err := templateMaterials(config, a.Settings)
+		if err != nil {
+			return nil
+		}
+		args = append(args, "--property=BindReadOnlyPaths="+materials+":/materials")
 	}
 	return append(args, "--", account.Shell, "-l")
 }

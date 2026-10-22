@@ -8,6 +8,9 @@ import (
 )
 
 func main() {
+	if core.TemplateWorkerMain(os.Args[1:]) {
+		return
+	}
 	if core.CollectionWorkerMain(os.Args[1:]) {
 		return
 	}

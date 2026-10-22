@@ -115,6 +115,21 @@ func TestTemplateChild(t *testing.T) {
 		}
 	}
 	err = runTemplateWorker(bytes.NewReader(input), os.Stdout, func(at string) error {
+		if at == "verify-started" && strings.HasPrefix(mode, "verify-") {
+			if err := os.WriteFile(filepath.Join(req.State, "template-child-entered"), []byte("verify ready"), 0600); err != nil {
+				return err
+			}
+			switch mode {
+			case "verify-kill":
+				_ = syscall.Kill(os.Getpid(), syscall.SIGKILL)
+			case "verify-panic":
+				panic("synthetic template verifier panic")
+			case "verify-hang":
+				for {
+					time.Sleep(time.Hour)
+				}
+			}
+		}
 		if mode == "kill-job-created" && at == "job-created" {
 			_ = syscall.Kill(os.Getpid(), syscall.SIGKILL)
 		}

@@ -252,6 +252,11 @@ func (e *Engine) local(c *net.UnixConn) {
 		if err != nil {
 			return err
 		}
+		if !practice {
+			if _, err := templateMaterials(e.Config, a.Settings); err != nil {
+				return err
+			}
+		}
 		args := sandboxWorkloadArgs(unit, name, account, work, a, cap.Pane, practice, e.Config, temporary)
 		if len(args) == 0 && !e.hostAccess(a) {
 			return errors.New("application state cannot be safely isolated in this home")
@@ -261,7 +266,10 @@ func (e *Engine) local(c *net.UnixConn) {
 			// a normal host account session, independently of agent sandboxing.
 			// Still track its entire cgroup for terminal closure and collection.
 			unit = strings.TrimSuffix(unit, ".scope") + ".service"
-			args = functionalHostArgs(unit, name, account, work, a, cap.Pane, practice, e.Config.Templates, temporary)
+			args = functionalHostArgs(unit, name, account, work, a, cap.Pane, practice, e.Config, temporary)
+			if len(args) == 0 {
+				return errors.New("recorded template materials unavailable; preserve attempt/version and inspect templates verify NAME HASH")
+			}
 		}
 		launch = exec.Command("/usr/bin/systemd-run", args...)
 		launch.Stdin = slave
@@ -279,7 +287,7 @@ func (e *Engine) local(c *net.UnixConn) {
 			}
 			result["proof"] = proof
 		}
-		welcome, welcomeErr := terminalWelcome(e.Config.Templates, a, practice)
+		welcome, welcomeErr := terminalWelcome(e.Config, a, practice)
 		if welcomeErr != nil {
 			// A bad optional banner must not prevent an authorized exam terminal.
 			e.Audit("terminal-welcome-unavailable", a.ID)

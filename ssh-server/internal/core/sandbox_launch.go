@@ -54,7 +54,11 @@ func sandboxWorkloadArgs(unit, name string, account Account, work string, a *Att
 	}
 
 	if !practice {
-		args = append(args, "--ro-bind", filepath.Join(config.Templates, a.Settings.Template, "materials"), "/materials")
+		materials, err := templateMaterials(config, a.Settings)
+		if err != nil {
+			return nil
+		}
+		args = append(args, "--ro-bind", materials, "/materials")
 	}
 	// Keep host file ownership and process UID aligned. The root-controlled
 	// setpriv runs before user code and irrevocably drops all capabilities.

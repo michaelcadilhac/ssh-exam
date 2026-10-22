@@ -186,7 +186,8 @@ func TestAdministratorSandboxDoesNotPrepareOrRedirectHome(t *testing.T) {
 	if _, err = os.Stat(filepath.Join(e.Config.State, "homes")); !os.IsNotExist(err) {
 		t.Fatal("administrator home snapshot created")
 	}
-	args := strings.Join(functionalHostArgs("exam-test.service", a.Username, account, "/work", a, "pane", false, "/materials", paths), "\n")
+	a.Settings.Template = "v1"
+	args := strings.Join(functionalHostArgs("exam-test.service", a.Username, account, "/work", a, "pane", false, Config{Templates: "/materials"}, paths), "\n")
 	if strings.Contains(args, "XDG_") || strings.Contains(args, "/run/exam") || !strings.Contains(args, "--setenv=HOME="+home) {
 		t.Fatal("administrator environment restricted")
 	}

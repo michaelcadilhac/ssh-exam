@@ -26,6 +26,18 @@ The disk-backed fixture correction preserved the new tmpfs/ramfs install refusal
 No production changes; no all-reader binding, gateway confirmation or grants are
 enabled. See template-catalog.md and todo-progress.md for scope and remaining work.
 
+Subsequent C2a3 optional native reader binding passes full fresh native race/
+resource/namespace/compiler/default-size qualification (core163.1s/CLI7.3s),
+application350/65 (73.2s), typecheck/build/static/vet and three fresh browser-SSH
+isolation/credential-cleanup checks (1.6m). Focused actual verifier death/hang,
+signed stage/Begin/restart and stale-snapshot/no-fallback/read-only-material tests
+pass; final catalog/binding/compiled CLI repeat is core13.6s/CLI2.7s. Historical
+JSON hashes remain byte-compatible. The ordinary root agent now supports the
+same private verifier entry, never exam-login. Current gateway snapshots remain
+legacy; no confirmation, grant issuance/migration, privileged-system-manager
+qualification or deployment is claimed. The csc-sys idle-host guard remains a
+separate safety gate, not a reason to stop independent implementation.
+
 ## Concurrent deadlines, cleanup and delayed callbacks
 
 `TestConcurrentDeadlinesSlowCleanupAndCallbackBacklog` runs 16 native attempts:

@@ -2,7 +2,9 @@
 
 October 21, 2026: candidate local development, **not deployed**. This is the C2a2
 foundation for fixed-at-issuance grants, not completed unified grants or their
-migration. Current student readers still use legacy template IDs. Catalog
+migration. Current gateway-issued snapshots still use legacy template IDs. C2a3
+now adds native-only optional exact-version readers; no gateway selection or
+grant issuance/migration is enabled by that foundation. Catalog
 installation does not select a version, issue a grant, change an existing attempt,
 or confirm availability to the gateway. Never enter a catalog hash as a legacy
 dashboard Template ID.
@@ -50,7 +52,7 @@ preserve existing data and plan a drained storage migration, never move it live.
 
 ## Isolation and durable lifecycle
 
-All operations run in ordinary `examctl` child processes with private bounded
+Management operations run in ordinary `examctl` child processes with private bounded
 request/reply frames (16 KiB/128 KiB). The coordinator validates protocol identity,
 action, exact target, counts, pagination and required policy flags before stdout.
 Worker stderr and malformed/private payloads are never forwarded as results.
@@ -144,7 +146,49 @@ starting the bounded test guest. No host services/configuration/accounts/state
 were changed. Continue independent local work, not production reconciliation.
 Full verification evidence is recorded in `todo-progress.md`.
 
-Next: exact-version binding for **all** starter/material/welcome readers, bounded
-authenticated catalog acknowledgement, then gateway-owned grant issuance/claim/
+Next: bounded authenticated catalog acknowledgement and gateway selection of the
+optional native binding below, then gateway-owned grant issuance/claim/
 Begin/revision and reviewed legacy migration. Those are not enabled by this CLI.
 See `template-grant-investigation.md` and the future-only `todo-rollout-plan.md`.
+
+## Optional native exact-version binding (C2a3 candidate)
+
+Native `Settings.template_version` is an optional exact lowercase 64-hex hash;
+`template` remains its name. Omitted fields retain byte-identical legacy settings
+JSON/hashes, private receipts and protected history. A present hash means catalog
+only: never mutable fallback or latest. Gateway definitions, enrollment and grants
+do not yet expose/select this field; do not edit native JSON to simulate issuance.
+
+Versioned staging verifies the whole work/materials package in the already
+bounded **actual-attempt** staging worker, including when adopting retained private
+work. The private receipt binds its source hash and complete settings hash. New
+work copies the exact catalog starter; saved work keeps its protected-source
+semantics independently of the material version. The old test-only initializer
+refuses versioned inputs instead of providing a second mutable copier.
+
+Before committing Begin, the root coordinator verifies actual catalog bytes in
+a separate template worker, outside `WithState`; no policy change, clock or
+allowance is committed on failure. It then rechecks ownership/generation/settings/
+window and command expiry through existing fences. Ordinary exam-agent and
+examctl support that private root-only worker entry; exam-login does not. A hung,
+killed or panicking verifier cannot hold the shared state lock. Missing pool or
+damaged version refuses; never restart a service, substitute source or refund time
+to force Begin. Use `templates verify NAME HASH` and `info ATTEMPT` for diagnosis.
+
+Normal and trusted-administrator material mounts and the bounded welcome reader
+resolve the same recorded version on each new pane. Admission reads only bounded
+metadata/directory identities, never streams a catalog while holding shared state.
+Practice bypasses every catalog/material read, even if the recorded version is
+missing. Missing explicit materials refuses actual panes, not an optional-banner
+skip. Existing legacy attempts keep their exact old reader semantics. Native
+capability `immutable-template-versions-v1` advertises support, not gateway
+confirmation or a grant. Future gateway use must require matching native support.
+
+Focused local signed stage/Begin/restart, author/new-version edits, legacy encoding,
+corruption/missing/symlink/no-fallback, actual verifier kill/panic/hang, post-verify
+snapshot races and private read-only bubblewrap material IO tests pass. The last
+uses an existing private target because this workstation has no `/materials`;
+it is not full privileged SSH/PAM/sandbox qualification. Full native/application/
+browser regression status is in todo-progress.md. Privileged guest and signed
+catalog acknowledgement remain open; this increment does not finish the wider
+investigation or authorize deployment.

@@ -54,6 +54,7 @@ type Settings struct {
 	Duration           int64  `json:"duration"`
 	Webcam             bool   `json:"webcam"`
 	Template           string `json:"template"`
+	TemplateVersion    string `json:"template_version,omitempty"`
 	Terminals          int    `json:"terminals"`
 	Earliest           int64  `json:"earliest"`
 	Latest             int64  `json:"latest"`
@@ -181,6 +182,7 @@ type Engine struct {
 	workerTimeout       time.Duration
 	workspaceCheckpoint func(string) error // Test-only fault barriers, never configurable.
 	activationPrepare   func(*Attempt) error
+	templateVerify      func(Settings) error // Test replacement never exposed in config/environment.
 }
 
 // Tests replace this factory in test-only code. There is no configuration or
@@ -316,6 +318,13 @@ func New(c Config) (*Engine, error) {
 	e.cutoff = func(a *Attempt) error { return e.freeze(a, true) }
 	e.collectionRun = collectionRunner(e)
 	e.activationPrepare = e.prepareActivation
+	e.templateVerify = func(s Settings) error {
+		if s.TemplateVersion == "" {
+			return nil
+		}
+		_, err := TemplateCall(c, TemplateCommand{Action: "verify", Name: s.Template, Hash: s.TemplateVersion}, ManagementID())
+		return err
+	}
 	return e, nil
 }
 func (e *Engine) WithState(fn func() error) error {

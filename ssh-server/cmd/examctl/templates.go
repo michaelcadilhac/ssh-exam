@@ -25,8 +25,9 @@ func templatesHelp(out io.Writer) {
 Native root-only immutable template catalog, offline from the gateway. Existing
 legacy template directories and ALL attempts, grants, workspaces, submissions,
 deadlines, account restrictions and monitoring remain unchanged. NO version is
-automatically selected as latest or bound to any student. Student readers remain
-legacy until the separate version-binding migration. Installation is LOCAL ONLY:
+automatically selected as latest or bound to any student. Current gateway-issued
+snapshots remain legacy; optional native exact-version readers do not issue or
+migrate grants. Installation is LOCAL ONLY:
 gateway_confirmed=false, not proof that the webserver may issue a grant from it.
 No installed-version deletion command is enabled.
 

@@ -1387,6 +1387,21 @@ unified grants/migration remain separate unfinished dependencies. Focused local
 qualification is not deployment or privileged system-manager qualification;
 see docs/template-catalog.md and docs/todo-progress.md.
 
+C2a3 local native candidate adds optional `template_version` settings and source
+hash fields, omitted for byte-compatible legacy receipts/history. Explicit hashes
+resolve only the recorded catalog version for private starter staging, normal and
+administrator material mounts and welcome; no implicit latest or mutable fallback.
+Full package verification happens in bounded staging and a separate root-only
+template worker before Begin, outside shared state transactions. Recheck existing
+owner/settings/generation/window/expiry fences before committing any interval or
+hold. Missing/damaged versions/worker/pool refuse without time consumption or
+policy changes. Pane admission reads bounded metadata only; practice never reads
+private catalog state/text. The ordinary root agent also supports the private
+worker entry, never the student gate. Gateway snapshots remain legacy until
+authenticated version visibility/shared issuance is implemented; no record is
+retroactively versioned. Privileged qualification and the full grant investigation
+remain open. The new native capability is support, not an availability/grant proof.
+
 Approved C1 design (October 20; partial local implementation): root-run examctl on the
 class server reuses its existing root-owned agent identity for outbound HTTPS
 management of gateway-owned state. Add explicit operation authorization, purpose/

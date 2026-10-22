@@ -27,7 +27,7 @@ func TestExamWelcomeStaysOutsideBoundedReadyProtocol(t *testing.T) {
 func TestPracticeWelcomeHasNoDeadline(t *testing.T) {
 	// Even a timed attempt's materials must never leak into practice.
 	base, a := welcomeFixture(t, "Secret exam material [DEADLINE]")
-	message, err := terminalWelcome(base, a, true)
+	message, err := terminalWelcome(Config{Templates: base}, a, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func welcomeFixture(t *testing.T, content string) (string, *Attempt) {
 
 func TestTimedExamWelcomeReadsTemplateAndReplacesKeywords(t *testing.T) {
 	base, a := welcomeFixture(t, "Hello [USER], welcome to [EXAM-NAME].\nDeadline: [DEADLINE]\n[USER] [UNKNOWN]")
-	message, err := terminalWelcome(base, a, false)
+	message, err := terminalWelcome(Config{Templates: base}, a, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestExamWelcomeAbsentOrEmptyHasNoHardcodedFallback(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		message, err := terminalWelcome(base, a, false)
+		message, err := terminalWelcome(Config{Templates: base}, a, false)
 		if err != nil || message != "" {
 			t.Fatalf("unexpected banner: %q, %v", message, err)
 		}
@@ -84,13 +84,13 @@ func TestExamWelcomeAbsentOrEmptyHasNoHardcodedFallback(t *testing.T) {
 func TestExamWelcomeUsesCurrentMetadataOnEveryPane(t *testing.T) {
 	base, a := welcomeFixture(t, "[EXAM-NAME]\r\n[DEADLINE]\r\n")
 	a.Settings.Name = "Literal [USER]"
-	message, err := terminalWelcome(base, a, false)
+	message, err := terminalWelcome(Config{Templates: base}, a, false)
 	if err != nil || !strings.HasPrefix(message, "\r\nLiteral [USER]\r\n") || strings.Contains(message, "\r\r\n") {
 		t.Fatalf("replacement was recursive or line endings changed: %q, %v", message, err)
 	}
 	a.Settings.Name = ""
 	a.Deadline += 60000
-	message, err = terminalWelcome(base, a, false)
+	message, err = terminalWelcome(Config{Templates: base}, a, false)
 	if err != nil || !strings.Contains(message, "midterm\r\n") || !strings.Contains(message, "4:31:00 PM CDT") {
 		t.Fatalf("reopened pane has stale metadata: %q, %v", message, err)
 	}
@@ -109,7 +109,7 @@ func TestExamWelcomeUsesChicagoDateAndDaylightSavingTime(t *testing.T) {
 			}
 			base, a := welcomeFixture(t, "Deadline: [DEADLINE]")
 			a.Deadline = deadline.UnixMilli()
-			message, err := terminalWelcome(base, a, false)
+			message, err := terminalWelcome(Config{Templates: base}, a, false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -154,7 +154,7 @@ func TestExamWelcomeRejectsUnsafeEntriesWithoutReadingThem(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if message, err := terminalWelcome(base, a, false); err == nil || message != "" {
+			if message, err := terminalWelcome(Config{Templates: base}, a, false); err == nil || message != "" {
 				t.Fatalf("unsafe welcome accepted: %q, %v", message, err)
 			}
 		})
