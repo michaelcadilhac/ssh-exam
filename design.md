@@ -1577,6 +1577,14 @@ checks complete. Local simulated browser tests alone do not qualify privileged i
 
 ### Approved retained-SSH lockout design (October 21; implementation pending)
 
+October22 local native coordination adds an unused authority/publication arbiter
+only; see docs/native-monitoring-authority.md. Its live decision cannot wait for
+storage, and provisional disk records alone cannot restore authority after restart.
+It does not supply actual root ownership, a durable journal, verified freeze or
+thaw. Native packet epochs must also be fresh per pane incarnation, distinct from
+the attempt authorization epoch, including a replacement with the same UI pane
+UUID. No runtime path or capability enables these components yet.
+
 The instructor approved retaining authenticated SSH and preserving shells/editor
 buffers through a verified freeze during policy lockouts. This supersedes the
 always-disconnect policy for viable transports on the same still-open page only

@@ -54,6 +54,14 @@ local UI cancellation can drop an unsent frame. A new native epoch fences delaye
 old frames, even if SSH/TCP delivers them after thaw; each pane needs independent
 ordering and replay accounting. Do not replay queued input on reconnect.
 
+Distinguish the attempt authorization epoch in monitoring ownership from the
+packet's native **per-pane input epoch**. Generate a fresh packet epoch at every
+pane creation, even if the UI reuses its pane UUID; otherwise queued input from a
+closed pane could reach its replacement after a local sequence reset. Opening one
+pane must not unnecessarily rotate healthy siblings. Root-owned registration and
+signed pane receipts must bind both identities before any live input caller is
+enabled. The current private codec/gate does not provide that registration.
+
 The initial increment is an unused browser-Go encoder/native decoder plus a shared
 canonical fixture. They change no live caller or advertised capability. Verify
 binary control/UTF-8 bytes over actual SSH channels and a raw Linux PTY, boundaries,
@@ -219,6 +227,11 @@ The listener, retained PTY owners, independent watchdog and root examctl may be
 different processes. A process-local map/mutex or the current shared state lock
 cannot be the final barrier. Keep the existing independent deadline cutoff and
 account restrictions throughout. The proposed next increment has these fences:
+
+The private authority/publication arbiter now separates bounded live decisions
+from future storage IO; see native-monitoring-authority.md. It is not a durable
+journal, ownership verifier or runtime permission source. Persistent records alone
+cannot revive it after restart, and its revoking phase does not prove freeze.
 
 1. A root-private, per-attempt durable control journal and persistent lock inode
    bind full native owner/boot, generation, clock revision, page/input epochs,

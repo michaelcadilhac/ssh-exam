@@ -8,6 +8,40 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
+October22 continuation aftercdaf37b: a private unused per-attempt monitoring
+authority/publication arbiter is under qualification in monitoring_authority.go.
+Source investigation shows a durable file/lock alone is insufficient: fsync may
+stall, a late publication must not undo revocation, and persisted positive-looking
+data cannot be treated as current authority after restart. The candidate performs
+no disk/network callback under its lock. It retains only prior valid allowance
+while publication is pending/failed, expires against current owned authority (not
+an old state snapshot), retires failed tickets and rejects late success/errors
+against replacement/revoked contexts. Fresh internally generated incarnation and
+monotonic challenge counter prevent nonce re-anchoring after bounded pruning.
+Initial sequence-zero contexts are awaiting-evidence, not permission for new-mode
+work; a RED regression exposed inheriting the longer bootstrap interval after
+first proof and that is now corrected to the verified first cutoff. Exact retries
+retain immutable original outcomes. Verified policy/auth/operator/recording causes
+remain sticky; timeout/publication failure alone does not become such a cause.
+Fourteen focused signed-evidence model cases passed twenty race repeats (2.86s);
+no real publisher, ownership claim, IPC, signed native receipt, bridge registration,
+all-writer freeze or held recovery calls it. No persisted record or native deadline
+is changed. Root actor ownership exclusion, bounded isolated publisher/storage,
+crash fencing and actual root/native workflow qualification remain next. Continue
+this increment and the coordinated integration; do not call it a live journal or
+completed critical fix.
+
+The native coordination contract is in native-monitoring-authority.md. It also
+records a pane-replacement replay prerequisite: packet epochs must be fresh per
+native pane incarnation, distinct from the attempt authorization epoch, even when
+the UI reuses a pane UUID. No runtime pane or packet path is changed by that note.
+Frozen arbiter qualification passes: full native race/resource/namespace/compiler/
+default-size checks (core166.49s/CLI8.29s), all383 application tests/71files
+(82.09s), static native build/vet, application typecheck and diff checks. All six
+browser WASM/runtime/JS/CSS/worker/HTML hashes still match the91-check H4a run;
+no rebuild or client import occurred. These results precede the next separate
+ownership-claim increment and do not qualify that increment or live containment.
+
 October22 continuation after9594087: native coordination clock foundation is in
 progress, with all live legacy clock/deadline/access calculations unchanged. A
 private unused checked CLOCK_BOOTTIME integer-millisecond reader rejects read/

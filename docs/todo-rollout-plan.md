@@ -58,6 +58,15 @@ the explicit clock failure/suspend/precision qualification in
 monitoring-evidence-contract.md. A failed clock is unknown authority, never a
 refund, new allowance, collection-expiry proof or ordinary-account release.
 
+The private native authority/publication arbiter adds no runtime state or schema
+migration either. Do not treat its provisional publication format as a lease or
+restore positive permission from it after restart. Before future enablement,
+qualify exclusive root ownership across every agent/watchdog, independently
+bounded metadata publication and late/crash fencing, then all-pane admission/
+input/freeze/discard and signed recovery receipts together. Unused model tests
+are not that release gate. See native-monitoring-authority.md. No temporary agent
+is stopped or consolidated by this increment.
+
 October 21 monitoring correctness increment adds no schema/policy change: late
 legacy recording callbacks obey tombstones, direct bounded replay refuses deleted
 bytes, and startup/hourly retention failures are contained/redacted so they cannot

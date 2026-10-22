@@ -163,6 +163,15 @@ full privileged qualification or deployment authorization.
   handling must be resolved with coordinated native transitions before enablement.
   Do not blindly substitute coarse os.uptime, invent time on an error, finalize/
   release on uncertainty or claim this was the production cause.
+  The next private native authority/publication arbiter is also unused by runtime
+  paths. It keeps bounded live decisions separate from future storage IO, checks
+  current rather than old cutoffs, preserves original retry outcomes and rejects
+  late publication after revocation. A persisted record cannot reconstruct its
+  one-use live context. Fourteen focused signed-evidence cases pass twenty race
+  repeats; full qualification is recorded in docs/todo-progress.md. This is not a
+  durable journal, actual owner verifier, freeze or recovery workflow. Root
+  ownership exclusion, isolated publication and coordinated containment remain
+  required; this critical item stays open. See docs/native-monitoring-authority.md.
 
 ## Firm design policy: examctl is the complete management interface
 
