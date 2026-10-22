@@ -8,7 +8,8 @@ do not execute temporary-agent consolidation. Never interrupt exams, reset clock
 or change production student records. No production cutover has been executed.
 Stop immediately if a command is not found. Preserve unrelated changes.
 
-Pane-management milestone is local commit0c2a529. Descriptor correction is local
+Recovery-metadata milestone is local commitcb5b809; pane management is0c2a529.
+Descriptor correction is local
 commita50067b, fully qualified as recorded below.
 C1 native pane management is implemented/tested locally: no-write bounded list/show,
 source/owner/incarnation-scoped reviewed revision, checked durable root audit and
@@ -47,13 +48,31 @@ Nine fresh browser/WASM SSH/handoff/monitoring/cleanup checks pass1.1m with all1
 hashes unchanged before/after. See recovery-metadata-safety.md. Do not treat malformed authority as missing,
 fall back to starter files, change intervals or rewrite legacy grants/history.
 
-The NEXT separate receipt investigation reproduces a FIFO stall in Begin's
+The CURRENT separate receipt increment reproduces a FIFO stall in Begin's
 readWorkspaceReceipt plus accepted hardlinked/duplicate JSON receipts; valid
 control reaches only a mocked OS guard. Its candidate shares a pinned bounded
 private-file reader and rejects ambiguous top-level/nested source keys. This is
-not part of the preceding exact hashes or deployed behavior; qualification and
-supported diagnostics are still running. Preserve every private receipt/work
+not part of the preceding exact hashes or deployed behavior. Two focused full
+recovery/workspace race repeats pass63.038s; actual root CLI start refusal passes
+1.080s. Full426 app90.72s, native race/resource/namespace/compiler/default-size
+core215.970s/CLI16.320s, static/vet and35 Python checks pass; bounded two-worker
+receipt decoder fuzz passes81863 executions/5.833s. Final exact-artifact guest
+passes3 ACK/two-shell/root-CLI repeats,40 enforcement and11 collector-death/
+healthy-peer assertions (23 renewals,max0.0820979s, exact40MiB retry), every
+host/base preservation check passing. All174 browser hashes match; no web rebuild.
+See workspace-receipt-safety.md. Preserve every private receipt/work
 directory; never recopy source, restart time or invent readiness to bypass failure.
+
+Next health-observation investigation confirms slow readiness IO is called inside
+WithState by native health, signed health and configuration reporting. All three
+controlled kernel-pipe/signed-inspection regressions are RED. An uncommitted
+candidate authorizes/durably consumes signed nonces first, probes outside state
+and publishes configuration afterward, preserving initial broken-state refusal.
+It never caches health for Begin and bounds concurrent probes per Engine only,
+not across all processes. Ten focused race repeats including busy/replay/restart/
+untrusted-request/no-false-publication cases pass1.312s. Actual CLI/guest and full
+qualification remain pending; see native-health-isolation.md. No incident cause,
+C3/C9 completion, C10/C11 answer or deployment is inferred.
 
 Pane-admission correction is local commitfad7e51. Next correctness investigation:
 local gate receives SCM_RIGHTS before JSON/account/SSH/capability validation but

@@ -298,3 +298,10 @@ Every host/base preservation check passes. See recovery-metadata-safety.md for
 hashes/evidence, RED unsafe-authority/FIFO tests and fresh9-browser qualification.
 No saved-source full grant migration or later workspace-receipt fix is inferred
 from those profiles. No installed host service/account/config/record is changed.
+
+The following workspace-receipt candidate passes three actual ACK/root-CLI/two-
+shell repetitions,40 enforcement and11 collector-death/healthy-SSH assertions
+(23 renewals,max0.0820979s, exact40MiB retry), every host/base check passing.
+Exact new hashes and evidence are in workspace-receipt-safety.md. This qualifies
+normal-root private staging/Begin compatibility, not full saved-work grant
+migration or later health-observation lock changes. Nothing is deployed.

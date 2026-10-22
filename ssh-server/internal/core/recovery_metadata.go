@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"syscall"
 	"unicode/utf8"
 )
 
@@ -42,24 +41,7 @@ func (e *Engine) openRecoveryExam(exam string) (*os.File, error) {
 }
 
 func recoveryMetadataFile(root *os.File, name string, limit int64) ([]byte, error) {
-	f, err := readOnlyOpenAt(root, name, false)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	before, err := f.Stat()
-	if err != nil || !before.Mode().IsRegular() || before.Mode().Perm()&0077 != 0 || before.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || before.Sys().(*syscall.Stat_t).Nlink != 1 || before.Size() > limit {
-		return nil, errRecoveryMetadata
-	}
-	b, err := io.ReadAll(io.LimitReader(f, limit+1))
-	if err != nil || int64(len(b)) > limit {
-		return nil, errRecoveryMetadata
-	}
-	after, err := f.Stat()
-	if err != nil || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) || before.Sys().(*syscall.Stat_t).Ctim != after.Sys().(*syscall.Stat_t).Ctim {
-		return nil, errRecoveryMetadata
-	}
-	return b, nil
+	return privateControlFile(root, name, limit)
 }
 
 // One strict parser for admission and deletion/inspection. Never allow a second

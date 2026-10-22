@@ -890,6 +890,15 @@ the approval is not a production change or a completed investigation.
   or hold rewrite, unsafe-record fallback or production change. See
   docs/recovery-metadata-safety.md. Every-boundary recovery and unified issuance/
   expected-source compatibility remain open; this broad item stays unchecked.
+  A following separate workspace-receipt correction now reproduces and fixes
+  another FIFO/shared-lock stall plus accepted hardlinked/duplicate receipts.
+  Nine Begin-process cases and actual root CLI start refusal preserve interval,
+  private work and source; full426 app/native race/resource, static/vet,35 Python
+  and bounded decoder fuzz pass. The new exact-artifact guest passes40 enforcement,
+  11 real collector-death/healthy-peer and3 root-pane repeats, all host/base
+  preservation passing;174 frozen browser source/runtime hashes still match.
+  See docs/workspace-receipt-safety.md; no source recopy, metadata invention,
+  account release, deployment or completed initialization claim.
   C7 approved October 21: recovery uses explicit new attempts from verified saved
   work with instructor-chosen allowances; no automatic refunds or reopening
   completed attempts. Preserve and safely secure the old work/history first;

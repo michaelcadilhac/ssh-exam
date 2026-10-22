@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"unicode/utf8"
 
 	"golang.org/x/sys/unix"
 )
@@ -58,23 +59,54 @@ func (e *Engine) accountWorkLock(uid int) (*os.File, error) {
 }
 
 func readWorkspaceReceipt(base string) (*WorkspaceReceipt, error) {
-	for _, p := range []string{base, filepath.Join(base, "workspace-ready")} {
-		if err := privateWorkspaceDirectory(p); err != nil {
-			return nil, err
-		}
-	}
-	f, err := os.OpenFile(filepath.Join(base, "workspace-ready", "receipt.json"), os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	root, err := readOnlyRoot(base)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || info.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || info.Size() > 16384 {
-		return nil, errors.New("unsafe private workspace receipt")
+	defer root.Close()
+	ready, err := readOnlyOpenAt(root, "workspace-ready", true)
+	if err != nil {
+		return nil, err
+	}
+	defer ready.Close()
+	b, err := privateControlFile(ready, "receipt.json", 16384)
+	if err != nil {
+		return nil, err
+	}
+	return decodeWorkspaceReceipt(b)
+}
+
+var errWorkspaceReceiptMetadata = errors.New("unsafe private workspace receipt; preserve staging/work and inspect the attempt read-only; use examctl help workspace-prepare and examctl help workspace-repair, never replace work or fabricate a receipt")
+
+func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
+	if len(b) > 16384 || !utf8.Valid(b) || !validReadOnlyJSON(b) {
+		return nil, errWorkspaceReceiptMetadata
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(b, &fields) != nil || fields == nil {
+		return nil, errWorkspaceReceiptMetadata
+	}
+	for key := range fields {
+		switch key {
+		case "version", "attempt", "exam", "username", "uid", "settings_hash", "source", "prepared_at", "recovery_hash", "content_hash", "work_device", "work_inode":
+		default:
+			return nil, errWorkspaceReceiptMetadata
+		}
+	}
+	var source map[string]json.RawMessage
+	if json.Unmarshal(fields["source"], &source) != nil || source == nil {
+		return nil, errWorkspaceReceiptMetadata
+	}
+	for key := range source {
+		switch key {
+		case "kind", "template", "version", "attempt", "checksum":
+		default:
+			return nil, errWorkspaceReceiptMetadata
+		}
 	}
 	var r WorkspaceReceipt
-	if err := decodeWorkerFrame(f, 16384, &r); err != nil {
-		return nil, err
+	if err := decodeWorkerFrame(bytes.NewReader(b), 16384, &r); err != nil {
+		return nil, errWorkspaceReceiptMetadata
 	}
 	return &r, nil
 }
@@ -246,7 +278,7 @@ func (e *Engine) workspaceForBegin(a *Attempt) error {
 	}
 	r, err := readWorkspaceReceipt(base)
 	if err != nil {
-		return err
+		return fmt.Errorf("private workspace receipt unavailable or unsafe; preserve staging/work and inspect examctl info %s --read-only and examctl help workspace-prepare; no new authorization established", a.ID)
 	}
 	if err := e.checkWorkspaceReceipt(a, r); err != nil {
 		return err

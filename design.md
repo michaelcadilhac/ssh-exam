@@ -60,6 +60,15 @@ commands. This does not declare an expected grant in the legacy protocol or
 complete unified grants/recovery compatibility. See docs/recovery-metadata-safety.md
 for qualification and intentionally stricter integrity rules. Local only.
 
+A following local receipt-safety candidate uses the same bounded pinned private
+file reader for workspace-ready receipts during Begin/staging/repair. Duplicate,
+case-aliased/unknown top-level or nested source fields and unsafe/linked/FIFO
+files refuse before the existing source/settings/inode/clock checks. A parsed
+receipt alone is never readiness or authorization. Preserve all original work,
+receipts, source history and holds; do not recopy or invent metadata to repair a
+failure. See docs/workspace-receipt-safety.md for tests and pending exact-artifact
+qualification. No deployment, new allowance or lockout policy is enabled.
+
 ## 2. Product context and defaults
 
 The instructor administers a programming exam on a Unix/Linux class server. Questions, tools, documentation, student files, and submission collection are server-side. The instructor has root access on that server. Students use their personal computers at home or supervised computers in person.

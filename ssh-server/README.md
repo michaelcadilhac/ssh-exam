@@ -318,6 +318,14 @@ failure is not an availability guarantee.
 
 ## Collection, export and recovery
 
+Local workspace-receipt safety candidate (not deployed) also rejects FIFO,
+linked/public and ambiguous JSON workspace-ready receipts through pinned bounded
+reads. Begin errors print exact read-only inspection and workspace-prepare help.
+Preserve receipts, staged/student work, original intervals and sources; never
+fabricate metadata, recopy changed source or restart time to bypass refusal.
+Committed publication repair remains separate and cannot reopen an attempt.
+See docs/workspace-receipt-safety.md for exact local/guest evidence and limits.
+
 Local recovery-metadata safety candidate (not deployed) refuses unsafe/linked/
 public/special or ambiguous legacy grant/consumption files before Begin and uses
 bounded reads during publication retries. Do not remove markers, edit JSON,

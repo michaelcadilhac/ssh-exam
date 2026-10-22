@@ -11,6 +11,16 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The following local workspace-receipt candidate extends pinned bounded metadata
+reads to workspace-ready receipts and enforces exact top-level/nested-source JSON
+keys. Verify private0700 real staging components and matching readers/writers
+after a separately authorized drain; preserve original receipts and exact work
+inode/source/interval/hold history. Do not hardlink/fabricate/normalize receipts or
+recopy sources to pass a refusal. No format/schema/clock migration is introduced.
+Downgrade loses integrity/bounds guards, so keep admission closed for compatible
+repair rather than deleting metadata or restoring old state. No rollout or
+temporary-agent consolidation is executed.
+
 The local recovery-metadata safety candidate requires real private0700 catalog
 components, bounded no-follow single-link owner/private files and strict known-
 field JSON. Unsafe legacy metadata previously accepted by admission now refuses,
