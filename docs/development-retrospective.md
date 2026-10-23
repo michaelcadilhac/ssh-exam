@@ -201,3 +201,11 @@ failure. Discovery must show the exact source path before a subsequent read;
 do not batch a guessed filename into discovery. Freeze first, wait for focused
 completion, then qualify. These are corrections to execution discipline, not
 reasons to add another abstraction, test framework or prerequisite milestone.
+
+The final broad browser run also rewrote nine documentation screenshots.
+Automatic review rejected discarding them for uncertain ownership; they were
+preserved outside the commit with verified private backups. The actual nine
+writers now use Playwright per-test output. Seven real browser workflows pass
+and generate all nine images there while every existing repository image stays
+byte-for-byte unchanged. Runtime build hashes are unchanged. This removes the
+need for destructive screenshot cleanup or routine approval during future tests.

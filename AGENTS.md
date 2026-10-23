@@ -7,6 +7,8 @@
   approval of routine implementation or local commits. Never push or deploy
   without a new explicit instruction. Do not restart production services, change
   production configuration/student records, or interrupt exams.
+  Store generated browser screenshots in per-test output; preserve existing
+  documentation images as workspace data.
 - Stop immediately if an executable/command is not found. Do not silently install
   it or substitute another command to continue the task.
 - csc-sys is authorized only for the agreed guarded, disposable qualification

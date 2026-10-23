@@ -2637,3 +2637,13 @@ ended. Local coherent commit only; no deployment/production/student mutation or
 missing executable. C1–C18 settled; capacity target requested in a new dialog.
 Continue actual supervisor authority/verified freeze/approved Continue; the main
 critical TODO stays open, along with source retention/migration and other scope.
+
+## October23: browser qualification preserves documentation images
+
+The nine actual screenshot writers now use per-test output. Seven affected real
+browser workflows PASS1.1m and generate all nine images; every existing repository
+image and all qualified runtime build bytes remain unchanged. Typecheck passes.
+Nine pre-existing working image changes are preserved/unstaged with private
+backups after automatic review rejected their discard; no restoration workaround
+was attempted. This fixture-only change needs no repeated app/native/root suite.
+Continue C3/C16; no deployment, production action or missing command.

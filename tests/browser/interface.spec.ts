@@ -257,7 +257,7 @@ test("student notice and authentication are accessible and self-hosted", async (
   ).toHaveCount(0);
   expect(outside).toEqual([]);
   await page.screenshot({
-    path: "docs/screenshots/student-sign-in.png",
+    path: test.info().outputPath("student-sign-in.png"),
     fullPage: true,
   });
 });
@@ -385,7 +385,7 @@ test("instructor can add, remove and import students, cancel removal with Escape
   ).toContainText("Not required");
   await expect(page.getByRole("link", { name: /Download/ })).toHaveCount(0);
   await page.screenshot({
-    path: "docs/screenshots/instructor-dashboard.png",
+    path: test.info().outputPath("instructor-dashboard.png"),
     fullPage: true,
   });
   await adminCommand(page, "Sign out");
@@ -815,7 +815,7 @@ test("practice terminals accept typing, stay floating, change maximize icon, clo
     .getByRole("dialog")
     .evaluate((el) => ({ width: el.clientWidth, scroll: el.scrollWidth }));
   await page.screenshot({
-    path: "docs/screenshots/terminal-close-dialog.png",
+    path: test.info().outputPath("terminal-close-dialog.png"),
     fullPage: true,
   });
   expect(size.width).toBeGreaterThan(450);
@@ -1242,7 +1242,7 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
     .locator(".terminal:not(.xterm)")
     .click({ button: "right", position: { x: 60, y: 60 } });
   await page.screenshot({
-    path: "docs/screenshots/student-workspace.png",
+    path: test.info().outputPath("student-workspace.png"),
     fullPage: true,
   });
   await page.evaluate(() => document.exitFullscreen());
@@ -1517,7 +1517,7 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
   await expect(receipt).not.toContainText("Collection requires recovery");
   await expect(receipt).not.toContainText("Checksum");
   await page.screenshot({
-    path: "docs/screenshots/preflight-expired.png",
+    path: test.info().outputPath("preflight-expired.png"),
     fullPage: true,
   });
   await page.reload();
@@ -1620,7 +1620,7 @@ test("login-only interface identifies real hosts and displays authentication suc
   ).toHaveCount(0);
   await expect(page.locator("footer")).toHaveCount(0);
   await page.screenshot({
-    path: "docs/screenshots/login-test-success.png",
+    path: test.info().outputPath("login-test-success.png"),
     fullPage: true,
   });
 });
@@ -1665,12 +1665,12 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
     true,
   );
   await page.screenshot({
-    path: "docs/screenshots/ssh-authentication-banner-narrow.png",
+    path: test.info().outputPath("ssh-authentication-banner-narrow.png"),
     fullPage: true,
   });
   await page.setViewportSize({ width: 780, height: 1000 });
   await page.screenshot({
-    path: "docs/screenshots/ssh-authentication-banner.png",
+    path: test.info().outputPath("ssh-authentication-banner.png"),
     fullPage: true,
   });
   await page.getByLabel("Shared SSH password").fill("shared-password");
@@ -1756,7 +1756,7 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
     page.getByRole("button", { name: "Waiting for host…" }),
   ).toBeDisabled();
   await page.screenshot({
-    path: "docs/screenshots/ssh-authentication-messages.png",
+    path: test.info().outputPath("ssh-authentication-messages.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Cancel", exact: true }).click();

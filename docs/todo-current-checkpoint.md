@@ -7,9 +7,13 @@ none was missing. C1–C18 are settled. A new capacity-input dialog asks the
 intended maximum simultaneous students/terminals; continue independent work
 while awaiting that test target. It changes no production/admission policy.
 
-## Validated local milestone: challenged preflight → authenticated Begin
+## Current milestone: retained policy pause → verified hold → approved Continue
 
-This challenged-preflight increment is validated locally (this commit). Previous
+Last validated runtime commit **9da574a** is challenged preflight/Begin. The
+following fixture-only increment redirects nine screenshot writers to per-test
+output:7 affected browser workflows PASS1.1m, all repository images and qualified
+build bytes verified unchanged; types pass. No repeated runtime suites needed.
+Previous
 validated commit **85a4227** delivered framed JS/IPC/WASM/SSH/PTY input,
 resize and stale pane replacement fences. Its evidence/artifacts stay in
 [framed-pane-input.md](framed-pane-input.md); prior exact legacy renewal recovery
@@ -83,8 +87,18 @@ older root receipt. Native core/source is newer than85a4227.
 **Next action after this local commit:** continue actual policy-pause → verified
 retained hold → approved Continue, with C16 authority inside the existing attempt
 supervisor, full input/writer barriers, original deadlines and CLI/web agreement.
-Name the bounded actual entry/acceptance/tests before editing; inspect its runtime
-callers, not another standalone prototype. No C3/C16 enablement until its complete
+Bounded entry is actual native/web policy pause and approved Continue, retaining
+the same authenticated SSH/shell/editor state with closed launch/input admission,
+verified all-writer stop-assisted freeze/drain/discard and original deadlines.
+Required tests: real two-pane/background/async/editor hold/thaw, original job
+stops, old packets/late launch, auth/owner/generation/deadline/restart races and
+matching examctl/web inspection/retry. Boundary is a complete safe integrated
+workflow; no standalone prototype commit or enabled partial retention.
+Inspected: pause.go always terminates; Tick repeats this for LOCKED units; owner
+attach has no deadline/live context, readonly no-FD RPC only; framed IO has no
+revocation/drain. Existing R1 observers/input adapters and C10 arbiter are unused.
+Next source work joins those ACTUAL supervisor/Engine entry points, with root SSH
+pidfd/current-owner factory and recording IO isolated, before claiming safety. No C3/C16 enablement until its complete
 safety/recovery boundary is qualified. No active test runner or guest remains.
 Original screenshot/source/build hashes were verified exact after qualification.
 Do not end after this preflight increment while actionable work remains.
@@ -117,6 +131,7 @@ backup /tmp/ssh-exam-preserved-preflight-screenshot.png. Never stage/restore it.
 
 Nine additional screenshot changes are preserved/unstaged after automatic review
 rejected discarding them for uncertain ownership. All nine have private verified
-backups; marker /tmp/ssh-exam-challenged-screenshot-backup-path. Do not overwrite
-them in future browser runs; direct generated screenshots into test output. The
+backups; marker /tmp/ssh-exam-challenged-screenshot-backup-path. Future browser screenshot writers
+now use per-test output;7 real workflows prove all nine outputs and no image
+mutation. Preserve these existing image changes. The
 original dirty preflight screenshot remains exact and separately backed up.
