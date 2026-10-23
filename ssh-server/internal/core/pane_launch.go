@@ -42,6 +42,7 @@ func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit
 	if err != nil {
 		return false, err
 	}
+	p.closedProof = &proof
 	defer func() {
 		// Close BEFORE killing/waiting/forgetting. Even a delayed manager may
 		// start only the closed root bootstrap, which sees EOF, never a shell.

@@ -443,6 +443,22 @@ race/resource/build pass. See docs/terminal-supervisor-observation.md for exact
 evidence/fixture corrections/limits. No live renewal, timed C12 or C3/C9 mode is
 enabled; no deployment or closed critical-item claim.
 
+October23 C12b is implemented/tested locally through the real
+closed pane gate. New timed BrowserSSH attempts save their native lifetime mode;
+active legacy attempts are not converted. One attempt owner receives scoped
+recording storage/budget only, preserves trusted capture under display
+backpressure and emits bounded incarnation/owner-bound fault/completion receipts.
+Existing reviewed pane close preserves unacknowledged proof; new root panes
+reports plus existing reconcile provide supported inspection/acknowledgement.
+Focused actual user-scope/PTY/coordinator-kill/restart/stale-fault/EOF/owner-death,
+compiled root CLI and durable-state tests pass, with56 affected application and17
+browser checks passing. Final full native race/resource/namespace/compiler/default-
+size qualification passes core395.786s/CLI26.150s, with matching source manifest,
+static build/vet and corrected admission/close/acknowledgement/cleanup-uncertainty races. See
+docs/timed-terminal-supervision.md for retained failures/state review/limits.
+This is not completed C12/R2 or C3/C9 enablement, installed-role qualification,
+deployment or closure of the critical liveness item. Main count remains11/38.
+
 ## Firm design policy: examctl is the complete management interface
 
 October22 independent C4 hold-safety fix is implemented/tested locally: existing

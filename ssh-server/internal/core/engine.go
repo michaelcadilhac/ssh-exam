@@ -614,6 +614,10 @@ func (e *Engine) Tick() error {
 		// each collector independently repeats the verified writer barrier.
 		log.Printf("deadline cutoff needs recovery: %v", err)
 	}
+	recordingErr := e.reconcileTerminalRecordingReports()
+	if recordingErr != nil {
+		log.Printf("timed recording acknowledgement needs recovery: %v", recordingErr)
+	}
 	var jobs []string
 	err := e.WithState(func() error {
 		e.reapClosedPaneStarts()
@@ -754,7 +758,7 @@ func (e *Engine) Tick() error {
 		}()
 	}
 	workers.Wait()
-	return e.reconcileAccessOutside("")
+	return errors.Join(recordingErr, e.reconcileAccessOutside(""))
 }
 
 // Cutoff reads atomically committed state without taking the collection lock. It only
@@ -858,6 +862,7 @@ func expired(a *Attempt) bool {
 
 // One authoritative start/deadline pair; individual duration is already snapshotted.
 func commitStart(a *Attempt, at int64, elapsed float64, bootID string) {
+	a.TerminalSupervised = a.BrowserSSH
 	a.Start = at
 	a.AccessState = "HELD"
 	a.AccessHeldAt = at

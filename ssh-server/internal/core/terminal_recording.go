@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -40,12 +41,15 @@ func (e *Engine) terminalRecordingLimit() int64 {
 }
 
 type terminalRecorder struct {
-	state    string
-	limit    int64
-	mu       sync.Mutex
-	file     *os.File
-	id, pane string
-	started  time.Time
+	state     string
+	limit     int64
+	mu        sync.Mutex
+	file      *os.File
+	id, pane  string
+	started   time.Time
+	storage   *supervisedRecordingStorage
+	instance  string
+	committed atomic.Int64
 }
 
 func (e *Engine) newRecorder(id, pane string) (*terminalRecorder, error) {
@@ -90,6 +94,9 @@ func newTerminalRecorder(state string, limit int64, id, pane string) (*terminalR
 func (r *terminalRecorder) record(v map[string]any) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.storage != nil {
+		return r.storage.record(r, v)
+	}
 	// Panes can live in separate native processes. Serialize only this attempt's
 	// quota/append/sync, never unrelated students through an Engine-wide mutex.
 	// Keep the cross-process lock outside the delivered log tree.
@@ -185,22 +192,7 @@ func (e *Engine) bridgeRecordedPTY(original, master *os.File, done <-chan struct
 					e.terminalFailureCheckpoint("before-state")
 				}
 				e.WithState(func() error {
-					a := e.state.Attempts[id]
-					tracked := false
-					if a != nil {
-						for _, recorded := range a.Units {
-							tracked = tracked || recorded == unit
-						}
-					}
-					// An old close/resize/output completion is not evidence about
-					// a later authenticated generation, replacement pane or expired
-					// interval. Clock extensions do not retire the current recorder.
-					if !tracked || a.State != "ACTIVE" || expired(a) || a.Generation != authority.Generation || a.Transport != authority.Transport || a.Username != authority.Username || a.UID != authority.UID || a.Start != authority.Start || a.Boot != authority.Boot || e.state.Registrations[a.Transport] != a.Username || (!paneInstanceReady(e.state, a, unit, boot()) && !paneInstanceClosed(e.state, a, unit, boot())) {
-						e.Audit("retired-terminal-recording-fault", id, pane, unit)
-						return nil
-					}
-					_, err := e.callLocked("lock-attempt", Request{ID: id, Reason: "Class-server terminal recording failure"})
-					return err
+					return e.recordingFaultLocked(recordingContext(authority, pane, unit))
 				})
 				if e.terminalFailureCheckpoint != nil {
 					e.terminalFailureCheckpoint("after-state")

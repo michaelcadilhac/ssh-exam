@@ -1,5 +1,11 @@
 # Independent practice pane ownership (C12a; tested locally, not deployed)
 
+Subsequent C12b integrates new timed-attempt recording ownership and bounded
+canonical receipt acknowledgement, with existing pane close/inspection plus
+panes reports/reconcile. Full local native/affected interface qualification passes; see
+timed-terminal-supervision.md. The C12a evidence below describes its original
+practice-only boundary. Neither increment enables retained-lockout freeze/recovery.
+
 This increment covers the ordinary **Practice terminal** through Engine.local and
 existing signed/root `examctl panes list/show/close`. One independent bounded
 supervisor per user/attempt owns all its practice sockets, PTYs and workload

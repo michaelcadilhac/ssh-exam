@@ -68,6 +68,11 @@
   For absence/no-start receipts, check contradictory durable workspace, submission
   and consumption evidence before the first broad run; a missing canonical row
   alone is not enough. Catching this late requires requalifying native artifacts.
+- For independent actor protocols, audit every writer of shared admission/cleanup
+  proof. Force benign diagnostic writes and real faults while each readiness,
+  reply and acknowledgement handshake is blocked, through the actual entry,
+  before the first broad run. An acknowledgement must not invalidate final exec
+  release or reviewed control; containment must not wait for a startup notice.
 - Run broad application/integration/native-race/build/browser checks at coherent
   milestone boundaries according to affected surfaces and risk. Do not rerun
   unchanged application/browser suites for every private native helper. Record

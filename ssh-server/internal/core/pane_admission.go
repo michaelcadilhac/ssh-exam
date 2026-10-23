@@ -17,6 +17,10 @@ type paneLaunchAdmission struct {
 	authority         Attempt
 	supervisor        *paneBootstrapPeer
 	supervisorUnit    string
+	recordingOwner    string
+	recordingPID      int
+	recordingStart    uint64
+	closedProof       *PaneInstance
 	supervisorControl *net.UnixConn
 }
 
@@ -79,7 +83,7 @@ func (e *Engine) closePaneLocked(a *Attempt, pane string) (any, error) {
 	}
 	a.Units = remaining
 	for _, unit := range closed.Units {
-		delete(e.state.PaneInstances, unit)
+		removePaneUnit(e.state.PaneInstances, a, unit)
 	}
 	return map[string]bool{"closed": true}, nil
 }
@@ -204,6 +208,25 @@ func (e *Engine) reserveClosedPane(p *paneLaunchAdmission, token, name, unit str
 			return errPaneBootstrap
 		}
 		proof = PaneInstance{Attempt: a.ID, Pane: cap.Pane, ID: instance, Boot: boot(), ClosedUntil: cap.Expires, ClosedBootUntil: now + remaining}
+		if a.TerminalSupervised && cap.Purpose == "exam" {
+			pending := 0
+			for _, prior := range e.state.PaneInstances {
+				if prior.Attempt == a.ID && prior.Recording != "" {
+					if prior.Pane == cap.Pane {
+						return errTerminalRecordingReport
+					}
+					pending++
+				}
+			}
+			if pending >= terminalRecordingReportEntries {
+				return errTerminalRecordingReport
+			}
+			proof.RecordingIdentity = recordingContext(*a, cap.Pane, unit)
+			if !proof.RecordingIdentity.valid() {
+				return errTerminalSupervisor
+			}
+			proof.Recording = proof.RecordingIdentity.hash()
+		}
 		if proof.Boot == "" {
 			return errPaneBootstrap
 		}
@@ -242,6 +265,11 @@ func (e *Engine) releaseClosedPane(p *paneLaunchAdmission, name, unit string, pr
 		ready := proof
 		ready.ReadyAt, ready.ClosedUntil, ready.ClosedBootUntil = Millis(), 0, 0
 		ready.Supervisor = p.supervisorUnit
+		ready.RecordingOwner = p.recordingOwner
+		ready.RecordingPID, ready.RecordingStart = p.recordingPID, p.recordingStart
+		if proof.Recording != "" && (!nativeCapabilityHash.MatchString(ready.RecordingOwner) || p.supervisor == nil) {
+			return errTerminalSupervisor
+		}
 		e.state.PaneInstances[unit] = ready
 		// Do not release anything if durable tracking/activation fails. An
 		// uncertain save remains inspectable, never reconstructible permission.
@@ -279,7 +307,16 @@ func removePaneUnit(instances map[string]PaneInstance, a *Attempt, unit string) 
 		}
 	}
 	a.Units = units
-	delete(instances, unit)
+	if proof := instances[unit]; proof.Recording == "" || (proof.ReadyAt == 0 && proof.RecordingOwner == "") {
+		delete(instances, unit)
+		// CLOSED/unbound setup never transferred descriptors: its verified
+		// owner must be saved BEFORE handoff, and readiness BEFORE exec. This
+		// caller already confirmed scope cleanup/no child start. No recording,
+		// report, attempt, clock or protected data is deleted or called complete.
+	} else if proof.ReadyAt == 0 {
+		proof.Cancelled = true
+		instances[unit] = proof
+	} // An unacknowledged recording report survives targeted closure/restart.
 }
 
 // Called by Tick under state. A crashed parent cannot authorize from disk; its

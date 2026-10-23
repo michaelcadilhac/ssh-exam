@@ -32,15 +32,17 @@ type terminalSupervisorInit struct {
 	State   string `json:"state"`
 }
 type terminalSupervisorAttach struct {
-	Attempt  string       `json:"attempt"`
-	Pane     string       `json:"pane"`
-	Unit     string       `json:"unit"`
-	PID      int          `json:"pid"`
-	UID      int          `json:"uid"`
-	Username string       `json:"username"`
-	Purpose  string       `json:"purpose"`
-	Expires  int64        `json:"expires"`
-	Proof    PaneInstance `json:"proof"`
+	Attempt        string                   `json:"attempt"`
+	Pane           string                   `json:"pane"`
+	Unit           string                   `json:"unit"`
+	PID            int                      `json:"pid"`
+	UID            int                      `json:"uid"`
+	Username       string                   `json:"username"`
+	Purpose        string                   `json:"purpose"`
+	Expires        int64                    `json:"expires"`
+	Proof          PaneInstance             `json:"proof"`
+	Recording      terminalRecordingContext `json:"recording,omitzero"`
+	RecordingLimit int64                    `json:"recording_limit,omitempty"`
 }
 
 func terminalSupervisorUnit(state, id string) string {
@@ -218,15 +220,22 @@ func terminalSupervisorDial(dir *os.File, state, id string, exe *os.File) (*net.
 // Root-only lifetime claim; unlike the metadata actor claim, it is inherited by
 // precisely this attempt's supervisor. It cannot exclude coordinator replacement.
 func terminalSupervisorLock(dir *os.File, id string) (*os.File, error) {
+	if !attemptID.MatchString(strings.TrimSuffix(id, ".reports")) {
+		return nil, errTerminalSupervisor
+	}
 	fd, err := unix.Openat(int(dir.Fd()), id+".lock", unix.O_CREAT|unix.O_RDWR|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0600)
 	if err != nil {
 		return nil, errTerminalSupervisor
 	}
 	f := os.NewFile(uintptr(fd), "attempt-terminal-lifetime")
 	i, err := f.Stat()
-	if err != nil || !i.Mode().IsRegular() || i.Mode().Perm() != 0600 || i.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || i.Sys().(*syscall.Stat_t).Nlink != 1 || unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB) != nil {
+	if err != nil || !i.Mode().IsRegular() || i.Mode().Perm() != 0600 || i.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || i.Sys().(*syscall.Stat_t).Nlink != 1 {
 		f.Close()
 		return nil, errTerminalSupervisor
+	}
+	if err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		f.Close()
+		return nil, errors.Join(errTerminalSupervisor, err)
 	}
 	return f, nil
 }
@@ -347,10 +356,17 @@ func (e *Engine) connectTerminalSupervisor(id string) (connection *net.UnixConn,
 	return terminalSupervisorDial(dir, e.Config.State, id, exe)
 }
 
-func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *paneLaunchAdmission, unit string, process *uidProcess) (*paneBootstrapPeer, error) {
-	if p.capability.Purpose != "practice" {
+func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *paneLaunchAdmission, unit string, process *uidProcess) (result *paneBootstrapPeer, resultErr error) {
+	stage := "purpose"
+	defer func() {
+		if resultErr != nil {
+			resultErr = fmt.Errorf("%w (terminal handoff: %s): %v", errTerminalSupervisor, stage, resultErr)
+		}
+	}()
+	if p.capability.Purpose != "practice" && !(p.capability.Purpose == "exam" && p.authority.TerminalSupervised && p.authority.BrowserSSH) {
 		return nil, errTerminalSupervisor
 	}
+	stage = "owner-connect"
 	control, supervisor, err := e.connectTerminalSupervisor(p.authority.ID)
 	if err != nil {
 		return nil, err
@@ -373,18 +389,76 @@ func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *
 	if process == nil || process.handle == nil || process.proc == nil {
 		return nil, errTerminalSupervisor
 	}
-	request := terminalSupervisorAttach{Attempt: p.authority.ID, Pane: p.capability.Pane, Unit: unit, PID: process.pid, UID: p.account.UID, Username: p.authority.Username, Purpose: "practice", Expires: p.capability.Expires, Proof: PaneInstance{Attempt: p.authority.ID, Pane: p.capability.Pane}}
+	request := terminalSupervisorAttach{Attempt: p.authority.ID, Pane: p.capability.Pane, Unit: unit, PID: process.pid, UID: p.account.UID, Username: p.authority.Username, Purpose: p.capability.Purpose, Expires: p.capability.Expires, Proof: PaneInstance{Attempt: p.authority.ID, Pane: p.capability.Pane}}
 	_, _, request.Proof.ID, _ = recordedPaneIdentity(p.authority.ID, unit)
 	request.Proof.Boot = boot()
+	fds := []int{int(accepted.Fd()), int(original.Fd()), int(master.Fd()), int(process.handle.Fd()), int(process.proc.Fd())}
+	if request.Purpose == "exam" {
+		stage = "scoped-recording-storage"
+		p.recordingPID = supervisor.process.pid
+		p.recordingStart, err = terminalOwnerStart(supervisor.process)
+		if err != nil || p.closedProof == nil {
+			return nil, errTerminalSupervisor
+		}
+		p.recordingOwner = terminalOwnerEpoch(terminalSupervisorUnit(e.Config.State, p.authority.ID), p.recordingPID, p.recordingStart)
+		// Persist the verified owner before any descriptor transfer. A crash or
+		// lost ready reply leaves bounded, restart-inspectable CLOSED tracking,
+		// never an unowned report or reconstructible exec permit.
+		if err := e.WithState(func() error {
+			proof := *p.closedProof
+			if e.state.PaneInstances[unit] != proof || proof.Cancelled {
+				return errTerminalSupervisor
+			}
+			proof.RecordingOwner, proof.RecordingPID, proof.RecordingStart = p.recordingOwner, p.recordingPID, p.recordingStart
+			e.state.PaneInstances[unit], *p.closedProof = proof, proof
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		request.Recording, request.RecordingLimit = recordingContext(p.authority, request.Pane, unit), e.terminalRecordingLimit()
+		resources, err := terminalRecordingResources(e.Config.State, request.Attempt)
+		if err != nil {
+			return nil, err
+		}
+		defer func() {
+			for _, f := range resources {
+				f.Close()
+			}
+		}()
+		for _, f := range resources {
+			fds = append(fds, int(f.Fd()))
+		}
+	}
 	b, _ := json.Marshal(request)
-	_, _, err = control.WriteMsgUnix(b, unix.UnixRights(int(accepted.Fd()), int(original.Fd()), int(master.Fd()), int(process.handle.Fd()), int(process.proc.Fd())), nil)
+	stage = "descriptor-transfer"
+	_, _, err = control.WriteMsgUnix(b, unix.UnixRights(fds...), nil)
 	if err != nil {
 		return nil, errTerminalSupervisor
 	}
-	var ready [2]byte
+	var ready [128]byte
+	stage = "recording-owner-ready"
 	n, _, flags, _, err := control.ReadMsgUnix(ready[:], nil)
-	if err != nil || n != 1 || ready[0] != 1 || flags&(unix.MSG_TRUNC|unix.MSG_CTRUNC) != 0 || !supervisor.current() {
+	if err != nil || flags&(unix.MSG_TRUNC|unix.MSG_CTRUNC) != 0 || !supervisor.current() {
 		return nil, errTerminalSupervisor
+	}
+	if request.Purpose == "practice" {
+		if n != 1 || ready[0] != 1 {
+			return nil, errTerminalSupervisor
+		}
+	} else {
+		var acknowledgement struct {
+			Owner string `json:"owner"`
+			Error string `json:"error,omitempty"`
+		}
+		if terminalDecode(ready[:n], &acknowledgement) != nil {
+			return nil, errTerminalSupervisor
+		}
+		if acknowledgement.Error != "" {
+			return nil, errors.New(acknowledgement.Error)
+		}
+		if acknowledgement.Owner != p.recordingOwner {
+			return nil, errTerminalSupervisor
+		}
 	}
 	if control.SetDeadline(time.UnixMilli(p.capability.Expires)) != nil {
 		return nil, errTerminalSupervisor
@@ -392,6 +466,9 @@ func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *
 	p.supervisorUnit = terminalSupervisorUnit(e.Config.State, p.authority.ID)
 	p.supervisor = supervisor
 	p.supervisorControl = control
+	if e.terminalHandoffCheckpoint != nil {
+		e.terminalHandoffCheckpoint()
+	}
 	failed = false
 	return supervisor, nil
 }
@@ -404,10 +481,27 @@ func (e *Engine) waitSupervisedPane(p *paneLaunchAdmission, unit string, c *net.
 	var finish sync.Once
 	cleanup := func(ownerExited bool) {
 		finish.Do(func() {
+			ownedAtExit := p.recordingOwner != "" // Verified original socket owner; not current work authority.
 			closed := p.authority
 			closed.Units = []string{unit}
 			terminationErr := e.terminate(&closed)
-			ownedAtExit := false
+			if p.recordingOwner != "" && ownerExited {
+				_ = e.reconcileTerminalRecordingReports()
+			}
+			if p.recordingOwner != "" && !ownerExited {
+				// Scope exit precedes the independent recorder's final drain. Keep
+				// canonical tracking until its durable completion is acknowledged.
+				for until := time.Now().Add(3 * time.Second); time.Now().Before(until); {
+					_ = e.reconcileTerminalRecordingReports()
+					pending := false
+					_ = e.WithState(func() error { _, pending = e.state.PaneInstances[unit]; return nil })
+					if !pending {
+						return
+					}
+					time.Sleep(20 * time.Millisecond)
+				}
+				return // Unknown completion remains visible for Tick/CLI retry.
+			}
 			_ = e.WithState(func() error {
 				a := e.state.Attempts[closed.ID]
 				proof := e.state.PaneInstances[unit]
@@ -422,6 +516,9 @@ func (e *Engine) waitSupervisedPane(p *paneLaunchAdmission, unit string, c *net.
 						_, err := e.callLocked("lock-attempt", Request{ID: a.ID, Reason: "Class-server terminal owner failed; containment unconfirmed (not a student violation)"})
 						return err
 					}
+					return nil
+				}
+				if p.recordingOwner != "" {
 					return nil
 				}
 				removePaneUnit(e.state.PaneInstances, a, unit)
@@ -460,14 +557,19 @@ func (e *Engine) waitSupervisedPane(p *paneLaunchAdmission, unit string, c *net.
 }
 
 type terminalSupervisor struct {
-	id, unit string
-	mu       sync.Mutex
-	panes    map[string]bool
-	active   int
-	uid      int
-	username string
-	last     time.Time
-	cleanup  func(terminalSupervisorAttach) error
+	id, unit     string
+	state, owner string
+	mu           sync.Mutex
+	storageMu    sync.Mutex
+	storage      *supervisedRecordingStorage
+	timed        map[string]*supervisedRecordingIO
+	requests     map[string]terminalSupervisorAttach
+	panes        map[string]bool
+	active       int
+	uid          int
+	username     string
+	last         time.Time
+	cleanup      func(terminalSupervisorAttach) error
 }
 
 func (s *terminalSupervisor) cleanupPane(r terminalSupervisorAttach) error {
@@ -497,9 +599,9 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		return
 	}
 	buf := make([]byte, terminalSupervisorBytes+1)
-	oob := make([]byte, unix.CmsgSpace(5*4))
+	oob := make([]byte, unix.CmsgSpace(8*4))
 	n, on, flags, _, err := c.ReadMsgUnix(buf, oob)
-	owned, descriptorErr := receiveBoundedDescriptors(oob[:on], flags, 5)
+	owned, descriptorErr := receiveBoundedDescriptors(oob[:on], flags, 8)
 	defer owned.close()
 	if err != nil || descriptorErr != nil {
 		return
@@ -518,7 +620,7 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		_ = json.NewEncoder(c).Encode(s.observation())
 		return
 	}
-	if len(owned.files) != 5 {
+	if len(owned.files) != 5 && len(owned.files) != 8 {
 		return
 	}
 	caller, err := terminalSupervisorCaller(c, exe)
@@ -527,7 +629,15 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	}
 	defer caller.close()
 	var r terminalSupervisorAttach
-	if terminalDecode(buf[:n], &r) != nil || r.Attempt != s.id || r.Purpose != "practice" || !attemptID.MatchString(r.Pane) || r.PID <= 1 || r.UID < 0 || r.Proof.Attempt != s.id || r.Proof.Pane != r.Pane || r.Proof.Boot != boot() || r.Expires <= Millis() || r.Expires > Millis()+15000 {
+	if terminalDecode(buf[:n], &r) != nil || r.Attempt != s.id || !attemptID.MatchString(r.Pane) || r.PID <= 1 || r.UID < 0 || r.Proof.Attempt != s.id || r.Proof.Pane != r.Pane || r.Proof.Boot != boot() || r.Expires <= Millis() || r.Expires > Millis()+15000 {
+		return
+	}
+	timed := r.Purpose == "exam"
+	if timed {
+		if len(owned.files) != 8 || !r.Recording.valid() || r.Recording.Attempt != r.Attempt || r.Recording.Pane != r.Pane || r.Recording.Unit != r.Unit || r.Recording.Username != r.Username || r.Recording.UID != r.UID || r.Recording.Boot != r.Proof.Boot || r.RecordingLimit <= 0 {
+			return
+		}
+	} else if r.Purpose != "practice" || len(owned.files) != 5 || r.Recording != (terminalRecordingContext{}) || r.RecordingLimit != 0 {
 		return
 	}
 	pane, kind, incarnation, ok := recordedPaneIdentity(s.id, r.Unit)
@@ -575,8 +685,20 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	s.active++
 	s.last = time.Now()
 	s.mu.Unlock()
-	defer func() { s.mu.Lock(); delete(s.panes, r.Unit); s.active--; s.last = time.Now(); s.mu.Unlock() }()
+	defer func() {
+		s.mu.Lock()
+		delete(s.panes, r.Unit)
+		delete(s.timed, r.Unit)
+		delete(s.requests, r.Unit)
+		s.active--
+		s.last = time.Now()
+		s.mu.Unlock()
+	}()
 	original, master := owned.files[1], owned.files[2]
+	if timed {
+		s.attachRecorded(c, outer, original, master, process, caller, r, owned.files[5:])
+		return
+	}
 	done := make(chan struct{})
 	defer close(done)
 	bridgePTY(original, master, done)
@@ -622,6 +744,186 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	_ = json.NewEncoder(outer).Encode(map[string]bool{"ended": true})
 }
 
+// A recording fault revokes input and contains only panes of this exact saved
+// authority. It is negative evidence, never a monitoring/exec permission source.
+func (s *terminalSupervisor) containRecordingAuthority(r terminalSupervisorAttach) {
+	s.mu.Lock()
+	var targets []terminalSupervisorAttach
+	for unit, request := range s.requests {
+		if unit == r.Unit {
+			if stream := s.timed[unit]; stream != nil {
+				stream.cancelInput()
+			}
+			targets = append(targets, request)
+		}
+	}
+	s.mu.Unlock()
+	var workers sync.WaitGroup
+	for _, target := range targets {
+		workers.Go(func() { _ = s.cleanup(target) })
+	}
+	workers.Wait()
+}
+
+func (s *terminalSupervisor) attachRecorded(c, outer *net.UnixConn, original, master *os.File, process, caller *uidProcess, r terminalSupervisorAttach, resources []*os.File) {
+	refusal := func(stage string) { _ = json.NewEncoder(c).Encode(map[string]string{"error": stage}) }
+	candidate, err := newSupervisedRecordingStorage(s.state, s.id, r.RecordingLimit, resources)
+	if err != nil {
+		refusal("scoped recording storage validation failed")
+		return
+	}
+	s.storageMu.Lock()
+	if s.storage == nil {
+		s.storage = candidate
+	} else {
+		candidate.close()
+		if s.storage.limit != r.RecordingLimit {
+			s.storageMu.Unlock()
+			return
+		}
+	}
+	storage := s.storage
+	// A full/unreadable queue refuses another closed handoff. Never discard a
+	// failure or stage file to create capacity for new execution.
+	listing, err := os.Open(fmt.Sprintf("/proc/self/fd/%d", storage.reports.Fd()))
+	if err != nil {
+		s.storageMu.Unlock()
+		return
+	}
+	entries, readErr := listing.ReadDir(terminalRecordingReportEntries + 1)
+	listing.Close()
+	if (readErr != nil && readErr != io.EOF) || len(entries) >= terminalRecordingReportEntries {
+		s.storageMu.Unlock()
+		refusal("recording report queue full or unsafe; inspect panes reports and reconcile")
+		return
+	}
+	for _, entry := range entries {
+		pending, _, err := readTerminalRecordingReport(storage.reports, entry.Name())
+		if err != nil || (pending.Fault != "" && pending.Context.authorityHash() == r.Recording.authorityHash()) {
+			s.storageMu.Unlock()
+			refusal("pending recording reports require canonical reconciliation before another pane")
+			return
+		}
+	}
+	recorder, err := storage.newRecorder(r.Pane, r.Recording.hash())
+	if err != nil {
+		refusal("private timed recording initialization failed")
+		s.storageMu.Unlock()
+		return
+	}
+	report := terminalRecordingReport{Context: r.Recording, Owner: s.owner, Version: 1, At: Millis()}
+	err = publishTerminalRecordingReport(storage.reports, report)
+	s.storageMu.Unlock()
+	if err != nil {
+		recorder.file.Close()
+		refusal("durable timed recording report initialization failed")
+		return
+	}
+	fault := make(chan struct{}, 1)
+	stream, err := newSupervisedRecordingIO(recorder, original, master, func() {
+		// Fault containment cannot wait for the normal startup notice: the
+		// coordinator may still be syncing final readiness or may have died.
+		// This IO worker has no canonical lock and targets only its verified
+		// exact scope, with the existing bounded cleanup procedure.
+		_ = s.cleanup(r)
+		select {
+		case fault <- struct{}{}:
+		default:
+		}
+	})
+	if err != nil {
+		recorder.file.Close()
+		return
+	}
+	s.mu.Lock()
+	s.timed[r.Unit], s.requests[r.Unit] = stream, r
+	refused := false
+	s.mu.Unlock()
+	verdict := byte(0)
+	if !refused {
+		ready, _ := json.Marshal(struct {
+			Owner string `json:"owner"`
+		}{s.owner})
+		_, err = c.Write(ready)
+		if err == nil {
+			_ = c.SetReadDeadline(time.UnixMilli(r.Expires))
+			var notice [2]byte
+			n, _, flags, _, noticeErr := c.ReadMsgUnix(notice[:], nil)
+			if noticeErr == nil && n == 1 && flags&(unix.MSG_TRUNC|unix.MSG_CTRUNC) == 0 && (notice[0] == 1 || notice[0] == 2) {
+				verdict = notice[0]
+			}
+		}
+	}
+	s.mu.Lock()
+	s.panes[r.Unit] = verdict == 1
+	s.mu.Unlock()
+	// A missing notice is UNKNOWN. It does not revoke a shell whose final gate
+	// may already have committed; actual lifetime/transport/fault evidence does.
+	for !refused {
+		live, probeErr := process.live()
+		if probeErr == nil && !live {
+			break
+		}
+		select {
+		case <-fault:
+			s.containRecordingAuthority(r)
+			report.Version++
+			report.At, report.Fault = Millis(), "recording_io"
+			_ = publishTerminalRecordingReport(storage.reports, report)
+			refused = true
+		case <-stream.inputEnded:
+			refused = true // Actual outer terminal EOF, not a reply timeout.
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	stream.cancelInput()
+	cleanupErr := s.cleanup(r)
+	if cleanupErr != nil {
+		report.Version++
+		report.At = Millis()
+		// Missing/failed cleanup confirmation is uncertainty, not recording
+		// loss. Keep its scope/report pending without inventing a policy fault.
+		// A previously observed real recording failure remains sticky.
+		_ = publishTerminalRecordingReport(storage.reports, report)
+		// Keep this handler/recording tracked until actual cleanup is confirmed;
+		// no false close receipt or new exec slot from a timer/IO error.
+		for cleanupErr != nil {
+			time.Sleep(time.Second)
+			cleanupErr = s.cleanup(r)
+		}
+	}
+	result := stream.finish()
+	report.FaultStage = result.FaultStage
+	if result.Fault != "" {
+		s.containRecordingAuthority(r)
+		report.Fault = result.Fault
+	}
+	report.Version++
+	report.At, report.Closed = Millis(), true
+	report.RecordingComplete, report.CleanupComplete, report.DeliveryComplete = result.RecordingComplete, true, result.DeliveryComplete
+	if err := publishTerminalRecordingReport(storage.reports, report); err != nil {
+		_ = outer.SetWriteDeadline(time.Now().Add(time.Second))
+		_ = json.NewEncoder(outer).Encode(map[string]string{"error": "pane ended; recording completion acknowledgement unavailable; preserve recording/tracking and inspect examctl panes reports ATTEMPT, then reconcile"})
+		return
+	}
+	if verdict == 2 {
+		return
+	}
+	_ = outer.SetWriteDeadline(time.Now().Add(time.Second))
+	if verdict == 0 {
+		if live, err := caller.live(); err == nil && live {
+			return
+		}
+		_ = json.NewEncoder(outer).Encode(map[string]string{"error": "terminal ended with an unconfirmed coordinator startup outcome; preserve the attempt/deadline and inspect examctl panes reports ATTEMPT"})
+		return
+	}
+	if report.Fault != "" {
+		_ = json.NewEncoder(outer).Encode(map[string]string{"error": "class-server terminal recording/cleanup failed; no student violation inferred; preserve attempt/deadline and inspect examctl panes reports ATTEMPT"})
+		return
+	}
+	_ = json.NewEncoder(outer).Encode(map[string]bool{"ended": true})
+}
+
 func runTerminalSupervisor(id, unit string, listener *net.UnixListener, control *net.UnixConn, exe, lock *os.File, cleanup func(*terminalSupervisor, terminalSupervisorAttach) error) error {
 	if !attemptID.MatchString(id) || lock == nil {
 		return errTerminalSupervisor
@@ -647,7 +949,21 @@ func runTerminalSupervisor(id, unit string, listener *net.UnixListener, control 
 		return errTerminalSupervisor
 	}
 	root.Close()
-	s := &terminalSupervisor{id: id, unit: unit, uid: -1, panes: map[string]bool{}, last: time.Now()}
+	self, err := pinUIDProcess(os.Getpid(), os.Geteuid())
+	if err != nil || self == nil {
+		return errTerminalSupervisor
+	}
+	start, err := terminalOwnerStart(self)
+	self.close()
+	if err != nil {
+		return errTerminalSupervisor
+	}
+	s := &terminalSupervisor{id: id, unit: unit, state: init.State, owner: terminalOwnerEpoch(unit, os.Getpid(), start), uid: -1, panes: map[string]bool{}, timed: map[string]*supervisedRecordingIO{}, requests: map[string]terminalSupervisorAttach{}, last: time.Now()}
+	defer func() {
+		if s.storage != nil {
+			s.storage.close()
+		}
+	}()
 	s.cleanup = s.cleanupPane
 	if cleanup != nil {
 		s.cleanup = func(r terminalSupervisorAttach) error { return cleanup(s, r) }

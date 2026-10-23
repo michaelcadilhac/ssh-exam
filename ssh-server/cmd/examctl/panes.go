@@ -17,12 +17,13 @@ func panesHelp(out io.Writer) {
        sudo examctl panes show ATTEMPT PANE
        sudo examctl panes close ATTEMPT PANE --revision SNAPSHOT --reason TEXT
        sudo examctl panes supervisor ATTEMPT [--state DIR]
+       sudo examctl panes reports ATTEMPT [--state DIR]
 
 Native root-only targeted pane management; list/show are offline snapshots. --config FILE defaults to
 /etc/exam-agent/agent.json. Help and syntax checks need no root/configuration.
 list/show are bounded read-only observations before Engine initialization:
 no state lock, key loading, chmod, audit, reconciliation, network or manager query.
---state DIR bypasses configuration for list/show/supervisor, never close; choose --state
+--state DIR bypasses configuration for list/show/supervisor/reports, never close; choose --state
 or an explicit --config, not both. Default list page50, maximum200; --after is
 the previous next pane UUID cursor, not a timestamp or attempt UUID.
 
@@ -47,6 +48,12 @@ code is running. observation_only is always true; no keys/input are returned.
 reported_started_units received the coordinator's normal startup notice, NOT
 durable Begin/clock/monitoring permission. Missing notice is UNKNOWN, not no-start.
 Unavailable/changed/timed-out replies prove neither process death nor misconduct.
+reports reads at most16 private timed recording receipts, without global state,
+keys, IPC or mutation. It reports recording/cleanup/delivery separately; missing
+receipts are UNKNOWN. No raw keys, transport credentials or terminal bytes appear.
+After storage repair run sudo examctl reconcile --config FILE to apply exact
+incarnation-bound receipts durably before retiring them. Preserve unsafe/unknown
+files; never delete a report to admit a pane or turn a timeout into misconduct.
 Legacy/startup-unverified records remain inspectable with unsafe_metadata=true
 and no close revision. Preserve them and use matching native versions/guards in
 the separately authorized drained maintenance workflow; never clear tracking,
@@ -76,6 +83,8 @@ Examples:
   sudo examctl panes list ATTEMPT --limit 50
   sudo examctl panes show ATTEMPT PANE --state /var/lib/exam-agent
   sudo examctl panes supervisor ATTEMPT --state /var/lib/exam-agent
+  sudo examctl panes reports ATTEMPT --state /var/lib/exam-agent
+  sudo examctl reconcile --config /etc/exam-agent/agent.json
   sudo examctl panes close ATTEMPT PANE --revision sha256:REVIEWED_DIGEST --reason 'Reviewed target terminal closure'
 
 Exit status: 0 complete metadata or confirmed recorded-target control result,
@@ -106,15 +115,15 @@ func panesMain(args []string) int {
 		return 0
 	}
 	if len(w) < 3 || w[0] != "panes" {
-		return usage("choose panes list ATTEMPT, supervisor ATTEMPT, show ATTEMPT PANE or close ATTEMPT PANE")
+		return usage("choose panes list/reports/supervisor ATTEMPT, show ATTEMPT PANE or close ATTEMPT PANE")
 	}
 	seen := map[string]bool{}
 	f.Visit(func(flag *flag.Flag) { seen[flag.Name] = true })
 	q := core.NativePaneQuery{Attempt: w[2], Limit: *limit, After: *after}
 	switch w[1] {
-	case "supervisor":
+	case "supervisor", "reports":
 		if len(w) != 3 || seen["limit"] || seen["after"] || seen["revision"] || seen["reason"] {
-			return usage("supervisor takes exactly one attempt, without pane/control/list flags")
+			return usage("supervisor/reports takes exactly one attempt, without pane/control/list flags")
 		}
 	case "list":
 		if len(w) != 3 || seen["revision"] || seen["reason"] {
@@ -132,7 +141,7 @@ func panesMain(args []string) int {
 			return usage("close needs --revision sha256:DIGEST and --reason 8..1000 UTF-8 bytes, never --state")
 		}
 	default:
-		return usage("choose list/show/close/supervisor; no force/bulk closure")
+		return usage("choose list/show/close/supervisor/reports; no force/bulk closure")
 	}
 	if err := q.Validate(); err != nil {
 		return usage("invalid pane selection")
@@ -163,6 +172,22 @@ func panesMain(args []string) int {
 			}
 			if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 				fmt.Fprintln(os.Stderr, "Supervisor observation output failed; no native record changed")
+				return 1
+			}
+			return 0
+		}
+		if w[1] == "reports" {
+			result, err := core.ObserveTerminalRecordingReports(directory, q.Attempt)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+				fmt.Fprintln(os.Stderr, "Recording report observation output failed; no record changed")
+				return 1
+			}
+			if !result.Complete {
+				fmt.Fprintln(os.Stderr, "Partial/unsafe recording reports; preserve them and repair matching private storage before reconcile; no mutation attempted")
 				return 1
 			}
 			return 0

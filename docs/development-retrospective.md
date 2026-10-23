@@ -111,3 +111,23 @@ Keep such positive-evidence reviews before artifact freeze. Finish one integrate
 workflow and reuse unchanged matching evidence; do not restart unrelated broad
 qualification for a corrected text assertion or expand the next source mechanism
 before identifying its real caller, retention races and acceptance boundary.
+
+October23 timed ownership integrated the real gate/recording/report/CLI workflow,
+but its first state review was incomplete. Late checks found diagnostic ACKs
+invalidating both reviewed closure and final exec release, manual close dropping
+acknowledgement before report unlink, and real recorder containment waiting on a
+startup notice. Earlier ordinary coordinator-kill and post-start fault tests did
+not exercise those blocked protocol boundaries. Broad native runs therefore had
+to be repeated for changed artifacts; those earlier passes cannot qualify them.
+
+The correction is to enumerate all writers/forgetters of each proof before freeze,
+distinguish immutable authority from receipt diagnostics, and place actual-entry
+barriers at readiness/reply/ack transitions. Test faults while those handshakes
+are blocked, rather than assuming a post-start fault covers startup. The new
+two-case admission test is RED2.417s, then three fixed repetitions PASS3.327s.
+Temporary cleanup uncertainty also needed a forced actual-interface retry
+(RED1.362s), rather than a broad pass without injected uncertainty. These narrow
+tests should have preceded the first six-minute native qualification. AGENTS.md
+now makes that missing protocol review explicit. Keep unrelated architecture and
+UI expansion deferred; finish the integrated milestone, qualify its frozen source,
+then continue the already-approved definition-retirement workflow.

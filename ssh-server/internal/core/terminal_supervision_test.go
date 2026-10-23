@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -188,6 +189,7 @@ func TestTerminalSupervisorChild(t *testing.T) {
 	}
 	defer conn.Close()
 	var observedGroups sync.Map
+	var delayedCleanup sync.Map
 	terminalWorkloadGroup = func(unit string) (string, error) {
 		group, err := ownedTerminalGroup(unit)
 		if err == nil {
@@ -196,6 +198,13 @@ func TestTerminalSupervisorChild(t *testing.T) {
 		return group, err
 	}
 	cleanup := func(s *terminalSupervisor, r terminalSupervisorAttach) error {
+		if r.Pane == finalID {
+			if marker, err := os.ReadFile(filepath.Join(s.state, "synthetic-cleanup-retry")); err == nil && string(marker) == "one-unconfirmed-cleanup" {
+				if _, already := delayedCleanup.LoadOrStore(r.Unit, true); !already {
+					return errors.New("synthetic cleanup initially unconfirmed; no positive failure evidence")
+				}
+			}
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		observed, ok := observedGroups.Load(r.Unit)
@@ -231,6 +240,7 @@ func TestTerminalCoordinatorChild(t *testing.T) {
 		Transport                                  string
 		RecordingFailureBarrier                    string
 		RecordingLockBarrier, RecordingLockAttempt string
+		HandoffBarrier                             string
 	}
 	if json.NewDecoder(setup).Decode(&input) != nil {
 		os.Exit(90)
@@ -252,6 +262,20 @@ func TestTerminalCoordinatorChild(t *testing.T) {
 			return "", errors.New("wrong actual test Unix peer")
 		}
 		return input.Transport, nil
+	}
+	if input.HandoffBarrier != "" {
+		e.terminalHandoffCheckpoint = func() {
+			if err := os.WriteFile(input.HandoffBarrier+".ready", []byte("actual-owner-ready-before-release"), 0600); err != nil {
+				os.Exit(101)
+			}
+			for until := time.Now().Add(5 * time.Second); time.Now().Before(until); {
+				if _, err := os.Stat(input.HandoffBarrier + ".release"); err == nil {
+					return
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			os.Exit(102)
+		}
 	}
 	if input.RecordingFailureBarrier != "" {
 		e.terminalFailureCheckpoint = func(stage string) {
@@ -364,9 +388,41 @@ func TestActualTimedPaneKeepsCoordinatorRecordingBoundary(t *testing.T) {
 	testPracticeSupervisorWorkflow(t, "timed", nil, nil)
 }
 
+func TestActualTimedPaneUsesIndependentRecordingOwner(t *testing.T) {
+	testPracticeSupervisorWorkflow(t, "timed-owner", nil, nil)
+}
+
+func TestActualTimedAdmissionSurvivesInitialAckAndContainsPrestartFault(t *testing.T) {
+	for _, mode := range []string{"initial-ack", "prestart-fault"} {
+		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-owner-"+mode, nil, nil) })
+	}
+}
+
+func TestActualTimedRecordingOwnerDeathContainsWritersWithoutStudentViolation(t *testing.T) {
+	testPracticeSupervisorWorkflow(t, "timed-owner-death", nil, nil)
+}
+
+func TestActualTimedRecordingBackpressureAndTransportEOF(t *testing.T) {
+	for _, mode := range []string{"backpressure", "transport-eof", "final-output", "cleanup-retry"} {
+		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-owner-"+mode, nil, nil) })
+	}
+}
+
+func TestActualTimedPaneRefusesFullReportCapacityBeforeExec(t *testing.T) {
+	for _, mode := range []string{"queue-files", "queue-proofs"} {
+		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-owner-"+mode, nil, nil) })
+	}
+}
+
 func TestActualTimedRecordingFaultCannotLockReplacement(t *testing.T) {
 	for _, mode := range []string{"generation", "transport", "pane", "orphan-proof", "current", "extended-current"} {
 		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-fault-"+mode, nil, nil) })
+	}
+}
+
+func TestActualSupervisedTimedRecordingFaultCannotLockReplacement(t *testing.T) {
+	for _, mode := range []string{"generation", "transport", "pane", "orphan-proof", "current", "extended-current"} {
+		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-supervised-"+mode, nil, nil) })
 	}
 }
 
@@ -386,11 +442,15 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" {
 		t.Skip("explicit owned local user-systemd qualification only")
 	}
+	supervised := strings.HasPrefix(mode, "timed-owner") || strings.HasPrefix(mode, "timed-supervised-")
+	if strings.HasPrefix(mode, "timed-supervised-") {
+		mode = "timed-fault-" + strings.TrimPrefix(mode, "timed-supervised-")
+	}
 	if mode == "supervisor" {
 		defer close(failed)
 	}
 	cliBinary := ""
-	if mode == "observation" {
+	if mode == "observation" || (mode == "timed-owner" && os.Getenv("EXAM_MANAGEMENT_USERNS") == "1") {
 		cliBinary = observationCLIBinary(t)
 	}
 	e, key, r := preparationFixture(t)
@@ -415,6 +475,9 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			a.State = "ACTIVE"
 			a.BrowserSSH = true
 			commitStart(a, Millis(), uptime(), boot())
+			if !supervised {
+				a.TerminalSupervised = false // Explicit legacy-recorder compatibility controls.
+			}
 			originalStart, originalDeadline = a.Start, a.Deadline
 			return nil
 		}); err != nil {
@@ -438,6 +501,43 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			e.state.Attempts[secondID] = &second
 			return nil
 		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if mode == "timed-owner-queue-files" || mode == "timed-owner-queue-proofs" {
+		resources, err := terminalRecordingResources(e.Config.State, r.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			for _, f := range resources {
+				f.Close()
+			}
+		}()
+		if err := e.WithState(func() error {
+			a := e.state.Attempts[r.ID]
+			for range terminalRecordingReportEntries {
+				pane, instance := ManagementID(), ManagementID()
+				unit := "exam-" + r.ID + "-" + pane + "-" + instance + ".scope"
+				context := recordingContext(*a, pane, unit)
+				if mode == "timed-owner-queue-proofs" {
+					if e.state.PaneInstances == nil {
+						e.state.PaneInstances = map[string]PaneInstance{}
+					}
+					e.state.PaneInstances[unit] = PaneInstance{Attempt: r.ID, Pane: pane, ID: instance, Boot: boot(), ReadyAt: Millis(), Recording: context.hash(), RecordingIdentity: context, RecordingOwner: Hash([]byte("queued-test-owner"))}
+				} else {
+					if err := publishTerminalRecordingReport(resources[2], terminalRecordingReport{Context: context, Owner: Hash([]byte("queued-test-owner")), Version: 2, At: Millis(), Closed: true, RecordingComplete: true, CleanupComplete: true}); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if mode == "timed-owner-cleanup-retry" {
+		if err := os.WriteFile(filepath.Join(e.Config.State, "synthetic-cleanup-retry"), []byte("one-unconfirmed-cleanup"), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -519,6 +619,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		Transport                                  string
 		RecordingFailureBarrier                    string
 		RecordingLockBarrier, RecordingLockAttempt string
+		HandoffBarrier                             string
 	}{e.Config, os.Getpid(), r.UID, r.Transport, func() string {
 		if strings.HasPrefix(mode, "timed-fault-") {
 			return filepath.Join(e.Config.State, "synthetic-recording-barrier")
@@ -529,7 +630,12 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			return filepath.Join(e.Config.State, "synthetic-recording-lock")
 		}
 		return ""
-	}(), r.ID}); err != nil {
+	}(), r.ID, func() string {
+		if mode == "timed-owner-initial-ack" || mode == "timed-owner-prestart-fault" {
+			return filepath.Join(e.Config.State, "synthetic-handoff")
+		}
+		return ""
+	}()}); err != nil {
 		t.Fatal(err)
 	}
 	write.Close()
@@ -560,6 +666,95 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	fd := int(master.Fd())
 	if err := unix.SetNonblock(fd, true); err != nil {
 		t.Fatal(err)
+	}
+	if mode == "timed-owner-initial-ack" || mode == "timed-owner-prestart-fault" {
+		barrier := filepath.Join(e.Config.State, "synthetic-handoff")
+		observed := false
+		for until := time.Now().Add(2 * time.Second); time.Now().Before(until); {
+			if data, err := os.ReadFile(barrier + ".ready"); err == nil && string(data) == "actual-owner-ready-before-release" {
+				observed = true
+				break
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		if !observed {
+			t.Fatal("fixture missed actual owner-ready/final-release boundary", diagnostics.String())
+		}
+		if mode == "timed-owner-initial-ack" {
+			if err := e.Tick(); err != nil {
+				t.Fatal("actual watchdog Tick failed at initial report", err)
+			}
+		} else {
+			captured, err := readStateSnapshot(e.Config.State)
+			if err != nil || len(captured.Attempts[r.ID].Units) != 1 {
+				t.Fatal("fixture missed its closed bootstrap", err)
+			}
+			unit := captured.Attempts[r.ID].Units[0]
+			group, err := ownedTerminalGroup(unit)
+			if err != nil {
+				t.Fatal(err)
+			}
+			base := "/sys/fs/cgroup" + strings.TrimSuffix(strings.TrimPrefix(group, "0::"), "\n")
+			if err := os.Remove(filepath.Join(e.Config.State, "monitoring", r.ID, finalID+".ndjson")); err != nil {
+				t.Fatal(err)
+			}
+			size := windowSize{Row: 35, Col: 110}
+			if err := ioctl(master.Fd(), syscall.TIOCSWINSZ, unsafePointer(&size)); err != nil {
+				t.Fatal(err)
+			}
+			contained := false
+			for until := time.Now().Add(2 * time.Second); time.Now().Before(until); {
+				if empty, err := emptyRecordedScope(base); err == nil && empty {
+					contained = true
+					break
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			if !contained {
+				t.Fatal("recording failure waited for startup notice instead of containing its exact closed scope")
+			}
+		}
+		if err := os.WriteFile(barrier+".release", []byte("release-final-admission"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if mode == "timed-owner-prestart-fault" {
+			var refused map[string]any
+			if err := json.NewDecoder(client).Decode(&refused); err != nil || refused["error"] == nil {
+				t.Fatal("failed recorder still released student exec", refused, err)
+			}
+			captured, err := readStateSnapshot(e.Config.State)
+			if err != nil {
+				t.Fatal(err)
+			}
+			a := captured.Attempts[r.ID]
+			if a.State != "ACTIVE" || a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline || a.AccessState != "HELD" {
+				t.Fatal("pre-exec infrastructure refusal altered time or invented a policy fault", a)
+			}
+			return
+		}
+	}
+	if mode == "timed-owner-queue-files" || mode == "timed-owner-queue-proofs" {
+		var refused map[string]any
+		if err := json.NewDecoder(client).Decode(&refused); err != nil || !strings.Contains(fmt.Sprint(refused["error"]), "report") {
+			t.Fatal("full queue did not refuse at closed admission", refused, err, diagnostics.String())
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := state.Attempts[r.ID]
+		if len(a.Units) != 0 || a.State != "ACTIVE" || a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline || a.AccessState != "HELD" {
+			t.Fatal("queue refusal consumed/reopened authority", a)
+		}
+		for _, proof := range state.PaneInstances {
+			if proof.Pane == finalID && proof.ReadyAt != 0 {
+				t.Fatal("full queue released student exec")
+			}
+		}
+		if _, err := os.Lstat(filepath.Join(e.Config.State, "monitoring", r.ID, finalID+".ndjson")); !os.IsNotExist(err) {
+			t.Fatal("queue refusal passed recorder initialization", err)
+		}
+		return
 	}
 	if out, err := supervisionReadUntil(fd, "SYNTHETIC-CLOSED-PANE-EXEC", 4*time.Second); err != nil {
 		t.Fatal("actual shell never executed", out, err, diagnostics.String())
@@ -697,7 +892,11 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		}
 		// Remove only this synthetic log's pathname. The pinned old file survives;
 		// the real recorder's quota traversal must fail before forwarding output.
-		if err := os.Rename(filepath.Join(e.Config.State, "monitoring", r.ID), filepath.Join(e.Config.State, "synthetic-recording-backup")); err != nil {
+		if supervised {
+			if err := os.Remove(filepath.Join(e.Config.State, "monitoring", r.ID, finalID+".ndjson")); err != nil {
+				t.Fatal(err)
+			}
+		} else if err := os.Rename(filepath.Join(e.Config.State, "monitoring", r.ID), filepath.Join(e.Config.State, "synthetic-recording-backup")); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := unix.Write(fd, []byte("check\n")); err != nil {
@@ -816,6 +1015,83 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			t.Fatal("panes did not share one supervisor", view)
 		}
 	}
+	if mode == "timed-owner-backpressure" || mode == "timed-owner-transport-eof" || mode == "timed-owner-final-output" || mode == "timed-owner-cleanup-retry" {
+		if mode == "timed-owner-backpressure" {
+			if _, err := unix.Write(fd, []byte("burst\n")); err != nil {
+				t.Fatal(err)
+			}
+		} else if mode == "timed-owner-final-output" || mode == "timed-owner-cleanup-retry" {
+			if _, err := unix.Write(fd, []byte("finish\n")); err != nil {
+				t.Fatal(err)
+			}
+			if output, err := supervisionReadUntil(fd, "SYNTHETIC-FINAL-OUTPUT", time.Second); err != nil {
+				t.Fatal("final output lost before completion receipt", output, err)
+			}
+		} else {
+			master.Close()
+		}
+		// Do not drain the outer PTY. Recording must drain independently after
+		// verified scope exit; delivery loss is reported separately, never a lock.
+		var ended map[string]any
+		if err := json.NewDecoder(client).Decode(&ended); err != nil || ended["ended"] != true {
+			t.Fatal("backpressure/actual EOF did not complete", ended, err, diagnostics.String())
+		}
+		if _, err := unix.Write(fd2, []byte("check\n")); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := supervisionReadUntil(fd2, "BUFFER:synthetic-buffer-not-on-disk:", time.Second); err != nil {
+			t.Fatal("one ended transport stalled its peer", out, err)
+		}
+		if _, err := unix.Write(fd2, []byte("finish\n")); err != nil {
+			t.Fatal(err)
+		}
+		var secondEnded map[string]any
+		if err := json.NewDecoder(second).Decode(&secondEnded); err != nil || secondEnded["ended"] != true {
+			t.Fatal("peer completion lost", secondEnded, err)
+		}
+		data, err := os.ReadFile(filepath.Join(e.Config.State, "monitoring", r.ID, finalID+".ndjson"))
+		if err != nil || !bytes.Contains(data, []byte(`"recording_complete":true`)) {
+			t.Fatal("actual EOF/backpressure lost final recording", string(data), err)
+		}
+		if mode == "timed-owner-backpressure" {
+			var decoded bytes.Buffer
+			for _, row := range bytes.Split(bytes.TrimSpace(data), []byte{'\n'}) {
+				var event struct {
+					Data string `json:"data"`
+				}
+				if json.Unmarshal(row, &event) != nil {
+					t.Fatal("invalid event")
+				}
+				chunk, err := base64.StdEncoding.DecodeString(event.Data)
+				if err != nil {
+					t.Fatal(err)
+				}
+				decoded.Write(chunk)
+			}
+			if strings.Count(decoded.String(), "SYNTHETIC-BURST-") != 4097 || !strings.Contains(decoded.String(), "SYNTHETIC-BURST-00004095-") || !strings.Contains(decoded.String(), "SYNTHETIC-BURST-COMPLETE") {
+				t.Fatal("backpressure truncated trusted output", decoded.Len())
+			}
+		}
+		for until := time.Now().Add(2 * time.Second); ; {
+			err := e.reconcileTerminalRecordingReports()
+			if err == nil {
+				break
+			}
+			if !errors.Is(err, errTerminalReportBusy) || time.Now().After(until) {
+				t.Fatal("canonical recording completion did not settle", err)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		captured, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := captured.Attempts[r.ID]
+		if a.State != "ACTIVE" || a.Start != originalStart || a.Deadline != originalDeadline || a.AccessState != "HELD" {
+			t.Fatal("transport/backpressure created policy loss or changed time", a)
+		}
+		return
+	}
 	coordGroup, err := ownedTerminalGroup(coordinatorUnit)
 	if err != nil {
 		t.Fatal(err)
@@ -832,11 +1108,13 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			t.Fatal("owned failure peer did not settle")
 		}
 	}
-	if mode == "supervisor" {
-		select {
-		case <-healthyReady:
-		case <-time.After(5 * time.Second):
-			t.Fatal("healthy actual peer never became ready")
+	if mode == "supervisor" || mode == "timed-owner-death" {
+		if mode == "supervisor" {
+			select {
+			case <-healthyReady:
+			case <-time.After(5 * time.Second):
+				t.Fatal("healthy actual peer never became ready")
+			}
 		}
 		writer := filepath.Join(e.Config.Work, "synthetic-practice-writer")
 		if _, err := unix.Write(fd, []byte("persistent "+writer+"\n")); err != nil {
@@ -894,6 +1172,13 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			}
 		}
 		state, err := readStateSnapshot(e.Config.State)
+		if mode == "timed-owner-death" {
+			a := state.Attempts[r.ID]
+			if err != nil || len(a.Units) != 0 || a.State != "LOCKED" || a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline || a.AccessState != "HELD" {
+				t.Fatal("actual timed owner death lost containment/clocks/holds", a, err)
+			}
+			return
+		}
 		if err != nil || len(state.Attempts[r.ID].Units) != 0 || state.Attempts[r.ID].Start != 0 || state.Attempts[r.ID].State != "PREPARING" {
 			t.Fatal("owner failure stranded metadata or changed preflight timing", state.Attempts[r.ID], err)
 		}
@@ -901,7 +1186,8 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	}
 	// Kill ALL processes in the exact owned coordinator cgroup, not only its
 	// leader. Surviving PTYs must therefore belong to the independent scope.
-	if mode == "coordinator" || mode == "observation" {
+	var restoreState func()
+	if mode == "coordinator" || mode == "observation" || mode == "timed-owner" {
 		// Shell output may precede the parent's completion-ownership notice.
 		// This workflow deliberately kills AFTER that exact observed boundary;
 		// losing an earlier notice correctly retains an UNKNOWN outcome instead.
@@ -930,14 +1216,33 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		if err := os.Rename(stateFile, backup); err != nil {
 			t.Fatal(err)
 		}
-		defer func() {
-			_ = os.Remove(stateFile)
-			if err := os.Rename(backup, stateFile); err != nil {
-				t.Error("restore exact synthetic state", err)
-			}
-		}()
+		var restoreOnce sync.Once
+		restoreState = func() {
+			restoreOnce.Do(func() {
+				_ = os.Remove(stateFile)
+				if err := os.Rename(backup, stateFile); err != nil {
+					t.Error("restore exact synthetic state", err)
+				}
+			})
+		}
+		defer restoreState()
 		if err := unix.Mkfifo(stateFile, 0600); err != nil {
 			t.Fatal(err)
+		}
+		if mode == "timed-owner" && cliBinary != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+			command := exec.CommandContext(ctx, "/usr/bin/unshare", "--user", "--map-root-user", cliBinary, "panes", "reports", r.ID, "--state", e.Config.State)
+			data, err := command.CombinedOutput()
+			cancel()
+			var view TerminalRecordingReportsSnapshot
+			if err != nil || json.Unmarshal(data, &view) != nil || !view.ReadOnly || !view.Complete || len(view.Reports) != 2 {
+				t.Fatal("actual reports CLI read global FIFO or lost pending recording owners", string(data), err)
+			}
+			for _, secret := range []string{r.Transport, r.Username, issued.(map[string]string)["token"]} {
+				if bytes.Contains(data, []byte(secret)) {
+					t.Fatal("reports CLI leaked private authority")
+				}
+			}
 		}
 		if mode == "observation" {
 			stateBefore, err := os.Lstat(stateFile)
@@ -1016,5 +1321,65 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	var ended2 map[string]any
 	if err := json.NewDecoder(second).Decode(&ended2); err != nil || ended2["ended"] != true {
 		t.Fatal("second original control socket/cleanup lost", ended2, err)
+	}
+	if mode == "timed-owner" {
+		restoreState()
+		for _, pane := range []string{finalID, secondPane} {
+			data, err := os.ReadFile(filepath.Join(e.Config.State, "monitoring", r.ID, pane+".ndjson"))
+			var output bytes.Buffer
+			for _, row := range bytes.Split(bytes.TrimSpace(data), []byte{'\n'}) {
+				var event struct {
+					Event string `json:"event"`
+					Data  string `json:"data"`
+				}
+				if json.Unmarshal(row, &event) != nil {
+					t.Fatal("invalid trusted recording JSON")
+				}
+				if event.Event == "output" {
+					decoded, err := base64.StdEncoding.DecodeString(event.Data)
+					if err != nil {
+						t.Fatal(err)
+					}
+					output.Write(decoded)
+				}
+			}
+			if err != nil || !bytes.Contains(data, []byte(`"recording_instance":`)) || !bytes.Contains(data, []byte(`"recording_complete":true`)) || !strings.Contains(output.String(), "BUFFER:synthetic-buffer-not-on-disk:") || (pane == finalID && strings.Count(output.String(), line(before)) < 2) {
+				t.Fatal("independent recorder lost output/final durable close after whole coordinator death", pane, string(data), err)
+			}
+		}
+		dir, err := terminalReportDirectory(e.Config.State, r.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files, err := dir.ReadDir(-1)
+		if err != nil || len(files) != 2 {
+			t.Fatal("finished reports did not survive coordinator death", files, err)
+		}
+		for _, file := range files {
+			report, _, err := readTerminalRecordingReport(dir, file.Name())
+			if err != nil || !report.Closed || !report.RecordingComplete || !report.CleanupComplete || !report.DeliveryComplete || report.Fault != "" {
+				t.Fatal("final report did not prove recording/cleanup", report, err)
+			}
+		}
+		dir.Close()
+		restarted, err := New(e.Config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := restarted.Tick(); err != nil {
+			t.Fatal("actual restarted Tick could not acknowledge completion", err)
+		}
+		after, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := after.Attempts[r.ID]
+		if len(a.Units) != 0 || len(after.PaneInstances) != 0 || a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline || a.State != "ACTIVE" || a.AccessState != "HELD" {
+			t.Fatal("restart erased an unacknowledged failure or changed clocks/holds", a, after.PaneInstances)
+		}
+		remaining, err := os.ReadDir(filepath.Join(e.Config.State, "terminal-supervisors", r.ID))
+		if err != nil || len(remaining) != 0 {
+			t.Fatal("durably acknowledged reports still reserve capacity", remaining, err)
+		}
 	}
 }

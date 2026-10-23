@@ -23,7 +23,7 @@ import (
 func TestNativePaneHelpAndRefusalsAreDiscoverableBeforeRootOrConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "panes"}, {"panes", "help"}, {"--config", "/missing", "panes", "--help"}} {
 		out, code := cliProcess(t, args...)
-		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "supervisor ATTEMPT", "local Unix", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:", "closed_startups", "cancelled_startups", "earliest_startup_expiry", "recorded_supervisors", "NOT proof they are alive"} {
+		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "supervisor ATTEMPT", "reports ATTEMPT", "reconcile --config", "local Unix", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:", "closed_startups", "cancelled_startups", "earliest_startup_expiry", "recorded_supervisors", "NOT proof they are alive"} {
 			if code != 0 || !strings.Contains(out, want) {
 				t.Fatal("pane workflow missing", want, code, out)
 			}
@@ -212,5 +212,82 @@ func TestNativePaneActualStaticRootNamespaceCLI(t *testing.T) {
 	current = core.State{}
 	if json.Unmarshal(data, &current) != nil || len(current.Attempts[id].Units) != 0 || len(current.PaneInstances) != 0 || current.Attempts[id].Start != 0 || current.Attempts[id].State != "PREPARING" {
 		t.Fatal("actual CLI stranded closed startup or changed clock/attempt")
+	}
+	// Actual compiled root reports/reconcile entry, not a direct private helper.
+	a = current.Attempts[id]
+	a.State = "ACTIVE"
+	a.Start = core.Millis()
+	a.Deadline = a.Start + 3600000
+	a.OriginalDeadline = a.Deadline
+	a.Lease = a.Start + 15000
+	a.Boot = strings.TrimSpace(string(bootData))
+	a.UptimeDeadline = float64(clock.Sec) + float64(clock.Nsec)/1e9 + 3600
+	a.OriginalUptimeDeadline = a.UptimeDeadline
+	a.AccessState = "HELD"
+	a.BrowserSSH = true
+	a.TerminalSupervised = true
+	a.Units = []string{unit}
+	context := map[string]any{"attempt": id, "pane": other, "unit": unit, "username": a.Username, "uid": a.UID, "generation": a.Generation, "start": a.Start, "boot": a.Boot, "transport_hash": core.Hash([]byte(a.Transport))}
+	contextJSON, _ := json.Marshal(context)
+	proof := core.PaneInstance{Attempt: id, Pane: other, ID: instance, Boot: a.Boot, ReadyAt: core.Millis(), RecordingOwner: strings.Repeat("a", 64)}
+	if json.Unmarshal(contextJSON, &proof.RecordingIdentity) != nil {
+		t.Fatal("invalid typed recording fixture")
+	}
+	typedContext, _ := json.Marshal(proof.RecordingIdentity)
+	proof.Recording = core.Hash(typedContext)
+	current.PaneInstances = map[string]core.PaneInstance{unit: proof}
+	write(filepath.Join(stateDir, "state.json"), current)
+	reports := filepath.Join(stateDir, "terminal-supervisors", id)
+	if err := os.MkdirAll(reports, 0700); err != nil {
+		t.Fatal(err)
+	}
+	reportPath := filepath.Join(reports, instance+".json")
+	write(reportPath, map[string]any{"context": proof.RecordingIdentity, "owner": proof.RecordingOwner, "version": 2, "at": core.Millis(), "fault": "", "closed": true, "recording_complete": true, "cleanup_complete": true, "delivery_complete": true})
+	before, _ = os.ReadFile(filepath.Join(stateDir, "state.json"))
+	reportBefore, _ := os.ReadFile(reportPath)
+	out, diagnostics, code = invoke("panes", "reports", id, "--state", stateDir)
+	var receiptView core.TerminalRecordingReportsSnapshot
+	if code != 0 || diagnostics != "" || json.Unmarshal([]byte(out), &receiptView) != nil || !receiptView.ReadOnly || !receiptView.Complete || !receiptView.CanonicalAvailable || len(receiptView.Reports) != 1 || len(receiptView.PendingCaptured) != 1 || !receiptView.Reports[0].RecordingComplete {
+		t.Fatal("actual root report inspection failed", out, diagnostics, code)
+	}
+	after, _ = os.ReadFile(filepath.Join(stateDir, "state.json"))
+	reportAfter, _ := os.ReadFile(reportPath)
+	if !bytes.Equal(before, after) || !bytes.Equal(reportBefore, reportAfter) {
+		t.Fatal("report inspection mutated canonical/producer state")
+	}
+	for _, secret := range []string{token, otherToken, a.Transport, "PRIVATE-HANDOFF", core.Hash([]byte(a.Transport))} {
+		if strings.Contains(out, secret) {
+			t.Fatal("report inspection leaked private context")
+		}
+	}
+	reportClaim, err := os.OpenFile(filepath.Join(stateDir, "terminal-supervisors", id+".reports.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reportClaim.Close()
+	if err := syscall.Flock(int(reportClaim.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+	out, diagnostics, code = invoke("reconcile", "--config", config)
+	if code != 1 || !strings.Contains(diagnostics, "reconciliation busy") || !strings.Contains(diagnostics, "retry examctl reconcile") {
+		t.Fatal("actual root CLI hid busy pending recording acknowledgement", out, diagnostics, code)
+	}
+	if _, err := os.Lstat(reportPath); err != nil {
+		t.Fatal("busy CLI discarded recording evidence", err)
+	}
+	if err := syscall.Flock(int(reportClaim.Fd()), syscall.LOCK_UN); err != nil {
+		t.Fatal(err)
+	}
+	out, diagnostics, code = invoke("reconcile", "--config", config)
+	if code != 0 || !strings.Contains(out, `"ok":true`) {
+		t.Fatal("actual root reconcile failed recording acknowledgement", out, diagnostics, code)
+	}
+	data, _ = os.ReadFile(filepath.Join(stateDir, "state.json"))
+	var reconciled core.State
+	if json.Unmarshal(data, &reconciled) != nil || len(reconciled.PaneInstances) != 0 || len(reconciled.Attempts[id].Units) != 0 || reconciled.Attempts[id].State != "ACTIVE" || reconciled.Attempts[id].Start != a.Start || reconciled.Attempts[id].Deadline != a.Deadline || reconciled.Attempts[id].OriginalDeadline != a.OriginalDeadline || reconciled.Attempts[id].AccessState != "HELD" {
+		t.Fatal("root reconcile lost pending evidence or changed the clock/hold")
+	}
+	if _, err := os.Lstat(reportPath); !os.IsNotExist(err) {
+		t.Fatal("root reconcile failed durable report retirement", err)
 	}
 }

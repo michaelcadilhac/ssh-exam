@@ -69,7 +69,7 @@ func TestPaneBootstrapChild(t *testing.T) {
 	}
 	if mode == "pane" {
 		// Real synthetic shell output traverses the actual gate's PTY bridge.
-		if syscall.Exec("/bin/sh", []string{"sh", "-c", "printf 'SYNTHETIC-CLOSED-PANE-EXEC\\n'; memory=synthetic-buffer-not-on-disk; while read -r line; do case \"$line\" in finish) exit 0;; check) printf 'BUFFER:%s:%s\\n' \"$memory\" \"$$\";; persistent\\ *) file=${line#persistent }; trap '' HUP; printf 'WRITER:%s\\n' \"$$\"; while :; do printf x >> \"$file\"; done;; esac; done; exit 1"}, []string{"PATH=/usr/bin:/bin"}) != nil {
+		if syscall.Exec("/bin/sh", []string{"sh", "-c", "printf 'SYNTHETIC-CLOSED-PANE-EXEC\\n'; memory=synthetic-buffer-not-on-disk; while read -r line; do case \"$line\" in finish) printf 'SYNTHETIC-FINAL-OUTPUT\\n'; exit 0;; burst) i=0; while [ $i -lt 4096 ]; do printf 'SYNTHETIC-BURST-%08d-abcdefghijklmnopqrstuvwxyz0123456789\\n' \"$i\"; i=$((i+1)); done; printf 'SYNTHETIC-BURST-COMPLETE\\n'; exit 0;; check) printf 'BUFFER:%s:%s\\n' \"$memory\" \"$$\";; persistent\\ *) file=${line#persistent }; trap '' HUP; printf 'WRITER:%s\\n' \"$$\"; while :; do printf x >> \"$file\"; done;; esac; done; exit 1"}, []string{"PATH=/usr/bin:/bin"}) != nil {
 			os.Exit(75)
 		}
 	}

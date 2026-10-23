@@ -6,30 +6,45 @@ Stop immediately on a missing command. Preserve deadlines, holds, protected work
 history and credential cleanup. Follow AGENTS.md; feature documents contain the
 full evidence. Do not reread the entire historical progress log to resume.
 
-## Current bounded milestone: timed pane supervision (C12b)
+## Completed local milestone: C12b; next approved C8
 
-Resume the already-approved independent C12 work while C16/C18 await answers.
+The approved independent C12b workflow is implemented/tested locally.
 Entry: actual timed Engine.local pane, then existing pane inspection/close CLI.
-Move trusted timed output recording into the existing ONE supervisor/user/attempt
+Trusted timed output recording uses the existing ONE supervisor/user/attempt
 using only pinned recording storage/budget, not a global Engine/config/key copy.
-Canonical metadata needs bounded incarnation/generation-bound fault/exit reports,
+Canonical metadata uses bounded incarnation/generation-bound fault/exit reports,
 durable acknowledgement, restart/stale-completion fences and supported pending
 inspection/cancellation. Preserve quotas/privacy, original deadlines and holds.
 No R2/C3/C9 enablement or unrelated grant changes in this boundary.
 
-Exact next action: inspect gate.go, terminal_supervision.go, terminal_recording.go
-and current recording/fault ownership before selecting the smallest integrated
-protocol. Read docs/terminal-supervision.md, terminal-recording-faults.md and
-retained-workload-barrier-plan.md (C12b paragraph). Reproduce timed-owner loss via
-the real local entry. Qualify normal EOF, backpressure, abrupt transport/owner
-loss, storage/recording failure, canonical restart/acknowledgement and stale
-incarnations; keep unknown cleanup tracked. Review every durable intermediate
-state before broad qualification. If another architectural prerequisite emerges,
-reassess/report it before extending an unused helper chain.
+Final source passes full native core395.786s/CLI26.150s, build/vet/source/diff
+checks. Three final affected-workflow/pane/compiled CLI repeats31.621s/3.076s.
+Source manifest f21765cb6559bec851ca00f0beee1ae6e17ea93fca8e3ba135fa24b82bfcedac
+(/tmp/ssh-exam-timed-supervision-admission-qualified-source.sha256) matches
+after tests. Final logs: /tmp/ssh-exam-timed-supervision-admission-qualified-
+{native,build,vet}.log. Earlier c8d3e2/other passes do not qualify these fixes.
+Actual owner-ready/exec-release cases RED2.417s then3.327s PASS; reviewed-close
+gaps RED0.044s then fixed. Initial ACK cannot invalidate release; containment
+does not wait for startup notice; final ack survives manual close until unlink.
+Exact next action: finish the coherent local C12b commit, then approved C8;
+exclude the original screenshot. Detailed state review/retained failures/limits:
+docs/timed-terminal-supervision.md. Do not expand runtime or enable C3/C9.
 
 This timed recording/lifetime increment is explicitly independent of the open
 live-arbiter placement decision. Do not declare the whole task blocked while this
-approved integrated work remains actionable. No C12b code has been edited yet.
+approved integrated work remains actionable. The workflow is integrated through the
+actual timed gate, not just helpers: whole coordinator kill/FIFO global state,
+shell memory/output, restart/acknowledgement, owner death/writer containment,
+current/stale/extended recording faults, full queue, backpressure/EOF/final output
+and compiled root CLI. Fresh Begin saves native lifetime mode; legacy active
+attempts remain unchanged. Scoped pinned storage only; no Engine/map/keys in
+owner. Twenty-two canonical crash/refusal cases supplement real owned user scopes.
+Temporary cleanup uncertainty was reproduced RED1.362s and corrected (three
+repeats5.237s); do not manufacture a fault from pending confirmation. Final
+close/ack review preserves proof through unlink and excludes receipt diagnostics
+from reviewed-close revisions.56 affected app tests20.09s and17 browser checks1.3m PASS;
+unchanged client hashes and original screenshot match. No root-installed-role
+qualification, retained freeze/recovery, deployment or complete critical-item claim.
 
 ## Latest validated revisions
 
@@ -52,9 +67,21 @@ approved integrated work remains actionable. No C12b code has been edited yet.
   additional, reviewed legacy grants and recovery-duration work are recorded in
   docs/grant-workspace-sources.md and docs/todo-progress.md.
 
-All qualification runners ended; no command was missing. Current app/native-core/
-client evidence remains valid across the help-only change; do not repeat unrelated
-broad suites for private helpers or documentation. No installed-role qualification.
+All qualification runners ended; no command was missing.
+No command was missing.495 full app checks at4148022 remain the unchanged app
+baseline, supplemented by56 affected interface and17 browser checks for C12b.
+The changed native runtime is not qualified from earlier artifacts. No installed-
+role qualification or deployment; actual SSH/PAM/hardening/class capacity remains.
+
+After the validated C12b commit, continue independent APPROVED C8 definition
+retirement while C16/C18 await answers. Source inspection confirms
+apps/server/src/exam-definitions.ts has only create/update/list/show; CLI web.go
+likewise lacks retirement. Read docs/todo-design-decisions.md C8 and
+docs/exam-definition-management.md. Deliver reviewed preview/delete/archive/
+unarchive through shared web/root CLI, exact dependency/revision/audit/retry
+fences and interface tests. Never cascade grants/history/submissions or strand
+active preparations/attempts/unused grants. Do not declare all work blocked on
+C16/C18 while this independent approved workflow remains actionable.
 
 ## Pending consequential decisions (questions already resurfaced)
 

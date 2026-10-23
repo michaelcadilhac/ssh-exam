@@ -111,6 +111,7 @@ type Attempt struct {
 	ClockRevision               int                  `json:"clock_revision,omitempty"`
 	ClockResets                 []ClockReset         `json:"clock_resets,omitempty"`
 	BrowserSSH                  bool                 `json:"browser_ssh,omitempty"`
+	TerminalSupervised          bool                 `json:"terminal_supervised,omitempty"`
 	AdministratorSandbox        bool                 `json:"administrator_sandbox,omitempty"`
 	FunctionalTest              bool                 `json:"functional_test,omitempty"`
 	ID                          string               `json:"id"`
@@ -179,12 +180,20 @@ type State struct {
 // It is not live execution/monitoring authority, freeze proof or restart recovery.
 // Never backfill this observation from a legacy unit name or restored snapshot.
 type PaneInstance struct {
-	Attempt    string `json:"attempt"`
-	Pane       string `json:"pane"`
-	ID         string `json:"id"`
-	Boot       string `json:"boot"`
-	ReadyAt    int64  `json:"ready_at"`
-	Supervisor string `json:"supervisor,omitempty"`
+	Attempt           string                   `json:"attempt"`
+	Pane              string                   `json:"pane"`
+	ID                string                   `json:"id"`
+	Boot              string                   `json:"boot"`
+	ReadyAt           int64                    `json:"ready_at"`
+	Supervisor        string                   `json:"supervisor,omitempty"`
+	Recording         string                   `json:"recording_context,omitempty"`
+	RecordingIdentity terminalRecordingContext `json:"recording_identity,omitzero"`
+	RecordingOwner    string                   `json:"recording_owner,omitempty"`
+	RecordingPID      int                      `json:"recording_pid,omitempty"`
+	RecordingStart    uint64                   `json:"recording_start,omitempty"`
+	RecordingAck      string                   `json:"recording_ack,omitempty"`
+	RecordingRevision uint64                   `json:"recording_revision,omitempty"`
+	RecordingClosed   bool                     `json:"recording_closed,omitempty"`
 	// ClosedUntil is a bounded bootstrap observation, never exec permission.
 	// Only the live parent's final transaction can change it to ReadyAt.
 	ClosedUntil     int64 `json:"closed_until,omitempty"`
@@ -217,6 +226,7 @@ type Engine struct {
 	paneStart                 func() error
 	paneBootstrapStart        func(*exec.Cmd, *net.UnixConn, *os.File, string, PaneInstance) (*paneBootstrapPeer, bool, error)
 	terminalFailureCheckpoint func(string)            // Test-only recorder fault barriers; never configurable.
+	terminalHandoffCheckpoint func()                  // Test-only actual admission boundary; never configurable.
 	healthProbe               func() (bool, []string) // Test-only dependency seam; never configurable.
 	templateVerify            func(Settings) error    // Test replacement never exposed in config/environment.
 }

@@ -1,5 +1,15 @@
 # Native pane management (implemented/tested locally; not deployed)
 
+C12b local implementation adds `panes reports ATTEMPT [--state DIR]` and uses
+the existing explicit `reconcile --config FILE` for durable receipt acknowledgement.
+It separates captured producer receipts from optional canonical pending tracking;
+neither is live monitoring/exec authority. Unsafe/full/busy states preserve evidence
+and refuse, never delete a report for capacity. Reviewed close retains unacknowledged
+recording proof. New timed attempts use independent recording owners; old active
+attempts retain their saved legacy mode. Focused actual gate/CLI/race tests pass;
+Full local native and affected app/browser qualification pass; installed-role
+qualification remains pending. See timed-terminal-supervision.md. C3 stays disabled.
+
 Local follow-up adds `panes supervisor ATTEMPT [--state DIR]`: bounded root-only
 Unix diagnostic capture without global state/initialization/keys/audit writes.
 It distinguishes attached units from received normal startup notices, never
@@ -11,7 +21,7 @@ C12a local practice-owner follow-up adds captured `recorded_supervisors` to the
 same bounded CLI list/show and revision fingerprint. Help distinguishes this from
 actual liveness, authentication, monitoring or retained-lockout support. Existing
 close still targets only its exact pane; idle owners expire after their panes/
-bounded handshakes settle. Timed panes retain coordinator recording and no C3
+bounded handshakes settle. At that increment timed panes retained coordinator recording and no C3
 mode is enabled. See terminal-supervision.md for scope/state review and current
 qualification; no old guest receipt qualifies the new owner role.
 

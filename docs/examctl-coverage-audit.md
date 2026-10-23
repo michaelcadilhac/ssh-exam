@@ -32,7 +32,7 @@ feature document retains the boundaries of its operational tests.
 | Alerts/delivery/manual reminders | `web alerts help` | Shared AlertManagement; current resolution, original-intent retry and no automatic escalation |
 | Monitoring reads/media/export/deletion/purge | `web monitoring help` | Shared private reads and durable isolated purge; logical deletion differs from physical completion |
 | Administrator metadata/creation | `web administrators help` | Agent authorization, strong-verifier retry, secret-safe input; no password reset/overwrite |
-| Native attempts/panes | `help COMMAND` for start, pause, finish, cancel, cancel-absent, retry; `panes help` | Root native scope and exact targets; manual closure can lose buffers, not retained freeze |
+| Native attempts/panes | `help COMMAND` for start, pause, finish, cancel, cancel-absent, retry; `panes help` | Root native scope/exact targets; reports plus existing reconcile inspect/acknowledge timed-owner receipts, while manual closure preserves pending proof; not retained freeze |
 | Native inspection/access/protection | `help COMMAND` for list, info, health, accounts, reconcile, override-access; `help collection` | Read-only inspection is explicit; emergency override never an automatic shortcut |
 | Protected submissions | `help COMMAND` for manifest, export, delete | Code inspection confirms bounded verification and checked durable audit before exporting bytes to the caller; new0600 output/no overwrite; deletion preserves history/holds/dependencies |
 | Workspace metadata/holds | `workspaces help` | Known-attempt metadata/holds only; no eligibility/deletion command enabled |

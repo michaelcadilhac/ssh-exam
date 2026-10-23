@@ -113,7 +113,9 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 			v.Incarnations = append(v.Incarnations, instance)
 			units = append(units, unit)
 			proof := state.PaneInstances[unit]
-			proofs[unit] = proof
+			controlProof := proof
+			controlProof.RecordingAck, controlProof.RecordingRevision, controlProof.RecordingClosed = "", 0, false
+			proofs[unit] = controlProof // Receipt diagnostics cannot invalidate exact reviewed closure.
 			if proof.Supervisor != "" {
 				prefix := "exam-terminal-" + a.ID + "-"
 				digest := strings.TrimSuffix(strings.TrimPrefix(proof.Supervisor, prefix), ".scope")

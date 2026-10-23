@@ -1847,12 +1847,24 @@ checks complete. Local simulated browser tests alone do not qualify privileged i
 
 ### Approved retained-SSH lockout design (October 21; implementation pending)
 
+October23 C12b locally implements/tests independent timed recording through the
+actual closed pane gate, with scoped pinned storage/budget and no global Engine
+or signing keys in the owner. Fresh BrowserSSH Begin saves the native lifetime
+mode; existing active attempts are not converted. Canonical incarnation/owner/
+generation-bound receipts require durable acknowledgement before retirement;
+examctl panes reports and existing reconcile provide inspection/retry. Trusted
+capture is independent of slow display delivery; no timeout is misconduct or
+completion proof. Focused real user-scope/PTY/root-namespace CLI races pass;
+full local native qualification and affected app/browser checks also pass. See
+docs/timed-terminal-supervision.md. This does
+not enable retained-lockout freeze, monitoring recovery or a production change.
+
 October22 C12 topology decision: use one bounded supervisor per user/attempt,
 owning that attempt's terminal panes. It must outlive the coordinator's service
 kill/OOM domain and contain its failures to that attempt. This supersedes the
 per-pane proposal; do not share one terminal supervisor across students. Capacity,
 authenticated ownership/epochs, freeze/input barriers and combined qualification
-remain required. No supervisor mode, service or production change is enabled.
+remain required. No retained-lockout mode or production service change is enabled.
 
 October22 C10/C11 follow-up: positively verified renewals take effect in live root
 authority without waiting for disk sync; restart requires fresh verification and

@@ -20,7 +20,7 @@ func receiveGateDescriptors(control []byte, flags int) (owned *gateDescriptors, 
 }
 
 // The public gate still accepts at most one descriptor. The private, verified
-// root terminal-supervisor handoff needs five exact fixed-role descriptors.
+// root handoff needs five practice or eight timed fixed-role descriptors.
 func receiveBoundedDescriptors(control []byte, flags, limit int) (owned *gateDescriptors, resultErr error) {
 	owned = &gateDescriptors{}
 	defer func() {
@@ -60,7 +60,7 @@ func receiveBoundedDescriptors(control []byte, flags, limit int) (owned *gateDes
 			invalid = true
 		}
 	}
-	if invalid || limit < 0 || limit > 5 || len(owned.files) > limit {
+	if invalid || limit < 0 || limit > 8 || len(owned.files) > limit {
 		return owned, errGateDescriptors
 	}
 	return owned, nil

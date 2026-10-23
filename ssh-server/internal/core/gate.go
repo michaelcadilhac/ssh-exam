@@ -349,7 +349,7 @@ func (e *Engine) local(c *net.UnixConn) {
 	}()
 	var awaitRecordingFault func()
 	bridge := func(process *paneBootstrapPeer) error {
-		if process != nil && pending.capability.Purpose == "practice" {
+		if process != nil && (pending.capability.Purpose == "practice" || pending.authority.TerminalSupervised) {
 			_, err := e.handoffTerminal(c, original, master, pending, unit, process.process)
 			return err
 		}
@@ -424,6 +424,7 @@ func (e *Engine) local(c *net.UnixConn) {
 	}
 	c.SetDeadline(time.Time{})
 	if pending.supervisor != nil {
+		_ = slave.Close() // The independent owner must observe actual workload PTY EOF.
 		e.waitSupervisedPane(pending, unit, c, func() { _ = launch.Wait() })
 		return
 	} // Its original socket/PTYs and exact cleanup outlive this coordinator.

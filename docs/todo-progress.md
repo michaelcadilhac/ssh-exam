@@ -2449,6 +2449,31 @@ No application/native-core/client contract changed;495-app and qualified native/
 browser evidence remains applicable. Actual pending integration gates and
 verification limits: examctl-coverage-audit.md. No push/deployment/consolidation.
 
+## C12b independent timed recording owner (October23; tested locally)
+
+Actual timed Engine.local now uses the approved one supervisor per user/attempt
+for scoped PTY lifetime, trusted capture and bounded completion/fault receipts.
+No global Engine/map/signing credentials enter it. Slow display cannot block
+capture; original deadlines/holds/privacy/quota rules remain. New timed Begin
+saves native lifetime mode; active legacy attempts are not converted. Root
+panes reports plus existing reconcile inspect/acknowledge receipts; ordinary
+close/reaping preserve proof until durable retirement. No C3/C9 mode or deployment.
+
+Real gate/coordinator whole-cgroup kill/FIFO-state/shell-memory/recording/restart,
+owner death/HUP-ignoring writer, current/stale/extended fault, queue/EOF/backpressure,
+cleanup uncertainty and compiled root CLI checks pass. Twenty-two canonical
+crash/refusal/close cases supplement real owned scopes. Actual false-fault cleanup
+retry is RED1.362s then PASS; reviewed-close/ack gaps RED0.044s then corrected.
+Full final native race/resource/namespace/compiler/default-size qualification passes
+core395.786s/CLI26.150s including final admission fixes; static build/vet/source hashes/diff pass.56 affected app
+tests20.09s and17 browser/WASM SSH checks1.3m pass with unchanged client hashes.
+Retained failures, exact source digest/state review and privilege/capacity limits:
+timed-terminal-supervision.md. Preserve original dirty screenshot; no remote action.
+
+Next independent approved workflow is C8 definition retirement through matching
+reviewed CLI/web flows. C16/C18 remain unanswered; do not reopen settled choices
+or use them to stop independent work. Main TODO remains11/38, not an effort ratio.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are
