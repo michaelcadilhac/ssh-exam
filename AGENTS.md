@@ -55,6 +55,8 @@
   disclose mocked guards and untested privileged boundaries.
   Read the focused test's completion result before launching broad qualification;
   do not batch a broad-suite launch with collecting that still-unknown result.
+  End the orchestration script after collecting focused results; review them in
+  the model before a separate call launches broad tests, even if the log says OK.
 - Before broad qualification, review each new durable/intermediate state for
   inspection, cancellation, crash/restart, expiry, stale completion and admission
   bypass. No pending operation may become an indefinite account reservation or
@@ -78,6 +80,10 @@
   If a mutation control passes, strengthen its oracle or record the limitation;
   never count it as proof. Prefer direct observable effects over assumptions about
   unavailable workers, incidental timestamps or coalesced filesystem events.
+  Bound mock accept, connection and completion waits independently; assert private
+  fixture modes/owners and the intended request/reply stage. The runner's default
+  timeout is not a refusal oracle. Wait for the exact protocol boundary under test,
+  not merely shell output or an incidental timestamp.
 - Report progress in usable outcomes and remaining gaps, not commit/test counts.
   Distinguish investigated, awaiting decision, implemented/tested locally and
   deployed. Proposals and unused helpers do not close a TODO investigation or

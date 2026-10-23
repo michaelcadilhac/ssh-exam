@@ -398,6 +398,17 @@ docs/terminal-recording-isolation.md for evidence and limits. This is not full
 timed C12, disk-wide isolation, class-capacity proof or the production incident
 cause. No deployed change; the critical item and broad TODO count remain open.
 
+October22 native owner diagnostics are now implemented/tested locally through
+`examctl panes supervisor ATTEMPT [--state DIR]`, with discoverable help and exact
+safe inspection guidance. Actual kernel reply-sender credentials, strict bounded
+metadata/private-field/descriptor checks and no global state/initialization make
+it usable after creator death. Attached panes and received startup notices are
+diagnostics, not permission; missing notices/replies remain UNKNOWN. Actual root-
+namespace CLI/IPC/FIFO-state/control-refusal/timeout regressions and full native
+race/resource/build pass. See docs/terminal-supervisor-observation.md for exact
+evidence/fixture corrections/limits. No live renewal, timed C12 or C3/C9 mode is
+enabled; no deployment or closed critical-item claim.
+
 ## Firm design policy: examctl is the complete management interface
 
 **If an exam-management operation can be done, it must be doable through

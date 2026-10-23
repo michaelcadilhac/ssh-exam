@@ -23,7 +23,7 @@ import (
 func TestNativePaneHelpAndRefusalsAreDiscoverableBeforeRootOrConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "panes"}, {"panes", "help"}, {"--config", "/missing", "panes", "--help"}} {
 		out, code := cliProcess(t, args...)
-		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:", "closed_startups", "cancelled_startups", "earliest_startup_expiry", "recorded_supervisors", "NOT proof they are alive"} {
+		for _, want := range []string{"Usage:", "list ATTEMPT", "show ATTEMPT PANE", "close ATTEMPT PANE", "supervisor ATTEMPT", "local Unix", "--revision", "--reason", "unsaved", "read-only", "root", "Exit status:", "closed_startups", "cancelled_startups", "earliest_startup_expiry", "recorded_supervisors", "NOT proof they are alive"} {
 			if code != 0 || !strings.Contains(out, want) {
 				t.Fatal("pane workflow missing", want, code, out)
 			}
@@ -40,10 +40,20 @@ func TestNativePaneHelpAndRefusalsAreDiscoverableBeforeRootOrConfiguration(t *te
 			t.Fatal("pane syntax reached configuration/authority", args, code, out)
 		}
 	}
+	for _, args := range [][]string{{"panes", "supervisor"}, {"panes", "supervisor", id, id}, {"panes", "supervisor", id, "--limit", "1"}, {"panes", "supervisor", id, "--after", id}, {"panes", "supervisor", id, "--reason", "not a control"}, {"panes", "supervisor", id, "--state", "/missing", "--config", "/missing"}, {"panes", "supervisor", "../invalid"}} {
+		out, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(out, "help") || strings.Contains(out, "Cannot load") {
+			t.Fatal("supervisor syntax reached configuration/authority", args, code, out)
+		}
+	}
 	if os.Getuid() != 0 {
 		out, code := cliProcess(t, "panes", "list", id, "--config", "/missing")
 		if code != 1 || !strings.Contains(out, "root") || strings.Contains(out, "Cannot load") {
 			t.Fatal("pane root refusal opened configuration", code, out)
+		}
+		out, code = cliProcess(t, "panes", "supervisor", id, "--config", "/missing")
+		if code != 1 || !strings.Contains(out, "root") || strings.Contains(out, "Cannot load") {
+			t.Fatal("supervisor root refusal opened configuration", code, out)
 		}
 	}
 }

@@ -71,3 +71,13 @@ declared qualified from its narrow success. The fix joins only a fault already
 observed before PTY closure, outside shared state, and tests both stale and current
 outcomes. Keep the fault fix separate from the next complete timed-owner lifecycle;
 do not let every neighboring cleanup issue become a prerequisite of a bounded fix.
+
+Live-owner diagnostics exposed two test-process errors. Go testing.TempDir's leaf
+was not private0700, so the correct reader refused before a mock's unbounded
+Accept; only the exact owned runner (no children) was stopped for its stack. The
+fixture now sets/asserts private prerequisites, bounds accept/completion and proves
+the intended reply was sent. Separately, shell output preceded the parent's
+completion-ownership notice; an immediate synthetic kill legitimately produced
+UNKNOWN. Tests now observe that exact notice boundary before claiming post-notice
+death, while UNKNOWN semantics remain intact. AGENTS.md records these controls;
+neither an earlier passing artifact nor an unreached refusal closes the workflow.

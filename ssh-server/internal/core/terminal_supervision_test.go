@@ -353,6 +353,13 @@ func TestActualPaneRetainsShellMemoryAndControlSocketAfterCoordinatorSIGKILL(t *
 	testPracticeSupervisorWorkflow(t, "coordinator", nil, nil)
 }
 
+func TestActualRootCLIObservesSupervisorAfterCreatorDeathWithoutReadingFIFOState(t *testing.T) {
+	if os.Getenv("EXAM_MANAGEMENT_USERNS") != "1" {
+		t.Skip("explicit isolated root-namespace CLI qualification only")
+	}
+	testPracticeSupervisorWorkflow(t, "observation", nil, nil)
+}
+
 func TestActualTimedPaneKeepsCoordinatorRecordingBoundary(t *testing.T) {
 	testPracticeSupervisorWorkflow(t, "timed", nil, nil)
 }
@@ -381,6 +388,10 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	}
 	if mode == "supervisor" {
 		defer close(failed)
+	}
+	cliBinary := ""
+	if mode == "observation" {
+		cliBinary = observationCLIBinary(t)
 	}
 	e, key, r := preparationFixture(t)
 	e.preparationReady = func() (bool, []string) { return true, nil }
@@ -890,7 +901,22 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	}
 	// Kill ALL processes in the exact owned coordinator cgroup, not only its
 	// leader. Surviving PTYs must therefore belong to the independent scope.
-	if mode == "coordinator" {
+	if mode == "coordinator" || mode == "observation" {
+		// Shell output may precede the parent's completion-ownership notice.
+		// This workflow deliberately kills AFTER that exact observed boundary;
+		// losing an earlier notice correctly retains an UNKNOWN outcome instead.
+		confirmed := false
+		for until := time.Now().Add(2 * time.Second); time.Now().Before(until); {
+			observed, err := ObserveTerminalSupervisor(e.Config.State, r.ID)
+			if err == nil && len(observed.ReportedStartedUnits) == 2 {
+				confirmed = true
+				break
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		if !confirmed {
+			t.Fatal("fixture never observed both normal startup notices")
+		}
 		if err := exec.Command("/usr/bin/systemctl", "--user", "kill", "--signal=KILL", coordinatorUnit).Run(); err != nil {
 			t.Fatal(err)
 		}
@@ -912,6 +938,53 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		}()
 		if err := unix.Mkfifo(stateFile, 0600); err != nil {
 			t.Fatal(err)
+		}
+		if mode == "observation" {
+			stateBefore, err := os.Lstat(stateFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			savedBefore, err := os.ReadFile(backup)
+			if err != nil {
+				t.Fatal(err)
+			}
+			audit := filepath.Join(e.Config.State, "audit.ndjson")
+			auditBefore, err := os.ReadFile(audit)
+			if err != nil {
+				t.Fatal(err)
+			}
+			observeCtx, observeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			cmd := exec.CommandContext(observeCtx, "/usr/bin/unshare", "--user", "--map-root-user", cliBinary, "panes", "supervisor", r.ID, "--state", e.Config.State)
+			var output, diagnostics bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &output, &diagnostics
+			err = cmd.Run()
+			observeCancel()
+			var observed TerminalSupervisorObservation
+			if err != nil || diagnostics.Len() != 0 || json.Unmarshal(output.Bytes(), &observed) != nil || !observed.ObservationOnly || observed.AttachedPanes != 2 || len(observed.AttachedUnits) != 2 || observed.Attempt != r.ID || observed.Supervisor != terminalSupervisorUnit(e.Config.State, r.ID) {
+				t.Fatal("actual root CLI failed live query after inherited listener creator death", output.String(), diagnostics.String(), err)
+			}
+			for _, secret := range []string{issued.(map[string]string)["token"], secondIssued.(map[string]string)["token"], r.Transport, r.Username} {
+				if strings.Contains(output.String()+diagnostics.String(), secret) {
+					t.Fatal("supervisor metadata exposed private account/admission context")
+				}
+			}
+			refuseSupervisorControlQueries(t, e.Config.State, r.ID, observed.PID)
+			current, err := ObserveTerminalSupervisor(e.Config.State, r.ID)
+			if err != nil || current.PID != observed.PID || current.AttachedPanes != 2 {
+				t.Fatal("inspection controls changed supervisor ownership/panes", current, err)
+			}
+			stateAfter, err := os.Lstat(stateFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			savedAfter, err := os.ReadFile(backup)
+			if err != nil {
+				t.Fatal(err)
+			}
+			auditAfter, err := os.ReadFile(audit)
+			if err != nil || !bytes.Equal(auditBefore, auditAfter) || !bytes.Equal(savedBefore, savedAfter) || !os.SameFile(stateBefore, stateAfter) || stateBefore.Sys().(*syscall.Stat_t).Ctim != stateAfter.Sys().(*syscall.Stat_t).Ctim {
+				t.Fatal("live CLI initialized/read/reconciled or changed synthetic state/audit", err)
+			}
 		}
 	}
 	if _, err := unix.Write(fd, []byte("check\n")); err != nil {

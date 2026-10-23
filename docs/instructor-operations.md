@@ -192,6 +192,14 @@ refusal; that can lose buffers. Timed recording/supervision remains on the old
 path and the full critical fix is unfinished. See terminal-supervision.md; no
 new role/slice has been installed and root qualification remains guarded.
 
+The local pending `examctl panes supervisor ATTEMPT --state DIR` additionally
+captures live root-owner diagnostic metadata without reading global attempt state
+or initializing/auditing. Attached panes may be starting/ending; normal startup
+notices are not durable Begin/clock/monitoring permission. An unavailable reply
+does not prove death or misconduct. Use existing captured list/show for context;
+never turn this observation into an unlock or restart instruction. See
+terminal-supervisor-observation.md; no installed-tool support is implied.
+
 Local timed-recorder follow-up (not deployed) prevents an old pane's delayed
 recording error from locking a replacement authenticated session/pane. A retired
 fault remains in native audit; genuine current loss still requires storage/quota

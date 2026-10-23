@@ -1,5 +1,12 @@
 # Native pane management (implemented/tested locally; not deployed)
 
+Local follow-up adds `panes supervisor ATTEMPT [--state DIR]`: bounded root-only
+Unix diagnostic capture without global state/initialization/keys/audit writes.
+It distinguishes attached units from received normal startup notices, never
+execution/monitoring/cleanup authority. Missing/changed/time-out means unavailable,
+not misconduct or process death. Existing offline list/show/close remain; see
+terminal-supervisor-observation.md for exact semantics and qualification limits.
+
 C12a local practice-owner follow-up adds captured `recorded_supervisors` to the
 same bounded CLI list/show and revision fingerprint. Help distinguishes this from
 actual liveness, authentication, monitoring or retained-lockout support. Existing

@@ -501,7 +501,24 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	n, on, flags, _, err := c.ReadMsgUnix(buf, oob)
 	owned, descriptorErr := receiveBoundedDescriptors(oob[:on], flags, 5)
 	defer owned.close()
-	if err != nil || descriptorErr != nil || len(owned.files) != 5 {
+	if err != nil || descriptorErr != nil {
+		return
+	}
+	if len(owned.files) == 0 {
+		var query struct {
+			Purpose string `json:"purpose"`
+			Attempt string `json:"attempt"`
+		}
+		if terminalDecode(buf[:n], &query) != nil || query.Purpose != terminalObservationPurpose || query.Attempt != s.id {
+			return
+		}
+		// The hello already required a kernel owner-UID peer (root in installed
+		// roles). Metadata-only CLI inspection needs no loaded-agent exec role;
+		// it accepts NO descriptors and grants no work/control authority.
+		_ = json.NewEncoder(c).Encode(s.observation())
+		return
+	}
+	if len(owned.files) != 5 {
 		return
 	}
 	caller, err := terminalSupervisorCaller(c, exe)
@@ -548,11 +565,12 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		return
 	}
 	s.mu.Lock()
-	if s.active >= 4 || s.panes[r.Unit] || (s.uid >= 0 && (s.uid != r.UID || s.username != r.Username)) {
+	_, duplicate := s.panes[r.Unit]
+	if s.active >= 4 || duplicate || (s.uid >= 0 && (s.uid != r.UID || s.username != r.Username)) {
 		s.mu.Unlock()
 		return
 	}
-	s.panes[r.Unit] = true
+	s.panes[r.Unit] = false // Attached, but no normal startup notice observed yet.
 	s.uid, s.username = r.UID, r.Username
 	s.active++
 	s.last = time.Now()
@@ -574,6 +592,9 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	if noticeErr == nil && nn == 1 && noticeFlags&(unix.MSG_TRUNC|unix.MSG_CTRUNC) == 0 && (notice[0] == 1 || notice[0] == 2) {
 		verdict = notice[0]
 	}
+	s.mu.Lock()
+	s.panes[r.Unit] = verdict == 1 // Reply ownership diagnostic, NEVER exec authority.
+	s.mu.Unlock()
 	for {
 		live, err := process.live()
 		if err != nil || !live {

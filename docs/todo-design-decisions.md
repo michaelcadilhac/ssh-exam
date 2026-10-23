@@ -476,3 +476,31 @@ proof that a previously uncertain Begin never started. No offline permit or new
 browser-relayed challenge protocol is introduced. Existing started deadlines,
 holds/history and original one-use outcomes remain authoritative. This settles
 the availability choice, not implementation, migration or deployment.
+
+## Live work-authority placement (C16 awaiting instructor decision)
+
+This does not reopen C12's ONE supervisor per user/attempt. The remaining choice
+is whether that process also hosts the live monitoring-proof arbiter/input-cutoff
+loop, or an additional authority process per attempt does so. The private C10
+arbiter has no live seal factory/caller; current practice supervisors own PTYs
+without loading global Engine state. See live-monitoring-renewals.md and
+retained-workload-barrier-plan.md.
+
+Recommend colocating the arbiter, input gates and kernel cutoff/barrier control
+with the attempt supervisor: no extra authority-to-gate decision hop, coordinator
+failure stays outside its lifetime and failures remain attempt-local. Isolate and
+bound recording/publication IO from that loop; do not copy the global Engine or
+agent private signing keys/passwords/MFA into it. It may receive the scoped
+settings/epochs and public gateway verification material needed to verify proofs.
+The shared agent retains authenticated outbound transport and canonical durable
+metadata coordination. Actual authority restart still needs fresh positive
+verification, never permission from a disk snapshot or old timeout.
+
+The alternative keeps ONE terminal supervisor but adds a separate authority
+process per attempt, isolating authority failures from PTY ownership at the cost
+of another resource budget, lifetime claim and authenticated IPC/barrier boundary.
+Either requires real peer/epoch/loaded-role agreement, durable significant
+transitions, all-writer/input freeze and complete CLI/web/qualification before
+retained mode can be enabled. No deadlines, hold/recovery policy or verification
+requirements change. The instructor has been asked; neither option is implemented
+by this proposal. Independent correctness/retention work continues meanwhile.

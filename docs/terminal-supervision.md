@@ -8,6 +8,13 @@ path. Trusted administrator host services retain their serialized exception.
 C12 timed supervision, C3 retained lockouts/input epochs and C9 recovery are NOT
 implemented or enabled by this increment.
 
+The subsequent local `panes supervisor ATTEMPT` workflow adds bounded root-only
+live diagnostic inspection, including attached units versus normal startup
+notices. It never supplies work authority. Repeated post-start death tests now
+positively wait for the normal notice boundary; a kill before it legitimately
+preserves UNKNOWN, not a fabricated successful/nonstarted outcome. See
+terminal-supervisor-observation.md for current evidence and failure review.
+
 The actual old entry loses shell memory/PTY on coordinator SIGKILL (RED0.081s).
 The new workflow verifies the same memory-only value/process across whole
 coordinator-cgroup SIGKILL in two panes sharing one supervisor. It also completes

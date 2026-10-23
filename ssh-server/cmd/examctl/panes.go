@@ -16,12 +16,13 @@ func panesHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl panes list ATTEMPT [--limit 1..200 --after PANE]
        sudo examctl panes show ATTEMPT PANE
        sudo examctl panes close ATTEMPT PANE --revision SNAPSHOT --reason TEXT
+       sudo examctl panes supervisor ATTEMPT [--state DIR]
 
-Native offline root-only targeted pane management. --config FILE defaults to
+Native root-only targeted pane management; list/show are offline snapshots. --config FILE defaults to
 /etc/exam-agent/agent.json. Help and syntax checks need no root/configuration.
 list/show are bounded read-only observations before Engine initialization:
 no state lock, key loading, chmod, audit, reconciliation, network or manager query.
---state DIR bypasses configuration for list/show, never close; choose --state
+--state DIR bypasses configuration for list/show/supervisor, never close; choose --state
 or an explicit --config, not both. Default list page50, maximum200; --after is
 the previous next pane UUID cursor, not a timestamp or attempt UUID.
 
@@ -36,6 +37,16 @@ recorded_supervisors names independent attempt-level terminal owners as captured
 metadata, NOT proof they are alive, current authenticated ownership or retention
 through a lockout. Supported close still targets just this pane; idle supervisors
 exit after their panes/handshakes settle. Never kill the shared agent to close one.
+supervisor makes a bounded local Unix query to that attempt's root owner, before
+Engine/state initialization. It reports only current diagnostic metadata from
+the actual kernel-credential reply sender, NOT authenticated student ownership,
+monitoring, verified resource/freeze state or permission to work/resume. No state
+lock, keys, audit write, control mutation, TCP connection or manager command.
+attached_panes/attached_units include handoffs and ending panes, NOT proof student
+code is running. observation_only is always true; no keys/input are returned.
+reported_started_units received the coordinator's normal startup notice, NOT
+durable Begin/clock/monitoring permission. Missing notice is UNKNOWN, not no-start.
+Unavailable/changed/timed-out replies prove neither process death nor misconduct.
 Legacy/startup-unverified records remain inspectable with unsafe_metadata=true
 and no close revision. Preserve them and use matching native versions/guards in
 the separately authorized drained maintenance workflow; never clear tracking,
@@ -64,6 +75,7 @@ Examples:
   examctl help panes
   sudo examctl panes list ATTEMPT --limit 50
   sudo examctl panes show ATTEMPT PANE --state /var/lib/exam-agent
+  sudo examctl panes supervisor ATTEMPT --state /var/lib/exam-agent
   sudo examctl panes close ATTEMPT PANE --revision sha256:REVIEWED_DIGEST --reason 'Reviewed target terminal closure'
 
 Exit status: 0 complete metadata or confirmed recorded-target control result,
@@ -94,12 +106,16 @@ func panesMain(args []string) int {
 		return 0
 	}
 	if len(w) < 3 || w[0] != "panes" {
-		return usage("choose panes list ATTEMPT, show ATTEMPT PANE or close ATTEMPT PANE")
+		return usage("choose panes list ATTEMPT, supervisor ATTEMPT, show ATTEMPT PANE or close ATTEMPT PANE")
 	}
 	seen := map[string]bool{}
 	f.Visit(func(flag *flag.Flag) { seen[flag.Name] = true })
 	q := core.NativePaneQuery{Attempt: w[2], Limit: *limit, After: *after}
 	switch w[1] {
+	case "supervisor":
+		if len(w) != 3 || seen["limit"] || seen["after"] || seen["revision"] || seen["reason"] {
+			return usage("supervisor takes exactly one attempt, without pane/control/list flags")
+		}
 	case "list":
 		if len(w) != 3 || seen["revision"] || seen["reason"] {
 			return usage("list takes one attempt and optional limit/after")
@@ -116,7 +132,7 @@ func panesMain(args []string) int {
 			return usage("close needs --revision sha256:DIGEST and --reason 8..1000 UTF-8 bytes, never --state")
 		}
 	default:
-		return usage("choose list/show/close; no force/bulk closure")
+		return usage("choose list/show/close/supervisor; no force/bulk closure")
 	}
 	if err := q.Validate(); err != nil {
 		return usage("invalid pane selection")
@@ -137,6 +153,19 @@ func panesMain(args []string) int {
 				fmt.Fprintln(os.Stderr, "Cannot resolve private native state read-only; use --state DIR and examctl help panes; no initialization/reconciliation attempted")
 				return 1
 			}
+		}
+		if w[1] == "supervisor" {
+			result, err := core.ObserveTerminalSupervisor(directory, q.Attempt)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				fmt.Fprintf(os.Stderr, "Captured-only next step (no repair): sudo examctl panes list %s --state '%s'\n", q.Attempt, strings.ReplaceAll(directory, "'", "'\\''"))
+				return 1
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+				fmt.Fprintln(os.Stderr, "Supervisor observation output failed; no native record changed")
+				return 1
+			}
+			return 0
 		}
 		result, err := core.ObserveNativePanes(directory, q)
 		if err != nil {

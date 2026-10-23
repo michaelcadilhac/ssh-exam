@@ -18,7 +18,7 @@ Old behavior RED1.937s; slot-before-flock mutant RED2.940s, restored. A missing-
 home fixture failure is retained separately. Three final focused races pass25.190s;
 full native race/resource/namespace/compiler/default-size core295.622s/CLI25.171s;
 static build/vet/diff pass. All runners finished. Local commit follows this
-documentation. Evidence/state review/limits: terminal-recording-isolation.md.
+documentation (local commit d303bfc). Evidence/state review/limits: terminal-recording-isolation.md.
 No app/browser/WASM source or artifact changed: prior435 app/22 browser/build/
 typecheck and35 affected callback/SSH checks cover those unchanged surfaces, not
 a new-root qualification claim. No redundant web rebuild/browser run.
@@ -30,6 +30,29 @@ and crash behavior, supported pane CLI diagnostics and no per-student global
 Engine. Do not enable retained lockout/input/recovery mode from partial work.
 The verified independent practice owner remains usable; timed panes still use
 the coordinator-owned recording path.
+
+Current bounded operator milestone: supported `examctl panes supervisor ATTEMPT`
+queries root-only bounded live owner metadata, separate from captured list/show.
+No Engine/state initialization, audit write, execution permit, monitor proof or
+control mutation. Work descriptor handoff keeps its full loaded-agent/scope/UID
+checks; the new root-only metadata purpose grants no work. Accept actual compiled
+root-namespace CLI + actual private supervisor IPC, strict reply/sender/FD/privacy
+refusals, help, missing/malformed/timeout and no-state-change checks. Complete this
+workflow and local commit before adding timed lifecycle pending reports; no
+unwired protocol helper or C3 flag. Three final focused races pass core28.667s/
+CLI1.688s, including actual static root-namespace CLI after creator death/FIFO
+state, true server control/FD refusals, strict/private replies and live-sender
+timeout. State/failure review and retained fixture failures are in
+terminal-supervisor-observation.md. Full native core299.869s/CLI28.567s, final
+guidance-specific repeats core15.360s/CLI1.745s, correctly sequenced full CLI14.678s
+and static build/vet/diff pass. All runners finish; local commit follows. No core
+runtime change after broad qualification; final CLI-only messages get fresh
+affected checks. Root-role namespace/PAM proof remains guarded.
+
+C16 is awaiting an instructor answer: colocate the live authority/input-cutoff
+loop in the approved attempt supervisor (recommended), or add one separate
+authority process per attempt. C12 grouping, C10 semantics and C1–C15 stay settled.
+Proposal/tradeoffs: todo-design-decisions.md. Continue independent approved work.
 
 ## Earlier validated local outcomes
 

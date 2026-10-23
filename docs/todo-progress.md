@@ -3,6 +3,17 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 native supervisor diagnostics outcome: root `panes supervisor ATTEMPT`
+now observes bounded private owner metadata without global state/initialization,
+controls or work permission. Actual root-namespace CLI survives creator death/
+FIFO global state; malformed/private/control/FD/timeout cases prove their intended
+stages. Full native races/resources core299.869s/CLI28.567s and build/vet pass.
+Final exact quoted guidance gets fresh actual CLI/creator/help repeats and full
+affected CLI14.678s after separately reviewed focused completion. State/failure
+review and retained fixture/notice-race corrections are in
+terminal-supervisor-observation.md. No unchanged web/browser rerun or new guest/
+upload/deployment; timed C12/R2/C3/C9 remain open and main count stays11/38.
+
 October22 recording-isolation outcome: a real held quota flock no longer stalls
 another attempt's existing terminal in the same coordinator. The recorder retains
 only storage/budget/IDs; nonblocking attempt-flock waits precede a16-transaction
