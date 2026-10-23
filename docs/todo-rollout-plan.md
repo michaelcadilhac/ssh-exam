@@ -83,6 +83,14 @@ old grantless path; keep admission closed and repair forward unless compatibilit
 is positively established. Never restore older AVAILABLE grants over consumption,
 clear holds or shorten original intervals to make a downgrade work.
 
+The cleanup-alert disposition correction has no schema/native/client migration.
+Install only in a separately authorized drained gateway rollout with the matched
+verified-cancellation contract above. Preserve native error history, alert audit,
+episode resolution, pending cancellations and SMTP outcomes. Older code restores
+the historical-error false alert and can hide recurrence; never restore an older
+outbox snapshot over sent/resolved history to force a rollback. It grants no access
+and does not replace the critical monitoring/freeze work. No service action occurs.
+
 The approved C10 private-arbiter refactor has no live caller, enabled mode,
 configuration or durable-state migration. It is not independently deployable as
 the completed monitoring fix. Future enablement requires matched root actor,

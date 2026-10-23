@@ -39,6 +39,14 @@ Host-key diagnostics identify student/exam, observed time, reported host and saf
 trusted-key verification steps without requesting credentials or recommending a
 pin bypass. These notification improvements do not change enforcement.
 
+The October23 local cleanup-disposition correction keeps retained native errors
+as history. Exact signed cleanup-complete plus NORMAL restoration resolves the
+episode and cancels unsent mail/reminders; it does not open a new failure solely
+because old errors remain. Missing cleanup or pending restoration stays actionable,
+and genuine recurrence opens a new episode even with the same error text.
+CLI/web alert metadata uses the same disposition. Evidence and qualification:
+preflight-cleanup-alert-disposition.md. No production change or access release.
+
 Every accepted review request updates the dashboard and records an audit entry.
 Each distinct trimmed message emails once per interruption generation. Duplicate
 clicks, reloads and retries retain useful requests without another email; changed

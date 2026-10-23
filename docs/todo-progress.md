@@ -2423,8 +2423,19 @@ with13 focused corrections, native actual transport retry, build/static checks.
 Full baseline134pass/11fixture failures and corrected evidence remain in
 sandbox-grants.md. No installed role or production state changes. Main TODO stays
 11/38 because broader saved-source and retention investigations remain open.
-Next independent investigation: historical cleanup errors after positive success
-and accurate alert disposition; C16/C18 remain pending decisions.
+Follow-up: historical cleanup errors after positive success below;
+C16/C18 remain pending decisions.
+
+## Cleanup error history and current alert disposition (October23, local)
+
+Signed cancellation success with retained errors no longer opens a false current
+failure; positive cleanup/NORMAL restores accurate resolved/cancelled status in
+shared web/root alert inspection. Unresolved cleanup/restoration still alerts;
+genuine recurrence with the same text reopens. Preserve audit, holds and clocks.
+Two regressions RED1.09s;36 focused callback/SMTP/alert checks pass21.15s, then
+495 app tests/93files pass244.78s. Server build/typecheck/format pass. Native/client
+artifacts are unchanged from f8738d2 and were not unnecessarily requalified.
+Evidence: preflight-cleanup-alert-disposition.md. No production change.
 
 ## Proposed rollout boundary
 

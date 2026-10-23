@@ -542,8 +542,13 @@ export class Lifecycle {
         )
         .run(remote.ended || now(), remote.reason || null, id);
       this.resolvePreflightNotifications(id);
-      // CANCELLED_BEFORE_START is committed before native cleanup completes.
-      // A signed error report is a real failure, unlike a missing SSH reply.
+      // Native errors retain historical retries. Only positive cleanup plus
+      // NORMAL restoration resolves the episode; errors alone cannot establish
+      // a current failure after that proof, and missing proof is not success.
+      const cleanupConfirmed =
+        remote.cancellation_cleanup_complete === true &&
+        remote.policy_state === "NORMAL";
+      if (cleanupConfirmed) this.alerts.resolve(id, "preflight-agent-error");
       const errors = Array.isArray(remote.errors)
         ? remote.errors
             .filter((error: unknown) => typeof error === "string")
@@ -565,6 +570,8 @@ export class Lifecycle {
           id,
           errorDetail,
         );
+      }
+      if (errors.length && !cleanupConfirmed)
         this.notifyAttempt(
           this.store.attempt(id),
           "preflight-agent-error",
@@ -576,16 +583,11 @@ export class Lifecycle {
             "",
             "The class agent reported errors while cleaning up this unstarted preflight:",
             ...errors.map((error: string) => `- ${JSON.stringify(error)}`),
-            "Inspect the current class-server attempt and account policy. The retained errors may include earlier cleanup retries.",
+            "The agent has not confirmed both completed cleanup and NORMAL account restoration. Inspect the current class-server attempt and policy; retained errors may include earlier retries.",
           ].join("\n"),
           errorDetail,
         );
-      }
-      if (
-        a.grant_id &&
-        remote.cancellation_cleanup_complete === true &&
-        remote.policy_state === "NORMAL"
-      )
+      if (a.grant_id && cleanupConfirmed)
         this.store.db.transaction(() =>
           new AttemptGrants(this.store, this.agent.id).retire(
             this.store.attempt(id),

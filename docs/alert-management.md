@@ -72,6 +72,13 @@ generation changed, interruption resumed or preflight ceased to be unstarted.
 Mail already handed to SMTP cannot be recalled. Cancellation is audited and
 does not pretend that the underlying incident was repaired by sending a message.
 
+Native preflight cleanup errors are retained history. Only authenticated positive
+cleanup-complete AND NORMAL account restoration resolves that error episode;
+CLI/web show its resolved/cancelled state. Missing proof or pending restoration
+stays actionable. A new genuine failure after resolution opens a new episode even
+with identical retained error text. Local verification and limits:
+preflight-cleanup-alert-disposition.md. No access/clock/production change.
+
 ## Durability and migration
 
 Migration 015 adds reminder linkage and a successful browser-intent ledger plus

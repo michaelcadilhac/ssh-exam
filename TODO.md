@@ -974,6 +974,13 @@ the approval is not a production change or a completed investigation.
   diagnostics state what is unknown and give safe next steps. A reported secured
   copy is not called gateway-verified before manifest validation; reasons are
   quoted. Complete CLI management remains a separate open item above.
+  October23 local follow-up fixes retained cleanup errors being treated as a new
+  current failure after verified cleanup/NORMAL restoration, and unresolved
+  episodes surviving success. Historical audit remains; missing proof/restoration
+  still alerts and genuine recurrence reopens. Two signed HTTP regressions RED,
+  all36 focused alert/SMTP checks and495 app tests pass with server build/types.
+  Native/client artifacts remain unchanged from the qualified C14 milestone.
+  See docs/preflight-cleanup-alert-disposition.md. Not deployed.
   In particular, “Collection requires recovery” still uses only an attempt UUID
   and raw errors. Include student, exam, attempt, event time with timezone,
   confirmed cause, collection/protection status, account restriction status and

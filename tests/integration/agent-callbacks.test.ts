@@ -198,6 +198,170 @@ it("keeps pending native preflight checks unstarted and cancellation final witho
   }
 });
 
+it.each([
+  [true, "NORMAL", false],
+  [false, "NORMAL", true],
+  [true, "RESTORE_PENDING", true],
+  [undefined, "NORMAL", true],
+] as const)(
+  "signed cancellation alert follows positive cleanup/restoration (%s/%s)",
+  async (cleanup, policy, actionable) => {
+    const t = await setup();
+    try {
+      const id = randomUUID();
+      t.current()
+        .store.db.prepare(
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,preflight_started_at,access_state) VALUES(?,'e','bob',1002,'PREPARING','{}',?,'HELD')",
+        )
+        .run(id, Date.now());
+      const remote = {
+        id,
+        exam: "e",
+        username: "bob",
+        uid: 1002,
+        state: "CANCELLED_BEFORE_START",
+        start: 0,
+        deadline: 0,
+        original_deadline: 0,
+        protected: false,
+        access_state: "HELD",
+        policy_state: policy,
+        cancellation_cleanup_complete: cleanup,
+        errors: ["Earlier synthetic cleanup failure"],
+      };
+      expect(
+        (await t.post(1, { attempt: remote, manifest: undefined })).statusCode,
+      ).toBe(200);
+      const episodes = () =>
+        t
+          .current()
+          .store.db.prepare(
+            "SELECT e.id,e.resolved,o.status FROM alert_episodes e JOIN outbox o ON o.id=e.outbox WHERE e.attempt=? AND e.event='preflight-agent-error'",
+          )
+          .all(id);
+      expect(episodes()).toHaveLength(actionable ? 1 : 0);
+      expect(
+        t
+          .current()
+          .store.db.prepare(
+            "SELECT detail FROM audit WHERE action='preflight-cleanup-agent-error' AND target=?",
+          )
+          .all(id),
+      ).toEqual([{ detail: JSON.stringify(remote.errors) }]);
+      expect(t.current().store.attempt(id)).toMatchObject({
+        state: "CANCELLED_BEFORE_START",
+        start: null,
+        deadline: null,
+        access_state: "HELD",
+      });
+      await t.restart();
+      expect(
+        (await t.post(2, { attempt: remote, manifest: undefined })).statusCode,
+      ).toBe(200);
+      expect(episodes()).toHaveLength(actionable ? 1 : 0);
+    } finally {
+      await t.close();
+    }
+  },
+);
+
+it("signed cleanup success resolves existing failure and genuine recurrence reopens through admin alert status", async () => {
+  const t = await setup();
+  try {
+    const id = randomUUID();
+    t.current()
+      .store.db.prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,preflight_started_at,access_state) VALUES(?,'e','bob',1002,'PREPARING','{}',?,'HELD')",
+      )
+      .run(id, Date.now());
+    const remote = {
+      id,
+      exam: "e",
+      username: "bob",
+      uid: 1002,
+      state: "CANCELLED_BEFORE_START",
+      start: 0,
+      deadline: 0,
+      original_deadline: 0,
+      protected: false,
+      access_state: "HELD",
+      policy_state: "RESTORE_PENDING",
+      cancellation_cleanup_complete: true,
+      errors: ["Earlier synthetic restoration failure"],
+    };
+    const post = async (sequence: number) =>
+      expect(
+        (await t.post(sequence, { attempt: remote, manifest: undefined }))
+          .statusCode,
+      ).toBe(200);
+    const rows = () =>
+      t
+        .current()
+        .store.db.prepare(
+          "SELECT e.id,e.resolved,e.outbox,o.status FROM alert_episodes e JOIN outbox o ON o.id=e.outbox WHERE e.attempt=? AND e.event='preflight-agent-error' ORDER BY e.rowid",
+        )
+        .all(id) as any[];
+    await post(1);
+    const [opened] = rows();
+    expect(opened).toMatchObject({ resolved: null, status: "pending" });
+    remote.policy_state = "NORMAL";
+    await post(2);
+    expect(rows()).toEqual([
+      { ...opened, resolved: expect.any(Number), status: "cancelled" },
+    ]);
+    const status = async (outbox: string) => {
+      const session = t.current().store.session("admin", "instructor", null);
+      const reply = await t.current().app.inject({
+        method: "GET",
+        url: `/api/admin/notifications/${outbox}`,
+        headers: { cookie: `session=${session.token}` },
+      });
+      expect(reply.statusCode, reply.body).toBe(200);
+      return reply.json();
+    };
+    expect(await status(opened.outbox)).toMatchObject({
+      status: "cancelled",
+      episode: { resolved: expect.any(Number) },
+    });
+    await t.restart();
+    await post(3);
+    expect(rows()).toHaveLength(1);
+    remote.policy_state = "RESTORE_PENDING";
+    await post(4);
+    const reopened = rows();
+    expect(reopened).toHaveLength(2);
+    expect(reopened[1]).toMatchObject({ resolved: null, status: "pending" });
+    expect(await status(reopened[1].outbox)).toMatchObject({
+      status: "pending",
+      episode: { resolved: null },
+    });
+    await post(5);
+    expect(rows()).toHaveLength(2);
+    remote.policy_state = "NORMAL";
+    await post(6);
+    expect(
+      rows().every(
+        (row) => row.resolved !== null && row.status === "cancelled",
+      ),
+    ).toBe(true);
+    expect(
+      t
+        .current()
+        .store.db.prepare(
+          "SELECT count(*) AS n FROM audit WHERE action='preflight-cleanup-agent-error' AND target=?",
+        )
+        .get(id),
+    ).toEqual({ n: 1 });
+    expect(t.current().store.attempt(id)).toMatchObject({
+      start: null,
+      deadline: null,
+      access_state: "HELD",
+    });
+  } finally {
+    await t.close();
+  }
+});
+
 it("accepts signed deadline completion without a browser while refusing archive transfers", async () => {
   const t = await setup();
   try {
