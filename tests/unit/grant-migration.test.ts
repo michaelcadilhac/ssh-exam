@@ -123,12 +123,18 @@ it.each([false, true])(
         db = store.db;
         expect(db.pragma("foreign_key_check")).toEqual([]);
         expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
-        const { grant_kind, grant_issued_order, grant_initial, ...kept } =
-          store.attempt(attempt);
+        const {
+          grant_kind,
+          grant_issued_order,
+          grant_initial,
+          grant_work,
+          ...kept
+        } = store.attempt(attempt);
         expect(kept).toEqual(old);
         expect(grant_kind).toBeNull();
         expect(grant_issued_order).toBeNull();
         expect(grant_initial).toBeNull();
+        expect(grant_work).toBeNull();
         expect(
           db.prepare("SELECT rowid FROM attempt_grants WHERE id=?").get(grant),
         ).toEqual({ rowid: 42 });

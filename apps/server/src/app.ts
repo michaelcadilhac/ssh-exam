@@ -1013,6 +1013,14 @@ export async function createApp(
       throw Error(
         "Class server lacks ordered grant authority/type support; verify matching native roles before preflight. No grant or clock consumed.",
       );
+    if (
+      initialGrant &&
+      grants.binding(initialGrant).work &&
+      !h.capabilities?.includes("independent-workspace-grants-v1")
+    )
+      throw Error(
+        "Class server lacks independent grant workspace enforcement; verify matching native roles before preflight. No account, grant or clock consumed.",
+      );
     if (initialGrant && !h.capabilities?.includes("unified-initial-grants-v1"))
       throw Error(
         "Class server requires matching grant-aware preparation and fresh outbound Begin verification; no grant or clock consumed. Inspect examctl web grants show GRANT and update matching roles.",
@@ -1162,7 +1170,7 @@ export async function createApp(
       if (!previous)
         store.db
           .prepare(
-            "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at,recovery_preflight,grant_id,grant_revision,grant_hash,grant_kind,grant_issued_order,grant_initial) VALUES(?,?,?,?,'PREPARING',?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at,recovery_preflight,grant_id,grant_revision,grant_hash,grant_kind,grant_issued_order,grant_initial,grant_work) VALUES(?,?,?,?,'PREPARING',?,?,?,?,?,?,?,?,?,?,?,?)",
           )
           .run(
             id,
@@ -1182,6 +1190,9 @@ export async function createApp(
               : null,
             initialGrant?.issuance_order ?? null,
             initialGrant?.initial_grant ?? null,
+            initialGrant && grants.binding(initialGrant).work
+              ? JSON.stringify(initialGrant.work)
+              : null,
           );
       else
         store.db
@@ -1270,6 +1281,7 @@ export async function createApp(
         throw Error(
           "Staged recovery lost its exact grant binding; no Begin is authorized; preserve saved work and inspect matching native roles",
         );
+      if (expectedGrant?.work) grants.accept(staged, store.attempt(id));
     }
     return {
       id,

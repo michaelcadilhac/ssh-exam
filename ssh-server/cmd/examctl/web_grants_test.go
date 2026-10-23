@@ -28,6 +28,9 @@ func TestGrantCLIHelpAndSyntaxBeforeAuthority(t *testing.T) {
 		{"web", "grants", "issue-confirm", id, "--revision", "1"},
 		{"--config", "/missing", "web", "grants", "issue-preview", "exam", "student", "--definition-revision", "bad"},
 		{"web", "grants", "issue-show", id, "--revision", strings.Repeat("a", 64)},
+		{"web", "grants", "revise", id, "--revision", "1", "--reason", "Explicit invalid source", "--work", "empty", "--work-template", "v1"},
+		{"web", "grants", "revise", id, "--revision", "1", "--reason", "Explicit invalid source", "--work", "template", "--work-template", "v1", "--work-template-version", "latest"},
+		{"web", "grants", "revoke", id, "--revision", "1", "--reason", "Explicit revocation only", "--work", "empty"},
 	} {
 		output, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(output, "grants help") || strings.Contains(output, "Load root") {

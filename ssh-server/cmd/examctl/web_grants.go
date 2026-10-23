@@ -42,7 +42,9 @@ confirm/cancel for its reviewed result. Its finite window may lie outside exam
 defaults; current effective webcam is preserved unless explicitly overridden.
 Protected history, original deadlines and account holds remain authoritative;
 neither metadata confirmation nor another grant reopens/overrides an old attempt.
-Independent empty/saved-work sources and sandbox grants remain unfinished.
+Additional starters: --work empty, or --work template --work-template NAME
+--work-template-version HASH. Omitted work uses the materials template at issuance.
+Saved-work sources and sandbox grants remain unfinished.
 Inspect templates verify/sync, then web exams show/update before new enrollment.
 
 Grant settings are saved at issuance. Later exam/roster default edits do NOT
@@ -53,7 +55,10 @@ Settings: --duration-minutes 1..360 OR --duration-seconds 60..21600,
 --earliest RFC3339, --latest RFC3339 (finite Begin window, not latest finish),
 --template NAME, --template-version HASH (exact attested source, never legacy),
 --collection-file-mib N, --collection-total-mib N (total >= file).
-Only named fields change; current clocks/holds/protected submissions never do.
+Only named fields change; settings-only revisions preserve the saved starter.
+Use the same --work flags to explicitly revise an unused source independently
+of materials. Exact templates must be attested; there is no mutable fallback.
+Current clocks/holds/protected submissions never change.
 First verified preparation binds the Unix UID in retained claim history. A UID
 change, even after cancellation, needs reviewed NEW authorization, not rebinding.
 
@@ -121,6 +126,7 @@ func webGrantsMain(args []string) int {
 	version := flags.String("template-version", "", "exact source hash")
 	file := flags.Int64("collection-file-mib", 0, "logical per-file MiB")
 	total := flags.Int64("collection-total-mib", 0, "logical total MiB")
+	workFlags := registerGrantWork(flags)
 	usage := func(message string) int { fmt.Fprintln(os.Stderr, message+"; run examctl web grants help"); return 2 }
 	if err := flags.Parse(ordered(args)); err != nil {
 		return usage("invalid grant flags")
@@ -182,6 +188,14 @@ func webGrantsMain(args []string) int {
 			break
 		}
 		changes := map[string]any{}
+		allowed["work"], allowed["work-template"], allowed["work-template-version"] = true, true, true
+		work, err := workFlags.selection(seen)
+		if err != nil {
+			return usage(err.Error())
+		}
+		if work != nil {
+			b["work"] = work
+		}
 		for _, name := range []string{"duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "template", "template-version", "collection-file-mib", "collection-total-mib"} {
 			allowed[name] = true
 		}
@@ -239,7 +253,7 @@ func webGrantsMain(args []string) int {
 			}
 			changes["collection_total_mib"] = *total
 		}
-		if len(changes) == 0 {
+		if len(changes) == 0 && work == nil {
 			return usage("choose explicit grant settings to revise")
 		}
 		b["changes"] = changes
@@ -351,7 +365,7 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 		if (g.Issuance != "ENROLLMENT" && g.Issuance != "REVIEWED_NEW" && g.Issuance != "ADDITIONAL_TEMPLATE") || g.IssuanceOrder < 1 {
 			return fail
 		}
-		if g.Agent != agent || g.ID == "" || g.Revision < 1 || g.Exam == "" || g.Username == "" || (scope.Exam != "" && g.Exam != scope.Exam) || (scope.Username != "" && g.Username != scope.Username) || g.Settings.ID != g.Exam || g.Settings.TemplateVersion == "" || g.Work.Kind != "template" || g.Work.Name != g.Settings.Template || g.Work.Hash != g.Settings.TemplateVersion || len(g.Hash) != 64 || g.Settings.Duration < 60 || g.Settings.Latest <= g.Settings.Earliest || len(g.Claims) > 100 || len(g.History) > 50 {
+		if g.Agent != agent || g.ID == "" || g.Revision < 1 || g.Exam == "" || g.Username == "" || (scope.Exam != "" && g.Exam != scope.Exam) || (scope.Username != "" && g.Username != scope.Username) || g.Settings.ID != g.Exam || g.Settings.TemplateVersion == "" || !validGrantWorkResult(g.Work) || len(g.Hash) != 64 || g.Settings.Duration < 60 || g.Settings.Latest <= g.Settings.Earliest || len(g.Claims) > 100 || len(g.History) > 50 {
 			return fail
 		}
 		switch g.Status {

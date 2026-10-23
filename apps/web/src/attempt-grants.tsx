@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, chicago } from "./api.js";
 import { Modal } from "./modal.js";
+import { GrantWorkspaceFields, workspaceChoice } from "./grant-workspace.js";
 
 const fields = [
   ["name", "Saved exam name"],
@@ -8,7 +9,7 @@ const fields = [
   ["earliest", "Earliest Begin (RFC3339 with zone)"],
   ["latest", "Latest Begin (RFC3339 with zone)"],
   ["terminals", "Terminal limit"],
-  ["template", "Materials/starter template"],
+  ["template", "Materials template"],
   ["template_version", "Exact attested template hash"],
   ["collection_file_mib", "Per-file limit MiB"],
   ["collection_total_mib", "Total limit MiB"],
@@ -56,6 +57,7 @@ export function AttemptGrantsDialog({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [draft, setDraft] = useState<Record<string, string>>({}),
+    [work, setWork] = useState<any>({ kind: "empty" }),
     [reason, setReason] = useState(""),
     [pending, setPending] = useState<{ operation: string; body: any } | null>(
       null,
@@ -103,6 +105,7 @@ export function AttemptGrantsDialog({
     setNext(page.next);
     selectedGrant.current = current?.id ?? null;
     setGrant(current);
+    setWork(current?.work ?? { kind: "empty" });
     setLoaded(true);
     setError("");
     setPending(null);
@@ -169,7 +172,10 @@ export function AttemptGrantsDialog({
           }
           if ((draft.webcam === "true") !== grant.settings.webcam)
             changes.webcam = draft.webcam === "true";
-          if (!Object.keys(changes).length)
+          if (
+            !Object.keys(changes).length &&
+            JSON.stringify(work) === JSON.stringify(grant.work)
+          )
             throw Error("Choose an explicit setting to revise");
         }
         intent = {
@@ -178,7 +184,16 @@ export function AttemptGrantsDialog({
             revision: grant.revision,
             reason,
             request: crypto.randomUUID(),
-            ...(operation === "revise" ? { changes } : {}),
+            ...(operation === "revise"
+              ? {
+                  changes,
+                  work: workspaceChoice(
+                    work.kind,
+                    work.name ?? "",
+                    work.hash ?? "",
+                  ),
+                }
+              : {}),
           },
         };
         setPending(intent);
@@ -197,6 +212,7 @@ export function AttemptGrantsDialog({
       await onChanged();
       await inspect(new AbortController().signal);
     } catch (e) {
+      if ([400, 403, 404, 409].includes((e as any).status)) setPending(null);
       if (alive.current) setError((e as Error).message);
     } finally {
       if (alive.current) setBusy(false);
@@ -276,6 +292,12 @@ export function AttemptGrantsDialog({
               </li>
             ))}
           </ul>
+          <p style={{ overflowWrap: "anywhere" }}>
+            Saved workspace:{" "}
+            {grant.work.kind === "empty"
+              ? "Empty workspace"
+              : `${grant.work.name} · ${grant.work.hash}`}
+          </p>
           {grant.status === "AVAILABLE" && (
             <form
               onSubmit={(e) => {
@@ -285,6 +307,14 @@ export function AttemptGrantsDialog({
             >
               <fieldset disabled={busy || !!pending}>
                 <legend>Explicit unused-grant revision</legend>
+                <GrantWorkspaceFields
+                  mode={work.kind}
+                  name={work.name ?? ""}
+                  hash={work.hash ?? ""}
+                  onChange={(kind, name, hash) =>
+                    setWork(kind === "empty" ? { kind } : { kind, name, hash })
+                  }
+                />
                 {fields.map(([key, label]) => (
                   <label key={key} style={{ display: "block" }}>
                     {label}

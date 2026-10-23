@@ -449,11 +449,15 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
   await trigger.focus();
   await trigger.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
+    page.getByRole("menuitem", { name: "Attempt grants…", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(
     page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(
+    page.getByRole("menuitem", { name: "Attempt grants…", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
@@ -989,6 +993,7 @@ test("editing an exam focuses an editable field and fits a narrow dialog", async
     name: "Exam settings",
     exact: true,
   });
+  await expect(settings).toBeInViewport();
   await settings.click();
   const dialog = page.getByRole("dialog", {
     name: "Exam settings",

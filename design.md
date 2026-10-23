@@ -2059,6 +2059,17 @@ commands: docs/additional-template-grants.md and docs/additional-grants-cli.md.
 
 ### Approved grant webcam/Begin-window policy (October 21; partial local implementation)
 
+October23 independent workspace workflow extends exact-material grants with
+empty or separately attested template starters. Shared reviewed CLI/web issuance
+and explicit unused source revisions bind the selected work in private staging,
+native durable state and fresh C15 verification;026 retains it immutably in the
+web preparation. Settings-only revisions preserve the saved starter, independently
+of material edits.474 app tests, full native race/resource qualification, actual
+child crash/archive acceptance and39 final rebuilt browser checks pass locally.
+Saved-source retention remains C18 investigation:
+unused web references need a native deletion fence before saved grants are usable.
+See grant-workspace-sources.md. No deployment or source-history mutation occurs.
+
 October23 locally implemented/tested reviewed legacy issuance adds actor-bound fifteen-minute
 reviews, exact current-definition/source selection, per-user effective policies
 and atomic NEW confirmation through matching CLI/web. It labels REVIEWED_NEW

@@ -33,6 +33,13 @@ func (e *Engine) workspaceSource(a *Attempt) (WorkspaceSource, string, error) {
 	if r != nil {
 		return WorkspaceSource{Kind: "saved", Attempt: r.SourceAttempt, Checksum: r.Checksum}, recoveryReferenceHash(r), nil
 	}
+	if a.Grant != nil && a.Grant.Work != nil {
+		if !validGrant(a.Grant) {
+			return WorkspaceSource{}, "", errors.New("invalid grant workspace source; preserve issued authority, no fallback permitted")
+		}
+		w := a.Grant.Work
+		return WorkspaceSource{Kind: w.Kind, Template: w.Name, Version: w.Hash}, "", nil
+	}
 	if !identifier.MatchString(a.Settings.Template) {
 		return WorkspaceSource{}, "", errors.New("versioned workspace template unavailable")
 	}
@@ -110,11 +117,11 @@ func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
 	}
 	if raw, ok := fields["grant"]; ok {
 		var binding map[string]json.RawMessage
-		if json.Unmarshal(raw, &binding) != nil || len(binding) < 3 || len(binding) > 6 || !validGrant(r.Grant) {
+		if json.Unmarshal(raw, &binding) != nil || len(binding) < 3 || len(binding) > 7 || !validGrant(r.Grant) {
 			return nil, errWorkspaceReceiptMetadata
 		}
 		for key := range binding {
-			if key != "id" && key != "revision" && key != "hash" && key != "kind" && key != "issuance_order" && key != "initial_grant" {
+			if key != "id" && key != "revision" && key != "hash" && key != "kind" && key != "issuance_order" && key != "initial_grant" && key != "work" {
 				return nil, errWorkspaceReceiptMetadata
 			}
 		}
@@ -126,6 +133,20 @@ func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
 		}
 		if _, present := binding["initial_grant"]; present && r.Grant.Initial == "" {
 			return nil, errWorkspaceReceiptMetadata
+		}
+		if rawWork, present := binding["work"]; present {
+			var work map[string]json.RawMessage
+			if !validGrantWork(r.Grant.Work) || json.Unmarshal(rawWork, &work) != nil || work == nil {
+				return nil, errWorkspaceReceiptMetadata
+			}
+			if r.Grant.Work.Kind == "empty" && len(work) != 1 || r.Grant.Work.Kind == "template" && len(work) != 3 {
+				return nil, errWorkspaceReceiptMetadata
+			}
+			for key := range work {
+				if key != "kind" && key != "name" && key != "hash" {
+					return nil, errWorkspaceReceiptMetadata
+				}
+			}
 		}
 	}
 	return &r, nil

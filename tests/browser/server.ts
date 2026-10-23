@@ -122,6 +122,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         "exact-template-begin-v1",
         "unified-initial-grants-v1",
         "ordered-template-grants-v1",
+        "independent-workspace-grants-v1",
         "reviewed-initial-grants-v1",
       ],
     };
@@ -194,6 +195,14 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         version: 1,
         attempt: a.id,
         ...(a.grant ? { grant: a.grant } : {}),
+        source:
+          a.grant?.work?.kind === "empty"
+            ? { kind: "empty" }
+            : {
+                kind: "template",
+                template: a.grant?.work?.name ?? a.settings.template,
+                version: a.grant?.work?.hash ?? a.settings.template_version,
+              },
       };
       break;
     case "prepare-account-policy":

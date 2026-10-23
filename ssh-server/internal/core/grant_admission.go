@@ -13,13 +13,24 @@ import (
 	"time"
 )
 
+type GrantWork struct {
+	Kind string `json:"kind"`
+	Name string `json:"name,omitempty"`
+	Hash string `json:"hash,omitempty"`
+}
+
+func validGrantWork(w *GrantWork) bool {
+	return w != nil && ((w.Kind == "empty" && w.Name == "" && w.Hash == "") || (w.Kind == "template" && identifier.MatchString(w.Name) && templateDigest.MatchString(w.Hash)))
+}
+
 type GrantBinding struct {
-	ID       string `json:"id"`
-	Revision int64  `json:"revision"`
-	Hash     string `json:"hash"`
-	Kind     string `json:"kind,omitempty"`
-	Order    int64  `json:"issuance_order,omitempty"`
-	Initial  string `json:"initial_grant,omitempty"`
+	ID       string     `json:"id"`
+	Revision int64      `json:"revision"`
+	Hash     string     `json:"hash"`
+	Kind     string     `json:"kind,omitempty"`
+	Order    int64      `json:"issuance_order,omitempty"`
+	Initial  string     `json:"initial_grant,omitempty"`
+	Work     *GrantWork `json:"work,omitempty"`
 }
 
 func validGrant(g *GrantBinding) bool {
@@ -30,6 +41,9 @@ func validGrant(g *GrantBinding) bool {
 		return false
 	}
 	if g.Initial != "" && (g.Kind != "ADDITIONAL" || !attemptID.MatchString(g.Initial) || g.Initial == g.ID) {
+		return false
+	}
+	if g.Work != nil && !validGrantWork(g.Work) {
 		return false
 	}
 	for _, c := range g.Hash {
@@ -43,7 +57,9 @@ func sameGrant(a, b *GrantBinding) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
-	return *a == *b
+	aa, bb := *a, *b
+	aa.Work, bb.Work = nil, nil
+	return aa == bb && ((a.Work == nil && b.Work == nil) || (a.Work != nil && b.Work != nil && *a.Work == *b.Work))
 }
 func grantBeginSettings(a *Attempt, r Request, grant bool) error {
 	if grant {

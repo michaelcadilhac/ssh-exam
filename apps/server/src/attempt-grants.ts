@@ -10,6 +10,7 @@ import {
   grantRevision,
   grantRevocation,
   grantBeginRequest,
+  grantWorkspace,
 } from "../../../packages/protocol/grants.js";
 import { hash, now, type Store, type Attempt } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
@@ -57,7 +58,7 @@ export class AttemptGrants {
         "Additional grant's original initial authority is inconsistent; preserve grant/attempt history before admission",
       );
     const settings = examSchema.parse(JSON.parse(row.settings)),
-      work = JSON.parse(row.work);
+      work = grantWorkspace.parse(JSON.parse(row.work));
     if (
       !["ENROLLMENT", "REVIEWED_NEW", "ADDITIONAL_TEMPLATE"].includes(
         row.issuance,
@@ -65,9 +66,6 @@ export class AttemptGrants {
       !Number.isSafeInteger(row.issuance_order) ||
       row.issuance_order < 1 ||
       !settings.template_version ||
-      work.kind !== "template" ||
-      work.name !== settings.template ||
-      work.hash !== settings.template_version ||
       hash(JSON.stringify({ settings, work })) !== row.hash
     )
       return conflict(
@@ -97,7 +95,7 @@ export class AttemptGrants {
         .all(row.id),
     };
   }
-  snapshot(input: unknown) {
+  snapshot(input: unknown, selectedWork?: unknown) {
     const settings = examSchema.parse(input);
     if (!settings.template_version)
       return conflict(
@@ -107,11 +105,18 @@ export class AttemptGrants {
       name: settings.template,
       hash: settings.template_version,
     });
-    const work = {
-      kind: "template",
-      name: settings.template,
-      hash: settings.template_version,
-    };
+    const work = grantWorkspace.parse(
+      selectedWork ?? {
+        kind: "template",
+        name: settings.template,
+        hash: settings.template_version,
+      },
+    );
+    if (work.kind === "template")
+      new TemplateCatalog(this.store, this.agent).show({
+        name: work.name,
+        hash: work.hash,
+      });
     return { settings, work, hash: hash(JSON.stringify({ settings, work })) };
   }
   initial(
@@ -197,12 +202,13 @@ export class AttemptGrants {
     username: string,
     actor: string,
     reason: string,
+    work?: unknown,
   ) {
     if (!this.store.db.inTransaction)
       throw Error(
         "Additional issuance requires its reviewed confirmation transaction",
       );
-    const value = this.snapshot(settings),
+    const value = this.snapshot(settings, work),
       exam = value.settings.id;
     if (
       isSandbox(exam) ||
@@ -379,7 +385,7 @@ export class AttemptGrants {
     return this.request(actor, b.request, { id, ...b }, () => {
       const row = this.unused(id, b.revision),
         previous = this.view(row);
-      if (!Object.keys((input as any).changes).length)
+      if (!Object.keys((input as any).changes).length && !b.work)
         return conflict(
           "Choose an explicit grant setting to revise; defaults do not revise issued grants",
         );
@@ -393,11 +399,14 @@ export class AttemptGrants {
           b.changes[k as keyof typeof b.changes],
         ]),
       );
-      const value = this.snapshot({
-          ...previous.settings,
-          ...changes,
-          id: row.exam,
-        }),
+      const value = this.snapshot(
+          {
+            ...previous.settings,
+            ...changes,
+            id: row.exam,
+          },
+          b.work ?? previous.work,
+        ),
         revision = row.revision + 1;
       this.store.db
         .prepare("INSERT INTO grant_revisions VALUES(?,?,?,?,?,?,?,?)")
@@ -472,6 +481,11 @@ export class AttemptGrants {
         : {}),
       issuance_order: grant.issuance_order,
       ...(grant.initial_grant ? { initial_grant: grant.initial_grant } : {}),
+      ...(grant.work.kind === "template" &&
+      grant.work.name === grant.settings.template &&
+      grant.work.hash === grant.settings.template_version
+        ? {}
+        : { work: grant.work }),
     });
   }
   bindingForAttempt(a: Attempt) {
@@ -482,6 +496,9 @@ export class AttemptGrants {
       ...(a.grant_kind ? { kind: a.grant_kind } : {}),
       ...(a.grant_issued_order ? { issuance_order: a.grant_issued_order } : {}),
       ...(a.grant_initial ? { initial_grant: a.grant_initial } : {}),
+      ...(a.grant_work
+        ? { work: grantWorkspace.parse(JSON.parse(a.grant_work)) }
+        : {}),
     });
   }
   claim(id: string, attempt: string, uid: number) {
@@ -679,6 +696,24 @@ export class AttemptGrants {
       return conflict(
         "Native grant settings differ from the immutable issued preparation; preserve original authority before retry",
       );
+    if (expected.work && (remote.workspace || remote.start)) {
+      const source =
+        expected.work.kind === "empty"
+          ? { kind: "empty" }
+          : {
+              kind: "template",
+              template: expected.work.name,
+              version: expected.work.hash,
+            };
+      if (
+        !remote.workspace ||
+        !isDeepStrictEqual(remote.workspace.grant, expected) ||
+        !isDeepStrictEqual(remote.workspace.source, source)
+      )
+        return conflict(
+          "Native workspace receipt differs from the explicit issued source; preserve private work and original authority, no fallback accepted",
+        );
+    }
     if (!remote.start) return;
     const original = remote.original_deadline || remote.deadline;
     if (

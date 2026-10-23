@@ -1057,6 +1057,8 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         new Date(Date.now() + 14400000).toISOString(),
         "--reason",
         "Explicit separate additional template attempts",
+        "--work",
+        "empty",
         "--request",
         randomUUID(),
       ];
@@ -1069,11 +1071,13 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
             username: "old01",
             existing_grants: 1,
             settings: { duration: 5400, webcam: true },
+            work: { kind: "empty" },
           },
           {
             username: "old02",
             existing_grants: 1,
             settings: { duration: 5400, webcam: false },
+            work: { kind: "empty" },
           },
         ],
       });
@@ -1107,6 +1111,26 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         "Explicit unused additional allowance revision",
       ]);
       expect(extraRev.settings.duration).toBe(4500);
+      expect(extraRev.work).toEqual({ kind: "empty" });
+      const sourceRev = await grantsCLI([
+        "revise",
+        extraIssued.issued[1].grant,
+        "--revision",
+        "1",
+        "--work",
+        "template",
+        "--work-template",
+        "v1",
+        "--work-template-version",
+        "a".repeat(64),
+        "--reason",
+        "Explicit independently selected starter",
+      ]);
+      expect(sourceRev.work).toEqual({
+        kind: "template",
+        name: "v1",
+        hash: "a".repeat(64),
+      });
       expect(
         (
           await grantsCLI([

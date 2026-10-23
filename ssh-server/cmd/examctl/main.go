@@ -19,7 +19,7 @@ import (
 func takesValue(arg string) bool {
 	name := strings.TrimLeft(strings.SplitN(arg, "=", 2)[0], "-")
 	switch name {
-	case "definition-revision", "before", "config", "state", "reason", "exam", "username", "output", "request", "limit", "after", "name", "template", "template-version", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib":
+	case "work", "work-template", "work-template-version", "definition-revision", "before", "config", "state", "reason", "exam", "username", "output", "request", "limit", "after", "name", "template", "template-version", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib":
 		return strings.HasPrefix(arg, "-")
 	}
 	return false

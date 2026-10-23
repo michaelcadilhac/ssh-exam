@@ -1,8 +1,9 @@
-# Additional exact-template attempts
+# Additional attempts and workspace sources
 
 Local implementation/qualification only; not deployed. Evidence and privileged
 limits: additional-template-grants.md. These commands do not authorize production
-changes. Independent empty/saved-work initialization and sandbox grants remain
+changes. Empty/separate-template initialization is implemented/tested locally
+(grant-workspace-sources.md). Saved-work initialization and sandbox grants remain
 unfinished.
 
 ## Authorize and review
@@ -39,6 +40,14 @@ Begin, not finish: a late valid Begin still receives the full fixed allowance.
 Later defaults/enrollment edits do not change issued settings. Time starts and
 the grant is consumed only when native Begin durably fixes the original interval.
 Unavailability or refusal before that boundary consumes neither.
+
+Workspace initialization is independent of the exact material template and chosen
+allowance. Omit work to use the materials starter at NEW issuance; choose
+`--work empty`, or `--work template --work-template NAME
+--work-template-version HASH` for a separately attested starter. The same flags
+on unused `revise` explicitly change the source; omitting them preserves it,
+including when materials change. No mutable/latest fallback or saved-source
+grant is supported yet. Matching web forms show the same choices and hashes.
 
 ## Inspect, revise and revoke the exact grant
 
@@ -77,7 +86,7 @@ restoration is not implemented; the manual saved-review workflow is tested.
 
 Students choose an authorization on the waiting page when several are usable.
 An existing preparation retains its bound choice. A new attempt gets a separate
-UUID/private exact-template workspace; previous protected work/history and original
+UUID/private workspace from its saved initializer; previous protected work/history and original
 timing remain intact. The old attempt must have confirmed protected collection
 and normal access release. Web/native account restrictions still refuse new work
 while an original/current interval or recovery hold remains authoritative.
@@ -101,3 +110,7 @@ are unsupported. Drain preparing/pending/active work and independent practice
 owners, including all three temporary/canonical agent owners, before any future
 installation or consolidation. Keep admission closed and repair forward when a
 compatible rollback is unavailable. The unexecuted plan is todo-rollout-plan.md.
+
+Independent sources additionally require026 and independent-workspace-grants-v1,
+including the native Work field/private receipts in every writer/backup. Older
+default-source bindings stay readable; do not mix source-blind native writers.

@@ -523,3 +523,21 @@ interval only at actual Begin. Distinct signed reconcile/prepare/Begin purposes,
 monotonic revision provenance and exact source hashes must refuse stale/mixed
 roles and missing authority instead of falling back to starter files. This is a
 bounded legacy recovery repair, not unified-grant issuance or deployment.
+
+## Saved-source availability and retention (C18 awaiting decision)
+
+Unused gateway saved-work grants are invisible to existing offline native source
+deletion. Confirmed source inspection: native checkSubmissionDependencies covers
+legacy recovery grants/unfinished restored attempts; Agent.call needs student SSH,
+and outbound callback delivery does not fetch commands. Saved-source issuance
+cannot safely be enabled on that basis alone.
+
+Recommend durable class-server retention confirmation before such a grant becomes
+available, with honest pending/inspect/cancel/retry and no account reservation or
+clock. This requires class participation before use, but offline source deletion
+can retain durable pins. Alternative: allow offline issuance from retained web
+evidence, requiring fresh gateway authorization and durable race/crash fencing
+for every native deletion; web outage then blocks deletion. Existing authenticated
+agent identities remain in use; neither option weakens protection/history/holds.
+The instructor has been asked asynchronously. Evidence and next integration
+boundary: grant-workspace-sources.md. Independent empty/template sources continue.

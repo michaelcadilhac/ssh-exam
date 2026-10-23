@@ -52,6 +52,7 @@ export interface Attempt {
   grant_kind: string | null;
   grant_issued_order: number | null;
   grant_initial: string | null;
+  grant_work: string | null;
 }
 export class Store {
   db: Database.Database;
@@ -184,6 +185,10 @@ export class Store {
         this.db.pragma("foreign_keys = ON");
       }
     }
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=26").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/026.sql", "utf8")),
+      )();
   }
   audit(actor: string, action: string, target: string, detail = "") {
     this.db

@@ -60,6 +60,7 @@ export class GrantIssuance {
     b: z.infer<typeof grantIssuePreview> & {
       duration?: number;
       webcam?: boolean;
+      work?: z.infer<typeof grantAdditionalPreview>["work"];
     },
     actor: string,
     additional: boolean,
@@ -87,20 +88,23 @@ export class GrantIssuance {
           );
         const rows = [...b.usernames].sort().map((username) => {
           const enrollment = this.eligible(b.exam, username, additional);
-          const value = this.grants.snapshot({
-            ...definition.exam,
-            earliest: b.earliest,
-            latest: b.latest,
-            duration: additional
-              ? b.duration!
-              : (enrollment.duration ?? definition.exam.duration),
-            webcam:
-              additional && b.webcam !== undefined
-                ? b.webcam
-                : enrollment.webcam === null
-                  ? definition.exam.webcam
-                  : !!enrollment.webcam,
-          });
+          const value = this.grants.snapshot(
+            {
+              ...definition.exam,
+              earliest: b.earliest,
+              latest: b.latest,
+              duration: additional
+                ? b.duration!
+                : (enrollment.duration ?? definition.exam.duration),
+              webcam:
+                additional && b.webcam !== undefined
+                  ? b.webcam
+                  : enrollment.webcam === null
+                    ? definition.exam.webcam
+                    : !!enrollment.webcam,
+            },
+            b.work,
+          );
           return {
             username,
             enrollment: JSON.stringify(enrollment),
@@ -273,6 +277,7 @@ export class GrantIssuance {
                   r.username,
                   actor,
                   saved.reason,
+                  r.work,
                 )
               : this.grants.reviewedInitial(
                   r.settings,

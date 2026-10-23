@@ -481,6 +481,21 @@ function App() {
                       </p>
                     ) : (
                       <>
+                        {info.selected_grant && (
+                          <p style={{ overflowWrap: "anywhere" }}>
+                            Workspace:{" "}
+                            {(() => {
+                              const work = info.grants.find(
+                                (g: any) => g.id === info.selected_grant,
+                              )?.work;
+                              return work?.kind === "empty"
+                                ? "Empty workspace"
+                                : work
+                                  ? `${work.name} · ${work.hash}`
+                                  : "Inspect saved authorization";
+                            })()}
+                          </p>
+                        )}
                         {isSandbox(info.exam.id) &&
                         !hasSandboxWindow(info.exam) ? (
                           <p>

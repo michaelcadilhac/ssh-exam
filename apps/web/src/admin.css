@@ -115,8 +115,11 @@
 }
 .admin-exam-heading > div:last-child {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  max-width: 620px;
 }
 .admin-roster {
   border: 1px solid #2b3c52;

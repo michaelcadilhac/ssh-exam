@@ -2396,6 +2396,20 @@ additional-template-grants.md. Operator workflows: additional-grants-cli.md. No 
 deployment. General empty/saved-work and sandbox issuance/source retention remain
 open; continue their integrated investigation/implementation. C16 is independent.
 
+## October23: integrated empty and independent exact-template starters
+
+Reviewed CLI/web additional issuance and explicit unused source revision now
+select empty or a separate attested starter independently of exact materials and
+allowance. Student selection, immutable026 binding, signed staging/C15 Begin and
+protected archive collection preserve the chosen source and original timing.
+Actual worker SIGKILL/retry preserves private work; missing/tampered sources
+refuse before time. Confirmed source refusals permit web correction, uncertain
+outcomes retain original intent, and narrow admin actions now wrap correctly.
+474 app/full native race-resource/39 final rebuilt browser checks and matching
+build/static checks pass. Detailed evidence, initial failures/state review and
+privileged limits: grant-workspace-sources.md. Nothing deployed. Saved sources
+still need C18 retention authority; C16 remains open. Continue independent C14.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are

@@ -47,6 +47,9 @@ test("additional grants outside expired defaults support reviewed recovery, mult
       .getByLabel("Additional attempt students", { exact: true })
       .fill("extra01");
     await dialog.getByLabel("Additional allowance seconds").fill(seconds);
+    await dialog
+      .getByRole("combobox", { name: "Workspace initialization", exact: true })
+      .selectOption("empty");
     await dialog.getByLabel("Earliest Begin (RFC3339 with zone)").fill(from);
     await dialog.getByLabel("Latest Begin (RFC3339 with zone)").fill(until);
     await dialog
@@ -62,6 +65,7 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   };
   let dialog = await draft("5400");
   await expect(dialog).toContainText("90 minutes · Webcam not required");
+  await expect(dialog).toContainText("Workspace: Empty workspace");
   const reviewID = await dialog.getByLabel("Saved review ID").inputValue();
   let lost = 0;
   await page.route(
@@ -132,12 +136,35 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   await expect(grants).toContainText("Saved allowance: 75 minutes");
   await grants.getByLabel("Allowance seconds", { exact: true }).fill("3600");
   await grants
+    .getByRole("combobox", { name: "Workspace initialization", exact: true })
+    .selectOption("template");
+  await grants.getByLabel("Starter template name", { exact: true }).fill("v1");
+  await grants
+    .getByLabel("Starter template version", { exact: true })
+    .fill("a".repeat(64));
+  await grants
     .getByLabel("Reason", { exact: true })
     .fill("Explicit revision of this selected unused additional grant");
   await grants
     .getByRole("button", { name: "Revise unused grant", exact: true })
     .click();
+  await expect(grants.getByRole("alert")).toContainText(
+    "No authenticated source attestation",
+  );
+  await expect(
+    grants.getByLabel("Starter template name", { exact: true }),
+  ).toBeEnabled();
+  await expect(grants).toContainText("Saved allowance: 75 minutes");
+  await grants
+    .getByLabel("Starter template name", { exact: true })
+    .fill("sample-exam");
+  await grants
+    .getByRole("button", { name: "Revise unused grant", exact: true })
+    .click();
   await expect(grants).toContainText("Saved allowance: 60 minutes");
+  await expect(grants).toContainText(
+    `Saved workspace: sample-exam · ${"a".repeat(64)}`,
+  );
   await expect(
     grants.getByRole("combobox", { name: "Saved grant", exact: true }),
   ).toHaveValue(other.id);
@@ -201,6 +228,7 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     deadline: null,
     grant_id: ninety,
     grant_kind: "ADDITIONAL",
+    grant_work: '{"kind":"empty"}',
   });
   await ready(page);
   await page.getByRole("button", { name: "Begin exam", exact: true }).click();

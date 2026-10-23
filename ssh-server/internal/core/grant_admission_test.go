@@ -237,6 +237,170 @@ func TestInitialGrantSignedStageFreshTLSBeginAndRestart(t *testing.T) {
 	}
 }
 
+func TestExplicitGrantWorkspaceSignedStageTLSBeginAndRestart(t *testing.T) {
+	for _, kind := range []string{"empty", "template", "missing"} {
+		t.Run(kind, func(t *testing.T) {
+			e, key, r := initialGrantUnpreparedFixture(t)
+			r.Grant.Kind, r.Grant.Order = "ADDITIONAL", 2
+			r.Grant.Work = &GrantWork{Kind: "empty"}
+			if kind != "empty" {
+				source := templateSourceFixture(t)
+				if err := os.WriteFile(filepath.Join(source, "work", "main.c"), []byte("INDEPENDENT STARTER\n"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				metadata, err := inspectTemplateSource(source, sourceTestBounds(), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				f := templateFixture{state: e.Config.State, source: source, hash: metadata.Hash}
+				install := templateInstallCommand(f)
+				install.Name = "starter"
+				if kind != "missing" {
+					if _, err := templateRun(t, f, install, ""); err != nil {
+						t.Fatal(err)
+					}
+				}
+				r.Grant.Work = &GrantWork{Kind: "template", Name: "starter", Hash: metadata.Hash}
+			}
+			cmd := preparationCommand(r)
+			cmd.Op = "prepare-additional-grant-attempt"
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
+				t.Fatal(err)
+			}
+			cmd.Op, cmd.Nonce = "prepare-workspace", Token()
+			// Cross the real production-framed OS process boundary with the new
+			// source binding. Only privileged systemd/writer setup is injected.
+			childCollections(e, "success")
+			e.workerTimeout = 10 * time.Second
+			if kind == "template" {
+				childCollections(e, "workspace-kill-private")
+				e.workerTimeout = 10 * time.Second
+				if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil {
+					t.Fatal("synthetic child death after private publication was not observed")
+				}
+				assertUnstartedWorkspace(t, e, r.ID)
+				receipt, err := readWorkspaceReceipt(e.workspaceBase(r.ID))
+				if err != nil || !sameGrant(receipt.Grant, r.Grant) {
+					t.Fatal("child death lost frozen private source receipt", err)
+				}
+				childCollections(e, "success")
+				e.workerTimeout = 10 * time.Second
+				cmd.Nonce = Token()
+			}
+			_, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+			if kind == "missing" {
+				if err == nil {
+					t.Fatal("missing independent source silently fell back to materials starter")
+				}
+				assertUnstartedWorkspace(t, e, r.ID)
+				if _, err := os.Lstat(filepath.Join(e.workspaceBase(r.ID), "work")); !os.IsNotExist(err) {
+					t.Fatal("failed staging published writable work", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			a := assertUnstartedWorkspace(t, e, r.ID)
+			if a.Workspace == nil || !sameGrant(a.Workspace.Grant, r.Grant) || a.Workspace.Source.Kind != kind || a.Settings.Template != r.Settings.Template {
+				t.Fatal("explicit source/independent materials lost", a.Workspace)
+			}
+			encoded, err := json.Marshal(a.Workspace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, bad := range []any{nil, map[string]any{"kind": "empty", "name": nil}, map[string]any{"kind": "saved"}, map[string]any{"kind": "template", "name": "starter", "hash": "bad"}, map[string]any{"kind": "empty", "private": "sentinel"}} {
+				var receipt map[string]any
+				if err := json.Unmarshal(encoded, &receipt); err != nil {
+					t.Fatal(err)
+				}
+				receipt["grant"].(map[string]any)["work"] = bad
+				invalid, err := json.Marshal(receipt)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := decodeWorkspaceReceipt(invalid); err == nil {
+					t.Fatal("unsafe/null explicit source receipt accepted", bad)
+				}
+			}
+			entries, err := os.ReadDir(filepath.Join(e.workspaceBase(r.ID), "workspace-ready", "work"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if kind == "empty" && len(entries) != 0 {
+				t.Fatal("empty source copied material starter", entries)
+			}
+			if kind == "template" {
+				b, err := os.ReadFile(filepath.Join(e.workspaceBase(r.ID), "workspace-ready", "work", "main.c"))
+				if err != nil || string(b) != "INDEPENDENT STARTER\n" {
+					t.Fatal("wrong exact starter", string(b), err)
+				}
+			}
+			var corrupt atomic.Bool
+			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
+				if corrupt.Load() {
+					g := *reply.Grant
+					g.Work = &GrantWork{Kind: "template", Name: r.Settings.Template, Hash: r.Settings.TemplateVersion}
+					reply.Grant = &g
+				}
+				return reply, 200
+			})
+			r.GrantBeginIntent = "44444444-1234-4234-8234-123456789abc"
+			cmd = preparationCommand(r)
+			cmd.Op = "activate-additional-grant-attempt"
+			corrupt.Store(true)
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil {
+				t.Fatal("fresh reply substituted source")
+			}
+			assertUnstartedWorkspace(t, e, r.ID)
+			corrupt.Store(false)
+			restarted, err := New(e.Config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			restarted.activationPrepare = e.activationPrepare
+			restarted.templateVerify = e.templateVerify
+			cmd.Nonce = Token()
+			at := Millis()
+			result, err := restarted.Command(signedCommand(key, cmd), r.Username, r.Transport)
+			if err != nil {
+				t.Fatal(err)
+			}
+			started := result.(*Attempt)
+			if started.Start < at || started.Deadline-started.Start != r.Settings.Duration*1000 || !sameGrant(started.Grant, r.Grant) {
+				t.Fatal("full allowance/source not retained", started)
+			}
+			if kind == "empty" {
+				entries, err := os.ReadDir(filepath.Join(e.workspaceBase(r.ID), "work"))
+				if err != nil || len(entries) != 0 {
+					t.Fatal("empty publication changed", entries, err)
+				}
+			}
+			childCollections(restarted, "success")
+			restarted.workerTimeout = 10 * time.Second
+			completed, err := restarted.Call("finalize-attempt", Request{ID: r.ID, Reason: "Synthetic explicit-source workflow completion"})
+			if err != nil {
+				t.Fatal("real worker collection of explicit source", err)
+			}
+			finished := completed.(*Attempt)
+			if finished.State != "COMPLETED" || !finished.Protected || finished.Start != started.Start || finished.OriginalDeadline != started.OriginalDeadline || !sameGrant(finished.Grant, r.Grant) {
+				t.Fatal("collection changed source authority/history", finished)
+			}
+			manifest, err := ReadProtected(filepath.Join(restarted.Config.State, "submissions", r.ID), finished)
+			if err != nil || !sameGrant(manifest.Attempt.Grant, r.Grant) {
+				t.Fatal("protected archive lost explicit source binding", err)
+			}
+			wantFiles := 0
+			if kind == "template" {
+				wantFiles = 1
+			}
+			if len(manifest.Files) != wantFiles {
+				t.Fatal("wrong starter collected", len(manifest.Files))
+			}
+		})
+	}
+}
+
 func TestInitialGrantRefusesIndependentNativeHistory(t *testing.T) {
 	for _, kind := range []string{"same-account", "changed-uid", "changed-username"} {
 		t.Run(kind, func(t *testing.T) {

@@ -832,3 +832,28 @@ new work, clear original holds or reconstruct grant IDs to force admission.
 Old writers may discard richer fields; keep admission closed and repair forward
 when compatibility is unavailable. Saved/empty-source retention, sandbox grants,
 privileged installed-role qualification and retained SSH remain separate gates.
+
+## Independent workspace sources (migration026; proposed only)
+
+No deployment is authorized. Apply026 only during the separately authorized
+verified drain/matched-role cutover above, preserving every existing grant
+revision, preparation/consumption, private stage, archive and original interval.
+The additive immutable grant_work column leaves old implicit material starters
+null; it does not reinterpret history or grant a new allowance. Back up this
+column and native Grant.Work/receipt fields consistently with025 lineage.
+
+Require independent-workspace-grants-v1 and actual agreement of EVERY loaded
+native writer before explicit empty/separate-template preparation. Qualify empty
+work with exact read-only materials, separate attested starter bytes, missing/
+changed source refusal without fallback/time, cancelled retry, original grants/
+holds, source revision and fresh C15 scope. Compiled capabilities/local synthetic
+OS seams do not qualify installed SSH/PAM/cgroup roles. Saved-source grants stay
+disabled until C18 retention authority and full migration are implemented.
+
+Include independent practice supervisors and all three temporary/canonical agent
+owners in the verified drain/consolidation inventory. Retain watchdog/reconciler
+protection. Do not execute a restart, migration, service removal or consolidation
+as part of testing. A rollback artifact must preserve/understand explicit Work
+and all newer receipts/intervals; never restore source-blind writers, discard026
+or reset one-use history to reopen admission. Keep admission closed/repair forward
+when compatible rollback is unavailable. This remains an unexecuted proposal.

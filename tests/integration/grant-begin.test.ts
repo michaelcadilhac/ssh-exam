@@ -13,6 +13,9 @@ it.each([
   "reviewed-legacy",
   "reviewed-old-native",
   "additional-after-completed",
+  "additional-empty",
+  "additional-source-old-native",
+  "additional-source-tamper",
   "additional-wrong-anchor",
   "old-ordered-role",
   "outbound-unavailable",
@@ -27,9 +30,7 @@ it.each([
 ])(
   "new enrollment → signed SSH preparation → fresh authenticated grant Begin (%s)",
   async (scenario) => {
-    const additional =
-        scenario === "additional-after-completed" ||
-        scenario === "additional-wrong-anchor",
+    const additional = scenario.startsWith("additional-"),
       allowance = additional ? 5400 : 7200;
     let priorHistory: any;
     const h = await hosts(),
@@ -50,7 +51,8 @@ it.each([
       operations: string[] = [],
       intents: string[] = [];
     let reviewedSupport = scenario !== "reviewed-old-native",
-      orderedSupport = scenario !== "old-ordered-role";
+      orderedSupport = scenario !== "old-ordered-role",
+      sourceSupport = scenario !== "additional-source-old-native";
     let failed = false,
       verifiedUID = 10001;
     h.control.command = async (op, b) => {
@@ -67,6 +69,7 @@ it.each([
             "exact-template-begin-v1",
             "unified-initial-grants-v1",
             ...(orderedSupport ? ["ordered-template-grants-v1"] : []),
+            ...(sourceSupport ? ["independent-workspace-grants-v1"] : []),
             ...(reviewedSupport ? ["reviewed-initial-grants-v1"] : []),
           ],
         };
@@ -117,12 +120,23 @@ it.each([
           version: 1,
           attempt: a.id,
           grant: a.grant,
-          source: {
+          source:
+            a.grant.work?.kind === "empty"
+              ? { kind: "empty" }
+              : {
+                  kind: "template",
+                  template: a.settings.template,
+                  version: a.settings.template_version,
+                },
+        };
+        if (scenario === "additional-source-tamper" && !failed) {
+          failed = true;
+          a.workspace.source = {
             kind: "template",
             template: a.settings.template,
             version: a.settings.template_version,
-          },
-        };
+          };
+        }
         return { ...a };
       }
       if (op === "cancel-attempt") {
@@ -345,6 +359,10 @@ it.each([
             latest: definition.latest,
             usernames: ["student"],
             duration: allowance,
+            ...(scenario === "additional-empty" ||
+            scenario.startsWith("additional-source-")
+              ? { work: { kind: "empty" } }
+              : {}),
             reason:
               "Explicit separate additional allowance after completed attempt",
             request: randomUUID(),
@@ -511,6 +529,38 @@ it.each([
           payload: {},
         });
       let prepared = await preflight();
+      if (scenario === "additional-source-old-native") {
+        expect(prepared.statusCode).toBe(400);
+        expect(prepared.body).toContain(
+          "independent grant workspace enforcement",
+        );
+        expect(operations).not.toContain("prepare-additional-grant-attempt");
+        expect(
+          store.db
+            .prepare("SELECT count(*) n FROM attempts WHERE state='PREPARING'")
+            .get(),
+        ).toEqual({ n: 0 });
+        sourceSupport = true;
+        prepared = await preflight();
+      }
+      if (scenario === "additional-source-tamper") {
+        expect(prepared.statusCode).toBe(409);
+        expect(prepared.body).toContain("workspace receipt differs");
+        const row = store.db
+          .prepare("SELECT * FROM attempts WHERE state='PREPARING'")
+          .get() as any;
+        expect(row).toMatchObject({
+          start: null,
+          deadline: null,
+          grant_work: '{"kind":"empty"}',
+        });
+        expect(
+          store.db
+            .prepare("SELECT status FROM attempt_grants WHERE id=?")
+            .get(issued.id),
+        ).toEqual({ status: "AVAILABLE" });
+        prepared = await preflight();
+      }
       if (scenario === "old-ordered-role") {
         expect(prepared.statusCode).toBe(400);
         expect(prepared.body).toContain("ordered grant authority/type support");
@@ -627,6 +677,17 @@ it.each([
         expect(() => store.attempt(old)).toThrow("Attempt not found");
       }
       const { id, page, settings } = prepared.json();
+      if (
+        scenario === "additional-empty" ||
+        scenario.startsWith("additional-source-")
+      ) {
+        expect(store.attempt(id).grant_work).toBe('{"kind":"empty"}');
+        expect(() =>
+          store.db
+            .prepare("UPDATE attempts SET grant_work=NULL WHERE id=?")
+            .run(id),
+        ).toThrow("workspace source is immutable");
+      }
       expect(settings).toMatchObject({
         duration: allowance,
         webcam: false,

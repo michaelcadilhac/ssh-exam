@@ -661,6 +661,19 @@ Existing enrollment migration and implementation remain outstanding.
   Unbound legacy attempts retain their one-attempt restriction.
 
 - [ ] **Define clear `/work` initialization choices.**
+  October23 empty and separate exact-template starters now have a local integrated
+  CLI/web workflow: reviewed additional issuance, explicit unused source revision,
+  student selection, signed private staging and fresh C15 Begin. Focused HTTP/
+  compiled root CLI/native/TLS/restart and rebuilt browser workflows pass;474 app,
+  full native race/resource and39 final rebuilt browser checks pass locally.
+  Actual worker SIGKILL/retry and protected-archive collection also pass.
+  Settings-only revisions preserve the saved starter.
+  Source-tampered replies and missing sources refuse before clock/grant use.
+  This does not complete saved-work grants: native deletion cannot see unused
+  gateway dependencies. C18 asks whether availability waits for durable native
+  source confirmation (recommended), or native deletion instead requires online
+  web authorization. Evidence/state review: docs/grant-workspace-sources.md.
+  No source policy, submission, installed role or production service is changed.
   October22 exact source selection is now implemented/tested locally through
   `examctl web exams create/update --template-version HASH`, shared Exam settings
   and student preflight/Begin. Only the configured agent's attested exact name/

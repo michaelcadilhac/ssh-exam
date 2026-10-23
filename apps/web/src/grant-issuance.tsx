@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, chicago } from "./api.js";
 import { Modal } from "./modal.js";
 import { beginTime } from "./attempt-grants.js";
+import { GrantWorkspaceFields, workspaceChoice } from "./grant-workspace.js";
 
 export function GrantIssuanceDialog({
   initial,
@@ -23,6 +24,9 @@ export function GrantIssuanceDialog({
     [reason, setReason] = useState(""),
     [duration, setDuration] = useState(String(initial.duration)),
     [webcam, setWebcam] = useState("effective"),
+    [workMode, setWorkMode] = useState("materials"),
+    [workName, setWorkName] = useState(initial.template),
+    [workHash, setWorkHash] = useState(initial.template_version ?? ""),
     [review, setReview] = useState<any>(null),
     [previewID, setPreviewID] = useState(""),
     [pending, setPending] = useState<{
@@ -87,6 +91,11 @@ export function GrantIssuanceDialog({
                 ...(additional
                   ? {
                       duration: Number(duration),
+                      ...(workspaceChoice(workMode, workName, workHash)
+                        ? {
+                            work: workspaceChoice(workMode, workName, workHash),
+                          }
+                        : {}),
                       ...(webcam !== "effective"
                         ? { webcam: webcam === "required" }
                         : {}),
@@ -108,7 +117,7 @@ export function GrantIssuanceDialog({
       setPending(null);
       if (result.status === "CONFIRMED") await onChanged();
     } catch (e) {
-      if ([400, 403, 409].includes((e as any).status)) setPending(null);
+      if ([400, 403, 404, 409].includes((e as any).status)) setPending(null);
       setError((e as Error).message);
     } finally {
       setBusy(false);
@@ -191,7 +200,7 @@ export function GrantIssuanceDialog({
         </p>
       )}
       <p>
-        Exam: {definition.name} · {definition.id}. Current materials/starter:{" "}
+        Exam: {definition.name} · {definition.id}. Current materials:{" "}
         {definition.template}
       </p>
       <p style={{ overflowWrap: "anywhere" }}>
@@ -224,6 +233,17 @@ export function GrantIssuanceDialog({
           </label>
           {additional && (
             <>
+              <GrantWorkspaceFields
+                materials
+                mode={workMode}
+                name={workName}
+                hash={workHash}
+                onChange={(mode, name, hash) => {
+                  setWorkMode(mode);
+                  setWorkName(name);
+                  setWorkHash(hash);
+                }}
+              />
               <label>
                 Additional allowance seconds
                 <input
@@ -313,7 +333,13 @@ export function GrantIssuanceDialog({
                 {row.settings.collection_total_mib} MiB total.
               </p>
               <p style={{ overflowWrap: "anywhere" }}>
-                Materials/starter: {row.work.name} · {row.work.hash}
+                Materials: {row.settings.template} ·{" "}
+                {row.settings.template_version}
+                <br />
+                Workspace:{" "}
+                {row.work.kind === "empty"
+                  ? "Empty workspace"
+                  : `${row.work.name} · ${row.work.hash}`}
               </p>
               {review.issued.find((g: any) => g.username === row.username) && (
                 <p style={{ overflowWrap: "anywhere" }}>
