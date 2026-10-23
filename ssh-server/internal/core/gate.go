@@ -310,6 +310,9 @@ func (e *Engine) local(c *net.UnixConn) {
 		// agent's NoNewPrivileges. setpriv clears them before student code.
 		launch.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true, Ctty: 0, AmbientCaps: []uintptr{6, 7, 8}} // SETGID, SETUID, SETPCAP
 		result = map[string]any{"directory": a.WorkPath, "deadline": a.Deadline, "attempt": a.ID, "pane": cap.Pane, "transport": identity}
+		if a.RegisteredOwner != nil {
+			result["registered_owner"] = *a.RegisteredOwner
+		}
 		if e.Config.CallbackKey != "" {
 			proof, err := e.SSHReceipt("ssh-pane-receipt", Hash([]byte(r.Token)), name, identity, result, nil)
 			if err != nil {

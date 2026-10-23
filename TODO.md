@@ -459,6 +459,22 @@ docs/timed-terminal-supervision.md for retained failures/state review/limits.
 This is not completed C12/R2 or C3/C9 enablement, installed-role qualification,
 deployment or closure of the critical liveness item. Main count remains11/38.
 
+October23 registered-page identity is implemented/tested locally through actual
+unified Begin/approved continuation, isolated worker canonical signing, native
+capability/closed release, existing attempt supervisor and signed pane receipt.
+029 preserves original Begin page/mode and historical owner metadata without
+backfill. Current-page, stale lease/clock, restarted/lost Begin, late callback and
+negative intentional-lock fences are qualified; native-only saved-source queries
+remain supported. Read-only examctl info/list/panes supervisor and web metadata
+agree. Final514 application checks, full native races/resources/default-size IO,
+build/vet/typecheck and passing coverage of all149 browser scenarios (broad plus
+corrected fixture/remainder reruns) are recorded in docs/registered-owner-workflow.md.
+This is identity, not live C10 authority, per-pane input fencing, retained hold or
+C9 recovery. Pending handoffs/root SSH lifetime/loaded-role/full freeze barriers
+remain necessary; no retained mode or production change is enabled. The next
+actual pause/verified-hold/approved-Continue workflow is scoped in
+docs/retained-workload-barrier-plan.md. Critical liveness and R2 stay unchecked.
+
 ## Firm design policy: examctl is the complete management interface
 
 October22 independent C4 hold-safety fix is implemented/tested locally: existing

@@ -17,6 +17,8 @@ import (
 )
 
 type Request struct {
+	ownerRequired    bool
+	PageEpoch        string                 `json:"page_epoch,omitempty"`
 	Grant            *GrantBinding          `json:"grant,omitempty"`
 	GrantBeginIntent string                 `json:"grant_begin_intent,omitempty"`
 	AllowanceEdit    *RecoveryAllowanceEdit `json:"allowance_edit,omitempty"`
@@ -175,7 +177,7 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 	var result any
 	err := e.WithState(func() error { var err error; result, err = e.callLocked(op, r); return err })
 	if err == nil && op == "activate-attempt" {
-		return e.activatePrepared(result.(*Attempt), r.Expires, r.GrantBeginIntent)
+		return e.activatePrepared(result.(*Attempt), r.Expires, r.GrantBeginIntent, r.PageEpoch)
 	}
 	if err == nil && op == "prepare-workspace" {
 		return e.preparedWorkspace(r.ID)
@@ -264,6 +266,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			// global lock, then rechecks this exact snapshot before committing.
 			result = a
 		case "issue-channel-admission":
+			if err := requireRegisteredPage(a, r.PageEpoch); err != nil {
+				return err
+			}
 			if r.Username != a.Username || r.Transport != a.Transport || !attemptID.MatchString(r.Pane) {
 				return errors.New("pane identity mismatch")
 			}
@@ -285,7 +290,11 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("terminal limit")
 			}
 			e.revokePaneAdmissions(a.ID, r.Pane)
-			result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + 15000})
+			capability := Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + 15000}
+			if a.RegisteredOwner != nil {
+				capability.RegisteredOwner = *a.RegisteredOwner
+			}
+			result = e.issue(capability)
 		case "close-pane":
 			result, err = e.closePaneLocked(a, r.Pane)
 			return err
@@ -345,6 +354,11 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			}
 			if a.ResumeTransport == "" || a.ResumeTransport != a.Transport {
 				return errors.New("fresh SSH connection must be attached before continuation")
+			}
+			if a.RegisteredOwner != nil {
+				if err := registerPageOwner(a, r.PageEpoch, Token()); err != nil {
+					return err
+				}
 			}
 			a.Authorization = 0
 			a.Lease = Millis() + 15000

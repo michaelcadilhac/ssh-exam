@@ -46,10 +46,24 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   });
   await ready(page);
   await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  const begin = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.endsWith("/begin"),
+    { timeout: 10000 },
+  );
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Begin exam", exact: true })
     .click();
+  const started = await begin;
+  expect(
+    started.status(),
+    (await started.text()) +
+      JSON.stringify(
+        await (await page.request.get("/api/fixture/runtime")).json(),
+      ),
+  ).toBe(200);
   await expect(page.locator(".winbox")).toHaveCount(1);
   const active = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
@@ -60,6 +74,15 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   });
   expect(active.deadline - active.start).toBe(5400000);
   expect(active.original_deadline).toBe(active.deadline);
+  const owner = JSON.parse(active.registered_owner);
+  expect(owner).toMatchObject({
+    attempt: active.id,
+    exam: "initial-grant",
+    username: "grant01",
+    uid: 10022,
+    page_epoch: active.page_hash,
+    input_epoch: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
   await page.getByRole("button", { name: "Finish exam", exact: true }).click();
   await page
     .getByRole("dialog")

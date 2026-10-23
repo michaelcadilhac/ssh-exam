@@ -2,7 +2,9 @@ import { readFileSync, constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { createPrivateKey, randomUUID, sign, verify } from "node:crypto";
 import type { Config } from "../../../packages/config/index.js";
-import type { Store } from "./db.js";
+import type { Attempt, Store } from "./db.js";
+import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
+import { isDeepStrictEqual } from "node:util";
 // Losing the student command transport is not evidence of a class-agent outage.
 export class AgentCommandDisconnectedError extends Error {
   constructor(message: string) {
@@ -46,7 +48,68 @@ export class Agent {
   connected(username: string) {
     return !!this.sessions.get(username)?.alive;
   }
+  private findAttempt(id: string) {
+    return this.store?.db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .get(id) as Attempt | undefined;
+  }
+  // Connection workers delegate these database-dependent decisions to their
+  // owning HTTP process. Standalone connections use the same local methods.
+  async authorize(
+    op: string,
+    username: string,
+    transport: string,
+    body: object,
+  ) {
+    const id = (body as any).id;
+    const attempt = typeof id === "string" ? this.findAttempt(id) : undefined;
+    if (attempt && attempt.username !== username)
+      throw Error("Command attempt belongs to another authenticated account");
+    return this.sign(op, username, transport, body);
+  }
+  async confirmRegisteredPaneOwner(
+    attempt: string,
+    input: unknown,
+    username?: string,
+  ) {
+    if (
+      username &&
+      this.store &&
+      this.findAttempt(attempt)?.username !== username
+    )
+      throw Error("Pane attempt belongs to another authenticated account");
+    this.verifyRegisteredPaneOwner(attempt, input);
+  }
+  async acceptRegisteredOwnerObservation(remote: any) {
+    this.observeExistingRegisteredOwner(remote);
+  }
   sign(op: string, username: string, transport: string, body: object) {
+    if (this.store && typeof (body as any).id === "string") {
+      const attempt = this.findAttempt((body as any).id);
+      if (attempt) {
+        if (op === "issue-channel-admission" && attempt.registered_owner)
+          op = "issue-owner-channel-admission";
+        if (op === "renew-execution-lease" && attempt.registered_owner)
+          op = "renew-owner-execution-lease";
+        if (op === "consume-continuation" && attempt.registered_owner)
+          op = "consume-owner-continuation";
+        const value = { ...body } as Record<string, unknown>;
+        delete value.page_epoch;
+        if (typeof value.grant_begin_intent === "string") {
+          const original = this.store.db
+            .prepare(
+              "SELECT owner_page FROM grant_begin_intents WHERE id=? AND attempt=?",
+            )
+            .get(value.grant_begin_intent, attempt.id) as
+            | { owner_page: string | null }
+            | undefined;
+          // Preserve an original legacy/uncertain Begin. Never silently upgrade
+          // it to new page authority after a lost reply or gateway migration.
+          if (original?.owner_page) value.page_epoch = original.owner_page;
+        } else if (attempt.page_hash) value.page_epoch = attempt.page_hash;
+        body = value;
+      }
+    }
     const payload = Buffer.from(
       JSON.stringify({
         audience: this.config.id,
@@ -66,6 +129,61 @@ export class Agent {
         readFileSync(this.config.signingKey),
       ).toString("base64"),
     };
+  }
+  verifyRegisteredPaneOwner(attempt: string, input: unknown) {
+    if (!this.store && input === undefined) return; // Legacy standalone signer.
+    const a = this.findAttempt(attempt);
+    if (!a)
+      throw Error(
+        "Pane owner context unavailable; inspect the original attempt before retrying",
+      );
+    if (!a.registered_owner) {
+      if (input !== undefined)
+        throw Error(
+          "Unexpected registered pane owner; inspect matching gateway/native versions and original status",
+        );
+      return;
+    }
+    const expected = monitoringOwner.parse(JSON.parse(a.registered_owner));
+    const actual = monitoringOwner.parse(input);
+    if (
+      !isDeepStrictEqual(expected, actual) ||
+      actual.page_epoch !== a.page_hash ||
+      actual.attempt !== a.id ||
+      actual.exam !== a.exam ||
+      actual.uid !== a.uid ||
+      actual.username !== a.username
+    )
+      throw Error(
+        "Registered pane owner changed or is unverified; inspect the original attempt and restore the authorized page before retrying",
+      );
+  }
+  observeExistingRegisteredOwner(remote: any) {
+    if (!remote?.registered_owner || typeof remote.id !== "string") return;
+    const a = this.findAttempt(remote.id);
+    if (!a?.registered_owner) return; // Initial identity requires accepted Begin.
+    const next = monitoringOwner.parse(remote.registered_owner),
+      previous = monitoringOwner.parse(JSON.parse(a.registered_owner));
+    if (
+      next.attempt !== a.id ||
+      next.exam !== a.exam ||
+      next.username !== a.username ||
+      next.uid !== a.uid
+    )
+      throw Error(
+        "Authenticated native owner metadata scope mismatch; preserve original status",
+      );
+    if (
+      next.generation < previous.generation ||
+      next.clock_revision < previous.clock_revision ||
+      (next.generation === previous.generation &&
+        next.clock_revision === previous.clock_revision &&
+        !isDeepStrictEqual(next, previous))
+    )
+      return;
+    this.store!.db.prepare(
+      "UPDATE attempts SET registered_owner=? WHERE id=?",
+    ).run(JSON.stringify(next), a.id);
   }
   signTiming(body: object) {
     const payload = Buffer.from(JSON.stringify(body));

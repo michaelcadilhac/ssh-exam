@@ -33,9 +33,10 @@ it("027 preserves legacy practice and fences grantless writers across accounts a
     db.close();
     store = new Store(dir);
     db = store.db;
-    expect(db.prepare("SELECT * FROM attempts WHERE id='old'").get()).toEqual(
-      old,
-    );
+    expect(db.prepare("SELECT * FROM attempts WHERE id='old'").get()).toEqual({
+      ...(old as object),
+      registered_owner: null,
+    });
     expect(
       db.prepare("SELECT version FROM schema_version WHERE version=27").get(),
     ).toEqual({ version: 27 });
@@ -77,9 +78,10 @@ it("027 preserves legacy practice and fences grantless writers across accounts a
     store.close();
     store = new Store(dir);
     db = store.db;
-    expect(db.prepare("SELECT * FROM attempts WHERE id='old'").get()).toEqual(
-      old,
-    );
+    expect(db.prepare("SELECT * FROM attempts WHERE id='old'").get()).toEqual({
+      ...(old as object),
+      registered_owner: null,
+    });
     expect(
       db
         .prepare(

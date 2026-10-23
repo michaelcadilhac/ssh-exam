@@ -19,7 +19,10 @@ async function setup() {
     },
     close: vi.fn(),
   });
-  const authority = { unbind: vi.fn() };
+  const authority = {
+    unbind: vi.fn(),
+    confirmRegisteredPaneOwner: vi.fn().mockResolvedValue(undefined),
+  };
   const conn = new BrowserConnection(
     "student",
     "sandbox",
@@ -37,8 +40,24 @@ async function setup() {
     result: { attempt: "attempt", pane: "pane" },
   });
   const pane = await conn.open("attempt", "pane");
-  return { conn, pane, command, socket, messages };
+  return { conn, pane, command, socket, messages, authority };
 }
+it("a current-owner receipt refusal never exposes the native pane and closes only that channel", async () => {
+  const { conn, pane, messages, authority } = await setup();
+  pane.dispose();
+  authority.confirmRegisteredPaneOwner.mockRejectedValueOnce(
+    Error("Registered page owner changed"),
+  );
+  await expect(conn.open("attempt", "pane")).rejects.toThrow(
+    "Registered page owner changed",
+  );
+  expect(conn.panes.size).toBe(0);
+  expect(conn.alive).toBe(true);
+  expect(messages.filter((m) => m.type === "browser-notify")).toEqual([
+    { v: 1, type: "browser-notify", op: "close-pane", args: { pane: "pane" } },
+  ]);
+  conn.close();
+});
 it("pausing/ending a connection with panes never leaves a delayed unhandled close request", async () => {
   vi.useFakeTimers();
   const { conn, pane, messages, command } = await setup();

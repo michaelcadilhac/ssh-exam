@@ -69,6 +69,11 @@ func TestCompiledReadOnlyCLIUnderRootUserNamespaceDoesNotInitializeReconcileOrWa
 		}
 	}
 	statePath := filepath.Join(stateDir, "state.json")
+	owner := map[string]any{"attempt": id, "exam": "midterm", "username": "student", "uid": 20001, "transport_hash": strings.Repeat("a", 64), "boot": "77777777-1234-4234-8234-123456789abc", "page_epoch": strings.Repeat("b", 64), "input_epoch": strings.Repeat("c", 64), "generation": 1, "clock_revision": 0}
+	ownerRecord, _ := json.Marshal(map[string]any{"registered_owner": owner})
+	if err := json.Unmarshal(ownerRecord, state.Attempts[id]); err != nil {
+		t.Fatal(err)
+	}
 	write(statePath, state)
 	config := filepath.Join(dir, "config.json")
 	// Normal LoadConfig cannot use this intentionally incomplete install. The
@@ -141,6 +146,9 @@ func TestCompiledReadOnlyCLIUnderRootUserNamespaceDoesNotInitializeReconcileOrWa
 		if code != 0 || diagnostics != "" || json.Unmarshal([]byte(out), &v) != nil || !v.ReadOnly || !v.Complete || len(v.Attempts) != 1 || v.Attempts[0].RecordedLease != 1234 || v.Attempts[0].Lease.Status != "absent" {
 			t.Fatal(args, code, out, diagnostics)
 		}
+		if v.Attempts[0].RegisteredOwner == nil || v.Attempts[0].RegisteredOwner.PageEpoch != strings.Repeat("b", 64) || v.Attempts[0].RegisteredOwner.InputEpoch != strings.Repeat("c", 64) {
+			t.Fatal("compiled read-only CLI hid registered identity metadata", out)
+		}
 		for _, secret := range []string{"PRIVATE-KEY", "PRIVATE-TRANSPORT", "PRIVATE-RESUME", "PRIVATE-CAPABILITY"} {
 			if strings.Contains(out+diagnostics, secret) {
 				t.Fatal("compiled CLI leaked private authority")
@@ -164,6 +172,25 @@ func TestCompiledReadOnlyCLIUnderRootUserNamespaceDoesNotInitializeReconcileOrWa
 	}
 	if err := os.Mkdir(filepath.Join(stateDir, "leases"), 0700); err != nil {
 		t.Fatal(err)
+	}
+	for _, mode := range []string{"legacy", "stale-page", "current"} {
+		lease := map[string]any{"id": id, "username": "student", "transport": "PRIVATE-TRANSPORT", "boot": "synthetic-boot", "generation": 1, "until": core.Millis() + 10000, "nonces": map[string]int64{}}
+		if mode != "legacy" {
+			copied := map[string]any{}
+			for key, value := range owner {
+				copied[key] = value
+			}
+			if mode == "stale-page" {
+				copied["page_epoch"] = strings.Repeat("d", 64)
+			}
+			lease["registered_owner"] = copied
+		}
+		write(filepath.Join(stateDir, "leases", id+".json"), lease)
+		out, diagnostics, code := invoke("info", id, "--read-only", "--state", stateDir)
+		var view core.ReadOnlySnapshot
+		if code != 0 || diagnostics != "" || json.Unmarshal([]byte(out), &view) != nil || len(view.Attempts) != 1 || view.Attempts[0].Lease.Status != "observed" || view.Attempts[0].Lease.MatchesRecordedOwner != (mode == "current") {
+			t.Fatal("compiled CLI misreported registered lease ownership", mode, code, out, diagnostics)
+		}
 	}
 	if err := os.WriteFile(filepath.Join(stateDir, "leases", id+".json"), []byte(`{"PRIVATE-CONTENTS":`), 0600); err != nil {
 		t.Fatal(err)

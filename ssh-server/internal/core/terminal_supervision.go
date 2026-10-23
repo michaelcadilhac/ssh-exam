@@ -32,17 +32,18 @@ type terminalSupervisorInit struct {
 	State   string `json:"state"`
 }
 type terminalSupervisorAttach struct {
-	Attempt        string                   `json:"attempt"`
-	Pane           string                   `json:"pane"`
-	Unit           string                   `json:"unit"`
-	PID            int                      `json:"pid"`
-	UID            int                      `json:"uid"`
-	Username       string                   `json:"username"`
-	Purpose        string                   `json:"purpose"`
-	Expires        int64                    `json:"expires"`
-	Proof          PaneInstance             `json:"proof"`
-	Recording      terminalRecordingContext `json:"recording,omitzero"`
-	RecordingLimit int64                    `json:"recording_limit,omitempty"`
+	RegisteredOwner monitoringOwner          `json:"registered_owner,omitzero"`
+	Attempt         string                   `json:"attempt"`
+	Pane            string                   `json:"pane"`
+	Unit            string                   `json:"unit"`
+	PID             int                      `json:"pid"`
+	UID             int                      `json:"uid"`
+	Username        string                   `json:"username"`
+	Purpose         string                   `json:"purpose"`
+	Expires         int64                    `json:"expires"`
+	Proof           PaneInstance             `json:"proof"`
+	Recording       terminalRecordingContext `json:"recording,omitzero"`
+	RecordingLimit  int64                    `json:"recording_limit,omitempty"`
 }
 
 func terminalSupervisorUnit(state, id string) string {
@@ -416,6 +417,9 @@ func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *
 			return nil, err
 		}
 		request.Recording, request.RecordingLimit = recordingContext(p.authority, request.Pane, unit), e.terminalRecordingLimit()
+		if p.authority.RegisteredOwner != nil {
+			request.RegisteredOwner = *p.authority.RegisteredOwner
+		}
 		resources, err := terminalRecordingResources(e.Config.State, request.Attempt)
 		if err != nil {
 			return nil, err
@@ -557,19 +561,20 @@ func (e *Engine) waitSupervisedPane(p *paneLaunchAdmission, unit string, c *net.
 }
 
 type terminalSupervisor struct {
-	id, unit     string
-	state, owner string
-	mu           sync.Mutex
-	storageMu    sync.Mutex
-	storage      *supervisedRecordingStorage
-	timed        map[string]*supervisedRecordingIO
-	requests     map[string]terminalSupervisorAttach
-	panes        map[string]bool
-	active       int
-	uid          int
-	username     string
-	last         time.Time
-	cleanup      func(terminalSupervisorAttach) error
+	registeredOwner *monitoringOwner
+	id, unit        string
+	state, owner    string
+	mu              sync.Mutex
+	storageMu       sync.Mutex
+	storage         *supervisedRecordingStorage
+	timed           map[string]*supervisedRecordingIO
+	requests        map[string]terminalSupervisorAttach
+	panes           map[string]bool
+	active          int
+	uid             int
+	username        string
+	last            time.Time
+	cleanup         func(terminalSupervisorAttach) error
 }
 
 func (s *terminalSupervisor) cleanupPane(r terminalSupervisorAttach) error {
@@ -633,7 +638,14 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		return
 	}
 	timed := r.Purpose == "exam"
+	bound := r.RegisteredOwner != (monitoringOwner{})
+	if bound && (!timed || !validMonitoringOwner(r.RegisteredOwner) || r.RegisteredOwner.Attempt != s.id || r.RegisteredOwner.Username != r.Username || r.RegisteredOwner.UID != r.UID || r.RegisteredOwner.Boot != r.Proof.Boot) {
+		return
+	}
 	if timed {
+		if bound && (r.RegisteredOwner.Generation != r.Recording.Generation || Hash([]byte(r.RegisteredOwner.TransportHash)) != r.Recording.TransportHash) {
+			return
+		}
 		if len(owned.files) != 8 || !r.Recording.valid() || r.Recording.Attempt != r.Attempt || r.Recording.Pane != r.Pane || r.Recording.Unit != r.Unit || r.Recording.Username != r.Username || r.Recording.UID != r.UID || r.Recording.Boot != r.Proof.Boot || r.RecordingLimit <= 0 {
 			return
 		}
@@ -675,6 +687,17 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		return
 	}
 	s.mu.Lock()
+	if s.registeredOwner != nil {
+		old, next := *s.registeredOwner, r.RegisteredOwner
+		old.ClockRevision, next.ClockRevision = 0, 0
+		if !bound || (old != next && len(s.timed) != 0) || (old == next && r.RegisteredOwner.ClockRevision < s.registeredOwner.ClockRevision) {
+			s.mu.Unlock()
+			return
+		}
+	} else if bound && len(s.timed) != 0 {
+		s.mu.Unlock()
+		return
+	}
 	_, duplicate := s.panes[r.Unit]
 	if s.active >= 4 || duplicate || (s.uid >= 0 && (s.uid != r.UID || s.username != r.Username)) {
 		s.mu.Unlock()
@@ -682,6 +705,10 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	}
 	s.panes[r.Unit] = false // Attached, but no normal startup notice observed yet.
 	s.uid, s.username = r.UID, r.Username
+	if bound {
+		owner := r.RegisteredOwner
+		s.registeredOwner = &owner
+	}
 	s.active++
 	s.last = time.Now()
 	s.mu.Unlock()

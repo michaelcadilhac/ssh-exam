@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-// UNWIRED H2b/H3 contract. No live route, issuer, renewal or thaw consumes it.
-// A valid object/signature alone is NOT native execution authorization.
+// Signed H2b/H3 evidence/renewal/thaw remains UNWIRED. The owner schema also
+// describes registered identity in the live pane path; identity is NOT native
+// execution authorization and cannot reconstruct a monitoring permit from disk.
 export const MONITORING_EVIDENCE_WINDOW_MS = 15_000;
 export const MONITORING_CHALLENGE_WINDOW_MS = 5_000;
 export const MONITORING_EVIDENCE_MAX_BYTES = 4096;

@@ -47,6 +47,9 @@ attached_panes/attached_units include handoffs and ending panes, NOT proof stude
 code is running. observation_only is always true; no keys/input are returned.
 reported_started_units received the coordinator's normal startup notice, NOT
 durable Begin/clock/monitoring permission. Missing notice is UNKNOWN, not no-start.
+Optional registered_owner identifies the accepted signed page/transport/boot and
+attempt authorization epoch. Compare info ATTEMPT --read-only and web attempt
+metadata; it is not a live permit, per-pane input epoch or verified freeze receipt.
 Unavailable/changed/timed-out replies prove neither process death nor misconduct.
 reports reads at most16 private timed recording receipts, without global state,
 keys, IPC or mutation. It reports recording/cleanup/delivery separately; missing

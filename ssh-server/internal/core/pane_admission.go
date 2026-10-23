@@ -107,6 +107,9 @@ func (e *Engine) paneAdmission(token, name, identity string, account Account) (C
 	if err := workloadAllowed(a, cap.Purpose); err != nil {
 		return cap, nil, err
 	}
+	if (a.RegisteredOwner == nil && cap.RegisteredOwner != (monitoringOwner{})) || (a.RegisteredOwner != nil && (!currentRegisteredOwner(a) || cap.RegisteredOwner != *a.RegisteredOwner)) {
+		return cap, nil, errRegisteredOwner
+	}
 	if paneRecorded(a, cap.Pane) {
 		return cap, nil, errors.New("pane already admitted; close it before opening a replacement")
 	}

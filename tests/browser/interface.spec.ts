@@ -31,6 +31,11 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
   const initial = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(initial.deadline - initial.start).toBe(300000);
+  const originalOwner = initial.registered_owner
+    ? JSON.parse(initial.registered_owner)
+    : null;
+  if (process.env.EXAM_BROWSER_SSH === "1")
+    expect(originalOwner).not.toBeNull();
   await page.evaluate(() => document.exitFullscreen());
   await expect(
     page.getByRole("heading", { name: "Exam paused" }),
@@ -68,6 +73,14 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
   const resumed = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(resumed.deadline).toBe(initial.deadline);
+  const resumedOwner = resumed.registered_owner
+    ? JSON.parse(resumed.registered_owner)
+    : null;
+  if (originalOwner) {
+    expect(resumedOwner.page_epoch).toBe(resumed.page_hash);
+    expect(resumedOwner.input_epoch).not.toBe(originalOwner.input_epoch);
+    expect(resumedOwner.transport_hash).not.toBe(originalOwner.transport_hash);
+  }
   // An invalidated browser session may still recover; the toolbar no longer
   // offers a separate sign-out action during an active exam.
   const session = await (await page.request.get("/api/session")).json();
@@ -103,6 +116,12 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .attempt;
   expect(relogged.id).toBe(initial.id);
   expect(relogged.deadline).toBe(initial.deadline);
+  if (resumedOwner) {
+    const owner = JSON.parse(relogged.registered_owner);
+    expect(owner.page_epoch).toBe(relogged.page_hash);
+    expect(owner.input_epoch).not.toBe(resumedOwner.input_epoch);
+    expect(owner.transport_hash).not.toBe(resumedOwner.transport_hash);
+  }
   await page.getByRole("button", { name: "Finish exam", exact: true }).click();
   await page
     .getByRole("dialog")

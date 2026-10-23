@@ -50,6 +50,7 @@ type ReadOnlyLeaseObservation struct {
 }
 
 type ReadOnlyAttemptObservation struct {
+	RegisteredOwner             *monitoringOwner         `json:"registered_owner,omitempty"`
 	PreparationPending          bool                     `json:"preparation_pending"`
 	ID                          string                   `json:"id"`
 	Exam                        string                   `json:"exam"`
@@ -268,6 +269,9 @@ func decodeReadOnlyLease(b []byte, id string) (executionLease, bool) {
 	if json.Unmarshal(b, &lease) != nil || lease.ID != id || !identifier.MatchString(lease.Username) || lease.Transport == "" || len(lease.Transport) > 512 || lease.Boot == "" || len(lease.Boot) > 64 || lease.Generation < 0 || lease.Until < 0 || lease.Nonces == nil {
 		return executionLease{}, false
 	}
+	if lease.RegisteredOwner != (monitoringOwner{}) && !validMonitoringOwner(lease.RegisteredOwner) {
+		return executionLease{}, false
+	}
 	return lease, true
 }
 
@@ -326,6 +330,10 @@ func ObserveNativeReadOnly(stateDir string, q ReadOnlyQuery) (ReadOnlySnapshot, 
 		a := state.Attempts[id]
 		v := ReadOnlyAttemptObservation{ID: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, State: a.State, Generation: a.Generation, ClockRevision: a.ClockRevision, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline, Ended: a.Ended, RecordedLease: a.Lease, RecordedProtected: a.Protected, AccessState: a.AccessState, PolicyState: a.PolicyState, Reason: a.Reason, RecordedUnitCount: len(a.Units), RegisteredTransportRecorded: a.Transport != "" && state.Registrations[a.Transport] == a.Username}
 		v.PreparationPending = a.PreparationPending
+		if a.RegisteredOwner != nil {
+			owner := *a.RegisteredOwner
+			v.RegisteredOwner = &owner
+		}
 		v.AccessError, v.PolicyError = a.AccessError, a.PolicyError
 		v.Errors = append([]string(nil), a.Errors...)
 		v.Lease = ReadOnlyLeaseObservation{Status: "absent", ObservedAt: Millis()}
@@ -352,6 +360,7 @@ func ObserveNativeReadOnly(stateDir string, q ReadOnlyQuery) (ReadOnlySnapshot, 
 				v.Lease.MatchesRecordedTransport = lease.Transport == a.Transport && a.Transport != ""
 				v.Lease.MatchesRecordedGeneration = lease.Generation == a.Generation
 				v.Lease.MatchesRecordedOwner = lease.Username == a.Username && lease.Transport == a.Transport && a.Transport != "" && lease.Generation == a.Generation
+				v.Lease.MatchesRecordedOwner = v.Lease.MatchesRecordedOwner && ((a.RegisteredOwner == nil && lease.RegisteredOwner == (monitoringOwner{})) || (a.RegisteredOwner != nil && lease.RegisteredOwner == *a.RegisteredOwner))
 				v.Lease.MatchesRecordedBoot = lease.Boot == a.Boot && a.Boot != ""
 				v.Lease.MatchesCurrentBoot = currentBoot != "" && lease.Boot == currentBoot
 				v.Lease.UnexpiredAtRead = lease.Until > v.Lease.ObservedAt

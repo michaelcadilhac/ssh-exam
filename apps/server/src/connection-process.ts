@@ -288,6 +288,40 @@ export class IsolatedConnection implements ConnectionHandle {
       this.lastPong = performance.now();
       return;
     }
+    if (m.kind === "authority") {
+      // Only this process owns Store. Never hand its database to SSH workers or
+      // let a worker choose another account's signing/receipt authority.
+      void (async () => {
+        if (m.action !== "sign" && m.username !== this.username)
+          throw Error("Connection authority account mismatch");
+        let result: unknown;
+        if (m.action === "sign")
+          result = await this.authority.authorize(
+            m.op,
+            this.username,
+            m.transport,
+            m.body,
+          );
+        else if (m.action === "pane")
+          await this.authority.confirmRegisteredPaneOwner(
+            m.attempt,
+            m.owner,
+            this.username,
+          );
+        else if (m.action === "observe") {
+          if (
+            m.body?.username !== undefined &&
+            m.body.username !== this.username
+          )
+            throw Error("Connection observation account mismatch");
+          await this.authority.acceptRegisteredOwnerObservation(m.body);
+        } else throw Error("Unsupported connection authority operation");
+        this.post({ kind: "authority-reply", id: m.id, result });
+      })().catch((error) =>
+        this.post({ kind: "authority-reply", id: m.id, error: error.message }),
+      );
+      return;
+    }
     if (m.kind === "reply") {
       this.alive = !!m.alive;
       this.transport = m.transport || "";

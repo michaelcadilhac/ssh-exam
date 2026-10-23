@@ -37,6 +37,7 @@ export async function hosts(
     callbackPublicKey: dir + "/agent.pub",
   };
   const control = {
+    failures: [] as string[],
     command: undefined as undefined | ((op: string, body: any) => Promise<any>),
   };
   const key = () =>
@@ -88,7 +89,7 @@ export async function hosts(
   };
   let attempts = new Map<string, any>();
   const classServer = new Server({ hostKeys: [classKey] }, (client) => {
-    const transportID = randomUUID();
+    const transportID = hash(randomUUID());
     let authenticatedUsername = "";
     const receipt = (kind: string, nonce: string, result: any) => {
       const payload = Buffer.from(
@@ -203,14 +204,15 @@ export async function hosts(
                     proof: receipt("ssh-command-receipt", cmd.nonce, result),
                   }) + "\n",
                 );
-              })().catch((error) =>
+              })().catch((error) => {
+                control.failures.push(String(error.message));
                 stream.end(
                   JSON.stringify({
                     error: error.message,
                     result: error.attemptState,
                   }) + "\n",
-                ),
-              );
+                );
+              });
             });
             return;
           }
@@ -283,6 +285,9 @@ export async function hosts(
                     attempt: cap.id,
                     pane: cap.pane,
                     transport: transportID,
+                    ...(cap.registered_owner
+                      ? { registered_owner: cap.registered_owner }
+                      : {}),
                   };
                   stream.write(
                     "EXAM-READY " +
@@ -446,6 +451,14 @@ export async function hosts(
     jumpServer.listen(0, "127.0.0.1", resolve),
   );
   const agent = {
+    async authorize(
+      op: string,
+      username: string,
+      transport: string,
+      body: any,
+    ) {
+      return this.sign(op, username, transport, body);
+    },
     sign: (op: string, username: string, transport: string, body: any) => {
       const payload = Buffer.from(
         JSON.stringify({

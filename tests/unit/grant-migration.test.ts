@@ -128,6 +128,7 @@ it.each([false, true])(
           grant_issued_order,
           grant_initial,
           grant_work,
+          registered_owner,
           ...kept
         } = store.attempt(attempt);
         expect(kept).toEqual(old);
@@ -135,6 +136,7 @@ it.each([false, true])(
         expect(grant_issued_order).toBeNull();
         expect(grant_initial).toBeNull();
         expect(grant_work).toBeNull();
+        expect(registered_owner).toBeNull();
         expect(
           db.prepare("SELECT rowid FROM attempt_grants WHERE id=?").get(grant),
         ).toEqual({ rowid: 42 });
@@ -189,7 +191,12 @@ it.each([false, true])(
                 expect(initial_grant).toBeNull();
                 return rest;
               })
-            : rows;
+            : table === "grant_begin_intents" && !corrupt
+              ? rows.map(({ owner_page, ...rest }) => {
+                  expect(owner_page).toBeNull();
+                  return rest;
+                })
+              : rows;
         expect(kept, table).toEqual(before[table]);
       }
       expect(

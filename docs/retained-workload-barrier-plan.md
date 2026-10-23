@@ -137,3 +137,55 @@ Do not expose raw input, credentials or arbitrary root commands in diagnostics.
 Keep old protocols unchanged until all prerequisites and combined tests pass.
 All rollout/migration/rollback and temporary-agent consolidation remain proposals
 in todo-rollout-plan.md; no deployment is authorized.
+
+## October23 integration checkpoint and next usable outcome
+
+The initial inventory above is historical: b850e8d now moves ordinary timed
+recording into the same existing independent attempt supervisor, with bounded
+durable incarnation-scoped reports and CLI inspection. The registered-owner
+candidate additionally binds actual Begin/approved continuation to the signed
+page/native transport/boot/generation/clock and fresh authorization identity,
+through real closed release, supervisor cohort and pane receipt. It does not pin
+the student's root SSH lifetime inside the supervisor or provide a live authority
+seal, per-pane packet epochs, verified freeze or recovery. See the two feature
+documents; do not count identity metadata as completing R2/R3.
+
+C16 is settled: live monitoring/input authority runs INSIDE this one attempt
+supervisor, isolated from recording IO. No extra authority daemon is approved or
+needed. The next integration must produce the actual student policy-pause →
+verified retained hold → instructor-approved Continue workflow, with the same
+SSH transport, shells/editor buffers and original/current deadlines. Inspection
+must agree through examctl pause/authorize/info/panes and the web paused page.
+Automatic technical-only recovery remains separately gated on complete fresh
+same-owner coverage; this increment must not claim it or relax genuine locks.
+
+Before code, inspect the real Engine.local/handoff and root SSH pinning APIs, then
+the actual lock/continuation/watchdog/clock/collection writers. Supervisor caller
+identity currently pins the coordinator, not the student's root SSH monitor; the
+transport hash in registered_owner is not a lifetime proof. Reuse verified kernel
+handle APIs at the actual handoff; do not invent a context-seal factory from saved
+strings. The current timed input method still forwards unframed bytes. Integrate
+per-pane capture-time epochs across browser/IPC/WASM/native decoding and pinned
+PTY delivery rather than adding another unused codec. Every new helper needs its
+actual runtime caller in this workflow.
+
+Necessary safety dependencies are closed admission/pending bootstrap exclusion,
+current live owner and independently enforced expiry, input revocation/drain and
+PTY discard, all-UID/all-thread stop-assisted freeze with original stop facts,
+scope/peer proof and durable pending/confirmed failure states. No shared native
+state lock may wait for a blocked recorder, freeze worker or storage publication;
+no missing reply/unit can establish absence, permission or a verified hold.
+Recording/collection remain independently bounded. Unsupported mixed loaded roles
+must refuse new mode before clock/material release. Keep new mode disabled until
+the combined workflow passes; default legacy enforcement remains intact.
+
+Acceptance is observable through the actual CLI/web/student entry: two live panes
+and unsaved editor state survive policy pause, all writers stop and stale framed/
+kernel input never appears after approved continuation, while another synthetic
+attempt keeps healthy SSH/control. Exercise delayed Begin/ACK/manager creation,
+old commands/epochs/receipts, coordinator/owner/worker death, originally stopped
+jobs/dead leaders/async IO, clock/deadline/collection transitions and failed freeze/
+discard without false success. Qualify real privileged SSH/PAM/cgroup behavior in
+the guarded disposable guest, with full application/native race/build/browser
+checks at that integrated boundary. A busy/uncertain host guard is a remaining
+qualification blocker, never permission to bypass it or enable partial retention.

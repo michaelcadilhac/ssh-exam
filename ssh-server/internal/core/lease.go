@@ -11,13 +11,14 @@ import (
 // Lease renewal must not wait for collection, systemctl or another attempt's
 // state transaction. Only signed, transport-bound renewals take this path.
 type executionLease struct {
-	ID         string           `json:"id"`
-	Username   string           `json:"username"`
-	Transport  string           `json:"transport"`
-	Boot       string           `json:"boot"`
-	Generation int              `json:"generation"`
-	Until      int64            `json:"until"`
-	Nonces     map[string]int64 `json:"nonces"`
+	RegisteredOwner monitoringOwner  `json:"registered_owner,omitzero"`
+	ID              string           `json:"id"`
+	Username        string           `json:"username"`
+	Transport       string           `json:"transport"`
+	Boot            string           `json:"boot"`
+	Generation      int              `json:"generation"`
+	Until           int64            `json:"until"`
+	Nonces          map[string]int64 `json:"nonces"`
 }
 
 func readStateSnapshot(path string) (State, error) {
@@ -72,6 +73,15 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		// pause or finish. This is still a rejection and grants no execution.
 		return publicAttempt(a), errors.New("cannot renew locked/ended workload")
 	}
+	// A pause legitimately advances generation while retaining historical owner
+	// metadata. Preserve that authenticated negative outcome above; only positive
+	// renewal needs a current registered page, never mask an intentional lock.
+	if cmd.Body.ownerRequired && a.RegisteredOwner == nil {
+		return nil, errRegisteredOwner
+	}
+	if err = requireRegisteredPage(a, cmd.Body.PageEpoch); err != nil {
+		return nil, err
+	}
 	file := filepath.Join(dir, a.ID+".json")
 	lease := executionLease{}
 	if b, readErr := os.ReadFile(file); readErr == nil {
@@ -98,6 +108,9 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 	}
 	nonces[cmd.Nonce] = cmd.Expires
 	lease = executionLease{ID: a.ID, Username: username, Transport: transport, Boot: a.Boot, Generation: a.Generation, Until: now + 15000, Nonces: nonces}
+	if a.RegisteredOwner != nil {
+		lease.RegisteredOwner = *a.RegisteredOwner
+	}
 	b, err := json.Marshal(lease)
 	if err != nil {
 		return nil, err
@@ -133,7 +146,7 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		return nil, err
 	}
 	v := current.Attempts[a.ID]
-	if v == nil || v.State != "ACTIVE" || v.Generation != a.Generation || v.Transport != transport || expired(v) {
+	if v == nil || v.State != "ACTIVE" || v.Generation != a.Generation || v.Transport != transport || expired(v) || (v.RegisteredOwner == nil && lease.RegisteredOwner != (monitoringOwner{})) || (v.RegisteredOwner != nil && lease.RegisteredOwner != *v.RegisteredOwner) {
 		if v != nil && v.Username == username && v.UID == a.UID && v.Transport == transport {
 			return publicAttempt(v), errors.New("lease superseded by attempt transition")
 		}
@@ -157,6 +170,9 @@ func (e *Engine) applyExecutionLease(a *Attempt) error {
 	var v executionLease
 	if err = json.Unmarshal(b, &v); err != nil {
 		return err
+	}
+	if (a.RegisteredOwner == nil && v.RegisteredOwner != (monitoringOwner{})) || (a.RegisteredOwner != nil && v.RegisteredOwner != *a.RegisteredOwner) {
+		return nil
 	}
 	if v.ID == a.ID && v.Username == a.Username && v.Transport == a.Transport && v.Generation == a.Generation && v.Boot == a.Boot && v.Boot == boot() && v.Until > Millis() && v.Until <= Millis()+15000 && v.Until > a.Lease {
 		a.Lease = v.Until

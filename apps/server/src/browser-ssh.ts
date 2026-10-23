@@ -354,10 +354,15 @@ export class BrowserConnection extends Connection {
   override async command(op: string, body: any = {}) {
     if (!this.alive)
       throw new AgentCommandDisconnectedError("SSH transports unavailable");
-    const frame = this.authority.sign(op, this.username, this.transport, {
-      ...body,
-      browser_ssh: true,
-    });
+    const frame = await this.authority.authorize(
+      op,
+      this.username,
+      this.transport,
+      {
+        ...body,
+        browser_ssh: true,
+      },
+    );
     const nonce = JSON.parse(
       Buffer.from(frame.payload, "base64").toString(),
     ).nonce;
@@ -373,6 +378,7 @@ export class BrowserConnection extends Connection {
       (!receipt.transport || receipt.result?.transport !== receipt.transport)
     )
       throw Error("Invalid SSH registration");
+    await this.authority.acceptRegisteredOwnerObservation(receipt.result);
     return receipt.result;
   }
   override async open(attempt: string, pane: string, purpose = "exam") {
@@ -380,6 +386,7 @@ export class BrowserConnection extends Connection {
       throw Error("Terminal already opening or open");
     const opening = { closed: false };
     this.opening.set(pane, opening);
+    let requested = false;
     try {
       const admission = await this.command("issue-channel-admission", {
         id: attempt,
@@ -388,6 +395,7 @@ export class BrowserConnection extends Connection {
         username: this.username,
         purpose,
       });
+      requested = true;
       const acknowledgment = await this.request(
         "open",
         { pane, token: admission.token },
@@ -401,6 +409,10 @@ export class BrowserConnection extends Connection {
       );
       if (receipt.result?.attempt !== attempt || receipt.result?.pane !== pane)
         throw Error("Pane acknowledgment mismatch");
+      await this.authority.confirmRegisteredPaneOwner(
+        attempt,
+        receipt.result?.registered_owner,
+      );
       const channel = new BrowserPane(pane, attempt, this);
       if (!this.alive || this.closed)
         throw new AgentCommandDisconnectedError(
@@ -409,6 +421,13 @@ export class BrowserConnection extends Connection {
       if (opening.closed) channel.dispose();
       else this.panes.set(pane, channel as any);
       return channel as any;
+    } catch (error) {
+      // A valid native pane may already exist when its receipt/current page
+      // disagrees. Close only that browser channel; do not expose it as usable
+      // or tear down healthy siblings. This best-effort request is not proof of
+      // native cleanup; the existing native lifetime/lease fences still apply.
+      if (requested) this.notify("close-pane", { pane });
+      throw error;
     } finally {
       this.opening.delete(pane);
     }

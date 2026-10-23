@@ -101,6 +101,10 @@ export const grantBeginRequest = z
     intent: z.string().uuid(),
     transport: z.string().min(1).max(512),
     boot: z.string().uuid(),
+    page_epoch: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
     settings: examConfiguration.strict(),
   })
   .strict();

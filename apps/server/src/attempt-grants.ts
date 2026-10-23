@@ -18,6 +18,7 @@ import {
 import { hash, now, type Store, type Attempt } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
 import { ExamDefinitions } from "./exam-definitions.js";
+import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 
 const conflict = (message: string): never => {
   throw Object.assign(Error(message), { statusCode: 409 });
@@ -654,7 +655,7 @@ export class AttemptGrants {
       .run(attempt, id, grant.revision, grant.hash, uid, now());
     return grant;
   }
-  begin(a: Attempt, transport: string) {
+  begin(a: Attempt, transport: string, page?: string) {
     return this.store.db.transaction(() => {
       if (!a.grant_id) return conflict("Grant-bound preparation required");
       const grant = this.claim(a.grant_id, a.id, a.uid);
@@ -675,7 +676,11 @@ export class AttemptGrants {
         .prepare("SELECT * FROM grant_begin_intents WHERE attempt=?")
         .get(a.id) as any;
       if (prior) {
-        if (prior.state !== "PENDING" || prior.transport !== transport)
+        if (
+          prior.state !== "PENDING" ||
+          prior.transport !== transport ||
+          (prior.owner_page !== null && prior.owner_page !== (page ?? null))
+        )
           return conflict(
             "Original Begin intent/owner changed; inspect its exact native outcome, never create a replacement clock",
           );
@@ -684,9 +689,9 @@ export class AttemptGrants {
       const id = randomUUID();
       this.store.db
         .prepare(
-          "INSERT INTO grant_begin_intents(id,attempt,transport,state,created_at) VALUES(?,?,?,'PENDING',?)",
+          "INSERT INTO grant_begin_intents(id,attempt,transport,state,created_at,owner_page) VALUES(?,?,?,'PENDING',?,?)",
         )
-        .run(id, a.id, transport, now());
+        .run(id, a.id, transport, now(), page ?? null);
       this.store.db
         .prepare(
           "UPDATE grant_claims SET state='BEGIN_PENDING' WHERE attempt=?",
@@ -733,6 +738,8 @@ export class AttemptGrants {
       !intent ||
       intent.state !== "PENDING" ||
       intent.transport !== b.transport ||
+      (intent.owner_page ?? null) !== (b.page_epoch ?? null) ||
+      (b.page_epoch !== undefined && a.page_hash !== b.page_epoch) ||
       a.grant_begin_intent !== b.intent ||
       !claim ||
       claim.state !== "BEGIN_PENDING" ||
@@ -763,6 +770,7 @@ export class AttemptGrants {
       intent: b.intent,
       transport: b.transport,
       boot: b.boot,
+      ...(b.page_epoch ? { page_epoch: b.page_epoch } : {}),
     };
   }
   accept(remote: any, a: Attempt) {
@@ -832,7 +840,7 @@ export class AttemptGrants {
       );
     const prior = this.store.db
       .prepare(
-        "SELECT state,start,deadline FROM grant_begin_intents WHERE id=? AND attempt=?",
+        "SELECT state,start,deadline,owner_page FROM grant_begin_intents WHERE id=? AND attempt=?",
       )
       .get(a.grant_begin_intent, a.id) as any;
     if (
@@ -844,7 +852,37 @@ export class AttemptGrants {
       return conflict(
         "Native start contradicts the retained original Begin outcome; preserve interval/intent history before repair",
       );
+    const owner =
+      remote.registered_owner === undefined
+        ? null
+        : monitoringOwner.parse(remote.registered_owner);
+    if (
+      (prior.owner_page && prior.start === null && !owner) ||
+      (owner &&
+        (owner.attempt !== a.id ||
+          owner.exam !== a.exam ||
+          owner.username !== a.username ||
+          owner.uid !== a.uid ||
+          (prior.start === null && prior.owner_page !== owner.page_epoch)))
+    )
+      return conflict(
+        "Native registered owner contradicts the original Begin scope; preserve the authoritative interval and inspect the pending original outcome, never issue a replacement clock",
+      );
     this.store.db.transaction(() => {
+      const saved = this.store.attempt(a.id)?.registered_owner;
+      const previous = saved ? monitoringOwner.parse(JSON.parse(saved)) : null;
+      const stale =
+        owner &&
+        previous &&
+        (owner.generation < previous.generation ||
+          owner.clock_revision < previous.clock_revision ||
+          (owner.generation === previous.generation &&
+            owner.clock_revision === previous.clock_revision &&
+            !isDeepStrictEqual(owner, previous)));
+      if (owner && !stale)
+        this.store.db
+          .prepare("UPDATE attempts SET registered_owner=? WHERE id=?")
+          .run(JSON.stringify(owner), a.id);
       this.store.db
         .prepare("UPDATE attempt_grants SET status='CONSUMED' WHERE id=?")
         .run(a.grant_id);

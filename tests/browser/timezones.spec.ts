@@ -69,6 +69,17 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
       baseURL,
     }) => {
       test.setTimeout(45000);
+      let terminalAdmitted = false;
+      page.on("websocket", (socket) =>
+        socket.on("framereceived", ({ payload }) => {
+          if (typeof payload !== "string") return;
+          try {
+            if (JSON.parse(payload).type === "opened") terminalAdmitted = true;
+          } catch {
+            /* Binary SSH and non-session frames are not admission. */
+          }
+        }),
+      );
       const origin = baseURL!,
         exam = `timezone-${index + 1}`,
         username = `timezone${index + 1}`;
@@ -155,6 +166,11 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
           .getByRole("button", { name: "Begin exam", exact: true })
           .click();
         await expect(page.locator(".winbox")).toHaveCount(1);
+        // A window exists before its signed pane ACK. Clock edits must test an
+        // admitted live terminal, rather than race a legitimately stale launch.
+        await expect
+          .poll(() => terminalAdmitted, { timeout: 10000 })
+          .toBe(true);
         const initial = (
           await (await page.request.get("/api/student/exam")).json()
         ).attempt;
@@ -211,6 +227,16 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         expect(after.sshConnected).toBe(true);
         await expect(page.locator(".exam-toolbar b")).toHaveText(
           /^(1:37:00|1:36:\d\d)$/,
+        );
+        if (process.env.EXAM_BROWSER_SSH === "1")
+          expect(
+            JSON.parse(after.attempt.registered_owner).clock_revision,
+          ).toBe(2);
+        await page.locator(".winbox .xterm-helper-textarea").focus();
+        await page.keyboard.type("timezone-clock-probe");
+        await page.keyboard.press("Enter");
+        await expect(page.locator(".xterm-rows")).toContainText(
+          "Echo: timezone-clock-probe",
         );
         await page
           .getByRole("button", { name: "Finish exam", exact: true })

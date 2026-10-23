@@ -327,7 +327,12 @@ export class Connection {
   async command(op: string, body: any = {}): Promise<any> {
     if (!this.alive)
       throw new AgentCommandDisconnectedError("SSH transports unavailable");
-    const envelope = this.agent.sign(op, this.username, this.transport, body);
+    const envelope = await this.agent.authorize(
+      op,
+      this.username,
+      this.transport,
+      body,
+    );
     return new Promise((resolve, reject) => {
       this.class.exec("exam-control", (error, channel) => {
         if (error) {

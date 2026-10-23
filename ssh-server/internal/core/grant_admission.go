@@ -82,11 +82,12 @@ type grantBeginReply struct {
 	Intent    string        `json:"intent"`
 	Transport string        `json:"transport"`
 	Boot      string        `json:"boot"`
+	PageEpoch string        `json:"page_epoch,omitempty"`
 }
 
 // Runtime Begin only. Existing pinned outbound HTTPS + Ed25519 identities;
 // never a browser relay/offline permit. No state lock is held through network IO.
-func (e *Engine) verifyGrantBegin(a *Attempt, intent string) (int64, error) {
+func (e *Engine) verifyGrantBegin(a *Attempt, intent, page string) (int64, error) {
 	if !validGrant(a.Grant) || !attemptID.MatchString(intent) || e.Config.CallbackURL == "" {
 		return 0, errors.New("fresh authenticated outbound grant verification required; configure the fixed gateway route and retry the SAME Begin intent; no interval committed")
 	}
@@ -106,7 +107,11 @@ func (e *Engine) verifyGrantBegin(a *Attempt, intent string) (int64, error) {
 		}
 	}()
 	nonce, ownerBoot := Token(), boot()
-	payload, err := json.Marshal(map[string]any{"type": "grant-begin/v1", "agent": e.Config.AgentID, "nonce": nonce, "at": Millis(), "attempt": a.ID, "exam": a.Exam, "username": a.Username, "uid": a.UID, "grant": a.Grant, "intent": intent, "transport": a.Transport, "boot": ownerBoot, "settings": a.Settings})
+	requestBody := map[string]any{"type": "grant-begin/v1", "agent": e.Config.AgentID, "nonce": nonce, "at": Millis(), "attempt": a.ID, "exam": a.Exam, "username": a.Username, "uid": a.UID, "grant": a.Grant, "intent": intent, "transport": a.Transport, "boot": ownerBoot, "settings": a.Settings}
+	if page != "" {
+		requestBody["page_epoch"] = page
+	}
+	payload, err := json.Marshal(requestBody)
 	if err != nil {
 		return 0, err
 	}
@@ -150,7 +155,7 @@ func (e *Engine) verifyGrantBegin(a *Attempt, intent string) (int64, error) {
 	var reply grantBeginReply
 	decoder := json.NewDecoder(bytes.NewReader(signed))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&reply) != nil || decoder.Decode(new(any)) != io.EOF || reply.Type != "grant-begin/v1" || reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+31000 || reply.Attempt != a.ID || !sameGrant(reply.Grant, a.Grant) || reply.Intent != intent || reply.Transport != a.Transport || reply.Boot != ownerBoot {
+	if decoder.Decode(&reply) != nil || decoder.Decode(new(any)) != io.EOF || reply.Type != "grant-begin/v1" || reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+31000 || reply.Attempt != a.ID || !sameGrant(reply.Grant, a.Grant) || reply.Intent != intent || reply.Transport != a.Transport || reply.Boot != ownerBoot || reply.PageEpoch != page {
 		return 0, errors.New("fresh grant Begin reply scope/freshness rejected; preserve original intent and inspect status")
 	}
 	return reply.Expires, nil

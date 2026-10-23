@@ -14,6 +14,60 @@ const exited = async (c: IsolatedConnection) =>
     },
     { timeout: 5000 },
   );
+it("an isolated SSH worker obtains current command authority from its owning parent and survives a refusal", async () => {
+  const h = await hosts({ mfaDelayMs: 10 });
+  const config: any = {
+    mode: "development",
+    jump: h.jump,
+    class: h.class,
+    agent: h.agentConfig,
+  };
+  const authority = new Agent(config.agent);
+  const authorize = vi.spyOn(authority, "authorize");
+  let page = "a".repeat(64);
+  authorize.mockImplementation(async (op, username, transport, body) => {
+    if (op === "synthetic-refusal")
+      throw Error("Current parent authority refused");
+    return authority.sign(op, username, transport, {
+      ...body,
+      page_epoch: page,
+    });
+  });
+  h.control.command = async (_op, body) => body;
+  const c = new IsolatedConnection("student", "e", config, authority);
+  try {
+    await c.connect(async (_, __, prompts) =>
+      prompts.map(() => "shared-password"),
+    );
+    expect(await c.command("synthetic-context", { id: "test" })).toMatchObject({
+      page_epoch: page,
+    });
+    page = "b".repeat(64);
+    expect(
+      await c.command("synthetic-context", {
+        id: "test",
+        page_epoch: "untrusted stale value",
+      }),
+    ).toMatchObject({ page_epoch: page });
+    await expect(c.command("synthetic-refusal")).rejects.toThrow(
+      "Current parent authority refused",
+    );
+    expect(await c.command("synthetic-context")).toMatchObject({
+      page_epoch: page,
+    });
+    expect(authorize).toHaveBeenCalledWith(
+      "synthetic-context",
+      "student",
+      c.transport,
+      expect.any(Object),
+    );
+    expect(c.alive).toBe(true);
+  } finally {
+    c.close();
+    await exited(c);
+    await h.close();
+  }
+});
 it("a fatal worker rejects pending operations, removes panes, and leaves another real SSH connection usable", async () => {
   const h = await hosts({ mfaDelayMs: 10 });
   const config: any = {

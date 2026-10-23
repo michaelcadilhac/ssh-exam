@@ -83,6 +83,7 @@ type SSHHandoff struct {
 	Consumed       string `json:"consumed,omitempty"`
 }
 type Attempt struct {
+	RegisteredOwner             *monitoringOwner     `json:"registered_owner,omitempty"`
 	Grant                       *GrantBinding        `json:"grant,omitempty"`
 	GrantBeginIntent            string               `json:"grant_begin_intent,omitempty"`
 	ExpectedRecovery            string               `json:"expected_recovery,omitempty"`
@@ -153,12 +154,13 @@ type DeniedSSHTransport struct {
 	Monitor  int    `json:"monitor"`
 }
 type Capability struct {
-	Username  string `json:"username"`
-	ID        string `json:"id"`
-	Pane      string `json:"pane"`
-	Purpose   string `json:"purpose"`
-	Transport string `json:"transport"`
-	Expires   int64  `json:"expires"`
+	RegisteredOwner monitoringOwner `json:"registered_owner,omitzero"`
+	Username        string          `json:"username"`
+	ID              string          `json:"id"`
+	Pane            string          `json:"pane"`
+	Purpose         string          `json:"purpose"`
+	Transport       string          `json:"transport"`
+	Expires         int64           `json:"expires"`
 }
 type State struct {
 	PaneInstances    map[string]PaneInstance `json:"pane_instances,omitempty"`

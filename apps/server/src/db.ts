@@ -53,6 +53,7 @@ export interface Attempt {
   grant_issued_order: number | null;
   grant_initial: string | null;
   grant_work: string | null;
+  registered_owner: string | null;
 }
 export class Store {
   db: Database.Database;
@@ -196,6 +197,10 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=28").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/028.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=29").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/029.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

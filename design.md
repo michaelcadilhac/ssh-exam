@@ -2601,3 +2601,32 @@ and changes no authorization policy. Upgrade the independent watchdog first;
 do not run an old watchdog that cannot consume the new lease journals. Do not
 restart the webserver, SSH service, relay or old PTY daemon while exams are active.
 Consolidate the temporary replacement service only during a fully drained window.
+
+## Registered page ownership (local candidate; migration029)
+
+New browser unified-grant Begin binds the current gateway page in its original
+intent and fresh authenticated outbound C15 exchange. Native actual start stores
+the verified page, attempt/account, root transport/boot, generation/clock and a
+fresh attempt authorization epoch with the authoritative interval. Lost replies
+and exact retries preserve that interval/identity; legacy null-page intents are
+not silently upgraded. Registered metadata on an unstarted preparation is an
+integrity contradiction and refuses before committing time. Approved continuation
+rotates ownership under the existing approval/readiness/deadline rules; explicit
+clock changes copy the identity with their new clock revision.
+
+Connection workers delegate canonical signing/current receipt checks to the
+owning gateway through bounded IPC; they do not open the gateway database. SSH,
+terminal work and transport failures remain isolated. Exact registered context
+travels through native capabilities, closed-release checks, the existing single
+attempt supervisor and signed pane receipts. Mismatched or late contexts refuse;
+signed callbacks preserve historical identity after logout and cannot roll newer
+metadata back. Read-only examctl info/list and panes supervisor expose the same
+optional diagnostic context, with useful help; a matching record is never a live
+permit, per-pane packet epoch or freeze receipt.
+
+This is a locally qualified identity prerequisite, not retained-mode enablement,
+live C10 evidence issuance, technical recovery or verified C3 containment. Current
+lockouts still terminate/disconnect. Keep the full native live-authority, all-writer
+stop-assisted freeze/input barrier and combined privileged fault qualification
+gates. No deployment/restart/consolidation is authorized. Implementation, state
+review, fixture limitations and verification: docs/registered-owner-workflow.md.

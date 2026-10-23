@@ -90,6 +90,14 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if cmd.Expires <= Millis() || cmd.Expires > Millis()+30000 {
 		return nil, errors.New("command expired")
 	}
+	// Versioned owner purposes refuse in older loaded agents before any positive
+	// operation. The internal flag cannot be supplied through request JSON.
+	switch cmd.Op {
+	case "renew-owner-execution-lease":
+		cmd.Op, cmd.Body.ownerRequired = "renew-execution-lease", true
+	case "consume-owner-continuation":
+		cmd.Op, cmd.Body.ownerRequired = "consume-continuation", true
+	}
 	// A distinct purpose makes older agents refuse, rather than silently
 	// ignoring a new expected-settings field and starting a mutable source.
 	versionedBegin := cmd.Op == "activate-versioned-attempt"
@@ -345,10 +353,16 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			if err != nil || a.Username != username {
 				return errors.New("attempt owner mismatch")
 			}
-		case "reset-clock", "prepare-workspace", "activate-attempt", "issue-channel-admission", "close-pane", "lock-attempt", "renew-execution-lease", "consume-continuation", "finalize-attempt":
+		case "reset-clock", "prepare-workspace", "activate-attempt", "issue-channel-admission", "issue-owner-channel-admission", "close-pane", "lock-attempt", "renew-execution-lease", "consume-continuation", "finalize-attempt":
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username || a.Transport != transport {
 				return errors.New("attempt SSH transport mismatch")
+			}
+			if r.ownerRequired && a.RegisteredOwner == nil {
+				return errRegisteredOwner
+			}
+			if cmd.Op == "issue-owner-channel-admission" && a.RegisteredOwner == nil {
+				return errRegisteredOwner
 			}
 			if cmd.Op == "activate-attempt" {
 				if err := recoveryBeginSettings(a, r, recoveryBegin); err != nil {
@@ -382,7 +396,11 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			return errors.New("operation unavailable through student SSH")
 		}
 		var err error
-		result, err = e.callLocked(cmd.Op, r)
+		op := cmd.Op
+		if op == "issue-owner-channel-admission" {
+			op = "issue-channel-admission"
+		}
+		result, err = e.callLocked(op, r)
 		return err
 	})
 	if err == nil && recoveryAllowance {
@@ -395,7 +413,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		return e.prepareAttempt(cmd.Body, cmd.Expires)
 	}
 	if err == nil && cmd.Op == "activate-attempt" {
-		return e.activatePrepared(result.(*Attempt), cmd.Expires, cmd.Body.GrantBeginIntent)
+		return e.activatePrepared(result.(*Attempt), cmd.Expires, cmd.Body.GrantBeginIntent, cmd.Body.PageEpoch)
 	}
 	if err == nil && handoff {
 		return e.issueSSHHandoff(cmd.Body.ID, cmd.Body.PublicKey, transport)

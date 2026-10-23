@@ -18,6 +18,31 @@ try {
 let connection: Connection;
 let sequence = 0;
 const answers = new Map<number, (answers: string[]) => void>();
+const authorizations = new Map<
+  number,
+  {
+    resolve: (value: any) => void;
+    reject: (error: Error) => void;
+    timer: NodeJS.Timeout;
+  }
+>();
+function authorityRequest(message: object): Promise<any> {
+  if (authorizations.size >= 64)
+    return Promise.reject(Error("Too many pending authority requests"));
+  return new Promise((resolve, reject) => {
+    const id = ++sequence;
+    const timer = setTimeout(() => {
+      authorizations.delete(id);
+      reject(
+        Error(
+          "Gateway authority unavailable; preserve original attempt and retry current status",
+        ),
+      );
+    }, 5000);
+    authorizations.set(id, { resolve, reject, timer });
+    send({ kind: "authority", id, ...message });
+  });
+}
 const sockets = new Map<number, WorkerSocket>();
 let queued = 0;
 function send(message: any) {
@@ -61,6 +86,17 @@ process.on("disconnect", () => process.exit(0));
 process.on("message", async (m: any) => {
   if (m.kind === "init") {
     const authority = new Agent(m.config.agent);
+    authority.authorize = (op, _username, transport, body) =>
+      authorityRequest({ action: "sign", op, transport, body });
+    authority.confirmRegisteredPaneOwner = (attempt, owner) =>
+      authorityRequest({
+        action: "pane",
+        username: m.username,
+        attempt,
+        owner,
+      });
+    authority.acceptRegisteredOwnerObservation = (body) =>
+      authorityRequest({ action: "observe", username: m.username, body });
     connection = m.browser
       ? new BrowserConnection(
           m.username,
@@ -74,6 +110,13 @@ process.on("message", async (m: any) => {
     connection.onLoss = () => send({ kind: "loss" });
     connection.onDiagnostic = (host, detail) =>
       send({ kind: "diagnostic", host, detail });
+  } else if (m.kind === "authority-reply") {
+    const pending = authorizations.get(m.id);
+    if (!pending) return;
+    authorizations.delete(m.id);
+    clearTimeout(pending.timer);
+    if (m.error) pending.reject(Error(m.error));
+    else pending.resolve(m.result);
   } else if (m.kind === "ping") send({ kind: "pong" });
   else if (m.kind === "shutdown") {
     connection?.close();

@@ -346,12 +346,38 @@ func (e *Engine) prepareActivation(a *Attempt) error {
 // during OS guard checks or ordinary-session termination. Never auto-start from
 // staging completion: only this later, explicit Begin can commit an interval.
 func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent ...string) (any, error) {
+	page, epoch := "", ""
+	// Registration is committed only with actual start. Contradictory restored
+	// preparation metadata must refuse before commitStart, since WithState also
+	// persists safety transitions on a returned error.
+	if snapshot.Start == 0 && snapshot.RegisteredOwner != nil {
+		return nil, errRegisteredOwner
+	}
+	if len(grantIntent) > 2 {
+		return nil, errRegisteredOwner
+	}
+	if len(grantIntent) == 2 && snapshot.Grant != nil && snapshot.BrowserSSH && snapshot.UID >= 1000 {
+		page = grantIntent[1]
+		if page != "" {
+			if !monitoringDigest.MatchString(page) {
+				return nil, errRegisteredOwner
+			}
+			epoch = Token() // Entropy failure precedes one-use publication/clock commit.
+			probe := *snapshot
+			if err := registerPageOwner(&probe, page, epoch); err != nil {
+				return nil, err
+			}
+		}
+	}
 	if snapshot.Start > 0 {
+		if err := requireRegisteredPage(snapshot, page); err != nil {
+			return nil, err
+		}
 		return snapshot, nil
 	}
 	intent := ""
 	if snapshot.Grant != nil {
-		if len(grantIntent) != 1 || !attemptID.MatchString(grantIntent[0]) {
+		if len(grantIntent) < 1 || !attemptID.MatchString(grantIntent[0]) {
 			return nil, errors.New("grant Begin requires its original intent and fresh authenticated outbound verification; no interval committed")
 		}
 		intent = grantIntent[0]
@@ -385,7 +411,7 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 	verifiedUntil := int64(0)
 	if snapshot.Grant != nil {
 		var err error
-		verifiedUntil, err = e.verifyGrantBegin(snapshot, intent)
+		verifiedUntil, err = e.verifyGrantBegin(snapshot, intent, page)
 		if err != nil {
 			return nil, err
 		}
@@ -444,6 +470,9 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 			}
 		}
 		commitStart(a, startedAt, uptime(), boot())
+		if err := registerPageOwner(a, page, epoch); err != nil {
+			return err
+		}
 		if a.Grant != nil {
 			a.GrantBeginIntent = intent
 		}

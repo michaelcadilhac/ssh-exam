@@ -143,3 +143,27 @@ tests should have preceded the first six-minute native qualification. AGENTS.md
 now makes that missing protocol review explicit. Keep unrelated architecture and
 UI expansion deferred; finish the integrated milestone, qualify its frozen source,
 then continue the already-approved definition-retirement workflow.
+
+## Registered-owner integration: inspect real process and absence semantics
+
+The initial design assumed Agent.sign ran with Store; production signs inside an
+isolated worker constructed without it. Direct signed/unit checks could pass
+while actual Chromium Begin omitted the page. The real worker now delegates its
+small canonical authorization decisions to the owning parent over bounded IPC.
+A second miss used Store.attempt for optional enrichment even though it throws
+on absence: native-only recovery/source IDs legitimately have no web row. Six
+full-suite recovery failures exposed the regression. Optional lookup now remains
+optional; present-account and absent-positive-pane refusal still hold. These real
+callers/constructor ownership and missing-ID cases belong in the FIRST source/API
+inventory and focused entry tests, not discovery after broad qualification.
+
+Positive admission and negative authenticated replies also need separate tests:
+new generation checks hid an intentional LOCKED reason. The actual signed native
+regression was RED0.017s before correction. Browser clock tests waited for a window
+rather than its native opened ACK, then invalidated a still-pending admission;
+awaiting the exact protocol boundary and exercising live command output fixed the
+oracle without weakening scope. The continuation fixture likewise had to model
+an approved new page instead of demanding the old one. Existing AGENTS.md rules
+already require these reviews; follow them rather than adding more generic rules.
+Only affected/remaining browser cases were repeated after fixture-only changes;
+unchanged full application/native/client evidence was retained with checked hashes.

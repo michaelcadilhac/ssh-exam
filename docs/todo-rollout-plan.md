@@ -914,3 +914,35 @@ as part of testing. A rollback artifact must preserve/understand explicit Work
 and all newer receipts/intervals; never restore source-blind writers, discard026
 or reset one-use history to reopen admission. Keep admission closed/repair forward
 when compatible rollback is unavailable. This remains an unexecuted proposal.
+
+## Registered page owners (migration029; proposed only)
+
+No deployment is authorized. Back up DB/WAL, original grant Begin owner_page,
+attempt registered_owner, native state/capabilities/leases and all newer receipts
+without changing attempts, saved sources, consumption history or account holds.
+029 is additive and leaves existing owner fields null; no inferred historical
+page, fresh grant, clock refund or active-attempt conversion. Preserve pending
+original intents and exact committed intervals across lost replies.
+
+A future separately authorized verified drain must include independent timed and
+practice supervisors, the canonical agent, exam-agent-live-upgrade and
+exam-agent-deferred-recovery. Inventory actual PTYs/handshakes and keep watchdog/
+collection/account enforcement throughout. The temporary three-agent consolidation
+remains a proposal: only after positive drain/backups and matching role validation,
+replace the canonical artifacts/configuration, verify synthetic workflows, and
+retire redundant temporary units once no needed owner remains. Do not execute
+these steps during local tests or stop an owner merely because its listener moved.
+
+Install a matched gateway/worker/CLI/native owner cohort. Qualify fresh C15 page
+echo, original-intent restart retry, unknown response inspection, stale closed
+launch/pane receipt refusal, approved continuation/clock transitions and current
+CLI/web diagnostics. Old loaded roles must refuse registered operations, not
+silently strip ownership. Registration alone never enables retained mode; live
+authority, framed per-pane input, verified freeze and C9 recovery remain separate
+release gates requiring full privileged and capacity qualification.
+
+Rollback requires a fresh verified drain and an artifact retaining all029/newer
+metadata and original authority. Never restore an old state writer over registered
+owners, discard pending intent pages or clear consumption/history to reopen work.
+Keep admission closed and repair forward if no compatible rollback exists. No
+migration, installation, restart, unit removal or consolidation occurred locally.

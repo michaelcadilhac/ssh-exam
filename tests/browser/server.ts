@@ -89,6 +89,30 @@ if (relay) {
 const attempts = new Map<string, any>();
 const archive = Buffer.from("TEST-FIXTURE-ARCHIVE");
 const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
+  if (
+    [
+      "issue-owner-channel-admission",
+      "renew-owner-execution-lease",
+      "consume-owner-continuation",
+    ].includes(op)
+  ) {
+    const owner = attempts.get(b.id)?.registered_owner;
+    if (
+      !owner ||
+      !/^[a-f0-9]{64}$/.test(b.page_epoch ?? "") ||
+      (op !== "consume-owner-continuation" && owner.page_epoch !== b.page_epoch)
+    )
+      throw Error("Registered fixture owner mismatch");
+    if (op === "issue-owner-channel-admission")
+      return h.agent.call("issue-channel-admission", {
+        ...b,
+        registered_owner: owner,
+      });
+    op =
+      op === "renew-owner-execution-lease"
+        ? "renew-execution-lease"
+        : "consume-continuation";
+  }
   if (op === "register") {
     if (!b.exam) throw Error("Exam-scoped registration required");
     for (const a of attempts.values())
@@ -305,6 +329,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
             transport: a.transport,
             boot,
             settings: a.settings,
+            ...(b.page_epoch ? { page_epoch: b.page_epoch } : {}),
           }),
         );
         const response = await app.inject({
@@ -318,11 +343,27 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           },
           payload,
         });
-        if (response.statusCode !== 200)
+        if (response.statusCode !== 200) {
+          const web = store.attempt(a.id),
+            intent = store.db
+              .prepare("SELECT * FROM grant_begin_intents WHERE id=?")
+              .get(b.grant_begin_intent) as any;
           throw Error(
             "Fresh browser-fixture native verification refused: " +
-              response.statusCode,
+              response.statusCode +
+              JSON.stringify({
+                nativeUid: a.uid,
+                webUid: web.uid,
+                state: web.state,
+                pageSent: b.page_epoch,
+                pageCurrent: web.page_hash,
+                pageIntent: intent?.owner_page,
+                transportMatches: intent?.transport === a.transport,
+                intent: intent?.state,
+                response: response.body,
+              }),
           );
+        }
         const frame = response.json(),
           signed = Buffer.from(frame.payload, "base64"),
           reply = JSON.parse(signed.toString());
@@ -339,6 +380,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           reply.intent !== b.grant_begin_intent ||
           reply.transport !== a.transport ||
           reply.boot !== boot ||
+          reply.page_epoch !== b.page_epoch ||
           reply.expires <= Date.now() ||
           JSON.stringify(reply.grant) !== JSON.stringify(a.grant)
         )
@@ -357,6 +399,19 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       a.original_deadline = a.deadline;
       a.clock_revision = 0;
       a.clock_resets = [];
+      if (b.page_epoch && a.grant)
+        a.registered_owner = {
+          attempt: a.id,
+          exam: a.exam,
+          username: a.username,
+          uid: a.uid,
+          transport_hash: a.transport,
+          boot: "77777777-1234-4234-8234-123456789abc",
+          page_epoch: b.page_epoch,
+          input_epoch: hash(randomUUID()),
+          generation: a.generation,
+          clock_revision: a.clock_revision,
+        };
       a.work_path = "/work";
       h.attempts.set(a.id, a);
       break;
@@ -374,6 +429,11 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         ? previous + b.extend_seconds * 1000
         : b.requested_at + b.remaining_seconds * 1000;
       a.clock_revision = (a.clock_revision || 0) + 1;
+      if (a.registered_owner)
+        a.registered_owner = {
+          ...a.registered_owner,
+          clock_revision: a.clock_revision,
+        };
       a.clock_resets ||= [];
       a.clock_resets.push({
         id: b.reset_id,
@@ -418,6 +478,15 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       if (!a.authorization) throw Error("Not authorized");
       if (!a.resumeTransport) throw Error("Fresh SSH required");
       a.state = "ACTIVE";
+      if (a.registered_owner)
+        a.registered_owner = {
+          ...a.registered_owner,
+          transport_hash: a.transport,
+          page_epoch: b.page_epoch,
+          input_epoch: hash(randomUUID()),
+          generation: a.generation,
+          clock_revision: a.clock_revision,
+        };
       a.authorization = 0;
       break;
   }
@@ -774,6 +843,12 @@ store.db
 // Disposable browser-test instrumentation only; never part of the production app.
 app.get("/api/fixture/runtime", async () => ({
   pid: process.pid,
+  activationFailure: store.db
+    .prepare(
+      "SELECT detail FROM audit WHERE action='activation-failed' ORDER BY rowid DESC LIMIT 1",
+    )
+    .get(),
+  commandFailures: h.control.failures,
   panes: [...h.activePanes.values()],
   workers: workers
     .filter((c) => c.alive)

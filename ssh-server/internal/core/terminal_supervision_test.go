@@ -392,6 +392,10 @@ func TestActualTimedPaneUsesIndependentRecordingOwner(t *testing.T) {
 	testPracticeSupervisorWorkflow(t, "timed-owner", nil, nil)
 }
 
+func TestActualTimedPaneRegistersPageOwnerInIndependentSupervisor(t *testing.T) {
+	testPracticeSupervisorWorkflow(t, "timed-owner-registered", nil, nil)
+}
+
 func TestActualTimedAdmissionSurvivesInitialAckAndContainsPrestartFault(t *testing.T) {
 	for _, mode := range []string{"initial-ack", "prestart-fault"} {
 		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-owner-"+mode, nil, nil) })
@@ -454,6 +458,15 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		cliBinary = observationCLIBinary(t)
 	}
 	e, key, r := preparationFixture(t)
+	if mode == "timed-owner-registered" {
+		if os.Getuid() < 1000 {
+			t.Skip("student owner contract requires UID>=1000")
+		}
+		r.Transport = Hash([]byte("synthetic registered SSH transport"))
+		if err := e.WithState(func() error { e.state.Registrations[r.Transport] = r.Username; return nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
 	e.preparationReady = func() (bool, []string) { return true, nil }
 	if _, err := e.Call("prepare-attempt", r); err != nil {
 		t.Fatal(err)
@@ -475,6 +488,11 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			a.State = "ACTIVE"
 			a.BrowserSSH = true
 			commitStart(a, Millis(), uptime(), boot())
+			if mode == "timed-owner-registered" {
+				if err := registerPageOwner(a, Hash([]byte("synthetic registered page")), Token()); err != nil {
+					return err
+				}
+			}
 			if !supervised {
 				a.TerminalSupervised = false // Explicit legacy-recorder compatibility controls.
 			}
@@ -542,6 +560,10 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		}
 	}
 	cmd := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "issue-channel-admission", Username: r.Username, Transport: r.Transport, Body: Request{ID: r.ID, Pane: finalID, Purpose: purpose, Username: r.Username, Transport: r.Transport}}
+	if mode == "timed-owner-registered" {
+		cmd.Op = "issue-owner-channel-admission"
+		cmd.Body.PageEpoch = Hash([]byte("synthetic registered page"))
+	}
 	issued, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
 	if err != nil {
 		t.Fatal(err)
@@ -801,6 +823,12 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	var ready2 map[string]any
 	if err := json.NewDecoder(second).Decode(&ready2); err != nil || ready2["error"] != nil {
 		t.Fatal("second actual pane missed ready", ready2, err)
+	}
+	if mode == "timed-owner-registered" {
+		view, err := ObserveTerminalSupervisor(e.Config.State, r.ID)
+		if err != nil || view.RegisteredOwner == nil || view.RegisteredOwner.PageEpoch != cmd.Body.PageEpoch || view.RegisteredOwner.TransportHash != r.Transport || !view.ObservationOnly {
+			t.Fatal("actual independent owner lost registered page scope", err)
+		}
 	}
 	if _, err := second.Write([]byte{1}); err != nil {
 		t.Fatal(err)

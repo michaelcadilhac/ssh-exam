@@ -21,22 +21,27 @@ var errTerminalObservation = errors.New("terminal-supervisor observation unavail
 // Diagnostic metadata only. Neither the root sender nor a live pidfd proves the
 // student's SSH ownership, current monitoring, freeze or execution authority.
 type TerminalSupervisorObservation struct {
-	Purpose              string   `json:"purpose"`
-	Attempt              string   `json:"attempt"`
-	Supervisor           string   `json:"supervisor"`
-	PID                  int      `json:"pid"`
-	Boot                 string   `json:"boot"`
-	At                   int64    `json:"at"`
-	AttachedPanes        int      `json:"attached_panes"`
-	AttachedUnits        []string `json:"attached_units"`
-	ReportedStartedUnits []string `json:"reported_started_units"`
-	ObservationOnly      bool     `json:"observation_only"`
+	RegisteredOwner      *monitoringOwner `json:"registered_owner,omitempty"`
+	Purpose              string           `json:"purpose"`
+	Attempt              string           `json:"attempt"`
+	Supervisor           string           `json:"supervisor"`
+	PID                  int              `json:"pid"`
+	Boot                 string           `json:"boot"`
+	At                   int64            `json:"at"`
+	AttachedPanes        int              `json:"attached_panes"`
+	AttachedUnits        []string         `json:"attached_units"`
+	ReportedStartedUnits []string         `json:"reported_started_units"`
+	ObservationOnly      bool             `json:"observation_only"`
 }
 
 func (s *terminalSupervisor) observation() TerminalSupervisorObservation {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	v := TerminalSupervisorObservation{Purpose: terminalObservationPurpose, Attempt: s.id, Supervisor: s.unit, PID: os.Getpid(), Boot: boot(), At: Millis(), AttachedPanes: s.active, AttachedUnits: []string{}, ReportedStartedUnits: []string{}, ObservationOnly: true}
+	if s.registeredOwner != nil {
+		owner := *s.registeredOwner
+		v.RegisteredOwner = &owner
+	}
 	for unit, reported := range s.panes {
 		v.AttachedUnits = append(v.AttachedUnits, unit)
 		if reported {
@@ -152,6 +157,9 @@ func ObserveTerminalSupervisor(state, id string) (TerminalSupervisorObservation,
 		return TerminalSupervisorObservation{}, errTerminalObservation
 	}
 	previous := ""
+	if result.RegisteredOwner != nil && (!validMonitoringOwner(*result.RegisteredOwner) || result.RegisteredOwner.Attempt != id || result.RegisteredOwner.Boot != result.Boot) {
+		return TerminalSupervisorObservation{}, errTerminalObservation
+	}
 	units := map[string]bool{}
 	for _, unit := range result.AttachedUnits {
 		_, kind, incarnation, valid := recordedPaneIdentity(id, unit)

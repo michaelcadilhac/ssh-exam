@@ -99,13 +99,14 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 			Transport string        `json:"transport"`
 			Boot      string        `json:"boot"`
 			Settings  Settings      `json:"settings"`
+			PageEpoch string        `json:"page_epoch,omitempty"`
 		}
 		if json.Unmarshal(payload, &request) != nil || request.Type != "grant-begin/v1" || request.Agent != "class" || request.Settings.TemplateVersion == "" {
 			t.Error("wrong fresh verification scope/source")
 			w.WriteHeader(400)
 			return
 		}
-		reply, status := handler(grantBeginReply{Type: "grant-begin/v1", Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot})
+		reply, status := handler(grantBeginReply{Type: "grant-begin/v1", Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch})
 		if status != 200 {
 			w.WriteHeader(status)
 			return

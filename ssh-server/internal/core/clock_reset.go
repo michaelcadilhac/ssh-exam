@@ -69,6 +69,7 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 	a.TimingVerifiedAt = 0
 	a.TimingVerifiedDeadline = 0
 	a.ClockRevision++
+	refreshRegisteredOwnerClock(a)
 	a.ClockResets = append(a.ClockResets, ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, ExtendSeconds: r.ExtendSeconds, Revision: a.ClockRevision})
 	// Persist before releasing the cutoff barrier, not just at the caller's final save.
 	if err := e.save(); err != nil {

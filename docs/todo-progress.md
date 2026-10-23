@@ -2498,3 +2498,35 @@ exam-agent-deferred-recovery only after active attempts, actual preflights,
 pending timing and collection/access recovery drain. Preserve the independent
 watchdog/reconciler; verify socket ownership, callbacks, capabilities and boot.
 Detailed rollout/rollback instructions will follow the validated local changes.
+
+## October23: registered page identity through actual student SSH (local only)
+
+The canonical current page now binds unified Begin/approved continuation to native
+transport/boot/generation/clock and a fresh authorization identity, through signed
+C15 verification, durable original start, capabilities/closed exec release, the
+existing single attempt owner and signed pane receipt.029 adds nullable intent/
+owner metadata without backfill. Isolated workers obtain canonical signing and
+current receipt decisions from their owning gateway through bounded IPC; native-
+only recovery IDs remain legitimate optional lookups. Exact retries preserve
+original clocks/sources; late callbacks/journals cannot replace newer ownership.
+Authenticated intentional-lock replies retain their actual reason. Read-only
+examctl info/list/panes supervisor and web metadata expose diagnostic identity,
+never execution permission. C16/C18 are settled; no pending approval is needed.
+
+Final514 app checks, core393.697s/CLI27.764s full native race/resource/namespace/
+compiler/default-size disk IO, build/vet/typecheck and all149 browser scenarios
+have passing evidence. Browser evidence combines133 unaffected broad passes,
+2 corrected focused cases and27 affected/remaining cases, with overlap explicit;
+not one149/149 green run. Retain actual failed product/fixture regressions and
+qualification limitations in registered-owner-workflow.md. Frozen544-file source
+manifest5549a4c2a2509057bf9053d3095e1bbb601f6d58e98d7db5f2cf05322ce17ddc
+and exact client artifacts match after testing. All runners ended. Preserve and
+exclude the original dirty PNG; other generated screenshots restored to baseline.
+
+This does not finish R2, critical liveness, C3 retained freeze/input or C9 recovery.
+Current lockouts still terminate/disconnect. The next actual pause/verified-hold/
+approved-Continue workflow and its root SSH/pending handoff/input/stop barriers
+are scoped in retained-workload-barrier-plan.md. No new standalone helper chain.
+No remote access/upload/test, deployment or production record/config/service
+change. No missing executable. Migration029/rollback and three-agent consolidation
+are proposals only in todo-rollout-plan.md; deployment remains revoked.

@@ -1474,7 +1474,15 @@ export async function createApp(
         ? recoveryPreflight.parse(JSON.parse(a.recovery_preflight))
         : null;
       const initialGrant = a.grant_id ? grants.bindingForAttempt(a) : null;
-      const beginIntent = initialGrant ? grants.begin(a, conn.transport) : null;
+      const beginIntent = initialGrant
+        ? grants.begin(
+            a,
+            conn.transport,
+            conn instanceof BrowserConnection && a.uid >= 1000
+              ? (a.page_hash ?? undefined)
+              : undefined,
+          )
+        : null;
       const result = await agent.call(
         initialGrant
           ? initialGrant.kind === "PRACTICE"
