@@ -5,6 +5,7 @@ import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
 import { exportRoster, parseRosterAsync, type RosterRow } from "./roster.js";
 import { recoveryAllowanceEdit } from "../../../packages/protocol/recovery-allowance.js";
+import { AttemptGrants } from "./attempt-grants.js";
 
 const examID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const allowance = z.number().int().min(60).max(21600).multipleOf(60).nullable();
@@ -35,6 +36,7 @@ export class RosterManagement {
   constructor(
     private store: Store,
     private describe: (a: any) => any = (a) => a,
+    private agent?: string,
   ) {}
   private findExam(id: string) {
     examID.parse(id);
@@ -122,6 +124,19 @@ export class RosterManagement {
           .get(id, b.username)
       )
         throw Error("Student is already enrolled in this exam");
+      if (!isSandbox(id)) {
+        if (!this.agent)
+          throw Error(
+            "Configured class agent identity required for initial grant issuance; no enrollment committed",
+          );
+        new AttemptGrants(this.store, this.agent).initial(
+          id,
+          b.username,
+          b.duration,
+          b.webcam,
+          actor,
+        );
+      }
       this.store.db
         .prepare(
           "INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?)",
@@ -282,6 +297,19 @@ export class RosterManagement {
           JSON.stringify(r.previous || null)
         )
           throw Error("Roster changed since preview; validate again");
+        if (!previous && !isSandbox(id)) {
+          if (!this.agent)
+            throw Error(
+              "Configured class agent identity required for initial grant issuance; no import committed",
+            );
+          new AttemptGrants(this.store, this.agent).initial(
+            id,
+            r.username,
+            r.duration ?? null,
+            r.webcam ?? null,
+            actor,
+          );
+        }
         this.store.db
           .prepare(
             "INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?) ON CONFLICT(exam,username) DO UPDATE SET webcam=excluded.webcam,duration=excluded.duration,uid=excluded.uid",

@@ -5,6 +5,13 @@ and enrollment-time initial issuance are already approved. This document maps
 remaining engineering boundaries; it does not reopen those decisions, create a
 grant, revise history or declare the investigation complete.
 
+October23 status: the first ordinary enrollment-time grant, CLI/web unused
+revision/revocation and C15 preparation/Begin are now integrated locally; current
+qualification and limits are in unified-grant-first-attempt.md. The inspected
+legacy map below explains the transition, not the final state of those paths.
+Additional/independent-work-source grants, reviewed legacy issuance, sandbox
+saved grants and safe retirement still require the remaining coordinated work.
+
 ## Inspected current implementation
 
 | Boundary | Confirmed behavior | Required coordinated change |
@@ -95,7 +102,8 @@ unified Begin/revision withdrawal. Root outbound reachability is an explicit
 additional prerequisite; unavailability refuses before time starts and explains
 retry/inspection. Do not substitute an offline permit or browser-relayed protocol.
 This does not change an already started deadline or resolve an uncertain prior
-Begin merely by timeout. Protocol implementation/qualification remain pending.
+Begin merely by timeout. The first ordinary workflow is now implemented/tested
+locally; additional, legacy-migration and sandbox grant scopes remain pending.
 
 An abandoned preflight consumes no allowance. Reuse/revision after an uncertain
 Begin is different: require a root-authenticated durable retirement fence for the
@@ -124,8 +132,9 @@ outbound path, restarts, explicit unused revisions and both individual/bulk flow
 
 ## Shared management workflow proposal
 
-All names below are **proposed, not currently runnable**. Shared web/root services
-must expose grants list/show/history; reviewed issue/confirm for individual and
+List/show/history and explicit unused revise/revoke are now supported locally
+as documented in initial-grants-cli.md. Reviewed issuance remains proposed.
+Shared web/root services must expose reviewed issue/confirm for individual and
 bulk targets; explicit unused revision; revoke/status and source verification
 diagnostics. Reuse existing named default-deny root authorization, metadata-only
 idempotent intents and audited conflict handling. CLI help must distinguish

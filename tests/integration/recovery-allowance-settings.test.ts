@@ -28,7 +28,12 @@ it("web settings and CSV persist only explicit allowance authorization, atomical
       .prepare("INSERT INTO exams VALUES('recovery',?)")
       .run(JSON.stringify(definition));
     const roster = new RosterManagement(store);
-    roster.add("recovery", { username: "student" }, "instructor");
+    // Legacy enrollment predates unified issuance; exercise its C17 edit path.
+    store.db
+      .prepare(
+        "INSERT INTO enrollments(exam,username,uid) VALUES('recovery','student',0)",
+      )
+      .run();
     expect(roster.allowanceEdit("recovery", "student")).toBeNull();
     store.db
       .prepare(
@@ -127,9 +132,14 @@ it("authenticated source expectations and revision counters survive restart and 
       .prepare("INSERT INTO exams VALUES('recovery',?)")
       .run(JSON.stringify({ duration: 3600 }));
     const roster = new RosterManagement(store);
-    roster.add(
+    store.db
+      .prepare(
+        "INSERT INTO enrollments(exam,username,uid) VALUES('recovery','student',0)",
+      )
+      .run();
+    roster.settings(
       "recovery",
-      { username: "student", duration: 4500 },
+      { usernames: ["student"], duration: 4500 },
       "instructor",
     );
     const edit = roster.allowanceEdit("recovery", "student")!;

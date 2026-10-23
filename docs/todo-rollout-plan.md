@@ -744,3 +744,32 @@ closed/in maintenance and repair forward. An older gateway may again duplicate
 mail or mislabel renewal expiry; acknowledge that limitation without deleting
 episode history. Existing restored files keep their modes/mtimes. Record the
 chosen artifacts, checks and result privately; nothing here has been deployed.
+
+## Initial ordinary grants (migration023; proposed only)
+
+No deployment or migration is authorized now. Before any later rollout, verify
+the full drain above, including PREPARING/Begin-pending claims, independent
+practice owners and every bridge owned by the canonical agent or either of the
+two temporary agents. Upgrade ALL gateway/native/watchdog/forced-command state
+writers together; older native writers can discard unknown authority fields.
+An advertised initial-grant capability is not proof of compatible loaded roles.
+
+Take private consistent DB/WAL/native-state/audit and protected-source backups.
+Migration023 adds grant modes/revisions/claims/Begin intents without legacy
+backfill, removing ordinary uniqueness or changing active/historical attempts.
+First initial issuance activates new-enrollment and known-grant admission writer
+fences. Configure named grants management authorization explicitly; verify exact
+attested sources and finite windows before new enrollment. Confirm fresh pinned
+outbound grant-begin/v1 verification, original one-use interval reconciliation,
+positive no-start cancellation, monitoring preservation and actual CLI/web help.
+Do not use production student records for these checks.
+
+Preserve modes, immutable revisions, request receipts, cancelled UID-bound claims,
+Begin intents/intervals and native grant/intent/stage/consumption tombstones with
+all newer work. Old strict workspace readers reject new grant receipts. A rollback
+must preserve and understand these fields; never drop023 authority or restore an
+earlier AVAILABLE snapshot over newer consumption. If compatible rollback is
+unavailable, keep admission closed and repair forward. C13 legacy issuance,
+additional/work-source/sandbox grants, C8 retirement and retained SSH remain
+separate unfinished scopes. The temporary-agent consolidation above is a plan,
+not an executed action.

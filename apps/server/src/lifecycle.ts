@@ -1,4 +1,5 @@
 import { cleanupDiagnostic } from "./cleanup-diagnostic.js";
+import { AttemptGrants } from "./attempt-grants.js";
 import { PREFLIGHT_TIMEOUT_MS } from "../../../packages/protocol/preflight.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
 import {
@@ -371,6 +372,16 @@ export class Lifecycle {
   acceptRemote(remote: any, manifest?: any, id = remote.id) {
     const a = this.store.attempt(id);
     if (
+      remote.state === "CANCELLED_BEFORE_START" &&
+      (remote.id !== id ||
+        remote.exam !== a.exam ||
+        remote.username !== a.username ||
+        remote.uid !== a.uid)
+    )
+      throw Error(
+        "Cancellation confirmation requires exact native attempt identity; preserve history before retry",
+      );
+    if (
       remote.id &&
       (remote.id !== id ||
         remote.exam !== a.exam ||
@@ -481,6 +492,7 @@ export class Lifecycle {
       (a.start && !remote.start)
     )
       return;
+    new AttemptGrants(this.store, this.agent.id).accept(remote, a);
     if (
       !["RELEASED", "OVERRIDDEN"].includes(a.access_state) ||
       ["RELEASED", "OVERRIDDEN"].includes(remote.access_state)
@@ -950,6 +962,16 @@ export class Lifecycle {
         "The previous preparation was cancelled, but account access restoration is not yet confirmed. Retry shortly; contact your instructor if this continues.",
       );
     }
+    if (
+      remote.id !== a.id ||
+      remote.exam !== a.exam ||
+      remote.username !== a.username ||
+      remote.uid !== a.uid
+    )
+      throw Error(
+        "Previous preparation cancellation identity is unconfirmed; no retirement authorized",
+      );
+    new AttemptGrants(this.store, this.agent.id).checkRetirement(a);
     this.monitoring.delete(id, "preflight-retry");
     this.store.db.transaction(() => {
       const current = this.store.attempt(id);
@@ -965,6 +987,7 @@ export class Lifecycle {
       this.store.db
         .prepare("DELETE FROM continuations WHERE attempt=?")
         .run(id);
+      new AttemptGrants(this.store, this.agent.id).retire(current);
       this.store.db.prepare("DELETE FROM attempts WHERE id=?").run(id);
     })();
   }

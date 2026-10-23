@@ -2028,6 +2028,20 @@ consumption/deletion share persistent catalog locks. See
 docs/legacy-recovery-dependencies.md. Arbitrary old root writers must be quiesced;
 this is not unified issuance/migration or C8 retirement and is not deployed.
 
+Local October23 initial-ordinary workflow now issues fixed settings at NEW
+enrollment/import, with exact template source and shared CLI/web unused revision/
+revoke. Distinct signed native preparation/Begin and fresh existing-agent outbound
+HTTPS verification bind grant/revision/settings, verified UID/owner, original
+Begin intent and actual commit time. Claim/cancellation/consumption history is
+retained; old-writer enrollment/admission fences activate with first issuance.
+The portal displays the saved policy, not later defaults. Migration023 performs
+no legacy backfill or ordinary-uniqueness relaxation. This closes only the first
+ordinary workflow after qualification, not additional/work-source/sandbox grants,
+reviewed migration, retained SSH or definition retirement. Full application/native
+race/resource and eight rebuilt browser checks pass locally, with matching
+build/typecheck/vet; no deployment. See docs/unified-grant-first-attempt.md for state review/
+evidence/limits and docs/initial-grants-cli.md for supported operator workflows.
+
 ### Approved grant webcam/Begin-window policy (October 21; implementation pending)
 
 At issuance preserve the student's current effective webcam requirement (exam

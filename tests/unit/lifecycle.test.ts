@@ -295,7 +295,16 @@ it("cancels and retires only confirmed unstarted preparations, retaining audit a
         "INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES('a','e','alice',1001,'PREPARING','{}')",
       )
       .run();
-    const remote = { state: "PREPARING", start: 0 };
+    const remote = {
+      id: "a",
+      exam: "e",
+      username: "alice",
+      uid: 1001,
+      state: "PREPARING",
+      start: 0,
+      deadline: 0,
+      original_deadline: 0,
+    };
     const life = new Lifecycle(
       s,
       {
@@ -451,6 +460,10 @@ it.each(["NORMAL", "RESTORE_FAILED", undefined])(
         s,
         {
           call: async () => ({
+            id: "a",
+            exam: "e",
+            username: "alice",
+            uid: 1001,
             state: "CANCELLED_BEFORE_START",
             start: 0,
             account_policy_required: true,

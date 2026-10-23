@@ -30,6 +30,7 @@ import https from "node:https";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { createApp } from "../../apps/server/src/app.js";
+import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 import {
   managementPurpose,
   managementOperations,
@@ -771,6 +772,28 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         "exams.create",
         "exams.update",
       ];
+      new TemplateCatalog(f.current.store, "class").sync(
+        {
+          version: {
+            schema: 1,
+            name: "v1",
+            hash: "a".repeat(64),
+            entries: 4,
+            files: 2,
+            bytes: 30,
+            max_file_bytes: 20,
+            created: 1000,
+          },
+          reason: "Synthetic exact source for initial CLI grants",
+        },
+        {
+          agent: "class",
+          actor: "agent:class:root",
+          request: randomUUID(),
+          issued: 1000,
+          observed: 1001,
+        },
+      );
       const creation = [
         "create",
         "cli-exam",
@@ -778,6 +801,8 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         "CLI exam",
         "--template",
         "v1",
+        "--template-version",
+        "a".repeat(64),
         "--earliest",
         "2026-10-22T09:00:00-05:00",
         "--latest",
@@ -874,6 +899,68 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         duration: 7200,
         actor: expect.stringContaining("agent:"),
       });
+      const grantsCLI = async (args: string[]) =>
+        JSON.parse((await invoke("grants", args)).stdout).result;
+      const initial = (
+        await grantsCLI(["list", "cli-exam", "--username", "learner01"])
+      ).grants[0];
+      expect(initial).toMatchObject({
+        status: "AVAILABLE",
+        revision: 1,
+        settings: {
+          duration: 7200,
+          webcam: false,
+          template_version: "a".repeat(64),
+        },
+      });
+      expect((await grantsCLI(["show", initial.id])).history).toHaveLength(1);
+      const grantRequest = randomUUID(),
+        grantArgs = [
+          "revise",
+          initial.id,
+          "--revision",
+          "1",
+          "--duration-minutes",
+          "75",
+          "--reason",
+          "Explicit unused initial CLI revision",
+          "--request",
+          grantRequest,
+        ];
+      const revised = await grantsCLI(grantArgs);
+      expect(revised).toMatchObject({
+        revision: 2,
+        settings: { duration: 4500, webcam: false },
+      });
+      await f.restart();
+      expect(await grantsCLI(grantArgs)).toEqual(revised);
+      await expect(
+        grantsCLI([
+          "revise",
+          initial.id,
+          "--revision",
+          "1",
+          "--webcam",
+          "required",
+          "--reason",
+          "Stale unused initial CLI revision",
+        ]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("revision changed"),
+      });
+      expect(
+        (
+          await grantsCLI([
+            "revoke",
+            initial.id,
+            "--revision",
+            "2",
+            "--reason",
+            "Withdraw this unused CLI authorization",
+          ])
+        ).status,
+      ).toBe("REVOKED");
       const allowanceRequest = randomUUID();
       const allowanceArgs = [
         "settings",
@@ -1512,17 +1599,54 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
           f.request({ operation, body, ...(request ? { request } : {}) }),
         ),
       );
+    new TemplateCatalog(f.current.store, "class").sync(
+      {
+        version: {
+          schema: 1,
+          name: "v1",
+          hash: "a".repeat(64),
+          entries: 4,
+          files: 2,
+          bytes: 30,
+          max_file_bytes: 20,
+          created: 1000,
+        },
+        reason: "Synthetic reviewed source for initial CSV grants",
+      },
+      {
+        agent: "class",
+        actor: "agent:class:root",
+        request: randomUUID(),
+        issued: 1000,
+        observed: 1001,
+      },
+    );
     const exam = {
       id: "roster",
       name: "Roster",
       template: "v1",
+      template_version: "a".repeat(64),
       earliest: Date.now() - 1000,
       latest: Date.now() + 3600000,
       duration: 5400,
       webcam: true,
       terminals: 4,
     };
-    expect((await root("exams.create", { exam })).ok).toBe(true);
+    expect(
+      (
+        await root("exams.create", {
+          exam,
+          source_selection: "template-version/v1",
+        })
+      ).ok,
+    ).toBe(true);
+    // Existing legacy history must not be retroactively issued an initial grant
+    // by re-enrollment. New CSV students below still exercise real issuance.
+    f.current.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,access_state) VALUES('active-roster','roster','learner01',29999,'ACTIVE',?,100,200,200,'HELD')",
+      )
+      .run(JSON.stringify(exam));
     const addedID = randomUUID();
     expect(
       (
@@ -1564,11 +1688,6 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
         "UPDATE enrollments SET uid=29999 WHERE exam='roster' AND username='learner01'",
       )
       .run();
-    f.current.store.db
-      .prepare(
-        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,access_state) VALUES('active-roster','roster','learner01',29999,'ACTIVE',?,100,200,200,'HELD')",
-      )
-      .run(JSON.stringify(exam));
     const snapshot = f.current.store.attempt("active-roster");
     const preview = await root("students.import-preview", {
       exam: "roster",

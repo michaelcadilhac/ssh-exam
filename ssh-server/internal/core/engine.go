@@ -17,6 +17,8 @@ import (
 )
 
 type Request struct {
+	Grant            *GrantBinding          `json:"grant,omitempty"`
+	GrantBeginIntent string                 `json:"grant_begin_intent,omitempty"`
 	AllowanceEdit    *RecoveryAllowanceEdit `json:"allowance_edit,omitempty"`
 	ExpectedRecovery string                 `json:"expected_recovery,omitempty"`
 	PublicKey        string                 `json:"public_key"`
@@ -173,7 +175,7 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 	var result any
 	err := e.WithState(func() error { var err error; result, err = e.callLocked(op, r); return err })
 	if err == nil && op == "activate-attempt" {
-		return e.activatePrepared(result.(*Attempt), r.Expires)
+		return e.activatePrepared(result.(*Attempt), r.Expires, r.GrantBeginIntent)
 	}
 	if err == nil && op == "prepare-workspace" {
 		return e.preparedWorkspace(r.ID)

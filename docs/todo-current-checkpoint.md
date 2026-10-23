@@ -1,31 +1,42 @@
 # Current local TODO checkpoint
 
-Updated October22,2026 (America/Chicago). Local development/tests/commits only:
+Updated October23,2026 (America/Chicago). Local development/tests/commits only:
 no push, deployment, production changes, service restart or consolidation.
 Stop on a missing command. Preserve all work, history, protected submissions,
 deadlines, holds and credential cleanup. Follow AGENTS.md and the retrospective.
 
-## Active next milestone: unified first ordinary grant, end to end
+## Next milestone: reviewed new grants for legacy unused enrollments (C13)
 
-Resume unified-grant-first-attempt.md and the inspected protocol proposal.
-Actual enrollment/import → immutable initial grant → supported CLI/web inspect/
-revise/revoke → student preflight/Begin → fresh C15 native outbound verification.
-Preserve legacy history/account restrictions; no implicit legacy backfill or
-unsafe mixed-version admission. Continue to an integrated acceptance boundary,
-not additive tables alone. Initial issuance snapshots at enrollment/import are
-settled; defaults/roster edits do not revise issued grants.
+Use the approved current-settings/exact-version/finite-window review, never
+invented enrollment-time history. Entry points must be matching CLI/web reviewed
+preview/inspection/cancel/confirmation, followed by the existing student grant
+preflight/Begin. Preserve enrollment, active/historical attempts, native legacy
+saved-work authority and all account restrictions. No automatic schema backfill.
+Before editing, record the bounded acceptance/state review; exercise actual
+shared HTTP/root CLI/browser and student admission, not metadata helpers alone.
+Additional/independent-work-source grants and sandbox saved grants follow.
+C16 authority placement is still open, not a global blocker; C17 is settled.
 
-Exact next action: implement shared initial issuance and management with actual
-enrollment/CSV/CLI tests, followed by source-bound native/student C15 admission
-in the SAME end-to-end milestone. Check native account/ordinary uniqueness before
-changing indexes; cancelled claims need retained history and positive native
-no-start fencing. Review all new intermediate states before broad qualification.
-C16 authority placement is open (reasked asynchronously October22), not a global
-blocker. C17 is settled and delivered locally; do not reask.
+## Latest validated local milestone: initial ordinary grants
+
+This milestone's source is based on32e1eec; local commit follows qualification.
+NEW enrollment/CSV → immutable initial settings/source → CLI/web inspect/revise/
+revoke → student portal/preflight → fresh C15 native outbound Begin. Migration023
+retains ordinary uniqueness/holds, mode fences, UID-bound cancelled claims and
+one-use intents/intervals. No legacy backfill or retained-mode enablement.
+
+458 app/88 files159.32s; full native race/resource/namespace/compiler/default-size
+core346.922s/CLI42.618s; eight rebuilt Chromium/WASM checks59.5s; matching build,
+typecheck/static/vet/format/diff pass. All runners finished. State review, actual
+commit-boundary RED/fix, monitoring-purge mutation and corrected fixture failures:
+unified-grant-first-attempt.md. Commands: initial-grants-cli.md. Native OS setup
+remains a test seam, not installed SSH/PAM/cgroup qualification. No production
+records, installed roles, services, deployment or consolidation changed.
+Preserve/exclude the existing uncommitted PNG. Continue independent work.
 
 ## Latest validated local milestone: recovery allowance synchronization (C17)
 
-Validated source increment based on ea9cce2, local commit titled
+Validated source increment32e1eec (based on ea9cce2), local commit titled
 "Synchronize explicit recovery allowances without consuming attempts".
 Explicit student duration edits → shared web/CLI/CSV ledger → authenticated
 unused native revision → exact saved-source preparation/Begin. Prepared/consumed/

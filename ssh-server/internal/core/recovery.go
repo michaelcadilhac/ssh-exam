@@ -95,6 +95,9 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	if err != nil {
 		return nil, recoveryMetadataRefusal(a)
 	}
+	if a.Grant != nil {
+		return nil, errors.New("explicit initial template grant conflicts with legacy saved-work authorization; preserve both authorities and source/history for reviewed migration; no fallback authorized")
+	}
 	if _, pendingErr := recoveryMetadataFile(root, a.Username+".json.pending", 16384); !os.IsNotExist(pendingErr) {
 		return nil, errors.New("recovery allowance publication is pending or unsafe; retry authenticated preflight with the latest explicit allowance edit; no admission, Begin or starter-file fallback is authorized")
 	}

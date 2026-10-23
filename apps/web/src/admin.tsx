@@ -6,6 +6,7 @@ import { CreateAdministrator } from "./create-administrator.js";
 import { ExamSettings } from "./exam-settings.js";
 import { StudentImport } from "./student-import.js";
 import { EnrollmentSetting } from "./enrollment-setting.js";
+import { AttemptGrantsDialog } from "./attempt-grants.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
@@ -80,6 +81,7 @@ export function Admin({
     [signingOut, setSigningOut] = useState(false);
   const [alertsError, setAlertsError] = useState("");
   const [templateCatalog, setTemplateCatalog] = useState(false);
+  const [grantsFor, setGrantsFor] = useState<string | null>(null);
   const [permission, setPermission] = useState(
     typeof Notification === "undefined"
       ? "unavailable"
@@ -216,6 +218,7 @@ export function Admin({
   };
   const chooseExam = (id: string) => {
     clearView();
+    setGrantsFor(null);
     query.current = { exam: id, search: "", filter: "", offset: 0 };
     setExam(id);
     setSearch("");
@@ -677,6 +680,17 @@ export function Admin({
                               )}
                               <td className="student-identity" role="cell">
                                 <strong title={s.username}>{s.username}</strong>
+                                {s.grant && (
+                                  <small>
+                                    Issued: {s.grant.settings.duration / 60} min
+                                    · {s.grant.status}
+                                  </small>
+                                )}
+                                {s.grantError && (
+                                  <small className="warn">
+                                    Grant requires inspection
+                                  </small>
+                                )}
                                 {!s.enrollment && <small>Not enrolled</small>}
                               </td>
                               <td role="cell" className="student-history-count">
@@ -706,6 +720,12 @@ export function Admin({
                                   <AdminMenu
                                     label={`Actions for student ${s.username}`}
                                     actions={[
+                                      {
+                                        label: "Attempt grants…",
+                                        disabled: stale,
+                                        onSelect: () =>
+                                          setGrantsFor(s.username),
+                                      },
                                       {
                                         label: "Remove from exam…",
                                         danger: true,
@@ -986,6 +1006,15 @@ export function Admin({
             )}
           </section>
         </>
+      )}
+      {grantsFor && (
+        <AttemptGrantsDialog
+          key={`${exam}:${grantsFor}`}
+          exam={exam}
+          username={grantsFor}
+          onClose={() => setGrantsFor(null)}
+          onChanged={refresh}
+        />
       )}
       {templateCatalog && (
         <Modal

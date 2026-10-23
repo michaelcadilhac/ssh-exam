@@ -10,7 +10,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page
     .getByLabel("Selected exam", { exact: true })
-    .selectOption("sample");
+    .selectOption("versioned-source");
   await expect(page.locator("textarea, .bulk-import")).toHaveCount(0);
   const add = page.getByRole("button", { name: "Add student", exact: true });
   await add.click();
@@ -114,4 +114,74 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(add).toBeFocused();
+  // This exact-version exam exercises actual enrollment-time grant issuance,
+  // not a mocked catalog or automatic legacy backfill.
+  await page.setViewportSize({ width: 430, height: 1000 });
+  await row
+    .getByRole("button", { name: "Actions for student student02", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Attempt grants…", exact: true })
+    .click();
+  const grants = page.getByRole("dialog", {
+    name: "Attempt grants for student02",
+    exact: true,
+  });
+  await expect(grants).toContainText("Saved allowance: 120 minutes");
+  await expect(grants).toContainText("revision 1");
+  expect(
+    await grants.evaluate(
+      (el) => el.getBoundingClientRect().right <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await expect(
+    grants.getByLabel("Exact attested template hash", { exact: true }),
+  ).toHaveValue("a".repeat(64));
+  await grants.getByLabel("Allowance seconds", { exact: true }).fill("5400");
+  await grants
+    .getByLabel("Reason", { exact: true })
+    .fill("Explicit unused browser grant revision");
+  let lost = false;
+  const requests: any[] = [];
+  await page.route("**/api/admin/grants/*/revise", async (route) => {
+    requests.push(route.request().postDataJSON());
+    const reply = await route.fetch();
+    if (!lost) {
+      lost = true;
+      await route.abort("connectionreset");
+      return;
+    }
+    await route.fulfill({ response: reply });
+  });
+  await grants
+    .getByRole("button", { name: "Revise unused grant", exact: true })
+    .click();
+  await expect(grants.getByRole("alert")).toBeVisible();
+  await expect(
+    grants.getByLabel("Allowance seconds", { exact: true }),
+  ).toBeDisabled();
+  await grants
+    .getByRole("button", { name: "Retry original revision", exact: true })
+    .click();
+  await expect(grants).toContainText("revision 2");
+  await expect(grants).toContainText("Saved allowance: 90 minutes");
+  expect(requests).toHaveLength(2);
+  expect(requests[1]).toEqual(requests[0]);
+  await grants.getByText("Immutable revision history", { exact: true }).click();
+  await expect(grants.locator("details li")).toHaveCount(2);
+  await grants
+    .getByLabel("Reason", { exact: true })
+    .fill("Withdraw this unused browser grant");
+  await grants
+    .getByRole("button", { name: "Revoke unused grant", exact: true })
+    .click();
+  await expect(grants).toContainText("REVOKED");
+  await expect(
+    grants.getByRole("button", { name: "Revise unused grant", exact: true }),
+  ).toHaveCount(0);
+  await grants
+    .getByRole("button", { name: "Close grants", exact: true })
+    .click();
+  await expect(row).toContainText("Duration: 120 minutes");
+  await expect(row).toContainText("Issued: 90 min · REVOKED");
 });

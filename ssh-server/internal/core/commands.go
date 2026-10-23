@@ -94,8 +94,17 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	// ignoring a new expected-settings field and starting a mutable source.
 	versionedBegin := cmd.Op == "activate-versioned-attempt"
 	recoveryBegin := cmd.Op == "activate-recovery-attempt"
-	if versionedBegin || recoveryBegin {
+	grantBegin := cmd.Op == "activate-grant-attempt"
+	if versionedBegin || recoveryBegin || grantBegin {
 		cmd.Op = "activate-attempt"
+	}
+	if cmd.Op == "prepare-grant-attempt" {
+		if !validGrant(cmd.Body.Grant) || cmd.Body.ExpectedRecovery != "" || cmd.Body.Settings.TemplateVersion == "" {
+			return nil, errors.New("exact initial grant/version binding required; no preparation or clock authorized")
+		}
+		cmd.Op = "prepare-attempt"
+	} else if cmd.Op == "prepare-attempt" && cmd.Body.Grant != nil {
+		return nil, errors.New("use the distinct grant-aware preparation purpose")
 	}
 	recoveryPrepare := cmd.Op == "prepare-recovery-attempt"
 	if recoveryPrepare {
@@ -136,6 +145,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 				return errors.New("attempt SSH transport mismatch")
 			}
 			if err := recoveryBeginSettings(a, cmd.Body, recoveryBegin); err != nil {
+				return err
+			}
+			if err := grantBeginSettings(a, cmd.Body, grantBegin); err != nil {
 				return err
 			}
 			if versionedBegin {
@@ -321,6 +333,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 				if err := recoveryBeginSettings(a, r, recoveryBegin); err != nil {
 					return err
 				}
+				if err := grantBeginSettings(a, r, grantBegin); err != nil {
+					return err
+				}
 			}
 			if versionedBegin {
 				if err := versionedBeginSettings(a, r.Settings); err != nil {
@@ -359,7 +374,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		return e.prepareAttempt(cmd.Body, cmd.Expires)
 	}
 	if err == nil && cmd.Op == "activate-attempt" {
-		return e.activatePrepared(result.(*Attempt), cmd.Expires)
+		return e.activatePrepared(result.(*Attempt), cmd.Expires, cmd.Body.GrantBeginIntent)
 	}
 	if err == nil && handoff {
 		return e.issueSSHHandoff(cmd.Body.ID, cmd.Body.PublicKey, transport)

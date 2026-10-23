@@ -83,6 +83,8 @@ type SSHHandoff struct {
 	Consumed       string `json:"consumed,omitempty"`
 }
 type Attempt struct {
+	Grant                   *GrantBinding        `json:"grant,omitempty"`
+	GrantBeginIntent        string               `json:"grant_begin_intent,omitempty"`
 	ExpectedRecovery        string               `json:"expected_recovery,omitempty"`
 	PreparationPending      bool                 `json:"preparation_pending,omitempty"`
 	PreparationPendingSince int64                `json:"preparation_pending_since,omitempty"`

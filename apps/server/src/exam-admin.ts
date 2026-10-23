@@ -11,6 +11,7 @@ import {
 } from "../../../packages/protocol/admin.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { RosterManagement } from "./roster-management.js";
+import { AttemptGrants } from "./attempt-grants.js";
 import { AttemptManagement } from "./attempt-management.js";
 import {
   ClockManagement,
@@ -102,6 +103,18 @@ export function registerExamAdmin(
       .filter((s) => !view || s.attempts.length);
     const students = matches.slice(start, start + 100).map((s) => ({
       ...s,
+      ...(() => {
+        try {
+          return {
+            grant: new AttemptGrants(store, agent.id).initialFor(
+              req.params.exam,
+              s.username,
+            ),
+          };
+        } catch {
+          return { grant: null, grantError: true };
+        }
+      })(),
       enrollment:
         store.db
           .prepare(

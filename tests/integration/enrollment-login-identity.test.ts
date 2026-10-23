@@ -5,6 +5,7 @@ import WebSocket from "ws";
 import { createApp } from "../../apps/server/src/app.js";
 import { Agent } from "../../apps/server/src/agent.js";
 import { hosts } from "../fixtures/hosts.js";
+import { grantExam } from "../fixtures/grant-exam.js";
 
 it("saves single/CSV enrollments without an agent account list and preserves verified identities", async () => {
   const dir = mkdtempSync(tmpdir() + "/enrollment-identity-");
@@ -26,7 +27,7 @@ it("saves single/CSV enrollments without an agent account list and preserves ver
     .spyOn(Agent.prototype, "call")
     .mockRejectedValue(Error("Agent unavailable"));
   try {
-    store.db.prepare("INSERT INTO exams VALUES('e','{}')").run();
+    grantExam(store, "e");
     const s = store.session("admin", "instructor", null);
     const headers = {
       cookie: `session=${s.token}`,

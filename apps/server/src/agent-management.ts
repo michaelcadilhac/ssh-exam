@@ -14,6 +14,7 @@ import { hash, now, type Store } from "./db.js";
 import type { Agent } from "./agent.js";
 import { ExamDefinitions } from "./exam-definitions.js";
 import { RosterManagement, rosterPreview } from "./roster-management.js";
+import { AttemptGrants } from "./attempt-grants.js";
 import {
   parseRosterAsync,
   RosterUsernameError,
@@ -73,7 +74,8 @@ export function registerAgentManagement(
 ) {
   const definitions = new ExamDefinitions(store, config.agent.id);
   const templates = new TemplateCatalog(store, config.agent.id);
-  const roster = new RosterManagement(store, describe);
+  const roster = new RosterManagement(store, describe, config.agent.id);
+  const grants = new AttemptGrants(store, config.agent.id);
   const alerts = new AlertManagement(store, () => !!config.smtp);
   const interruptions = new InterruptionManagement(store);
   const administratorManagement =
@@ -410,6 +412,38 @@ export function registerAgentManagement(
                     b.reason,
                   ),
                 };
+              } else if (r.operation.startsWith("grants.")) {
+                const raw = z.record(z.string(), z.unknown()).parse(r.body);
+                let value: unknown;
+                switch (r.operation) {
+                  case "grants.list":
+                    value = grants.list(raw);
+                    break;
+                  case "grants.show":
+                    value = grants.show(raw);
+                    break;
+                  case "grants.revise": {
+                    const { id, ...b } = raw;
+                    value = grants.revise(
+                      z.string().uuid().parse(id),
+                      b,
+                      actor,
+                    );
+                    break;
+                  }
+                  case "grants.revoke": {
+                    const { id, ...b } = raw;
+                    value = grants.revoke(
+                      z.string().uuid().parse(id),
+                      b,
+                      actor,
+                    );
+                    break;
+                  }
+                  default:
+                    throw Error("Unsupported grant management operation");
+                }
+                return { ok: true, status: 200, result: value };
               } else if (r.operation.startsWith("templates.")) {
                 let value: unknown;
                 switch (r.operation) {

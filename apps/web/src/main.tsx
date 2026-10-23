@@ -430,7 +430,7 @@ function App() {
                 ) : (
                   <>
                     <small>Signed in as {user.username}</small>
-                    <h2>{info.exam.name}</h2>
+                    <h2>{info.settings?.name ?? info.exam.name}</h2>
                     {isSandbox(info.exam.id) && !hasSandboxWindow(info.exam) ? (
                       <p>
                         Sandbox practice awaits an operator-configured finite
@@ -441,19 +441,23 @@ function App() {
                       <details className="exam-details">
                         <summary>Start window</summary>
                         <p>
-                          Start window: {chicago(info.exam.earliest)} –{" "}
-                          {chicago(info.exam.latest)}
+                          Start window:{" "}
+                          {chicago(
+                            info.settings?.earliest ?? info.exam.earliest,
+                          )}{" "}
+                          – {chicago(info.settings?.latest ?? info.exam.latest)}
                         </p>
                       </details>
                     )}
                     <p>
-                      {(info.enrollment.duration ?? info.exam.duration) / 60}{" "}
+                      {(info.settings?.duration ??
+                        info.enrollment.duration ??
+                        info.exam.duration) / 60}{" "}
                       minutes · Webcam:{" "}
-                      {(
-                        info.enrollment.webcam === null
-                          ? info.exam.webcam
-                          : info.enrollment.webcam
-                      )
+                      {(info.settings?.webcam ??
+                      (info.enrollment.webcam === null
+                        ? info.exam.webcam
+                        : info.enrollment.webcam))
                         ? "Required"
                         : "Not required"}
                     </p>

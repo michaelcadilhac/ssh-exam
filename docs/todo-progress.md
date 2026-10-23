@@ -2336,6 +2336,25 @@ production student record, installed role, service or deployment changed.
 The broad unified-grant/recovery TODOs remain open. Next integrated boundary:
 unified-grant-first-attempt.md. C16 authority placement remains independent.
 
+## October23: initial ordinary grants, enrollment through native Begin
+
+NEW enrollment/import now saves immutable settings and exact source atomically;
+shared CLI/web inspection, unused revision/revocation and student portal/preflight/
+Begin use that snapshot. Fresh authenticated native outbound agreement fences
+one-use Begin without starting clocks on verification failure. Cancelled UID-bound
+claims and independent consumption evidence survive retry; monitoring is preserved
+when no-start evidence conflicts. Migration023 performs no legacy backfill and
+retains ordinary/account restrictions. No retained SSH or production change.
+
+Focused interface/native regressions,458 app tests/88 files159.32s, full native
+race/resource/namespace/compiler/default-size core346.922s/CLI42.618s, eight
+rebuilt Chromium/WASM checks59.5s and matching build/typecheck/static/vet pass.
+Exact state review, reproduced commit-time race, effective monitoring-purge
+mutation control, corrected legacy/identity fixtures and privileged-test limits:
+unified-grant-first-attempt.md. Operator workflows: initial-grants-cli.md.
+Additional/work-source grants, reviewed legacy issuance and sandbox snapshots
+remain open. C16 is still independent; continue actionable work rather than stop.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are

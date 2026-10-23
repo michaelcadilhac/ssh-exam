@@ -10,6 +10,9 @@ import (
 // readiness and configuration copying never own the shared state transaction.
 // Nothing here starts a clock, grants a lease or admits a workload.
 func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error) {
+	if r.Grant != nil && (!validGrant(r.Grant) || r.ExpectedRecovery != "" || r.Settings.TemplateVersion == "" || r.Exam == SandboxExamID) {
+		return nil, errors.New("invalid initial grant scope/source; preserve original settings and use grant-aware preflight")
+	}
 	lock, err := e.accountWorkLock(r.UID)
 	if err != nil {
 		return nil, err
@@ -52,6 +55,9 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 			if a.State == "PREPARING" && a.ExpectedRecovery != r.ExpectedRecovery {
 				return errors.New("saved-work grant binding differs from this preparation; preserve it and cancel only if confirmed unstarted before a fresh preflight")
 			}
+			if a.State == "PREPARING" && !sameGrant(a.Grant, r.Grant) {
+				return errors.New("grant binding differs from the original preparation; positively cancel if unstarted before claiming again")
+			}
 			if a.PreparationPending && a.PreparationPendingSince == 0 {
 				a.PreparationPendingSince = Millis()
 			}
@@ -88,6 +94,18 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 			return err
 		}
 		candidate = &Attempt{ExpectedRecovery: r.ExpectedRecovery, PreparationPending: true, PreparationPendingSince: Millis(), BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
+		if r.Grant != nil {
+			grant := *r.Grant
+			candidate.Grant = &grant
+			for _, prior := range e.state.Attempts {
+				if prior.Grant != nil && prior.Grant.ID == grant.ID && prior.Start > 0 {
+					return errors.New("grant already consumed by an original native interval; inspect its attempt, no refund/reopening authorized")
+				}
+				if prior.Grant != nil && prior.Grant.ID == grant.ID && (prior.UID != r.UID || prior.Username != r.Username || prior.Exam != r.Exam) {
+					return errors.New("grant identity changed after preparation, including cancelled claims; preserve original grant/UID history for explicit review")
+				}
+			}
+		}
 		candidate.PolicyRequired = e.temporaryPolicy(candidate)
 		if sandboxAttempt(candidate) {
 			if err := sandboxBeginWindow(candidate.Settings, Millis()); err != nil {

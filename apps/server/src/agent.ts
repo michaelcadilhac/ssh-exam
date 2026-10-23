@@ -33,6 +33,9 @@ export class Agent {
     private config: Config["agent"],
     private store?: Store,
   ) {}
+  get id() {
+    return this.config.id;
+  }
   bind(session: AgentSession) {
     this.sessions.set(session.username, session);
   }

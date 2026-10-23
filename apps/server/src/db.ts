@@ -45,6 +45,10 @@ export interface Attempt {
   access_error: string | null;
   functional_test: number;
   recovery_preflight: string | null;
+  grant_id: string | null;
+  grant_revision: number | null;
+  grant_hash: string | null;
+  grant_begin_intent: string | null;
 }
 export class Store {
   db: Database.Database;
@@ -152,6 +156,10 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=22").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/022.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=23").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/023.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

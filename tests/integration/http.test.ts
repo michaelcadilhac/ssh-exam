@@ -3,6 +3,7 @@ import { it, expect } from "vitest";
 import { createApp } from "../../apps/server/src/app.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { grantExam } from "../fixtures/grant-exam.js";
 it("enforces role, ownership, CSRF, media protection and origin without revealing other enrollments", async () => {
   const dir = mkdtempSync(tmpdir() + "/exam-http-");
   const { app, store } = await createApp({
@@ -109,7 +110,7 @@ it("confirms imports idempotently, preserves omitted fields and rejects stale pr
     maintenance: false,
   });
   try {
-    store.db.prepare("INSERT INTO exams VALUES('e','{}')").run();
+    grantExam(store, "e");
     store.db
       .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
       .run("e", "alice", 1, 8100, "Alice", 1001);
@@ -243,7 +244,22 @@ it("adds and removes approved enrollments without changing attempts or allowing 
     maintenance: false,
   });
   try {
-    store.db.prepare("INSERT INTO exams VALUES('e','{}'),('other','{}')").run();
+    grantExam(store, "e");
+    grantExam(store, "other");
+    // These are preexisting legacy attempts; enrollment must not invent new
+    // authority over their original intervals or pending preparation.
+    const deadline = Date.now() + 5400000,
+      page = "1".repeat(64);
+    store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,page_hash) VALUES('active','other','alice',1001,'ACTIVE','{}',?,?,?)",
+      )
+      .run(Date.now(), deadline, hash(page));
+    store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash) VALUES('pending','e','bob',1002,'PREPARING','{}',?)",
+      )
+      .run(hash(page));
     const admin = store.session("admin", "instructor", null),
       student = store.session("student", "alice", "e");
     const headers = {
@@ -262,18 +278,6 @@ it("adds and removes approved enrollments without changing attempts or allowing 
     expect((await add("other", "alice")).statusCode).toBe(200);
     expect((await add("e", "alice")).statusCode).toBe(400);
     expect((await add("e", "unknown")).statusCode).toBe(200);
-    const deadline = Date.now() + 5400000,
-      page = "1".repeat(64);
-    store.db
-      .prepare(
-        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,page_hash) VALUES('active','other','alice',1001,'ACTIVE','{}',?,?,?)",
-      )
-      .run(Date.now(), deadline, hash(page));
-    store.db
-      .prepare(
-        "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash) VALUES('pending','e','bob',1002,'PREPARING','{}',?)",
-      )
-      .run(hash(page));
     await add("e", "bob");
     const remove = (exam: string, username: string, extra: any = {}) =>
       app.inject({
@@ -484,7 +488,14 @@ it("continuation failures explain recovery conditions, instructor approval and e
 it("expires an abandoned preparation even when no SSH connection survived a gateway restart", async () => {
   const { vi } = await import("vitest");
   const { Agent } = await import("../../apps/server/src/agent.js");
-  const remote = { state: "PREPARING", start: 0 };
+  const remote = {
+    id: "orphan",
+    exam: "e",
+    username: "alice",
+    uid: 1001,
+    state: "PREPARING",
+    start: 0,
+  };
   const mock = vi
     .spyOn(Agent.prototype, "call")
     .mockImplementation(async (op) => {
@@ -719,7 +730,7 @@ it("imports approved uppercase accounts without changing their case", async () =
     maintenance: false,
   });
   try {
-    store.db.prepare("INSERT INTO exams VALUES('e','{}')").run();
+    grantExam(store, "e");
     store.db
       .prepare("INSERT INTO agent_snapshot VALUES(?,?,?)")
       .run(
@@ -758,9 +769,7 @@ it("imports approved uppercase accounts without changing their case", async () =
           "SELECT username, uid, webcam, duration FROM enrollments WHERE exam='e'",
         )
         .all(),
-    ).toEqual([
-      { username: "STUDENT31", uid: 0, webcam: 1, duration: 5400 },
-    ]);
+    ).toEqual([{ username: "STUDENT31", uid: 0, webcam: 1, duration: 5400 }]);
     const wrongCase = await app.inject({
       method: "POST",
       url: "/api/admin/exams/e/roster/import-preview",

@@ -22,15 +22,6 @@ export async function qualifyClockCLI(
     "--latest",
     new Date(Date.now() + 3600000).toISOString(),
   ]);
-  for (const user of ["clock01", "clock02", "clock03", "clock04"])
-    await run("students", ["add", "clock-exam", user]);
-  await run("students", [
-    "settings",
-    "clock-exam",
-    "clock01",
-    "--duration-minutes",
-    "120",
-  ]);
   const ids = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
   const start = Date.now() - 60000,
     original = Date.now() + 3600000;
@@ -58,6 +49,17 @@ export async function qualifyClockCLI(
       start,
     ),
   );
+  // These fixtures are already-started LEGACY records, not new grants. Seed
+  // history before re-enrollment so enrollment cannot invent a new allowance.
+  for (const user of ["clock01", "clock02", "clock03", "clock04"])
+    await run("students", ["add", "clock-exam", user]);
+  await run("students", [
+    "settings",
+    "clock-exam",
+    "clock01",
+    "--duration-minutes",
+    "120",
+  ]);
   // Real locked records already carry interruption history. Seed it before
   // taking the unchanged-state snapshot so restart recovery need not repair this
   // intentionally synthetic fixture and advance its new review fence.

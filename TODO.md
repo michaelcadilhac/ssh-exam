@@ -45,7 +45,9 @@ October22 C15 approval: unified Begin requires fresh verification over the
 existing authenticated native-agent outbound HTTPS path. If unavailable, refuse
 before starting time with retry/inspection guidance; no offline permit or new
 browser relay. Existing started deadlines/holds/history and uncertain one-use
-outcomes are preserved. Protocol implementation/qualification remain pending.
+outcomes are preserved. The first ordinary enrollment-time workflow now
+implements/tests this locally; additional, legacy-migration and sandbox grant
+scopes remain pending. Nothing is deployed; see unified-grant-first-attempt.md.
 
 October22 recovery-admission follow-up: a per-student allowance change can leave
 an unused native saved-work grant with an older duration; its strict rejection
@@ -628,6 +630,15 @@ Existing enrollment migration and implementation remain outstanding.
   Determine which recovery-specific mechanisms can become general attempt policy.
 
 - [ ] **Propose explicit authorization for additional attempts.**
+  October23 initial-ordinary workflow implements enrollment/import-time immutable
+  snapshots, shared `web grants list/show/revise/revoke`, retained claim/UID/Begin
+  history and fresh authenticated native Begin. Focused CLI/web/student/native
+  checks,458 application tests, full native race/resource qualification and eight
+  rebuilt browser checks pass locally, with matching build/typecheck/vet.
+  This does not implement extra grants, independent empty/saved-work selection,
+  reviewed legacy/sandbox issuance or their full migration. These broad items
+  stay unchecked. See docs/unified-grant-first-attempt.md and
+  docs/initial-grants-cli.md. Nothing is deployed.
   Consider per-exam attempt limits/defaults plus per-student and bulk grants,
   including one additional attempt and intentionally repeatable exams. Define
   eligibility, expiration, revocation before use, audit reasons and concurrent

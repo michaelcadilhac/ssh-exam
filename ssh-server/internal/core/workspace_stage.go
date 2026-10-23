@@ -26,6 +26,7 @@ type WorkspaceSource struct {
 }
 
 type WorkspaceReceipt struct {
+	Grant        *GrantBinding   `json:"grant,omitempty"`
 	Version      int             `json:"version"`
 	Attempt      string          `json:"attempt"`
 	Exam         string          `json:"exam"`
@@ -115,7 +116,7 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 		return nil, err
 	}
 	stat := info.Sys().(*syscall.Stat_t)
-	return &WorkspaceReceipt{Version: 1, Attempt: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, SettingsHash: Hash(settings), Source: source, ContentHash: contentHash, PreparedAt: Millis(), WorkDevice: uint64(stat.Dev), WorkInode: stat.Ino}, nil
+	return &WorkspaceReceipt{Grant: a.Grant, Version: 1, Attempt: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, SettingsHash: Hash(settings), Source: source, ContentHash: contentHash, PreparedAt: Millis(), WorkDevice: uint64(stat.Dev), WorkInode: stat.Ino}, nil
 }
 
 // A starter tree must not itself guarantee an uncollectable eventual submission.

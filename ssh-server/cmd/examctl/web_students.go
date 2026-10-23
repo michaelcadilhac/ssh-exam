@@ -33,6 +33,15 @@ These are future defaults, never current clock edits. Sandbox duration is five
 minutes or inheritance. UID stays unresolved (0) until the student's trusted SSH
 verifies identity; no UID override is accepted.
 
+NEW ordinary enrollment/CSV rows atomically issue an initial saved-settings grant.
+Configure an exact attested template version and finite Begin window FIRST; a
+missing source/window refuses without partial enrollment. Existing legacy
+history/enrollment is not automatically backfilled. Later roster/default edits
+never revise an issued initial grant: use examctl web grants help for inspection,
+explicit unused revision/revoke and original claim/Begin diagnostics. Reenrollment
+cannot invent another allowance; first verified claim retains its Unix UID even
+after cancellation. Extra/sandbox/migration issuance is not provided here.
+
 An explicit duration setting authorizes duration-only synchronization of unused
 native saved-work recovery at the student's next authenticated preflight. Inherit
 saves the exam allowance at edit time, not a later default. Already prepared or

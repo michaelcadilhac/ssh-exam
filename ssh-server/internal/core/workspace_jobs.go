@@ -88,7 +88,7 @@ func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
 	}
 	for key := range fields {
 		switch key {
-		case "version", "attempt", "exam", "username", "uid", "settings_hash", "source", "prepared_at", "recovery_hash", "content_hash", "work_device", "work_inode":
+		case "grant", "version", "attempt", "exam", "username", "uid", "settings_hash", "source", "prepared_at", "recovery_hash", "content_hash", "work_device", "work_inode":
 		default:
 			return nil, errWorkspaceReceiptMetadata
 		}
@@ -107,6 +107,17 @@ func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
 	var r WorkspaceReceipt
 	if err := decodeWorkerFrame(bytes.NewReader(b), 16384, &r); err != nil {
 		return nil, errWorkspaceReceiptMetadata
+	}
+	if raw, ok := fields["grant"]; ok {
+		var binding map[string]json.RawMessage
+		if json.Unmarshal(raw, &binding) != nil || len(binding) != 3 || !validGrant(r.Grant) {
+			return nil, errWorkspaceReceiptMetadata
+		}
+		for key := range binding {
+			if key != "id" && key != "revision" && key != "hash" {
+				return nil, errWorkspaceReceiptMetadata
+			}
+		}
 	}
 	return &r, nil
 }
@@ -135,7 +146,7 @@ func (e *Engine) checkWorkspaceReceipt(a *Attempt, r *WorkspaceReceipt) error {
 		return err
 	}
 	settings, _ := json.Marshal(a.Settings)
-	if r.Version != 1 || r.Attempt != a.ID || r.Exam != a.Exam || r.Username != a.Username || r.UID != a.UID || r.SettingsHash != Hash(settings) || r.Source != source || r.RecoveryHash != recoveryHash || r.PreparedAt <= 0 || r.WorkInode == 0 {
+	if !sameGrant(r.Grant, a.Grant) || r.Version != 1 || r.Attempt != a.ID || r.Exam != a.Exam || r.Username != a.Username || r.UID != a.UID || r.SettingsHash != Hash(settings) || r.Source != source || r.RecoveryHash != recoveryHash || r.PreparedAt <= 0 || r.WorkInode == 0 {
 		return errors.New("private workspace no longer matches this preparation/source; inspect before retrying preflight")
 	}
 	if a.Workspace != nil {
@@ -304,9 +315,16 @@ func (e *Engine) prepareActivation(a *Attempt) error {
 // All entry points own the per-attempt lock, but no global state lock is held
 // during OS guard checks or ordinary-session termination. Never auto-start from
 // staging completion: only this later, explicit Begin can commit an interval.
-func (e *Engine) activatePrepared(snapshot *Attempt, expires int64) (any, error) {
+func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent ...string) (any, error) {
 	if snapshot.Start > 0 {
 		return snapshot, nil
+	}
+	intent := ""
+	if snapshot.Grant != nil {
+		if len(grantIntent) != 1 || !attemptID.MatchString(grantIntent[0]) {
+			return nil, errors.New("grant Begin requires its original intent and fresh authenticated outbound verification; no interval committed")
+		}
+		intent = grantIntent[0]
 	}
 	accountLock, err := e.accountWorkLock(snapshot.UID)
 	if err != nil {
@@ -334,6 +352,14 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64) (any, error)
 	if err := e.activationPrepare(snapshot); err != nil {
 		return nil, err
 	}
+	verifiedUntil := int64(0)
+	if snapshot.Grant != nil {
+		var err error
+		verifiedUntil, err = e.verifyGrantBegin(snapshot, intent)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if snapshot.Workspace != nil && snapshot.Workspace.Source.Kind == "saved" {
 		lock, err := e.recoveryCatalogLock()
 		if err != nil {
@@ -350,10 +376,44 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64) (any, error)
 		if expires > 0 && expires <= Millis() {
 			return errors.New("Begin command expired during setup; no interval committed; restore monitoring and retry Begin")
 		}
+		if a.Grant != nil {
+			if verifiedUntil <= Millis() {
+				return errors.New("fresh grant verification expired during setup; inspect original intent and retry; no interval committed")
+			}
+			for _, other := range e.state.Attempts {
+				if other.ID != a.ID && other.Grant != nil && other.Grant.ID == a.Grant.ID && other.Start > 0 {
+					return errors.New("grant already consumed by another original interval; no reopening/refund authorized")
+				}
+			}
+		}
 		if _, err := e.callLocked("activate-attempt", Request{ID: a.ID}); err != nil {
 			return err
 		}
-		commitStart(a, Millis(), uptime(), boot())
+		if a.Grant != nil {
+			if err := e.workspaceBarrier("grant-before-start"); err != nil {
+				return err
+			}
+		}
+		startedAt := Millis()
+		if a.Grant != nil {
+			if expires > 0 && expires <= startedAt {
+				return errors.New("Begin command expired after final metadata checks; no interval committed; retry the original intent after inspection")
+			}
+			if verifiedUntil <= startedAt {
+				return errors.New("fresh grant verification expired after final metadata checks; no interval committed; retry the original intent after inspection")
+			}
+			if startedAt < a.Settings.Earliest || startedAt > a.Settings.Latest {
+				return errors.New("outside grant Begin window after final metadata checks; no interval committed")
+			}
+			e.expirePreflight(a, startedAt)
+			if a.State != "PREPARING" {
+				return errors.New("preparation expired before actual grant start; no interval committed; confirm cancellation before retry")
+			}
+		}
+		commitStart(a, startedAt, uptime(), boot())
+		if a.Grant != nil {
+			a.GrantBeginIntent = intent
+		}
 		if e.temporaryPolicy(a) {
 			a.PolicyState, a.PolicyExpires = "HELD", 0
 		}

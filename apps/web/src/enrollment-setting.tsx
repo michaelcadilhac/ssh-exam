@@ -183,6 +183,8 @@ export function EnrollmentSetting({
           )}
           <small>
             Current attempts keep their settings.
+            {student.grant &&
+              " Issued initial grants also keep their saved settings; use Attempt grants for an explicit unused revision."}
             {kind === "duration" &&
               " Saving an allowance also authorizes duration-only synchronization of unused saved-work recovery at the student's next preflight. Exam default edits do not revise it."}
           </small>

@@ -35,6 +35,8 @@ import {
 import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
 import { RecoverySources } from "./recovery-source.js";
+import { AttemptGrants } from "./attempt-grants.js";
+import { grantBinding } from "../../../packages/protocol/grants.js";
 import type { ConnectionHandle as Connection } from "./connection-process.js";
 import {
   IsolatedConnection,
@@ -437,6 +439,22 @@ export async function createApp(
     (_req, body, done) => done(null, body),
   );
   app.post(
+    "/api/agent/grant-begin",
+    { config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload))
+        throw Error("Raw signed grant Begin verification required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      return agent.signTiming(
+        grants.verifyBegin(JSON.parse(payload.toString())),
+      );
+    },
+  );
+  app.post(
     "/api/agent/timing",
     { config: { rateLimit: false } },
     async (req) => {
@@ -804,8 +822,21 @@ export async function createApp(
       latest?.state === "COMPLETED" &&
       latest.protected &&
       ["RELEASED", "OVERRIDDEN"].includes(latest.access_state);
+    const initialGrant = grants.initialFor(s.exam!, s.username);
+    const settings =
+      latest && !repeat && latest.state !== "CANCELLED_BEFORE_START"
+        ? JSON.parse(latest.settings)
+        : (initialGrant?.settings ?? {
+            ...JSON.parse(exam.config),
+            duration: row.duration ?? JSON.parse(exam.config).duration,
+            webcam:
+              row.webcam === null
+                ? JSON.parse(exam.config).webcam
+                : !!row.webcam,
+          });
     return {
       exam: JSON.parse(exam.config),
+      settings,
       enrollment: row,
       sshConnected: !!connections.get(`${s.exam}:${s.username}`)?.alive,
       attempt: repeat ? null : latest || null,
@@ -903,15 +934,22 @@ export async function createApp(
       throw Error("An attempt already exists; instructor review required");
     const id = previous?.id || randomUUID(),
       pageSecret = secret();
+    const initialGrant = grants.initialFor(s.exam!, s.username);
+    if (initialGrant && !h.capabilities?.includes("unified-initial-grants-v1"))
+      throw Error(
+        "Class server requires matching grant-aware preparation and fresh outbound Begin verification; no grant or clock consumed. Inspect examctl web grants show GRANT and update matching roles.",
+      );
     const settings = previous
       ? JSON.parse(previous.settings)
-      : {
-          ...exam,
-          ...collectionSettings(exam),
-          duration: enrollment.duration ?? exam.duration,
-          webcam:
-            enrollment.webcam === null ? exam.webcam : !!enrollment.webcam,
-        };
+      : initialGrant
+        ? { ...initialGrant.settings }
+        : {
+            ...exam,
+            ...collectionSettings(exam),
+            duration: enrollment.duration ?? exam.duration,
+            webcam:
+              enrollment.webcam === null ? exam.webcam : !!enrollment.webcam,
+          };
     const allowanceEdit = new RosterManagement(store).allowanceEdit(
       s.exam!,
       s.username,
@@ -922,6 +960,7 @@ export async function createApp(
       ? recoveryPreflight.parse(JSON.parse(previous.recovery_preflight))
       : null;
     if (
+      !initialGrant &&
       !isSandbox(s.exam) &&
       (allowanceEdit || recovery || knownRecovery) &&
       !h.capabilities?.includes("recovery-allowance-sync-v1")
@@ -930,6 +969,7 @@ export async function createApp(
         "Class server lacks recovery allowance synchronization; update matching native roles before retrying. No grant or clock was consumed.",
       );
     if (
+      !initialGrant &&
       !isSandbox(s.exam) &&
       !recovery &&
       h.capabilities?.includes("recovery-allowance-sync-v1")
@@ -1023,36 +1063,53 @@ export async function createApp(
       requireBeginWindow(s.exam, settings);
     }
     requireTemplateAgent(settings, h);
-    if (!previous)
-      store.db
-        .prepare(
-          "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at,recovery_preflight) VALUES(?,?,?,?,'PREPARING',?,?,?,?,?)",
-        )
-        .run(
-          id,
-          s.exam,
-          s.username,
-          enrollment.uid,
-          JSON.stringify(settings),
-          hash(pageSecret),
-          now(),
-          now(),
-          recovery ? JSON.stringify(recovery) : null,
-        );
-    else
-      store.db
-        .prepare(
-          "UPDATE attempts SET page_hash=?,last_contact=?,recovery_preflight=? WHERE id=?",
-        )
-        .run(
-          hash(pageSecret),
-          now(),
-          recovery ? JSON.stringify(recovery) : null,
-          id,
-        );
+    store.db.transaction(() => {
+      if (initialGrant) grants.claim(initialGrant.id, id, enrollment.uid);
+      if (!previous)
+        store.db
+          .prepare(
+            "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at,recovery_preflight,grant_id,grant_revision,grant_hash) VALUES(?,?,?,?,'PREPARING',?,?,?,?,?,?,?,?)",
+          )
+          .run(
+            id,
+            s.exam,
+            s.username,
+            enrollment.uid,
+            JSON.stringify(settings),
+            hash(pageSecret),
+            now(),
+            now(),
+            recovery ? JSON.stringify(recovery) : null,
+            initialGrant?.id ?? null,
+            initialGrant?.revision ?? null,
+            initialGrant?.hash ?? null,
+          );
+      else
+        store.db
+          .prepare(
+            "UPDATE attempts SET page_hash=?,last_contact=?,recovery_preflight=? WHERE id=?",
+          )
+          .run(
+            hash(pageSecret),
+            now(),
+            recovery ? JSON.stringify(recovery) : null,
+            id,
+          );
+    })();
     attemptConnections.set(id, conn);
+    const expectedGrant = initialGrant
+      ? {
+          id: initialGrant.id,
+          revision: initialGrant.revision,
+          hash: initialGrant.hash,
+        }
+      : null;
     const prepared = await agent.call(
-      recovery ? "prepare-recovery-attempt" : "prepare-attempt",
+      expectedGrant
+        ? "prepare-grant-attempt"
+        : recovery
+          ? "prepare-recovery-attempt"
+          : "prepare-attempt",
       {
         id,
         exam: s.exam,
@@ -1062,6 +1119,7 @@ export async function createApp(
         transport: conn.transport,
         browser_ssh: conn instanceof BrowserConnection,
         ...(recovery ? { expected_recovery: recovery.grant_hash } : {}),
+        ...(expectedGrant ? { grant: expectedGrant } : {}),
       },
     );
     if (prepared.state && prepared.state !== "PREPARING") {
@@ -1078,6 +1136,14 @@ export async function createApp(
       uid: enrollment.uid,
     };
     requireTemplateSnapshot(settings, prepared, expectedPreparation);
+    if (
+      expectedGrant &&
+      JSON.stringify(grantBinding.parse(prepared.grant)) !==
+        JSON.stringify(expectedGrant)
+    )
+      throw Error(
+        "Native preparation did not retain its exact grant binding; no Begin authorized",
+      );
     if (recovery && prepared.expected_recovery !== recovery.grant_hash)
       throw Error(
         "Class server did not retain the exact saved-work grant binding; preserve source and use matching recovery-aware roles before retrying",
@@ -1097,6 +1163,14 @@ export async function createApp(
         );
       }
       requireTemplateSnapshot(settings, staged, expectedPreparation);
+      if (
+        expectedGrant &&
+        JSON.stringify(grantBinding.parse(staged.grant)) !==
+          JSON.stringify(expectedGrant)
+      )
+        throw Error(
+          "Native staged workspace lost its exact grant binding; no Begin authorized",
+        );
       if (recovery && staged.expected_recovery !== recovery.grant_hash)
         throw Error(
           "Staged recovery lost its exact grant binding; no Begin is authorized; preserve saved work and inspect matching native roles",
@@ -1244,18 +1318,27 @@ export async function createApp(
       const recovery = a.recovery_preflight
         ? recoveryPreflight.parse(JSON.parse(a.recovery_preflight))
         : null;
+      const initialGrant = a.grant_id
+        ? { id: a.grant_id, revision: a.grant_revision, hash: a.grant_hash }
+        : null;
+      const beginIntent = initialGrant ? grants.begin(a, conn.transport) : null;
       const result = await agent.call(
-        recovery
-          ? "activate-recovery-attempt"
-          : currentSettings.template_version
-            ? "activate-versioned-attempt"
-            : "activate-attempt",
+        initialGrant
+          ? "activate-grant-attempt"
+          : recovery
+            ? "activate-recovery-attempt"
+            : currentSettings.template_version
+              ? "activate-versioned-attempt"
+              : "activate-attempt",
         {
           id: a.id,
-          ...(recovery || currentSettings.template_version
+          ...(initialGrant || recovery || currentSettings.template_version
             ? { settings: currentSettings }
             : {}),
           ...(recovery ? { expected_recovery: recovery.grant_hash } : {}),
+          ...(initialGrant
+            ? { grant: initialGrant, grant_begin_intent: beginIntent }
+            : {}),
         },
       );
       if (result.state !== "ACTIVE") {
@@ -1266,18 +1349,21 @@ export async function createApp(
         return { attempt: store.attempt(a.id), serverNow: now() };
       }
       life.syncAccess(a.id, result);
-      store.db
-        .prepare(
-          "UPDATE attempts SET state='ACTIVE',start=?,deadline=?,original_deadline=?,work_path=?,last_contact=? WHERE id=? AND state='PREPARING'",
-        )
-        .run(
-          result.start,
-          result.deadline,
-          result.original_deadline || result.deadline,
-          result.work_path,
-          now(),
-          a.id,
-        );
+      store.db.transaction(() => {
+        grants.accept(result, store.attempt(a.id));
+        store.db
+          .prepare(
+            "UPDATE attempts SET state='ACTIVE',start=?,deadline=?,original_deadline=?,work_path=?,last_contact=? WHERE id=? AND state='PREPARING'",
+          )
+          .run(
+            result.start,
+            result.deadline,
+            result.original_deadline || result.deadline,
+            result.work_path,
+            now(),
+            a.id,
+          );
+      })();
       return { attempt: store.attempt(a.id), serverNow: now() };
     } catch (e) {
       const reason = (e as Error).message.slice(0, 500);
@@ -1576,7 +1662,31 @@ export async function createApp(
   };
   registerExamAdmin(app, store, agent, clocks, principal, describeAttempt);
   registerTemplateAdmin(app, store, config.agent.id, principal);
-  const roster = new RosterManagement(store, describeAttempt);
+  const roster = new RosterManagement(store, describeAttempt, config.agent.id);
+  const grants = new AttemptGrants(store, config.agent.id);
+  app.get("/api/admin/exams/:exam/grants", async (req: any) => {
+    principal(req, "admin");
+    return grants.list({
+      ...req.query,
+      exam: req.params.exam,
+      ...(req.query.limit ? { limit: Number(req.query.limit) } : {}),
+    });
+  });
+  app.get("/api/admin/grants/:id", async (req: any) => {
+    principal(req, "admin");
+    return grants.show({
+      id: req.params.id,
+      ...(req.query.before ? { before: Number(req.query.before) } : {}),
+    });
+  });
+  app.post("/api/admin/grants/:id/revise", async (req: any) => {
+    const actor = principal(req, "admin");
+    return grants.revise(req.params.id, req.body, actor.username);
+  });
+  app.post("/api/admin/grants/:id/revoke", async (req: any) => {
+    const actor = principal(req, "admin");
+    return grants.revoke(req.params.id, req.body, actor.username);
+  });
   app.get("/api/admin/exams/:exam/roster", async (req: any) => {
     principal(req, "admin");
     return roster.list(req.params.exam);
@@ -2141,6 +2251,15 @@ export async function createApp(
                 "SELECT state FROM attempts WHERE exam=? AND username=? ORDER BY rowid DESC LIMIT 1",
               )
               .get(m.exam, m.username) as { state: string } | undefined;
+            const initialGrant = grants.initialFor(m.exam, m.username);
+            if (
+              initialGrant &&
+              initialGrant.status !== "AVAILABLE" &&
+              !existing
+            )
+              throw signInError(
+                "The initial grant is revoked or consumed. Contact your instructor to inspect its original grant/attempt history; no new exam started.",
+              );
             if (existing?.state === "COMPLETED" && !isSandbox(m.exam))
               throw signInError(
                 "Your exam is already completed. Contact your instructor if you need help with your submission.",

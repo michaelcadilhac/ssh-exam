@@ -15,6 +15,7 @@ import net from "node:net";
 import { hash } from "../../apps/server/src/db.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
+import { RosterManagement } from "../../apps/server/src/roster-management.js";
 const h = await hosts({
   classCertificates: process.env.EXAM_BROWSER_SSH === "1",
 });
@@ -30,7 +31,7 @@ const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
 const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
 const approvalAccounts = { approval01: 10020 };
-const versionAccounts = { version01: 10021 };
+const versionAccounts = { version01: 10021, grant01: 10022 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -113,6 +114,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         "private-workspace-staging",
         "immutable-template-versions-v1",
         "exact-template-begin-v1",
+        "unified-initial-grants-v1",
       ],
     };
   if (op === "resolve-course-accounts") {
@@ -159,7 +161,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     attempts.set(b.id, a);
     return a;
   }
-  if (op === "prepare-attempt") {
+  if (op === "prepare-attempt" || op === "prepare-grant-attempt") {
     if (!attempts.has(b.id))
       attempts.set(b.id, { ...b, state: "PREPARING", generation: 0 });
     return attempts.get(b.id);
@@ -170,7 +172,11 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     case "prepare-workspace":
       if (a.state !== "PREPARING" || a.start)
         throw Error("Workspace requires unstarted preparation");
-      a.workspace ??= { version: 1, attempt: a.id };
+      a.workspace ??= {
+        version: 1,
+        attempt: a.id,
+        ...(a.grant ? { grant: a.grant } : {}),
+      };
       break;
     case "prepare-account-policy":
       a.policy_state = "READY";
@@ -192,16 +198,82 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       a.state = "CANCELLED_BEFORE_START";
       break;
     case "activate-versioned-attempt":
+    case "activate-grant-attempt":
     case "activate-attempt":
       if (
         a.settings.template_version &&
-        (op !== "activate-versioned-attempt" ||
+        (!["activate-versioned-attempt", "activate-grant-attempt"].includes(
+          op,
+        ) ||
           JSON.stringify(b.settings) !== JSON.stringify(a.settings))
       )
         throw Error(
           "Exact browser source requires the distinct purpose and complete saved settings",
         );
       if (a.start) break;
+      if (a.grant) {
+        if (
+          op !== "activate-grant-attempt" ||
+          JSON.stringify(a.grant) !== JSON.stringify(b.grant)
+        )
+          throw Error("Grant-aware Begin and exact binding required");
+        const nonce = hash(randomUUID()),
+          boot = "77777777-1234-4234-8234-123456789abc";
+        const payload = Buffer.from(
+          JSON.stringify({
+            type: "grant-begin/v1",
+            agent: "class",
+            nonce,
+            at: Date.now(),
+            attempt: a.id,
+            exam: a.exam,
+            username: a.username,
+            uid: a.uid,
+            grant: a.grant,
+            intent: b.grant_begin_intent,
+            transport: a.transport,
+            boot,
+            settings: a.settings,
+          }),
+        );
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/agent/grant-begin",
+          headers: {
+            "content-type": "application/vnd.ssh-exam-event",
+            "x-exam-signature": sign(null, payload, h.callbackKey).toString(
+              "base64",
+            ),
+          },
+          payload,
+        });
+        if (response.statusCode !== 200)
+          throw Error(
+            "Fresh browser-fixture native verification refused: " +
+              response.statusCode,
+          );
+        const frame = response.json(),
+          signed = Buffer.from(frame.payload, "base64"),
+          reply = JSON.parse(signed.toString());
+        if (
+          !verify(
+            null,
+            signed,
+            readFileSync(h.agentConfig.signingKey),
+            Buffer.from(frame.signature, "base64"),
+          ) ||
+          reply.type !== "grant-begin/v1" ||
+          reply.nonce !== nonce ||
+          reply.attempt !== a.id ||
+          reply.intent !== b.grant_begin_intent ||
+          reply.transport !== a.transport ||
+          reply.boot !== boot ||
+          reply.expires <= Date.now() ||
+          JSON.stringify(reply.grant) !== JSON.stringify(a.grant)
+        )
+          throw Error("Bad signed browser-fixture Begin response");
+        a.grant_begin_intent = b.grant_begin_intent;
+      }
       if (!a.workspace) throw Error("Private workspace not staged");
       if (
         a.account_policy_required &&
@@ -427,6 +499,27 @@ definitions.create(
 store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("versioned-source", "version01", null, null, null, 10021);
+definitions.create(
+  {
+    ...exam,
+    id: "initial-grant",
+    name: "Initial browser grant",
+    template_version: versionHash,
+  },
+  "fixture-operator",
+);
+new RosterManagement(store, undefined, "class").add(
+  "initial-grant",
+  { username: "grant01" },
+  "fixture-operator",
+);
+definitions.update(
+  "initial-grant",
+  { duration: 3600, webcam: true },
+  definitions.show("initial-grant").revision,
+  "fixture-operator",
+  "Change defaults after saved initial issuance",
+);
 definitions.update(
   "sandbox",
   { earliest: exam.earliest, latest: exam.latest },
