@@ -300,6 +300,8 @@ function App() {
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, [challenge, authSocket, authPhase]);
+  const grantSelectionRequired =
+    !!info && !info.attempt && info.grants?.length > 1 && !info.selected_grant;
   return (
     <>
       {error && (
@@ -431,37 +433,90 @@ function App() {
                   <>
                     <small>Signed in as {user.username}</small>
                     <h2>{info.settings?.name ?? info.exam.name}</h2>
-                    {isSandbox(info.exam.id) && !hasSandboxWindow(info.exam) ? (
+                    {info.previous_attempt && (
                       <p>
-                        Sandbox practice awaits an operator-configured finite
-                        Begin window. Existing started attempts keep their
-                        deadlines.
+                        Your earlier submission remains saved. This
+                        authorization starts a separate attempt.
+                      </p>
+                    )}
+                    {!info.attempt && info.grants?.length > 1 && (
+                      <label>
+                        Attempt authorization
+                        <select
+                          value={info.selected_grant ?? ""}
+                          onChange={(e) => {
+                            const selected = info.grants.find(
+                              (g: any) => g.id === e.target.value,
+                            );
+                            setSession({
+                              user,
+                              info: {
+                                ...info,
+                                selected_grant: selected?.id ?? null,
+                                settings: selected?.settings ?? info.settings,
+                              },
+                            });
+                          }}
+                        >
+                          <option value="">
+                            Choose an unused authorization
+                          </option>
+                          {info.grants.map((g: any) => (
+                            <option key={g.id} value={g.id}>
+                              {g.issuance === "ADDITIONAL_TEMPLATE"
+                                ? "Additional"
+                                : "Initial"}{" "}
+                              · {g.settings.duration / 60} minutes ·{" "}
+                              {chicago(g.settings.earliest)} –{" "}
+                              {chicago(g.settings.latest)} · {g.id.slice(-8)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    {grantSelectionRequired ? (
+                      <p>
+                        Choose an authorization to see its saved allowance,
+                        webcam requirement and Begin window.
                       </p>
                     ) : (
-                      <details className="exam-details">
-                        <summary>Start window</summary>
+                      <>
+                        {isSandbox(info.exam.id) &&
+                        !hasSandboxWindow(info.exam) ? (
+                          <p>
+                            Sandbox practice awaits an operator-configured
+                            finite Begin window. Existing started attempts keep
+                            their deadlines.
+                          </p>
+                        ) : (
+                          <details className="exam-details">
+                            <summary>Start window</summary>
+                            <p>
+                              Start window:{" "}
+                              {chicago(
+                                info.settings?.earliest ?? info.exam.earliest,
+                              )}{" "}
+                              –{" "}
+                              {chicago(
+                                info.settings?.latest ?? info.exam.latest,
+                              )}
+                            </p>
+                          </details>
+                        )}
                         <p>
-                          Start window:{" "}
-                          {chicago(
-                            info.settings?.earliest ?? info.exam.earliest,
-                          )}{" "}
-                          – {chicago(info.settings?.latest ?? info.exam.latest)}
+                          {(info.settings?.duration ??
+                            info.enrollment.duration ??
+                            info.exam.duration) / 60}{" "}
+                          minutes · Webcam:{" "}
+                          {(info.settings?.webcam ??
+                          (info.enrollment.webcam === null
+                            ? info.exam.webcam
+                            : info.enrollment.webcam))
+                            ? "Required"
+                            : "Not required"}
                         </p>
-                      </details>
+                      </>
                     )}
-                    <p>
-                      {(info.settings?.duration ??
-                        info.enrollment.duration ??
-                        info.exam.duration) / 60}{" "}
-                      minutes · Webcam:{" "}
-                      {(info.settings?.webcam ??
-                      (info.enrollment.webcam === null
-                        ? info.exam.webcam
-                        : info.enrollment.webcam))
-                        ? "Required"
-                        : "Not required"}
-                    </p>
-
                     {info.attempt &&
                     ["COMPLETED", "COLLECTION_FAILED", "FINALIZING"].includes(
                       info.attempt.state,
@@ -567,13 +622,22 @@ function App() {
                         ) : (
                           <button
                             className="primary"
-                            disabled={browserBlocked || !!navigation}
+                            disabled={
+                              browserBlocked ||
+                              !!navigation ||
+                              grantSelectionRequired
+                            }
                             onClick={() =>
                               action(async () => {
                                 await navigate("preflight", async () => {
                                   await requireExamBrowser();
                                   setReservation(
-                                    await api("/student/preflight", {}),
+                                    await api(
+                                      "/student/preflight",
+                                      info.selected_grant
+                                        ? { grant: info.selected_grant }
+                                        : {},
+                                    ),
                                   );
                                 });
                               })

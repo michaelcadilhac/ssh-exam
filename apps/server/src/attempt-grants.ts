@@ -28,7 +28,7 @@ export class AttemptGrants {
     z.string().uuid().parse(id);
     const row = this.store.db
       .prepare(
-        "SELECT g.*,r.settings,r.work,r.hash FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.id=? AND g.agent=?",
+        "SELECT g.rowid AS issuance_order,g.*,r.settings,r.work,r.hash FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.id=? AND g.agent=?",
       )
       .get(id, this.agent);
     if (!row)
@@ -38,10 +38,32 @@ export class AttemptGrants {
     return row;
   }
   private view(row: any) {
+    if (
+      row.initial_grant &&
+      (row.issuance !== "ADDITIONAL_TEMPLATE" ||
+        !this.store.db
+          .prepare(
+            "SELECT 1 FROM attempt_grants WHERE id=? AND agent=? AND exam=? AND username=? AND issuance IN ('ENROLLMENT','REVIEWED_NEW') AND rowid<?",
+          )
+          .get(
+            row.initial_grant,
+            this.agent,
+            row.exam,
+            row.username,
+            row.issuance_order,
+          ))
+    )
+      return conflict(
+        "Additional grant's original initial authority is inconsistent; preserve grant/attempt history before admission",
+      );
     const settings = examSchema.parse(JSON.parse(row.settings)),
       work = JSON.parse(row.work);
     if (
-      !["ENROLLMENT", "REVIEWED_NEW"].includes(row.issuance) ||
+      !["ENROLLMENT", "REVIEWED_NEW", "ADDITIONAL_TEMPLATE"].includes(
+        row.issuance,
+      ) ||
+      !Number.isSafeInteger(row.issuance_order) ||
+      row.issuance_order < 1 ||
       !settings.template_version ||
       work.kind !== "template" ||
       work.name !== settings.template ||
@@ -63,6 +85,8 @@ export class AttemptGrants {
       actor: row.actor,
       reason: row.reason,
       issuance: row.issuance,
+      issuance_order: row.issuance_order,
+      initial_grant: row.initial_grant,
       hash: row.hash,
       settings,
       work,
@@ -77,7 +101,7 @@ export class AttemptGrants {
     const settings = examSchema.parse(input);
     if (!settings.template_version)
       return conflict(
-        "Initial grants require an exact authenticated template version before enrollment; run templates verify/sync, then web exams update --template-version HASH. No enrollment or grant issued.",
+        "Grants require an exact authenticated template version before authorization; run templates verify/sync, then web exams update --template-version HASH. No grant or enrollment changed.",
       );
     new TemplateCatalog(this.store, this.agent).show({
       name: settings.template,
@@ -104,7 +128,7 @@ export class AttemptGrants {
       );
     const old = this.store.db
       .prepare(
-        "SELECT id FROM attempt_grants WHERE agent=? AND exam=? AND username=?",
+        "SELECT id FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND issuance IN ('ENROLLMENT','REVIEWED_NEW')",
       )
       .get(this.agent, exam, username) as any;
     if (old) return this.view(this.row(old.id)); // Re-enrollment never invents another allowance.
@@ -126,7 +150,7 @@ export class AttemptGrants {
       duration: duration ?? definition.duration,
       webcam: webcam ?? definition.webcam,
     });
-    return this.issueInitial(
+    return this.issueGrant(
       exam,
       username,
       value,
@@ -159,26 +183,75 @@ export class AttemptGrants {
       return conflict(
         "Reviewed initial issuance requires an enrolled ordinary student with no grant or attempt history; inspect existing authority, never replace it",
       );
-    const grant = this.issueInitial(exam, username, value, actor, reason);
-    this.store.db
-      .prepare("UPDATE attempt_grants SET issuance='REVIEWED_NEW' WHERE id=?")
-      .run(grant.id);
-    return this.view(this.row(grant.id));
+    return this.issueGrant(
+      exam,
+      username,
+      value,
+      actor,
+      reason,
+      "REVIEWED_NEW",
+    );
   }
-  private issueInitial(
+  additional(
+    settings: unknown,
+    username: string,
+    actor: string,
+    reason: string,
+  ) {
+    if (!this.store.db.inTransaction)
+      throw Error(
+        "Additional issuance requires its reviewed confirmation transaction",
+      );
+    const value = this.snapshot(settings),
+      exam = value.settings.id;
+    if (
+      isSandbox(exam) ||
+      !this.store.db
+        .prepare("SELECT 1 FROM enrollments WHERE exam=? AND username=?")
+        .get(exam, username)
+    )
+      return conflict(
+        "Additional grants require an enrolled ordinary student; no history/default/clock changed",
+      );
+    return this.issueGrant(
+      exam,
+      username,
+      value,
+      actor,
+      reason,
+      "ADDITIONAL_TEMPLATE",
+      this.initialFor(exam, username)?.id ?? null,
+    );
+  }
+  private issueGrant(
     exam: string,
     username: string,
     value: ReturnType<AttemptGrants["snapshot"]>,
     actor: string,
     reason: string,
+    issuance:
+      | "ENROLLMENT"
+      | "REVIEWED_NEW"
+      | "ADDITIONAL_TEMPLATE" = "ENROLLMENT",
+    initial: string | null = null,
   ) {
     const id = randomUUID(),
       at = now();
     this.store.db
       .prepare(
-        "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason) VALUES(?,?,?,?,1,'AVAILABLE',?,?,?)",
+        "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason,issuance,initial_grant) VALUES(?,?,?,?,1,'AVAILABLE',?,?,?,?,?)",
       )
-      .run(id, this.agent, exam, username, at, actor, reason);
+      .run(
+        id,
+        this.agent,
+        exam,
+        username,
+        at,
+        actor,
+        reason,
+        issuance,
+        initial,
+      );
     this.store.db
       .prepare("INSERT INTO grant_revisions VALUES(?,1,?,?,?,?,?,?)")
       .run(
@@ -190,13 +263,23 @@ export class AttemptGrants {
         reason,
         at,
       );
+    const issued = this.view(this.row(id));
     this.store.audit(
       actor,
-      "issue-initial-grant",
+      issuance === "ADDITIONAL_TEMPLATE"
+        ? "issue-additional-grant"
+        : "issue-initial-grant",
       id,
-      JSON.stringify({ exam, username, hash: value.hash }),
+      JSON.stringify({
+        exam,
+        username,
+        hash: value.hash,
+        issuance,
+        issuance_order: issued.issuance_order,
+        initial_grant: initial,
+      }),
     );
-    return this.view(this.row(id));
+    return issued;
   }
   list(input: unknown) {
     const b = grantList.parse(input);
@@ -354,10 +437,52 @@ export class AttemptGrants {
   initialFor(exam: string, username: string) {
     const row = this.store.db
       .prepare(
-        "SELECT id FROM attempt_grants WHERE agent=? AND exam=? AND username=?",
+        "SELECT id FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND issuance IN ('ENROLLMENT','REVIEWED_NEW')",
       )
       .get(this.agent, exam, username) as any;
     return row ? this.view(this.row(row.id)) : null;
+  }
+  select(exam: string, username: string, id: string) {
+    const grant = this.view(this.row(id));
+    if (grant.exam !== exam || grant.username !== username)
+      return conflict(
+        "Grant does not belong to the authenticated exam/account; select one from your own waiting page",
+      );
+    return grant;
+  }
+  available(exam: string, username: string) {
+    const rows = this.store.db
+      .prepare(
+        "SELECT g.id FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.agent=? AND g.exam=? AND g.username=? AND g.status='AVAILABLE' AND json_extract(r.settings,'$.latest')>=? ORDER BY g.rowid LIMIT 201",
+      )
+      .all(this.agent, exam, username, now()) as any[];
+    if (rows.length > 200)
+      return conflict(
+        "Too many unused grants to select safely; ask the instructor to inspect/revoke unneeded authorizations, preserving their history",
+      );
+    return rows.map((r) => this.view(this.row(r.id)));
+  }
+  binding(grant: ReturnType<AttemptGrants["select"]>) {
+    return grantBinding.parse({
+      id: grant.id,
+      revision: grant.revision,
+      hash: grant.hash,
+      ...(grant.issuance === "ADDITIONAL_TEMPLATE"
+        ? { kind: "ADDITIONAL" }
+        : {}),
+      issuance_order: grant.issuance_order,
+      ...(grant.initial_grant ? { initial_grant: grant.initial_grant } : {}),
+    });
+  }
+  bindingForAttempt(a: Attempt) {
+    return grantBinding.parse({
+      id: a.grant_id,
+      revision: a.grant_revision,
+      hash: a.grant_hash,
+      ...(a.grant_kind ? { kind: a.grant_kind } : {}),
+      ...(a.grant_issued_order ? { issuance_order: a.grant_issued_order } : {}),
+      ...(a.grant_initial ? { initial_grant: a.grant_initial } : {}),
+    });
   }
   claim(id: string, attempt: string, uid: number) {
     if (!this.store.db.inTransaction)
@@ -377,7 +502,7 @@ export class AttemptGrants {
     const grant = this.view(this.row(id));
     if (grant.status !== "AVAILABLE")
       return conflict(
-        "Initial grant is revoked or consumed; ask your instructor to inspect grant history; no allowance started",
+        "Grant is revoked or consumed; ask your instructor to inspect grant history; no allowance started",
       );
     if (
       this.store.db
@@ -423,6 +548,7 @@ export class AttemptGrants {
           "The grant's Begin window is not open; preflight consumes no time and no Begin intent was reserved",
         );
       if (
+        !isDeepStrictEqual(this.binding(grant), this.bindingForAttempt(a)) ||
         grant.revision !== a.grant_revision ||
         grant.hash !== a.grant_hash ||
         !isDeepStrictEqual(grant.settings, JSON.parse(a.settings))
@@ -501,6 +627,8 @@ export class AttemptGrants {
       claim.uid !== b.uid ||
       !isDeepStrictEqual(JSON.parse(a.settings), g.settings) ||
       !isDeepStrictEqual(b.settings, g.settings) ||
+      !isDeepStrictEqual(b.grant, this.bindingForAttempt(a)) ||
+      !isDeepStrictEqual(b.grant, this.binding(g)) ||
       now() < g.settings.earliest ||
       now() > g.settings.latest
     )
@@ -533,11 +661,7 @@ export class AttemptGrants {
       return conflict(
         "Native grant receipt identity mismatch; no cancellation/start confirmation accepted",
       );
-    const expected = {
-      id: a.grant_id,
-      revision: a.grant_revision,
-      hash: a.grant_hash,
-    };
+    const expected = this.bindingForAttempt(a);
     if (
       remote.state === "CANCELLED_BEFORE_START" &&
       !remote.start &&
@@ -564,7 +688,7 @@ export class AttemptGrants {
       original - remote.start !== JSON.parse(a.settings).duration * 1000
     )
       return conflict(
-        "Native initial interval differs from the issued fixed allowance; preserve canonical state/intent and inspect before retry",
+        "Native original interval differs from the issued fixed allowance; preserve canonical state/intent and inspect before retry",
       );
     if (
       remote.grant_begin_intent !== a.grant_begin_intent ||
@@ -606,6 +730,16 @@ export class AttemptGrants {
     })();
   }
   private unstartedEvidence(a: Attempt) {
+    if (
+      a.grant_issued_order !== null &&
+      !isDeepStrictEqual(
+        this.binding(this.select(a.exam, a.username, a.grant_id!)),
+        this.bindingForAttempt(a),
+      )
+    )
+      return conflict(
+        "Cancelled preparation contradicts original issuance/type evidence; preserve grant/monitoring history before retirement",
+      );
     const claim = this.store.db
       .prepare("SELECT * FROM grant_claims WHERE attempt=?")
       .get(a.id) as any;

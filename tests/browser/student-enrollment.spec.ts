@@ -183,5 +183,5 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     .getByRole("button", { name: "Close grants", exact: true })
     .click();
   await expect(row).toContainText("Duration: 120 minutes");
-  await expect(row).toContainText("Issued: 90 min · REVOKED");
+  await expect(row).toContainText("Initial grant: 90 min · REVOKED");
 });

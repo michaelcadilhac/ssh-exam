@@ -5,10 +5,12 @@ import { beginTime } from "./attempt-grants.js";
 
 export function GrantIssuanceDialog({
   initial,
+  additional = false,
   onClose,
   onChanged,
 }: {
   initial: any;
+  additional?: boolean;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
@@ -19,6 +21,8 @@ export function GrantIssuanceDialog({
     ),
     [latest, setLatest] = useState(new Date(initial.latest).toISOString()),
     [reason, setReason] = useState(""),
+    [duration, setDuration] = useState(String(initial.duration)),
+    [webcam, setWebcam] = useState("effective"),
     [review, setReview] = useState<any>(null),
     [previewID, setPreviewID] = useState(""),
     [pending, setPending] = useState<{
@@ -33,6 +37,15 @@ export function GrantIssuanceDialog({
     setError("");
     try {
       if (!pending && operation === "preview") {
+        if (
+          additional &&
+          (!Number.isSafeInteger(Number(duration)) ||
+            Number(duration) < 60 ||
+            Number(duration) > 21600)
+        )
+          throw Error(
+            "Choose an explicit additional allowance of60..21600 seconds",
+          );
         const names = usernames
           .trim()
           .split(/[\s,]+/)
@@ -60,7 +73,7 @@ export function GrantIssuanceDialog({
         (operation === "preview"
           ? {
               operation,
-              path: `/admin/exams/${encodeURIComponent(definition.id)}/grants/issue-preview`,
+              path: `/admin/exams/${encodeURIComponent(definition.id)}/grants/${additional ? "additional-preview" : "issue-preview"}`,
               body: {
                 definition_revision: definition.revision,
                 template_version: definition.template_version,
@@ -71,6 +84,14 @@ export function GrantIssuanceDialog({
                   .split(/[\s,]+/)
                   .filter(Boolean),
                 reason,
+                ...(additional
+                  ? {
+                      duration: Number(duration),
+                      ...(webcam !== "effective"
+                        ? { webcam: webcam === "required" }
+                        : {}),
+                    }
+                  : {}),
                 request: crypto.randomUUID(),
               },
             }
@@ -105,6 +126,15 @@ export function GrantIssuanceDialog({
         throw Error(
           "This review belongs to another exam; select that exam to inspect it",
         );
+      if (
+        result.kind !==
+        (additional
+          ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+          : "NEW_LEGACY_INITIAL_GRANTS")
+      )
+        throw Error(
+          "Select the matching initial/additional grant workflow to inspect this review; no new authorization confirmed",
+        );
       setReview(result);
       setPending(null);
       if (result.status === "CONFIRMED") await onChanged();
@@ -137,13 +167,29 @@ export function GrantIssuanceDialog({
     if (!busy) onClose();
   };
   return (
-    <Modal title="Issue legacy grants" onClose={close} wide>
-      <p>
-        Create NEW initial grants for enrolled students with no grant or attempt
-        history. These use selected current settings; they do not reconstruct
-        historical enrollment settings. Preview reserves no account or
-        allowance.
-      </p>
+    <Modal
+      title={
+        additional ? "Authorize additional attempts" : "Issue legacy grants"
+      }
+      onClose={close}
+      wide
+    >
+      {additional ? (
+        <p>
+          Authorize separate attempts under the same exam, with a chosen
+          allowance and exact template. Earlier submissions, clocks and account
+          restrictions remain protected. Preview reserves no account or time.
+          Reuse the saved review ID to inspect a lost confirmation reply; a new
+          confirmed review authorizes another attempt.
+        </p>
+      ) : (
+        <p>
+          Create NEW initial grants for enrolled students with no grant or
+          attempt history. These use selected current settings; they do not
+          reconstruct historical enrollment settings. Preview reserves no
+          account or allowance.
+        </p>
+      )}
       <p>
         Exam: {definition.name} · {definition.id}. Current materials/starter:{" "}
         {definition.template}
@@ -161,14 +207,51 @@ export function GrantIssuanceDialog({
       {!review && (
         <fieldset disabled={busy || !!pending}>
           <label>
-            Legacy unused students (one per line, up to200)
+            {additional
+              ? "Additional attempt students"
+              : "Legacy unused students"}{" "}
+            (one per line, up to200)
             <textarea
-              aria-label="Legacy unused students"
+              aria-label={
+                additional
+                  ? "Additional attempt students"
+                  : "Legacy unused students"
+              }
               value={usernames}
               onChange={(e) => setUsernames(e.target.value)}
               rows={4}
             />
           </label>
+          {additional && (
+            <>
+              <label>
+                Additional allowance seconds
+                <input
+                  type="number"
+                  min={60}
+                  max={21600}
+                  step={1}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
+              </label>
+              <label>
+                Webcam requirement
+                <select
+                  value={webcam}
+                  onChange={(e) => setWebcam(e.target.value)}
+                >
+                  <option value="effective">
+                    Preserve each student's effective requirement
+                  </option>
+                  <option value="required">Explicitly require webcam</option>
+                  <option value="optional">
+                    Explicitly make webcam optional
+                  </option>
+                </select>
+              </label>
+            </>
+          )}
           <label>
             Earliest Begin (RFC3339 with zone)
             <input
@@ -181,7 +264,9 @@ export function GrantIssuanceDialog({
             <input value={latest} onChange={(e) => setLatest(e.target.value)} />
           </label>
           <label>
-            Reason for NEW issuance
+            {additional
+              ? "Reason for additional attempt"
+              : "Reason for NEW issuance"}
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -206,6 +291,13 @@ export function GrantIssuanceDialog({
           {review.rows.map((row: any) => (
             <article key={row.username}>
               <h3>{row.username}</h3>
+              {row.existing_grants !== undefined && (
+                <p>
+                  At review time: {row.existing_grants} existing unused or
+                  pending grants. This confirmation authorizes another separate
+                  attempt.
+                </p>
+              )}
               <p>
                 {row.settings.name} · {row.settings.duration / 60} minutes ·
                 Webcam {row.settings.webcam ? "required" : "not required"} ·{" "}
@@ -260,7 +352,7 @@ export function GrantIssuanceDialog({
               disabled={busy}
               onClick={() => void perform("confirm")}
             >
-              Confirm NEW grants
+              {additional ? "Confirm additional grants" : "Confirm NEW grants"}
             </button>
             <button disabled={busy} onClick={() => void perform("cancel")}>
               Cancel review
@@ -272,7 +364,7 @@ export function GrantIssuanceDialog({
             disabled={busy || !definition.template_version}
             onClick={() => void perform("preview")}
           >
-            Preview NEW grants
+            {additional ? "Preview additional grants" : "Preview NEW grants"}
           </button>
         ) : null}
         {!pending && (

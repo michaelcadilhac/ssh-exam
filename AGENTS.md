@@ -30,6 +30,10 @@
 - Read source as plain text, not a JSON-escaped wrapper. Keep paths consistent
   with each command's cwd and patch hunks in file order, one target block per
   file. After a patch fails, inspect current context before retrying it.
+- Read an existing helper's signature and state ownership before calling it;
+  do not infer argument order or invent setter names. Bound individual browser
+  actions and use observed accessible roles so a bad locator cannot consume the
+  whole workflow timeout. A locator failure is not a product refusal oracle.
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.

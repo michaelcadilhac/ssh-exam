@@ -2042,7 +2042,22 @@ race/resource and eight rebuilt browser checks pass locally, with matching
 build/typecheck/vet; no deployment. See docs/unified-grant-first-attempt.md for state review/
 evidence/limits and docs/initial-grants-cli.md for supported operator workflows.
 
-### Approved grant webcam/Begin-window policy (October 21; implementation pending)
+Local October23 additional-template grants now implement explicit reviewed
+individual/bulk authorization, chosen allowance/window and effective webcam
+preservation/override through matching CLI/web and student selection. This is
+the approved C2 policy change: one initial entitlement remains the default;
+025 allows additional grant-bound attempts while preserving unbound legacy
+uniqueness, account-busy/access holds and immutable historical submissions.
+Distinct native purposes bind type, durable issuance order and the exact original
+initial UUID; fresh C15 agreement, private receipt and actual commit-time checks
+preserve one-use original intervals. Native initial-after-additional admission
+requires positive retained lineage, never absent records or sequence alone.
+469 app tests/full native race-resource and ten current-artifact browser checks
+pass locally. Empty/saved-work and sandbox grants, full legacy-source migration,
+retained SSH and retirement remain unfinished. Nothing is deployed. Evidence and
+commands: docs/additional-template-grants.md and docs/additional-grants-cli.md.
+
+### Approved grant webcam/Begin-window policy (October 21; partial local implementation)
 
 October23 locally implemented/tested reviewed legacy issuance adds actor-bound fifteen-minute
 reviews, exact current-definition/source selection, per-user effective policies

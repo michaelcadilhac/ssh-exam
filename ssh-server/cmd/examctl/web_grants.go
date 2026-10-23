@@ -23,6 +23,7 @@ func webGrantsHelp(out io.Writer) {
        sudo examctl web grants issue-show PREVIEW_UUID
        sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH
        sudo examctl web grants issue-cancel PREVIEW_UUID --revision REVIEW_HASH
+       sudo examctl web grants additional-preview EXAM USER... --duration-minutes N --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT [--webcam required|optional]
 
 Initial ordinary grants are issued atomically at NEW enrollment/CSV import, with
 an exact attested template version and finite explicit Begin window. Existing
@@ -35,8 +36,13 @@ per student for review. A preview reserves no account/allowance and expires afte
 15 minutes. Inspect before confirming; changed definitions/enrollments require a
 new preview. issue-cancel cannot undo confirmed issuance. Root-only legacy saved-
 work authority is not converted or declared absent; native preparation refuses
-conflicts without consuming time. Additional attempts and sandbox grants remain
-separate workflows not yet implemented.
+conflicts without consuming time. additional-preview explicitly authorizes a
+separate exact-template attempt and allowance under the SAME exam. Use issue-show/
+confirm/cancel for its reviewed result. Its finite window may lie outside exam
+defaults; current effective webcam is preserved unless explicitly overridden.
+Protected history, original deadlines and account holds remain authoritative;
+neither metadata confirmation nor another grant reopens/overrides an old attempt.
+Independent empty/saved-work sources and sandbox grants remain unfinished.
 Inspect templates verify/sync, then web exams show/update before new enrollment.
 
 Grant settings are saved at issuance. Later exam/roster default edits do NOT
@@ -90,7 +96,7 @@ func webGrantsMain(args []string) int {
 		if strings.HasPrefix(args[i], "-") {
 			continue
 		}
-		if position == 1 && strings.HasPrefix(args[i], "issue-") {
+		if position == 1 && (strings.HasPrefix(args[i], "issue-") || args[i] == "additional-preview") {
 			return webGrantIssuanceMain(args)
 		}
 		position++
@@ -272,29 +278,31 @@ type grantClaimResult struct {
 	EndedAt   *int64 `json:"ended_at"`
 }
 type grantResult struct {
-	ID          string               `json:"id"`
-	Agent       string               `json:"agent"`
-	Exam        string               `json:"exam"`
-	Username    string               `json:"username"`
-	Revision    int64                `json:"revision"`
-	Status      string               `json:"status"`
-	IssuedAt    int64                `json:"issued_at"`
-	Actor       string               `json:"actor"`
-	Reason      string               `json:"reason"`
-	Issuance    string               `json:"issuance"`
-	Hash        string               `json:"hash"`
-	Settings    core.Settings        `json:"settings"`
-	Work        grantWorkResult      `json:"work"`
-	Claims      []grantClaimResult   `json:"claims"`
-	History     []grantHistoryResult `json:"history,omitempty"`
-	HistoryNext *int64               `json:"history_next,omitempty"`
+	ID            string               `json:"id"`
+	Agent         string               `json:"agent"`
+	Exam          string               `json:"exam"`
+	Username      string               `json:"username"`
+	Revision      int64                `json:"revision"`
+	Status        string               `json:"status"`
+	IssuedAt      int64                `json:"issued_at"`
+	Actor         string               `json:"actor"`
+	Reason        string               `json:"reason"`
+	Issuance      string               `json:"issuance"`
+	IssuanceOrder int64                `json:"issuance_order"`
+	InitialGrant  *string              `json:"initial_grant"`
+	Hash          string               `json:"hash"`
+	Settings      core.Settings        `json:"settings"`
+	Work          grantWorkResult      `json:"work"`
+	Claims        []grantClaimResult   `json:"claims"`
+	History       []grantHistoryResult `json:"history,omitempty"`
+	HistoryNext   *int64               `json:"history_next,omitempty"`
 }
 
 func validateGrantResult(op string, body any, raw json.RawMessage, agent string) error {
 	if !strings.HasPrefix(op, "grants.") {
 		return nil
 	}
-	if strings.HasPrefix(op, "grants.issue-") {
+	if strings.HasPrefix(op, "grants.issue-") || op == "grants.additional-preview" {
 		return validateGrantIssuanceResult(op, body, raw, agent)
 	}
 	fail := errors.New("Unconfirmed grant reply scope/schema; no private output. Inspect the requested grant and retry with the original --request UUID")
@@ -340,7 +348,7 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 		rows = []grantResult{row}
 	}
 	for _, g := range rows {
-		if g.Issuance != "ENROLLMENT" && g.Issuance != "REVIEWED_NEW" {
+		if (g.Issuance != "ENROLLMENT" && g.Issuance != "REVIEWED_NEW" && g.Issuance != "ADDITIONAL_TEMPLATE") || g.IssuanceOrder < 1 {
 			return fail
 		}
 		if g.Agent != agent || g.ID == "" || g.Revision < 1 || g.Exam == "" || g.Username == "" || (scope.Exam != "" && g.Exam != scope.Exam) || (scope.Username != "" && g.Username != scope.Username) || g.Settings.ID != g.Exam || g.Settings.TemplateVersion == "" || g.Work.Kind != "template" || g.Work.Name != g.Settings.Template || g.Work.Hash != g.Settings.TemplateVersion || len(g.Hash) != 64 || g.Settings.Duration < 60 || g.Settings.Latest <= g.Settings.Earliest || len(g.Claims) > 100 || len(g.History) > 50 {

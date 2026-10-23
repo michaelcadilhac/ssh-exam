@@ -104,7 +104,8 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 				if prior.Grant != nil && prior.Grant.ID == grant.ID && (prior.UID != r.UID || prior.Username != r.Username || prior.Exam != r.Exam) {
 					return errors.New("grant identity changed after preparation, including cancelled claims; preserve original grant/UID history for explicit review")
 				}
-				if prior.Exam == r.Exam && (prior.UID == r.UID || prior.Username == r.Username) && prior.Start > 0 {
+				knownAdditionalAfterInitial := prior.Grant != nil && validGrant(prior.Grant) && prior.Grant.Kind == "ADDITIONAL" && prior.Grant.Initial == r.Grant.ID && r.Grant.Order > 0 && r.Grant.Order < prior.Grant.Order && prior.UID == r.UID && prior.Username == r.Username && attemptID.MatchString(prior.GrantBeginIntent)
+				if r.Grant.Kind != "ADDITIONAL" && !knownAdditionalAfterInitial && prior.Exam == r.Exam && (prior.UID == r.UID || prior.Username == r.Username) && prior.Start > 0 {
 					return fmt.Errorf("initial grant conflicts with native attempt history %s; preserve the completed/original interval and obtain explicit additional-attempt authorization; no new preparation or clock", prior.ID)
 				}
 			}

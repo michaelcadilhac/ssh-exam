@@ -12,8 +12,13 @@ it.each([
   "ordinary",
   "reviewed-legacy",
   "reviewed-old-native",
+  "additional-after-completed",
+  "additional-wrong-anchor",
+  "old-ordered-role",
   "outbound-unavailable",
   "wrong-native-uid",
+  "wrong-native-kind",
+  "wrong-native-order",
   "cancelled-retry",
   "cancelled-consumption-contradiction",
   "cancelled-wrong-proof",
@@ -22,6 +27,11 @@ it.each([
 ])(
   "new enrollment → signed SSH preparation → fresh authenticated grant Begin (%s)",
   async (scenario) => {
+    const additional =
+        scenario === "additional-after-completed" ||
+        scenario === "additional-wrong-anchor",
+      allowance = additional ? 5400 : 7200;
+    let priorHistory: any;
     const h = await hosts(),
       data = mkdtempSync(tmpdir() + "/grant-begin-");
     const config = {
@@ -39,7 +49,8 @@ it.each([
     const sockets: WebSocket[] = [],
       operations: string[] = [],
       intents: string[] = [];
-    let reviewedSupport = scenario !== "reviewed-old-native";
+    let reviewedSupport = scenario !== "reviewed-old-native",
+      orderedSupport = scenario !== "old-ordered-role";
     let failed = false,
       verifiedUID = 10001;
     h.control.command = async (op, b) => {
@@ -55,10 +66,17 @@ it.each([
             "immutable-template-versions-v1",
             "exact-template-begin-v1",
             "unified-initial-grants-v1",
+            ...(orderedSupport ? ["ordered-template-grants-v1"] : []),
             ...(reviewedSupport ? ["reviewed-initial-grants-v1"] : []),
           ],
         };
-      if (op === "prepare-grant-attempt") {
+      if (
+        op === "prepare-grant-attempt" ||
+        op === "prepare-additional-grant-attempt"
+      ) {
+        expect(b.grant.kind === "ADDITIONAL").toBe(
+          op === "prepare-additional-grant-attempt",
+        );
         expect(b.grant).toMatchObject({
           revision: 1,
           hash: expect.stringMatching(/^[a-f0-9]{64}$/),
@@ -81,6 +99,14 @@ it.each([
       }
       const a = native.get(b.id);
       if (!a) throw Error("Unknown synthetic native attempt");
+      if (op === "submission-manifest")
+        return {
+          attempt: { ...a },
+          checksum: a.checksum,
+          files: [],
+          collected: a.deadline,
+          secured: a.deadline,
+        };
       if (op === "inspect-attempt")
         return scenario === "cancelled-wrong-proof" &&
           a.state === "CANCELLED_BEFORE_START"
@@ -108,7 +134,13 @@ it.each([
         });
         return { ...a };
       }
-      if (op === "activate-grant-attempt") {
+      if (
+        op === "activate-grant-attempt" ||
+        op === "activate-additional-grant-attempt"
+      ) {
+        expect(a.grant.kind === "ADDITIONAL").toBe(
+          op === "activate-additional-grant-attempt",
+        );
         expect(b.grant).toEqual(a.grant);
         expect(b.settings).toEqual(a.settings);
         intents.push(b.grant_begin_intent);
@@ -139,6 +171,24 @@ it.each([
           failed = true;
           request.uid++;
         }
+        if (scenario === "wrong-native-kind" && !failed) {
+          failed = true;
+          request.grant = { ...a.grant, kind: "ADDITIONAL" };
+        }
+        if (scenario === "wrong-native-order" && !failed) {
+          failed = true;
+          request.grant = {
+            ...a.grant,
+            issuance_order: a.grant.issuance_order + 1,
+          };
+        }
+        if (scenario === "additional-wrong-anchor" && !failed) {
+          failed = true;
+          request.grant = {
+            ...a.grant,
+            initial_grant: "66666666-1234-4234-8234-123456789abc",
+          };
+        }
         const payload = Buffer.from(JSON.stringify(request));
         const response = await app.inject({
           method: "POST",
@@ -151,10 +201,15 @@ it.each([
           },
           payload,
         });
-        if (request.uid !== 10001) {
+        if (
+          request.uid !== 10001 ||
+          request.grant.kind !== a.grant.kind ||
+          request.grant.issuance_order !== a.grant.issuance_order ||
+          request.grant.initial_grant !== a.grant.initial_grant
+        ) {
           expect(response.statusCode).toBe(409);
           expect(a.start).toBe(0);
-          throw Error("Synthetic wrong-UID fresh verification refused");
+          throw Error("Synthetic wrong-scope fresh verification refused");
         }
         expect(response.statusCode, response.body).toBe(200);
         const frame = response.json(),
@@ -244,7 +299,66 @@ it.each([
           cookie: `session=${admin.token}`,
           "x-csrf-token": admin.csrf,
         };
-      if (scenario.startsWith("reviewed-")) {
+      if (additional) {
+        store.db
+          .prepare(
+            "INSERT INTO enrollments(exam,username,uid,duration,webcam) VALUES('ordinary','student',0,7200,0)",
+          )
+          .run();
+        const historyID = "99999999-1234-4234-8234-123456789abc",
+          start = Date.now() - 10800000;
+        store.db
+          .prepare(
+            "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state) VALUES(?,'ordinary','student',10001,'COMPLETED',?,?,?,?,1,?,'RELEASED')",
+          )
+          .run(
+            historyID,
+            JSON.stringify(definition),
+            start,
+            start + 5400000,
+            start + 5400000,
+            "b".repeat(64),
+          );
+        priorHistory = store.attempt(historyID);
+        native.set(historyID, {
+          id: historyID,
+          exam: "ordinary",
+          username: "student",
+          uid: 10001,
+          state: "COMPLETED",
+          settings: definition,
+          start,
+          deadline: start + 5400000,
+          original_deadline: start + 5400000,
+          protected: true,
+          checksum: priorHistory.checksum,
+          access_state: "RELEASED",
+        });
+        const review = await app.inject({
+          method: "POST",
+          url: "/api/admin/exams/ordinary/grants/additional-preview",
+          headers: adminHeaders,
+          payload: {
+            definition_revision: hash(JSON.stringify(definition)),
+            template_version: digest,
+            earliest: definition.earliest,
+            latest: definition.latest,
+            usernames: ["student"],
+            duration: allowance,
+            reason:
+              "Explicit separate additional allowance after completed attempt",
+            request: randomUUID(),
+          },
+        });
+        expect(review.statusCode, review.body).toBe(200);
+        const confirmed = await app.inject({
+          method: "POST",
+          url: `/api/admin/grant-issuance/${review.json().id}/confirm`,
+          headers: adminHeaders,
+          payload: { revision: review.json().revision, request: randomUUID() },
+        });
+        expect(confirmed.statusCode, confirmed.body).toBe(200);
+      } else if (scenario.startsWith("reviewed-")) {
         store.db
           .prepare(
             "INSERT INTO enrollments(exam,username,uid,duration,webcam) VALUES('ordinary','student',0,7200,0)",
@@ -385,7 +499,7 @@ it.each([
         (await app.inject({ url: "/api/student/exam", headers })).json()
           .settings,
       ).toMatchObject({
-        duration: 7200,
+        duration: allowance,
         webcam: false,
         latest: definition.latest,
       });
@@ -397,6 +511,16 @@ it.each([
           payload: {},
         });
       let prepared = await preflight();
+      if (scenario === "old-ordered-role") {
+        expect(prepared.statusCode).toBe(400);
+        expect(prepared.body).toContain("ordered grant authority/type support");
+        expect(
+          store.db.prepare("SELECT count(*) n FROM attempts").get(),
+        ).toEqual({ n: 0 });
+        expect(operations).not.toContain("prepare-grant-attempt");
+        orderedSupport = true;
+        prepared = await preflight();
+      }
       if (scenario === "reviewed-old-native") {
         expect(prepared.statusCode).toBe(400);
         expect(prepared.body).toContain(
@@ -504,7 +628,7 @@ it.each([
       }
       const { id, page, settings } = prepared.json();
       expect(settings).toMatchObject({
-        duration: 7200,
+        duration: allowance,
         webcam: false,
         template_version: digest,
       });
@@ -561,7 +685,15 @@ it.each([
         expect(operations).not.toContain("activate-grant-attempt");
         return;
       }
-      if (["outbound-unavailable", "wrong-native-uid"].includes(scenario)) {
+      if (
+        [
+          "outbound-unavailable",
+          "wrong-native-uid",
+          "wrong-native-kind",
+          "wrong-native-order",
+          "additional-wrong-anchor",
+        ].includes(scenario)
+      ) {
         const refused = await begin();
         expect(refused.statusCode, refused.body).toBe(400);
         expect(store.attempt(id)).toMatchObject({
@@ -582,7 +714,7 @@ it.each([
       expect(active.statusCode, active.body).toBe(200);
       expect(store.attempt(id).start!).toBeGreaterThanOrEqual(actual);
       expect(store.attempt(id).deadline! - store.attempt(id).start!).toBe(
-        7200000,
+        allowance * 1000,
       );
       expect(
         store.db
@@ -604,6 +736,26 @@ it.each([
       expect(operations).not.toContain("prepare-attempt");
       expect(operations).not.toContain("activate-attempt");
       expect(operations).not.toContain("reconcile-recovery-allowance");
+      if (additional) {
+        const old = store.attempt(priorHistory.id);
+        for (const key of [
+          "id",
+          "exam",
+          "username",
+          "uid",
+          "state",
+          "settings",
+          "start",
+          "deadline",
+          "original_deadline",
+          "protected",
+          "checksum",
+        ])
+          expect((old as any)[key], key).toEqual(priorHistory[key]);
+        expect(old.id).not.toBe(id);
+        expect(operations).toContain("prepare-additional-grant-attempt");
+        expect(operations).toContain("activate-additional-grant-attempt");
+      }
     } finally {
       for (const ws of sockets) ws.terminate();
       await app.close();

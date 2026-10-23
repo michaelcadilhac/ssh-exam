@@ -1040,6 +1040,85 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         (await grantsCLI(["show", issuedLegacy.issued[0].grant])).settings
           .duration,
       ).toBe(4500);
+      const extraArgs = [
+        "additional-preview",
+        "legacy-cli",
+        "old01",
+        "old02",
+        "--duration-minutes",
+        "90",
+        "--definition-revision",
+        legacyDefinition.revision,
+        "--template-version",
+        "a".repeat(64),
+        "--earliest",
+        new Date(Date.now() + 10800000).toISOString(),
+        "--latest",
+        new Date(Date.now() + 14400000).toISOString(),
+        "--reason",
+        "Explicit separate additional template attempts",
+        "--request",
+        randomUUID(),
+      ];
+      const extraReview = await grantsCLI(extraArgs);
+      expect(extraReview).toMatchObject({
+        kind: "NEW_ADDITIONAL_TEMPLATE_GRANTS",
+        status: "REVIEW",
+        rows: [
+          {
+            username: "old01",
+            existing_grants: 1,
+            settings: { duration: 5400, webcam: true },
+          },
+          {
+            username: "old02",
+            existing_grants: 1,
+            settings: { duration: 5400, webcam: false },
+          },
+        ],
+      });
+      const extraConfirm = [
+        "issue-confirm",
+        extraReview.id,
+        "--revision",
+        extraReview.revision,
+        "--request",
+        randomUUID(),
+      ];
+      const extraIssued = await grantsCLI(extraConfirm);
+      expect(extraIssued.issued).toHaveLength(2);
+      await f.restart();
+      expect(await grantsCLI(extraConfirm)).toEqual(extraIssued);
+      const extraGrant = await grantsCLI(["show", extraIssued.issued[0].grant]);
+      expect(extraGrant).toMatchObject({
+        issuance: "ADDITIONAL_TEMPLATE",
+        initial_grant: issuedLegacy.issued[0].grant,
+        issuance_order: expect.any(Number),
+        settings: { duration: 5400, webcam: true },
+      });
+      const extraRev = await grantsCLI([
+        "revise",
+        extraGrant.id,
+        "--revision",
+        "1",
+        "--duration-minutes",
+        "75",
+        "--reason",
+        "Explicit unused additional allowance revision",
+      ]);
+      expect(extraRev.settings.duration).toBe(4500);
+      expect(
+        (
+          await grantsCLI([
+            "revoke",
+            extraGrant.id,
+            "--revision",
+            "2",
+            "--reason",
+            "Withdraw unused additional authorization",
+          ])
+        ).status,
+      ).toBe("REVOKED");
       const allowanceArgs = [
         "settings",
         "cli-exam",

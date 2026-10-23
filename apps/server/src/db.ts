@@ -49,6 +49,9 @@ export interface Attempt {
   grant_revision: number | null;
   grant_hash: string | null;
   grant_begin_intent: string | null;
+  grant_kind: string | null;
+  grant_issued_order: number | null;
+  grant_initial: string | null;
 }
 export class Store {
   db: Database.Database;
@@ -165,6 +168,22 @@ export class Store {
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/024.sql", "utf8")),
       )();
+    if (
+      !this.db.prepare("SELECT 1 FROM schema_version WHERE version=25").get()
+    ) {
+      this.db.pragma("foreign_keys = OFF");
+      try {
+        this.db.transaction(() => {
+          this.db.exec(readFileSync("migrations/025.sql", "utf8"));
+          if ((this.db.pragma("foreign_key_check") as unknown[]).length)
+            throw Error(
+              "Additional-grant migration foreign-key check failed; preserve the original database and repair before admission",
+            );
+        })();
+      } finally {
+        this.db.pragma("foreign_keys = ON");
+      }
+    }
   }
   audit(actor: string, action: string, target: string, detail = "") {
     this.db

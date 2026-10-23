@@ -305,6 +305,253 @@ func TestInitialGrantHistoryFencePreservesUnstartedAndOtherScopes(t *testing.T) 
 	}
 }
 
+func TestAdditionalGrantHasDistinctSignedPreparationPurpose(t *testing.T) {
+	e, key, r := initialGrantUnpreparedFixture(t)
+	r.Grant.Kind = "ADDITIONAL"
+	r.Grant.Order = 2
+	cmd := preparationCommand(r)
+	cmd.Op = "prepare-additional-grant-attempt"
+	result, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+	if err != nil {
+		t.Fatal("explicit additional signed preparation unavailable", err)
+	}
+	a := result.(*Attempt)
+	if a.State != "PREPARING" || a.Start != 0 || a.Deadline != 0 || a.Grant.Kind != "ADDITIONAL" {
+		t.Fatal("additional preparation lost type or consumed time", a)
+	}
+}
+
+func TestAdditionalGrantFreshTLSBeginPreservesPriorIntervalAndBytes(t *testing.T) {
+	for _, kind := range []string{"legacy", "anchored"} {
+		t.Run(kind, func(t *testing.T) {
+			e, key, r := initialGrantUnpreparedFixture(t)
+			r.Grant.Kind = "ADDITIONAL"
+			r.Grant.Order = 2
+			if kind == "anchored" {
+				r.Grant.Initial = "66666666-1234-4234-8234-123456789abc"
+			}
+			priorStart := Millis() - 10800000
+			prior := &Attempt{ID: "99999999-1234-4234-8234-123456789abc", Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "COMPLETED", AccessState: "RELEASED", Start: priorStart, Deadline: priorStart + 5400000, OriginalDeadline: priorStart + 5400000, Protected: true}
+			if kind == "anchored" {
+				prior.Grant = &GrantBinding{ID: r.Grant.Initial, Revision: 1, Hash: strings.Repeat("b", 64), Order: 1}
+				prior.GrantBeginIntent = "77777777-1234-4234-8234-123456789abc"
+			}
+			if err := e.WithState(func() error { e.state.Attempts[prior.ID] = prior; return nil }); err != nil {
+				t.Fatal(err)
+			}
+			historyFile := filepath.Join(e.Config.State, "submissions", prior.ID, "historical-sentinel")
+			if err := os.MkdirAll(filepath.Dir(historyFile), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(historyFile, []byte("preserve previously protected bytes"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := preparationCommand(r)
+			cmd.Op = "prepare-grant-attempt"
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil {
+				t.Fatal("additional type downgraded to initial purpose")
+			}
+			cmd.Op, cmd.Nonce = "prepare-additional-grant-attempt", Token()
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
+				t.Fatal(err)
+			}
+			cmd.Op, cmd.Nonce = "prepare-workspace", Token()
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
+				t.Fatal(err)
+			}
+			var available atomic.Bool
+			var additionalCalls atomic.Int32
+			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
+				additionalCalls.Add(1)
+				if !available.Load() {
+					return reply, 503
+				}
+				return reply, 200
+			})
+			r.GrantBeginIntent = "44444444-1234-4234-8234-123456789abc"
+			cmd = preparationCommand(r)
+			cmd.Op = "activate-grant-attempt"
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil {
+				t.Fatal("additional Begin downgraded to initial purpose")
+			}
+			cmd.Op, cmd.Nonce = "activate-additional-grant-attempt", Token()
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil || !strings.Contains(err.Error(), "HTTP 503") || additionalCalls.Load() != 1 {
+				t.Fatal("additional flow did not reach its intended fresh-outbound refusal boundary", err, additionalCalls.Load())
+			}
+			assertUnstartedWorkspace(t, e, r.ID)
+			available.Store(true)
+			cmd.Nonce = Token()
+			at := Millis()
+			result, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+			if err != nil {
+				t.Fatal(err)
+			}
+			a := result.(*Attempt)
+			if a.Start < at || a.Deadline-a.Start != r.Settings.Duration*1000 || a.Grant.Kind != "ADDITIONAL" || a.Grant.Order != 2 {
+				t.Fatal("additional interval/type/order lost", a)
+			}
+			if e.state.Attempts[prior.ID].Start != priorStart || e.state.Attempts[prior.ID].OriginalDeadline != prior.OriginalDeadline || !e.state.Attempts[prior.ID].Protected {
+				t.Fatal("new grant rewrote old interval/history")
+			}
+			if data, err := os.ReadFile(historyFile); err != nil || string(data) != "preserve previously protected bytes" {
+				t.Fatal("new template workspace changed protected bytes", err)
+			}
+			available.Store(false)
+			restarted, err := New(e.Config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cmd.Nonce = Token()
+			again, err := restarted.Command(signedCommand(key, cmd), r.Username, r.Transport)
+			if err != nil || again.(*Attempt).Start != a.Start || again.(*Attempt).Deadline != a.Deadline {
+				t.Fatal("restart/retry rebased original additional interval", err)
+			}
+			r.Grant.Order = 3
+			cmd = preparationCommand(r)
+			cmd.Op = "activate-additional-grant-attempt"
+			if _, err := restarted.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil {
+				t.Fatal("committed issuance order changed")
+			}
+			r.Grant.Order = 2
+			r.Grant.Initial = "55555555-1234-4234-8234-123456789abc"
+			cmd = preparationCommand(r)
+			cmd.Op = "activate-additional-grant-attempt"
+			if _, err := restarted.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil {
+				t.Fatal("committed initial authority anchor changed")
+			}
+		})
+	}
+}
+
+func TestInitialAfterAdditionalRequiresOriginalDurableOrderAndTypedHistory(t *testing.T) {
+	for _, kind := range []string{"valid", "missing-order", "later-initial", "legacy-prior", "missing-intent", "changed-uid", "same-grant", "missing-initial-anchor", "foreign-initial-anchor"} {
+		t.Run(kind, func(t *testing.T) {
+			e, key, r := initialGrantUnpreparedFixture(t)
+			r.Grant.Order = 1
+			started := Millis() - 10800000
+			prior := &Attempt{ID: "99999999-1234-4234-8234-123456789abc", Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "COMPLETED", AccessState: "RELEASED", Start: started, Deadline: started + 5400000, OriginalDeadline: started + 5400000, Protected: true, Grant: &GrantBinding{ID: "88888888-1234-4234-8234-123456789abc", Revision: 1, Hash: strings.Repeat("b", 64), Kind: "ADDITIONAL", Order: 2}, GrantBeginIntent: "77777777-1234-4234-8234-123456789abc"}
+			prior.Grant.Initial = r.Grant.ID
+			switch kind {
+			case "missing-order":
+				r.Grant.Order = 0
+			case "later-initial":
+				r.Grant.Order = 3
+			case "legacy-prior":
+				prior.Grant = nil
+			case "missing-intent":
+				prior.GrantBeginIntent = ""
+			case "changed-uid":
+				prior.UID++
+			case "same-grant":
+				prior.Grant.ID = r.Grant.ID
+			case "missing-initial-anchor":
+				prior.Grant.Initial = ""
+			case "foreign-initial-anchor":
+				prior.Grant.Initial = "66666666-1234-4234-8234-123456789abc"
+			}
+			if err := e.WithState(func() error { e.state.Attempts[prior.ID] = prior; return nil }); err != nil {
+				t.Fatal(err)
+			}
+			cmd := preparationCommand(r)
+			cmd.Op = "prepare-grant-attempt"
+			result, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+			if kind != "valid" {
+				if err == nil {
+					t.Fatal("uncertain or newly manufactured initial authority bypassed native history")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal("earlier unused initial falsely blocked by positively typed later additional history", err)
+			}
+			if result.(*Attempt).Start != 0 {
+				t.Fatal("initial preparation consumed time")
+			}
+		})
+	}
+}
+
+func TestAdditionalConcurrentBeginKeepsOneOriginalInterval(t *testing.T) {
+	e, key, r := initialGrantUnpreparedFixture(t)
+	r.Grant.Kind = "ADDITIONAL"
+	r.Grant.Order = 2
+	cmd := preparationCommand(r)
+	cmd.Op = "prepare-additional-grant-attempt"
+	if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
+		t.Fatal(err)
+	}
+	cmd.Op, cmd.Nonce = "prepare-workspace", Token()
+	if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
+		t.Fatal(err)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	var calls atomic.Int32
+	initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
+		if calls.Add(1) == 1 {
+			close(entered)
+		}
+		<-release
+		return reply, 200
+	})
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+	r.GrantBeginIntent = "44444444-1234-4234-8234-123456789abc"
+	finished := make(chan error, 2)
+	for range 2 {
+		current := preparationCommand(r)
+		current.Op = "activate-additional-grant-attempt"
+		go func() { _, err := e.Command(signedCommand(key, current), r.Username, r.Transport); finished <- err }()
+	}
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("concurrent Begin never reached fresh TLS boundary")
+	}
+	unrelated := make(chan error, 1)
+	go func() { unrelated <- e.WithState(func() error { return nil }) }()
+	select {
+	case err := <-unrelated:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("additional exchange held shared state")
+	}
+	assertUnstartedWorkspace(t, e, r.ID)
+	close(release)
+	released = true
+	success := 0
+	for range 2 {
+		select {
+		case err := <-finished:
+			if err == nil {
+				success++
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("concurrent Begin did not complete")
+		}
+	}
+	if success < 1 {
+		t.Fatal("no concurrent Begin succeeded")
+	}
+	if err := e.WithState(func() error {
+		a := e.state.Attempts[r.ID]
+		if a.Start <= 0 || a.Deadline-a.Start != r.Settings.Duration*1000 || a.GrantBeginIntent != r.GrantBeginIntent {
+			t.Fatal("concurrent start changed original interval", a)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 1 {
+		t.Fatal("stale concurrent snapshot reached another permission exchange", calls.Load())
+	}
+}
+
 func TestInitialGrantFreshSignedRepliesCannotChangeScope(t *testing.T) {
 	for _, kind := range []string{"signature", "nonce", "intent", "grant", "revision", "transport", "boot", "expired", "purpose"} {
 		t.Run(kind, func(t *testing.T) {

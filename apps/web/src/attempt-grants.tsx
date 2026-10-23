@@ -61,22 +61,47 @@ export function AttemptGrantsDialog({
       null,
     );
   const alive = useRef(true);
-  const inspect = async (signal: AbortSignal) => {
+  const selectedGrant = useRef<string | null>(null),
+    catalogRef = useRef<any[]>([]);
+  const [catalog, setCatalog] = useState<any[]>([]),
+    [next, setNext] = useState<string | null>(null);
+  const inspect = async (
+    signal: AbortSignal,
+    choice = selectedGrant.current,
+    after?: string,
+  ) => {
     const page = await api(
-      `/admin/exams/${encodeURIComponent(exam)}/grants?username=${encodeURIComponent(username)}`,
+      `/admin/exams/${encodeURIComponent(exam)}/grants?username=${encodeURIComponent(username)}${after ? `&after=${encodeURIComponent(after)}` : ""}`,
       undefined,
       undefined,
       signal,
     );
-    const current = page.grants[0]
-      ? await api(
-          `/admin/grants/${page.grants[0].id}`,
-          undefined,
-          undefined,
-          signal,
-        )
+    if (!alive.current) return;
+    const options = after
+      ? [
+          ...catalogRef.current,
+          ...page.grants.filter(
+            (g: any) => !catalogRef.current.some((c) => c.id === g.id),
+          ),
+        ]
+      : page.grants;
+    if (after) {
+      catalogRef.current = options;
+      setCatalog(options);
+      setNext(page.next);
+      return;
+    }
+    const currentID = choice ?? options[0]?.id;
+    const current = currentID
+      ? await api(`/admin/grants/${currentID}`, undefined, undefined, signal)
       : null;
     if (!alive.current) return;
+    if (current && !options.some((g: any) => g.id === current.id))
+      options.push(current);
+    catalogRef.current = options;
+    setCatalog(options);
+    setNext(page.next);
+    selectedGrant.current = current?.id ?? null;
     setGrant(current);
     setLoaded(true);
     setError("");
@@ -95,6 +120,13 @@ export function AttemptGrantsDialog({
           ])
         : {},
     );
+  };
+  const browse = (choice = selectedGrant.current, after?: string) => {
+    if (busy || pending) return;
+    setBusy(true);
+    void inspect(new AbortController().signal, choice, after)
+      .catch((e) => setError(e.message))
+      .finally(() => setBusy(false));
   };
   useEffect(() => {
     const abort = new AbortController();
@@ -174,8 +206,10 @@ export function AttemptGrantsDialog({
     <Modal title={`Attempt grants for ${username}`} wide onClose={onClose}>
       <p>
         Issued settings are fixed. Default or enrollment edits do not revise
-        them. This workflow manages the initial ordinary grant only; legacy
-        migration, extra and sandbox grant issuance are not enabled here.
+        them. Inspect or explicitly revise/revoke an unused initial or
+        additional grant. Use the selected exam's issuance workflows to
+        authorize a new grant; historical attempts and submissions remain
+        protected.
       </p>
       {!loaded && <p role="status">Loading saved grant…</p>}
       {error && (
@@ -185,12 +219,39 @@ export function AttemptGrantsDialog({
       )}
       {loaded && !grant && !error && (
         <p>
-          No initial grant is recorded. Existing legacy enrollment/history is
-          not automatically backfilled.
+          No grant is recorded. Existing legacy enrollment/history is not
+          automatically backfilled.
         </p>
       )}
       {grant && (
         <>
+          {catalog.length > 1 && (
+            <label>
+              Saved grant
+              <select
+                value={grant.id}
+                disabled={busy || !!pending}
+                onChange={(e) => browse(e.target.value)}
+              >
+                {catalog.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.issuance === "ADDITIONAL_TEMPLATE"
+                      ? "Additional"
+                      : "Initial"}{" "}
+                    · {g.status} · {g.settings.duration / 60} minutes · {g.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {next && (
+            <button
+              disabled={busy || !!pending}
+              onClick={() => browse(selectedGrant.current, next)}
+            >
+              Load more grants
+            </button>
+          )}
           <p style={{ overflowWrap: "anywhere" }}>
             Grant <code>{grant.id}</code> · revision {grant.revision} ·{" "}
             {grant.status}

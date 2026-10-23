@@ -5,24 +5,43 @@ no push, deployment, production changes, service restart or consolidation.
 Stop on a missing command. Preserve all work, history, protected submissions,
 deadlines, holds and credential cleanup. Follow AGENTS.md and the retrospective.
 
-## Next milestone: explicit additional exact-template attempts (C2/C5)
+## Next milestone: independent work sources and protected-source retention (C7)
 
-Continue the approved same-exam grant model through matching reviewed CLI/web
-authorization and student selection/preflight/fresh native Begin. First bounded
-additional workflow: chosen allowance and finite window outside exam defaults,
-exact selected template, separate new attempt and preserved prior submission.
-Keep legacy ordinary uniqueness until a tested grant-only replacement exists;
-never remove account-busy/access holds or initial-only native history checks.
-Additional permission must have distinct authenticated purpose/type and one-use
-identity, not relabel an initial grant. Independent empty/saved-work selection
-and sandbox saved grants follow as integrated increments, not implied completion.
-Exact next action: map the current uniqueness/selection/native-purpose callers,
-record acceptance and required tests, then implement that end-to-end workflow.
+Continue approved NEW attempts from verified saved work with chosen allowance,
+plus explicit empty/separate exact-template starters. Inspect Agent communication,
+native workspace source/stage/publication/consumption and source deletion guards
+before choosing an integrated boundary. Especially prove unused gateway grants
+cannot lose protected sources through native deletion: inspect existing authority
+and fences before adding any registry/prototype. Present any consequential
+availability/authority tradeoff; continue independent sandbox issuance if a
+decision is genuinely needed. Preserve all protected submissions/history/holds.
+Exact next action: scoped source/operational investigation and a bounded actual
+CLI/web/student acceptance plan, then implement approved source workflow.
 C16 authority placement remains open, not a global blocker; C17 is settled.
+
+## Latest validated local milestone: additional exact-template grants (C2/C5)
+
+This coherent source is based on045c49b. Explicit reviewed CLI/web authorization,
+multiple-grant administration and student choice → distinct signed preparation/
+fresh C15 Begin → separate full interval outside expired defaults.025 preserves
+legacy/default uniqueness where applicable, FKs/rowids, account holds, one-use and
+exact original initial-grant lineage. No clock/grant from preview/staging/failure.
+ordered-template-grants-v1 is compiled protocol support, not loaded-role agreement
+or retained SSH. General saved/empty sources and sandbox grants remain unfinished.
+
+469 app/91 files184.93s; full native race/resource/user-namespace/user-systemd/
+compiler/default-size core351.232s/CLI36.190s; ten matching rebuilt browser checks
+(nine broad1.6m plus stale-label-corrected focused enrollment7.5s). Matching build,
+typecheck/static/vet pass. All runners completed. Pre-broad state review, exact
+positive-identity RED/fix, current focused evidence and fixture corrections:
+additional-template-grants.md. Operator guide: additional-grants-cli.md. Native OS
+setup remains a test seam; no installed SSH/PAM/cgroup qualification is claimed.
+No production/student record, installed role, service, deployment or consolidation
+changed. Preserve/exclude the existing uncommitted PNG; continue independent work.
 
 ## Latest validated local milestone: reviewed NEW legacy initial grants (C13)
 
-This coherent source milestone is based on b8bcec2.024 adds actor-bound immutable
+Validated local commit045c49b, based on b8bcec2.024 adds actor-bound immutable
 previews/issuance provenance, with CLI/web review/inspect/cancel/confirm and
 student SSH/C15 Begin. No backfill, account reservation or clock from preview.
 Independent native prior timed history refuses initial admission; old roles
@@ -95,9 +114,11 @@ timed C12, stop-assisted all-writer/input barrier and C9 recovery. Current locko
 still terminate workloads/disconnect SSH. Private renewal/evidence/input/kernel
 observer components are not a live fix; initiating production fault is unproven.
 
-Unified enrollment-time issuance/revisions/claim/C15 Begin/explicit work source/
-CLI/web/migration remain in unified-grant-protocol-proposal.md. C4 complete
-cross-namespace/kernel references, C8 retirement and class/capacity checks remain.
+Unified initial/legacy-unused/additional-template issuance, revisions, claims and
+C15 Begin now work locally. Independent empty/saved sources, their durable
+retention/migration and sandbox grants remain in the protocol proposal and next
+milestone. C4 complete cross-namespace/kernel references, C8 retirement and
+installed-role/class capacity checks remain.
 Main TODO stays11 checked/38, not an effort percentage or all-work-complete claim.
 
 C1–C15 are settled (todo-design-decisions.md); do not reask. Initial ordinary

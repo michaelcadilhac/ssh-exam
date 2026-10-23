@@ -110,13 +110,22 @@ func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
 	}
 	if raw, ok := fields["grant"]; ok {
 		var binding map[string]json.RawMessage
-		if json.Unmarshal(raw, &binding) != nil || len(binding) != 3 || !validGrant(r.Grant) {
+		if json.Unmarshal(raw, &binding) != nil || len(binding) < 3 || len(binding) > 6 || !validGrant(r.Grant) {
 			return nil, errWorkspaceReceiptMetadata
 		}
 		for key := range binding {
-			if key != "id" && key != "revision" && key != "hash" {
+			if key != "id" && key != "revision" && key != "hash" && key != "kind" && key != "issuance_order" && key != "initial_grant" {
 				return nil, errWorkspaceReceiptMetadata
 			}
+		}
+		if _, present := binding["kind"]; present && r.Grant.Kind != "ADDITIONAL" {
+			return nil, errWorkspaceReceiptMetadata
+		}
+		if _, present := binding["issuance_order"]; present && r.Grant.Order < 1 {
+			return nil, errWorkspaceReceiptMetadata
+		}
+		if _, present := binding["initial_grant"]; present && r.Grant.Initial == "" {
+			return nil, errWorkspaceReceiptMetadata
 		}
 	}
 	return &r, nil

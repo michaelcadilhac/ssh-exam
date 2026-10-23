@@ -88,8 +88,9 @@ authenticated gateway operation completed, not that any native action was perfor
 List includes per-definition revision hashes and a next cursor; show takes an
 exam ID, not an attempt UUID. Student credentials are never used or retained.
 Offline web requests fail honestly; native list/info remain available locally.
-Definition retirement, additional grants, legacy migration and full management
-remain pending. Initial ordinary grant workflows: examctl web grants help.
+Definition retirement, independent empty/saved-work sources, sandbox grants and
+full management remain pending. Initial, reviewed legacy and additional-template
+grant workflows: examctl web grants help.
 
 Examples:
   sudo examctl web exams list --limit 50
@@ -102,7 +103,7 @@ Examples:
 Exit status: 0 authenticated result, 1 refusal/operational failure, 2 syntax error.
 Unknown/unverified replies never imply success; retain the request ID for retry.`)
 	fmt.Fprintln(out, "\nRoster/CSV workflows: examctl web students help (list/add/remove/settings/import-preview/import-confirm/export/example).")
-	fmt.Fprintln(out, "Initial attempt grants: examctl web grants help (list/show/revise/revoke; issuance at new enrollment).")
+	fmt.Fprintln(out, "Attempt grants: examctl web grants help (enrollment, reviewed legacy/additional-template issuance, inspect/revise/revoke).")
 	fmt.Fprintln(out, "Gateway administrators: examctl web administrators help (bounded metadata list/show, secret-safe create; no credential reset/overwrite).")
 	fmt.Fprintln(out, "Authenticated source attestations: examctl web templates help (list/show); native templates sync verifies before registering metadata.")
 	fmt.Fprintln(out, "Alert inspection/test/manual reminders: examctl web alerts help (list/show/test/remind).")

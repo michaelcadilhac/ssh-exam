@@ -34,9 +34,11 @@ First issuance activates a new-enrollment writer fence for that exam. An old
 gateway cannot add a new unused student without atomic issuance or insert a
 legacy attempt for a known grant. Existing legacy enrollments/history are not
 backfilled. Reenrollment cannot create another initial allowance or change an
-issued snapshot. Additional grants and sandbox saved-grant issuance remain
+issued snapshot. Additional exact-template grant workflows are now documented in
+additional-grants-cli.md, with025 typed/lineage authority and coordinated-role
+requirements. Independent empty/saved-work and sandbox saved-grant issuance remain
 pending. Reviewed NEW initial issuance for legacy unused enrollments is described
-below; current qualification is in legacy-initial-grant-issuance.md.
+below; its qualification is in legacy-initial-grant-issuance.md.
 
 ## Reviewed NEW issuance for legacy unused enrollments
 

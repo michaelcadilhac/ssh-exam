@@ -25,6 +25,9 @@ func webGrantIssuanceMain(args []string) int {
 	latest := f.String("latest", "", "finite latest Begin RFC3339")
 	reason := f.String("reason", "", "audited NEW issuance reason")
 	revision := f.String("revision", "", "reviewed preview hash")
+	minutes := f.Int64("duration-minutes", 0, "explicit additional allowance minutes")
+	seconds := f.Int64("duration-seconds", 0, "explicit additional allowance seconds")
+	webcam := f.String("webcam", "", "explicit required/optional override; omitted preserves effective value")
 	usage := func(message string) int { fmt.Fprintln(os.Stderr, message+"; run examctl web grants help"); return 2 }
 	if f.Parse(ordered(args)) != nil {
 		return usage("invalid issuance flags")
@@ -41,7 +44,7 @@ func webGrantIssuanceMain(args []string) int {
 	allowed := map[string]bool{"config": true, "request": true}
 	body := map[string]any{}
 	switch w[1] {
-	case "issue-preview":
+	case "issue-preview", "additional-preview":
 		if len(w) < 4 || len(w) > 203 || !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(w[2]) || w[2] == "sandbox" {
 			return usage("choose an ordinary exam and 1..200 explicit legacy unused students")
 		}
@@ -65,6 +68,31 @@ func webGrantIssuanceMain(args []string) int {
 		}
 		body["exam"], body["usernames"], body["definition_revision"], body["template_version"] = w[2], w[3:], *definition, *source
 		body["earliest"], body["latest"], body["reason"] = from.UnixMilli(), until.UnixMilli(), *reason
+		if w[1] == "additional-preview" {
+			present := map[string]bool{}
+			f.Visit(func(v *flag.Flag) { present[v.Name] = true })
+			if present["duration-minutes"] == present["duration-seconds"] {
+				return usage("additional grants require exactly one explicit --duration-minutes or --duration-seconds")
+			}
+			duration := *seconds
+			if present["duration-minutes"] {
+				if *minutes < 1 || *minutes > 360 {
+					return usage("duration must be1..360 whole minutes")
+				}
+				duration = *minutes * 60
+			}
+			if duration < 60 || duration > 21600 {
+				return usage("additional allowance must be60..21600 seconds")
+			}
+			allowed["duration-minutes"], allowed["duration-seconds"], allowed["webcam"] = true, true, true
+			body["duration"] = duration
+			if present["webcam"] {
+				if *webcam != "required" && *webcam != "optional" {
+					return usage("webcam override must be required/optional; omit to preserve each student's effective requirement")
+				}
+				body["webcam"] = *webcam == "required"
+			}
+		}
 	case "issue-show", "issue-confirm", "issue-cancel":
 		if len(w) != 3 || !uuid.MatchString(w[2]) {
 			return usage("target the original preview UUID")
@@ -105,10 +133,11 @@ type grantIssuanceResult struct {
 	Expires            int64  `json:"expires"`
 	Status             string `json:"status"`
 	Rows               []struct {
-		Username string          `json:"username"`
-		Settings core.Settings   `json:"settings"`
-		Work     grantWorkResult `json:"work"`
-		Hash     string          `json:"hash"`
+		Username       string          `json:"username"`
+		ExistingGrants *int            `json:"existing_grants,omitempty"`
+		Settings       core.Settings   `json:"settings"`
+		Work           grantWorkResult `json:"work"`
+		Hash           string          `json:"hash"`
 	} `json:"rows"`
 	Issued []struct {
 		Username string `json:"username"`
@@ -129,17 +158,23 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		return fail
 	}
 	var scope struct {
-		ID        string   `json:"id"`
-		Exam      string   `json:"exam"`
-		Revision  string   `json:"revision"`
-		Usernames []string `json:"usernames"`
+		ID                 string   `json:"id"`
+		Exam               string   `json:"exam"`
+		Revision           string   `json:"revision"`
+		Usernames          []string `json:"usernames"`
+		DefinitionRevision string   `json:"definition_revision"`
+		TemplateVersion    string   `json:"template_version"`
+		Earliest           int64    `json:"earliest"`
+		Latest             int64    `json:"latest"`
+		Duration           int64    `json:"duration"`
+		Webcam             *bool    `json:"webcam"`
 	}
 	if json.Unmarshal(encoded, &scope) != nil {
 		return fail
 	}
 	uuid := regexp.MustCompile(`^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$`)
 	digest := regexp.MustCompile(`^[a-f0-9]{64}$`)
-	if !uuid.MatchString(result.ID) || result.Kind != "NEW_LEGACY_INITIAL_GRANTS" || result.Agent != agent || result.Actor != "agent:"+agent+":root" || result.Exam == "" || result.Exam == "sandbox" || !digest.MatchString(result.Revision) || !digest.MatchString(result.DefinitionRevision) || len(result.Rows) < 1 || len(result.Rows) > 200 || (scope.ID != "" && scope.ID != result.ID) || (scope.Exam != "" && scope.Exam != result.Exam) || (scope.Revision != "" && scope.Revision != result.Revision) {
+	if !uuid.MatchString(result.ID) || (result.Kind != "NEW_LEGACY_INITIAL_GRANTS" && result.Kind != "NEW_ADDITIONAL_TEMPLATE_GRANTS") || result.Agent != agent || result.Actor != "agent:"+agent+":root" || result.Exam == "" || result.Exam == "sandbox" || !digest.MatchString(result.Revision) || !digest.MatchString(result.DefinitionRevision) || len(result.Rows) < 1 || len(result.Rows) > 200 || (scope.ID != "" && scope.ID != result.ID) || (scope.Exam != "" && scope.Exam != result.Exam) || (scope.Revision != "" && scope.Revision != result.Revision) {
 		return fail
 	}
 	switch result.Status {
@@ -154,7 +189,19 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		}
 		seen[row.Username] = true
 	}
-	if op == "grants.issue-preview" {
+	if op == "grants.issue-preview" || op == "grants.additional-preview" {
+		expectedKind := "NEW_LEGACY_INITIAL_GRANTS"
+		if op == "grants.additional-preview" {
+			expectedKind = "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+		}
+		if result.Kind != expectedKind || result.DefinitionRevision != scope.DefinitionRevision {
+			return fail
+		}
+		for _, row := range result.Rows {
+			if row.Work.Hash != scope.TemplateVersion || row.Settings.Earliest != scope.Earliest || row.Settings.Latest != scope.Latest || (op == "grants.additional-preview" && row.Settings.Duration != scope.Duration) || (scope.Webcam != nil && row.Settings.Webcam != *scope.Webcam) {
+				return fail
+			}
+		}
 		if len(scope.Usernames) != len(seen) {
 			return fail
 		}

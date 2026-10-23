@@ -40,6 +40,7 @@ func TestGrantCLIRejectsWrongNestedScopeAndPrivateFieldsBeforeOutput(t *testing.
 	const id = "33333333-1234-4234-8234-123456789abc"
 	valid := grantResult{ID: id, Agent: "class", Exam: "exam", Username: "student", Revision: 1, Status: "AVAILABLE", IssuedAt: 100, Actor: "instructor", Reason: "Initial synthetic ordinary grant", Hash: strings.Repeat("a", 64), Settings: core.Settings{ID: "exam", Name: "Exam", Template: "v1", TemplateVersion: strings.Repeat("b", 64), Duration: 5400, Earliest: 100, Latest: 200, Terminals: 2}, Work: grantWorkResult{Kind: "template", Name: "v1", Hash: strings.Repeat("b", 64)}, Claims: []grantClaimResult{{Attempt: "44444444-1234-4234-8234-123456789abc", UID: 10001, Revision: 1, Hash: strings.Repeat("a", 64), State: "PREPARING", CreatedAt: 100}}}
 	valid.Issuance = "ENROLLMENT"
+	valid.IssuanceOrder = 1
 	raw, _ := json.Marshal(valid)
 	if err := validateGrantResult("grants.show", map[string]any{"id": id}, raw, "class"); err != nil {
 		t.Fatal("valid scoped claim rejected", err)
@@ -90,7 +91,7 @@ func TestGrantCLIIssuanceRejectsUnconfirmedScopeBeforeOutput(t *testing.T) {
 	settings := core.Settings{ID: "exam", Name: "Reviewed exam", Template: "v1", TemplateVersion: strings.Repeat("b", 64), Duration: 5400, Earliest: 100, Latest: 200, Terminals: 2}
 	valid := map[string]any{"id": id, "kind": "NEW_LEGACY_INITIAL_GRANTS", "agent": "class", "exam": "exam", "actor": "agent:class:root", "reason": "Reviewed NEW initial grant", "definition_revision": strings.Repeat("c", 64), "revision": strings.Repeat("a", 64), "created": 100, "expires": 900100, "status": "REVIEW", "issued": []any{}, "rows": []any{map[string]any{"username": "student", "settings": settings, "work": grantWorkResult{Kind: "template", Name: "v1", Hash: settings.TemplateVersion}, "hash": strings.Repeat("d", 64)}}}
 	raw, _ := json.Marshal(valid)
-	body := map[string]any{"exam": "exam", "usernames": []string{"student"}}
+	body := map[string]any{"exam": "exam", "usernames": []string{"student"}, "definition_revision": strings.Repeat("c", 64), "template_version": settings.TemplateVersion, "earliest": settings.Earliest, "latest": settings.Latest}
 	if err := validateGrantResult("grants.issue-preview", body, raw, "class"); err != nil {
 		t.Fatal(err)
 	}

@@ -418,6 +418,9 @@ export function registerAgentManagement(
                 const raw = z.record(z.string(), z.unknown()).parse(r.body);
                 let value: unknown;
                 switch (r.operation) {
+                  case "grants.additional-preview":
+                    value = grantIssuance.additional(raw, actor);
+                    break;
                   case "grants.issue-preview":
                     value = grantIssuance.preview(raw, actor);
                     break;

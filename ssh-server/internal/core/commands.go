@@ -94,12 +94,17 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	// ignoring a new expected-settings field and starting a mutable source.
 	versionedBegin := cmd.Op == "activate-versioned-attempt"
 	recoveryBegin := cmd.Op == "activate-recovery-attempt"
-	grantBegin := cmd.Op == "activate-grant-attempt"
+	additionalBegin := cmd.Op == "activate-additional-grant-attempt"
+	grantBegin := cmd.Op == "activate-grant-attempt" || additionalBegin
+	if grantBegin && (cmd.Body.Grant == nil || (cmd.Body.Grant.Kind == "ADDITIONAL") != additionalBegin) {
+		return nil, errors.New("grant authority type requires its matching distinct Begin purpose; no clock authorized")
+	}
 	if versionedBegin || recoveryBegin || grantBegin {
 		cmd.Op = "activate-attempt"
 	}
-	if cmd.Op == "prepare-grant-attempt" {
-		if !validGrant(cmd.Body.Grant) || cmd.Body.ExpectedRecovery != "" || cmd.Body.Settings.TemplateVersion == "" {
+	additionalPrepare := cmd.Op == "prepare-additional-grant-attempt"
+	if cmd.Op == "prepare-grant-attempt" || additionalPrepare {
+		if !validGrant(cmd.Body.Grant) || (cmd.Body.Grant.Kind == "ADDITIONAL") != additionalPrepare || cmd.Body.ExpectedRecovery != "" || cmd.Body.Settings.TemplateVersion == "" {
 			return nil, errors.New("exact initial grant/version binding required; no preparation or clock authorized")
 		}
 		cmd.Op = "prepare-attempt"

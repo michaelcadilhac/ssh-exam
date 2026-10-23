@@ -2376,6 +2376,26 @@ invalid fixture corrections, effective mutation control and privileged limits:
 legacy-initial-grant-issuance.md. No deployment or production changes. Continue
 additional/independent-work-source and sandbox grants; C16 remains independent.
 
+## October23: explicit additional exact-template attempts (C2/C5)
+
+Operators can review/authorize individual or bulk additional attempts under the
+same exam through CLI/web, choose a full allowance/window independently of expired
+defaults, preserve effective webcam or explicitly override it, and inspect/revise/
+revoke the exact unused grant. Students explicitly select among available grants.
+Each Begin fixes a new UUID/interval/private template workspace, preserving prior
+protected history, original holds and one-use authority.025 retains legacy/default
+uniqueness where applicable and binds immutable type/order/exact initial-grant
+lineage. A missing/foreign initial edge is refused; sequence alone is insufficient.
+
+Final469 application tests/91 files184.93s; full native race/resource/user-namespace/
+user-systemd/compiler/default-size core351.232s/CLI36.190s; ten matching rebuilt
+browser checks qualify (nine broad and the stale-label-corrected focused case7.5s).
+Build/typecheck/static/vet pass. All runners completed. Detailed pre-broad state
+review, valid RED controls, fixture corrections and limits:
+additional-template-grants.md. Operator workflows: additional-grants-cli.md. No production change or
+deployment. General empty/saved-work and sandbox issuance/source retention remain
+open; continue their integrated investigation/implementation. C16 is independent.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are

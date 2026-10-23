@@ -9,8 +9,11 @@ October23 status: the first ordinary enrollment-time grant, CLI/web unused
 revision/revocation and C15 preparation/Begin are now integrated locally; current
 qualification and limits are in unified-grant-first-attempt.md. The inspected
 legacy map below explains the transition, not the final state of those paths.
-Additional/independent-work-source grants, reviewed legacy issuance, sandbox
-saved grants and safe retirement still require the remaining coordinated work.
+Reviewed legacy initial issuance and additional exact-template grants now also
+work locally (legacy-initial-grant-issuance.md, additional-template-grants.md).
+Independent empty/saved-work, sandbox saved grants, full legacy-source migration
+and safe retirement still require coordinated work. Keep the broad investigation
+open; installed-role/privileged qualification and deployment are not implied.
 
 ## Inspected current implementation
 
@@ -133,7 +136,9 @@ outbound path, restarts, explicit unused revisions and both individual/bulk flow
 ## Shared management workflow proposal
 
 List/show/history and explicit unused revise/revoke are now supported locally
-as documented in initial-grants-cli.md. Reviewed issuance remains proposed.
+as documented in initial-grants-cli.md. Reviewed legacy initial/additional-template
+issuance also works locally; see additional-grants-cli.md. General work-source
+issuance below remains proposed.
 Shared web/root services must expose reviewed issue/confirm for individual and
 bulk targets; explicit unused revision; revoke/status and source verification
 diagnostics. Reuse existing named default-deny root authorization, metadata-only

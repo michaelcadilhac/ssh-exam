@@ -83,7 +83,9 @@ export function Admin({
   const [alertsError, setAlertsError] = useState("");
   const [templateCatalog, setTemplateCatalog] = useState(false);
   const [grantsFor, setGrantsFor] = useState<string | null>(null);
-  const [issuingGrants, setIssuingGrants] = useState(false);
+  const [issuingGrants, setIssuingGrants] = useState<
+    "initial" | "additional" | null
+  >(null);
   const [permission, setPermission] = useState(
     typeof Notification === "undefined"
       ? "unavailable"
@@ -221,7 +223,7 @@ export function Admin({
   const chooseExam = (id: string) => {
     clearView();
     setGrantsFor(null);
-    setIssuingGrants(false);
+    setIssuingGrants(null);
     query.current = { exam: id, search: "", filter: "", offset: 0 };
     setExam(id);
     setSearch("");
@@ -438,10 +440,18 @@ export function Admin({
               </button>
               {exam !== "sandbox" && (
                 <button
-                  onClick={() => setIssuingGrants(true)}
+                  onClick={() => setIssuingGrants("initial")}
                   disabled={!current || stale}
                 >
                   Issue legacy grants
+                </button>
+              )}
+              {exam !== "sandbox" && (
+                <button
+                  onClick={() => setIssuingGrants("additional")}
+                  disabled={!current || stale}
+                >
+                  Authorize additional attempts
                 </button>
               )}
             </div>
@@ -693,8 +703,9 @@ export function Admin({
                                 <strong title={s.username}>{s.username}</strong>
                                 {s.grant && (
                                   <small>
-                                    Issued: {s.grant.settings.duration / 60} min
-                                    · {s.grant.status}
+                                    Initial grant:{" "}
+                                    {s.grant.settings.duration / 60} min ·{" "}
+                                    {s.grant.status}
                                   </small>
                                 )}
                                 {s.grantError && (
@@ -1020,8 +1031,10 @@ export function Admin({
       )}
       {issuingGrants && current && (
         <GrantIssuanceDialog
+          key={`${exam}:${issuingGrants}`}
           initial={current}
-          onClose={() => setIssuingGrants(false)}
+          additional={issuingGrants === "additional"}
+          onClose={() => setIssuingGrants(null)}
           onChanged={refresh}
         />
       )}

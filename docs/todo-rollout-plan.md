@@ -800,3 +800,35 @@ Rollback must preserve and understand these records; otherwise keep admission
 closed and repair forward. Native SSH/PAM/installed-role qualification, additional/
 saved-work grants and sandbox issuance remain separate gates. Nothing in this
 plan deploys, migrates student records or consolidates running services.
+
+## Explicit additional template attempts (migration025; proposed only)
+
+No deployment is authorized. After separately authorized drain/qualification,
+back up current DB/WAL plus every grant UUID/rowid, revision, exact initial edge,
+claim/Begin/consumption/audit/request record, native state/private receipts and
+protected source.025 rebuilds the grant table with initial-only uniqueness,
+preserves rowids/FKs, and retains ordinary uniqueness for unbound legacy attempts.
+Account-busy and original access-hold enforcement remain. Old preparing/unknown
+work must drain positively; never invent type/lineage from missing metadata.
+
+Install matching gateway, CLI, agent/watchdog/forced-command/collection readers
+and every state writer. Verify compiled ordered-template-grants-v1, actual loaded
+role agreement and outbound C15 scope; a single health advertisement is insufficient.
+Explicitly configure only required named additional/inspection/confirmation
+management permissions. Test synthetic second90-minute grants outside closed
+defaults, inherited/overridden webcam, exact selection, original archive/interval
+preservation, unknown-reply recovery, held-account refusal, one-use/concurrent
+Begin and current-time/old-role refusal before reopening admission.
+
+Include all independent practice supervisors AND all three canonical/temporary
+agent owners in the earlier verified drain/consolidation procedure. Do not stop
+an owner with live PTYs or mistake socket ownership for complete process drain.
+No consolidation, unit removal, restart or installation was performed here.
+
+Rollback needs a fresh verified drain and an artifact that preserves/understands
+every current type/order/initial-edge/receipt and all newer native intervals and
+archives. Never drop025 authority, restore older AVAILABLE/sequence state over
+new work, clear original holds or reconstruct grant IDs to force admission.
+Old writers may discard richer fields; keep admission closed and repair forward
+when compatibility is unavailable. Saved/empty-source retention, sandbox grants,
+privileged installed-role qualification and retained SSH remain separate gates.

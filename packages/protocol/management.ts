@@ -28,6 +28,7 @@ export const managementOperations = [
   "grants.issue-show",
   "grants.issue-confirm",
   "grants.issue-cancel",
+  "grants.additional-preview",
   "alerts.list",
   "alerts.show",
   "alerts.test",

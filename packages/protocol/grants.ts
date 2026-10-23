@@ -6,8 +6,18 @@ export const grantBinding = z
     id: z.string().uuid(),
     revision: z.number().int().positive(),
     hash: z.string().regex(/^[a-f0-9]{64}$/),
+    kind: z.literal("ADDITIONAL").optional(),
+    issuance_order: z.number().int().positive().safe().optional(),
+    initial_grant: z.string().uuid().optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (g) =>
+      (!g.kind || g.issuance_order !== undefined) &&
+      (!g.initial_grant ||
+        (g.kind === "ADDITIONAL" && g.initial_grant !== g.id)),
+    "Additional authority requires its issued order and a distinct original initial-grant identity",
+  );
 export const grantList = z
   .object({
     exam: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
@@ -54,6 +64,12 @@ export const grantIssueIntent = z
   .object({
     revision: z.string().regex(/^[a-f0-9]{64}$/),
     request: z.string().uuid().optional(),
+  })
+  .strict();
+export const grantAdditionalPreview = grantIssuePreview
+  .extend({
+    duration: z.number().int().min(60).max(21600),
+    webcam: z.boolean().optional(),
   })
   .strict();
 export const grantBeginRequest = z

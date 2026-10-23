@@ -36,6 +36,7 @@ const versionAccounts = {
   grant01: 10022,
   legacy01: 10023,
   legacy02: 10024,
+  extra01: 10025,
 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
@@ -120,6 +121,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         "immutable-template-versions-v1",
         "exact-template-begin-v1",
         "unified-initial-grants-v1",
+        "ordered-template-grants-v1",
         "reviewed-initial-grants-v1",
       ],
     };
@@ -167,7 +169,17 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     attempts.set(b.id, a);
     return a;
   }
-  if (op === "prepare-attempt" || op === "prepare-grant-attempt") {
+  if (
+    op === "prepare-attempt" ||
+    op === "prepare-grant-attempt" ||
+    op === "prepare-additional-grant-attempt"
+  ) {
+    if (
+      b.grant &&
+      (b.grant.kind === "ADDITIONAL") !==
+        (op === "prepare-additional-grant-attempt")
+    )
+      throw Error("Fixture grant authority type/purpose mismatch");
     if (!attempts.has(b.id))
       attempts.set(b.id, { ...b, state: "PREPARING", generation: 0 });
     return attempts.get(b.id);
@@ -205,12 +217,15 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       break;
     case "activate-versioned-attempt":
     case "activate-grant-attempt":
+    case "activate-additional-grant-attempt":
     case "activate-attempt":
       if (
         a.settings.template_version &&
-        (!["activate-versioned-attempt", "activate-grant-attempt"].includes(
-          op,
-        ) ||
+        (![
+          "activate-versioned-attempt",
+          "activate-grant-attempt",
+          "activate-additional-grant-attempt",
+        ].includes(op) ||
           JSON.stringify(b.settings) !== JSON.stringify(a.settings))
       )
         throw Error(
@@ -219,7 +234,10 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       if (a.start) break;
       if (a.grant) {
         if (
-          op !== "activate-grant-attempt" ||
+          (op !== "activate-grant-attempt" &&
+            op !== "activate-additional-grant-attempt") ||
+          (a.grant.kind === "ADDITIONAL") !==
+            (op === "activate-additional-grant-attempt") ||
           JSON.stringify(a.grant) !== JSON.stringify(b.grant)
         )
           throw Error("Grant-aware Begin and exact binding required");
@@ -541,6 +559,50 @@ definitions.update(
   "fixture-operator",
   "Change defaults after saved initial issuance",
 );
+const extraHistoryID = "aaaaaaaa-1234-4234-8234-123456789abc",
+  extraHistoryStart = Date.now() - 10800000;
+const extraDefinition = {
+  ...exam,
+  id: "additional-template",
+  name: "Additional browser attempt",
+  webcam: true,
+  template_version: versionHash,
+  earliest: extraHistoryStart - 60000,
+  latest: extraHistoryStart + 60000,
+};
+definitions.create(extraDefinition, "fixture-operator");
+store.db
+  .prepare(
+    "INSERT INTO enrollments(exam,username,uid,webcam) VALUES('additional-template','extra01',0,0)",
+  )
+  .run();
+store.db
+  .prepare(
+    "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state,export_status) VALUES(?,'additional-template','extra01',10025,'COMPLETED',?,?,?,?,1,?,'RELEASED','server-only')",
+  )
+  .run(
+    extraHistoryID,
+    JSON.stringify(extraDefinition),
+    extraHistoryStart,
+    extraHistoryStart + 5400000,
+    extraHistoryStart + 5400000,
+    "b".repeat(64),
+  );
+attempts.set(extraHistoryID, {
+  id: extraHistoryID,
+  exam: "additional-template",
+  username: "extra01",
+  uid: 10025,
+  state: "COMPLETED",
+  settings: extraDefinition,
+  start: extraHistoryStart,
+  deadline: extraHistoryStart + 5400000,
+  original_deadline: extraHistoryStart + 5400000,
+  clock_revision: 0,
+  protected: true,
+  checksum: "b".repeat(64),
+  access_state: "RELEASED",
+});
 definitions.update(
   "sandbox",
   { earliest: exam.earliest, latest: exam.latest },

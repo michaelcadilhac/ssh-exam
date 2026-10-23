@@ -640,21 +640,25 @@ Existing enrollment migration and implementation remain outstanding.
   Determine which recovery-specific mechanisms can become general attempt policy.
 
 - [ ] **Propose explicit authorization for additional attempts.**
-  October23 initial-ordinary workflow implements enrollment/import-time immutable
-  snapshots, shared `web grants list/show/revise/revoke`, retained claim/UID/Begin
-  history and fresh authenticated native Begin. Focused CLI/web/student/native
-  checks,458 application tests, full native race/resource qualification and eight
-  rebuilt browser checks pass locally, with matching build/typecheck/vet.
-  This does not implement extra grants, independent empty/saved-work selection,
-  reviewed legacy/sandbox issuance or their full migration. These broad items
-  stay unchecked. See docs/unified-grant-first-attempt.md and
-  docs/initial-grants-cli.md. Nothing is deployed.
+  October23 initial enrollment/import snapshots, reviewed NEW legacy-unused
+  issuance and explicit additional exact-template grants now work through shared
+  CLI/web and student selection/preflight/fresh native Begin. Additional windows
+  may lie outside expired defaults; grants consume time only at actual Begin.
+  025 preserves initial/default entitlement, UID/claim/one-use/lineage history and
+  account holds while allowing explicit grant-bound additional attempts.469
+  application tests, full native race/resource qualification and ten matching
+  browser checks (nine broad plus the corrected focused enrollment workflow)
+  pass locally, with matching builds/typecheck/vet. Independent empty/saved-work,
+  sandbox issuance and complete legacy-source migration remain unfinished; this
+  broad investigation stays unchecked. See docs/additional-template-grants.md,
+  docs/additional-grants-cli.md and the earlier feature guides. Nothing deployed.
   Consider per-exam attempt limits/defaults plus per-student and bulk grants,
   including one additional attempt and intentionally repeatable exams. Define
   eligibility, expiration, revocation before use, audit reasons and concurrent
   login behavior. A pending allowance must not be represented as an already
   running attempt or consume time while waiting or doing preflight. Keep the
-  default single-attempt policy until deliberately changed.
+  one initial grant by default; additional attempts require explicit grants.
+  Unbound legacy attempts retain their one-attempt restriction.
 
 - [ ] **Define clear `/work` initialization choices.**
   October22 exact source selection is now implemented/tested locally through

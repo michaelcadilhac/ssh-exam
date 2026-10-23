@@ -818,8 +818,18 @@ export async function createApp(
         "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY rowid DESC LIMIT 1",
       )
       .get(s.exam, s.username) as Attempt | undefined;
+    const availableGrants = grants.available(s.exam!, s.username);
+    const selectedID = z
+      .object({ grant: z.string().uuid().optional() })
+      .strict()
+      .parse(req.query).grant;
+    const selectedGrant = selectedID
+      ? grants.select(s.exam!, s.username, selectedID)
+      : availableGrants.length === 1
+        ? availableGrants[0]
+        : null;
     const repeat =
-      isSandbox(s.exam) &&
+      (isSandbox(s.exam) || availableGrants.length > 0) &&
       latest?.state === "COMPLETED" &&
       latest.protected &&
       ["RELEASED", "OVERRIDDEN"].includes(latest.access_state);
@@ -827,7 +837,8 @@ export async function createApp(
     const settings =
       latest && !repeat && latest.state !== "CANCELLED_BEFORE_START"
         ? JSON.parse(latest.settings)
-        : (initialGrant?.settings ?? {
+        : (selectedGrant?.settings ??
+          initialGrant?.settings ?? {
             ...JSON.parse(exam.config),
             duration: row.duration ?? JSON.parse(exam.config).duration,
             webcam:
@@ -841,6 +852,18 @@ export async function createApp(
       enrollment: row,
       sshConnected: !!connections.get(`${s.exam}:${s.username}`)?.alive,
       attempt: repeat ? null : latest || null,
+      grants: availableGrants,
+      selected_grant: selectedGrant?.id ?? null,
+      previous_attempt:
+        repeat && latest
+          ? {
+              id: latest.id,
+              state: latest.state,
+              start: latest.start,
+              deadline: latest.deadline,
+              protected: latest.protected,
+            }
+          : null,
     };
   });
   app.post("/api/student/preflight", async (req) => {
@@ -851,6 +874,10 @@ export async function createApp(
     const s = principal(req, "student");
     const conn = connections.get(`${s.exam}:${s.username}`);
     if (!conn?.alive) throw Error("Authenticate SSH first");
+    const chosenGrant = z
+      .object({ grant: z.string().uuid().optional() })
+      .strict()
+      .parse(req.body ?? {}).grant;
     const exam = JSON.parse(
       (
         store.db
@@ -931,11 +958,61 @@ export async function createApp(
       )
         previous = undefined;
     }
+    const choices = grants.available(s.exam!, s.username);
+    let initialGrant =
+      previous?.state === "PREPARING"
+        ? previous.grant_id
+          ? grants.select(s.exam!, s.username, previous.grant_id)
+          : null
+        : chosenGrant
+          ? grants.select(s.exam!, s.username, chosenGrant)
+          : choices.length === 1
+            ? choices[0]
+            : null;
+    if (
+      previous?.state === "PREPARING" &&
+      chosenGrant &&
+      chosenGrant !== previous.grant_id
+    )
+      throw Error(
+        "An existing preparation retains its original grant; positively cancel it before selecting another allowance",
+      );
+    if (!previous && !initialGrant && choices.length > 1)
+      throw Error(
+        "Choose the exact grant on your waiting page before opening preflight; no account or allowance reserved",
+      );
+    if (
+      !previous &&
+      !initialGrant &&
+      store.db
+        .prepare(
+          "SELECT 1 FROM attempt_grants WHERE agent=? AND exam=? AND username=?",
+        )
+        .get(config.agent.id, s.exam, s.username)
+    )
+      throw Error(
+        "No unused grant has an available finite Begin window. Ask your instructor to inspect examctl web grants list; existing consumption and history are preserved.",
+      );
+    if (previous?.state === "COMPLETED" && initialGrant) {
+      await life.reconcile(previous.id);
+      previous = store.attempt(previous.id);
+      if (
+        !previous.protected ||
+        !["RELEASED", "OVERRIDDEN"].includes(previous.access_state)
+      )
+        throw Error(
+          "Previous protected submission/access release is not confirmed; the additional grant cannot bypass its original restrictions",
+        );
+      previous = undefined;
+    }
     if (previous && previous.state !== "PREPARING")
       throw Error("An attempt already exists; instructor review required");
     const id = previous?.id || randomUUID(),
       pageSecret = secret();
-    const initialGrant = grants.initialFor(s.exam!, s.username);
+    if (initialGrant && !h.capabilities?.includes("ordered-template-grants-v1"))
+      throw Error(
+        "Class server lacks ordered grant authority/type support; verify matching native roles before preflight. No grant or clock consumed.",
+      );
     if (initialGrant && !h.capabilities?.includes("unified-initial-grants-v1"))
       throw Error(
         "Class server requires matching grant-aware preparation and fresh outbound Begin verification; no grant or clock consumed. Inspect examctl web grants show GRANT and update matching roles.",
@@ -1072,11 +1149,20 @@ export async function createApp(
     }
     requireTemplateAgent(settings, h);
     store.db.transaction(() => {
-      if (initialGrant) grants.claim(initialGrant.id, id, enrollment.uid);
+      if (initialGrant) {
+        const current = grants.claim(initialGrant.id, id, enrollment.uid);
+        if (
+          current.hash !== initialGrant.hash ||
+          current.revision !== initialGrant.revision
+        )
+          throw Error(
+            "Grant revised during preflight; reload the saved settings and choose again. No allowance consumed.",
+          );
+      }
       if (!previous)
         store.db
           .prepare(
-            "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at,recovery_preflight,grant_id,grant_revision,grant_hash) VALUES(?,?,?,?,'PREPARING',?,?,?,?,?,?,?,?)",
+            "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at,recovery_preflight,grant_id,grant_revision,grant_hash,grant_kind,grant_issued_order,grant_initial) VALUES(?,?,?,?,'PREPARING',?,?,?,?,?,?,?,?,?,?,?)",
           )
           .run(
             id,
@@ -1091,6 +1177,11 @@ export async function createApp(
             initialGrant?.id ?? null,
             initialGrant?.revision ?? null,
             initialGrant?.hash ?? null,
+            initialGrant?.issuance === "ADDITIONAL_TEMPLATE"
+              ? "ADDITIONAL"
+              : null,
+            initialGrant?.issuance_order ?? null,
+            initialGrant?.initial_grant ?? null,
           );
       else
         store.db
@@ -1105,16 +1196,12 @@ export async function createApp(
           );
     })();
     attemptConnections.set(id, conn);
-    const expectedGrant = initialGrant
-      ? {
-          id: initialGrant.id,
-          revision: initialGrant.revision,
-          hash: initialGrant.hash,
-        }
-      : null;
+    const expectedGrant = initialGrant ? grants.binding(initialGrant) : null;
     const prepared = await agent.call(
       expectedGrant
-        ? "prepare-grant-attempt"
+        ? expectedGrant.kind === "ADDITIONAL"
+          ? "prepare-additional-grant-attempt"
+          : "prepare-grant-attempt"
         : recovery
           ? "prepare-recovery-attempt"
           : "prepare-attempt",
@@ -1326,13 +1413,13 @@ export async function createApp(
       const recovery = a.recovery_preflight
         ? recoveryPreflight.parse(JSON.parse(a.recovery_preflight))
         : null;
-      const initialGrant = a.grant_id
-        ? { id: a.grant_id, revision: a.grant_revision, hash: a.grant_hash }
-        : null;
+      const initialGrant = a.grant_id ? grants.bindingForAttempt(a) : null;
       const beginIntent = initialGrant ? grants.begin(a, conn.transport) : null;
       const result = await agent.call(
         initialGrant
-          ? "activate-grant-attempt"
+          ? initialGrant.kind === "ADDITIONAL"
+            ? "activate-additional-grant-attempt"
+            : "activate-grant-attempt"
           : recovery
             ? "activate-recovery-attempt"
             : currentSettings.template_version
@@ -1680,6 +1767,16 @@ export async function createApp(
       actor.username,
     );
   });
+  app.post(
+    "/api/admin/exams/:exam/grants/additional-preview",
+    async (req: any) => {
+      const actor = principal(req, "admin");
+      return grantIssuance.additional(
+        { ...req.body, exam: req.params.exam },
+        actor.username,
+      );
+    },
+  );
   app.get("/api/admin/grant-issuance/:id", async (req: any) => {
     const actor = principal(req, "admin");
     return grantIssuance.show(req.params.id, actor.username);
@@ -2285,12 +2382,17 @@ export async function createApp(
             if (
               initialGrant &&
               initialGrant.status !== "AVAILABLE" &&
-              !existing
+              !existing &&
+              !grants.available(m.exam, m.username).length
             )
               throw signInError(
                 "The initial grant is revoked or consumed. Contact your instructor to inspect its original grant/attempt history; no new exam started.",
               );
-            if (existing?.state === "COMPLETED" && !isSandbox(m.exam))
+            if (
+              existing?.state === "COMPLETED" &&
+              !isSandbox(m.exam) &&
+              !grants.available(m.exam, m.username).length
+            )
               throw signInError(
                 "Your exam is already completed. Contact your instructor if you need help with your submission.",
               );

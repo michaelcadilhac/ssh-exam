@@ -81,3 +81,21 @@ completion-ownership notice; an immediate synthetic kill legitimately produced
 UNKNOWN. Tests now observe that exact notice boundary before claiming post-notice
 death, while UNKNOWN semantics remain intact. AGENTS.md records these controls;
 neither an earlier passing artifact nor an unreached refusal closes the workflow.
+
+The integrated grant work exposed a smaller repeated source of avoidable churn:
+calling existing helpers from guessed signatures (session argument order, browser
+API body position and a nonexistent standalone React setter), then letting a
+label locator wait for the whole long browser workflow timeout. Read the actual
+definition/nearby caller before using an existing helper, preserve its composite
+state ownership, and bound individual browser actions against observed accessible
+roles. AGENTS.md now states this explicitly. Failed setup/locator results remain
+recorded and are not counted as product regressions or passes.
+
+The additional-grant state review also caught a real authority-proof gap BEFORE
+the first broad run: sequence alone could not prove the original initial grant
+after missing web history. A two-case missing/foreign-identity control failed;
+the integrated protocol now retains that exact initial UUID in native/web lineage.
+Keep such positive-evidence reviews before artifact freeze. Finish one integrated
+workflow and reuse unchanged matching evidence; do not restart unrelated broad
+qualification for a corrected text assertion or expand the next source mechanism
+before identifying its real caller, retention races and acceptance boundary.

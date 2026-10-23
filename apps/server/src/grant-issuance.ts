@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   grantIssuePreview,
   grantIssueIntent,
+  grantAdditionalPreview,
 } from "../../../packages/protocol/grants.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
@@ -24,30 +25,49 @@ export class GrantIssuance {
     this.grants = new AttemptGrants(store, agent);
     this.definitions = new ExamDefinitions(store, agent);
   }
-  private eligible(exam: string, username: string) {
+  private eligible(exam: string, username: string, additional = false) {
     const enrollment = this.store.db
       .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
       .get(exam, username) as any;
     if (
       !enrollment ||
-      this.store.db
-        .prepare("SELECT 1 FROM attempts WHERE exam=? AND username=?")
-        .get(exam, username) ||
-      this.store.db
-        .prepare("SELECT 1 FROM attempt_grants WHERE exam=? AND username=?")
-        .get(exam, username)
+      (!additional &&
+        (this.store.db
+          .prepare("SELECT 1 FROM attempts WHERE exam=? AND username=?")
+          .get(exam, username) ||
+          this.store.db
+            .prepare("SELECT 1 FROM attempt_grants WHERE exam=? AND username=?")
+            .get(exam, username)))
     )
       return refuse(
-        `Student ${username} is not a legacy unused enrollment: enrollment required, with no grant or attempt history. Inspect web students/grants list; no batch issued.`,
+        additional
+          ? `Student ${username} is not enrolled; inspect web students list before additional authorization. No batch issued.`
+          : `Student ${username} is not a legacy unused enrollment: enrollment required, with no grant or attempt history. Inspect web students/grants list; no batch issued.`,
       );
     return enrollment;
   }
   preview(input: unknown, actor: string) {
-    const b = grantIssuePreview.parse(input);
+    return this.previewSelection(grantIssuePreview.parse(input), actor, false);
+  }
+  additional(input: unknown, actor: string) {
+    return this.previewSelection(
+      grantAdditionalPreview.parse(input),
+      actor,
+      true,
+    );
+  }
+  private previewSelection(
+    b: z.infer<typeof grantIssuePreview> & {
+      duration?: number;
+      webcam?: boolean;
+    },
+    actor: string,
+    additional: boolean,
+  ) {
     return this.grants.request(
       actor,
       b.request,
-      { operation: "issue-preview", ...b },
+      { operation: additional ? "additional-preview" : "issue-preview", ...b },
       () => {
         if (isSandbox(b.exam))
           return refuse(
@@ -66,23 +86,44 @@ export class GrantIssuance {
             "Choose an explicit finite Begin window that has not closed; no grant issued",
           );
         const rows = [...b.usernames].sort().map((username) => {
-          const enrollment = this.eligible(b.exam, username);
+          const enrollment = this.eligible(b.exam, username, additional);
           const value = this.grants.snapshot({
             ...definition.exam,
             earliest: b.earliest,
             latest: b.latest,
-            duration: enrollment.duration ?? definition.exam.duration,
+            duration: additional
+              ? b.duration!
+              : (enrollment.duration ?? definition.exam.duration),
             webcam:
-              enrollment.webcam === null
-                ? definition.exam.webcam
-                : !!enrollment.webcam,
+              additional && b.webcam !== undefined
+                ? b.webcam
+                : enrollment.webcam === null
+                  ? definition.exam.webcam
+                  : !!enrollment.webcam,
           });
-          return { username, enrollment: JSON.stringify(enrollment), ...value };
+          return {
+            username,
+            enrollment: JSON.stringify(enrollment),
+            ...value,
+            ...(additional
+              ? {
+                  existing_grants: (
+                    this.store.db
+                      .prepare(
+                        "SELECT count(*) n FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND status='AVAILABLE'",
+                      )
+                      .get(this.agent, b.exam, username) as any
+                  ).n,
+                }
+              : {}),
+          };
         });
         const id = randomUUID(),
           created = now(),
           snapshot = JSON.stringify({
-            kind: "NEW_LEGACY_INITIAL_GRANTS",
+            kind: additional
+              ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+              : "NEW_LEGACY_INITIAL_GRANTS",
             agent: this.agent,
             exam: b.exam,
             actor,
@@ -105,7 +146,9 @@ export class GrantIssuance {
           );
         this.store.audit(
           actor,
-          "preview-new-legacy-grants",
+          additional
+            ? "preview-additional-template-grants"
+            : "preview-new-legacy-grants",
           id,
           JSON.stringify({
             exam: b.exam,
@@ -183,7 +226,13 @@ export class GrantIssuance {
               "UPDATE grant_issuance_previews SET status='CANCELLED' WHERE id=?",
             )
             .run(id);
-          this.store.audit(actor, "cancel-new-legacy-grants", id);
+          this.store.audit(
+            actor,
+            saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+              ? "cancel-additional-template-grants"
+              : "cancel-new-legacy-grants",
+            id,
+          );
           return this.show(id, actor);
         }
         if (row.status === "CONFIRMED") return this.show(id, actor); // Same immutable review, never another issuance.
@@ -200,8 +249,13 @@ export class GrantIssuance {
           );
         for (const r of saved.rows) {
           if (
-            JSON.stringify(this.eligible(saved.exam, r.username)) !==
-            r.enrollment
+            JSON.stringify(
+              this.eligible(
+                saved.exam,
+                r.username,
+                saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS",
+              ),
+            ) !== r.enrollment
           )
             return refuse(
               `Enrollment for ${r.username} changed since review; create and inspect a NEW issue-preview. No partial batch issued.`,
@@ -212,12 +266,20 @@ export class GrantIssuance {
             );
         }
         const issued = saved.rows.map((r: any) => {
-          const grant = this.grants.reviewedInitial(
-            r.settings,
-            r.username,
-            actor,
-            saved.reason,
-          );
+          const grant =
+            saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+              ? this.grants.additional(
+                  r.settings,
+                  r.username,
+                  actor,
+                  saved.reason,
+                )
+              : this.grants.reviewedInitial(
+                  r.settings,
+                  r.username,
+                  actor,
+                  saved.reason,
+                );
           if (grant.hash !== r.hash)
             return refuse(
               "Reviewed source/settings hash differs at confirmation; no partial batch issued",
@@ -231,7 +293,9 @@ export class GrantIssuance {
           .run(JSON.stringify(issued), id);
         this.store.audit(
           actor,
-          "confirm-new-legacy-grants",
+          saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+            ? "confirm-additional-template-grants"
+            : "confirm-new-legacy-grants",
           id,
           JSON.stringify({ revision: row.revision, issued }),
         );
