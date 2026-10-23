@@ -97,7 +97,42 @@ Frozen544-file source manifest SHA256
 b69adfba826d2c660c52f1badedf47a11be4a175d2a6eca7ca54116ce001f32d
 (/tmp/ssh-exam-timed-owner-guest-qualified-source.sha256) matches after the run.
 Exact full15-file manifest is retained with the candidate and locally at
-var/collection-tests/timed-owner-artifacts.RLSlkI/SHA256.json. Static candidate
+var/collection-tests/timed-owner-artifacts.RLSlkI/SHA256.timed-owner.json. Static candidate
 exam-agent SHA256 is132428b77d3ab2e17f07843af3277476a5260604529b6447c9251e9231fcdbef;
 core test is7ba85a46e93c6cb23e3ba9fe9491a3dda4d076fa0764bbf65d9be3f955ab7b8c.
 No newer artifact may inherit this receipt without matching/requalification.
+
+## Collector failure with current BrowserSSH owners
+
+The worker-isolation profile now uses the same real signed BrowserSSH control
+and independently supervised timed recording path for both synthetic accounts.
+Supported root CLI observation verifies distinct owners before the fault, then
+the same healthy owner and two admitted panes afterward. This replaces legacy
+outer-field trust for that profile; other legacy fixture profiles retain their
+declared behavior. No native runtime or application source changed.
+
+Final run PASSES12 assertions, OVERLAY_QUALIFICATION_OK, exit0 and all host/base
+preservation checks. Evidence /var/tmp/ssh-exam-overlay-hogj7uqd; exact private
+bundle /var/tmp/ssh-exam-collector-owner-upload.GFTi1a/bundle. Local log
+/tmp/ssh-exam-collector-timed-owner-remote.log.35 Python safety checks pass. The
+previous native/application/browser evidence still applies: only this qualification
+client changed, and the exact native binaries are the same hashes above.
+
+Observed actual collector pidfd SIGKILL leaves only its target COLLECTION_FAILED,
+preserving original start/deadline/hold. The healthy peer keeps its original owner,
+real PTY IO, fresh pane admission, generation/deadlines and24 successful signed
+renewals; maximum acknowledgement0.091744s. Actual explicit retry verifies all
+four10MiB random files byte-for-byte in the protected archive. Both accounts restore
+only after their unchanged deadlines and protection; no override/refund. The same
+agent/watchdog PIDs survive. Normal root/home remain read-only, public Python/
+libraries work, private endpoints stay hidden and student capabilities remain zero.
+
+This closes the current-candidate crash/healthy-BrowserSSH qualification gap. It
+does not prove the reported production crash cause, arbitrary namespace/fault
+combinations, class capacity or retained technical recovery. No production service,
+configuration, student record or installed binary changed. No missing command.
+
+The collector profile's separate immutable checksum receipt is
+var/collection-tests/timed-owner-artifacts.RLSlkI/SHA256.collector-owner.json.
+Frozen source manifest6cf2f411aa8878795544f029ea4f5bfd49b7ecfbd05b9051279fb8f6dc1a165a
+is /tmp/ssh-exam-collector-owner-qualified-source.sha256 and matches after the run.

@@ -1393,6 +1393,16 @@ the approval is not a production change or a completed investigation.
   process-name killing. Review documentation that still refers to only two gates.
 
 - [ ] **Isolate collection failure from the shared agent and other students.**
+  October23 current-candidate BrowserSSH qualification passes12 real guarded
+  guest assertions with two independently scoped timed recording owners. Exact
+  collector pidfd SIGKILL fails only its target; the healthy peer keeps the same
+  owner, PTY IO, new-pane admission,24 signed renewals (maximum0.092s), generation
+  and deadlines. Explicit retry verifies all four10MiB files and both original
+  deadline/account restorations. Host/base preservation passes. Native code is
+  unchanged; only fixture protocol/mode coverage is expanded. See
+  docs/timed-owner-guest-qualification.md. This does not establish the initiating
+  production crash cause or complete the remaining broad capacity/namespace/
+  saved-source fault matrix; the investigation checkbox remains open. No deployment.
   October22 local verification follow-up closes a missing aggregate zero-swap
   readiness check; individual workers and the supplied pool already disabled
   swap. Exact-property missing/nonzero refusal is tested through actual CLI and

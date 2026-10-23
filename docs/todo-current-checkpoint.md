@@ -39,33 +39,32 @@ Original dirty PNG below preserved; every other generated screenshot restored.
 Routine sandbox git-write/spawn restrictions were handled by tool escalation;
 that registered-owner milestone was entirely local, with no production action.
 
-Next bounded milestone: docs/timed-owner-guest-qualification.md, closing previously
-blocked real-root C12 evidence before the full retained pause workflow. Fresh
-read-only csc-sys canonical guard CLEAR (0 unresolved), followed by full guarded
-disposable qualification. Candidate-only
-examterminal.slice + timed-owner fixture profile implemented;35 Python safety
-checks pass. Audited code-only60MB bundle built/transferred privately. Native code
-unchanged. Three runs passed host/base preservation but failed fixtures: signed
-BrowserSSH proof vs legacy outer result; PID1 in private namespaces; final guard
-correctly retaining access until original deadline. Corrected client verifies
-signatures, pins distinct kernel processes and waits for natural restoration.
-FINAL PASS8 assertions + OVERLAY_QUALIFICATION_OK + exit0 and host/base preservation.
-No runner remains active. Log /tmp/ssh-exam-timed-owner-guest-remote-deadline.log,
-private upload /var/tmp/ssh-exam-timed-owner-upload.jMfW7M/bundle. Exact bundle/artifacts
-local var/collection-tests/timed-owner-artifacts.RLSlkI. Final evidence
-/var/tmp/ssh-exam-overlay-y4k6nohl; source manifestb69adfba826d2c660c52f1badedf47a11be4a175d2a6eca7ca54116ce001f32d
-matches /tmp/ssh-exam-timed-owner-guest-qualified-source.sha256. See feature doc.
-Actual SSH/two shells/coordinator stop/current-policy pause/protected collection
-and natural account restoration verified in disposable guest. Preserve host/
-base and all failed evidence. Exact next action: commit this validated test/ops
-milestone locally, then exercise actual collector death with a healthy BrowserSSH
-peer in the same guarded environment. Native runtime unchanged; retain prior
-app/native/browser evidence. Then implement actual verified retained hold/Continue
-in retained-workload-barrier-plan.md. No new standalone helper
-chain. Inspect real root SSH pinning/handoff and EVERY lock/continuation/watchdog/
-clock/collection writer before code. Enlist pending handoffs before blocking IO;
-metadata/stream count is not admission exclusion or a hold. Current lockouts still
-terminate/disconnect. Critical liveness/R2 remain unfinished and unchecked.
+## Real-root timed-owner and collector qualification
+
+Local commit7bc50fe qualifies the existing C12 lifetime path in the guarded
+disposable csc-sys guest: actual BrowserSSH/two shells, coordinator stop, same
+pidfds/unsaved variables, current-policy pause termination, protected collection
+and natural original-deadline account restoration.8 assertions plus final wrapper
+and host/base preservation PASS. Three earlier fixture failures are retained and
+explained in docs/timed-owner-guest-qualification.md; no enforcement was weakened.
+
+The following validated test-only increment qualifies collector SIGKILL with two
+independent BrowserSSH owners:12 assertions,24 signed healthy renewals (max0.091744s),
+same healthy owner/PTY/new-pane/clock, exact40MiB retry and natural restoration.
+35 Python safety checks and all host/base preservation checks PASS; final wrapper
+exit0. Evidence /var/tmp/ssh-exam-overlay-hogj7uqd; private candidate
+/var/tmp/ssh-exam-collector-owner-upload.GFTi1a/bundle. Source manifest6cf2f411aa8878795544f029ea4f5bfd49b7ecfbd05b9051279fb8f6dc1a165a.
+Native/application/browser code and binary hashes are unchanged, so prior runtime
+qualification applies. Separate immutable manifests and exact limits are in the
+feature document. No test runner remains active; no host installation was changed.
+
+Next bounded outcome: actual verified retained hold/approved Continue, following
+retained-workload-barrier-plan.md. Inspect real root SSH pinning/handoff and EVERY
+lock/continuation/watchdog/clock/collection writer before code. Enlist pending
+handoffs before blocking IO; metadata/stream count is not admission exclusion or
+a hold. Current lockouts still terminate/disconnect. Critical liveness/R2 remain
+unfinished and unchecked; these guest passes do not establish retained recovery,
+class capacity or the initiating production crash cause.
 
 ## Previous validated scope and remaining decisions
 

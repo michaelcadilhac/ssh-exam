@@ -319,3 +319,13 @@ clock edits/overrides. Final8 assertions, OVERLAY_QUALIFICATION_OK and all host/
 preservation pass at /var/tmp/ssh-exam-overlay-y4k6nohl. Earlier failed fixtures
 remain recorded in timed-owner-guest-qualification.md. This is not C3/C9 enablement,
 registered unified Begin qualification or production deployment. No command missing.
+
+The current worker-isolation profile additionally selects BrowserSSH for both
+accounts and verifies distinct timed recording supervisors. On the same exact
+native candidate as the timed-owner pass,12 assertions pass, including actual
+collector pidfd SIGKILL, healthy owner/PTY/new-pane/renewal/clock preservation,
+byte-exact40MiB retry and natural account restoration.24 renewals, maximum0.091744s.
+Host/base preservation and OVERLAY_QUALIFICATION_OK pass. Evidence:
+/var/tmp/ssh-exam-overlay-hogj7uqd; separate immutable artifact receipts/limits
+are in timed-owner-guest-qualification.md. Native runtime code is unchanged;
+no production crash cause, arbitrary fault matrix or class capacity is inferred.

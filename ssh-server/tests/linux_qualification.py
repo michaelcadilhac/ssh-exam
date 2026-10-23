@@ -17,6 +17,7 @@ parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
 parser.add_argument('--gateway-key',default='/etc/exam-agent/gateway.key')
 a=parser.parse_args()
+browser_mode=a.timed_owner or a.worker_isolation
 assert os.geteuid()==0, 'Run as root inside the disposable guest'
 config=json.loads(pathlib.Path('/etc/exam-agent/agent.json').read_text())
 guards=json.loads(pathlib.Path(config['guard_report']).read_text())
@@ -26,7 +27,7 @@ account=pwd.getpwnam(a.username)
 temporary=config.get('temporary_account_policy',False)
 baseline=(account.pw_shell, sorted(os.getgrouplist(a.username,account.pw_gid)), pathlib.Path('/var/lib/systemd/linger',a.username).exists())
 key=load_pem_private_key(pathlib.Path(a.gateway_key).read_bytes(),None)
-agent_key=load_pem_public_key(pathlib.Path('/etc/exam-agent/callback.pub').read_bytes()) if a.timed_owner else None
+agent_key=load_pem_public_key(pathlib.Path('/etc/exam-agent/callback.pub').read_bytes()) if browser_mode else None
 ssh=['ssh','-F','/dev/null','-i',a.key,'-o','IdentitiesOnly=yes','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+a.known_hosts,'-o','BatchMode=yes','-o','ConnectTimeout=3','-o','LogLevel=ERROR']
 target=a.username+'@127.0.0.1'
 passed=[]
@@ -67,13 +68,13 @@ class Connection:
     def raw(self,command,**kw): return run([*self.ssh,'-S',self.socket,self.target,command],**kw)
     def command(self,op,body=None):
         body=dict(body or {})
-        if a.timed_owner:body['browser_ssh']=True
+        if browser_mode:body['browser_ssh']=True
         request={'audience':config['agent_id'],'nonce':str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':self.username,'transport':self.transport,'op':op,'body':body}
         payload=json.dumps(request,separators=(',',':')).encode()
         frame=json.dumps({'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(key.sign(payload)).decode()})+'\n'
         p=self.raw('exam-control',input=frame); assert p.returncode==0,(p.stdout,p.stderr)
         value=json.loads(p.stdout)
-        if a.timed_owner:
+        if browser_mode:
             # The actual BrowserSSH protocol returns only proof. Never accept
             # an outer result/error or an unbound signed acknowledgment.
             proof=value['proof'];signed=base64.b64decode(proof['payload'],validate=True)
@@ -92,7 +93,7 @@ class Connection:
     def start(self,activate=True,duration=60):
         account=pwd.getpwnam(self.username)
         self.transport=self.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
-        self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':a.timed_owner,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
+        self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':browser_mode,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
         if temporary:
             self.command('prepare-account-policy',{'id':id})
             try:self.command('activate-attempt',{'id':id});raise AssertionError('Bootstrap started exam')
@@ -300,6 +301,11 @@ if a.worker_isolation:
         before=info(healthy_id)
         thread=threading.Thread(target=renew,args=(healthy_id,),daemon=True);thread.start()
         target_id=target_connection.start();target_pane=target_connection.pane(target_id)
+        assert before.get('browser_ssh') and before.get('terminal_supervised') and info(target_id).get('terminal_supervised')
+        healthy_owner=json.loads(root('examctl','panes','supervisor',healthy_id))
+        target_owner=json.loads(root('examctl','panes','supervisor',target_id))
+        assert healthy_owner['observation_only'] and target_owner['observation_only'] and healthy_owner['pid']!=target_owner['pid'] and healthy_owner['supervisor']!=target_owner['supervisor']
+        ok('two synthetic BrowserSSH attempts have independently scoped timed recording owners')
         target_work=pathlib.Path(config['work'])/target_id/'work'
         assert config.get('host_filesystem') is True and config['rootfs']=='/', 'Normal filesystem required, not a minimal rootfs'
         target_pane.stdin.write(b"while IFS= read -r path; do if ! test -x \"$path\"; then printf 'COMMAND_%s: %s\\n' NOT_FOUND \"$path\"; break; fi; done < /work/qualification-command-inventory.txt; printf 'PUBLIC_%s\\n' INVENTORY_CHECKED\n");target_pane.stdin.flush()
@@ -369,6 +375,8 @@ print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
         extra.stdin.write(b"printf 'FRESH_%s\\n' ADMISSION\n");extra.stdin.flush();read_until(extra,b'FRESH_ADMISSION',10)
         assert owners==root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
         current=info(healthy_id)
+        observed_owner=json.loads(root('examctl','panes','supervisor',healthy_id))
+        assert observed_owner['pid']==healthy_owner['pid'] and observed_owner['supervisor']==healthy_owner['supervisor'] and observed_owner['attached_panes']==2
         assert current['state']=='ACTIVE' and current['generation']==before['generation'] and current['deadline']==before['deadline'] and current['original_deadline']==before['original_deadline']
         assert healthy_pane.poll() is None and not failures and len(acknowledgements)>=3 and max(acknowledgements)<5
         ok('healthy real PTY, fresh channel admission and signed renewals survive with unchanged owners/generation/deadlines')

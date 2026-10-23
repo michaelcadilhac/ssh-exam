@@ -2547,3 +2547,18 @@ and corrected without weakening native enforcement or the final guard. Detailed
 source/artifact hashes and evidence /var/tmp/ssh-exam-overlay-y4k6nohl are in
 timed-owner-guest-qualification.md. No host installation/config/service/student
 record changed. No missing executable. No push/deployment/consolidation.
+
+## October23: collector death with real independent BrowserSSH owners
+
+The current native candidate now passes12 guarded worker-isolation assertions
+through real BrowserSSH for both synthetic accounts, each with an independent
+timed recording owner. A verified collector pidfd SIGKILL affects only its target;
+healthy owner/PTY/new pane/generation/deadlines and24 renewals (max0.091744s) survive.
+Explicit retry verifies all four10MiB files; both accounts restore only at their
+unchanged deadlines. Host/base preservation passes. Evidence:
+/var/tmp/ssh-exam-overlay-hogj7uqd.35 local runner safety tests pass; only the
+qualification client changed, so prior application/native/browser runtime evidence
+still applies with checked source/artifact hashes. Scope and immutable manifests:
+timed-owner-guest-qualification.md. No deployment or host installation/service/
+configuration/student-record change; no missing executable. Broader namespace/
+source/capacity matrix and initiating production-crash investigation remain open.
