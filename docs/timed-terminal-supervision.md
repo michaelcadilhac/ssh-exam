@@ -205,3 +205,15 @@ indefinite reservation. Then run affected native races/build/CLI, appropriate ap
 and browser checks; privileged installed-role qualification remains separate and
 requires a positively safe disposable host. No earlier remote bundle qualifies
 new code. Preserve the original dirty screenshot and all production state.
+
+## Guarded real-root timed path (October23)
+
+The previously blocked installed-role boundary now has a focused disposable-guest
+pass:8 actual SSH/PAM/staging/Begin/two-pane/owner/agent-stop/collection/deadline
+assertions, all host/base preservation checks and35 local runner safety checks.
+Both student kernel process lifetimes and unsaved shell values survive the guest
+coordinator stop under one64MiB/no-swap/64-task owner. The existing policy pause
+still terminates them. This uses a legacy grantless BrowserSSH native fixture;
+unified registered Begin, C3/C9 hold/recovery and class capacity remain open.
+Exact artifacts, retained fixture failures and scope: timed-owner-guest-qualification.md.
+No installed host binary, service, configuration or student record was changed.

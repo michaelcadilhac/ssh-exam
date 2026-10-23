@@ -4,7 +4,7 @@ Updated October23,2026. Local development/tests/commits only. NEVER push/deploy,
 change production records/config/services or consolidate agents. Stop on any
 missing executable. None was missing this continuation. Follow AGENTS.md.
 
-## Validated registered-page milestone (ready for local commit)
+## Validated registered-page milestone: ca8873b (local commit)
 
 Actual browser unified-grant Begin/approved continuation now binds the canonical
 page/native transport/boot/generation/clock and fresh authorization identity,
@@ -37,11 +37,31 @@ Detailed state review/defect reproductions/fixture corrections/limits and logs:
 docs/registered-owner-workflow.md. Logs use /tmp/ssh-exam-registered-owner-*.log.
 Original dirty PNG below preserved; every other generated screenshot restored.
 Routine sandbox git-write/spawn restrictions were handled by tool escalation;
-no instructor approval, remote access/upload/test or production action.
+that registered-owner milestone was entirely local, with no production action.
 
-Exact next action: coherent local commit for this validated workflow (exclude
-original PNG), then implement the actual pause → verified retained hold → approved
-Continue outcome in retained-workload-barrier-plan.md. No new standalone helper
+Next bounded milestone: docs/timed-owner-guest-qualification.md, closing previously
+blocked real-root C12 evidence before the full retained pause workflow. Fresh
+read-only csc-sys canonical guard CLEAR (0 unresolved), followed by full guarded
+disposable qualification. Candidate-only
+examterminal.slice + timed-owner fixture profile implemented;35 Python safety
+checks pass. Audited code-only60MB bundle built/transferred privately. Native code
+unchanged. Three runs passed host/base preservation but failed fixtures: signed
+BrowserSSH proof vs legacy outer result; PID1 in private namespaces; final guard
+correctly retaining access until original deadline. Corrected client verifies
+signatures, pins distinct kernel processes and waits for natural restoration.
+FINAL PASS8 assertions + OVERLAY_QUALIFICATION_OK + exit0 and host/base preservation.
+No runner remains active. Log /tmp/ssh-exam-timed-owner-guest-remote-deadline.log,
+private upload /var/tmp/ssh-exam-timed-owner-upload.jMfW7M/bundle. Exact bundle/artifacts
+local var/collection-tests/timed-owner-artifacts.RLSlkI. Final evidence
+/var/tmp/ssh-exam-overlay-y4k6nohl; source manifestb69adfba826d2c660c52f1badedf47a11be4a175d2a6eca7ca54116ce001f32d
+matches /tmp/ssh-exam-timed-owner-guest-qualified-source.sha256. See feature doc.
+Actual SSH/two shells/coordinator stop/current-policy pause/protected collection
+and natural account restoration verified in disposable guest. Preserve host/
+base and all failed evidence. Exact next action: commit this validated test/ops
+milestone locally, then exercise actual collector death with a healthy BrowserSSH
+peer in the same guarded environment. Native runtime unchanged; retain prior
+app/native/browser evidence. Then implement actual verified retained hold/Continue
+in retained-workload-barrier-plan.md. No new standalone helper
 chain. Inspect real root SSH pinning/handoff and EVERY lock/continuation/watchdog/
 clock/collection writer before code. Enlist pending handoffs before blocking IO;
 metadata/stream count is not admission exclusion or a hold. Current lockouts still
@@ -64,8 +84,10 @@ Saved-source issuance remains disabled until its integrated workflow is qualifie
 Critical live authority/all-writer stop-assisted freeze/input discard/C9 recovery,
 saved-source migration/retention, legacy retirement reconciliation, destructive
 cleanup, full management and installed-role/capacity qualification remain open.
-The initiating production fault is unproven. Last csc-sys guard BUSY00:18UTC Oct23:
-busy/uncertain means NO TEST. No remote operation this continuation. Deployment/
+The initiating production fault is unproven. A fresh csc-sys read-only canonical
+guard is clear, superseding BUSY00:18UTC; busy/uncertain still means NO TEST.
+Guarded private code-only qualification runs are now authorized/active; no installed
+host configuration/service/student-record change. Deployment/
 migration/rollback and three-agent consolidation are UNEXECUTED proposals in
 todo-rollout-plan.md (through029). Inventory independent timed/practice owners AND
 canonical/live-upgrade/deferred-recovery agents; never stop needed PTYs. Preserve

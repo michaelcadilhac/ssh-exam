@@ -475,6 +475,15 @@ remain necessary; no retained mode or production change is enabled. The next
 actual pause/verified-hold/approved-Continue workflow is scoped in
 docs/retained-workload-barrier-plan.md. Critical liveness and R2 stay unchecked.
 
+The previously blocked real-root C12 timed-owner qualification now passes in the
+guarded disposable csc-sys guest:8 assertions through actual SSH/PAM/staging/Begin,
+two isolated shells and one bounded owner, guest coordinator stop with live pidfds/
+unsaved variables, protected collection and original-deadline account restoration.
+The explicit legacy pause control still terminates shells. Host installation,
+authority and guest base preservation pass; no deployment or production service
+action. See docs/timed-owner-guest-qualification.md for exact artifacts, corrected
+fixture failures and limitations. This does not qualify C3 retention or C9 recovery.
+
 ## Firm design policy: examctl is the complete management interface
 
 October22 independent C4 hold-safety fix is implemented/tested locally: existing

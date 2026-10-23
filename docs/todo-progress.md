@@ -2530,3 +2530,20 @@ are scoped in retained-workload-barrier-plan.md. No new standalone helper chain.
 No remote access/upload/test, deployment or production record/config/service
 change. No missing executable. Migration029/rollback and three-agent consolidation
 are proposals only in todo-rollout-plan.md; deployment remains revoked.
+
+## October23: previously blocked root timed-owner qualification now passes
+
+The guarded csc-sys disposable guest timed-owner profile passes8 assertions and
+host/base preservation on the exact code-only candidate. Actual protected handoff,
+Begin, two isolated shells/one bounded owner, guest coordinator stop, same live
+kernel pidfds/unsaved variables, protected collection and original-deadline SSH/
+SFTP/account restoration are verified. The current legacy pause explicitly kills
+shells; this remains a negative C3 control, not retained-lockout enablement.
+
+35 local Python safety checks pass. Candidate-only examterminal.slice and original
+grant/owner/workspace preservation are included. Three fixture failures (signed
+proof envelope, PID1 namespace identity, unresolved pre-deadline hold) were retained
+and corrected without weakening native enforcement or the final guard. Detailed
+source/artifact hashes and evidence /var/tmp/ssh-exam-overlay-y4k6nohl are in
+timed-owner-guest-qualification.md. No host installation/config/service/student
+record changed. No missing executable. No push/deployment/consolidation.

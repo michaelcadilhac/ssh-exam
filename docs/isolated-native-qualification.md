@@ -305,3 +305,17 @@ shell repetitions,40 enforcement and11 collector-death/healthy-SSH assertions
 Exact new hashes and evidence are in workspace-receipt-safety.md. This qualifies
 normal-root private staging/Begin compatibility, not full saved-work grant
 migration or later health-observation lock changes. Nothing is deployed.
+
+## Timed BrowserSSH owner (October23)
+
+The discoverable --profile timed-owner now uses actual signed BrowserSSH receipts,
+protected handoff/private Begin and two real confined shells. Include the exact
+candidate examterminal.slice in FILES; it is bound read-only ONLY in the disposable
+guest. Root examctl panes supervisor verifies one independently bounded owner;
+only the guest coordinator is stopped. Original kernel pidfds/unsaved values
+survive before legacy lease expiry. Explicit policy pause remains destructive;
+protected collection and natural original-deadline restoration pass without
+clock edits/overrides. Final8 assertions, OVERLAY_QUALIFICATION_OK and all host/base
+preservation pass at /var/tmp/ssh-exam-overlay-y4k6nohl. Earlier failed fixtures
+remain recorded in timed-owner-guest-qualification.md. This is not C3/C9 enablement,
+registered unified Begin qualification or production deployment. No command missing.

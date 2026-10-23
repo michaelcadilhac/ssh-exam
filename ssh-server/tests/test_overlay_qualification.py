@@ -78,6 +78,13 @@ class OverlayTests(unittest.TestCase):
         original = overlay.authority(self.state(attempt))
         self.assertEqual(original, overlay.authority(self.state({**attempt, 'callback_at': 999})))
         self.assertNotEqual(original, overlay.authority(self.state({**attempt, 'deadline': 999})))
+        for field, value in [('grant', {'id': 'synthetic-one-use-grant'}),
+                             ('grant_begin_intent', 'original-intent'),
+                             ('registered_owner', {'page_epoch': 'native-page'}),
+                             ('workspace', {'source': {'kind': 'saved', 'checksum': 'protected'}}),
+                             ('terminal_supervised', True)]:
+            with self.subTest(field=field):
+                self.assertNotEqual(original, overlay.authority(self.state({**attempt, field: value})))
 
     def test_command_is_volatile_private_and_bounded_without_host_network(self):
         self.assertEqual(overlay.FILES['exam-login'][1], 0o755)
@@ -96,6 +103,8 @@ class OverlayTests(unittest.TestCase):
         self.assertNotIn('--template', command)
         self.assertNotIn('/bin/sh', command)
         self.assertIn('--bind-ro=' + str(self.root / 'in' / 'exam-agent') + ':/usr/local/sbin/exam-agent', command)
+        self.assertEqual(overlay.FILES['examterminal.slice'], ('/etc/systemd/system/examterminal.slice', 0o644))
+        self.assertIn('--bind-ro=' + str(self.root / 'in' / 'examterminal.slice') + ':/etc/systemd/system/examterminal.slice', command)
 
     def test_monitoring_owner_uses_only_the_manifested_test_executable(self):
         self.assertEqual(overlay.FILES['core-qualification.test'], (None, 0o755))

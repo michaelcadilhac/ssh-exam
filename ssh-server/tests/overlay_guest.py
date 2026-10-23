@@ -265,6 +265,9 @@ def main():
         if result.returncode:
             return result.returncode
         profiles = ()
+    elif settings.get('profile') == 'timed-owner':
+        assert username == 'examq', 'Exact synthetic timed-owner fixture required'
+        profiles = (['--timed-owner'],)
     else:
         profiles = (['--handoff-only'], ['--setup-only'], [])
     # Commands execute only in the network/PID/mount namespace of this overlay.

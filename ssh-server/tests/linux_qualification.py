@@ -4,13 +4,14 @@ Requires its preinstalled agent, isolated work/rootfs and root-only test signing
 Never run against a real student's state or home. Refuses non-fixture guard reports.
 """
 import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil, signal, threading, shlex
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--username',default='mcadilha')
 parser.add_argument('--handoff-only',action='store_true',help='Verify automatic SSH handoff and cancel without starting time')
 parser.add_argument('--setup-only',action='store_true',help='Focused temporary setup, lingering and offline-expiry recovery')
 parser.add_argument('--worker-isolation',action='store_true',help='Real collection-worker death alongside another live SSH PTY; private overlay only')
+parser.add_argument('--timed-owner',action='store_true',help='Real BrowserSSH timed owner, two shells, guest coordinator stop and current-policy pause; private overlay only')
 parser.add_argument('--peer',help='Separate synthetic guest account for worker isolation')
 parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
@@ -25,6 +26,7 @@ account=pwd.getpwnam(a.username)
 temporary=config.get('temporary_account_policy',False)
 baseline=(account.pw_shell, sorted(os.getgrouplist(a.username,account.pw_gid)), pathlib.Path('/var/lib/systemd/linger',a.username).exists())
 key=load_pem_private_key(pathlib.Path(a.gateway_key).read_bytes(),None)
+agent_key=load_pem_public_key(pathlib.Path('/etc/exam-agent/callback.pub').read_bytes()) if a.timed_owner else None
 ssh=['ssh','-F','/dev/null','-i',a.key,'-o','IdentitiesOnly=yes','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+a.known_hosts,'-o','BatchMode=yes','-o','ConnectTimeout=3','-o','LogLevel=ERROR']
 target=a.username+'@127.0.0.1'
 passed=[]
@@ -64,16 +66,33 @@ class Connection:
         if self.keydir:shutil.rmtree(self.keydir,ignore_errors=True);self.keydir=None
     def raw(self,command,**kw): return run([*self.ssh,'-S',self.socket,self.target,command],**kw)
     def command(self,op,body=None):
-        payload=json.dumps({'audience':config['agent_id'],'nonce':str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':self.username,'transport':self.transport,'op':op,'body':body or {}},separators=(',',':')).encode()
+        body=dict(body or {})
+        if a.timed_owner:body['browser_ssh']=True
+        request={'audience':config['agent_id'],'nonce':str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':self.username,'transport':self.transport,'op':op,'body':body}
+        payload=json.dumps(request,separators=(',',':')).encode()
         frame=json.dumps({'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(key.sign(payload)).decode()})+'\n'
         p=self.raw('exam-control',input=frame); assert p.returncode==0,(p.stdout,p.stderr)
         value=json.loads(p.stdout)
+        if a.timed_owner:
+            # The actual BrowserSSH protocol returns only proof. Never accept
+            # an outer result/error or an unbound signed acknowledgment.
+            proof=value['proof'];signed=base64.b64decode(proof['payload'],validate=True)
+            agent_key.verify(base64.b64decode(proof['signature'],validate=True),signed)
+            receipt=json.loads(signed)
+            now=int(time.time()*1000)
+            assert receipt['agent']==config['agent_id'] and receipt['type']=='ssh-command-receipt' and receipt['nonce']==request['nonce'] and receipt['username']==self.username
+            assert now<receipt['expires']<=now+120000
+            assert op=='register' or receipt['transport']==self.transport
+            if receipt['error']:raise RuntimeError(receipt['error'])
+            result=receipt['result']
+            if op=='register':assert result['transport']==receipt['transport'] and len(receipt['transport'])==64
+            return result
         if 'error' in value: raise RuntimeError(value['error'])
         return value['result']
     def start(self,activate=True,duration=60):
         account=pwd.getpwnam(self.username)
         self.transport=self.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
-        self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':self.username,'transport':self.transport,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
+        self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':a.timed_owner,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
         if temporary:
             self.command('prepare-account-policy',{'id':id})
             try:self.command('activate-attempt',{'id':id});raise AssertionError('Bootstrap started exam')
@@ -165,6 +184,101 @@ def normal_access(label):
     ok(label)
 
 wait_for(agent_ready,40)
+
+if a.timed_owner:
+    marker=json.loads(pathlib.Path('/run/ssh-exam-qualification-input/run.json').read_text())
+    assert a.username=='examq' and marker['username']=='examq' and marker['profile']=='timed-owner'
+    assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn'
+    assert temporary, 'Actual protected account-policy handoff required'
+    connection=Connection(); panes=[]; pinned=[]; stopped=False
+    try:
+        id=connection.start(duration=60)
+        original=info(id)
+        assert original.get('browser_ssh') and original.get('terminal_supervised'), 'Timed owner mode was not selected through actual prepare/Begin'
+        assert not original.get('registered_owner'), 'This native legacy fixture must not invent unified grant/page evidence'
+        values=['unsaved-'+uuid.uuid4().hex for _ in range(2)]
+        pids=[]
+        for number in range(2):
+            pane=connection.pane(id);panes.append(pane)
+            # The joined marker is absent from echoed input: observe shell work,
+            # not an allocated window, EXAM-READY line or a typed command echo.
+            pane.stdin.write(("buffer="+values[number]+"; printf 'OWNER-%s%s:%s:END-%s\\n' READY- "+str(number)+" \"$$\" "+str(number)+"\n").encode());pane.stdin.flush()
+            output=read_until(pane,(':END-'+str(number)).encode())
+            identity=output.split(('OWNER-READY-'+str(number)+':').encode(),1)[1].split((':END-'+str(number)).encode(),1)[0].strip()
+            pids.append(int(identity))
+        # Shells are PID1 in separate private PID namespaces. Pin the distinct
+        # guest-visible kernel processes rather than rejecting that confinement.
+        assert all(pid>=1 for pid in pids)
+        owner=json.loads(root('examctl','panes','supervisor',id))
+        assert owner['observation_only'] and owner['attached_panes']==2 and len(owner['attached_units'])==2
+        unit=owner['supervisor'];pid=owner['pid']
+        kernel_pids=[]
+        for workload in owner['attached_units']:
+            assert pathlib.Path(workload).name==workload and workload.startswith('exam-'+id+'-') and workload.endswith('.scope')
+            observed=[]
+            for process in (pathlib.Path('/sys/fs/cgroup/exam.slice')/workload/'cgroup.procs').read_text().split():
+                process=int(process)
+                status=(pathlib.Path('/proc')/str(process)/'status').read_text()
+                uids=next(line.split()[1:] for line in status.splitlines() if line.startswith('Uid:'))
+                if list(map(int,uids))==[account.pw_uid]*4:
+                    descriptor=os.pidfd_open(process);pinned.append(descriptor);observed.append(process);kernel_pids.append(process)
+            assert observed, 'Actual owned scope has no positively identified synthetic student process'
+        assert len(set(kernel_pids))>=2
+        lifetime=select.poll()
+        for descriptor in pinned:lifetime.register(descriptor,select.POLLIN)
+        assert not lifetime.poll(0)
+        group=pathlib.Path('/proc',str(pid),'cgroup').read_text()
+        agent_pid=int(root('systemctl','show','exam-agent.service','--property=MainPID','--value').strip())
+        agent_group=pathlib.Path('/proc',str(agent_pid),'cgroup').read_text()
+        assert '/examterminal.slice/'+unit in group and group!=agent_group
+        for property,expected in [('MemoryMax',str(64*1024*1024)),('MemorySwapMax','0'),('TasksMax','64')]:
+            assert root('systemctl','show',unit,'--property='+property,'--value').strip()==expected
+        ok('two actual timed SSH panes share one bounded independently scoped owner, observed through examctl')
+        connection.command('renew-execution-lease',{'id':id})
+        root('systemctl','stop','exam-agent.service');stopped=True
+        for number,pane in enumerate(panes):
+            pane.stdin.write(("printf 'SURVIVED-%s%s:%s:%s\\n' OWNER- "+str(number)+" \"$$\" \"$buffer\"\n").encode());pane.stdin.flush()
+            expected=('SURVIVED-OWNER-'+str(number)+':'+str(pids[number])+':'+values[number]).encode()
+            read_until(pane,expected,timeout=3)
+        still=json.loads(root('examctl','panes','supervisor',id))
+        assert still['pid']==pid and still['supervisor']==unit and still['attached_panes']==2
+        assert not lifetime.poll(0), 'A pinned original student process exited during coordinator stop'
+        ok('both shell PIDs and unsaved variables survive only the guest coordinator stop before legacy lease expiry')
+        root('examctl','pause',id,'--reason','Synthetic current-policy negative retention control')
+        locked=info(id)
+        assert locked['state']=='LOCKED' and locked['start']==original['start'] and locked['deadline']==original['deadline'] and locked['original_deadline']==original['original_deadline']
+        wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
+        def original_students_ended():
+            for descriptor in pinned:
+                poll=select.poll();poll.register(descriptor,select.POLLIN)
+                if not poll.poll(0):return False
+            return True
+        wait_for(original_students_ended,timeout=8,interval=.05)
+        assert locked['access_state']=='HELD'
+        ok('current legacy policy pause terminates panes without refund/reopening; C3 retained lockout remains unimplemented')
+        root('examctl','stop',id,'--reason','Synthetic timed-owner qualification collection')
+        wait_for(lambda:info(id)['state']=='COMPLETED' and info(id)['protected'],timeout=45)
+        final,archive,checksum=secure(id)
+        assert final['start']==original['start'] and final['deadline']==original['deadline'] and final['original_deadline']==original['original_deadline'] and final['access_state']=='HELD'
+        ok('protected collection preserves the original timed interval and account hold after owner/coordinator loss')
+    finally:
+        for pane in panes:
+            if pane.poll() is None:
+                pane.kill();pane.wait(timeout=5) # Exact owned client only, never a process-name kill.
+        connection.close()
+        for descriptor in pinned:os.close(descriptor)
+        if stopped:
+            root('systemctl','start','exam-agent.service')
+    def restrictions_restored():
+        observed=json.loads(root('examctl','info',id,'--read-only'))['attempts'][0]
+        assert observed['start']==original['start'] and observed['deadline']==original['deadline'] and observed['original_deadline']==original['original_deadline']
+        if int(time.time()*1000)<original['deadline']:
+            assert observed['access_state']=='HELD', 'Restrictions released before authoritative deadline'
+        return observed['access_state']=='RELEASED' and observed['policy_state']=='NORMAL'
+    wait_for(restrictions_restored,timeout=max(0,original['deadline']/1000-time.time())+30)
+    normal_access('original-deadline enforcement restores ordinary SSH/SFTP and original account attributes without override')
+    print(json.dumps({'passed':passed,'count':len(passed),'timed_owner':True,'retained_lockout':False}),flush=True)
+    raise SystemExit(0)
 
 if a.worker_isolation:
     assert temporary and a.peer and a.peer!=a.username

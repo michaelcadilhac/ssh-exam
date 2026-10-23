@@ -35,6 +35,7 @@ FILES = {
     'qualification_callbacks.py': ('/root/qualification-callbacks.py', 0o600),
     'exam-collection.slice': ('/etc/systemd/system/exam-collection.slice', 0o644),
     'exam-template.slice': ('/etc/systemd/system/exam-template.slice', 0o644),
+    'examterminal.slice': ('/etc/systemd/system/examterminal.slice', 0o644),
     'linux_qualification.py': (None, 0o600),
     'overlay_guest.py': (None, 0o600),
     'core-qualification.test': (None, 0o755),
@@ -81,7 +82,9 @@ def authority(config):
             raise RuntimeError('Host has live/unresolved exam work; isolated test refused/aborted')
     fields = ('id', 'exam', 'username', 'uid', 'state', 'settings', 'start',
               'deadline', 'original_deadline', 'clock_revision', 'protected',
-              'checksum', 'access_state', 'policy_state')
+              'checksum', 'access_state', 'policy_state', 'clock_resets',
+              'grant', 'grant_begin_intent', 'registered_owner', 'workspace',
+              'expected_recovery', 'browser_ssh', 'terminal_supervised')
     return {key: {field: a.get(field) for field in fields}
             for key, a in attempts.items()}
 
@@ -285,7 +288,7 @@ if __name__ == '__main__':
     parser.add_argument('--guest', type=Path, required=True)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--username', default='examq')
-    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
+    parser.add_argument('--profile', choices=('enforcement', 'worker-isolation', 'timed-owner', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):
