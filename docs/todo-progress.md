@@ -3,6 +3,17 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October22 C4 hold-metadata safety outcome: actual root-namespace CLI reproduced a
+missing held flag as released/candidate (RED0.142s; cleanup remained disabled).
+The existing v1 reader now requires complete explicit/unambiguous/non-null/UTF-8
+records; show/list/hold/release preserve malformed evidence/audit and valid true/
+false history, timing/access/work. Focused races core1.269s/CLI2.658s, full native
+race/resource/namespace/compiler/default-size core312.137s/CLI29.516s and static
+build/vet/diff pass. No schema migration, deletion, protected-history change or
+new guest/web artifact qualification. See workspace-retention.md for state review,
+rollback caveat and remaining C4 proof/cleanup work. C16 live-authority placement
+is awaiting the instructor; approved C1–C15 are unchanged. Not deployed (11/38).
+
 October22 native supervisor diagnostics outcome: root `panes supervisor ATTEMPT`
 now observes bounded private owner metadata without global state/initialization,
 controls or work permission. Actual root-namespace CLI survives creator death/

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"unicode/utf8"
 
 	"golang.org/x/sys/unix"
 )
@@ -195,10 +196,25 @@ func (e *Engine) readWorkspaceHold(a *Attempt) (WorkspaceHold, error) {
 		return h, errors.New("unsafe workspace hold record; no cleanup or hold replacement is permitted")
 	}
 	var stored WorkspaceHold
-	if err := decodeWorkerFrame(f, 16384, &stored); err != nil {
+	b, readErr := io.ReadAll(io.LimitReader(f, 16385))
+	var fields map[string]json.RawMessage
+	required := []string{"version", "attempt", "exam", "username", "uid", "revision", "held", "reason", "updated_at", "actor_uid", "effective_uid"}
+	valid := readErr == nil && len(b) <= 16384 && utf8.Valid(b) && validReadOnlyJSON(b) && json.Unmarshal(b, &fields) == nil && len(fields) == len(required)
+	if valid {
+		for _, name := range required {
+			value, present := fields[name]
+			if !present || bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+				valid = false
+				break
+			}
+		}
+	}
+	// Existing v1 writers serialize every field, including false/zero values.
+	// Absence/null/duplicate/case aliases must never default a hold to released.
+	if !valid || decodeWorkerFrame(bytes.NewReader(b), 16384, &stored) != nil {
 		return h, errors.New("workspace hold record is malformed; preserve it and restore verified metadata before changing retention")
 	}
-	if stored.Version != 1 || stored.Attempt != a.ID || stored.Exam != a.Exam || stored.Username != a.Username || stored.UID != a.UID || stored.Revision <= 0 || stored.UpdatedAt <= 0 || len(stored.Reason) < 8 || len(stored.Reason) > 1000 {
+	if stored.Version != 1 || stored.Attempt != a.ID || stored.Exam != a.Exam || stored.Username != a.Username || stored.UID != a.UID || stored.Revision <= 0 || stored.UpdatedAt <= 0 || len(stored.Reason) < 8 || len(stored.Reason) > 1000 || stored.ActorUID < 0 || stored.EffectiveUID < 0 {
 		return h, errors.New("workspace hold record identity/revision is invalid; no cleanup or replacement is permitted")
 	}
 	return stored, nil

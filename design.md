@@ -153,6 +153,12 @@ preserves UNKNOWN. It accepts no descriptors and grants no permission; operation
 work handoff retains its full loaded-role/peer/scope checks. No state/clock/hold
 write or new web control listener. See docs/terminal-supervisor-observation.md.
 
+Workspace-hold v1 metadata must be complete and explicit: missing/null/duplicate
+or case-aliased fields never default protection to released. Invalid UTF-8 or
+identity/revision/audit attribution refuses without replacing the record. Valid
+true/false writer records retain their format and independent timing/access;
+no deletion/eligibility capability is enabled. See docs/workspace-retention.md.
+
 ## 2. Product context and defaults
 
 The local new-preflight workflow also isolates readiness/home copying from shared

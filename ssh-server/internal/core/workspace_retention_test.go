@@ -108,6 +108,78 @@ func TestWorkspaceHoldsSurviveRestartOldStateWritersAndStaleRelease(t *testing.T
 	}
 }
 
+func TestWorkspaceHoldRequiresCompleteExplicitV1Fields(t *testing.T) {
+	e, id := workspaceRetentionFixture(t)
+	h, err := e.SetWorkspaceHold(id, true, 0, "Preserve metadata until explicit operator review")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(e.workspaceRetentionDirectory(), id+".json")
+	valid, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auditPath := filepath.Join(e.Config.State, "audit.ndjson")
+	audit, err := os.ReadFile(auditPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields := []string{"version", "attempt", "exam", "username", "uid", "revision", "held", "reason", "updated_at", "actor_uid", "effective_uid"}
+	for _, name := range fields {
+		for _, kind := range []string{"missing", "null"} {
+			t.Run(kind+"-"+name, func(t *testing.T) {
+				var raw map[string]json.RawMessage
+				if err := json.Unmarshal(valid, &raw); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "missing" {
+					delete(raw, name)
+				} else {
+					raw[name] = json.RawMessage("null")
+				}
+				bad, err := json.Marshal(raw)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, bad, 0600); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := e.WorkspaceRetention(id); err == nil {
+					t.Fatal("incomplete hold became inspectable/unheld", name)
+				}
+				if _, err := e.WorkspaceRetentions("midterm", "", 100); err == nil {
+					t.Fatal("inventory accepted incomplete hold", name)
+				}
+				if _, err := e.SetWorkspaceHold(id, false, h.Revision, "Never overwrite ambiguous protection metadata"); err == nil {
+					t.Fatal("incomplete hold was overwritten/released", name)
+				}
+				after, err := os.ReadFile(path)
+				if err != nil || string(after) != string(bad) {
+					t.Fatal("refusal changed hold evidence", name, err)
+				}
+				gotAudit, err := os.ReadFile(auditPath)
+				if err != nil || string(gotAudit) != string(audit) {
+					t.Fatal("corrupt record produced an accepted control audit", name, err)
+				}
+			})
+		}
+	}
+	if err := os.WriteFile(path, valid, 0600); err != nil {
+		t.Fatal(err)
+	}
+	status, err := e.WorkspaceRetention(id)
+	if err != nil || status.Hold != h || !status.Hold.Held || status.Eligible || status.ArchiveVerified {
+		t.Fatal("complete explicit true hold did not round trip", status, err)
+	}
+	if _, err := e.SetWorkspaceHold(id, false, h.Revision, "Explicitly reviewed release retains all original restrictions"); err != nil {
+		t.Fatal(err)
+	}
+	status, err = e.WorkspaceRetention(id)
+	if err != nil || status.Hold.Held || status.Hold.Revision != 2 || status.AccessState != "HELD" || status.Eligible {
+		t.Fatal("legitimate explicit false was rejected or weakened restrictions", status, err)
+	}
+}
+
 func TestWorkspaceHoldAuditFailureAndUnsafeMetadataCannotClearRetention(t *testing.T) {
 	e, id := workspaceRetentionFixture(t)
 	audit := filepath.Join(e.Config.State, "audit.ndjson")

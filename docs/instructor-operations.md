@@ -215,6 +215,13 @@ bounded. It is not disk-wide isolation or a new reason to ignore missing monitor
 Existing inspection/close/continuation workflows are unchanged. Do not clear
 quota locks or restart the shared agent; see terminal-recording-isolation.md.
 
+Local workspace-hold reader hardening (not deployed) refuses incomplete/null/
+duplicate/case-aliased protection metadata instead of reporting a missing held
+flag as released. Preserve the record and independent markers; restore a verified
+consistent backup, never clear/edit them to force release. Existing supported
+`workspaces show/list/hold/release-hold` retain original timing/access/protection;
+no cleanup command is enabled. See workspace-retention.md for evidence and limits.
+
 Local C2a4 (not deployed) adds **Administration → Template catalog**, a read-only
 view of exact agent/name/hash metadata and first/latest attestation timestamps.
 The catalog view does not choose a version, edit defaults, issue grants or prove

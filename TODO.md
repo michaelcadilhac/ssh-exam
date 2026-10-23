@@ -411,6 +411,15 @@ enabled; no deployment or closed critical-item claim.
 
 ## Firm design policy: examctl is the complete management interface
 
+October22 independent C4 hold-safety fix is implemented/tested locally: existing
+incomplete/null/duplicate/case-aliased v1 hold metadata no longer defaults to
+released/candidate or permits replacement. Actual workspace CLI reproduces the
+old error (RED0.142s); all required-field/null, show/list/hold/release refusals,
+valid true/false and preserved-work/audit/interval/hold regressions pass. Full
+native race/resource/build passes. See docs/workspace-retention.md. This does not
+enable cleanup, verify archives/kernel references, release holds or complete C4.
+No production change; main TODO count remains11/38.
+
 **If an exam-management operation can be done, it must be doable through
 `examctl`.** This includes every exam-specific setting and action exposed in the
 web administrator interface. `examctl` must be the self-contained,

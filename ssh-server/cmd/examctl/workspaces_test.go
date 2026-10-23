@@ -139,6 +139,60 @@ func TestWorkspaceCLIInRootUserNamespace(t *testing.T) {
 	if !show().Hold.Held {
 		t.Fatal("old state writer lost separate hold")
 	}
+	recordPath := filepath.Join(c.State, "workspace-retention", id+".json")
+	validHold, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"missing-held", "null-held", "duplicate-held", "case-alias"} {
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(validHold, &raw); err != nil {
+			t.Fatal(err)
+		}
+		bad := append([]byte(nil), validHold...)
+		switch mode {
+		case "missing-held":
+			delete(raw, "held")
+			bad, _ = json.Marshal(raw)
+		case "null-held":
+			raw["held"] = json.RawMessage("null")
+			bad, _ = json.Marshal(raw)
+		case "duplicate-held":
+			bad = []byte(strings.Replace(string(bad), `"held":true`, `"held":true,"held":false`, 1))
+		case "case-alias":
+			bad = []byte(strings.Replace(string(bad), `"held":true`, `"held":true,"Held":false`, 1))
+		}
+		if string(bad) == string(validHold) {
+			t.Fatal("fixture did not corrupt intended held field", mode)
+		}
+		if err := os.WriteFile(recordPath, bad, 0600); err != nil {
+			t.Fatal(err)
+		}
+		auditBefore, err := os.ReadFile(filepath.Join(c.State, "audit.ndjson"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, args := range [][]string{{"show", id}, {"list", "--exam", "midterm"}, {"hold", id, "--revision", "1", "--reason", "A corrupt record must not be replaced"}, {"release-hold", id, "--revision", "1", "--reason", "A corrupt record must never imply release"}} {
+			out, code := invoke(args...)
+			if code != 1 || !strings.Contains(out, "malformed") || strings.Contains(out, `"held":false`) {
+				t.Fatal("actual CLI trusted ambiguous/incomplete hold metadata", mode, args, code, out)
+			}
+			after, err := os.ReadFile(recordPath)
+			if err != nil || string(after) != string(bad) {
+				t.Fatal("refused CLI control overwrote hold evidence", mode, err)
+			}
+		}
+		auditAfter, err := os.ReadFile(filepath.Join(c.State, "audit.ndjson"))
+		if err != nil || string(auditAfter) != string(auditBefore) {
+			t.Fatal("malformed hold produced a new accepted control intent", mode, err)
+		}
+		if err := os.WriteFile(recordPath, validHold, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if !show().Hold.Held {
+			t.Fatal("valid explicit hold failed round trip")
+		}
+	}
 	out, code = invoke("release-hold", id, "--revision", "0", "--reason", "A stale lost reply cannot clear a newer hold")
 	if code != 1 || !strings.Contains(out, "changed") || !strings.Contains(out, "show") || !show().Hold.Held {
 		t.Fatal(code, out)

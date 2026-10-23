@@ -45,7 +45,7 @@ state, true server control/FD refusals, strict/private replies and live-sender
 timeout. State/failure review and retained fixture failures are in
 terminal-supervisor-observation.md. Full native core299.869s/CLI28.567s, final
 guidance-specific repeats core15.360s/CLI1.745s, correctly sequenced full CLI14.678s
-and static build/vet/diff pass. All runners finish; local commit follows. No core
+and static build/vet/diff pass. All runners finish; local commit c601746. No core
 runtime change after broad qualification; final CLI-only messages get fresh
 affected checks. Root-role namespace/PAM proof remains guarded.
 
@@ -53,6 +53,20 @@ C16 is awaiting an instructor answer: colocate the live authority/input-cutoff
 loop in the approved attempt supervisor (recommended), or add one separate
 authority process per attempt. C12 grouping, C10 semantics and C1–C15 stay settled.
 Proposal/tradeoffs: todo-design-decisions.md. Continue independent approved work.
+
+Current independent milestone: `examctl workspaces show/list/hold/release-hold`
+now refuses an incomplete/ambiguous existing hold rather than defaulting protection
+to released. Actual CLI RED0.142s; three focused race repeats core1.269s/CLI2.658s
+pass all required-field/null and real CLI corruption/valid round-trip cases.
+State/failure review and exact limits are in workspace-retention.md. Full native
+race/resource/namespace/compiler/default-size core312.137s/CLI29.516s, static build/
+vet/diff pass. All runners finish; coherent local commit follows. Preserve hold/markers/audit/work and
+original/current timing/access; no cleanup command or new permission. Acceptance:
+strict complete v1 records, legitimate explicit true/false round trips, corruption
+refusal before overwrite/audit and actual CLI/root/help plus focused native races.
+Next record this validated hold-safety commit. Boundary:
+coherent validated hold-safety fix while C16 is awaiting an answer;
+do not expand into an unused cross-namespace scanner or enable cleanup.
 
 ## Earlier validated local outcomes
 
@@ -102,7 +116,7 @@ outbound HTTPS agreement at unified Begin, no offline permit/browser relay.
 
 ## Qualification and future rollout gate
 
-Pinned raw read-only csc-sys guard is BUSY at23:30UTC October22. No new upload or
+Pinned raw read-only csc-sys guard is BUSY at00:18UTC October23. No new upload or
 guest. The approved old remote bundle predates these changes and cannot qualify
 them. New exact-artifact installed-bootstrap/SSH/PAM/cgroup/hardening/source and
 retained-mode checks remain pending. BUSY/uncertain means no test: never clear

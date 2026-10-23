@@ -5,6 +5,56 @@ are **not complete**. C4a metadata/hold controls are implemented/tested locally;
 there is no cleanup command or production deletion. Latest instruction: keep all development/testing local; do not
 deploy or consolidate services.
 
+## October22 hold-record correctness follow-up (tested locally; not deployed)
+
+The actual root-user-namespace CLI reproduced an incomplete v1 record with its
+held field removed as `held:false`/`candidate:true` (RED0.142s). Eligibility still
+remained false and no cleanup command exists: this was incorrect protection
+metadata, not a claim that any workspace was deleted. The previous JSON decoder
+also accepted null/duplicate/case-aliased held fields through default/last values.
+
+Existing v1 writers serialize all eleven fields, including false/zero values.
+The reader now requires that exact complete, non-null schema, valid UTF-8,
+unambiguous JSON and existing identity/revision/owner/file checks. Negative audit
+UIDs are invalid; legitimate zero/root attribution is retained. No format/version
+change, backfill, hold release or valid-history rewrite is performed. An existing
+incomplete record is malformed, never an absent/new hold. A genuinely never-
+initialized retention history keeps the existing explicit revision0 workflow.
+
+Rollback requires no hold-file migration for valid v1 records, but an older
+permissive reader is not a repair path for malformed data: never accept its
+defaulted released/candidate output or overwrite evidence to bypass this refusal.
+Preserve all independent markers, records and audit alongside authoritative state.
+
+`workspaces show/list/hold/release-hold` all refuse before publishing replacement
+metadata or accepting a new hold-control audit. Preserve the corrupt record and
+known/initialized markers; restore a consistent verified private backup. Do not
+edit JSON/remove markers or run release-hold to bypass the refusal. Complete valid
+true/false records remain supported, with unchanged original/current deadlines,
+account holds, protected submissions, saved work and independent retention policy.
+Existing workspaces inspections still use their documented native initialization/
+job fence; this does not turn them into the newer no-write diagnostic interface.
+
+State/failure review: no new durable/pending state, reservation, permit, worker or
+management capability. Reads remain bounded16KiB and outside shared state after
+the existing short native snapshot; link/FIFO/owner protections and per-attempt
+concurrency fences remain. Unknown/corrupt metadata always blocks control; no
+timeout, missing field or decoding normalization establishes cleanup eligibility.
+Manual cleanup, archive verification and complete kernel-reference proof remain
+unimplemented/disabled; no production policy or record changes.
+
+Three focused race repeats pass core1.269s/CLI2.658s: all eleven fields missing/
+null, actual root-namespace CLI show/list/hold/release refusals for missing/null/
+duplicate/case-alias, exact bad bytes and audit preservation, valid true/false
+round trips and existing hold/loss/audit/link/busy controls. The CLI fixture invokes
+the real CLI entry in a compiled test executable, not a privileged installed-role
+qualification. Full native race/resource/namespace/compiler/default-size
+qualification passes core312.137s/CLI29.516s; static build/vet and diff checks pass.
+All runners finish. No app/browser/WASM source or artifact changed; preceding
+broad application/browser and affected callback evidence covers those unchanged
+surfaces. No redundant web rebuild/rerun or new root-guest qualification is claimed.
+Receipts: /tmp/ssh-exam-workspace-hold-schema-{red,acceptance,native}.log.
+
 ## C4a supported local metadata/hold workflow
 
 ```sh
