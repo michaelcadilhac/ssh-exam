@@ -27,6 +27,9 @@
   Use docs/todo-current-checkpoint.md to resume, not the entire historical log.
 - Resolve source paths with rg --files before opening them; do not guess filenames
   or expand unchecked shell globs. Keep history/source reads scoped and bounded.
+  If discovery does not show the intended file, resolve it in a separate call;
+  never append a guessed read to discovery. Check relative paths against the
+  command's cwd before launching a runner.
 - Read source as plain text, not a JSON-escaped wrapper. Keep paths consistent
   with each command's cwd and patch hunks in file order, one target block per
   file. After a patch fails, inspect current context before retrying it.
@@ -66,6 +69,11 @@
   do not batch a broad-suite launch with collecting that still-unknown result.
   End the orchestration script after collecting focused results; review them in
   the model before a separate call launches broad tests, even if the log says OK.
+- Do not edit a focused runner's source or tests while that run is active.
+  Cached/transformed modules can otherwise mix revisions and invalidate its
+  receipt. Freeze the relevant inputs, collect/read completion, then edit or
+  launch broad qualification. Run independent checks as separate structured
+  commands so a later successful command cannot hide an earlier failure.
 - Before broad qualification, review each new durable/intermediate state for
   inspection, cancellation, crash/restart, expiry, stale completion and admission
   bypass. No pending operation may become an indefinite account reservation or

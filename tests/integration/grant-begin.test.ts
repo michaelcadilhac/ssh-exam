@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { randomBytes, randomUUID, sign, verify } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -7,6 +7,12 @@ import { createApp } from "../../apps/server/src/app.js";
 import { hash } from "../../apps/server/src/db.js";
 import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 import { hosts } from "../fixtures/hosts.js";
+import { freshCapture } from "../fixtures/fresh-capture.js";
+
+const captureClock = vi.hoisted(() => ({ now: 10000 }));
+vi.mock("../../apps/server/src/monitoring-clock.js", () => ({
+  monitoringBootTimeMS: () => captureClock.now,
+}));
 
 it.each([
   "ordinary",
@@ -19,6 +25,7 @@ it.each([
   "additional-wrong-anchor",
   "old-ordered-role",
   "outbound-unavailable",
+  "capture-stale-at-outbound",
   "wrong-native-uid",
   "wrong-native-kind",
   "wrong-native-order",
@@ -34,6 +41,7 @@ it.each([
 ])(
   "new enrollment → signed SSH preparation → fresh authenticated grant Begin (%s)",
   async (scenario) => {
+    captureClock.now = 10000;
     const additional = scenario.startsWith("additional-"),
       allowance = additional ? 5400 : 7200;
     let priorHistory: any;
@@ -173,7 +181,7 @@ it.each([
         const nonce = randomBytes(32).toString("hex"),
           boot = "77777777-1234-4234-8234-123456789abc";
         const request = {
-          type: "grant-begin/v1",
+          type: "grant-begin/v2",
           agent: "class",
           nonce,
           at: Date.now(),
@@ -210,6 +218,12 @@ it.each([
           };
         }
         const payload = Buffer.from(JSON.stringify(request));
+        const staleCapture =
+          scenario === "capture-stale-at-outbound" && !failed;
+        if (staleCapture) {
+          failed = true;
+          captureClock.now += 15001;
+        }
         const response = await app.inject({
           method: "POST",
           url: "/api/agent/grant-begin",
@@ -222,6 +236,7 @@ it.each([
           payload,
         });
         if (
+          staleCapture ||
           request.uid !== 10001 ||
           request.grant.kind !== a.grant.kind ||
           request.grant.issuance_order !== a.grant.issuance_order ||
@@ -243,7 +258,7 @@ it.each([
           ),
         ).toBe(true);
         expect(JSON.parse(signed.toString())).toMatchObject({
-          type: "grant-begin/v1",
+          type: "grant-begin/v2",
           audience: "class",
           nonce,
           attempt: a.id,
@@ -816,9 +831,20 @@ it.each([
         expect(operations).not.toContain("activate-grant-attempt");
         return;
       }
+      const noFreshCapture = await begin();
+      expect(noFreshCapture.statusCode, noFreshCapture.body).toBe(409);
+      expect(noFreshCapture.json().code).toBe("monitoring_challenge_not_ready");
+      expect(store.attempt(id)).toMatchObject({
+        state: "PREPARING",
+        start: null,
+        deadline: null,
+        grant_begin_intent: null,
+      });
+      await freshCapture(app, id, page, headers);
       if (
         [
           "outbound-unavailable",
+          "capture-stale-at-outbound",
           "wrong-native-uid",
           "wrong-native-kind",
           "wrong-native-order",
@@ -839,6 +865,8 @@ it.each([
             .prepare("SELECT status FROM attempt_grants WHERE id=?")
             .get(issued.id),
         ).toEqual({ status: "AVAILABLE" });
+        if (scenario === "capture-stale-at-outbound")
+          await freshCapture(app, id, page, headers);
       }
       const actual = Date.now(),
         active = await begin();

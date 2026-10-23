@@ -224,6 +224,20 @@ export async function fixture(
       return model.status
         ? model.status(route)
         : route.fulfill({ json: snapshot() });
+    // These transition fixtures model capture transport only. Actual challenge
+    // freshness/security is exercised against the real authenticated server.
+    if (path.endsWith("/capture-challenges"))
+      return route.fulfill({
+        json: {
+          challenge: "synthetic-challenge",
+          after_sequence: 0,
+          valid_for_ms: 15000,
+        },
+      });
+    if (path.endsWith("/monitoring-readiness"))
+      return route.fulfill({
+        json: { complete: true, observation_only: true, age_ms: 0 },
+      });
     if (path.endsWith("/begin") || path.endsWith("/continue")) {
       if (path.endsWith("/continue") && model.continuation)
         return model.continuation(route);

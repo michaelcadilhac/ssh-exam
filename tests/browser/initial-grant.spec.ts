@@ -5,6 +5,31 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   page,
 }) => {
   test.setTimeout(60000);
+  let failChallenges = false,
+    refusedChallenges = 0,
+    starts = 0,
+    challengedUploads = 0;
+  await page.route("**/capture-challenges", async (route) => {
+    if (!failChallenges) return route.continue();
+    refusedChallenges++;
+    return route.fulfill({
+      status: 503,
+      json: {
+        error:
+          "Synthetic capture verification unavailable; retry before starting.",
+      },
+    });
+  });
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.endsWith("/begin")) starts++;
+  });
+  page.on("response", (response) => {
+    if (
+      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      response.status() === 200
+    )
+      challengedUploads++;
+  });
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("initial-grant");
@@ -45,6 +70,42 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
     grant_revision: 1,
   });
   await ready(page);
+  await expect
+    .poll(() => challengedUploads, { timeout: 10000 })
+    .toBeGreaterThan(0);
+  await expect(
+    page.getByRole("button", { name: "Begin exam", exact: true }),
+  ).toBeEnabled({ timeout: 5000 });
+  failChallenges = true;
+  await page
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click({ timeout: 3000 });
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click({ timeout: 3000 });
+  await expect(page.getByRole("dialog")).toContainText(
+    "Synthetic capture verification unavailable",
+  );
+  expect(refusedChallenges).toBeGreaterThan(0);
+  expect(starts).toBe(0);
+  expect(
+    (await (await page.request.get("/api/student/exam")).json()).attempt,
+  ).toMatchObject({
+    id: prepared.id,
+    state: "PREPARING",
+    start: null,
+    deadline: null,
+    grant_begin_intent: null,
+  });
+  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
+    0,
+  );
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close", exact: true })
+    .click({ timeout: 3000 });
+  failChallenges = false;
   await page.getByRole("button", { name: "Begin exam", exact: true }).click();
   const begin = page.waitForResponse(
     (response) =>
@@ -74,6 +135,8 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   });
   expect(active.deadline - active.start).toBe(5400000);
   expect(active.original_deadline).toBe(active.deadline);
+  expect(challengedUploads).toBeGreaterThanOrEqual(2);
+  expect(starts).toBe(1);
   const owner = JSON.parse(active.registered_owner);
   expect(owner).toMatchObject({
     attempt: active.id,

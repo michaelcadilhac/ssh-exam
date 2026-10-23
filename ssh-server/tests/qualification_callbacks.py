@@ -47,10 +47,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     registry=Path('/run/qualification-framed-grant.json')
     metadata=registry.stat();assert metadata.st_uid==0 and metadata.st_mode&0o777==0o600 and metadata.st_size<=65536
     expected=json.loads(registry.read_bytes())
-    assert expected['type']=='grant-begin/v1' and expected['agent']==config['agent_id']
+    assert expected['type']=='grant-begin/v2' and expected['agent']==config['agent_id']
     assert all(data.get(k)==v for k,v in expected.items())
     reply={k:data[k] for k in ('type','nonce','attempt','grant','intent','transport','boot','page_epoch')}
-    reply.update(audience=config['agent_id'],expires=int(time.time()*1000)+30000)
+    # Synthetic native-owner qualification only; real preflight freshness is
+    # tested through authenticated HTTP/JPEG in the application suites.
+    reply.update(audience=config['agent_id'],expires=int(time.time()*1000)+15000,capture_valid_for_ms=15000)
     payload=json.dumps(reply,separators=(',',':')).encode()
     result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
    elif self.path=='/api/agent/timing':

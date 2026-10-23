@@ -11,6 +11,22 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The challenged-preflight increment requires matching loaded capture JS, gateway
+and native grant-begin/v2 roles. It adds no schema/backfill or persisted permit.
+New pre-start pages must take fresh challenged samples after gateway restart;
+frame rows cannot restore readiness. Old/new Begin contracts refuse before clock
+commit, with no fallback. Already committed exact retries keep their original
+interval/intent; do not cancel/reissue a consumed grant to resolve compatibility.
+Before a separately authorized drained rollout, qualify actual fresh Begin,
+late/expired verification, loss/retry, required webcam, saved settings and full
+allowance on retry using the exact loaded artifacts. An older gateway/native
+pair restores weaker pre-start freshness behavior and is not an equivalent
+policy rollback. Keep new admission closed and repair forward unless compatible
+rollback is proven. Preserve all grants/intents/consumption, original deadlines,
+work/archives/holds and independent owners. This increment does not enable C3/C16
+retention or justify service consolidation. Nothing here is executed.
+See challenged-preflight-capture.md for current evidence and fixture limits.
+
 The local framed-input candidate keeps schema029 and adds optional packet epochs
 to native one-use capabilities/pane proofs. Qualify matching loaded JS producer,
 WASM, gateway, exam-login, agent and attempt supervisor. A new WASM file alone

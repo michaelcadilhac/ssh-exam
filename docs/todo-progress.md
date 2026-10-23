@@ -2616,3 +2616,24 @@ Critical C3/C16 hold/live-authority/input-discard/approved Continue remains open
 no retention or automatic recovery enabled. Continue that integrated workflow,
 not another standalone primitive. No push, deployment, production/student mutation
 or temporary-service consolidation.
+
+## October23: challenged preflight and fresh authenticated Begin
+
+Implemented/tested locally: actual loaded capture obtains a server challenge
+before drawing new required JPEGs; Begin samples current conditions, and native
+grant-begin/v2 rechecks freshness over authenticated outbound HTTPS before clock/
+grant commit. Native CLOCK_BOOTTIME charges transit once and fences final metadata
+delay. Old/missing/stale contracts refuse without consumption; retry preserves
+the original grant/source and full allowance. This is initial readiness only,
+not C3/C16 live permission, retained hold or automatic technical recovery.
+
+Full543 app, native race/resource/compiler/default-size(core424.920s/CLI39.772s),
+all151 browser scenarios15.4m in one green run, builds/types/vet/35 Python and
+built-clock smoke pass. NEW exact root profiles10/9/12 pass with preservation,
+24 healthy renewals max0.0893566683s and exact protected retry. Negative controls,
+corrected mixed-revision/setup fixtures, state review and frozen artifacts:
+challenged-preflight-capture.md. Original dirty screenshot is exact; all runners
+ended. Local coherent commit only; no deployment/production/student mutation or
+missing executable. C1–C18 settled; capacity target requested in a new dialog.
+Continue actual supervisor authority/verified freeze/approved Continue; the main
+critical TODO stays open, along with source retention/migration and other scope.

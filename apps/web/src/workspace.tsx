@@ -644,7 +644,13 @@ export function Workspace({
     }
   }, [signOutAfterFinish, attempt.state, attempt.protected]);
   useEffect(() => {
-    capture.current = new Capture(id, page, incident);
+    capture.current = new Capture(
+      id,
+      page,
+      incident,
+      conditions,
+      () => attemptRef.current.state === "PREPARING",
+    );
     for (const pane of reservation.panes || []) addPane(pane);
     let mounted = true;
     let retryDelay = 1000;
@@ -1136,12 +1142,12 @@ export function Workspace({
         "Monitoring connection is not confirmed. Wait for it to reconnect before starting; the exam has not started.",
       );
     const epoch = activationEpoch.current;
-    const r = conditions();
     ++snapshotEpoch.current;
     activating.current = true;
     let result;
     try {
-      result = await api(`/student/attempts/${id}/begin`, r, page);
+      await capture.current!.verifyForBegin(settings.webcam);
+      result = await api(`/student/attempts/${id}/begin`, conditions(), page);
     } finally {
       activating.current = false;
     }

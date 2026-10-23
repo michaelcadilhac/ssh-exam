@@ -45,6 +45,7 @@ import {
 } from "./connection-process.js";
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
+import { MonitoringChallengeError } from "./monitoring-readiness.js";
 import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
 import {
   MonitoringPurgeJobs,
@@ -411,6 +412,9 @@ export async function createApp(
     const err = error as Error & { statusCode?: number };
     const status = err.statusCode || 400;
     reply.code(status).send({
+      ...(error instanceof MonitoringChallengeError
+        ? { code: error.code }
+        : {}),
       error:
         status >= 500
           ? error instanceof MonitoringMediaError
@@ -451,7 +455,9 @@ export async function createApp(
         String(req.headers["x-exam-signature"] || ""),
       );
       return agent.signTiming(
-        grants.verifyBegin(JSON.parse(payload.toString())),
+        grants.verifyBegin(JSON.parse(payload.toString()), (a) =>
+          monitoring.requireBeginReadiness(a),
+        ),
       );
     },
   );
@@ -1378,6 +1384,7 @@ export async function createApp(
       throw Error("Production exam setup is awaiting operator verification.");
     const settings = JSON.parse(a.settings);
     requireBeginWindow(a.exam, settings);
+    monitoring.requireBeginReadiness(a);
     if ((settings.webcam && !(req.body as any).webcam) || !healthy(a))
       throw Error("Current required images missing");
     const conn = connections.get(`${a.exam}:${a.username}`);
@@ -1470,6 +1477,7 @@ export async function createApp(
           "Preparation or required monitoring changed during Begin checks; no new Begin requested; inspect current status",
         );
       requireBeginWindow(a.exam, JSON.parse(a.settings));
+      monitoring.requireBeginReadiness(a);
       const recovery = a.recovery_preflight
         ? recoveryPreflight.parse(JSON.parse(a.recovery_preflight))
         : null;
@@ -1565,6 +1573,35 @@ export async function createApp(
       };
     })();
   });
+  app.post(
+    "/api/student/attempts/:id/capture-challenges",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req: any) => {
+      const a = studentAttempt(req);
+      page(req, a);
+      const { source } = z
+        .object({ source: z.enum(["screen", "webcam"]) })
+        .strict()
+        .parse(req.body);
+      return monitoring.captureChallenge(a, a.page_hash!, source);
+    },
+  );
+  app.get("/api/student/attempts/:id/monitoring-readiness", async (req) => {
+    const a = studentAttempt(req);
+    page(req, a);
+    return monitoring.captureReadiness(a, a.page_hash!);
+  });
+  app.post(
+    "/api/student/attempts/:id/frames/challenged",
+    { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
+    async (req) => {
+      const a = studentAttempt(req);
+      page(req, a);
+      if (authenticationGap(a.id))
+        throw Error("Capture suspended for authorized authentication gap");
+      return monitoring.challengedFrame(a, req.body, a.page_hash!);
+    },
+  );
   app.post(
     "/api/student/attempts/:id/frames",
     { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },
@@ -3288,5 +3325,5 @@ export async function createApp(
     await Promise.allSettled([...sessionTasks]);
     store.close();
   });
-  return { app, store, life };
+  return { app, store, life, monitoring };
 }

@@ -6,6 +6,7 @@ import WebSocket from "ws";
 import { createApp } from "../../apps/server/src/app.js";
 import { hosts } from "../fixtures/hosts.js";
 import { hash } from "../../apps/server/src/db.js";
+import { freshCapture } from "../fixtures/fresh-capture.js";
 
 it.each([
   [false, false],
@@ -169,11 +170,6 @@ it.each([
           "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact) VALUES('setup','e','student',10001,'PREPARING',?,?,?)",
         )
         .run(JSON.stringify(settings), hash(page), Date.now());
-      store.db
-        .prepare(
-          "INSERT INTO frames VALUES('f','setup','screen',0,?,0,0,?,640,480,'fixture')",
-        )
-        .run(hash(page), Date.now());
       remote = {
         id: "setup",
         exam: "e",
@@ -189,6 +185,7 @@ it.each([
         "x-csrf-token": session.json().csrf,
         "x-page-instance": page,
       };
+      await freshCapture(app, "setup", page, headers);
       const begun = await app.inject({
         method: "POST",
         url: "/api/student/attempts/setup/begin",

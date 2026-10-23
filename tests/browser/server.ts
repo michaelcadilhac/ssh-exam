@@ -327,7 +327,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           boot = "77777777-1234-4234-8234-123456789abc";
         const payload = Buffer.from(
           JSON.stringify({
-            type: "grant-begin/v1",
+            type: "grant-begin/v2",
             agent: "class",
             nonce,
             at: Date.now(),
@@ -385,7 +385,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
             readFileSync(h.agentConfig.signingKey),
             Buffer.from(frame.signature, "base64"),
           ) ||
-          reply.type !== "grant-begin/v1" ||
+          reply.type !== "grant-begin/v2" ||
           reply.nonce !== nonce ||
           reply.attempt !== a.id ||
           reply.intent !== b.grant_begin_intent ||
@@ -393,6 +393,9 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           reply.boot !== boot ||
           reply.page_epoch !== b.page_epoch ||
           reply.expires <= Date.now() ||
+          !Number.isSafeInteger(reply.capture_valid_for_ms) ||
+          reply.capture_valid_for_ms <= 0 ||
+          reply.capture_valid_for_ms > 15000 ||
           JSON.stringify(reply.grant) !== JSON.stringify(a.grant)
         )
           throw Error("Bad signed browser-fixture Begin response");

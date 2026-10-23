@@ -87,7 +87,8 @@ Native distinct signed prepare/Begin purposes bind grant/revision/hash, full
 settings, actual account/transport and exact private workspace receipt. First
 verified claim retains UID across cancellation; neither web nor native may
 silently rebind it. Native Begin uses existing pinned outbound HTTPS/root Ed25519
-authentication, distinct grant-begin/v1 purpose, fresh nonce/expiry and exact
+authentication, originally distinct grant-begin/v1 purpose (superseded locally by
+challenged grant-begin/v2; see challenged-preflight-capture.md), fresh nonce/expiry and exact
 owner/boot/intent scope, outside the shared state lock. Unavailable/wrong/stale
 verification starts no clock. Commit rechecks the same source/settings, command/
 verification expiry and Begin window after final metadata IO, using the actual

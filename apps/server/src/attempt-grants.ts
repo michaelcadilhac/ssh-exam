@@ -709,7 +709,7 @@ export class AttemptGrants {
       return id;
     })();
   }
-  verifyBegin(input: unknown) {
+  verifyBegin(input: unknown, freshCapture: (a: Attempt) => number) {
     const b = grantBeginRequest.parse(input),
       a = this.store.attempt(b.attempt),
       g = this.view(this.row(b.grant.id));
@@ -757,14 +757,22 @@ export class AttemptGrants {
       return conflict(
         "Fresh grant Begin verification refused; preserve original intent/attempt and inspect current grant, owner, window and native status. No refund or new clock authorized.",
       );
+    // This in-memory observation is checked again at the authenticated native
+    // request, after any slow handoff/source work. It is not an ACTIVE permit.
+    const remaining = freshCapture(a);
+    if (!Number.isSafeInteger(remaining) || remaining <= 0 || remaining > 15000)
+      return conflict(
+        "Fresh preflight capture unavailable; sample again before retrying the same Begin intent. No interval committed.",
+      );
     this.store.db
       .prepare("UPDATE grant_begin_intents SET verified_at=? WHERE id=?")
       .run(now(), b.intent);
     return {
-      type: "grant-begin/v1",
+      type: "grant-begin/v2",
       audience: this.agent,
       nonce: b.nonce,
-      expires: now() + 30000,
+      expires: now() + remaining,
+      capture_valid_for_ms: remaining,
       attempt: b.attempt,
       grant: b.grant,
       intent: b.intent,

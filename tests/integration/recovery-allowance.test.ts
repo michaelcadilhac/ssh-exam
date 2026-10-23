@@ -6,6 +6,7 @@ import { createApp } from "../../apps/server/src/app.js";
 import { hash } from "../../apps/server/src/db.js";
 import { RosterManagement } from "../../apps/server/src/roster-management.js";
 import { hosts } from "../fixtures/hosts.js";
+import { freshCapture } from "../fixtures/fresh-capture.js";
 
 it.each([
   "override",
@@ -373,11 +374,7 @@ it.each([
       );
       expect(grant.consumed).toBe(false);
       expect(remote.workspace.source.attempt).toBe(source.source_attempt);
-      store.db
-        .prepare(
-          "INSERT INTO frames VALUES('f',?,'screen',0,?,0,0,?,640,480,'synthetic')",
-        )
-        .run(id, hash(page), Date.now());
+      await freshCapture(app, id, page, headers);
       const begin = await app.inject({
         method: "POST",
         url: `/api/student/attempts/${id}/begin`,

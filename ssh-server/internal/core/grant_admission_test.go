@@ -101,12 +101,12 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 			Settings  Settings      `json:"settings"`
 			PageEpoch string        `json:"page_epoch,omitempty"`
 		}
-		if json.Unmarshal(payload, &request) != nil || request.Type != "grant-begin/v1" || request.Agent != "class" || request.Settings.TemplateVersion == "" {
+		if json.Unmarshal(payload, &request) != nil || request.Type != "grant-begin/v2" || request.Agent != "class" || request.Settings.TemplateVersion == "" {
 			t.Error("wrong fresh verification scope/source")
 			w.WriteHeader(400)
 			return
 		}
-		reply, status := handler(grantBeginReply{Type: "grant-begin/v1", Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch})
+		reply, status := handler(grantBeginReply{Type: "grant-begin/v2", Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, CaptureValidFor: 15000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch})
 		if status != 200 {
 			w.WriteHeader(status)
 			return
@@ -718,7 +718,7 @@ func TestAdditionalConcurrentBeginKeepsOneOriginalInterval(t *testing.T) {
 }
 
 func TestInitialGrantFreshSignedRepliesCannotChangeScope(t *testing.T) {
-	for _, kind := range []string{"signature", "nonce", "intent", "grant", "revision", "transport", "boot", "expired", "purpose"} {
+	for _, kind := range []string{"signature", "nonce", "intent", "grant", "revision", "transport", "boot", "expired", "purpose", "legacy", "capture-missing", "capture-negative", "capture-excess", "capture-transit"} {
 		t.Run(kind, func(t *testing.T) {
 			e, key, r := initialGrantFixture(t)
 			var reached atomic.Bool
@@ -743,6 +743,17 @@ func TestInitialGrantFreshSignedRepliesCannotChangeScope(t *testing.T) {
 					reply.Expires = Millis() - 1
 				case "purpose":
 					reply.Type = "deadline-timing"
+				case "legacy":
+					reply.Type = "grant-begin/v1"
+				case "capture-missing":
+					reply.CaptureValidFor = 0
+				case "capture-negative":
+					reply.CaptureValidFor = -1
+				case "capture-excess":
+					reply.CaptureValidFor = 15001
+				case "capture-transit":
+					reply.CaptureValidFor = 1000
+					time.Sleep(1200 * time.Millisecond)
 				}
 				return reply, 200
 			})
@@ -754,6 +765,30 @@ func TestInitialGrantFreshSignedRepliesCannotChangeScope(t *testing.T) {
 			}
 			assertUnstartedWorkspace(t, e, r.ID)
 		})
+	}
+}
+
+func TestInitialGrantShortFreshReplyDoesNotDoubleChargeTransit(t *testing.T) {
+	e, key, r := initialGrantFixture(t)
+	var reached atomic.Bool
+	initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
+		reached.Store(true)
+		reply.CaptureValidFor = 3000
+		reply.Expires = Millis() + 3000
+		time.Sleep(1700 * time.Millisecond)
+		return reply, 200
+	})
+	r.GrantBeginIntent = "44444444-1234-4234-8234-123456789abc"
+	cmd := preparationCommand(r)
+	cmd.Op = "activate-grant-attempt"
+	actual := Millis()
+	result, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+	if err != nil || !reached.Load() {
+		t.Fatal("valid original freshness was charged twice", err)
+	}
+	a := result.(*Attempt)
+	if a.State != "ACTIVE" || a.Start < actual+1700 || a.Deadline-a.Start != 5400000 || a.GrantBeginIntent != r.GrantBeginIntent {
+		t.Fatal("fresh delayed Begin did not receive its original full allowance", a)
 	}
 }
 
@@ -790,6 +825,7 @@ func TestInitialGrantCommitRechecksExpiryAndWindowAfterFinalMetadata(t *testing.
 			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
 				if kind == "verification" {
 					reply.Expires = Millis() + 1000
+					reply.CaptureValidFor = 1000
 					target.Store(reply.Expires)
 				}
 				return reply, 200

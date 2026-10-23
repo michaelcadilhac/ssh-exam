@@ -18,15 +18,55 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { Store, hash, now, type Attempt } from "./db.js";
 import { enqueueMonitoringPurge } from "./monitoring-purge-jobs.js";
+import {
+  MonitoringChallengeError,
+  MonitoringReadiness,
+} from "./monitoring-readiness.js";
 export class Monitoring {
+  private readiness = new MonitoringReadiness();
+  captureChallenge(a: Attempt, page: string, source: unknown) {
+    this.currentCapture(a, page);
+    const row = this.store.db
+      .prepare(
+        "SELECT MAX(seq) seq FROM frames WHERE attempt=? AND source=? AND page_hash=?",
+      )
+      .get(a.id, source, page) as { seq: number | null };
+    return this.readiness.issue(a, page, source, row.seq ?? 0);
+  }
+  challengedFrame(a: Attempt, input: any, page: string) {
+    return this.frame(a, input, page, true);
+  }
+  private currentCapture(a: Attempt, page: string) {
+    const current = this.store.attempt(a.id);
+    if (
+      !current ||
+      current.page_hash !== page ||
+      current.generation !== a.generation ||
+      current.settings !== a.settings ||
+      this.store.db
+        .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
+        .get(a.id)
+    )
+      throw new MonitoringChallengeError("monitoring_challenge_scope");
+    return current;
+  }
+  captureReadiness(a: Attempt, page: string) {
+    return this.readiness.inspect(this.currentCapture(a, page), page);
+  }
+  requireBeginReadiness(a: Attempt) {
+    const evidence = this.captureReadiness(a, a.page_hash ?? "");
+    if (!evidence.complete || evidence.age_ms === null)
+      throw new MonitoringChallengeError("monitoring_challenge_not_ready");
+    return 15000 - evidence.age_ms;
+  }
   private inflight = 0;
   private instance = randomUUID();
-  async frame(a: Attempt, input: any, page: string) {
+  async frame(a: Attempt, input: any, page: string, challenged = false) {
     if (this.inflight >= 16)
       throw Error("Image worker capacity exceeded; retry within bounded grace");
     this.inflight++;
     try {
-      return await this.accept(a, input, page);
+      return await this.accept(a, input, page, challenged);
     } finally {
       this.inflight--;
     }
@@ -44,7 +84,14 @@ export class Monitoring {
     for (const d of ["monitoring", "receipts", "submissions"])
       mkdirSync(`${store.dir}/${d}`, { recursive: true, mode: 0o700 });
   }
-  private async accept(a: Attempt, input: any, page: string) {
+  private async accept(
+    a: Attempt,
+    input: any,
+    page: string,
+    challenged: boolean,
+  ) {
+    if (challenged)
+      this.readiness.validate(this.currentCapture(a, page), page, input);
     if (
       this.store.db
         .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
@@ -86,6 +133,15 @@ export class Monitoring {
       throw Error("Only bounded JPEG images accepted");
     await image.clone().raw().toBuffer();
     const digest = hash(bytes);
+    if (challenged) {
+      const { ticket } = this.readiness.validate(
+        this.currentCapture(a, page),
+        page,
+        input,
+      );
+      if (ticket.recorded && ticket.recorded.hash !== digest)
+        throw new MonitoringChallengeError("monitoring_challenge_conflict");
+    }
     const previous = this.store.db
       .prepare(
         "SELECT * FROM frames WHERE attempt=? AND source=? AND seq=? AND page_hash=?",
@@ -93,12 +149,31 @@ export class Monitoring {
       .get(a.id, source, seq, page) as any;
     if (previous) {
       if (previous.hash !== digest) throw Error("Conflicting duplicate image");
+      if (challenged) {
+        const current = this.currentCapture(a, page),
+          { ticket } = this.readiness.validate(current, page, input);
+        if (!ticket.recorded)
+          throw new MonitoringChallengeError("monitoring_challenge_conflict");
+        return {
+          ...previous,
+          monitoring: this.readiness.confirm(current, page, input, previous),
+        };
+      }
       return previous;
     }
     const thumb = await image
       .resize({ width: 400, withoutEnlargement: true })
       .jpeg()
       .toBuffer();
+    if (challenged) {
+      const { ticket } = this.readiness.validate(
+        this.currentCapture(a, page),
+        page,
+        input,
+      );
+      if (ticket.recorded)
+        throw new MonitoringChallengeError("monitoring_challenge_conflict");
+    }
     if (
       this.store.db
         .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
@@ -135,7 +210,18 @@ export class Monitoring {
       rmSync(`${dir}/${id}.thumb.jpg`, { force: true });
       throw e;
     }
-    return { id, hash: digest };
+    const result = { id, hash: digest };
+    return challenged
+      ? {
+          ...result,
+          monitoring: this.readiness.confirm(
+            this.currentCapture(a, page),
+            page,
+            input,
+            result,
+          ),
+        }
+      : result;
   }
   private checkRecordingBudget(dir: string, extra: number) {
     const total = readdirSync(dir)

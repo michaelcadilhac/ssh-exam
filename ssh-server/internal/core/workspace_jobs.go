@@ -436,7 +436,11 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 			return errors.New("Begin command expired during setup; no interval committed; restore monitoring and retry Begin")
 		}
 		if a.Grant != nil {
-			if verifiedUntil <= Millis() {
+			verifiedNow, err := monitoringBootMillis()
+			if err != nil {
+				return err
+			}
+			if verifiedUntil <= verifiedNow {
 				return errors.New("fresh grant verification expired during setup; inspect original intent and retry; no interval committed")
 			}
 			for _, other := range e.state.Attempts {
@@ -458,7 +462,11 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 			if expires > 0 && expires <= startedAt {
 				return errors.New("Begin command expired after final metadata checks; no interval committed; retry the original intent after inspection")
 			}
-			if verifiedUntil <= startedAt {
+			verifiedNow, err := monitoringBootMillis()
+			if err != nil {
+				return err
+			}
+			if verifiedUntil <= verifiedNow {
 				return errors.New("fresh grant verification expired after final metadata checks; no interval committed; retry the original intent after inspection")
 			}
 			if startedAt < a.Settings.Earliest || startedAt > a.Settings.Latest {

@@ -402,11 +402,21 @@ Use a deliberate **Begin exam** action. Before committing:
 
 - The browser reports fullscreen, focus, visibility, Keyboard Lock readiness, and healthy required capture streams.
 - Both SSH transports are authenticated and connected.
-- The backend has accepted current test/initial frames.
+- The backend has accepted fresh server-challenged test/initial frames, with
+  freshness anchored before capture rather than at delayed upload arrival.
 - The class agent has prepared the workspace, admission controls, and process containment without revealing questions.
 - The student has no other active attempt on this class account.
 
 Beginning is an idempotent, durable operation involving the backend and class agent. The class agent commits the canonical start timestamp and deadline immediately before releasing exam material. The backend stores those returned values; it does not start an unrelated second timer.
+
+The October23 local challenged-preflight candidate additionally rechecks actual
+required JPEG/policy readiness at the fresh authenticated unified Begin callback.
+Versioned grant-begin/v2 binds its remaining freshness duration; native code
+charges the entire exchange against CLOCK_BOOTTIME and rechecks before actual
+clock/grant commit. Old/missing/expired contracts refuse without starting time;
+they cannot fall back to image receipt timestamps. Restart requires new capture.
+This is pre-start readiness, not C16 live authority or a verified retained hold.
+Qualification/state review: docs/challenged-preflight-capture.md. Nothing deployed.
 
 October 21 local implementation stages work privately in a bounded native OS
 worker during preflight, before any clock/legacy consumption marker. Begin only

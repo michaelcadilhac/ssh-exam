@@ -7,6 +7,7 @@ import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 import { AttemptGrants } from "../../apps/server/src/attempt-grants.js";
 import { hash } from "../../apps/server/src/db.js";
 import { Agent } from "../../apps/server/src/agent.js";
+import sharp from "sharp";
 
 async function fixture() {
   const dir = mkdtempSync(tmpdir() + "/registered-owner-"),
@@ -129,7 +130,7 @@ async function fixture() {
   const intent = grants.begin(f.store.attempt(id)!, transport, page),
     boot = "77777777-1234-4234-8234-123456789abc";
   const request = {
-    type: "grant-begin/v1",
+    type: "grant-begin/v2",
     agent: "class",
     nonce: hash(randomUUID()),
     at: Date.now(),
@@ -189,6 +190,12 @@ it("authenticated native Begin requires the original current page before verific
     await expect(
       f.agent.confirmRegisteredPaneOwner(nativeOnly, undefined, "synthetic"),
     ).rejects.toThrow("another authenticated account");
+    const obsolete = await f.authenticated("/api/agent/grant-begin", {
+      ...f.request,
+      type: "grant-begin/v1",
+      page_epoch: f.page,
+    });
+    expect(obsolete.statusCode, obsolete.body).toBe(400);
     for (const page of [undefined, hash("different page")]) {
       const refused = await f.authenticated("/api/agent/grant-begin", {
         ...f.request,
@@ -212,6 +219,37 @@ it("authenticated native Begin requires the original current page before verific
           .get(f.intent),
       ).toEqual({ verified_at: null });
     }
+    // This metadata fixture has no live SSH connection. Seed actual decoded
+    // capture through the application's shared service; full HTTP/SSH capture
+    // admission is covered by grant-begin and monitoring-readiness workflows.
+    const a = f.store.attempt(f.id),
+      ticket = f.monitoring.captureChallenge(a, f.page, "screen");
+    await f.monitoring.challengedFrame(
+      a,
+      {
+        source: "screen",
+        seq: 1,
+        challenge: ticket.challenge,
+        captured: Date.now(),
+        monotonic: 1,
+        data: (
+          await sharp({
+            create: { width: 40, height: 30, channels: 3, background: "white" },
+          })
+            .jpeg()
+            .toBuffer()
+        ).toString("base64"),
+        readiness: {
+          fullscreen: true,
+          visible: true,
+          focus: true,
+          keyboard: true,
+          screen: true,
+          webcam: false,
+        },
+      },
+      f.page,
+    );
     const accepted = await f.authenticated("/api/agent/grant-begin", {
       ...f.request,
       page_epoch: f.page,

@@ -10,10 +10,10 @@ import {
 } from "node:crypto";
 import WebSocket from "ws";
 import { createApp } from "../../apps/server/src/app.js";
-import { hash } from "../../apps/server/src/db.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 import { grantExam } from "../fixtures/grant-exam.js";
 import { hosts } from "../fixtures/hosts.js";
+import { freshCapture } from "../fixtures/fresh-capture.js";
 
 it.each([
   "first",
@@ -165,7 +165,7 @@ it.each([
           boot = "77777777-1234-4234-8234-123456789abc";
         const payload = Buffer.from(
           JSON.stringify({
-            type: "grant-begin/v1",
+            type: "grant-begin/v2",
             agent: "class",
             nonce,
             at: Date.now(),
@@ -203,7 +203,7 @@ it.each([
           ),
         ).toBe(true);
         expect(JSON.parse(signed.toString())).toMatchObject({
-          type: "grant-begin/v1",
+          type: "grant-begin/v2",
           nonce,
           grant: a.grant,
           intent: b.grant_begin_intent,
@@ -604,11 +604,7 @@ it.each([
       expect(
         store.db.prepare("SELECT count(*) n FROM attempt_grants").get(),
       ).toEqual({ n: scenario === "revoked" ? 2 : 1 });
-      store.db
-        .prepare(
-          "INSERT INTO frames VALUES('f',?,'screen',0,?,0,0,?,640,480,'synthetic')",
-        )
-        .run(id, hash(page), Date.now());
+      await freshCapture(app, id, page, headers);
       const begin = () =>
         app.inject({
           method: "POST",

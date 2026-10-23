@@ -36,8 +36,10 @@ legacy attempt for a known grant. Existing legacy enrollments/history are not
 backfilled. Reenrollment cannot create another initial allowance or change an
 issued snapshot. Additional exact-template grant workflows are now documented in
 additional-grants-cli.md, with025 typed/lineage authority and coordinated-role
-requirements. Independent empty/saved-work and sandbox saved-grant issuance remain
-pending. Reviewed NEW initial issuance for legacy unused enrollments is described
+requirements. Independent empty/template source selection is described in
+grant-workspace-sources.md; finite-window repeatable practice is in
+sandbox-grants.md. Unified saved-work issuance still awaits C18 retention
+integration. Reviewed NEW initial issuance for legacy unused enrollments is described
 below; its qualification is in legacy-initial-grant-issuance.md.
 
 ## Reviewed NEW issuance for legacy unused enrollments
@@ -110,6 +112,15 @@ permission. History, claims, original interval and audit remain intact.
 
 ## Preparation/Begin and refusal handling
 
+The local challenged-preflight candidate requires matching grant-begin/v2 native/
+gateway roles and current loaded browser capture. It refuses missing/stale capture
+before starting time; a refusal is not a policy violation or consumed allowance.
+Restore preflight capture and retry the original preparation/Begin intent. Use
+`examctl web grants show GRANT_UUID` and `examctl info ATTEMPT --read-only` for an
+uncertain outcome; do not clear grants/intents/history or reset time. Mixed roles
+refuse before commit. State review and qualification status:
+[challenged-preflight-capture.md](challenged-preflight-capture.md).
+
 PREPARING/BEGIN_PENDING claims block revision/revocation. A verified Unix UID is
 bound on first claim, not trusted from import/enrollment UID0. Cancellation keeps
 that binding; a changed UID requires reviewed NEW authorization, never rebinding
@@ -128,8 +139,9 @@ remain history; a fresh preparation still gets the full allowance at actual Begi
 
 This first workflow initializes from its exact template. A conflicting native
 legacy saved-work authorization refuses rather than silently falling back or
-changing work source. Full empty/saved/separate-starter selection and reviewed
-legacy migration remain required before a complete unified-grant rollout.
+changing work source. Later independent empty/template and reviewed legacy NEW
+issuance workflows are documented above; they do not convert saved-work authority.
+Saved-source retention/migration remain required before a complete unified rollout.
 
 ## Future rollout/rollback gate
 

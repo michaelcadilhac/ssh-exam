@@ -189,6 +189,17 @@ services are changed; no grant/clock is consumed by refusal/cancellation.
   implement retained policy pause, C16 live authority or technical-hold recovery;
   keep this item open. State review/current artifacts: docs/framed-pane-input.md.
   Nothing deployed.
+  October23 challenged preflight now has actual loaded browser nonce-before-draw
+  capture and authenticated HTTP/JPEG readiness, with fresh grant-begin/v2 native
+  verification before consuming time. Scope/retry/negative-observation/cache and
+  native transit/final-commit fences pass focused checks; the actual browser
+  failure/retry/Begin workflow passes after correcting a setup-race fixture.
+  Full543 application checks, native race/resource/compiler checks, all151 browser
+  scenarios in one green run, builds/types/vet/35 runner checks and NEW guarded
+  root profiles10/9/12 pass with preservation. Implemented/tested locally, not
+  deployed. This supplies pre-start
+  readiness only; C3/C16 live authority/retained freeze/technical recovery and the
+  critical TODO remain open. See docs/challenged-preflight-capture.md.
   October22 C10/C11 are now approved: verified renewals take effect in the live
   root authority without waiting for disk sync, while restart requires fresh
   verification and durable starts/deadlines/ownership/audit remain mandatory;

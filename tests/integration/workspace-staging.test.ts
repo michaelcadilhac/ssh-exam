@@ -8,6 +8,7 @@ import { hosts } from "../fixtures/hosts.js";
 import { hash } from "../../apps/server/src/db.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
+import { freshCapture } from "../fixtures/fresh-capture.js";
 
 // Grant-aware sandbox staging/window/retry now lives in sandbox-grants.test.ts;
 // these preserve the explicitly supported unconverted ordinary/legacy readers.
@@ -337,11 +338,7 @@ it.each(["e", "versioned"])(
       expect(retry.json().id).toBe(id);
       expect(store.attempt(id).start).toBeNull();
       const page = retry.json().page;
-      store.db
-        .prepare(
-          "INSERT INTO frames VALUES('f',?,'screen',0,?,0,0,?,640,480,'synthetic')",
-        )
-        .run(id, hash(page), Date.now());
+      await freshCapture(app, id, page, headers);
       if (versioned) {
         legacyAgent = true;
         legacyTemplateAgent = true;

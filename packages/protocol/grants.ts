@@ -89,7 +89,7 @@ export const grantAdditionalPreview = grantIssuePreview
   .strict();
 export const grantBeginRequest = z
   .object({
-    type: z.literal("grant-begin/v1"),
+    type: z.literal("grant-begin/v2"),
     agent: z.string(),
     nonce: z.string().regex(/^[a-f0-9]{64}$/),
     at: z.number().int(),

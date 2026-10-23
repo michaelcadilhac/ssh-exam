@@ -180,3 +180,24 @@ private bundles. Broad unchanged application/browser/native runs were retained,
 not restarted for fixture-only edits. AGENTS.md now explicitly includes serialized
 fields and fresh first-grant namespaces in pre-test review. Keep these checks
 proportionate; do not add another speculative fixture framework.
+
+## October23 preflight qualification follow-up
+
+The challenged-capture increment found two avoidable verification delays. A
+focused invocation remained active while its source/test were edited, allowing
+cached pre-fix clock behavior to run against a newer expectation. Its mixed
+receipt is not final qualification; the final frozen small suite was run and
+read separately. A browser failure flag was enabled before initial sharing had
+finished, so it injected setup failure rather than the intended Begin failure.
+The actual page snapshot showed that error dialog blocking the button. The
+corrected fixture waits for the authenticated accepted image and enabled Begin
+button, with bounded actions; its focused run passes. No product guard or
+timeout was weakened. A separate Python invocation also used a root-relative
+path from the native cwd; that runner failure was retained and corrected.
+
+AGENTS.md now explicitly forbids concurrent edits to a focused run's inputs and
+requires separate structured checks, so later success cannot mask earlier
+failure. Discovery must show the exact source path before a subsequent read;
+do not batch a guessed filename into discovery. Freeze first, wait for focused
+completion, then qualify. These are corrections to execution discipline, not
+reasons to add another abstraction, test framework or prerequisite milestone.
