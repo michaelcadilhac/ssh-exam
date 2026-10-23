@@ -3,86 +3,92 @@
 Updated October 23, 2026 (America/Chicago). Local development/tests/commits only.
 No push/deployment, production configuration/record/service change or consolidation.
 Stop immediately on a missing command. Preserve deadlines, holds, protected work,
-history and credential cleanup. Read AGENTS.md; detailed evidence belongs in the
-feature documents below, not the entire historical progress log.
+history and credential cleanup. Follow AGENTS.md; feature documents contain the
+full evidence. Do not reread the entire historical progress log to resume.
 
-## Latest validated milestone: unified sandbox practice grants (C14)
+## Current bounded milestone: timed pane supervision (C12b)
 
-Source: the C14 milestone commit containing this checkpoint; record its exact
-hash immediately after committing. Previous validated source: 2d2ad65
-(independent workspace sources, docs/grant-workspace-sources.md).
+Resume the already-approved independent C12 work while C16/C18 await answers.
+Entry: actual timed Engine.local pane, then existing pane inspection/close CLI.
+Move trusted timed output recording into the existing ONE supervisor/user/attempt
+using only pinned recording storage/budget, not a global Engine/config/key copy.
+Canonical metadata needs bounded incarnation/generation-bound fault/exit reports,
+durable acknowledgement, restart/stale-completion fences and supported pending
+inspection/cancellation. Preserve quotas/privacy, original deadlines and holds.
+No R2/C3/C9 enablement or unrelated grant changes in this boundary.
 
-Implemented student authenticated preflight/Begin, automatic finite-window fixed
-practice, explicit reviewed NEW CLI/web issuance, unused list/show/revise/revoke,
-typed native staging/fresh verification,027 writer fences and positive
-cancellation cleanup/restoration release. Retries preserve source/grant/no clock;
-expired/revoked authority does not silently regenerate. Original intervals,
-protected completion and access restrictions gate repeat. Full state review and
-retained initial failures: docs/sandbox-grants.md. Operator workflow:
-docs/additional-grants-cli.md. Nothing is deployed.
+Exact next action: inspect gate.go, terminal_supervision.go, terminal_recording.go
+and current recording/fault ownership before selecting the smallest integrated
+protocol. Read docs/terminal-supervision.md, terminal-recording-faults.md and
+retained-workload-barrier-plan.md (C12b paragraph). Reproduce timed-owner loss via
+the real local entry. Qualify normal EOF, backpressure, abrupt transport/owner
+loss, storage/recording failure, canonical restart/acknowledgement and stale
+incarnations; keep unknown cleanup tracked. Review every durable intermediate
+state before broad qualification. If another architectural prerequisite emerges,
+reassess/report it before extending an unused helper chain.
 
-490 application tests/93 files248.05s; full native race/resource core362.430s/
-CLI26.056s; extra native transport retry7.425s;13 focused corrected-fixture browser
-checks2.1m and62 final affected browser checks6.0m PASS. Build/typecheck/static
-native build/vet/format/diff pass. Full145-browser baseline was134passed/11failed;
-all failures were reproduced fixture-boundary issues, corrected and requalified.
-No single145-pass final-gateway run is claimed. Client/WASM hashes match across
-final builds; no new privileged installed-role qualification. All runners ended.
+This timed recording/lifetime increment is explicitly independent of the open
+live-arbiter placement decision. Do not declare the whole task blocked while this
+approved integrated work remains actionable. No C12b code has been edited yet.
 
-## Next bounded milestone: historical cleanup errors after confirmed success
+## Latest validated revisions
 
-Investigate signed /api/agent/events -> native cancellation -> alert outbox and
-shared CLI/web alert status. Native errors retain earlier failures. Determine
-whether the first positive cleanup-complete/NORMAL report can wrongly open a new
-cleanup failure alert, or leave an existing episode actionable after resolution.
-Reproduce through actual signed HTTP before changing code. Required acceptance:
-preserve error audit/history; no new pending failure mail after positive verified
-success; unresolved cleanup/restoration still alerts, genuine recurrence reopens,
-and restart/duplicate replies preserve disposition. Do not change cancellation
-proof, grant/clock/access policy or monitoring enforcement. Use focused HTTP/
-alert workflow checks, then affected application/build qualification; unchanged
-native/client evidence need not be rerun without a changed contract/artifact.
+- **9412584:** current management discovery and source/interface audit. Three
+  actual process entry regressions RED0.011s; focused/all-command help0.181s,
+  full CLI race/TLS/namespace15.259s, static native build/vet/gofmt/diff PASS.
+  No runtime/state contract changed. docs/examctl-coverage-audit.md.
+- **4148022:** historical cleanup error disposition. Two signed HTTP regressions
+  RED1.09s;36 focused callback/SMTP/alert checks21.15s;495 app tests/93files244.78s,
+  server build/typecheck/format PASS. Success requires signed cleanup=true AND
+  NORMAL; preserve audit/holds/clocks, resolve pending mail, reopen real recurrence.
+  docs/preflight-cleanup-alert-disposition.md. Native/client artifacts unchanged.
+- **f8738d2:** unified C14 sandbox grants and verified cancellation.490 app tests;
+  full native race/resource core362.430s/CLI26.056s; extra real native transport
+  retry7.425s;13 corrected-fixture browser2.1m plus62 final affected browser6.0m
+  PASS, builds/static checks. Baseline145-browser run134pass/11fixture failures
+  retained/corrected; no single145-pass final-gateway run claimed. Client hashes
+  match final builds. docs/sandbox-grants.md; docs/additional-grants-cli.md.
+- **2d2ad65:** independent empty/separate-template work; earlier initial,
+  additional, reviewed legacy grants and recovery-duration work are recorded in
+  docs/grant-workspace-sources.md and docs/todo-progress.md.
 
-## Open consequential decisions
+All qualification runners ended; no command was missing. Current app/native-core/
+client evidence remains valid across the help-only change; do not repeat unrelated
+broad suites for private helpers or documentation. No installed-role qualification.
 
-C16: colocate live monitoring/input-cutoff authority in the approved ONE
-supervisor per user/attempt (recommended), or a separate authority process.
-C12's one-supervisor choice is settled; do not reask it. Concrete proposal:
-docs/todo-design-decisions.md and docs/retained-workload-barrier-plan.md.
+## Pending consequential decisions (questions already resurfaced)
 
-C18: saved grants become usable after durable native source-retention confirmation
-(recommended), or permit offline issuance and require fresh gateway authorization
-for EVERY native deletion. Current native deletion cannot see unused gateway
-references. Proposal/evidence: docs/grant-workspace-sources.md. Saved-source grants
-stay disabled before a qualified dependency fence/migration. Neither decision
-blocks the next independent correctness/alerting investigation.
+C16: live monitoring/input authority in the approved ONE attempt supervisor
+(recommended), or a separate authority process. C12 grouping is settled.
+C18: native durable source-retention confirmation before saved grants are usable
+(recommended), or offline issuance plus fresh web authorization for EVERY native
+archive deletion. Native deletion currently cannot see unused gateway references.
+Questions were resurfaced together during the alert milestone; await answers,
+do not duplicate prompts. Neither blocks independent C12b. Full proposals:
+docs/todo-design-decisions.md and docs/grant-workspace-sources.md.
+C1-C15/C17 remain approved; do not reopen them. Saved-source grants stay disabled.
 
-C1-C15 and C17 are approved; do not reopen them. In particular initial ordinary
-settings snapshot at enrollment/import, C14 finite repeatable five-minute/no-webcam
-practice, C15 fresh authenticated native verification at Begin, and C17 explicit
-unused recovery-duration synchronization. Full decisions: todo-design-decisions.md.
+## Remaining safety and rollout boundaries
 
-## Remaining safety/rollout boundaries
+Critical liveness still lacks durable ownership/input epochs, loaded-role agreement,
+complete timed C12, stop-assisted all-writer/input barrier and C9 recovery. Current
+lockouts still terminate/disconnect; private primitives are not a live fix and the
+initiating incident is unproven. Saved-source migration, C4 destructive cleanup,
+C8 retirement, configuration activation and full management remain unfinished;
+actual source/dependency inventory: docs/examctl-coverage-audit.md. TODO stays11/38;
+counts are not effort percentages. Do not close investigations from proposals.
 
-Critical retained-SSH monitoring remains unfinished: durable ownership/input
-epochs and loaded-role agreement, timed C12, complete stop-assisted all-writer/input
-barrier and C9 technical-hold recovery. Current lockouts still terminate/disconnect.
-Private primitives are not a live fix; the initiating incident remains unproven.
-Saved-source migration/retention, C4 cross-namespace/kernel-reference cleanup,
-C8 retirement and full management coverage remain open. Main TODO stays11/38;
-checked counts are not effort percentages.
-
-Last pinned read-only csc-sys guard was BUSY at00:18UTC October23. No new remote
-upload/guest or installed-role access. An older bundle cannot qualify new code.
-Busy/uncertain means no test, never clearing records or relaxing the guard.
-Rollout/migration/rollback and temporary-service consolidation remain UNEXECUTED
-in docs/todo-rollout-plan.md, including027, all three canonical/temporary agents
-AND independent practice owners. Require separate deployment authorization, fresh
-verified full drain, private consistent backups, matched writers and exact-artifact
-privileged qualification. Preserve all newer source/claim/interval/cleanup history;
+Last pinned read-only csc-sys guard: BUSY at00:18UTC October23. No new remote access,
+upload/guest, installed-role use or production action this continuation. Old bundles
+cannot qualify new code. Busy/uncertain means no test, never clearing records or
+relaxing the guard. Future deployment/migration/rollback and temporary-service
+consolidation remain UNEXECUTED in docs/todo-rollout-plan.md (through027). Require
+separate authorization, fresh full drain/backups, matched writers and exact-artifact
+privileged qualification. Include independent practice owners AND all three
+canonical/temporary agent owners. Preserve newer grants/receipts/intervals/audit;
 keep admission closed and repair forward if compatible rollback is unavailable.
 
 Preserve/exclude existing dirty docs/screenshots/preflight-fifteen-minute-timeout.png
 (31754bytes; SHA256144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb).
-Other browser-generated screenshots were clean initially and restored; new practice
-review screenshots remain in per-test output. No command was missing.
+Other browser-generated screenshots were clean initially and restored. New practice
+review screenshots remain in per-test output.
