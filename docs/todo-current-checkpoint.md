@@ -1,145 +1,104 @@
 # Current local TODO checkpoint
 
-Updated October23,2026 (America/Chicago). Local development/tests/commits only:
-no push, deployment, production changes, service restart or consolidation.
-Stop on a missing command. Preserve all work, history, protected submissions,
-deadlines, holds and credential cleanup. Follow AGENTS.md and the retrospective.
+Updated October23,2026 (America/Chicago). Local development/tests/commits only.
+No push, deployment, production record/configuration change, service restart or
+consolidation. Stop immediately on a missing command. Preserve all history,
+protected work/submissions, deadlines, holds and credential cleanup. Follow
+AGENTS.md and docs/development-retrospective.md.
 
-## Next milestone: independent work sources and protected-source retention (C7)
+## Current milestone: unified sandbox practice grants (C14)
 
-Continue approved NEW attempts from verified saved work with chosen allowance,
-plus explicit empty/separate exact-template starters. Inspect Agent communication,
-native workspace source/stage/publication/consumption and source deletion guards
-before choosing an integrated boundary. Especially prove unused gateway grants
-cannot lose protected sources through native deletion: inspect existing authority
-and fences before adding any registry/prototype. Present any consequential
-availability/authority tradeoff; continue independent sandbox issuance if a
-decision is genuinely needed. Preserve all protected submissions/history/holds.
-Exact next action: scoped source/operational investigation and a bounded actual
-CLI/web/student acceptance plan, then implement approved source workflow.
-C16 authority placement remains open, not a global blocker; C17 is settled.
+Operator entry: examctl web exams show/update sandbox and matching Exam settings;
+student entry: authenticated auto-enrollment, preflight and explicit Begin.
+Deliver repeatable five-minute/no-webcam grants only within the configured finite
+window, with saved settings/exact source, independent one-use identity and fresh
+C15 verification. Preserve started deadlines, prior protection/access release,
+cancelled-preparation proof, unused revisions/revocations and UID restrictions.
+Existing general grant inspection/revision/revoke must remain CLI-discoverable
+and consistent with web admin. Do not silently replace revoked/expired authority
+or turn a pending operation into an indefinite account reservation.
 
-## Latest validated local milestone: additional exact-template grants (C2/C5)
+Exact next action: finish scoped inspection of sandbox authentication/preflight,
+current native purposes, default fixtures and grant management. Record the bounded
+auto-issue/repeat/explicit-new-authority contract and legacy compatibility before
+editing. Then implement one integrated CLI/web/student/native result; required
+checks are actual SSH/C15 repeated Begin, cancellation/revision/revocation/window/
+restart/concurrency/old-role refusal, protected history/holds, compiled root CLI,
+rebuilt practice/admin browser workflows and affected broad qualification. Source
+work is committed; no previous test runner remains active.
 
-This coherent source is based on045c49b. Explicit reviewed CLI/web authorization,
-multiple-grant administration and student choice → distinct signed preparation/
-fresh C15 Begin → separate full interval outside expired defaults.025 preserves
-legacy/default uniqueness where applicable, FKs/rowids, account holds, one-use and
-exact original initial-grant lineage. No clock/grant from preview/staging/failure.
-ordered-template-grants-v1 is compiled protocol support, not loaded-role agreement
-or retained SSH. General saved/empty sources and sandbox grants remain unfinished.
+## Latest validated source: 2d2ad65
 
-469 app/91 files184.93s; full native race/resource/user-namespace/user-systemd/
-compiler/default-size core351.232s/CLI36.190s; ten matching rebuilt browser checks
-(nine broad1.6m plus stale-label-corrected focused enrollment7.5s). Matching build,
-typecheck/static/vet pass. All runners completed. Pre-broad state review, exact
-positive-identity RED/fix, current focused evidence and fixture corrections:
-additional-template-grants.md. Operator guide: additional-grants-cli.md. Native OS
-setup remains a test seam; no installed SSH/PAM/cgroup qualification is claimed.
-No production/student record, installed role, service, deployment or consolidation
-changed. Preserve/exclude the existing uncommitted PNG; continue independent work.
+Bind independent grant workspace sources through staging and Begin. Empty or
+separately attested starters now work independently of exact materials/allowance:
+reviewed CLI/web additional issuance, explicit unused source revision, student
+choice, immutable026 preparation, signed private staging/fresh C15 Begin and
+protected collection. Settings-only revisions preserve work. Missing/tampered
+sources refuse before clock/consumption; actual child SIGKILL/retry retains the
+private copy. Corrected definitive source-refusal forms and narrow toolbar.
 
-## Latest validated local milestone: reviewed NEW legacy initial grants (C13)
+474 app tests/91 files212.52s; full native race/resource/user-namespace/owned-user-
+systemd/compiler/default-size core355.447s/CLI29.250s;39 final rebuilt browser
+checks3.3m; static native build/vet, UI/WASM build/typecheck/format/diff pass.
+Final source-process/crash/archive acceptance10.457s supplements unchanged native
+production artifacts. All runners completed. State review, initial failures,
+artifact IDs and privileged seams: docs/grant-workspace-sources.md. Operator guide:
+docs/additional-grants-cli.md. No installed SSH/PAM/cgroup qualification claimed.
 
-Validated local commit045c49b, based on b8bcec2.024 adds actor-bound immutable
-previews/issuance provenance, with CLI/web review/inspect/cancel/confirm and
-student SSH/C15 Begin. No backfill, account reservation or clock from preview.
-Independent native prior timed history refuses initial admission; old roles
-refuse reviewed preparation. Recovery sources/history/holds remain protected.
+Earlier validated source milestones (details in linked feature documents):
+- f895663: additional-template grants, exact original initial lineage and separate
+  intervals; docs/additional-template-grants.md.
+- 045c49b: reviewed NEW initial grants for legacy unused enrollments;
+  docs/legacy-initial-grant-issuance.md.
+- b8bcec2: ordinary snapshots at NEW enrollment/import and fresh native Begin;
+  docs/unified-grant-first-attempt.md.
+- 32e1eec: explicit recovery allowance consistency/C17;
+  docs/recovery-admission-consistency.md.
+- Earlier correctness/retention/supervisor outcomes: docs/todo-progress.md.
 
-461 app/89 files166.85s; full native race/resource/namespace/compiler/default-size
-core328.921s/CLI26.575s; nine rebuilt Chromium/WASM checks1.2m; matching build,
-typecheck/static/vet/format/diff pass. All runners finished. State review, current
-focused evidence, effective mutation and corrected fixture failures are in
-legacy-initial-grant-issuance.md. Commands: initial-grants-cli.md. No production
-records, installed roles, services, deployment or consolidation changed. Native
-OS setup remains a test seam; no installed SSH/PAM/cgroup qualification claimed.
-Preserve/exclude the existing uncommitted PNG and continue independent work.
+## Open decisions and remaining boundaries
 
-## Latest validated local milestone: initial ordinary grants
+C16 is still awaiting instructor choice: colocate live monitoring/input authority
+in the approved one supervisor/user/attempt (recommended), or a separate authority
+process/attempt. docs/todo-design-decisions.md and retained-workload-barrier-plan.md.
 
-Validated local commit b8bcec2, based on32e1eec.
-NEW enrollment/CSV → immutable initial settings/source → CLI/web inspect/revise/
-revoke → student portal/preflight → fresh C15 native outbound Begin. Migration023
-retains ordinary uniqueness/holds, mode fences, UID-bound cancelled claims and
-one-use intents/intervals. No legacy backfill or retained-mode enablement.
+C18 is still awaiting instructor choice: durable class-server source-retention
+confirmation before saved grants become usable (recommended), or allow offline
+issuance and require fresh gateway approval/fencing for every native deletion.
+Existing offline native deletion cannot see unused gateway references. Concrete
+source evidence/proposals: docs/grant-workspace-sources.md. Do not enable saved
+source grants before the dependency fence/migration is integrated and qualified.
+These choices do not block independent C14 work. C17 is settled.
 
-458 app/88 files159.32s; full native race/resource/namespace/compiler/default-size
-core346.922s/CLI42.618s; eight rebuilt Chromium/WASM checks59.5s; matching build,
-typecheck/static/vet/format/diff pass. All runners finished. State review, actual
-commit-boundary RED/fix, monitoring-purge mutation and corrected fixture failures:
-unified-grant-first-attempt.md. Commands: initial-grants-cli.md. Native OS setup
-remains a test seam, not installed SSH/PAM/cgroup qualification. No production
-records, installed roles, services, deployment or consolidation changed.
-Preserve/exclude the existing uncommitted PNG. Continue independent work.
+C1-C15 and C17 remain approved; do not reask. Initial ordinary settings snapshot
+at enrollment/import. C12 selects ONE supervisor/user/attempt, not per pane.
+C14 selects finite operator-configured repeatable five-minute/no-webcam practice.
+C15 requires fresh existing authenticated native outbound verification at Begin.
+Complete approvals are in docs/todo-design-decisions.md.
 
-## Latest validated local milestone: recovery allowance synchronization (C17)
-
-Validated source increment32e1eec (based on ea9cce2), local commit titled
-"Synchronize explicit recovery allowances without consuming attempts".
-Explicit student duration edits → shared web/CLI/CSV ledger → authenticated
-unused native revision → exact saved-source preparation/Begin. Prepared/consumed/
-stale/changed-source/mixed-role cases refuse. No clocks/grants consumed by failure;
-retry receives full allowance only at actual Begin. Defaults never revise grants.
-
-Evidence/state review/failure limits: recovery-admission-consistency.md.
-449 app/86 files135.39s; full native race/resource/namespace/compiler/default-size
-core319.645s/CLI26.719s; five rebuilt Chromium/WASM checks49.0s; matching builds,
-vet/typecheck/diff pass. All runners finished. Native OS setup is a test seam;
-no installed-role/csc-sys/production qualification or deployment is claimed.
-Prior ea9cce2 added signed/root absent-preparation cancellation with contradictory-
-evidence checks; its detailed evidence remains in the same feature document.
-
-## Earlier validated outcomes (details stay in feature documents)
-
-- `204d439`: incomplete workspace holds refuse through actual CLI/native paths;
-  evidence in workspace-retention.md.
-- `c601746`: supported bounded live supervisor diagnostics;
-  terminal-supervisor-observation.md.
-- `d303bfc`: per-attempt terminal recording no longer serializes unrelated users;
-  terminal-recording-isolation.md.
-- `c69d35b`: exact-generation recording fault fences; terminal-recording-faults.md.
-- `6b5cdd9`: independent practice owner only; terminal-supervision.md. Timed C12
-  lifetime/input/freeze integration is NOT delivered by practice supervision.
-- `a51fcb0`: exact source selection, not unified issuance/C15;
-  template-source-selection.md. Earlier outcomes/history: todo-progress.md.
-
-Preserve the existing uncommitted generated screenshot, excluding it from commits;
-future screenshots use per-test output. No earlier evidence qualifies new artifacts.
-
-## Remaining work and settled decisions
-
-Critical: durable root owner/input epochs and loaded-role agreement, complete
-timed C12, stop-assisted all-writer/input barrier and C9 recovery. Current lockouts
-still terminate workloads/disconnect SSH. Private renewal/evidence/input/kernel
-observer components are not a live fix; initiating production fault is unproven.
-
-Unified initial/legacy-unused/additional-template issuance, revisions, claims and
-C15 Begin now work locally. Independent empty/saved sources, their durable
-retention/migration and sandbox grants remain in the protocol proposal and next
-milestone. C4 complete cross-namespace/kernel references, C8 retirement and
-installed-role/class capacity checks remain.
-Main TODO stays11 checked/38, not an effort percentage or all-work-complete claim.
-
-C1–C15 are settled (todo-design-decisions.md); do not reask. Initial ordinary
-settings snapshot at enrollment/import. C10 verified live renewals need not wait
-for disk; restart needs fresh verification. C11 stop-assisted freezing is approved
-development, not enabled. C12 ONE supervisor/user/attempt. C13 reviewed bulk NEW
-legacy issuance from selected current settings, never invented history. C14 finite
-operator sandbox window/repeatable saved grants. C15 fresh authenticated native
-outbound HTTPS agreement at unified Begin, no offline permit/browser relay.
+Critical monitoring remains unfinished: durable root ownership/input epochs and
+loaded-role agreement, complete timed C12, stop-assisted all-writer/input barrier
+and C9 technical-hold recovery. Current lockouts still terminate/disconnect.
+Private verifier/arbiter/input/kernel primitives are not a deployed live fix; the
+initiating production fault is unproven. Full saved-source retention/migration,
+C4 cross-namespace/kernel-reference cleanup and C8 retirement also remain open.
+Main TODO stays11 checked/38; checked counts are not effort percentages.
 
 ## Qualification and future rollout gate
 
-Pinned raw read-only csc-sys guard is BUSY at00:18UTC October23. No new upload or
-guest. The approved old remote bundle predates these changes and cannot qualify
-them. New exact-artifact installed-bootstrap/SSH/PAM/cgroup/hardening/source and
-retained-mode checks remain pending. BUSY/uncertain means no test: never clear
-records, relax the guard or reconcile/restart production.
+Last pinned read-only csc-sys guard was BUSY at00:18UTC October23. No new remote
+upload/guest or installed-role use. The approved older remote bundle cannot
+qualify current artifacts. A busy/uncertain guard means no test; never clear
+records, relax the guard, reconcile or restart production to make it pass.
 
-All rollout/migration/rollback remains a proposal in todo-rollout-plan.md:
-verified drain, matched loaded roles, private consistent backups and compatible
-writers; include independent practice owners AND the three temporary agents in
-drain/consolidation. Never drop newer source/receipt/start/owner fields, restore
-older one-use history over newer work or bypass account holds. No such action is
-authorized during local development.
+All rollout/migration/rollback and temporary-service consolidation remains an
+unexecuted proposal in docs/todo-rollout-plan.md, now including026. Require fresh
+safe drain, private consistent backups, matched loaded writers and synthetic
+installed-role/SSH/PAM/cgroup qualification. Include independent practice owners
+AND all three canonical/temporary agent owners in drain/consolidation. Preserve
+new Work/lineage/receipts/intervals and one-use history on rollback; repair forward
+when no compatible rollback exists. No deployment is authorized.
+
+Preserve/exclude existing uncommitted docs/screenshots/preflight-fifteen-minute-
+timeout.png (31754 bytes; SHA256144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb).
+Future screenshots use per-test output. No older bundle qualifies new artifacts.
