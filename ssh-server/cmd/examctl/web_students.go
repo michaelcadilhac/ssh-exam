@@ -33,6 +33,17 @@ These are future defaults, never current clock edits. Sandbox duration is five
 minutes or inheritance. UID stays unresolved (0) until the student's trusted SSH
 verifies identity; no UID override is accepted.
 
+An explicit duration setting authorizes duration-only synchronization of unused
+native saved-work recovery at the student's next authenticated preflight. Inherit
+saves the exam allowance at edit time, not a later default. Already prepared or
+consumed grants refuse revision; source/checksum/history never change. Inspect
+list for recovery_allowance_edit, and examctl recovery-grants --exam EXAM for
+native allowance_revision/pending_allowance_revision. A pending revision is not
+permission or a clock: retry the latest setting through authenticated preflight.
+Exam-default edits and webcam-only/omitted CSV duration edits do not authorize it.
+For historical mismatches without a recorded explicit edit, explicitly save the
+intended allowance again. A lost reply retries the SAME request ID, not a new edit.
+
 Import is a deliberate two-step preview/confirm workflow (1..10000 unique users).
 CSV headers: username,require_webcam,duration_minutes. Omitted columns preserve
 existing overrides; blank/inherit explicitly inherits. Webcam CSV values include

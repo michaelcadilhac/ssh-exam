@@ -55,6 +55,26 @@ Existing original account restrictions still require their normal release
 conditions, or an explicitly approved and audited root emergency handoff after
 secured collection. This mechanism does not grant ordinary access by itself.
 
+Local C17 candidate (not installed): if an UNUSED recovery allowance changes,
+save the intended duration through web student settings or
+`examctl web students settings EXAM USER --duration-minutes 75`. At the next
+authenticated preflight the signed workflow changes ONLY the unused grant's
+duration and revision provenance, preserving source/checksum/identity/creation/
+reason. Inherit saves the default at edit time; editing exam defaults alone does
+not authorize revision. Old mismatches without a recorded edit require explicitly
+saving the intended duration again, not weakening the native duration check.
+Inspect `examctl web students list EXAM` and `examctl recovery-grants --exam EXAM`.
+The latter exposes applied and pending allowance revisions. Pending metadata
+permits no work/clock; authenticated retry completes/supersedes it. Never hand-edit
+or delete it. Prepared/consumed grants refuse revision; a provably unstarted
+preparation must first be positively cancelled (see `examctl help cancel-absent`
+for an exact web orphan absent from valid native authority). Uncertain starts
+keep the original UUID for inspection, never an inferred refund. Existing timing,
+holds and protected history remain authoritative. Retry preserves saved work and
+receives the complete new interval only at actual Begin. Preserve migration022,
+edit counters/source expectations/receipts and revised native metadata together
+on backup/rollback; incompatible native readers refuse rather than ignore it.
+
 Automatic collection recovery: the class agent checks committed bundles before live work.
 A bundle published just before a crash is verified and adopted even if state.json still says
 FINALIZING or protected=false. Never delete or overwrite a protected bundle to retry. Inspect

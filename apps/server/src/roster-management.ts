@@ -4,6 +4,7 @@ import { username } from "../../../packages/protocol/index.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
 import { exportRoster, parseRosterAsync, type RosterRow } from "./roster.js";
+import { recoveryAllowanceEdit } from "../../../packages/protocol/recovery-allowance.js";
 
 const examID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const allowance = z.number().int().min(60).max(21600).multipleOf(60).nullable();
@@ -44,6 +45,44 @@ export class RosterManagement {
     if (isSandbox(id) && value !== undefined && value !== null && value !== 300)
       throw Error("Sandbox attempts always start with five minutes");
   }
+  allowanceEdit(id: string, name: string) {
+    const row = this.store.db
+      .prepare(
+        "SELECT revision,duration,actor,at FROM recovery_allowance_edits WHERE exam=? AND username=? ORDER BY revision DESC LIMIT 1",
+      )
+      .get(id, name);
+    return row ? recoveryAllowanceEdit.parse(row) : null;
+  }
+  private authorizeAllowance(
+    id: string,
+    name: string,
+    duration: number | null,
+    actor: string,
+  ) {
+    if (isSandbox(id)) return;
+    const configured = JSON.parse(
+      (
+        this.store.db
+          .prepare("SELECT config FROM exams WHERE id=?")
+          .get(id) as any
+      ).config,
+    );
+    const effective = allowance.parse(duration ?? configured.duration);
+    if (effective === null)
+      throw Error("Configure an exam allowance before choosing inheritance");
+    const at = now();
+    this.store.db
+      .prepare(
+        "INSERT INTO recovery_allowance_edits(exam,username,duration,actor,at) VALUES(?,?,?,?,?)",
+      )
+      .run(id, name, effective, actor, at);
+    this.store.audit(
+      actor,
+      "authorize-recovery-allowance",
+      id,
+      JSON.stringify({ username: name, ...this.allowanceEdit(id, name) }),
+    );
+  }
   list(id: string, after = "", limit = -1) {
     this.findExam(id);
     return (
@@ -58,7 +97,11 @@ export class RosterManagement {
           "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY state IN ('ACTIVE','LOCKED','PREPARING') DESC,rowid DESC LIMIT 1",
         )
         .get(id, row.username);
-      return { ...row, attempt: a ? this.describe(a) : null };
+      return {
+        ...row,
+        attempt: a ? this.describe(a) : null,
+        recovery_allowance_edit: this.allowanceEdit(id, row.username),
+      };
     });
   }
   page(id: string, after: string, limit: number) {
@@ -91,6 +134,8 @@ export class RosterManagement {
           0,
         );
       this.store.audit(actor, "enroll-student", id, b.username);
+      if (b.duration !== null)
+        this.authorizeAllowance(id, b.username, b.duration, actor);
     })();
     return { ok: true };
   }
@@ -122,6 +167,8 @@ export class RosterManagement {
           throw Error(
             `${name} is no longer enrolled; refresh the student list`,
           );
+        if (b.duration !== undefined)
+          this.authorizeAllowance(id, name, b.duration, actor);
         this.store.db
           .prepare(
             "UPDATE enrollments SET duration=?,webcam=? WHERE exam=? AND username=?",
@@ -252,6 +299,8 @@ export class RosterManagement {
               : r.duration,
             previous?.uid ?? 0,
           );
+        if (r.duration !== undefined && (previous || r.duration !== null))
+          this.authorizeAllowance(id, r.username, r.duration, actor);
       }
       this.store.db
         .prepare("UPDATE previews SET consumed=1 WHERE id=?")

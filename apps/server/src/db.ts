@@ -44,6 +44,7 @@ export interface Attempt {
   access_checked_at: number | null;
   access_error: string | null;
   functional_test: number;
+  recovery_preflight: string | null;
 }
 export class Store {
   db: Database.Database;
@@ -147,6 +148,10 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=21").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/021.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=22").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/022.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

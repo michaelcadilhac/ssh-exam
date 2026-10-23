@@ -35,6 +35,32 @@ students. Sandbox allowance remains five minutes or inheritance. These settings
 affect future defaults, not current attempt clocks; fixed issued-grant behavior
 will be handled by the pending unified-grant model.
 
+Approved C17 additionally makes an explicit student allowance edit authorize
+duration-only synchronization of an UNUSED native saved-work recovery grant at
+the student's next authenticated preflight. For example:
+
+```sh
+sudo examctl web students settings retake student01 --duration-minutes 75
+sudo examctl web students list retake
+sudo examctl recovery-grants --exam retake
+```
+
+`recovery_allowance_edit` in student-list JSON records the saved revision, seconds,
+actor and time. `inherit` captures the exam duration WHEN SAVED, not after later
+default changes. Explicit supplied CSV duration (even an unchanged value) uses
+the same authority; omitted duration/webcam-only/default edits do not. Existing
+mismatches without an edit ledger require explicitly saving the intended duration
+again; migration does not invent past approval. Root retry of a lost reply uses
+the SAME request UUID so it cannot create another revision.
+
+Native `allowance_revision` records applied provenance and
+`pending_allowance_revision` is unpublished crash residue, not execution permission.
+Retry latest settings through authenticated student preflight; do not delete or
+hand-edit markers. Source/checksum/identity/creation/reason stay fixed. Prepared
+or consumed grants refuse revision: inspect, positively cancel an unstarted
+preparation, then sign in for a fresh preflight. Started attempts keep their
+interval and cannot be refunded/reopened. See recovery-admission-consistency.md.
+
 Removal requires a named CLI confirmation and removes enrollment only. It never
 deletes attempts/submissions, cancels a native recovery grant, finishes work or
 releases an original interval hold. As under the existing web workflow, inspect
@@ -85,4 +111,9 @@ named operations. Preserve request/outcome and preview-consumption records on
 rollback; never remove them to force an import. csc-sys connectivity remains a
 rollout prerequisite, not yet verified after jump/direct SSH timeouts. Legacy
 native-only recovery grants still require unified migration/visibility before
-safe definition archival or unused-only deletion can be completed.
+safe definition archival or unused-only deletion can be completed. C17 adds
+migration022 and native revision/source-hash fields; retain the edit ledger,
+source expectations, receipts/counters and all native markers in consistent
+backups/rollback. Never downgrade to a writer that drops these records or replays
+an older allowance. This update is local only; current qualification is recorded
+in recovery-admission-consistency.md, not the historical totals above.

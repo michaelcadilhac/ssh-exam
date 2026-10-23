@@ -83,6 +83,7 @@ type SSHHandoff struct {
 	Consumed       string `json:"consumed,omitempty"`
 }
 type Attempt struct {
+	ExpectedRecovery        string               `json:"expected_recovery,omitempty"`
 	PreparationPending      bool                 `json:"preparation_pending,omitempty"`
 	PreparationPendingSince int64                `json:"preparation_pending_since,omitempty"`
 	Workspace               *WorkspaceReceipt    `json:"workspace,omitempty"`

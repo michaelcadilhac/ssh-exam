@@ -93,8 +93,18 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	// A distinct purpose makes older agents refuse, rather than silently
 	// ignoring a new expected-settings field and starting a mutable source.
 	versionedBegin := cmd.Op == "activate-versioned-attempt"
-	if versionedBegin {
+	recoveryBegin := cmd.Op == "activate-recovery-attempt"
+	if versionedBegin || recoveryBegin {
 		cmd.Op = "activate-attempt"
+	}
+	recoveryPrepare := cmd.Op == "prepare-recovery-attempt"
+	if recoveryPrepare {
+		if len(cmd.Body.ExpectedRecovery) != 64 {
+			return nil, errors.New("exact saved-work grant hash required; retry recovery-aware preflight")
+		}
+		cmd.Op = "prepare-attempt"
+	} else if cmd.Op == "prepare-attempt" && cmd.Body.ExpectedRecovery != "" {
+		return nil, errors.New("use the distinct recovery-aware preparation purpose")
 	}
 	if cmd.Op == "renew-execution-lease" {
 		return e.renewSignedLease(cmd, username, transport)
@@ -125,6 +135,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			if err != nil || a.Username != username || cmd.Transport != transport || a.Transport != transport || e.state.Registrations[transport] != username {
 				return errors.New("attempt SSH transport mismatch")
 			}
+			if err := recoveryBeginSettings(a, cmd.Body, recoveryBegin); err != nil {
+				return err
+			}
 			if versionedBegin {
 				if err := versionedBeginSettings(a, cmd.Body.Settings); err != nil {
 					return err
@@ -148,6 +161,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	handoff := false
 	health := false
 	prepare := false
+	recoveryAllowance := false
 	var result any
 	err = e.WithState(func() error {
 		now := Millis()
@@ -249,6 +263,12 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			return errors.New("command account mismatch")
 		}
 		switch cmd.Op {
+		case "reconcile-recovery-allowance":
+			if r.UID != account.UID || r.Username != username || r.Transport != transport {
+				return errors.New("recovery allowance identity mismatch")
+			}
+			recoveryAllowance = true
+			return nil
 		case "issue-ssh-handoff":
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username || a.Transport != transport {
@@ -297,6 +317,11 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			if err != nil || a.Username != username || a.Transport != transport {
 				return errors.New("attempt SSH transport mismatch")
 			}
+			if cmd.Op == "activate-attempt" {
+				if err := recoveryBeginSettings(a, r, recoveryBegin); err != nil {
+					return err
+				}
+			}
 			if versionedBegin {
 				if err := versionedBeginSettings(a, r.Settings); err != nil {
 					return err
@@ -324,6 +349,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		result, err = e.callLocked(cmd.Op, r)
 		return err
 	})
+	if err == nil && recoveryAllowance {
+		return e.reconcileRecoveryAllowance(cmd.Body, cmd.Expires)
+	}
 	if err == nil && health {
 		return e.observeNativeHealth()
 	}

@@ -52,10 +52,16 @@ an unused native saved-work grant with an older duration; its strict rejection
 can precede native attempt creation and strand the gateway PREPARING row. The
 local cancellation-fencing repair passes focused signed-native/real SSH-web/CLI,
 full app/native race/resource/build and rebuilt browser qualification. It is
-implemented/tested locally, not deployed. Duration/source synchronization is still
-investigated/awaiting the explicit-edit policy answer, not implemented by this
-note. See docs/recovery-admission-consistency.md. No student records, installed
-roles or services are changed; no grant/clock is consumed by refusal/cancellation.
+implemented/tested locally, not deployed. C17 is now approved: explicit student
+allowance edits authorize duration-only synchronization of UNUSED recovery grants
+at authenticated preflight, preserving source/checksum/identity and refusing
+prepared/consumed grants. Exam-default edits do not authorize revisions. The local
+shared web/CLI/CSV edit ledger, signed reconciliation and exact saved-source
+prepare/Begin checks pass449 application tests, full native race/resource tests,
+five rebuilt browser checks, matching build/vet/typecheck. Implemented/tested
+locally, not deployed; this does not complete unified grants. See
+docs/recovery-admission-consistency.md. No student records, installed roles or
+services are changed; no grant/clock is consumed by refusal/cancellation.
 
 ## Critical priority: eliminate heartbeat-induced false lockouts
 
@@ -1077,8 +1083,15 @@ the approval is not a production change or a completed investigation.
   Keep ordinary policy and explicit approval for emergency handoffs unchanged.
 
 - [ ] **Require a recovery-aware agent and detect mismatched configuration.**
-  The new restoration feature is not currently advertised as a dedicated health
-  capability. Guard against an incompatible rollback serving a recovery as an
+  C17 now adds local dedicated recovery allowance capability negotiation and
+  distinct signed reconcile/prepare/Begin purposes. Explicit edit or retained
+  authenticated source expectations require the matching role before admission;
+  exact grant/settings hashes and durable source identity prevent a later missing
+  grant from becoming starter work. Web/CSV/CLI edits share monotonic provenance;
+  defaults never authorize revisions. General legacy catalog migration, first-
+  observation authority and installed-role qualification remain open, so this
+  broad item stays unchecked. See docs/recovery-admission-consistency.md.
+  Remaining acceptance: guard against an incompatible rollback serving a recovery as an
   ordinary fresh exam. A missing grant or disagreement between enrollment duration
   and root grant must be explained before Begin; never silently serve starter
   files instead of saved work. Add readiness/installation checks and a supported

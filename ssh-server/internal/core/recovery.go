@@ -20,14 +20,22 @@ import (
 // attempt. No preparation, interval, or countdown exists until the student returns.
 // The source is always an immutable protected submission, never a live workspace.
 type RecoveryPreparation struct {
-	Exam          string `json:"exam"`
-	Username      string `json:"username"`
-	UID           int    `json:"uid"`
-	Duration      int64  `json:"duration"`
-	SourceAttempt string `json:"source_attempt"`
-	Checksum      string `json:"checksum"`
-	CreatedAt     int64  `json:"created_at"`
-	Reason        string `json:"reason"`
+	Exam              string                 `json:"exam"`
+	Username          string                 `json:"username"`
+	UID               int                    `json:"uid"`
+	Duration          int64                  `json:"duration"`
+	SourceAttempt     string                 `json:"source_attempt"`
+	Checksum          string                 `json:"checksum"`
+	CreatedAt         int64                  `json:"created_at"`
+	Reason            string                 `json:"reason"`
+	AllowanceRevision *RecoveryAllowanceEdit `json:"allowance_revision,omitempty"`
+}
+
+type RecoveryAllowanceEdit struct {
+	Revision int64  `json:"revision"`
+	Duration int64  `json:"duration"`
+	Actor    string `json:"actor"`
+	At       int64  `json:"at"`
 }
 
 func recoveryName(a *Attempt) string {
@@ -59,6 +67,9 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	}
 	root, err := e.openRecoveryExam(a.Exam)
 	if os.IsNotExist(err) {
+		if a.ExpectedRecovery != "" {
+			return nil, errors.New("expected saved-work grant missing; preserve source/history and retry only after repair; no starter-file fallback")
+		}
 		return nil, nil
 	}
 	if err != nil {
@@ -67,6 +78,14 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	defer root.Close()
 	b, err := recoveryMetadataFile(root, a.Username+".json", 16384)
 	if os.IsNotExist(err) {
+		for _, suffix := range []string{".consumed", ".pending"} {
+			if _, markerErr := recoveryMetadataFile(root, a.Username+".json"+suffix, 16384); !os.IsNotExist(markerErr) {
+				return nil, recoveryMetadataRefusal(a)
+			}
+		}
+		if a.ExpectedRecovery != "" {
+			return nil, errors.New("expected saved-work grant missing; preserve source/history and retry only after repair; no starter-file fallback")
+		}
 		return nil, nil
 	}
 	if err != nil {
@@ -75,6 +94,12 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	r, err := decodeRecoveryMetadata(b)
 	if err != nil {
 		return nil, recoveryMetadataRefusal(a)
+	}
+	if _, pendingErr := recoveryMetadataFile(root, a.Username+".json.pending", 16384); !os.IsNotExist(pendingErr) {
+		return nil, errors.New("recovery allowance publication is pending or unsafe; retry authenticated preflight with the latest explicit allowance edit; no admission, Begin or starter-file fallback is authorized")
+	}
+	if (a.ExpectedRecovery != "" && recoveryReferenceHash(r) != a.ExpectedRecovery) || (r.AllowanceRevision != nil && a.ExpectedRecovery == "") {
+		return nil, errors.New("saved-work grant changed or recovery-aware preparation required; preserve source/receipts and use a fresh confirmed unstarted preflight; no starter-file fallback")
 	}
 	if r.Exam != a.Exam || r.Username != a.Username || r.UID != a.UID || r.Duration != a.Settings.Duration || r.Duration < 60 || r.Duration > 21600 || !attemptID.MatchString(r.SourceAttempt) || len(r.Checksum) != 64 || r.CreatedAt <= 0 || len(strings.TrimSpace(r.Reason)) < 8 {
 		return nil, errors.New("recovery preparation does not match this student, exam or allowance")

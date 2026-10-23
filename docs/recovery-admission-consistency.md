@@ -11,8 +11,9 @@ Local development only; not deployed. Synthetic identities/data only.
    fence delayed preparation across restart. Test signed native commands and the
    actual gateway login/preflight/logout/retry interfaces, including uncertainty.
 2. Shared instructor/`examctl web students settings` allowance edits → unused
-   native recovery grant. Await the instructor's choice whether an explicit
-   per-student duration edit authorizes deferred duration-only synchronization.
+   native recovery grant. C17 approved October22: an explicit per-student
+   allowance edit authorizes duration-only synchronization at the next
+   authenticated preflight; refuse consumed/already-prepared grants.
    Keep strict duration/source checks; preserve source identity/checksum and
    consumption history. Default edits must not silently revise saved grants.
 3. Retry private saved-work staging → actual Begin. Test refusal consumes no
@@ -20,6 +21,17 @@ Local development only; not deployed. Synthetic identities/data only.
    chosen allowance. Review cancellation/restart/stale completion/expiry races;
    then affected integration/native race/build/browser qualification and a
    coherent local commit. Do not deploy or alter installed/student state.
+
+Implementation boundary for C17: shared settings/add/CSV writers retain a durable
+monotonic explicit-edit ledger (including inheritance resolved at edit time,
+never retrospectively from changed defaults). A distinct signed preflight
+operation reconciles only that allowance, preserving grant identity/source/
+checksum/creation/reason, then returns an exact grant hash. The distinct recovery
+prepare purpose requires that hash through staging/Begin; missing/changed authority
+never becomes template fallback. Native revision provenance prevents rollback by
+older signed edits. Atomic publication uses only a private unpublished metadata
+file, visible to native catalog inspection and safely superseded by authenticated
+retry; it is not a claim, reservation, clock or execution permission.
 
 Stopping boundary: a validated integrated recovery admission workflow, or a
 genuine outstanding policy/authority blocker, accurately recorded here and in
@@ -65,7 +77,8 @@ saved source/checksum/answer/archive preserved, marker absent during failed
 preflight/staging/blocked Begin setup, full4500seconds committed only after setup,
 then consumed by the exact new UUID. OS readiness/home/activation checks are test
 seams; archive verification/staging/publication/consumption are real. The allowance
-repair in this test is explicit fixture setup, NOT delivered synchronization.
+repair at that earlier milestone was explicit fixture setup, NOT delivered
+synchronization. C17 below now replaces it with the real signed reconciliation.
 
 ## State/failure review before broad qualification
 
@@ -122,17 +135,93 @@ is claimed: native signed commands and actual root-mapped CLI use synthetic
 accounts; real SSH/web tests use a signed control fixture. No new workload or
 containment mechanism is enabled by this cancellation-only fix.
 
-Allowance synchronization is NOT implemented. Awaiting the instructor's answer:
-does an explicit per-student duration edit authorize duration-only revision of its
-unused native recovery grant at the next authenticated preflight, while preserving
-source/checksum and refusing consumed/already-prepared grants? Exam defaults must
-not silently revise issued settings. The retry tests' explicit fixture correction
-does not count as delivered web/native synchronization or close unified grants.
+## Approved C17: explicit allowance → signed recovery preflight → exact Begin
+
+Implemented/tested locally, not deployed. Shared web/root/CSV roster
+writers record only explicit allowance authorizations in migration022. Inherit
+captures the default at edit time; exam-default/webcam-only/omitted-column edits
+do not revise grants. Root management request IDs and consumed CSV previews make
+exact retry idempotent; batched failures roll back both roster and edit ledger.
+No historical edit is backfilled. Existing unexplained mismatches require saving
+the intended allowance explicitly again.
+
+The live authenticated student path reconciles duration only, with checked native
+audit, per-UID/catalog/state fences and monotonically increasing provenance. The
+source/identity/checksum/creation/reason are unchanged. Distinct signed recovery
+prepare/Begin operations enforce the exact grant hash and full saved settings;
+old purposes cannot start a newly source-bound attempt. Durable authenticated
+source expectations survive cancelled web preparation retirement, preventing a
+missing grant from becoming ordinary starter work. This does not qualify unified
+grants or add any refund, source-change or automatic recovery authority.
+
+### New durable/intermediate-state review BEFORE broad qualification
+
+- Explicit ledger: inspect via `examctl web students list`; no execution/claim/
+  reservation. Migration adds no backfill. Enrollment removal retains the audit
+  ledger/counters. Default edits do nothing. Preserve IDs/counters during restore;
+  native older/equal-conflicting edits refuse. A fresh explicit edit may supersede
+  an unused one; prepared/consumed grants refuse. Active history never changes.
+- Native publication: checked audit records authorization before mutation. A
+  complete private synced `.pending` file is unpublished metadata, visible in
+  `examctl recovery-grants`, NOT a clock, account reservation or permission. A
+  pending file blocks legacy admission. Same/newer authenticated edit can complete
+  or supersede it after restart; older/equal-conflicting/foreign/orphan metadata
+  refuses without erasure. Canonical rename + lost reply retries the same applied
+  revision. Storage/audit faults never authorize execution; preserve residue.
+- Authenticated source expectation: inspection lives in the gateway's protected
+  database and native catalog. It supplies no new start/fresh archive proof.
+  Changed UID/source/checksum/creation refuses; missing native metadata after
+  cancellation/retirement/restart refuses instead of template fallback. No
+  expiry/automatic removal invents another source. Legacy same-exam reissuance is
+  not introduced; choose a separately approved new grant/exam workflow instead.
+- Preparation receipt: immutable exact grant hash persists with existing bounded
+  preflight and normal cancellation; already prepared grants cannot be revised.
+  Replayed signed commands, expiry, registered transport/UID changes, stale hash,
+  mismatched settings and legacy Begin purposes refuse before OS setup and again
+  at native final scope. Existing workspace/source/consumption checks remain at
+  staging/actual Begin. Cancellation uses the previously qualified contradictory-
+  evidence guard; a missing canonical row alone is not no-start proof.
+- Admission/concurrency: awaiting signed checks re-read enrollment/latest edit/
+  SSH owner before web preparation insertion. Exact native locks prevent
+  concurrent preparation/consumption/revision. Settings edits never rewrite a
+  PREPARING snapshot; cancel positively and preflight anew. Unknown Begin retains
+  the UUID/interval; failure never consumes allowance or grants a refund. Original
+  holds/deadlines/protected archives and monitoring enforcement remain unchanged.
+- Compatibility: recovery capability and distinct purposes require matched roles.
+  Old agents refuse revised unknown metadata; no silent fallback. Preserve
+  migration022 tables/counters/attempt receipts and native revision/source hashes
+  across backup/rollback, together with cancellation and one-use history. Older
+  writers that discard them are not a supported rollback.
+
+Focused evidence:35 web/SSH/actual CLI/interface tests pass44.54s; final native
+race cases core8.413s/CLI1.563s and final typecheck pass. The previous bad synthetic
+source UUID caused six new tests to fail before their intended boundary; fixture
+now uses a valid RFC UUID, without weakening the parser. The failed receipt is
+retained in `/tmp/ssh-exam-recovery-sync-focus.log`; corrected nine-case run
+passes40.07s. An initial new test helper had an invalid TypeScript payload type;
+it was corrected, and final typecheck is clean.
+
+Final qualification:449 application tests/86 files135.39s; full native races with
+all local resource/namespace/compiler/default-size opt-ins core319.645s/
+CLI26.719s; five matching rebuilt Chromium checks49.0s (desktop/narrow allowance
+editor, actual WASM SSH preflight expiry and two pane/logout/relogin/Begin/finish
+paths). Native static build/vet, gateway/web/WASM build, typecheck and diff checks
+pass. All runners finished. Local logs:
+`/tmp/ssh-exam-recovery-sync-{focus-combined,native-focus-final,app,native,browser,build,static,vet,typecheck-final}.log`.
+The generic Vite bundle-size and Node deprecation warnings are non-fatal.
+Browser admin API interception covers presentation, not native kernel enforcement;
+signed SSH web tests and signed native staging/Begin exercise the recovery
+contract. Native OS readiness/home/activation remain explicit test seams; real
+archive/source/staging/publication/consumption and namespace-root CLI execute.
+No csc-sys/installed-role/production qualification is claimed or performed.
+No application/native artifact changed after these broad runs; only operator/
+progress documentation was finalized. The existing generated screenshot remains
+uncommitted and preserved; new browser screenshots use per-test output.
 
 Future separately authorized rollout: verify drain, back up consistent gateway
 and native authority/audit/consumption/source archives, update matching gateway,
-native command/watchdog and CLI roles, then synthetic post-install checks. There
-is no DB/schema migration here. Preserve native cancellation tombstones on rollback
+native command/watchdog and CLI roles, then synthetic post-install checks. C17
+requires additive gateway migration022 and native revision metadata. Preserve native cancellation tombstones on rollback
 so old UUIDs remain fenced; never restore old state over newer starts/consumption
 or delete an orphan web row to force retry. Consolidation of the three temporary
 agent services and independent practice owners remains the guarded proposal in

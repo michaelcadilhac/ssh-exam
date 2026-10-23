@@ -52,9 +52,21 @@ Existing native UUIDs retain normal unstarted-only cancellation. Root operators
 have `examctl cancel-absent UUID --exam EXAM --username USER --reason REASON`;
 missing/unsafe authority and existing UUIDs refuse. Gateway retirement still
 requires matching native cancellation and normal account policy; an error/timeout
-is never no-start evidence. Allowance synchronization remains a separate pending
-decision; strict saved-source/duration checks are not relaxed. Evidence and
-compatibility: docs/recovery-admission-consistency.md. Not deployed.
+is never no-start evidence. Approved C17 now adds duration-only synchronization
+at authenticated preflight after an explicit per-student allowance edit via the
+shared web/CLI/CSV authority. Inheritance saves the allowance at edit time; later
+exam-default edits never authorize revision. Migration022 retains a monotonic
+explicit-edit ledger, authenticated immutable source expectations across web
+preparation retirement, and the exact recovery receipt on each preparation.
+Native checked audit and atomic private publication preserve source/identity/
+checksum/creation/reason, refuse prepared/consumed grants and stale revisions,
+and expose unpublished crash residue through `examctl recovery-grants`.
+Distinct signed recovery prepare/Begin operations bind the exact grant hash and
+settings; missing/changed grants cannot fall back to starter files. No revision
+consumes a grant/clock or changes historical attempts/holds. Preserve these new
+records/fields on backup and rollback; older native readers deliberately refuse
+revised grant metadata. Evidence/compatibility:
+docs/recovery-admission-consistency.md. Local implementation, not deployed.
 
 Saved-work restoration explicitly reapplies archived ordinary file modes and
 available modification times after student ownership, independently of umask.

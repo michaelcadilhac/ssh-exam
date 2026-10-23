@@ -351,7 +351,7 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 }
 
 func protectedIdentity(x, a *Attempt) bool {
-	return x != nil && a != nil && x.ID == a.ID && x.Exam == a.Exam && x.Username == a.Username && x.UID == a.UID && x.Deadline == a.Deadline && x.Start == a.Start && x.Settings == a.Settings && x.OriginalDeadline == a.OriginalDeadline && x.ClockRevision == a.ClockRevision && reflect.DeepEqual(x.ClockResets, a.ClockResets)
+	return x != nil && a != nil && x.ID == a.ID && x.Exam == a.Exam && x.Username == a.Username && x.UID == a.UID && x.ExpectedRecovery == a.ExpectedRecovery && x.Deadline == a.Deadline && x.Start == a.Start && x.Settings == a.Settings && x.OriginalDeadline == a.OriginalDeadline && x.ClockRevision == a.ClockRevision && reflect.DeepEqual(x.ClockResets, a.ClockResets)
 }
 func appendError(errors []string, message string) []string {
 	for _, existing := range errors {

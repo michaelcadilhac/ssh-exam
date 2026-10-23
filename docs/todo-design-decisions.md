@@ -504,3 +504,22 @@ transitions, all-writer/input freeze and complete CLI/web/qualification before
 retained mode can be enabled. No deadlines, hold/recovery policy or verification
 requirements change. The instructor has been asked; neither option is implemented
 by this proposal. Independent correctness/retention work continues meanwhile.
+
+## Explicit recovery allowance synchronization (C17 approved October22)
+
+An explicit per-student allowance edit in web administration or the shared root
+`examctl web students settings` workflow authorizes duration-only synchronization
+of an UNUSED native legacy saved-work grant at the next authenticated preflight.
+Explicit duration CSV/add input uses the same authority. Inheritance records the
+exam allowance at edit time; later exam-default edits do not revise the grant.
+Do not infer historical approval from existing mismatched enrollment rows: save
+the intended allowance explicitly again when no recorded edit exists.
+
+Keep grant/account identity, saved source/checksum, creation time and reason fixed.
+Prepared/started/consumed grants refuse revision; cancellation must positively
+confirm no start before a fresh preflight. No failure or waiting consumes a clock
+or allowance. Retry preserves the source and receives its complete chosen
+interval only at actual Begin. Distinct signed reconcile/prepare/Begin purposes,
+monotonic revision provenance and exact source hashes must refuse stale/mixed
+roles and missing authority instead of falling back to starter files. This is a
+bounded legacy recovery repair, not unified-grant issuance or deployment.

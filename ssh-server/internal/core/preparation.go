@@ -49,6 +49,9 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 			if a.Username != r.Username || a.UID != r.UID || e.state.Registrations[r.Transport] != r.Username {
 				return errors.New("preparation ownership mismatch")
 			}
+			if a.State == "PREPARING" && a.ExpectedRecovery != r.ExpectedRecovery {
+				return errors.New("saved-work grant binding differs from this preparation; preserve it and cancel only if confirmed unstarted before a fresh preflight")
+			}
 			if a.PreparationPending && a.PreparationPendingSince == 0 {
 				a.PreparationPendingSince = Millis()
 			}
@@ -84,7 +87,7 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 		if err != nil {
 			return err
 		}
-		candidate = &Attempt{PreparationPending: true, PreparationPendingSince: Millis(), BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
+		candidate = &Attempt{ExpectedRecovery: r.ExpectedRecovery, PreparationPending: true, PreparationPendingSince: Millis(), BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
 		candidate.PolicyRequired = e.temporaryPolicy(candidate)
 		if sandboxAttempt(candidate) {
 			if err := sandboxBeginWindow(candidate.Settings, Millis()); err != nil {

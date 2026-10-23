@@ -1318,6 +1318,8 @@ for (const width of [1280, 430])
       exact: true,
     });
     await expect(editor.getByLabel("Minutes", { exact: true })).toBeFocused();
+    await expect(editor).toContainText("unused saved-work recovery");
+    await expect(editor).toContainText("Exam default edits do not revise it");
     await editor.getByLabel("Minutes", { exact: true }).fill("123");
     await page.keyboard.press("Escape");
     await expect(duration).toBeFocused();

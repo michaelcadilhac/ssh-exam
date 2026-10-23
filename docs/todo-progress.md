@@ -2317,6 +2317,25 @@ todo-design-decisions.md. Shared-lock isolation,
 every-boundary recovery repair and actual course workload sizing remain open;
 proposals and synthetic measurements are not completion evidence for them.
 
+## October22: explicit recovery allowance synchronization (C17)
+
+Approved explicit student allowance edits now flow through shared web/CLI/CSV
+provenance, signed unused-grant reconciliation, exact saved-source preparation and
+distinct source/settings-bound Begin. Refusal/cancellation/restart/retry consume
+no clock; the full allowance starts only at actual Begin. Default-only edits do
+not revise issued recovery grants; prepared/consumed/source-changed/stale/mixed
+roles refuse. Migration022 preserves explicit edit history and source expectations
+across web preparation retirement, without invented historical approval.
+
+Focused35 interface checks, final native races, full449 app/86 files135.39s,
+full native race/resource/namespace/compiler/default-size core319.645s/
+CLI26.719s, five rebuilt browser checks49.0s, matching builds/vet/typecheck/diff
+pass. Exact state review, failed fixture/typecheck corrections and qualification
+limits: recovery-admission-consistency.md. Implemented/tested locally only; no
+production student record, installed role, service or deployment changed.
+The broad unified-grant/recovery TODOs remain open. Next integrated boundary:
+unified-grant-first-attempt.md. C16 authority placement remains independent.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are

@@ -16,6 +16,10 @@ import {
   alertReminder,
 } from "./alert-management.js";
 import { collectionSettings } from "../../../packages/protocol/collection-limits.js";
+import {
+  recoveryAllowanceReply,
+  recoveryPreflight,
+} from "../../../packages/protocol/recovery-allowance.js";
 import { z } from "zod";
 import {
   examSchema,
@@ -30,6 +34,7 @@ import {
 } from "../../../packages/config/index.js";
 import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
+import { RecoverySources } from "./recovery-source.js";
 import type { ConnectionHandle as Connection } from "./connection-process.js";
 import {
   IsolatedConnection,
@@ -907,6 +912,106 @@ export async function createApp(
           webcam:
             enrollment.webcam === null ? exam.webcam : !!enrollment.webcam,
         };
+    const allowanceEdit = new RosterManagement(store).allowanceEdit(
+      s.exam!,
+      s.username,
+    );
+    const recoverySources = new RecoverySources(store, config.agent.id);
+    const knownRecovery = recoverySources.known(s.exam!, s.username);
+    let recovery = previous?.recovery_preflight
+      ? recoveryPreflight.parse(JSON.parse(previous.recovery_preflight))
+      : null;
+    if (
+      !isSandbox(s.exam) &&
+      (allowanceEdit || recovery || knownRecovery) &&
+      !h.capabilities?.includes("recovery-allowance-sync-v1")
+    )
+      throw Error(
+        "Class server lacks recovery allowance synchronization; update matching native roles before retrying. No grant or clock was consumed.",
+      );
+    if (
+      !isSandbox(s.exam) &&
+      !recovery &&
+      h.capabilities?.includes("recovery-allowance-sync-v1")
+    ) {
+      const result = recoveryAllowanceReply.parse(
+        await conn.command("reconcile-recovery-allowance", {
+          id,
+          exam: s.exam,
+          username: s.username,
+          uid: enrollment.uid,
+          transport: conn.transport,
+          ...(allowanceEdit ? { allowance_edit: allowanceEdit } : {}),
+        }),
+      );
+      if (result.recovery) {
+        const value = result.recovery;
+        if (
+          value.exam !== s.exam ||
+          value.username !== s.username ||
+          value.uid !== enrollment.uid
+        )
+          throw Error(
+            "Class server recovery source identity reply differs from the authenticated enrollment",
+          );
+        recoverySources.remember(value);
+      } else if (knownRecovery) {
+        throw Error(
+          "Expected saved-work recovery grant is missing. Preserve the retained source/archive and restore matching native authorization before retrying; starter-file fallback is forbidden.",
+        );
+      }
+      const currentEnrollment = store.db
+        .prepare(
+          "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
+        )
+        .get(s.exam, s.username);
+      const currentEdit = new RosterManagement(store).allowanceEdit(
+        s.exam!,
+        s.username,
+      );
+      if (
+        JSON.stringify(currentEnrollment) !== JSON.stringify(enrollment) ||
+        JSON.stringify(currentEdit) !== JSON.stringify(allowanceEdit) ||
+        connections.get(`${s.exam}:${s.username}`) !== conn ||
+        !conn.alive
+      )
+        throw Error(
+          "Enrollment, allowance or SSH ownership changed during recovery checks; retry preflight. No clock has started.",
+        );
+      recovery = result.recovery;
+      if (recovery) {
+        if (
+          recovery.exam !== s.exam ||
+          recovery.username !== s.username ||
+          recovery.uid !== enrollment.uid ||
+          (allowanceEdit && recovery.duration !== allowanceEdit.duration)
+        )
+          throw Error(
+            "Class server recovery allowance/identity reply differs from the explicit setting; preserve grant/source and inspect matching roles before retrying",
+          );
+        if (
+          !allowanceEdit &&
+          enrollment.duration !== null &&
+          enrollment.duration !== recovery.duration
+        )
+          throw Error(
+            "Enrollment and unused recovery grant allowances differ. Explicitly save the intended student allowance in web admin or examctl web students settings, then retry preflight; no clock has started.",
+          );
+        if (previous && settings.duration !== recovery.duration)
+          throw Error(
+            "The allowance changed after this web preparation. Sign out to confirm cancellation, then retry a fresh preflight; the saved preparation and clock were not changed.",
+          );
+        settings.duration = recovery.duration;
+      }
+    }
+    if (
+      recovery &&
+      allowanceEdit &&
+      allowanceEdit.duration !== settings.duration
+    )
+      throw Error(
+        "Allowance edit is pending: this preparation keeps its saved allowance. Sign out and confirm cancellation before a fresh preflight; prepared grants are not revised.",
+      );
     if (isSandbox(s.exam)) {
       const {
         collection_file_mib: _file,
@@ -921,7 +1026,7 @@ export async function createApp(
     if (!previous)
       store.db
         .prepare(
-          "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at) VALUES(?,?,?,?,'PREPARING',?,?,?,?)",
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,last_contact,preflight_started_at,recovery_preflight) VALUES(?,?,?,?,'PREPARING',?,?,?,?,?)",
         )
         .run(
           id,
@@ -932,21 +1037,33 @@ export async function createApp(
           hash(pageSecret),
           now(),
           now(),
+          recovery ? JSON.stringify(recovery) : null,
         );
     else
       store.db
-        .prepare("UPDATE attempts SET page_hash=?,last_contact=? WHERE id=?")
-        .run(hash(pageSecret), now(), id);
+        .prepare(
+          "UPDATE attempts SET page_hash=?,last_contact=?,recovery_preflight=? WHERE id=?",
+        )
+        .run(
+          hash(pageSecret),
+          now(),
+          recovery ? JSON.stringify(recovery) : null,
+          id,
+        );
     attemptConnections.set(id, conn);
-    const prepared = await agent.call("prepare-attempt", {
-      id,
-      exam: s.exam,
-      username: s.username,
-      uid: enrollment.uid,
-      settings,
-      transport: conn.transport,
-      browser_ssh: conn instanceof BrowserConnection,
-    });
+    const prepared = await agent.call(
+      recovery ? "prepare-recovery-attempt" : "prepare-attempt",
+      {
+        id,
+        exam: s.exam,
+        username: s.username,
+        uid: enrollment.uid,
+        settings,
+        transport: conn.transport,
+        browser_ssh: conn instanceof BrowserConnection,
+        ...(recovery ? { expected_recovery: recovery.grant_hash } : {}),
+      },
+    );
     if (prepared.state && prepared.state !== "PREPARING") {
       life.acceptRemote(prepared, undefined, id);
       throw Error(
@@ -961,6 +1078,10 @@ export async function createApp(
       uid: enrollment.uid,
     };
     requireTemplateSnapshot(settings, prepared, expectedPreparation);
+    if (recovery && prepared.expected_recovery !== recovery.grant_hash)
+      throw Error(
+        "Class server did not retain the exact saved-work grant binding; preserve source and use matching recovery-aware roles before retrying",
+      );
     store.db
       .prepare("UPDATE attempts SET work_path=?,functional_test=? WHERE id=?")
       .run(prepared.work_path || "/work", prepared.functional_test ? 1 : 0, id);
@@ -976,6 +1097,10 @@ export async function createApp(
         );
       }
       requireTemplateSnapshot(settings, staged, expectedPreparation);
+      if (recovery && staged.expected_recovery !== recovery.grant_hash)
+        throw Error(
+          "Staged recovery lost its exact grant binding; no Begin is authorized; preserve saved work and inspect matching native roles",
+        );
     }
     return {
       id,
@@ -1035,6 +1160,14 @@ export async function createApp(
       if (isSandbox(a.exam))
         requireSandboxAgent(a.exam, await conn.command("health"));
       const prepared = await conn.command("inspect-attempt", { id: a.id });
+      if (
+        a.recovery_preflight &&
+        prepared.expected_recovery !==
+          recoveryPreflight.parse(JSON.parse(a.recovery_preflight)).grant_hash
+      )
+        throw Error(
+          "Saved-work grant binding is unavailable or changed; preserve the preparation/source and inspect matching recovery-aware native roles before Begin",
+        );
       if (
         prepared.account_policy_required &&
         prepared.policy_transport !== conn.transport
@@ -1108,15 +1241,21 @@ export async function createApp(
           "Preparation or required monitoring changed during Begin checks; no new Begin requested; inspect current status",
         );
       requireBeginWindow(a.exam, JSON.parse(a.settings));
+      const recovery = a.recovery_preflight
+        ? recoveryPreflight.parse(JSON.parse(a.recovery_preflight))
+        : null;
       const result = await agent.call(
-        currentSettings.template_version
-          ? "activate-versioned-attempt"
-          : "activate-attempt",
+        recovery
+          ? "activate-recovery-attempt"
+          : currentSettings.template_version
+            ? "activate-versioned-attempt"
+            : "activate-attempt",
         {
           id: a.id,
-          ...(currentSettings.template_version
+          ...(recovery || currentSettings.template_version
             ? { settings: currentSettings }
             : {}),
+          ...(recovery ? { expected_recovery: recovery.grant_hash } : {}),
         },
       );
       if (result.state !== "ACTIVE") {

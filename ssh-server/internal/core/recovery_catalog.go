@@ -15,10 +15,11 @@ import (
 // unified grants, nor proof that a recorded source still hashes correctly.
 type RecoveryGrantView struct {
 	RecoveryPreparation
-	ConsumedBy              string `json:"consumed_by,omitempty"`
-	Disposition             string `json:"disposition"`
-	ConsumerState           string `json:"consumer_state,omitempty"`
-	SourceRecordedProtected bool   `json:"source_recorded_protected"`
+	PendingAllowanceRevision *RecoveryAllowanceEdit `json:"pending_allowance_revision,omitempty"`
+	ConsumedBy               string                 `json:"consumed_by,omitempty"`
+	Disposition              string                 `json:"disposition"`
+	ConsumerState            string                 `json:"consumer_state,omitempty"`
+	SourceRecordedProtected  bool                   `json:"source_recorded_protected"`
 }
 
 func (e *Engine) recoveryCatalogLock() (*os.File, error) {
@@ -112,6 +113,12 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 		}
 		for _, entry := range entries {
 			name := entry.Name()
+			if strings.HasSuffix(name, ".json.pending") {
+				if !files[strings.TrimSuffix(name, ".pending")] {
+					return nil, errors.New("orphan unpublished allowance revision; preserve catalog and gateway edit history; inspect examctl recovery-grants before retry")
+				}
+				continue
+			}
 			if strings.HasSuffix(name, ".json.consumed") {
 				if !files[strings.TrimSuffix(name, ".consumed")] {
 					return nil, errors.New("orphan legacy consumption marker; preserve it and inspect history before deletion")
@@ -142,6 +149,21 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 				return nil, fmt.Errorf("legacy authorization %s/%s identity/allowance invalid; preserve catalog before deletion", exam.Name(), username)
 			}
 			view := RecoveryGrantView{RecoveryPreparation: *r, Disposition: "unused"}
+			if files[name+".pending"] {
+				b, err := catalogFile(root, rel+".pending", 16384)
+				if err != nil {
+					return nil, errRecoveryMetadata
+				}
+				total += int64(len(b))
+				if total > 16*1024*1024 {
+					return nil, errRecoveryMetadata
+				}
+				pending, err := decodeRecoveryMetadata(b)
+				if err != nil || pending.AllowanceRevision == nil || !sameRecoveryAuthority(r, pending) {
+					return nil, errRecoveryMetadata
+				}
+				view.PendingAllowanceRevision = pending.AllowanceRevision
+			}
 			if prior := state.Attempts[r.SourceAttempt]; prior != nil {
 				view.SourceRecordedProtected = prior.Protected && prior.State == "COMPLETED" && prior.Username == r.Username && prior.UID == r.UID && prior.Checksum == r.Checksum
 			}

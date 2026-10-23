@@ -665,6 +665,25 @@ while outstanding saved-work authorities exist. Catalog visibility is not the
 authoritative unified migration needed for C8 retirement. See
 legacy-recovery-dependencies.md for qualification and constraints.
 
+## Recovery allowance synchronization (C17; proposal only)
+
+No deployment is authorized. A future cutover must drain attempts AND unstarted
+preparations/pending Begin, retain independent owners, and consistently back up
+gateway DB/WAL/audit/request receipts plus native state/audit/grants/pending and
+consumption markers/protected source archives. Install matched gateway/native
+command/watchdog/CLI roles; migration022 adds explicit-edit provenance, immutable
+authenticated source expectations and attempt recovery receipts. It backfills no
+historical authorization and changes no student record merely by adding schema.
+
+Before reopening admission, synthetic allowance edit → signed preflight → saved
+source → actual Begin must preserve source/checksum, get the full chosen interval
+only at Begin and refuse prepared/consumed/stale/missing-source/old-role cases.
+Preserve native cancellation tombstones, edit revision counters/source hashes and
+all one-use history on rollback. Older readers refuse revised grant metadata;
+never remove fields/markers or restore old counters/state to make downgrade work.
+Use compatible forward repair with admission closed if no safe rollback exists.
+No manual production grant edit, student retry or consolidation is executed here.
+
 ## Consolidate all three agent listeners (proposal only)
 
 The October22 approval-feedback candidate needs no additional migration beyond

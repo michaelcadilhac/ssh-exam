@@ -870,6 +870,33 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         webcam: 0,
         uid: 0,
       });
+      expect(roster.students[0].recovery_allowance_edit).toMatchObject({
+        duration: 7200,
+        actor: expect.stringContaining("agent:"),
+      });
+      const allowanceRequest = randomUUID();
+      const allowanceArgs = [
+        "settings",
+        "cli-exam",
+        "learner01",
+        "--duration-minutes",
+        "120",
+        "--request",
+        allowanceRequest,
+      ];
+      await students(allowanceArgs);
+      const allowance = JSON.parse(
+        (await students(["list", "cli-exam"])).stdout,
+      ).result.students[0].recovery_allowance_edit;
+      expect(allowance.revision).toBeGreaterThan(
+        roster.students[0].recovery_allowance_edit.revision,
+      );
+      await f.restart();
+      await students(allowanceArgs);
+      expect(
+        JSON.parse((await students(["list", "cli-exam"])).stdout).result
+          .students[0].recovery_allowance_edit,
+      ).toEqual(allowance);
       expect(
         JSON.parse(
           (

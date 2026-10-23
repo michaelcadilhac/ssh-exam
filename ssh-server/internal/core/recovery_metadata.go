@@ -58,14 +58,33 @@ func decodeRecoveryMetadata(b []byte) (*RecoveryPreparation, error) {
 	}
 	for field := range fields {
 		switch field {
-		case "exam", "username", "uid", "duration", "source_attempt", "checksum", "created_at", "reason":
+		case "exam", "username", "uid", "duration", "source_attempt", "checksum", "created_at", "reason", "allowance_revision":
 		default:
 			return nil, errRecoveryMetadata
+		}
+	}
+	if raw, present := fields["allowance_revision"]; present {
+		var nested map[string]json.RawMessage
+		if json.Unmarshal(raw, &nested) != nil || len(nested) != 4 {
+			return nil, errRecoveryMetadata
+		}
+		for key, value := range nested {
+			if bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+				return nil, errRecoveryMetadata
+			}
+			switch key {
+			case "revision", "duration", "actor", "at":
+			default:
+				return nil, errRecoveryMetadata
+			}
 		}
 	}
 	d := json.NewDecoder(bytes.NewReader(b))
 	d.DisallowUnknownFields()
 	if d.Decode(&r) != nil || d.Decode(new(any)) != io.EOF {
+		return nil, errRecoveryMetadata
+	}
+	if r.AllowanceRevision != nil && (!validRecoveryAllowanceEdit(r.AllowanceRevision) || r.AllowanceRevision.Duration != r.Duration) {
 		return nil, errRecoveryMetadata
 	}
 	_, checksumErr := hex.DecodeString(r.Checksum)

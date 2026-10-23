@@ -59,6 +59,10 @@ func init() {
 	deletion := guides["delete"]
 	deletion.restrictions += " Unused/uncertain legacy saved-work authorizations and unfinished dependent attempts also block deletion. Verification runs in a bounded worker while source/catalog locks fence native consumption. Inspect examctl recovery-grants first; do not remove grants/markers or invent history to bypass a refusal."
 	guides["delete"] = deletion
+	recovery := guides["recovery-grants"]
+	recovery.restrictions += " Explicit per-student duration edits via web admin or examctl web students settings authorize duration-only revision at next authenticated preflight; exam-default edits do not. allowance_revision records provenance; pending_allowance_revision is unpublished crash residue, never execution permission. Retry latest explicit settings through student preflight to complete/supersede it; do not hand-edit/delete files. Prepared/consumed grants refuse revisions, and source/checksum remain fixed. See examctl web students help."
+	recovery.examples += "\nexamctl web students settings retake student01 --duration-minutes 75"
+	guides["recovery-grants"] = recovery
 }
 
 func helpRequest(args []string) (string, bool) {

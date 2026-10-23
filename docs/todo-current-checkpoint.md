@@ -5,130 +5,57 @@ no push, deployment, production changes, service restart or consolidation.
 Stop on a missing command. Preserve all work, history, protected submissions,
 deadlines, holds and credential cleanup. Follow AGENTS.md and the retrospective.
 
-## Current validated local milestone: rejected recovery preparation cancellation
+## Active next milestone: unified first ordinary grant, end to end
 
-Validated increment: local commit titled **Fence rejected recovery preparations
-before retry**, based on75fb5cb. Evidence/state review/limits:
-recovery-admission-consistency.md. Signed absent-preparation cancellation and
-root `examctl cancel-absent` persist a no-start fence; existing/started attempts,
-unsafe authority and contradictory workspace/submission/consumption evidence
-refuse. Positive retry preserves saved source and receives the full4500seconds
-only at actual Begin. No failure consumes a grant/clock or bypasses policy/holds.
+Resume unified-grant-first-attempt.md and the inspected protocol proposal.
+Actual enrollment/import → immutable initial grant → supported CLI/web inspect/
+revise/revoke → student preflight/Begin → fresh C15 native outbound verification.
+Preserve legacy history/account restrictions; no implicit legacy backfill or
+unsafe mixed-version admission. Continue to an integrated acceptance boundary,
+not additive tables alone. Initial issuance snapshots at enrollment/import are
+settled; defaults/roster edits do not revise issued grants.
 
-Verification:438 app/84 files; final native races/resources/namespaces/compiler/
-default-size core303.991s/CLI26.717s;3 rebuilt browser checks plus final artifact-
-path check; matching builds/vet/typecheck/diff pass. All runners finished. Native
-OS readiness/setup are test seams; no installed-role/production qualification.
-Existing generated screenshot stays uncommitted; future screenshots use test output.
+Exact next action: implement shared initial issuance and management with actual
+enrollment/CSV/CLI tests, followed by source-bound native/student C15 admission
+in the SAME end-to-end milestone. Check native account/ordinary uniqueness before
+changing indexes; cancelled claims need retained history and positive native
+no-start fencing. Review all new intermediate states before broad qualification.
+C16 authority placement is open (reasked asynchronously October22), not a global
+blocker. C17 is settled and delivered locally; do not reask.
 
-NOT yet fixed: duration-only synchronization of explicit per-student edits with
-unused native saved-work grants. Awaiting whether the allowance edit itself
-authorizes deferred revision at authenticated preflight (recommended), or a
-separate explicit grant-revision action. Preserve source/checksum; refuse consumed/
-already-prepared grants; never apply default edits silently. The regression's
-manual synthetic correction is not a synchronization implementation.
-Exact next action: apply that answer to the shared web/examctl settings → native
-unused-grant workflow, then rerun its actual interfaces. C16 remains independent
-and unanswered; do not expand this repair into retained-mode architecture.
+## Latest validated local milestone: recovery allowance synchronization (C17)
 
-## Earlier validated milestones
+Validated source increment based on ea9cce2, local commit titled
+"Synchronize explicit recovery allowances without consuming attempts".
+Explicit student duration edits → shared web/CLI/CSV ledger → authenticated
+unused native revision → exact saved-source preparation/Begin. Prepared/consumed/
+stale/changed-source/mixed-role cases refuse. No clocks/grants consumed by failure;
+retry receives full allowance only at actual Begin. Defaults never revise grants.
 
-Earlier validated runtime204d439: incomplete/ambiguous workspace hold metadata
-refuses through actual CLI/native workflows instead of defaulting to released.
-Full native312.137s/CLI29.516s and static build/vet/diff pass; all runners finish.
-The prior supervisor diagnostic workflow is committed inc601746. Detailed evidence
-and the independent-work handoff follow below; that earlier milestone was committed.
+Evidence/state review/failure limits: recovery-admission-consistency.md.
+449 app/86 files135.39s; full native race/resource/namespace/compiler/default-size
+core319.645s/CLI26.719s; five rebuilt Chromium/WASM checks49.0s; matching builds,
+vet/typecheck/diff pass. All runners finished. Native OS setup is a test seam;
+no installed-role/csc-sys/production qualification or deployment is claimed.
+Prior ea9cce2 added signed/root absent-preparation cancellation with contradictory-
+evidence checks; its detailed evidence remains in the same feature document.
 
-Actual timed Engine.local/Unix/PTY recording no longer holds unrelated attempts
-behind one Engine-wide mutex. Recorder context is only storage/budget/IDs.
-Per-recorder and cross-process per-attempt quota locks remain; nonblocking flock
-waits precede a16-transaction per-process recording IO bound. Already-open healthy
-terminals continue; blocked output cannot bypass recording; both shells retain
-exact process/memory and original intervals/holds after release.
+## Earlier validated outcomes (details stay in feature documents)
 
-Old behavior RED1.937s; slot-before-flock mutant RED2.940s, restored. A missing-
-home fixture failure is retained separately. Three final focused races pass25.190s;
-full native race/resource/namespace/compiler/default-size core295.622s/CLI25.171s;
-static build/vet/diff pass. All runners finished. Local commit follows this
-documentation (local commit d303bfc). Evidence/state review/limits: terminal-recording-isolation.md.
-No app/browser/WASM source or artifact changed: prior435 app/22 browser/build/
-typecheck and35 affected callback/SSH checks cover those unchanged surfaces, not
-a new-root qualification claim. No redundant web rebuild/browser run.
+- `204d439`: incomplete workspace holds refuse through actual CLI/native paths;
+  evidence in workspace-retention.md.
+- `c601746`: supported bounded live supervisor diagnostics;
+  terminal-supervisor-observation.md.
+- `d303bfc`: per-attempt terminal recording no longer serializes unrelated users;
+  terminal-recording-isolation.md.
+- `c69d35b`: exact-generation recording fault fences; terminal-recording-faults.md.
+- `6b5cdd9`: independent practice owner only; terminal-supervision.md. Timed C12
+  lifetime/input/freeze integration is NOT delivered by practice supervision.
+- `a51fcb0`: exact source selection, not unified issuance/C15;
+  template-source-selection.md. Earlier outcomes/history: todo-progress.md.
 
-Next integrated boundary is timed C12 lifetime/recording/event/restart ownership,
-not another unused primitive. Read retained-workload-barrier-plan.md first.
-Require bounded canonical fault/exit reconciliation, actual IO/EOF/backpressure
-and crash behavior, supported pane CLI diagnostics and no per-student global
-Engine. Do not enable retained lockout/input/recovery mode from partial work.
-The verified independent practice owner remains usable; timed panes still use
-the coordinator-owned recording path.
-
-Current bounded operator milestone: supported `examctl panes supervisor ATTEMPT`
-queries root-only bounded live owner metadata, separate from captured list/show.
-No Engine/state initialization, audit write, execution permit, monitor proof or
-control mutation. Work descriptor handoff keeps its full loaded-agent/scope/UID
-checks; the new root-only metadata purpose grants no work. Accept actual compiled
-root-namespace CLI + actual private supervisor IPC, strict reply/sender/FD/privacy
-refusals, help, missing/malformed/timeout and no-state-change checks. Complete this
-workflow and local commit before adding timed lifecycle pending reports; no
-unwired protocol helper or C3 flag. Three final focused races pass core28.667s/
-CLI1.688s, including actual static root-namespace CLI after creator death/FIFO
-state, true server control/FD refusals, strict/private replies and live-sender
-timeout. State/failure review and retained fixture failures are in
-terminal-supervisor-observation.md. Full native core299.869s/CLI28.567s, final
-guidance-specific repeats core15.360s/CLI1.745s, correctly sequenced full CLI14.678s
-and static build/vet/diff pass. All runners finish; local commit c601746. No core
-runtime change after broad qualification; final CLI-only messages get fresh
-affected checks. Root-role namespace/PAM proof remains guarded.
-
-C16 is awaiting an instructor answer: colocate the live authority/input-cutoff
-loop in the approved attempt supervisor (recommended), or add one separate
-authority process per attempt. C12 grouping, C10 semantics and C1–C15 stay settled.
-Proposal/tradeoffs: todo-design-decisions.md. Continue independent approved work.
-
-Current independent milestone: `examctl workspaces show/list/hold/release-hold`
-now refuses an incomplete/ambiguous existing hold rather than defaulting protection
-to released. Actual CLI RED0.142s; three focused race repeats core1.269s/CLI2.658s
-pass all required-field/null and real CLI corruption/valid round-trip cases.
-State/failure review and exact limits are in workspace-retention.md. Full native
-race/resource/namespace/compiler/default-size core312.137s/CLI29.516s, static build/
-vet/diff pass. All runners finish; committed locally as204d439. Preserve hold/markers/audit/work and
-original/current timing/access; no cleanup command or new permission. Acceptance:
-strict complete v1 records, legitimate explicit true/false round trips, corruption
-refusal before overwrite/audit and actual CLI/root/help plus focused native races.
-Next: apply the instructor's C16 answer to the integrated retained-owner/authority
-milestone, with actual student/CLI workflow and full barriers before enablement.
-While awaiting that answer, approved unified-grant/native C15 and full C4 proof/
-cleanup work remain implementation work, not completed or automatically blocked
-by the BUSY guest guard. Preserve this distinction when resuming. Boundary:
-coherent validated hold-safety fix while C16 is awaiting an answer;
-do not expand into an unused cross-namespace scanner or enable cleanup.
-
-## Earlier validated local outcomes
-
-- c69d35b fences delayed recording faults to their original authenticated
-  generation/interval/exact tracked pane. Already-observed real faults finish
-  before normal proof retirement; current loss still locks after clock extension.
-  Full native291.006s/CLI21.908s,35 affected gateway cases10.37s pass.
-  terminal-recording-faults.md records the withdrawn full-IO-join experiment:
-  legacy blocking raw input/forwarding needs its own qualified lifecycle.
-- 6b5cdd9 gives ordinary Practice terminals one bounded independent supervisor
-  per user/attempt, outside coordinator/workload kill domains, with no global
-  metadata/config/keys. Two real panes survive whole-coordinator-cgroup death;
-  physical owner failure contains its exact writer. Existing pane CLI/Tick handle
-  captured ownership/verified cleanup. Full native304.305s/CLI39.164s,435 app,
-  22 rebuilt browser checks and builds pass. Root-role qualification is pending;
-  fixtures replace SSH/PAM/root namespace/final shell. terminal-supervision.md.
-- a51fcb0 binds exact source selection through CLI/web settings and student
-  preflight/Begin, with old-role/snapshot/stale-page refusal and no mutable fallback.
-  Full435 app/native races/build/16 rebuilt browser checks pass.
-  template-source-selection.md. It does not issue unified grants or implement C15.
-- dd8e4b7 closed pane exec outside shared state;155baaf private pane setup/typed
-  technical errors;b90ba4d finite sandbox windows;47673b6 isolated pending
-  preflight;43a7201 no-write refusal diagnostics. Feature documents retain evidence.
-
-A regenerated synthetic screenshot remains uncommitted and preserved; tool review
-refused discarding it. Do not restore/delete it or include it accidentally.
+Preserve the existing uncommitted generated screenshot, excluding it from commits;
+future screenshots use per-test output. No earlier evidence qualifies new artifacts.
 
 ## Remaining work and settled decisions
 

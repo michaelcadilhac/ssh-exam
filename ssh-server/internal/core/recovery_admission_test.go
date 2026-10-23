@@ -66,20 +66,28 @@ func TestRejectedRecoveryPreparationCanBeCancelledAndFencedAcrossRestart(t *test
 	}); err != nil {
 		t.Fatal(err)
 	}
-	// Explicit synthetic operator repair, not implicit grant resnapshotting.
-	// Exercise real signed prepare/stage/Begin with OS readiness/setup seams;
+	// Explicit signed operator edit, not implicit grant resnapshotting.
+	// Exercise real reconciliation/prepare/stage/Begin with OS setup seams;
 	// archive verification/copy/publication and consumption remain real.
 	archive := filepath.Join(e.Config.State, "submissions", grant.SourceAttempt, "submission.tar.gz")
 	beforeArchive, err := os.ReadFile(archive)
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant.Duration = 4500
-	writeRecoveryFixture(t, restarted, a, grant)
 	r.ID, r.Settings.Earliest, r.Settings.Latest = retryRecoveryID, Millis()-60000, Millis()+600000
+	r.AllowanceEdit = &RecoveryAllowanceEdit{Revision: 1, Duration: 4500, Actor: "fixture-instructor", At: Millis()}
+	cmd = preparationCommand(r)
+	cmd.Op = "reconcile-recovery-allowance"
+	result, err = restarted.Command(signedCommand(key, cmd), r.Username, r.Transport)
+	if err != nil {
+		t.Fatal("signed allowance repair failed", err)
+	}
+	r.ExpectedRecovery = result.(recoveryAllowanceReply).Recovery.GrantHash
+	grant.Duration, grant.AllowanceRevision = 4500, r.AllowanceEdit
 	restarted.preparationReady = func() (bool, []string) { return true, nil }
 	restarted.preparationHome = func(*Attempt) error { return nil }
 	cmd = preparationCommand(r)
+	cmd.Op = "prepare-recovery-attempt"
 	if _, err := restarted.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +106,7 @@ func TestRejectedRecoveryPreparationCanBeCancelledAndFencedAcrossRestart(t *test
 	}
 	entered, release := make(chan struct{}), make(chan struct{})
 	restarted.activationPrepare = func(*Attempt) error { close(entered); <-release; return nil }
-	cmd.Op, cmd.Nonce = "activate-attempt", Token()
+	cmd.Op, cmd.Nonce = "activate-recovery-attempt", Token()
 	finished := make(chan error, 1)
 	drained := false
 	defer drainWorkspaceTask(t, release, finished, &drained)

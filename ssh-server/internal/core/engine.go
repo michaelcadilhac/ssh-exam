@@ -17,29 +17,31 @@ import (
 )
 
 type Request struct {
-	PublicKey        string   `json:"public_key"`
-	Handoff          string   `json:"handoff"`
-	ExtendSeconds    int64    `json:"extend_seconds,omitempty"`
-	ResetID          string   `json:"reset_id,omitempty"`
-	Actor            string   `json:"actor,omitempty"`
-	RequestedAt      int64    `json:"requested_at,omitempty"`
-	RemainingSeconds int64    `json:"remaining_seconds,omitempty"`
-	ClockRevision    int      `json:"clock_revision,omitempty"`
-	Deadline         int64    `json:"deadline,omitempty"`
-	BrowserSSH       bool     `json:"browser_ssh,omitempty"`
-	Continuation     *Request `json:"continuation,omitempty"`
-	ID               string   `json:"id"`
-	Exam             string   `json:"exam"`
-	Username         string   `json:"username"`
-	UID              int      `json:"uid"`
-	Settings         Settings `json:"settings"`
-	Transport        string   `json:"transport"`
-	Pane             string   `json:"pane"`
-	Purpose          string   `json:"purpose"`
-	Reason           string   `json:"reason"`
-	Generation       int      `json:"generation"`
-	Expires          int64    `json:"expires"`
-	Usernames        []string `json:"usernames"`
+	AllowanceEdit    *RecoveryAllowanceEdit `json:"allowance_edit,omitempty"`
+	ExpectedRecovery string                 `json:"expected_recovery,omitempty"`
+	PublicKey        string                 `json:"public_key"`
+	Handoff          string                 `json:"handoff"`
+	ExtendSeconds    int64                  `json:"extend_seconds,omitempty"`
+	ResetID          string                 `json:"reset_id,omitempty"`
+	Actor            string                 `json:"actor,omitempty"`
+	RequestedAt      int64                  `json:"requested_at,omitempty"`
+	RemainingSeconds int64                  `json:"remaining_seconds,omitempty"`
+	ClockRevision    int                    `json:"clock_revision,omitempty"`
+	Deadline         int64                  `json:"deadline,omitempty"`
+	BrowserSSH       bool                   `json:"browser_ssh,omitempty"`
+	Continuation     *Request               `json:"continuation,omitempty"`
+	ID               string                 `json:"id"`
+	Exam             string                 `json:"exam"`
+	Username         string                 `json:"username"`
+	UID              int                    `json:"uid"`
+	Settings         Settings               `json:"settings"`
+	Transport        string                 `json:"transport"`
+	Pane             string                 `json:"pane"`
+	Purpose          string                 `json:"purpose"`
+	Reason           string                 `json:"reason"`
+	Generation       int                    `json:"generation"`
+	Expires          int64                  `json:"expires"`
+	Usernames        []string               `json:"usernames"`
 }
 
 func (e *Engine) productionReady() (bool, []string) {

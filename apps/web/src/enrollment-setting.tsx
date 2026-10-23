@@ -181,7 +181,11 @@ export function EnrollmentSetting({
               </select>
             </label>
           )}
-          <small>Current attempts keep their settings.</small>
+          <small>
+            Current attempts keep their settings.
+            {kind === "duration" &&
+              " Saving an allowance also authorizes duration-only synchronization of unused saved-work recovery at the student's next preflight. Exam default edits do not revise it."}
+          </small>
           {error && (
             <span className="warn" role="alert">
               {error}
