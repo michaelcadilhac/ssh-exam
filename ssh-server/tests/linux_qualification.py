@@ -66,13 +66,14 @@ class Connection:
         run([*self.ssh,'-S',self.socket,'-O','exit',self.target])
         if self.keydir:shutil.rmtree(self.keydir,ignore_errors=True);self.keydir=None
     def raw(self,command,**kw): return run([*self.ssh,'-S',self.socket,self.target,command],**kw)
-    def command(self,op,body=None):
+    def command(self,op,body=None,nonce=None,discard_reply=False):
         body=dict(body or {})
         if browser_mode:body['browser_ssh']=True
-        request={'audience':config['agent_id'],'nonce':str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':self.username,'transport':self.transport,'op':op,'body':body}
+        request={'audience':config['agent_id'],'nonce':nonce or str(uuid.uuid4()),'expires':int(time.time()*1000)+29000,'username':self.username,'transport':self.transport,'op':op,'body':body}
         payload=json.dumps(request,separators=(',',':')).encode()
         frame=json.dumps({'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(key.sign(payload)).decode()})+'\n'
         p=self.raw('exam-control',input=frame); assert p.returncode==0,(p.stdout,p.stderr)
+        if discard_reply:return None # Receiver fault after actual native handling; recover only from the fresh query below.
         value=json.loads(p.stdout)
         if browser_mode:
             # The actual BrowserSSH protocol returns only proof. Never accept
@@ -235,6 +236,18 @@ if a.timed_owner:
         for property,expected in [('MemoryMax',str(64*1024*1024)),('MemorySwapMax','0'),('TasksMax','64')]:
             assert root('systemctl','show',unit,'--property='+property,'--value').strip()==expected
         ok('two actual timed SSH panes share one bounded independently scoped owner, observed through examctl')
+        original_nonce=str(uuid.uuid4())
+        connection.command('renew-receipted-execution-lease',{'id':id},nonce=original_nonce,discard_reply=True)
+        journal=pathlib.Path(config['state'])/'leases'/(id+'.json')
+        before_journal=journal.read_bytes();committed=json.loads(before_journal)
+        first=connection.command('execution-renewal-receipt',{'id':id,'renewal_nonce':original_nonce})
+        second=connection.command('execution-renewal-receipt',{'id':id,'renewal_nonce':original_nonce})
+        assert first['version']==second['version']==1 and first['nonce']==second['nonce']==original_nonce
+        assert first['until']==second['until']==committed['until'] and 0<second['remaining_ms']<=first['remaining_ms']<=15000
+        assert journal.read_bytes()==before_journal, 'Query rewrote or extended the original publication'
+        observed=json.loads(root('examctl','info',id,'--read-only'))['attempts'][0]
+        assert observed['state']=='ACTIVE' and observed['start']==original['start'] and observed['deadline']==original['deadline'] and observed['original_deadline']==original['original_deadline']
+        ok('discarded actual native renewal reply recovers the exact confirmed original cutoff twice without journal or clock changes')
         connection.command('renew-execution-lease',{'id':id})
         root('systemctl','stop','exam-agent.service');stopped=True
         for number,pane in enumerate(panes):

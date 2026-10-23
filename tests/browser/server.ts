@@ -30,6 +30,7 @@ const cleanupAccounts = { cleanup01: 10013, cleanup02: 10014 };
 const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
 const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
+const receiptAccounts = { receipt01: 10029 };
 const approvalAccounts = { approval01: 10020 };
 // The sandbox repeat test deliberately leaves a reserved new preflight; expiry
 // qualification must own another account instead of bypassing that reservation.
@@ -164,6 +165,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...isolationAccounts,
       ...closureAccounts,
       ...monitoringAccounts,
+      ...receiptAccounts,
       ...approvalAccounts,
       ...preflightAccounts,
       ...versionAccounts,
@@ -582,7 +584,55 @@ const postStatus = async (a: any) => {
     payload,
   });
 };
-h.control.command = async (op, b) => {
+const renewalReceipts = new Map<string, { until: number; attempt: any }>();
+let recoveredRenewalReceipts = 0;
+h.control.dropReply = (frame) =>
+  frame.username === "receipt01" &&
+  frame.op.includes("receipted-execution-lease");
+h.control.command = async (op, b, frame) => {
+  if (op === "register") {
+    const result = await fixtureCall(op, b);
+    return b.exam === "monitoring-receipt"
+      ? { ...result, execution_renewal_receipts: "v1" }
+      : result;
+  }
+  if (
+    op === "renew-receipted-execution-lease" ||
+    op === "renew-owner-receipted-execution-lease"
+  ) {
+    const result = await fixtureCall(
+      op === "renew-owner-receipted-execution-lease"
+        ? "renew-owner-execution-lease"
+        : "renew-execution-lease",
+      b,
+    );
+    const attempt = structuredClone({ ...result, transport: frame.transport });
+    renewalReceipts.set(frame.nonce, { until: Date.now() + 15000, attempt });
+    return attempt;
+  }
+  if (op === "execution-renewal-receipt") {
+    const original = renewalReceipts.get(b.renewal_nonce);
+    const a = attempts.get(b.id);
+    if (
+      !original ||
+      !a ||
+      a.state !== "ACTIVE" ||
+      a.deadline <= Date.now() ||
+      original.until <= Date.now() ||
+      original.attempt.id !== b.id ||
+      original.attempt.transport !== frame.transport ||
+      (a.registered_owner && a.registered_owner.page_epoch !== b.page_epoch)
+    )
+      throw Error("Exact current fixture renewal unavailable");
+    recoveredRenewalReceipts++;
+    return {
+      version: 1,
+      nonce: b.renewal_nonce,
+      until: original.until,
+      remaining_ms: original.until - Date.now(),
+      attempt: original.attempt,
+    };
+  }
   const result = await fixtureCall(op, b);
   if (op === "finalize-attempt") setTimeout(() => void postStatus(result), 50);
   return result;
@@ -799,6 +849,7 @@ for (const [id, username, uid] of [
   ["closure", "closure01", 10017],
   ["reload-opening", "closure02", 10018],
   ["monitoring-liveness", "monitoring01", 10019],
+  ["monitoring-receipt", "receipt01", 10029],
   ["approval-feedback", "approval01", 10020],
   ["isolation-a", "isolation01", 10015],
   ["isolation-b", "isolation02", 10016],
@@ -842,6 +893,12 @@ store.db
   .run("temporary-access", "policytest01", null, null, null, 12001);
 // Disposable browser-test instrumentation only; never part of the production app.
 app.get("/api/fixture/runtime", async () => ({
+  renewalReceipts: {
+    recovered: recoveredRenewalReceipts,
+    activeCommands: h.control.active,
+    maxActiveCommands: h.control.maxActive,
+  },
+  authenticationCalls: h.authCalls,
   pid: process.pid,
   activationFailure: store.db
     .prepare(

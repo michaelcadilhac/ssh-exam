@@ -11,10 +11,15 @@ import { hosts } from "./hosts.js";
 
 // Real authenticated SSH channels and HTTP/WebSocket interfaces; the SSH host's
 // shell/native policy are simulated. This is not privileged freezer qualification.
-export async function liveMonitoring() {
+export async function liveMonitoring(
+  options: { renewalReceipts?: boolean } = {},
+) {
   const h = await hosts({ mfaDelayMs: 10 });
   h.control.command = async (op, body) => {
-    if (op === "register") return {};
+    if (op === "register")
+      return options.renewalReceipts
+        ? { execution_renewal_receipts: "v1" }
+        : {};
     if (op === "resolve-course-accounts") return { student: 10001 };
     return h.agent.call(op, body);
   };

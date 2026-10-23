@@ -38,7 +38,14 @@ export async function hosts(
   };
   const control = {
     failures: [] as string[],
-    command: undefined as undefined | ((op: string, body: any) => Promise<any>),
+    active: 0,
+    maxActive: 0,
+    dropReply: undefined as
+      | undefined
+      | ((command: any, result: any) => boolean | "eof"),
+    command: undefined as
+      | undefined
+      | ((op: string, body: any, command?: any) => Promise<any>),
   };
   const key = () =>
     generateKeyPairSync("rsa", {
@@ -91,7 +98,7 @@ export async function hosts(
   const classServer = new Server({ hostKeys: [classKey] }, (client) => {
     const transportID = hash(randomUUID());
     let authenticatedUsername = "";
-    const receipt = (kind: string, nonce: string, result: any) => {
+    const receipt = (kind: string, nonce: string, result: any, error = "") => {
       const payload = Buffer.from(
         JSON.stringify({
           agent: "class",
@@ -101,7 +108,7 @@ export async function hosts(
           transport: transportID,
           expires: Date.now() + 120000,
           result,
-          error: "",
+          error,
         }),
       );
       return {
@@ -159,6 +166,9 @@ export async function hosts(
           if (info.command === "exam-control") {
             const stream = accept();
             if (!stream) return;
+            control.active++;
+            control.maxActive = Math.max(control.maxActive, control.active);
+            stream.once("close", () => control.active--);
             let input = "";
             stream.on("data", (chunk: Buffer) => {
               input += chunk.toString();
@@ -191,13 +201,28 @@ export async function hosts(
                         transport: transportID,
                         uid: 10001,
                         ...(control.command
-                          ? await control.command("register", {
-                              ...cmd.body,
-                              transport: transportID,
-                            })
+                          ? await control.command(
+                              "register",
+                              {
+                                ...cmd.body,
+                                transport: transportID,
+                              },
+                              cmd,
+                            )
                           : {}),
                       }
-                    : await (control.command || agent.call)(cmd.op, cmd.body);
+                    : await (control.command || agent.call)(
+                        cmd.op,
+                        cmd.body,
+                        cmd,
+                      );
+                // Drop only the reply AFTER the simulated native commit. Keep
+                // the actual SSH channel alive until exact client cancellation.
+                const fault = control.dropReply?.(cmd, result);
+                if (fault) {
+                  if (fault === "eof") stream.end();
+                  return;
+                }
                 stream.end(
                   JSON.stringify({
                     result,
@@ -210,6 +235,12 @@ export async function hosts(
                   JSON.stringify({
                     error: error.message,
                     result: error.attemptState,
+                    proof: receipt(
+                      "ssh-command-receipt",
+                      cmd.nonce,
+                      error.attemptState,
+                      error.message,
+                    ),
                   }) + "\n",
                 );
               });

@@ -110,6 +110,7 @@ type Pane struct {
 	mu      sync.Mutex
 }
 type pendingPane struct{ cancel context.CancelFunc }
+type pendingCommand struct{ cancel context.CancelFunc }
 
 type Client struct {
 	user           string
@@ -125,6 +126,7 @@ type Client struct {
 	auth           *authState
 	panes          map[string]*Pane
 	opening        map[string]*pendingPane
+	commands       map[string]*pendingCommand
 	Emit           func(any)
 }
 
@@ -322,13 +324,45 @@ func (c *Client) session() (*ssh.Session, error) {
 	return session, err
 }
 func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 120*time.Second)
+	defer cancel()
+	// Only an exact gateway-issued command nonce can cancel this channel.
+	// Legacy frames without a signed envelope retain their existing behavior.
+	var envelope struct{ Payload string }
+	var request struct{ Nonce string }
+	if len(frame) <= 4*1024*1024 && json.Unmarshal(frame, &envelope) == nil {
+		if payload, err := base64.StdEncoding.DecodeString(envelope.Payload); err == nil {
+			_ = json.Unmarshal(payload, &request)
+		}
+	}
+	if len(request.Nonce) >= 16 && len(request.Nonce) <= 64 {
+		command := &pendingCommand{cancel: cancel}
+		c.mu.Lock()
+		if c.commands == nil {
+			c.commands = map[string]*pendingCommand{}
+		}
+		if c.commands[request.Nonce] != nil || len(c.commands) >= 64 {
+			c.mu.Unlock()
+			return nil, errors.New("command already pending or command capacity reached")
+		}
+		c.commands[request.Nonce] = command
+		c.mu.Unlock()
+		defer func() {
+			c.mu.Lock()
+			if c.commands[request.Nonce] == command {
+				delete(c.commands, request.Nonce)
+			}
+			c.mu.Unlock()
+		}()
+	}
 	s, err := c.session()
 	if err != nil {
 		return nil, err
 	}
 	defer s.Close()
-	ctx, cancel := context.WithTimeout(c.ctx, 120*time.Second)
-	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	stop := context.AfterFunc(ctx, func() { s.Close() })
 	defer stop()
 	in, err := s.StdinPipe()
@@ -351,6 +385,19 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 		return nil, errors.New("invalid agent acknowledgment")
 	}
 	return json.RawMessage(line), nil
+}
+
+// No transport, pane or sibling command is closed. Cancellation says nothing
+// about native acceptance; the caller must already have its exact signed receipt.
+func (c *Client) CancelCommand(nonce string) bool {
+	c.mu.Lock()
+	command := c.commands[nonce]
+	c.mu.Unlock()
+	if command == nil {
+		return false
+	}
+	command.cancel()
+	return true
 }
 func (c *Client) Open(pane, token string) (json.RawMessage, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)

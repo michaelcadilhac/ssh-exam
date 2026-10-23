@@ -17,6 +17,8 @@ import (
 )
 
 type Request struct {
+	renewalReceipt   bool
+	RenewalNonce     string `json:"renewal_nonce,omitempty"`
 	ownerRequired    bool
 	PageEpoch        string                 `json:"page_epoch,omitempty"`
 	Grant            *GrantBinding          `json:"grant,omitempty"`

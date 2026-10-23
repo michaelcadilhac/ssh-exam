@@ -11,6 +11,19 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The October23 renewal-receipt candidate requires matching loaded native, gateway
+and browser/WASM roles. Signed native v1 negotiation and running WASM exact-channel
+cancellation gate use; older roles keep the legacy path. New lease fields are
+additive, with schema029 unchanged. A replacement agent intentionally cannot
+recover confirmation from disk; preserve journal/nonces/intervals and require
+fresh verification. Qualify the exact built client and native artifacts before a
+future authorized drained cutover. Drain pending commands/transports and inventory
+independent attempt owners along with all three agent services before any rollback
+or proposed consolidation. Never clear newer state or stop needed PTYs to force
+compatibility; keep admission closed and repair forward when necessary. Current
+receipt qualification does not enable C3/C16 retention or authorize deployment.
+See renewal-receipt-recovery.md. No rollout/migration/service action is executed.
+
 C8 adds028 lifecycle metadata, per-instance/settings epochs, tombstones,
 successful retirement intents and SQL writer fences. Back up these with the
 definitions, grants/claims, attempts, source expectations and audit consistently.

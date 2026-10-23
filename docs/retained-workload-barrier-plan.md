@@ -190,6 +190,28 @@ the guarded disposable guest, with full application/native race/build/browser
 checks at that integrated boundary. A busy/uncertain host guard is a remaining
 qualification blocker, never permission to bypass it or enable partial retention.
 
+October23 source trace for that integrated boundary (investigated, not delivered):
+
+| Actual entry/writer | Required change in the same workflow |
+| --- | --- |
+| engine.go lock-attempt and Tick → disconnectPausedWorkload in pause.go | Publish closed admission/pending hold, then perform bounded owner coordination outside the global state lock; do not replace termination with an unverified cgroup-freeze call |
+| terminal_supervision.go handoff/attach and terminal_recording_io.go input/resize | Pin the actual root SSH monitor from the accepted kernel peer; retain the attempt authority here, separate from recorder IO; fence pending handoffs and every input/control delivery |
+| pane_admission.go/pane_bootstrap.go final release | Recheck the current live owner/admission generation after every delayed startup/ACK; a hold must exclude a later student exec even if a scope was missing at inventory time |
+| engine.go authorize/attach/consume-continuation plus app.ts claim/continue | Explicit approval may recover the same verified retained transport; genuine authentication loss keeps reauthentication. Preserve current generation, interval and the original approval expiry |
+| lifecycle.ts lock/renewalFailed and app.ts life.onPaused | Do not close retained SSH before verified hold; distinguish policy loss from technical uncertainty without manufacturing containment or automatic recovery |
+| engine.go Cutoff/Tick, deadline_timing.go, clock writers and collection workers | Coordinate with the live attempt authority; stale disk cutoffs must not destroy healthy retained work, and genuine deadlines/collection must still contain every writer |
+
+Necessary in this milestone: capture-time per-pane epochs across JS/IPC/WASM/native
+input and resize, cancellation/drain plus actual PTY discard, stable all-UID/
+all-thread stop facts including pending starters and originally stopped jobs,
+verified freeze/thaw and loaded-role agreement. Stop-assisted signaling must use
+pinned identities, never a numeric UID/PID-wide convenience kill. Pending/failed
+hold must be truthful and inspectable/cancellable through CLI/web; absence is
+never a confirmed hold. Automatic infrastructure-only recovery, legacy saved-source
+migration and class-capacity claims are separate outcomes; none can justify
+relaxing the policy-pause/approved-Continue acceptance above. Reuse the existing
+tested primitives only at these callers, rather than adding another unused layer.
+
 ## Pending-recording ownership correction (October23, local)
 
 Inspection reproduced a concrete race through the existing supervisor attach

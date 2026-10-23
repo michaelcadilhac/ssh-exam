@@ -86,7 +86,7 @@ func handle(r request) (any, error) {
 			raw.Close()
 			return nil, err
 		}
-		return map[string]bool{"connected": true}, nil
+		return map[string]bool{"connected": true, "command_cancel": true}, nil
 	case "answers":
 		var a struct {
 			Round   string   `json:"round"`
@@ -119,6 +119,12 @@ func handle(r request) (any, error) {
 		return nil, nil
 	case "command":
 		return sshClient.Command(r.Args)
+	case "cancel-command":
+		var a struct{ Nonce string }
+		if json.Unmarshal(r.Args, &a) != nil || len(a.Nonce) < 16 || len(a.Nonce) > 64 {
+			return nil, errors.New("invalid command cancellation")
+		}
+		return map[string]bool{"cancelled": sshClient.CancelCommand(a.Nonce)}, nil
 	case "open":
 		var a struct{ Pane, Token string }
 		json.Unmarshal(r.Args, &a)

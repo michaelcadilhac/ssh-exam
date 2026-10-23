@@ -2,8 +2,12 @@
 
 October22 local candidate, **not deployed or a live monitoring issuer**. The
 private coverage ledger uses a checked Linux boot-elapsed reader instead of
-performance.now. No existing attempt/deadline, callback, lease, account policy or
-recovery mode is changed. Native all-writer/C3 coordination remains outstanding.
+performance.now. The October23 exact renewal-receipt candidate is its first live
+clock-reader consumer: it charges query transit, including suspend, against an
+already committed legacy receipt. Clock unavailability disables that optional
+recovery and preserves the original command path; no fallback clock creates
+freshness. The ledger itself remains unwired. No exam interval, account policy or
+retained recovery mode changes. Native all-writer/C3 coordination remains open.
 
 ## Clock source and packaging
 

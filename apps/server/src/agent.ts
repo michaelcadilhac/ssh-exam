@@ -5,6 +5,18 @@ import type { Config } from "../../../packages/config/index.js";
 import type { Attempt, Store } from "./db.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { isDeepStrictEqual } from "node:util";
+export type RenewalCommandContext = Pick<
+  Attempt,
+  | "id"
+  | "exam"
+  | "username"
+  | "uid"
+  | "start"
+  | "deadline"
+  | "original_deadline"
+  | "generation"
+  | "clock_revision"
+>;
 // Losing the student command transport is not evidence of a class-agent outage.
 export class AgentCommandDisconnectedError extends Error {
   constructor(message: string) {
@@ -65,7 +77,28 @@ export class Agent {
     const attempt = typeof id === "string" ? this.findAttempt(id) : undefined;
     if (attempt && attempt.username !== username)
       throw Error("Command attempt belongs to another authenticated account");
-    return this.sign(op, username, transport, body);
+    const frame: ReturnType<Agent["sign"]> & {
+      recovery_context?: RenewalCommandContext;
+    } = this.sign(op, username, transport, body);
+    if (
+      attempt &&
+      ["renew-receipted-execution-lease", "execution-renewal-receipt"].includes(
+        op,
+      )
+    ) {
+      frame.recovery_context = {
+        id: attempt.id,
+        exam: attempt.exam,
+        username: attempt.username,
+        uid: attempt.uid,
+        start: attempt.start,
+        deadline: attempt.deadline,
+        original_deadline: attempt.original_deadline,
+        generation: attempt.generation,
+        clock_revision: attempt.clock_revision,
+      };
+    }
+    return frame;
   }
   async confirmRegisteredPaneOwner(
     attempt: string,
@@ -91,6 +124,11 @@ export class Agent {
           op = "issue-owner-channel-admission";
         if (op === "renew-execution-lease" && attempt.registered_owner)
           op = "renew-owner-execution-lease";
+        if (
+          op === "renew-receipted-execution-lease" &&
+          attempt.registered_owner
+        )
+          op = "renew-owner-receipted-execution-lease";
         if (op === "consume-continuation" && attempt.registered_owner)
           op = "consume-owner-continuation";
         const value = { ...body } as Record<string, unknown>;

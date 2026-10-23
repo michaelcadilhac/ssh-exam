@@ -2483,6 +2483,20 @@ resource checks. Native expiry during a
 stalled renewal, alternate evidence/receipts and C3 verified hold/thaw remain open;
 this does not complete the critical TODO or change production.
 
+The October23 exact renewal-receipt candidate adds signed feature negotiation and
+distinct receipted-renewal/read-only-query purposes. Both gateway transports and
+the loaded WASM cancellation interface recover only the original committed
+legacy receipt, checking current canonical ownership, interval, generation and
+clock. The same live agent must confirm the journal's completed publication;
+restart cannot reconstruct confirmation from files. Checked gateway boot time
+charges the entire query round trip against native remaining time. Positive
+recovery retires only the original command channel; missing/stalled/invalid
+queries leave the original command/error path intact and create no earlier
+policy timeout. Original renewal nonce replay rules, deadlines and restrictions
+remain. This is not the C10/C16 live authority or C3 retained freeze/recovery.
+See docs/renewal-receipt-recovery.md for the bounded state review, verification
+and supported fault envelope. No production change is authorized.
+
 H2b/H3 has an internal, unwired strict signed evidence/age verifier and matching
 TypeScript contract. Purpose/audience/challenge, every native owner/epoch field,
 sequence, complete evidence and native request/prior-authority/deadline bounds

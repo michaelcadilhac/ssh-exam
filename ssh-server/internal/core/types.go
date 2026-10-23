@@ -203,6 +203,8 @@ type PaneInstance struct {
 	Cancelled       bool  `json:"cancelled,omitempty"`
 }
 type Engine struct {
+	renewalReceiptMu          sync.Mutex
+	renewalReceiptConfirmed   map[string]executionRenewalConfirmation
 	accountMu                 sync.RWMutex
 	accounts                  map[string]Account
 	policyRun                 func(string, string, string, string) ([]byte, error)

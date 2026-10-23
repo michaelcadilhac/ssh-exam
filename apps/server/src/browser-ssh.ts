@@ -3,11 +3,7 @@ import { randomUUID, sign, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { WebSocket } from "ws";
 import { Connection, type Dialogue } from "./ssh.js";
-import {
-  AgentCommandDisconnectedError,
-  AgentCommandStateError,
-  type Agent,
-} from "./agent.js";
+import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
 import type { Config } from "../../../packages/config/index.js";
 
 class BrowserPane extends EventEmitter {
@@ -61,6 +57,11 @@ class BrowserPane extends EventEmitter {
 // Only authorization and signed acknowledgments cross this control socket.
 // Passwords, MFA prompts and PTY bytes stay in the browser/class-server path.
 export class BrowserConnection extends Connection {
+  protected override browserCommands = true;
+  private commandCancellationSupported = false;
+  protected override canRecoverRenewalReceipts() {
+    return this.commandCancellationSupported;
+  }
   readonly browser = true;
   override get supportsAutomaticHandoff() {
     return true;
@@ -209,14 +210,18 @@ export class BrowserConnection extends Connection {
       : p.resolve(m.result);
     return true;
   }
-  private request(op: string, args: any, timeout = 120000): Promise<any> {
+  private request(
+    op: string,
+    args: any,
+    timeout = 120000,
+    id = randomUUID(),
+  ): Promise<any> {
     if (this.closed || !this.socket || this.socket.readyState !== 1)
       return Promise.reject(
         new AgentCommandDisconnectedError(
           "Browser SSH control connection unavailable",
         ),
       );
-    const id = randomUUID();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
@@ -259,30 +264,6 @@ export class BrowserConnection extends Connection {
       }
     }
   }
-  private receipt(proof: any, kind: string, nonce: string, transport?: string) {
-    if (
-      !proof ||
-      typeof proof.payload !== "string" ||
-      proof.payload.length > 6 * 1024 * 1024
-    )
-      throw Error("Signed SSH acknowledgment required");
-    const payload = Buffer.from(proof.payload, "base64");
-    this.authority.verifyCallback(payload, proof.signature);
-    const r = JSON.parse(payload.toString());
-    if (
-      r.agent !== this.settings.agent.id ||
-      r.type !== kind ||
-      r.nonce !== nonce ||
-      r.username !== this.username ||
-      !Number.isSafeInteger(r.expires) ||
-      r.expires <= Date.now() ||
-      r.expires > Date.now() + 125000 ||
-      (transport !== undefined && r.transport !== transport)
-    )
-      throw Error("SSH acknowledgment scope rejected");
-    if (r.error) throw new AgentCommandStateError(r.error, r.result);
-    return r;
-  }
   override async connect(
     _dialogue: Dialogue,
     options: {
@@ -316,7 +297,7 @@ export class BrowserConnection extends Connection {
     };
     let sshAuthenticated = false;
     try {
-      await this.request("connect", {
+      const connected = await this.request("connect", {
         url: relay.relay,
         ticket,
         username: this.username,
@@ -324,6 +305,7 @@ export class BrowserConnection extends Connection {
         class: this.settings.class,
         controlToken: this.controlToken,
       });
+      this.commandCancellationSupported = connected?.command_cancel === true;
       sshAuthenticated = true;
       this.alive = true;
       const result = await this.command("register", {
@@ -351,35 +333,34 @@ export class BrowserConnection extends Connection {
       });
     }
   }
-  override async command(op: string, body: any = {}) {
-    if (!this.alive)
-      throw new AgentCommandDisconnectedError("SSH transports unavailable");
-    const frame = await this.authority.authorize(
-      op,
-      this.username,
-      this.transport,
-      {
-        ...body,
-        browser_ssh: true,
+  protected override exchangeCommand(
+    frame: any,
+    nonce: string,
+    timeout = 120000,
+  ) {
+    const id = randomUUID();
+    const promise = this.request("command", frame, timeout, id);
+    if (timeout < 120000 && this.commandCancellationSupported)
+      void promise.catch(() => this.notify("cancel-command", { nonce }));
+    return {
+      promise,
+      cancel: async () => {
+        try {
+          await this.request("cancel-command", { nonce }, 1000);
+        } finally {
+          const pending = this.pending.get(id);
+          if (pending) {
+            this.pending.delete(id);
+            clearTimeout(pending.timer);
+            pending.reject(
+              Error(
+                "Exact command RPC retired after verified receipt recovery",
+              ),
+            );
+          }
+        }
       },
-    );
-    const nonce = JSON.parse(
-      Buffer.from(frame.payload, "base64").toString(),
-    ).nonce;
-    const response = await this.request("command", frame);
-    const receipt = this.receipt(
-      response?.proof,
-      "ssh-command-receipt",
-      nonce,
-      op === "register" ? undefined : this.transport,
-    );
-    if (
-      op === "register" &&
-      (!receipt.transport || receipt.result?.transport !== receipt.transport)
-    )
-      throw Error("Invalid SSH registration");
-    await this.authority.acceptRegisteredOwnerObservation(receipt.result);
-    return receipt.result;
+    };
   }
   override async open(attempt: string, pane: string, purpose = "exam") {
     if (this.panes.has(pane) || this.opening.has(pane))

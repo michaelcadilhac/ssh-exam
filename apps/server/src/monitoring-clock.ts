@@ -1,7 +1,8 @@
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
-// Internal evidence clock only. No live route/lease/recovery calls it yet.
+// Evidence clock and optional exact legacy-renewal receipt recovery clock.
+// The C16 live monitoring authority/hold/recovery path remains unimplemented.
 // Never substitute performance.now, hrtime, wall time or coarse os.uptime.
 const require = createRequire(import.meta.url);
 export class MonitoringBootClockUnavailable extends Error {

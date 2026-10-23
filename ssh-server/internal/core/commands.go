@@ -93,6 +93,11 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	// Versioned owner purposes refuse in older loaded agents before any positive
 	// operation. The internal flag cannot be supplied through request JSON.
 	switch cmd.Op {
+	case "renew-owner-receipted-execution-lease":
+		cmd.Body.ownerRequired = true
+		fallthrough
+	case "renew-receipted-execution-lease":
+		cmd.Op, cmd.Body.renewalReceipt = "renew-execution-lease", true
 	case "renew-owner-execution-lease":
 		cmd.Op, cmd.Body.ownerRequired = "renew-execution-lease", true
 	case "consume-owner-continuation":
@@ -143,6 +148,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		cmd.Op = "prepare-attempt"
 	} else if cmd.Op == "prepare-attempt" && cmd.Body.ExpectedRecovery != "" {
 		return nil, errors.New("use the distinct recovery-aware preparation purpose")
+	}
+	if cmd.Op == "execution-renewal-receipt" {
+		return e.signedRenewalReceipt(cmd, username, transport)
 	}
 	if cmd.Op == "renew-execution-lease" {
 		return e.renewSignedLease(cmd, username, transport)
@@ -294,7 +302,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 				}
 			}
 			e.state.Registrations[transport] = username
-			result = map[string]any{"transport": transport, "uid": account.UID}
+			result = map[string]any{"transport": transport, "uid": account.UID, "execution_renewal_receipts": "v1"}
 			return nil
 		}
 		if cmd.Transport != transport || e.state.Registrations[transport] != username {

@@ -166,6 +166,17 @@ services are changed; no grant/clock is consumed by refusal/cancellation.
   an old snapshot racing a healthy renewal. The critical item stays unchecked.
   Production remains unchanged; deployment is not authorized. Prioritize this
   correctness work over noncritical feature expansion when development resumes.
+  October23 exact renewal-receipt recovery is connected through native signed
+  commands, both gateway transports and the running WASM client. It recovers only
+  a positively committed original legacy cutoff, then retires that exact command
+  channel without changing SSH, panes or time. Missing/unconfirmed probes leave
+  the original operation pending; they create no earlier failure timeout. Focused
+  signed/interface/clock/browser cases pass, and the guarded disposable root
+  guest passes nine assertions including an actually discarded renewal reply.
+  Full524 application checks, native race/resource checks, all150 browser
+  scenarios, builds/static checks and same-candidate collector isolation pass.
+  Implemented/tested locally; see docs/renewal-receipt-recovery.md.
+  This does not complete C3/C16 containment/live authority or this critical item.
   October22 C10/C11 are now approved: verified renewals take effect in the live
   root authority without waiting for disk sync, while restart requires fresh
   verification and durable starts/deadlines/ownership/audit remain mandatory;

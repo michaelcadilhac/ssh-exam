@@ -6,14 +6,28 @@ import {
   AgentCommandDisconnectedError,
   AgentCommandStateError,
   type Agent,
+  type RenewalCommandContext,
 } from "./agent.js";
 import { LoginPassword, isPasswordPrompt } from "./login-password.js";
+import {
+  monitoringBootTimeMS,
+  MonitoringBootClockUnavailable,
+} from "./monitoring-clock.js";
 export type Dialogue = (
   host: string,
   instruction: string,
   prompts: { prompt: string; echo: boolean }[],
 ) => Promise<string[]>;
+type CommandExchange = {
+  promise: Promise<any>;
+  cancel: () => Promise<void>;
+};
 export class Connection {
+  protected browserCommands = false;
+  protected canRecoverRenewalReceipts() {
+    return true;
+  }
+  private renewalReceipts = false;
   get supportsAutomaticHandoff(): boolean {
     return false;
   }
@@ -327,68 +341,328 @@ export class Connection {
   async command(op: string, body: any = {}): Promise<any> {
     if (!this.alive)
       throw new AgentCommandDisconnectedError("SSH transports unavailable");
+    let recover =
+      op === "renew-execution-lease" &&
+      this.renewalReceipts &&
+      this.canRecoverRenewalReceipts();
+    let born = 0;
+    if (recover) {
+      try {
+        born = monitoringBootTimeMS();
+        if (born > Number.MAX_SAFE_INTEGER - 30000) recover = false;
+      } catch {
+        recover = false;
+      } // Optional recovery never invents a substitute clock or earlier hold.
+    }
+    const primary = await this.dispatchCommand(
+      recover ? "renew-receipted-execution-lease" : op,
+      body,
+    );
+    if (!recover) return primary.promise;
+    type Outcome =
+      | { value: any; error?: undefined }
+      | { value?: undefined; error: unknown };
+    let completed: Outcome | undefined;
+    const outcome: Promise<Outcome> = primary.promise.then(
+      (value) => (completed = { value }),
+      (error) => (completed = { error }),
+    );
+    const confirmedNegative = (
+      error: unknown,
+      context?: RenewalCommandContext,
+    ) =>
+      error instanceof AgentCommandStateError &&
+      error.attemptState?.id === body.id &&
+      error.attemptState.username === this.username &&
+      error.attemptState.transport === this.transport &&
+      (!context ||
+        (error.attemptState.exam === context.exam &&
+          error.attemptState.uid === context.uid &&
+          error.attemptState.start === context.start &&
+          error.attemptState.deadline === context.deadline &&
+          (error.attemptState.original_deadline ||
+            error.attemptState.deadline) ===
+            (context.original_deadline || context.deadline) &&
+          (error.attemptState.clock_revision || 0) ===
+            (context.clock_revision || 0) &&
+          error.attemptState.generation >= context.generation)) &&
+      ["LOCKED", "FINALIZING", "COLLECTION_FAILED", "COMPLETED"].includes(
+        error.attemptState.state,
+      );
+    const pending = Symbol("original renewal still pending");
+    const pause = async () => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          outcome,
+          new Promise<typeof pending>((resolve) => {
+            timer = setTimeout(() => resolve(pending), 1000);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const first = await pause();
+    if (
+      first !== pending &&
+      (first.error === undefined ||
+        confirmedNegative(first.error, primary.context) ||
+        !this.alive)
+    )
+      return primary.promise;
+    let lastClock = born;
+    const now = () => {
+      const value = monitoringBootTimeMS();
+      if (value < lastClock) throw new MonitoringBootClockUnavailable();
+      lastClock = value;
+      return value;
+    };
+    // Coalesce probes until a slow publication confirms, without resending the
+    // original one-use renewal or shortening its original failure timeout.
+    for (;;) {
+      try {
+        if (now() >= born + 30000) return primary.promise;
+      } catch {
+        return primary.promise;
+      }
+      if (
+        !this.alive ||
+        (completed &&
+          (completed.error === undefined ||
+            confirmedNegative(completed.error, primary.context)))
+      )
+        return primary.promise;
+      let probe: Awaited<ReturnType<Connection["dispatchCommand"]>> | undefined;
+      let recovered: any;
+      try {
+        probe = await this.dispatchCommand(
+          "execution-renewal-receipt",
+          { id: body.id, renewal_nonce: primary.nonce },
+          2000,
+        );
+        recovered = await probe.promise;
+        if (
+          recovered?.version !== 1 ||
+          recovered.nonce !== primary.nonce ||
+          !Number.isSafeInteger(recovered.until) ||
+          recovered.until <= 0 ||
+          !Number.isSafeInteger(recovered.remaining_ms) ||
+          recovered.remaining_ms <= 0 ||
+          recovered.remaining_ms > 15000 ||
+          recovered.attempt?.id !== body.id ||
+          recovered.attempt.username !== this.username ||
+          recovered.attempt.transport !== this.transport ||
+          recovered.attempt.state !== "ACTIVE"
+        )
+          throw Error("Exact current renewal receipt required");
+        if (
+          probe.started < born ||
+          recovered.remaining_ms <= now() - probe.started
+        )
+          return primary.promise;
+      } catch (error) {
+        if (probe?.context && confirmedNegative(error, probe.context))
+          throw error;
+        if (error instanceof MonitoringBootClockUnavailable)
+          return primary.promise;
+        if (completed?.error !== undefined) {
+          // A command-channel EOF is not transport death. Wait between bounded
+          // probes even when the original command already lost its reply.
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } else await pause();
+        continue;
+      }
+      if (
+        !this.alive ||
+        (completed &&
+          (completed.error === undefined ||
+            confirmedNegative(completed.error, primary.context)))
+      )
+        return primary.promise;
+      // Recovery is decided from this fresh authenticated observation. Channel
+      // cleanup is separate bounded resource work, never a hold/thaw receipt or
+      // a reason to turn a successful recovery into a new policy interruption.
+      void primary.cancel().catch(() => {});
+      return recovered.attempt;
+    }
+  }
+  private async dispatchCommand(op: string, body: any, timeout = 120000) {
     const envelope = await this.agent.authorize(
       op,
       this.username,
       this.transport,
-      body,
+      this.browserCommands ? { ...body, browser_ssh: true } : body,
     );
-    return new Promise((resolve, reject) => {
-      this.class.exec("exam-control", (error, channel) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        if (!this.alive) {
-          channel.close();
-          reject(new AgentCommandDisconnectedError("SSH connection ended"));
-          return;
-        }
-        let input = Buffer.alloc(0),
-          settled = false;
-        const finish = (error?: Error, value?: any) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          channel.close();
-          error ? reject(error) : resolve(value);
-        };
-        const timer = setTimeout(
-          () =>
-            finish(Error("SSH agent command timed out; await status callback")),
-          120000,
+    const nonce = JSON.parse(
+      Buffer.from(envelope.payload, "base64").toString(),
+    ).nonce;
+    const started =
+      op === "execution-renewal-receipt" ? monitoringBootTimeMS() : 0;
+    // Canonical scope is private parent/worker metadata for refusal attribution;
+    // it is neither work permission nor part of the native/browser wire frame.
+    const exchange = this.exchangeCommand(
+      { payload: envelope.payload, signature: envelope.signature },
+      nonce,
+      timeout,
+    );
+    const promise = exchange.promise.then(async (response) => {
+      const signed =
+        this.browserCommands ||
+        op === "renew-receipted-execution-lease" ||
+        op === "execution-renewal-receipt" ||
+        (op === "register" &&
+          response?.result?.execution_renewal_receipts === "v1");
+      const acknowledgment = signed
+        ? this.receipt(
+            response?.proof,
+            "ssh-command-receipt",
+            nonce,
+            op === "register" ? undefined : this.transport,
+          )
+        : response;
+      if (!signed && acknowledgment.error)
+        throw new AgentCommandStateError(
+          acknowledgment.error,
+          acknowledgment.result,
         );
-        channel.on("error", (e: Error) => finish(e));
-        channel.on("close", () =>
-          finish(
-            new AgentCommandDisconnectedError(
-              "SSH command ended without acknowledgment",
-            ),
+      const result = acknowledgment.result;
+      if (op === "register") {
+        if (
+          signed &&
+          (!acknowledgment.transport ||
+            result?.transport !== acknowledgment.transport)
+        )
+          throw Error("Invalid SSH registration");
+        this.renewalReceipts =
+          signed && result?.execution_renewal_receipts === "v1";
+      }
+      if (signed)
+        await this.agent.acceptRegisteredOwnerObservation(
+          op === "execution-renewal-receipt" ? result?.attempt : result,
+        );
+      return result;
+    });
+    return {
+      promise,
+      cancel: exchange.cancel,
+      nonce,
+      started,
+      context: envelope.recovery_context,
+    };
+  }
+  protected receipt(
+    proof: any,
+    kind: string,
+    nonce: string,
+    transport?: string,
+  ) {
+    if (
+      !proof ||
+      typeof proof.payload !== "string" ||
+      proof.payload.length > 6 * 1024 * 1024
+    )
+      throw Error("Signed SSH acknowledgment required");
+    const payload = Buffer.from(proof.payload, "base64");
+    this.agent.verifyCallback(payload, proof.signature);
+    const r = JSON.parse(payload.toString());
+    if (
+      r.agent !== this.config.agent.id ||
+      r.type !== kind ||
+      r.nonce !== nonce ||
+      r.username !== this.username ||
+      !Number.isSafeInteger(r.expires) ||
+      r.expires <= Date.now() ||
+      r.expires > Date.now() + 125000 ||
+      (transport !== undefined && r.transport !== transport)
+    )
+      throw Error("SSH acknowledgment scope rejected");
+    if (r.error) throw new AgentCommandStateError(r.error, r.result);
+    return r;
+  }
+  protected exchangeCommand(
+    envelope: any,
+    _nonce: string,
+    timeout = 120000,
+  ): CommandExchange {
+    let cancel = () => {};
+    const promise = new Promise<any>((resolve, reject) => {
+      let current: ClientChannel | undefined,
+        settled = false;
+      const finish = (error?: Error, value?: any) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        current?.close();
+        error ? reject(error) : resolve(value);
+      };
+      const timer = setTimeout(
+        () =>
+          finish(Error("SSH agent command timed out; await status callback")),
+        timeout,
+      );
+      cancel = () =>
+        finish(
+          Error(
+            "Exact command channel retired after verified receipt recovery",
           ),
         );
-        channel.on("data", (chunk: Buffer) => {
-          input = Buffer.concat([input, chunk]);
-          if (input.length > 4 * 1024 * 1024) {
-            finish(Error("Oversized agent response"));
+      try {
+        this.class.exec("exam-control", (error, channel) => {
+          if (settled) {
+            channel?.close();
             return;
           }
-          const end = input.indexOf(10);
-          if (end < 0) return;
-          try {
-            const response = JSON.parse(input.subarray(0, end).toString());
-            finish(
-              response.error
-                ? new AgentCommandStateError(response.error, response.result)
-                : undefined,
-              response.result,
-            );
-          } catch {
-            finish(Error("Invalid agent command response"));
+          if (error) {
+            finish(error);
+            return;
           }
+          current = channel;
+          if (!this.alive) {
+            finish(new AgentCommandDisconnectedError("SSH connection ended"));
+            return;
+          }
+          let input = Buffer.alloc(0);
+          channel.on("error", (e: Error) => finish(e));
+          channel.on("close", () =>
+            finish(
+              new AgentCommandDisconnectedError(
+                "SSH command ended without acknowledgment",
+              ),
+            ),
+          );
+          channel.on("data", (chunk: Buffer) => {
+            if (settled) return;
+            input = Buffer.concat([input, chunk]);
+            if (input.length > 4 * 1024 * 1024) {
+              finish(Error("Oversized agent response"));
+              return;
+            }
+            const end = input.indexOf(10);
+            if (end < 0) return;
+            try {
+              const response = JSON.parse(input.subarray(0, end).toString());
+              finish(undefined, response);
+            } catch {
+              finish(Error("Invalid agent command response"));
+            }
+          });
+          channel.write(JSON.stringify(envelope) + "\n");
         });
-        channel.write(JSON.stringify(envelope) + "\n");
-      });
+      } catch (error) {
+        finish(
+          error instanceof Error
+            ? error
+            : Error("SSH command could not be opened"),
+        );
+      }
     });
+    return {
+      promise,
+      cancel: async () => {
+        cancel();
+      },
+    };
   }
   private exec() {
     return new Promise<ClientChannel>((resolve, reject) =>

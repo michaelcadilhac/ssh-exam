@@ -2578,3 +2578,24 @@ Exact source/artifacts/state review/limits: retained-workload-barrier-plan.md.
 No new durable state, retained mode, deployment or production action; no missing
 command. Critical live authority, full pending-launch/input/freeze and recovery
 remain open. No new design question; proceed with the actual retained workflow.
+
+## October23: recover an exact committed renewal without replacing SSH
+
+Both real gateway transports and loaded WASM now recover an actually committed
+legacy renewal's lost reply through a distinct signed query, preserving its
+original cutoff, SSH/panes, authentication and interval. Query absence/invalidity
+creates no earlier timeout or permission. The same live agent must confirm the
+exact completed journal publication; restart cannot reconstruct success from
+disk. Cleanup cancels only that command channel. Legacy one-use replay remains.
+
+Focused refusal/clock/interface/cancellation checks and mutation controls pass;
+full524 application checks, native race/resource checks (core431.478s/CLI39.509s),
+all150 browser scenarios15.2m, builds/vet/types and35 runner checks pass. Exact
+candidate root guest passes9 timed-owner/receipt and12 collector assertions, with
+24 healthy renewals max0.087440s, protected retry and all preservation checks.
+Failed fixture/delayed-publication evidence and immutable source/artifact hashes:
+renewal-receipt-recovery.md. Original dirty screenshot is preserved, other
+generated screenshots restored. All runners ended. C3/C16 live authority,
+all-writer retention/recovery, installed-role/capacity/container gates remain open;
+this does not close the critical TODO or establish the incident cause. No
+deployment, production action, missing executable or unanswered design question.

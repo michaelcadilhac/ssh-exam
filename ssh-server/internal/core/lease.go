@@ -11,14 +11,16 @@ import (
 // Lease renewal must not wait for collection, systemctl or another attempt's
 // state transaction. Only signed, transport-bound renewals take this path.
 type executionLease struct {
-	RegisteredOwner monitoringOwner  `json:"registered_owner,omitzero"`
-	ID              string           `json:"id"`
-	Username        string           `json:"username"`
-	Transport       string           `json:"transport"`
-	Boot            string           `json:"boot"`
-	Generation      int              `json:"generation"`
-	Until           int64            `json:"until"`
-	Nonces          map[string]int64 `json:"nonces"`
+	ClockRevision   int                                `json:"clock_revision,omitempty"`
+	Receipts        map[string]executionRenewalReceipt `json:"receipts,omitempty"`
+	RegisteredOwner monitoringOwner                    `json:"registered_owner,omitzero"`
+	ID              string                             `json:"id"`
+	Username        string                             `json:"username"`
+	Transport       string                             `json:"transport"`
+	Boot            string                             `json:"boot"`
+	Generation      int                                `json:"generation"`
+	Until           int64                              `json:"until"`
+	Nonces          map[string]int64                   `json:"nonces"`
 }
 
 func readStateSnapshot(path string) (State, error) {
@@ -53,6 +55,13 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		return nil, err
 	}
 	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	var issuedBoot int64
+	if cmd.Body.renewalReceipt {
+		issuedBoot, err = monitoringBootMillis()
+		if err != nil {
+			return nil, err
+		}
+	}
 	now := Millis()
 	if cmd.Expires <= now || cmd.Expires > now+30000 {
 		return nil, errors.New("command expired")
@@ -92,6 +101,21 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		return nil, readErr
 	}
 	nonces := lease.Nonces
+	receipts := lease.Receipts
+	if !sameExecutionReceiptContext(lease, a) {
+		receipts = nil
+	}
+	if receipts == nil {
+		receipts = map[string]executionRenewalReceipt{}
+	}
+	for nonce, receipt := range receipts {
+		if receipt.Until <= now {
+			delete(receipts, nonce)
+		}
+	}
+	if cmd.Body.renewalReceipt && len(receipts) >= executionRenewalReceiptLimit {
+		return nil, errors.New("renewal receipt capacity reached; no lease consumed; inspect examctl info ATTEMPT --read-only and current request rate")
+	}
 	if nonces == nil {
 		nonces = map[string]int64{}
 	}
@@ -107,7 +131,10 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		return nil, errors.New("command replay rejected")
 	}
 	nonces[cmd.Nonce] = cmd.Expires
-	lease = executionLease{ID: a.ID, Username: username, Transport: transport, Boot: a.Boot, Generation: a.Generation, Until: now + 15000, Nonces: nonces}
+	lease = executionLease{ID: a.ID, Username: username, Transport: transport, Boot: a.Boot, Generation: a.Generation, ClockRevision: a.ClockRevision, Until: now + 15000, Nonces: nonces, Receipts: receipts}
+	if cmd.Body.renewalReceipt {
+		receipts[cmd.Nonce] = executionRenewalReceipt{Issued: now, Until: lease.Until, IssuedBoot: issuedBoot, UntilBoot: issuedBoot + 15000, Exam: a.Exam, UID: a.UID, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline}
+	}
 	if a.RegisteredOwner != nil {
 		lease.RegisteredOwner = *a.RegisteredOwner
 	}
@@ -152,6 +179,9 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		}
 		return nil, errors.New("lease superseded by attempt transition")
 	}
+	if cmd.Body.renewalReceipt {
+		e.confirmExecutionRenewal(a.ID, Hash(b), issuedBoot+15000)
+	}
 	a.Lease = lease.Until
 	return publicAttempt(a), nil
 }
@@ -171,11 +201,21 @@ func (e *Engine) applyExecutionLease(a *Attempt) error {
 	if err = json.Unmarshal(b, &v); err != nil {
 		return err
 	}
-	if (a.RegisteredOwner == nil && v.RegisteredOwner != (monitoringOwner{})) || (a.RegisteredOwner != nil && v.RegisteredOwner != *a.RegisteredOwner) {
-		return nil
+	applyExecutionLeaseValue(a, v, Millis())
+	return nil
+}
+
+// Runtime consumers: the existing journal reader and the read-only exact-receipt
+// command, whose shared lease lock already pins the loaded committed value.
+// No IO follows the latter's canonical state snapshot before its freshness read.
+func applyExecutionLeaseValue(a *Attempt, v executionLease, now int64) {
+	if a.State != "ACTIVE" {
+		return
 	}
-	if v.ID == a.ID && v.Username == a.Username && v.Transport == a.Transport && v.Generation == a.Generation && v.Boot == a.Boot && v.Boot == boot() && v.Until > Millis() && v.Until <= Millis()+15000 && v.Until > a.Lease {
+	if (a.RegisteredOwner == nil && v.RegisteredOwner != (monitoringOwner{})) || (a.RegisteredOwner != nil && v.RegisteredOwner != *a.RegisteredOwner) {
+		return
+	}
+	if v.ID == a.ID && v.Username == a.Username && v.Transport == a.Transport && v.Generation == a.Generation && v.Boot == a.Boot && v.Boot == boot() && v.Until > now && v.Until <= now+15000 && v.Until > a.Lease {
 		a.Lease = v.Until
 	}
-	return nil
 }

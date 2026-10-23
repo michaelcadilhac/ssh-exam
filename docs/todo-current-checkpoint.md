@@ -1,122 +1,80 @@
 # Current local TODO checkpoint
 
-Updated October23,2026. Local development/tests/commits only. NEVER push/deploy,
-change production records/config/services or consolidate agents. Stop on any
-missing executable. None was missing this continuation. Follow AGENTS.md.
+Updated October 23, 2026. Local development, tests and commits only. **Never
+push/deploy, consolidate agents or change production records/config/services.**
+Stop on a missing executable; none was missing. Follow AGENTS.md.
 
-## Current bounded correction: pending terminal-owner cohort
+## Current milestone: exact renewal receipt recovery — validated locally
 
-Local collector qualification committed3450963 after7bc50fe. While tracing actual
-retained pause/Continue, reproduced an attach race: owner changes could join while
-the first recorder was still initializing. Timed requests now enlist before IO;
-no new durable state or retained mode. Five real IPC mutation controls fail as
-expected; eight owner/clock cases and affected admission/fault/CLI checks pass,
-including repeated focused checks7.169s.4 gateway tests and7 actual browser cases
-pass; native build/vet pass; web artifacts unchanged. Details/state review:
-retained-workload-barrier-plan.md.
+Last validated local commit: **00c6c7f**, pending timed-owner cohort fenced before
+recording IO. The working candidate connects native signed receipt recovery,
+both gateway transports and loaded WASM exact-command cancellation. It recovers
+only a positively committed original legacy cutoff; no query renews work, changes
+time or invents confirmation after agent restart. Missing probes preserve the
+original command path, with no earlier failure timeout. No retained mode enabled.
 
-Final full native race/resource/userns/compiler/default-size IO PASS core394.808s;
-CLI valid-cache PASS. Timed-owner guest8 assertions/preservation PASS at
-/var/tmp/ssh-exam-overlay-4hff8wnu; collector guest12 assertions/preservation PASS
-at /var/tmp/ssh-exam-overlay-0pab0pyg,24 renewals max0.092926s.35 safety tests PASS.
-Initial snapshot/provisional-ready/pending-retry fixture failures remain recorded,
-corrected using positive coherent observations without weakening enforcement.
-Final545-file source906f8098685209adb8c0d41bdc5d2b9691d5e84bd19e5536ea1033c89b6fce8a;
-immutable artifact manifests and exact scope are in the feature doc. All runners
-ended. Next: commit the validated correction locally, then continue actual retained
-hold/Continue integration. Current policy pause still kills shells; no new mode.
+State review, runtime callers, failed controls, exact artifacts and verification:
+[renewal-receipt-recovery.md](renewal-receipt-recovery.md).
 
-## Validated registered-page milestone: ca8873b (local commit)
+- Focused native signed-entry PASS 16.495s; confirmation-bypass mutant RED 0.018s.
+  Ten actual HTTP/WS/worker/SSH recovery/refusal/clock cases pass. Real SSH exact
+  cancellation/full client race PASS 1.049s/1.572s; actual WASM focus PASS 12s.
+- Full application PASS **524 tests / 97 files, 284.09s**. Full native race,
+  resource, user-namespace, compiler and default-size IO PASS **core 431.478s /
+  CLI 39.509s**. Builds, vet/types and 35 Python runner safety checks pass.
+- Guarded exact-candidate timed-owner guest PASS 9 assertions, including actually
+  discarded renewal reply and two exact signed queries; evidence
+  `/var/tmp/ssh-exam-overlay-43b6iwk0`.
+- Collector guest PASS 12 assertions, 24 healthy renewals (maximum 0.087440s),
+  exact retry and unchanged intervals; `/var/tmp/ssh-exam-overlay-faydv6nj`.
+  Both wrappers exit 0; all host/base preservation checks pass.
+- Full browser PASS **150/150 scenarios, 15.2m**, including the actual WASM
+  dropped-reply case. All runners ended; frozen source/client hashes match.
 
-Actual browser unified-grant Begin/approved continuation now binds the canonical
-page/native transport/boot/generation/clock and fresh authorization identity,
-through original C15/start, capability/closed release, the ONE attempt supervisor,
-signed pane receipt and CLI/web diagnostic metadata.029 adds nullable original
-Begin page/owner fields without backfill. Isolated workers obtain canonical
-signing/current receipt decisions from their owning gateway via bounded IPC.
-Native-only recovery/source IDs remain valid optional lookups; current/absent
-account and positive-pane scope stay enforced. Exact retries preserve original
-interval/source; late callbacks/leases cannot roll newer ownership back. Negative
-intentional LOCKED replies preserve their actual reason. This is IDENTITY only,
-not live C10 authority, per-pane input fencing or retained freeze/thaw/recovery.
+Frozen 551-file source manifest:
+`/tmp/ssh-exam-renewal-receipt-qualified-source.sha256`, SHA256
+`e6d98315111d0a695686202e5b850949925ce2b03762a55cf64a220db268e1b3`.
+Private audited bundle:
+`/var/tmp/ssh-exam-renewal-receipt-upload.ihb3080l/bundle`.
+Agent `8ba2588bd917852d38063a1bb3b8c4ba53ac69ce3aead3a01d2c5401b0fc64f7`;
+core test `6408147f18a2ed525fb861d2d95aba46313dd6cae28d4ea0fe830e26cffbfcff`.
+Client manifest `/tmp/ssh-exam-renewal-receipt-browser.sha256` still matches.
 
-Final local qualification:
-- 514 application checks /95files PASS256.86s; focused45checks40.90s and2 absence/
-  account controls1.04s. All native race/resource/userns/compiler/default-size
-  disk-backed IO PASS core393.697s/CLI27.764s; focus4.994s/3.072s.
-- All149 browser scenarios have passing coverage, NOT one149/149 run:133 broad
-  passes, corrected sandbox/UTC focus2passes30.4s,27 affected/remaining timezone/
-  continuation/source/workspace cases pass1.9m, with overlap. Earlier6 fixture
-  failures/1 interrupted/9 unrun are retained. Test native opened ACK, not window
-  allocation; approved continuation binds the NEW page. No enforcement weakened.
-- Fresh app/WASM/native CGO-disabled builds, vet/typecheck/diff PASS. All runners
-  ended.544-file source5549a4c2a2509057bf9053d3095e1bbb601f6d58e98d7db5f2cf05322ce17ddc
-  matches /tmp/ssh-exam-registered-owner-qualified-source.sha256. Exact client
-  hashes in /tmp/ssh-exam-registered-owner-browser.sha256 match after testing;
-  WASM8b1cdf0b3b4f3c44a95ff3d845b12486aaaf356d9c8ba9a27a0c7ea26b79b812.
+**Exact next action:** commit this validated increment locally (all generated
+screenshots restored except the preserved original below). Then continue the actual retained
+policy-pause → verified hold → approved Continue workflow described in
+[retained-workload-barrier-plan.md](retained-workload-barrier-plan.md), including
+its source-writer map. Do not expand another unused helper chain or claim C3/C16
+complete. Current policy pauses still kill shells.
 
-Detailed state review/defect reproductions/fixture corrections/limits and logs:
-docs/registered-owner-workflow.md. Logs use /tmp/ssh-exam-registered-owner-*.log.
-Original dirty PNG below preserved; every other generated screenshot restored.
-Routine sandbox git-write/spawn restrictions were handled by tool escalation;
-that registered-owner milestone was entirely local, with no production action.
+## Settled decisions and remaining scope
 
-## Real-root timed-owner and collector qualification
+**C1–C18 are settled; no unanswered design question.** See
+[todo-design-decisions.md](todo-design-decisions.md). C16 places live monitoring/
+input authority inside the ONE supervisor per user/attempt, isolated from recording
+IO. C18 requires durable native retention confirmation before a saved-source grant
+is usable; pending inspection/cancel/retry reserves no account or clock.
 
-Local commit7bc50fe qualifies the existing C12 lifetime path in the guarded
-disposable csc-sys guest: actual BrowserSSH/two shells, coordinator stop, same
-pidfds/unsaved variables, current-policy pause termination, protected collection
-and natural original-deadline account restoration.8 assertions plus final wrapper
-and host/base preservation PASS. Three earlier fixture failures are retained and
-explained in docs/timed-owner-guest-qualification.md; no enforcement was weakened.
+Critical live authority, all-writer stop-assisted freeze/input discard and C9
+recovery remain open. So do saved-source retention/migration, legacy retirement
+reconciliation, destructive cleanup, full management and installed-role/capacity
+qualification. Main TODO count remains 11/38, not an effort percentage. Incident
+cause is unproven. Container packaging is unverified: configured local Docker
+socket is absent; no daemon start or production context was substituted.
 
-The following validated test-only increment qualifies collector SIGKILL with two
-independent BrowserSSH owners:12 assertions,24 signed healthy renewals (max0.091744s),
-same healthy owner/PTY/new-pane/clock, exact40MiB retry and natural restoration.
-35 Python safety checks and all host/base preservation checks PASS; final wrapper
-exit0. Evidence /var/tmp/ssh-exam-overlay-hogj7uqd; private candidate
-/var/tmp/ssh-exam-collector-owner-upload.GFTi1a/bundle. Source manifest6cf2f411aa8878795544f029ea4f5bfd49b7ecfbd05b9051279fb8f6dc1a165a.
-Native/application/browser code and binary hashes are unchanged, so prior runtime
-qualification applies. Separate immutable manifests and exact limits are in the
-feature document. No test runner remains active; no host installation was changed.
+Earlier validated scopes: ca8873b registered-page identity (029), 7bc50fe real-root
+timed ownership, 3450963 collector isolation, 00c6c7f pending owner race; detailed
+receipts/limits are in their feature docs and [todo-progress.md](todo-progress.md).
+Fresh guarded disposable csc-sys qualification is authorized; busy/uncertain means
+NO TEST. No installed host service/config/student data was changed.
 
-Next bounded outcome: actual verified retained hold/approved Continue, following
-retained-workload-barrier-plan.md. Inspect real root SSH pinning/handoff and EVERY
-lock/continuation/watchdog/clock/collection writer before code. Enlist pending
-handoffs before blocking IO; metadata/stream count is not admission exclusion or
-a hold. Current lockouts still terminate/disconnect. Critical liveness/R2 remain
-unfinished and unchecked; these guest passes do not establish retained recovery,
-class capacity or the initiating production crash cause.
+[The rollout/migration/rollback plan](todo-rollout-plan.md), including the proposed
+canonical/live-upgrade/deferred-recovery agent consolidation and independent
+attempt-owner drain, is **unexecuted**. Preserve newer authority/receipts/history;
+never stop needed PTYs or downgrade incompatible writers. Repair forward with
+admission closed if a compatible drained rollback is unavailable.
 
-## Previous validated scope and remaining decisions
-
-Prior8b089f0: reviewed CLI/web retirement for newly tracked definitions,028 lifecycle/
-ABA metadata/archive-writer fences. ALL pre-existing definitions remain native-
-unreconciled; delete/archive refuse until supported reconciliation, never manual
-flag clearing. docs/exam-retirement.md. b850e8d timed owner/recording evidence:
-docs/timed-terminal-supervision.md. Main count remains11/38, not effort/deployment.
-
-C1–C18 SETTLED in todo-design-decisions.md. No unanswered design question. Latest
-C16: live monitoring/input authority INSIDE ONE supervisor per user/attempt,
-recording IO isolated. C18: saved-source grants usable only after durable native
-retention confirmation; pending inspect/cancel/retry reserves no account/clock.
-Saved-source issuance remains disabled until its integrated workflow is qualified.
-
-Critical live authority/all-writer stop-assisted freeze/input discard/C9 recovery,
-saved-source migration/retention, legacy retirement reconciliation, destructive
-cleanup, full management and installed-role/capacity qualification remain open.
-The initiating production fault is unproven. A fresh csc-sys read-only canonical
-guard is clear, superseding BUSY00:18UTC; busy/uncertain still means NO TEST.
-Guarded private code-only qualification runs are now authorized/active; no installed
-host configuration/service/student-record change. Deployment/
-migration/rollback and three-agent consolidation are UNEXECUTED proposals in
-todo-rollout-plan.md (through029). Inventory independent timed/practice owners AND
-canonical/live-upgrade/deferred-recovery agents; never stop needed PTYs. Preserve
-all newer authority/receipts/history; repair forward if compatible drained rollback
-is unavailable. Deployment remains revoked.
-
-ORIGINAL dirty docs/screenshots/preflight-fifteen-minute-timeout.png:31754bytes,
-SHA256144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb;
-backup /tmp/ssh-exam-preserved-preflight-screenshot.png. Exclude from commits;
-never git-restore it. Other tracked screenshots are clean. Local commits require
-no instructor approval.
+Original dirty `docs/screenshots/preflight-fifteen-minute-timeout.png`: 31754 bytes,
+SHA256 `144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb`;
+backup `/tmp/ssh-exam-preserved-preflight-screenshot.png`. Never stage/restore it.
+Local commits need no instructor approval.

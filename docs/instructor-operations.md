@@ -165,6 +165,18 @@ uploads are not, by themselves, proof of complete authorized monitoring. The
 approved technical-only automatic recovery policy and remaining qualification
 are in monitoring-liveness-plan.md. Production recovery requirements are unchanged.
 
+The October23 local renewal-receipt candidate additionally recovers a lost reply
+only when the same live native agent positively confirms the exact original
+committed renewal. It preserves SSH/panes and the original cutoff; a query never
+renews work. Inspect `examctl info ATTEMPT --read-only` and
+`examctl panes supervisor ATTEMPT --state DIR` for current interval and captured
+owner diagnostics. A saved lease timestamp alone is not live confirmation or
+monitoring permission. If confirmation is unavailable, preserve the pending
+operation and diagnose the path; never clear state, restart owners or reset time
+to force recovery. The original command/error path remains authoritative. This
+does not install technical holds or preserve editors through policy lockouts.
+See renewal-receipt-recovery.md; no new management action is introduced.
+
 Local pane-open correction (not deployed): private setup no longer blocks other
 students' shared-state controls. Busy setup is an explicit retry, not misconduct;
 use `examctl panes list ATTEMPT` and `info ATTEMPT --read-only`, never restart or
@@ -180,17 +192,22 @@ non-executing trusted bootstrap, `cancelled_startups` may still need cleanup, an
 the displayed startup expiry is not a renewed lease. The supported reviewed close
 cancels that exact incarnation, as does student Close terminal. Never edit state,
 clear tracking or restart services to force it. Existing deadlines, holds and
-protected work remain. Root-guest qualification is pending on the BUSY host guard;
-this does not preserve timed-exam editors through coordinator failure/lockout yet.
+protected work remain. Current exact-candidate root-guest coverage now includes
+timed-owner and collector isolation; a busy/uncertain guard still forbids testing.
+This does not preserve editors through policy lockout.
 
 The subsequent C12a local candidate preserves ordinary **Practice terminal**
 sockets/PTYs through coordinator death, with one bounded independent owner per
 user/attempt. `panes show` adds `recorded_supervisors`: captured metadata, not live
 monitoring/authentication or lockout-retention proof. Existing targeted close and
 preflight expiry/Begin cleanup remain. Do not restart or kill owners to clear a
-refusal; that can lose buffers. Timed recording/supervision remains on the old
-path and the full critical fix is unfinished. See terminal-supervision.md; no
-new role/slice has been installed and root qualification remains guarded.
+refusal; that can lose buffers. C12b now also moves timed recording/PTY ownership
+into that bounded attempt owner. Guarded root tests preserve unsaved shell state
+through coordinator stop before legacy lease expiry and isolate collector death.
+Current policy pause still terminates shells; C3/C16 retention/live authority and
+class capacity remain open. See terminal-supervision.md,
+timed-terminal-supervision.md and timed-owner-guest-qualification.md. No role/slice
+has been installed in production.
 
 The local pending `examctl panes supervisor ATTEMPT --state DIR` additionally
 captures live root-owner diagnostic metadata without reading global attempt state
@@ -235,8 +252,11 @@ accepts that exact name/hash in Exam settings → Immutable template hash, or ro
 `--template-version legacy` changes future defaults only; editing the name never
 silently clears a hash. Old prepared/started snapshots remain unchanged. Native
 preflight/Begin still verifies capability/identity/exact bytes; errors never mean
-permission to substitute another source or reset time. Unified enrollment-time
-issuance remains pending. See template-source-selection.md and command help.
+permission to substitute another source or reset time. Unified enrollment-time,
+reviewed legacy initial, additional empty/template and finite-window sandbox
+issuance now work locally. Saved-work issuance remains disabled pending durable
+native retention and its integrated migration. See template-source-selection.md,
+unified-grant-first-attempt.md, grant-workspace-sources.md and command help.
 
 Submission distinguishes collection pending/failed from a verified protected copy. It
 shows collection/execution/protection timestamps, file and omission counts/reasons, manifest/checksum, and server-access recovery/release dates; no
