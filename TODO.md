@@ -475,6 +475,17 @@ remain necessary; no retained mode or production change is enabled. The next
 actual pause/verified-hold/approved-Continue workflow is scoped in
 docs/retained-workload-barrier-plan.md. Critical liveness and R2 stay unchecked.
 
+October23 follow-up reproduces and locally corrects a pending-recording owner
+race in the actual supervisor attach path. Accepted timed handoffs now join the
+owner cohort before blocking recorder IO, preventing a new page/transport/epoch/
+generation from replacing pending ownership. Same-owner clock advance remains
+valid; rollback refuses. Actual attach/descriptor/diagnostic IPC and focused
+admission/fault/root CLI regressions pass. Broad exact-candidate qualification is
+complete locally: full native race/resource suite, affected gateway/browser checks,
+build/vet and both guarded real-root timed-owner/collector profiles pass with host/
+base preservation. This is not a verified hold or retained-mode enablement. Details and
+acceptance boundary: docs/retained-workload-barrier-plan.md.
+
 The previously blocked real-root C12 timed-owner qualification now passes in the
 guarded disposable csc-sys guest:8 assertions through actual SSH/PAM/staging/Begin,
 two isolated shells and one bounded owner, guest coordinator stop with live pidfds/

@@ -842,6 +842,14 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		t.Fatal("second shell never executed", out, err, diagnostics.String())
 	}
 	view, err := ObserveNativePanes(e.Config.State, NativePaneQuery{Attempt: r.ID, Limit: 10})
+	// The read-only API intentionally refuses an inode whose ctime changes
+	// when a concurrent canonical save unlinks it. A recording acknowledgement
+	// may do that just after exec. Require a positive coherent snapshot within
+	// a bound; never turn a refusal itself into an inventory/permission result.
+	for until := time.Now().Add(time.Second); errors.Is(err, errReadOnlySnapshot) && time.Now().Before(until); {
+		time.Sleep(time.Millisecond)
+		view, err = ObserveNativePanes(e.Config.State, NativePaneQuery{Attempt: r.ID, Limit: 10})
+	}
 	wantPanes := 2
 	if mode == "timed-isolation" {
 		wantPanes = 1

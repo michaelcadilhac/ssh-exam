@@ -2562,3 +2562,19 @@ still applies with checked source/artifact hashes. Scope and immutable manifests
 timed-owner-guest-qualification.md. No deployment or host installation/service/
 configuration/student-record change; no missing executable. Broader namespace/
 source/capacity matrix and initiating production-crash investigation remain open.
+
+## October23: pending recorder ownership is fenced before IO
+
+Actual attach reproduced owner replacement while its first recording initialized.
+The existing supervisor now enlists timed handoffs before IO; different owner/
+generation/legacy conversion cannot join, same-owner clock advance stays valid.
+Actual IPC/pidfd/PTY/diagnostic regression and mutation controls, full native race/
+resource qualification (core394.808s),4 affected gateway checks,7 browser checks,
+native build/vet and35 runner checks pass. Changed native candidate passes8 timed-
+owner and12 collector real-root guest assertions with host/base preservation;
+24 renewals max0.092926s, exact retry and original-deadline account restoration.
+Corrected snapshot/provisional-ready/pending-retry fixture failures are retained.
+Exact source/artifacts/state review/limits: retained-workload-barrier-plan.md.
+No new durable state, retained mode, deployment or production action; no missing
+command. Critical live authority, full pending-launch/input/freeze and recovery
+remain open. No new design question; proceed with the actual retained workflow.

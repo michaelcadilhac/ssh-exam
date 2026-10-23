@@ -690,11 +690,11 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	if s.registeredOwner != nil {
 		old, next := *s.registeredOwner, r.RegisteredOwner
 		old.ClockRevision, next.ClockRevision = 0, 0
-		if !bound || (old != next && len(s.timed) != 0) || (old == next && r.RegisteredOwner.ClockRevision < s.registeredOwner.ClockRevision) {
+		if !bound || (old != next && len(s.requests) != 0) || (old == next && r.RegisteredOwner.ClockRevision < s.registeredOwner.ClockRevision) {
 			s.mu.Unlock()
 			return
 		}
-	} else if bound && len(s.timed) != 0 {
+	} else if bound && len(s.requests) != 0 {
 		s.mu.Unlock()
 		return
 	}
@@ -704,6 +704,12 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		return
 	}
 	s.panes[r.Unit] = false // Attached, but no normal startup notice observed yet.
+	if timed {
+		// Enlist the immutable cohort before storage/recorder IO can block.
+		// Initialized streams alone omit pending handoffs and allow another
+		// page/authorization to replace their ownership while still attached.
+		s.requests[r.Unit] = r
+	}
 	s.uid, s.username = r.UID, r.Username
 	if bound {
 		owner := r.RegisteredOwner
@@ -863,7 +869,7 @@ func (s *terminalSupervisor) attachRecorded(c, outer *net.UnixConn, original, ma
 		return
 	}
 	s.mu.Lock()
-	s.timed[r.Unit], s.requests[r.Unit] = stream, r
+	s.timed[r.Unit] = stream
 	refused := false
 	s.mu.Unlock()
 	verdict := byte(0)

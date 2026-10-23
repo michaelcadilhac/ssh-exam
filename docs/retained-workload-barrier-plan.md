@@ -189,3 +189,90 @@ discard without false success. Qualify real privileged SSH/PAM/cgroup behavior i
 the guarded disposable guest, with full application/native race/build/browser
 checks at that integrated boundary. A busy/uncertain host guard is a remaining
 qualification blocker, never permission to bypass it or enable partial retention.
+
+## Pending-recording ownership correction (October23, local)
+
+Inspection reproduced a concrete race through the existing supervisor attach
+entry: its first accepted timed handoff could block in recorder initialization
+before entering the initialized-stream map. A different page/transport/authorization
+epoch or generation, or conversion of a pending legacy cohort, could then replace
+its registered owner. The separate final root exec gate still rejected changed
+authority; the supervisor metadata itself was not an admission-exclusion proof.
+
+Bounded correction: enlist each accepted timed request under the supervisor mutex
+before any storage/recorder IO, and use that complete pending/live cohort for owner
+agreement. Retire only that exact request when its handler actually returns.
+Allow monotonic clock-only changes for the same owner; reject rollback. Existing
+examctl panes supervisor observation remains responsive during blocked IO and
+includes pending attached units, without claiming they started or are authorized.
+No new management action, capability, retained mode or positive authority is added.
+
+Acceptance: actual local attach/SCM_RIGHTS/PTY/pidfd/executable checks reproduce the
+five owner-replacement cases before the fix; all eight owner/clock cases pass
+afterward, including positive same-owner clock advance and actual diagnostic IPC
+while initialization is blocked. Test-owned cgroup identity replaces root/student
+scope ancestry in that focused fixture; qualify current native artifacts separately
+through the guarded real-root timed-owner/collector guest profiles. Review and run
+focused actual admission/prestart-fault/root CLI checks before full native race/
+resource/build qualification. Unchanged web/protocol artifacts retain prior evidence;
+this correction does not implement the full pending-launch/freeze barrier.
+
+State review: no new durable state. Pending requests cannot authorize exec, thaw,
+change time or reserve an account; canonical closed-start expiry, cancellation,
+tracking and deadline rules remain. Failed initialization retires its request only
+after returning; blocked IO remains visibly pending, not falsely empty. A stale
+request cannot replace the cohort or lower its clock. The supervisor state mutex
+never waits for recorder IO. This addresses one confirmed defect discovered in the
+critical retained workflow, not a substitute for integrating that workflow.
+
+Qualification evidence for this correction:
+
+- Initial regression RED0.102s and isolated Go-overlay mutation RED0.068s: five
+  actual attach owner-replacement cases fail. The final oracle queries the real
+  diagnostic IPC while storage initialization is held, not only private state.
+  Eight owner/clock cases pass20 repetitions2.089s; focused real admission/fault/
+  root CLI4.770s and final affected five repetitions7.169s pass.
+- Four affected gateway checks pass7.25s; seven actual Chromium/WASM Begin/
+  continuation checks pass58.3s. Existing web artifacts still match
+  /tmp/ssh-exam-registered-owner-browser.sha256. No application/protocol/client
+  source changed; unchanged broader application/browser evidence still applies.
+  Native static CGO-disabled builds and vet pass;35 Python safety checks pass.
+- Changed native candidate's timed-owner guest PASSES8 assertions, final wrapper
+  exit0 and host/base preservation at /var/tmp/ssh-exam-overlay-4hff8wnu. Exact
+  private bundle /var/tmp/ssh-exam-pending-owner-upload.ky0pwllm/bundle. This is
+  legacy grantless BrowserSSH lifetime compatibility, not registered unified
+  Begin, all-writer freeze or retained recovery qualification.
+- Final collector guest PASSES12 assertions, final wrapper exit0 and host/base
+  preservation at /var/tmp/ssh-exam-overlay-0pab0pyg. Exact private bundle
+  /var/tmp/ssh-exam-pending-owner-final.a4gpwltc/bundle.24 healthy signed renewals,
+  maximum0.092926s; same healthy supervisor/PTY/new pane/clock and byte-exact40MiB
+  target retry; both account restrictions restore at original deadlines only.
+
+Retained failed qualification: /var/tmp/ssh-exam-overlay-be67lr11 queried a new
+supervisor after provisional EXAM-READY, before closed handoff. The corrected
+fixture requires an actual shell response before observation. The next
+/var/tmp/ssh-exam-overlay-4fyqd90r passed crash/healthy-owner checks but wrongly
+treated a successful retry returning FINALIZING as secured completion. It now
+waits for a positive read-only COMPLETED snapshot with unchanged interval, then
+verifies the archive and exact bytes. Neither correction relaxes native permission,
+protection or restoration. Both failed runs passed host/base preservation.
+
+The first full native run402.865s had one fixture failure: the strict read-only
+inventory refused while a canonical atomic replacement unlinked its opened
+inode and changed ctime. The fixture now requires a positive coherent inventory
+within one second, retrying only that explicit snapshot refusal. A persistent
+refusal or incorrect pane count still fails. Final full native race/resource/
+userns/compiler/default-size disk-backed IO qualification PASSES core394.808s;
+CLI tests pass from the valid cache. Log /tmp/ssh-exam-pending-owner-native-final.log.
+This was a separate run after focused completion, not inferred from the failed run.
+
+Final545-file source manifest906f8098685209adb8c0d41bdc5d2b9691d5e84bd19e5536ea1033c89b6fce8a
+is /tmp/ssh-exam-pending-owner-qualified-source.sha256. The timed guest's earlier
+test/fixture source manifest64833ec0ab3f29f179ecf368845beb1bcf38c6e7abe32227efa22e2f94524384
+is separately retained at /tmp/ssh-exam-pending-owner-timed-qualified-source.sha256.
+Its native runtime binaries are identical to the final collector run. Immutable
+artifact receipts are SHA256.timed-owner.json and SHA256.collector-owner.json in
+var/collection-tests/pending-owner-artifacts.9l8f3xk0; original remote bundles retain
+each exact file set. Agent SHA256b3299b99ae4d2186f1aa26b11799a42ca4eb012fd23c2f1fa5f89e327a1f5ac5;
+final core test450e855ed403021b11aa23f41f06fabb8afa498ca76d38ac53b323ed674ab60f.
+No deployment, production action, missing command or instructor approval request.

@@ -2624,6 +2624,15 @@ metadata back. Read-only examctl info/list and panes supervisor expose the same
 optional diagnostic context, with useful help; a matching record is never a live
 permit, per-pane packet epoch or freeze receipt.
 
+The October23 pending-recording correction enlists every accepted timed handoff
+before potentially blocking storage/recorder initialization. Supervisor cohort
+agreement includes these pending requests, not only initialized IO streams, so a
+different page/transport/authorization/generation cannot replace them. Same-owner
+clock-only revisions remain monotonic. Existing pane observation includes pending
+handoffs without claiming startup, freeze or permission. No new durable state or
+retained mode is introduced; the full cross-process launch/input barrier remains
+required. Qualification: docs/retained-workload-barrier-plan.md.
+
 This is a locally qualified identity prerequisite, not retained-mode enablement,
 live C10 evidence issuance, technical recovery or verified C3 containment. Current
 lockouts still terminate/disconnect. Keep the full native live-authority, all-writer

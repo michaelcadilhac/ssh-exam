@@ -4,6 +4,28 @@ Updated October23,2026. Local development/tests/commits only. NEVER push/deploy,
 change production records/config/services or consolidate agents. Stop on any
 missing executable. None was missing this continuation. Follow AGENTS.md.
 
+## Current bounded correction: pending terminal-owner cohort
+
+Local collector qualification committed3450963 after7bc50fe. While tracing actual
+retained pause/Continue, reproduced an attach race: owner changes could join while
+the first recorder was still initializing. Timed requests now enlist before IO;
+no new durable state or retained mode. Five real IPC mutation controls fail as
+expected; eight owner/clock cases and affected admission/fault/CLI checks pass,
+including repeated focused checks7.169s.4 gateway tests and7 actual browser cases
+pass; native build/vet pass; web artifacts unchanged. Details/state review:
+retained-workload-barrier-plan.md.
+
+Final full native race/resource/userns/compiler/default-size IO PASS core394.808s;
+CLI valid-cache PASS. Timed-owner guest8 assertions/preservation PASS at
+/var/tmp/ssh-exam-overlay-4hff8wnu; collector guest12 assertions/preservation PASS
+at /var/tmp/ssh-exam-overlay-0pab0pyg,24 renewals max0.092926s.35 safety tests PASS.
+Initial snapshot/provisional-ready/pending-retry fixture failures remain recorded,
+corrected using positive coherent observations without weakening enforcement.
+Final545-file source906f8098685209adb8c0d41bdc5d2b9691d5e84bd19e5536ea1033c89b6fce8a;
+immutable artifact manifests and exact scope are in the feature doc. All runners
+ended. Next: commit the validated correction locally, then continue actual retained
+hold/Continue integration. Current policy pause still kills shells; no new mode.
+
 ## Validated registered-page milestone: ca8873b (local commit)
 
 Actual browser unified-grant Begin/approved continuation now binds the canonical

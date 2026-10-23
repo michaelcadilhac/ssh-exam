@@ -302,6 +302,12 @@ if a.worker_isolation:
         thread=threading.Thread(target=renew,args=(healthy_id,),daemon=True);thread.start()
         target_id=target_connection.start();target_pane=target_connection.pane(target_id)
         assert before.get('browser_ssh') and before.get('terminal_supervised') and info(target_id).get('terminal_supervised')
+        # EXAM-READY is only the provisional admission reply, before closed
+        # bootstrap/owner handoff. Require actual shell execution, not a sleep
+        # or a retry that could hide a failed launch, before observing owners.
+        for pane in (healthy_pane,target_pane):
+            pane.stdin.write(b"printf 'OWNER_%s\\n' SHELL_READY\n");pane.stdin.flush()
+            read_until(pane,b'OWNER_SHELL_READY',10)
         healthy_owner=json.loads(root('examctl','panes','supervisor',healthy_id))
         target_owner=json.loads(root('examctl','panes','supervisor',target_id))
         assert healthy_owner['observation_only'] and target_owner['observation_only'] and healthy_owner['pid']!=target_owner['pid'] and healthy_owner['supervisor']!=target_owner['supervisor']
@@ -381,6 +387,19 @@ print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
         assert healthy_pane.poll() is None and not failures and len(acknowledgements)>=3 and max(acknowledgements)<5
         ok('healthy real PTY, fresh channel admission and signed renewals survive with unchanged owners/generation/deadlines')
         root('examctl','retry',target_id,'--reason','Disposable qualification retries exact worker-death target')
+        def retry_completed():
+            # Another verified worker may already own the job. Successful retry
+            # then reports honest FINALIZING, not a secured archive. Observe its
+            # actual completion without issuing another retry or reconciling.
+            result=run(['examctl','info',target_id,'--read-only'])
+            if result.returncode:
+                assert result.returncode==1 and 'native snapshot unavailable or unsafe' in result.stderr,result.stderr
+                return False # A canonical atomic rename may invalidate a read.
+            observed=json.loads(result.stdout)['attempts'][0]
+            assert observed['state'] in ('FINALIZING','COMPLETED'),observed['state']
+            assert observed['start']==original['start'] and observed['deadline']==original['deadline'] and observed['original_deadline']==original['original_deadline']
+            return observed['state']=='COMPLETED'
+        wait_for(retry_completed,45)
         _,archive,checksum=secure(target_id)
         with tarfile.open(archive) as bundle:
             for i in range(4):

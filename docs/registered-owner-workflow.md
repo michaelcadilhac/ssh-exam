@@ -145,16 +145,13 @@ Inspection never renews, thaws, repairs metadata or initializes state. Help dire
 operators to compare status and use the same authorized page/approved continuation;
 never edit saved ownership, clear the original intent or reset a clock to retry.
 
-Remaining barrier boundary: the supervisor's initialized timed-stream cohort is
-not a pending-start exclusion proof. Recorder initialization can be pending before
-its stream enters that map, and owner metadata can outlive closed streams. The
-native closed gate still rechecks exact immutable ownership at actual exec release
-and rejects changed authority; this increment derives no live permit or hold from
-the supervisor metadata. Before C3/live-authority enablement, enlist every handoff
-in the complete admission/input barrier BEFORE potentially blocking recorder IO,
-then test that exact blocked boundary. Do not infer no pending writer from the
-stream count or add an unused barrier helper here. That belongs to the next actual
-retained-pause workflow, with root SSH lifetime and all-writer/input verification.
+The original initialized-stream cohort omitted pending recorder initialization.
+The subsequent qualified correction enlists accepted timed handoffs before IO and
+fences owner replacement through actual blocked attach/diagnostic IPC tests. See
+retained-workload-barrier-plan.md for exact new-artifact evidence and retained
+failed fixtures. This still supplies neither the full cross-process pending-launch/
+input barrier nor live authority, root SSH lifetime, all-writer freeze or recovery.
+Owner metadata can outlive closed streams and is never a permit or hold receipt.
 
 Focused evidence includes real signed native admission RED0.026s and stale signed
 callback metadata RED1.10s, corrected locally. Fresh signed TLS tests cover missing/
