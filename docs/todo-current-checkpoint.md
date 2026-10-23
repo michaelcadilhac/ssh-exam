@@ -7,6 +7,12 @@ deadlines, holds and credential cleanup. Follow AGENTS.md and the retrospective.
 
 ## Current validated milestone: timed recording isolation
 
+Latest validated HEAD is204d439: incomplete/ambiguous workspace hold metadata
+refuses through actual CLI/native workflows instead of defaulting to released.
+Full native312.137s/CLI29.516s and static build/vet/diff pass; all runners finish.
+The prior supervisor diagnostic workflow is committed inc601746. Detailed evidence
+and the independent-work handoff follow below; no runtime change is left uncommitted.
+
 Actual timed Engine.local/Unix/PTY recording no longer holds unrelated attempts
 behind one Engine-wide mutex. Recorder context is only storage/budget/IDs.
 Per-recorder and cross-process per-attempt quota locks remain; nonblocking flock
@@ -60,11 +66,15 @@ to released. Actual CLI RED0.142s; three focused race repeats core1.269s/CLI2.65
 pass all required-field/null and real CLI corruption/valid round-trip cases.
 State/failure review and exact limits are in workspace-retention.md. Full native
 race/resource/namespace/compiler/default-size core312.137s/CLI29.516s, static build/
-vet/diff pass. All runners finish; coherent local commit follows. Preserve hold/markers/audit/work and
+vet/diff pass. All runners finish; committed locally as204d439. Preserve hold/markers/audit/work and
 original/current timing/access; no cleanup command or new permission. Acceptance:
 strict complete v1 records, legitimate explicit true/false round trips, corruption
 refusal before overwrite/audit and actual CLI/root/help plus focused native races.
-Next record this validated hold-safety commit. Boundary:
+Next: apply the instructor's C16 answer to the integrated retained-owner/authority
+milestone, with actual student/CLI workflow and full barriers before enablement.
+While awaiting that answer, approved unified-grant/native C15 and full C4 proof/
+cleanup work remain implementation work, not completed or automatically blocked
+by the BUSY guest guard. Preserve this distinction when resuming. Boundary:
 coherent validated hold-safety fix while C16 is awaiting an answer;
 do not expand into an unused cross-namespace scanner or enable cleanup.
 
