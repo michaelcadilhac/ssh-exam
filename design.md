@@ -2151,7 +2151,7 @@ Expose matching idempotent audited web/examctl source/grant workflows with hones
 pending/confirmed status. Technical source repair and crash qualification remain
 required; this approved policy is not implemented or deployed.
 
-### Approved exam-definition retirement (October 21; implementation pending)
+### Approved exam-definition retirement (October 21; partial local implementation)
 
 Delete only unused exam definitions. Archive definitions with history, preserving
 attempts, submissions, grants and audit records without cascading deletion.
@@ -2162,6 +2162,16 @@ Definition retirement is separate from protected-submission deletion, manual
 workspace cleanup and monitoring retention. Expose the same audited, revision-
 checked workflows in web administration and examctl. Approval is not evidence of
 implementation, migration or deployment.
+
+October23 local C8 adds shared reviewed CLI/web delete/archive/unarchive with
+exact definition/dependency revisions, audited reason, lifecycle visibility,
+durable retry, ABA fencing and archived-writer refusal.028 preserves all settings/
+history and marks every pre-existing definition native-unreconciled; retirement
+refuses until supported native dependency migration exists. New lifecycle-tracked
+definitions use the reviewed workflow. Unused grants, unfinished/restricted work,
+consumption without closed-attempt proof and native saved-work references also
+refuse archival. No cascade, manual flag clearing, native deletion, service action
+or deployment. Current qualification/state review: docs/exam-retirement.md.
 
 ### Approved private-workspace cleanup design (October 21; partial local implementation)
 

@@ -9,6 +9,10 @@ export const managementOperations = [
   "exams.show",
   "exams.create",
   "exams.update",
+  "exams.retire-preview",
+  "exams.delete",
+  "exams.archive",
+  "exams.unarchive",
   "templates.list",
   "templates.show",
   "templates.sync",
@@ -74,6 +78,7 @@ export const examListRequest = z
       .string()
       .regex(/^[a-zA-Z0-9_-]{1,64}$/)
       .optional(),
+    lifecycle: z.enum(["active", "archived", "all"]).default("active"),
   })
   .strict();
 export const examShowRequest = z
@@ -86,6 +91,20 @@ export const examCreateRequest = z
     exam: z.record(z.string(), z.unknown()),
     source_selection: z.literal("template-version/v1").optional(),
     reason: z.string().trim().min(8).max(1000).optional(),
+  })
+  .strict();
+export const examRetirementPreviewRequest = z
+  .object({
+    id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    action: z.enum(["delete", "archive", "unarchive"]),
+  })
+  .strict();
+export const examRetirementRequest = examRetirementPreviewRequest
+  .omit({ action: true })
+  .extend({
+    revision: z.string().regex(/^[a-f0-9]{64}$/),
+    review: z.string().regex(/^[a-f0-9]{64}$/),
+    reason: z.string().trim().min(8).max(1000),
   })
   .strict();
 export const examUpdateRequest = z

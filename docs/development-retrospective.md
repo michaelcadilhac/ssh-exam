@@ -31,6 +31,18 @@ milestone boundaries, not lower safety standards or misleading TODO checkmarks.
 
 ## Operating changes
 
+C8 follow-up October23: an oversized combined read truncated the operator
+document's native-only recovery-grant caveat. The initial state review therefore
+covered gateway dependencies but missed legacy authority. Catching it after a
+broad launch required another full application run and delayed delivery. The
+bounded repair is a conservative migration fence: every pre-existing definition
+refuses retirement until supported native reconciliation; newly tracked definitions
+use the integrated web/CLI workflow. No new synchronization prototype was added.
+Treat truncated output as unread evidence and reread only the missing relevant
+span before making scope/safety assumptions. Existing grant tests must read the
+public revision rather than recreate an old implementation hash. Browser fixtures
+should reuse valid sessions instead of exhausting or disabling real login limits.
+
 AGENTS.md now requires one bounded interface-level milestone, named runtime
 callers for new components, immediate scope reassessment when prerequisites grow,
 focused tests during editing and risk-appropriate broad checks at milestone

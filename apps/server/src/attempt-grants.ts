@@ -17,6 +17,7 @@ import {
 } from "../../../packages/protocol/grants.js";
 import { hash, now, type Store, type Attempt } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
+import { ExamDefinitions } from "./exam-definitions.js";
 
 const conflict = (message: string): never => {
   throw Object.assign(Error(message), { statusCode: 409 });
@@ -326,6 +327,7 @@ export class AttemptGrants {
   ) {
     const id = randomUUID(),
       at = now();
+    new ExamDefinitions(this.store, this.agent).requireActive(exam);
     this.store.db
       .prepare(
         "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason,issuance,initial_grant) VALUES(?,?,?,?,1,'AVAILABLE',?,?,?,?,?)",
@@ -470,6 +472,7 @@ export class AttemptGrants {
     return this.request(actor, b.request, { id, ...b }, () => {
       const row = this.unused(id, b.revision),
         previous = this.view(row);
+      new ExamDefinitions(this.store, this.agent).requireActive(row.exam);
       if (!Object.keys((input as any).changes).length && !b.work)
         return conflict(
           "Choose an explicit grant setting to revise; defaults do not revise issued grants",

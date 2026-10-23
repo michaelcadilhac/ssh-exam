@@ -62,16 +62,27 @@ func (s examReplySettings) valid() bool {
 }
 
 type examDefinitionReply struct {
-	Exam     examReplySettings `json:"exam"`
-	Revision string            `json:"revision"`
+	Exam      examReplySettings `json:"exam"`
+	Revision  string            `json:"revision"`
+	Lifecycle string            `json:"lifecycle,omitempty"`
 }
 
 func (r *examDefinitionReply) UnmarshalJSON(data []byte) error {
 	type plain examDefinitionReply
-	return catalogDecode(data, (*plain)(r), []string{"exam", "revision"})
+	if err := catalogDecode(data, (*plain)(r), []string{"exam", "revision"}); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(data, &fields) != nil {
+		return errors.New("invalid definition lifecycle metadata")
+	}
+	if value, present := fields["lifecycle"]; present && bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+		return errors.New("null definition lifecycle metadata")
+	}
+	return nil
 }
 func (r examDefinitionReply) valid() bool {
-	return r.Exam.valid() && catalogHash.MatchString(r.Revision)
+	return r.Exam.valid() && catalogHash.MatchString(r.Revision) && (r.Lifecycle == "" || r.Lifecycle == "active" || r.Lifecycle == "archived")
 }
 
 // Authentication of the outer envelope does not bind the inner exam, page or
@@ -80,6 +91,9 @@ func (r examDefinitionReply) valid() bool {
 func validateExamResult(operation string, body any, raw json.RawMessage) error {
 	if !strings.HasPrefix(operation, "exams.") {
 		return nil
+	}
+	if operation == "exams.retire-preview" || operation == "exams.delete" || operation == "exams.archive" || operation == "exams.unarchive" {
+		return validateRetirementResult(operation, body, raw)
 	}
 	bad := errors.New("gateway exam definition scope/settings/bounds mismatch; no output or confirmed selection; preserve --request and inspect web exams show with a NEW read request, then review before retrying; see examctl web help")
 	if !utf8.Valid(raw) || !boundedMetadataJSON(raw, catalogReplyLimit, 4, 8192) {
@@ -98,6 +112,7 @@ func validateExamResult(operation string, body any, raw json.RawMessage) error {
 		Revision        string         `json:"revision"`
 		Reason          string         `json:"reason"`
 		SourceSelection string         `json:"source_selection"`
+		Lifecycle       string         `json:"lifecycle,omitempty"`
 	}
 	if catalogDecode(input, &b, nil) != nil {
 		return bad
@@ -106,6 +121,9 @@ func validateExamResult(operation string, body any, raw json.RawMessage) error {
 		return bad
 	}
 	if operation == "exams.list" {
+		if b.Lifecycle != "" && b.Lifecycle != "active" && b.Lifecycle != "archived" && b.Lifecycle != "all" {
+			return bad
+		}
 		var r struct {
 			Exams []examDefinitionReply `json:"exams"`
 			Next  *string               `json:"next"`
@@ -115,7 +133,7 @@ func validateExamResult(operation string, body any, raw json.RawMessage) error {
 		}
 		last := b.After
 		for _, item := range r.Exams {
-			if !item.valid() || item.Exam.ID <= last {
+			if !item.valid() || item.Exam.ID <= last || (b.Lifecycle == "archived" && item.Lifecycle != "archived") {
 				return bad
 			}
 			last = item.Exam.ID

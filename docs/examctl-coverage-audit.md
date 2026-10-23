@@ -23,7 +23,7 @@ feature document retains the boundaries of its operational tests.
 
 | Management workflow | Discoverable supported CLI | Authority/limits |
 | --- | --- | --- |
-| Definitions/settings/finite practice window | `web exams list/show/create/update`; `web help` | Shared ExamDefinitions; revisions, explicit window and exact source; no retirement |
+| Definitions/settings/finite practice window/retirement | `web exams list/show/create/update/retire-preview/delete/archive/unarchive`; `web help` | Shared ExamDefinitions; exact revision/dependency review, durable retry/audit; pre-existing native-unreconciled definitions refuse retirement |
 | Roster/CSV/accommodations | `web students help` | Shared RosterManagement; reviewed import, explicit-edit provenance; issued snapshots unchanged |
 | Initial, reviewed legacy/additional and practice grants | `web grants help` | Shared AttemptGrants/GrantIssuance; list/show/history/unused revise/revoke and reviewed preview/show/cancel/confirm; actual Begin starts time |
 | Immutable source installation/attestation | `templates help`, `web templates help` | Local jobs/verification and signed metadata sync; no mutable fallback for exact grants |
@@ -51,13 +51,14 @@ Incident JSON editing/transfer scripts remain unsupported management substitutes
   agreement, all-writer stop-assisted freeze and technical-hold recovery. Keep
   retained mode disabled until real end-to-end qualification; current lockouts
   still disconnect. This is not completed by existing private primitives.
-- **C18 / saved-source authority:** native deletion cannot see unused gateway
-  saved-work references. The unresolved retention/availability choice precedes
-  safe saved grants and legacy migration. No offline JSON writer bypass.
-- **C8 / retirement:** no definition delete/archive operation exists in either
-  interface. Web absence cannot prove the absence of native legacy authority.
-  Integrate native dependency visibility first, then delete only unused definitions
-  and archive history without cascading attempts/submissions or cancelling grants.
+- **C18 / saved-source authority:** durable native retention confirmation before
+  usability is approved October23. Integration remains necessary: native deletion
+  cannot yet see unused gateway saved-work references. No offline JSON writer bypass.
+- **C8 / legacy retirement:** shared reviewed retirement now exists for newly
+  lifecycle-tracked definitions, preserving all history.028 blocks ALL pre-existing
+  definitions until supported native dependency reconciliation; missing web rows
+  never prove native legacy authority absent. Known saved-work references and
+  consumption lacking closed-attempt proof also refuse. No manual flag clearing.
 - **C4 / workspace cleanup:** holds are supported, destructive cleanup is not.
   Require verified archive and complete writer/kernel/namespace-use proof through
   the containment work; manual/no-grace approval is settled. No unsafe delete

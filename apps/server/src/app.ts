@@ -1758,7 +1758,13 @@ export async function createApp(
   });
   app.get("/api/admin/exams", async (req) => {
     principal(req, "admin");
-    return new ExamDefinitions(store, config.agent.id).all();
+    const { lifecycle } = z
+      .object({
+        lifecycle: z.enum(["active", "archived", "all"]).default("active"),
+      })
+      .strict()
+      .parse(req.query);
+    return new ExamDefinitions(store, config.agent.id).all(lifecycle);
   });
   const saveExamDefinition = async (req: any) => {
     const s = principal(req, "admin");
@@ -1782,7 +1788,13 @@ export async function createApp(
             Object.fromEntries(
               Object.entries(body).filter(
                 ([key]) =>
-                  !["id", "revision", "reason", "requestID"].includes(key),
+                  ![
+                    "id",
+                    "revision",
+                    "reason",
+                    "requestID",
+                    "lifecycle",
+                  ].includes(key),
               ),
             ),
             body.revision,
@@ -1802,6 +1814,32 @@ export async function createApp(
       .passthrough()
       .parse(req.body);
     return saveExamDefinition(req);
+  });
+  app.post("/api/admin/exams/:exam/retirement-preview", async (req: any) => {
+    principal(req, "admin");
+    return new ExamDefinitions(store, config.agent.id).retirementPreview(
+      req.params.exam,
+      req.body,
+    );
+  });
+  app.post("/api/admin/exams/:exam/retire", async (req: any) => {
+    const actor = principal(req, "admin");
+    const { requestID, ...intent } = z
+      .object({
+        requestID: z.string().uuid(),
+        action: z.enum(["delete", "archive", "unarchive"]),
+        revision: z.string().regex(/^[a-f0-9]{64}$/),
+        review: z.string().regex(/^[a-f0-9]{64}$/),
+        reason: z.string().trim().min(8).max(1000),
+      })
+      .strict()
+      .parse(req.body);
+    return new ExamDefinitions(store, config.agent.id).retire(
+      req.params.exam,
+      intent,
+      actor.username,
+      requestID,
+    );
   });
   const describeAttempt = (a: any) => {
     const conn = attemptConnections.get(a.id);

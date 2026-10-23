@@ -33,12 +33,26 @@ func webHelp(out io.Writer) {
        sudo examctl web exams show EXAM [--request UUID]
        sudo examctl web exams create EXAM --template NAME --earliest RFC3339 --latest RFC3339 [SETTINGS]
        sudo examctl web exams update EXAM --revision HASH SETTINGS
+       sudo examctl web exams retire-preview EXAM --action delete|archive|unarchive
+       sudo examctl web exams delete EXAM --revision HASH --review HASH --reason TEXT
+       sudo examctl web exams archive EXAM --revision HASH --review HASH --reason TEXT
+       sudo examctl web exams unarchive EXAM --revision HASH --review HASH --reason TEXT
        examctl web help
 
 Manage gateway-owned exam definitions using the existing root agent identity over
 verified outbound HTTPS. No browser login, separate token or inbound agent API.
 The gateway must explicitly authorize the named exams.list/show/create/update operations in the agent's
 managementOperations allowlist; the default is no management authorization.
+Retirement separately requires exams.retire-preview/delete/archive/unarchive.
+Delete only unused definitions. Archive history and preserve grants, attempts,
+submissions, original deadlines, holds and audit. No physical work/submission
+deletion or service action. Live/unused authority refuses archive until explicitly
+resolved; no silent cancellation or automatic reopening. Sandbox stays reserved.
+retire-preview returns allowed/blockers, exact revision and review digest. Inspect
+it BEFORE confirmation. Stale resource/dependencies require a NEW review/intent;
+after a lost reply repeat the SAME arguments and --request UUID first.
+--lifecycle active|archived|all selects list visibility (default active); archived
+definitions with unfinished work remain visible for monitoring. show stays available.
 
 --config FILE  root agent configuration (default /etc/exam-agent/agent.json)
 --limit N      list page size, default 100, range 1..200
@@ -92,8 +106,10 @@ Initial enrollment-time snapshots, reviewed NEW legacy/additional grants,
 empty or separate-template starters and finite repeatable sandbox practice are
 supported: examctl web grants help. New enrollment/practice requires an attested
 exact template version; a legacy mutable default is not new grant authority.
-Definition retirement, saved-work grant migration, configuration mutation and
-full management remain pending. Existing attempts/holds/history stay protected.
+Reviewed definition retirement is available for lifecycle-tracked definitions;
+legacy native-uncertain definitions refuse until supported reconciliation.
+Saved-work grant migration, configuration mutation and full management remain
+pending. Existing attempts/holds/history stay protected.
 
 Examples:
   sudo examctl web exams list --limit 50
@@ -181,6 +197,9 @@ func webMain(args []string) int {
 	latest := flags.String("latest", "", "latest Begin RFC3339")
 	revision := flags.String("revision", "", "current definition revision")
 	reason := flags.String("reason", "", "audited reason")
+	action := flags.String("action", "", "retirement preview action")
+	review := flags.String("review", "", "reviewed retirement dependency digest")
+	lifecycle := flags.String("lifecycle", "active", "definition list visibility")
 	if err := flags.Parse(ordered(args)); err != nil {
 		fmt.Fprintln(os.Stderr, "Run examctl web help")
 		return 2
@@ -205,7 +224,7 @@ func webMain(args []string) int {
 	}
 	switch words[1] {
 	case "list":
-		if mutatingFlag {
+		if mutatingFlag || visited["action"] || visited["review"] {
 			return usage("setting/revision/reason flags apply only to create/update")
 		}
 		if len(words) != 2 || *limit < 1 || *limit > 200 || (*after != "" && !id.MatchString(*after)) {
@@ -213,11 +232,20 @@ func webMain(args []string) int {
 		}
 		operation = "exams.list"
 		b := map[string]any{"limit": *limit}
+		if visited["lifecycle"] {
+			if *lifecycle != "active" && *lifecycle != "archived" && *lifecycle != "all" {
+				return usage("--lifecycle must be active, archived or all")
+			}
+			b["lifecycle"] = *lifecycle
+		}
 		if *after != "" {
 			b["after"] = *after
 		}
 		body = b
 	case "show":
+		if visited["action"] || visited["review"] || visited["lifecycle"] {
+			return usage("show does not take retirement or lifecycle filters")
+		}
 		if len(words) != 3 || !id.MatchString(words[2]) {
 			return usage("show requires exactly one exam ID from web exams list")
 		}
@@ -234,7 +262,30 @@ func webMain(args []string) int {
 			return usage("--limit/--after apply only to list")
 		}
 		operation, body = "exams.show", map[string]any{"id": words[2]}
+	case "retire-preview", "delete", "archive", "unarchive":
+		if len(words) != 3 || !id.MatchString(words[2]) || visited["limit"] || visited["after"] || visited["lifecycle"] {
+			return usage("retirement takes one exam ID, without list filters")
+		}
+		for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "earliest", "latest", "collection-file-mib", "collection-total-mib"} {
+			if visited[key] {
+				return usage("retirement never changes exam settings")
+			}
+		}
+		if words[1] == "retire-preview" {
+			if (*action != "delete" && *action != "archive" && *action != "unarchive") || visited["revision"] || visited["review"] || visited["reason"] {
+				return usage("retire-preview requires --action delete|archive|unarchive, without confirmation fields")
+			}
+			operation, body = "exams.retire-preview", map[string]any{"id": words[2], "action": *action}
+		} else {
+			if visited["action"] || !catalogHash.MatchString(*revision) || !catalogHash.MatchString(*review) || len(strings.TrimSpace(*reason)) < 8 || len(strings.TrimSpace(*reason)) > 1000 {
+				return usage("confirmation requires exact --revision and --review from retire-preview, plus --reason 8..1000 bytes")
+			}
+			operation, body = "exams."+words[1], map[string]any{"id": words[2], "revision": *revision, "review": *review, "reason": strings.TrimSpace(*reason)}
+		}
 	case "create", "update":
+		if visited["action"] || visited["review"] || visited["lifecycle"] {
+			return usage("create/update do not take retirement/lifecycle flags")
+		}
 		if len(words) != 3 || !id.MatchString(words[2]) || visited["limit"] || visited["after"] {
 			return usage("create/update require exactly one exam ID and setting flags, not list filters")
 		}

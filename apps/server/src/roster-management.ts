@@ -6,6 +6,7 @@ import { hash, now, type Store } from "./db.js";
 import { exportRoster, parseRosterAsync, type RosterRow } from "./roster.js";
 import { recoveryAllowanceEdit } from "../../../packages/protocol/recovery-allowance.js";
 import { AttemptGrants } from "./attempt-grants.js";
+import { ExamDefinitions } from "./exam-definitions.js";
 
 const examID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const allowance = z.number().int().min(60).max(21600).multipleOf(60).nullable();
@@ -115,6 +116,7 @@ export class RosterManagement {
   }
   add(id: string, input: unknown, actor: string) {
     this.findExam(id);
+    new ExamDefinitions(this.store, this.agent).requireActive(id);
     const b = rosterAdd.parse(input);
     this.duration(id, b.duration);
     this.store.db.transaction(() => {
@@ -172,6 +174,7 @@ export class RosterManagement {
       throw Error("Duplicate student selection");
     this.duration(id, b.duration);
     this.store.db.transaction(() => {
+      new ExamDefinitions(this.store, this.agent).requireActive(id);
       for (const name of b.usernames) {
         const r = this.store.db
           .prepare(
@@ -212,6 +215,7 @@ export class RosterManagement {
   // transaction. Dependency reads and preview publication are synchronous here.
   previewRows(id: string, rows: RosterRow[], checksum: string, actor: string) {
     this.findExam(id);
+    new ExamDefinitions(this.store, this.agent).requireActive(id);
     for (const row of rows) this.duration(id, row.duration);
     const existing = new Map(
       (
@@ -274,6 +278,7 @@ export class RosterManagement {
   }
   confirm(id: string, preview: string, actor: string) {
     this.findExam(id);
+    new ExamDefinitions(this.store, this.agent).requireActive(id);
     z.string().uuid().parse(preview);
     return this.store.db.transaction(() => {
       const p = this.store.db

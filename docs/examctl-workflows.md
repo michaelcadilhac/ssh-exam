@@ -10,7 +10,10 @@ SQL/JSON edit or incident script is a supported replacement. Decision C1 is now
 approved: root-run examctl on the class server will use the existing agent
 authentication for outbound gateway management, with explicit operation
 authorization and auditing. The signed protocol and `web exams list/show/create/update`
-are now tested locally; retirement/full coverage remain pending (see
+are now tested locally; reviewed retire-preview/delete/archive/unarchive for
+lifecycle-tracked definitions is described in exam-retirement.md. Pre-existing
+definitions refuse retirement until native reconciliation; full coverage remains
+pending (see
 agent-management.md). No browser-session login or extra CLI credential is required by the approved
 design; browser administration keeps its current authentication.
 

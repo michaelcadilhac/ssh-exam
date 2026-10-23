@@ -20,6 +20,7 @@ export function ExamSettings({
   onClose: () => void;
   onSaved: (exam: any) => void;
 }) {
+  const { lifecycle: _lifecycle, ...editableInitial } = initial;
   const [form, setForm] = useState({
     id: "",
     name: "Programming exam",
@@ -32,7 +33,7 @@ export function ExamSettings({
     collection_total_mib: DEFAULT_COLLECTION_TOTAL_MIB,
     earliest: Date.now() - 60000,
     latest: Date.now() + 7 * 86400000,
-    ...initial,
+    ...editableInitial,
     ...(isSandbox(initial.id) && !hasSandboxWindow(initial)
       ? { earliest: NaN, latest: NaN }
       : {}),

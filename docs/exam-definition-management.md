@@ -3,7 +3,8 @@
 October 21, 2026. Implemented/tested locally; **not deployed**. C1b supports all
 current exam-definition settings in web administration and root examctl through
 the same ExamDefinitions validation/transaction/audit service. Full management,
-definition retirement, templates and unified grants remain incomplete.
+full legacy retirement, templates and unified grants remain incomplete. Reviewed
+retirement of lifecycle-tracked definitions is in exam-retirement.md.
 
 ## CLI workflow
 
@@ -168,9 +169,11 @@ No production record, configuration or service was changed. Safe drain, matching
 artifacts, backups, privileged qualification and working deployment access remain
 release gates. Do not run old global-lock native writers with new job workers.
 
-C8 retirement is deliberately not claimed here: source inspection confirms legacy
-unused recovery grants exist only in root native JSON. A gateway-only dependency
-count cannot safely conclude there are no such grants. Complete unified grant
-migration/visibility and admission/Begin fences before implementing safe archive/
-unused-only deletion. Preserve the legacy files/consumption markers/history while
-that work continues; do not strand them or silently cancel authorizations.
+C8 now has matching reviewed web/root CLI retirement for definitions created under
+028 lifecycle tracking. Migration conservatively marks EVERY pre-existing
+definition native-unreconciled: delete/archive refuse until supported native
+dependency migration/visibility exists. A gateway-only count never proves native
+legacy grants absent. Known saved-work references and consumption without closed
+attempt proof also refuse. Preserve legacy files/markers/history; there is no
+manual flag-clearing or silent grant cancellation. Full legacy retirement remains
+unfinished. Commands, state review and current evidence: exam-retirement.md.

@@ -11,6 +11,19 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+C8 adds028 lifecycle metadata, per-instance/settings epochs, tombstones,
+successful retirement intents and SQL writer fences. Back up these with the
+definitions, grants/claims, attempts, source expectations and audit consistently.
+Migration marks EVERY existing definition native-unreconciled; do not clear flags
+or delete legacy grant JSON to enable retirement. Supported native reconciliation
+is still pending. New tracked definitions alone have the reviewed workflow.
+Require matched gateway/CLI writers and an explicitly authorized drained migration;
+current open forms must reload their new revision. Old gateway readers can hide
+archived-state meaning or ignore lifecycle guards: do not downgrade over newer
+retirement/tombstone/request history. Preserve newer consumption/attempts/holds and
+repair forward with admission closed if compatible rollback is unavailable.
+No028 migration, database rollback, service action or consolidation is executed.
+
 C12b local timed-owner candidate adds native terminal_supervised at fresh Begin,
 recording identity/owner/ack fields in pane_instances and private bounded reports/
 report-consumer claims under terminal-supervisors. Preserve these, monitoring

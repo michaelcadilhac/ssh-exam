@@ -78,7 +78,7 @@ export class GrantIssuance {
           return refuse(
             "Sandbox practice grants are fixed at five minutes/no webcam; use --duration-minutes 5 and omit webcam or select optional. No grant issued.",
           );
-        const definition = this.definitions.show(b.exam);
+        const definition = this.definitions.requireActive(b.exam);
         if (
           definition.revision !== b.definition_revision ||
           definition.exam.template_version !== b.template_version
@@ -254,7 +254,7 @@ export class GrantIssuance {
             "Review cancelled or expired; create and inspect a NEW issue-preview. No allowance or account reservation was consumed.",
           );
         if (
-          this.definitions.show(saved.exam).revision !==
+          this.definitions.requireActive(saved.exam).revision !==
           saved.definition_revision
         )
           return refuse(

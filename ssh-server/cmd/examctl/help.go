@@ -187,7 +187,9 @@ Monitoring logical deletion is not completed physical purge. Monitoring export
 requires a NEW private directory and signed completion; it is not a protected
 submission. Administrator creation never resets/overwrites existing credentials.
 
-Definition retirement, saved-work grant migration, complete workspace cleanup,
+Reviewed definition retirement: web exams retire-preview/delete/archive/unarchive.
+Legacy native-uncertain definitions refuse until supported reconciliation; no
+history, grants or protected data is cascaded. Saved-work grant migration, complete workspace cleanup,
 configuration mutation and remaining full management are pending. No supported
 offline SQL/JSON editing or separate agent control API exists. See each command's
 help and docs/todo-design-decisions.md for current coverage and safety gates.

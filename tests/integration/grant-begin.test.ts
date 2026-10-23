@@ -319,6 +319,14 @@ it.each([
           cookie: `session=${admin.token}`,
           "x-csrf-token": admin.csrf,
         };
+      const catalog = await app.inject({
+        url: "/api/admin/exams",
+        headers: adminHeaders,
+      });
+      expect(catalog.statusCode, catalog.body).toBe(200);
+      const definitionRevision = catalog
+        .json()
+        .find((exam: any) => exam.id === "ordinary").revision;
       if (additional) {
         store.db
           .prepare(
@@ -359,7 +367,7 @@ it.each([
           url: "/api/admin/exams/ordinary/grants/additional-preview",
           headers: adminHeaders,
           payload: {
-            definition_revision: hash(JSON.stringify(definition)),
+            definition_revision: definitionRevision,
             template_version: digest,
             earliest: definition.earliest,
             latest: definition.latest,
@@ -393,7 +401,7 @@ it.each([
           url: "/api/admin/exams/ordinary/grants/issue-preview",
           headers: adminHeaders,
           payload: {
-            definition_revision: hash(JSON.stringify(definition)),
+            definition_revision: definitionRevision,
             template_version: digest,
             earliest: definition.earliest,
             latest: definition.latest,

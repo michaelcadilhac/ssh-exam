@@ -30,6 +30,8 @@
 - Read source as plain text, not a JSON-escaped wrapper. Keep paths consistent
   with each command's cwd and patch hunks in file order, one target block per
   file. After a patch fails, inspect current context before retrying it.
+  A truncated tool result is unread evidence: reread the relevant missing span
+  before relying on it, especially operational safety prerequisites.
 - Read an existing helper's signature and state ownership before calling it;
   do not infer argument order or invent setter names. Bound individual browser
   actions and use observed accessible roles so a bad locator cannot consume the

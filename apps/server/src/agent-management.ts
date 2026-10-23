@@ -7,6 +7,8 @@ import {
   examShowRequest,
   examCreateRequest,
   examUpdateRequest,
+  examRetirementPreviewRequest,
+  examRetirementRequest,
   studentManagement,
   studentListRequest,
 } from "../../../packages/protocol/management.js";
@@ -371,7 +373,7 @@ export function registerAgentManagement(
                 return {
                   ok: true,
                   status: 200,
-                  result: definitions.page(b.after || "", b.limit),
+                  result: definitions.page(b.after || "", b.limit, b.lifecycle),
                 };
               } else if (r.operation === "exams.show") {
                 const b = examShowRequest.parse(r.body);
@@ -412,6 +414,31 @@ export function registerAgentManagement(
                     b.revision,
                     actor,
                     b.reason,
+                  ),
+                };
+              } else if (r.operation === "exams.retire-preview") {
+                const b = examRetirementPreviewRequest.parse(r.body);
+                return {
+                  ok: true,
+                  status: 200,
+                  result: definitions.retirementPreview(b.id, {
+                    action: b.action,
+                  }),
+                };
+              } else if (
+                ["exams.delete", "exams.archive", "exams.unarchive"].includes(
+                  r.operation,
+                )
+              ) {
+                const { id, ...b } = examRetirementRequest.parse(r.body);
+                return {
+                  ok: true,
+                  status: 200,
+                  result: definitions.retire(
+                    id,
+                    { ...b, action: r.operation.slice(6) },
+                    actor,
+                    r.request,
                   ),
                 };
               } else if (r.operation.startsWith("grants.")) {

@@ -3,6 +3,19 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October23 C8 tracked-definition retirement: shared reviewed web/root CLI now
+supports unused deletion/history archive/unarchive, visibility, exact dependency/
+revision fences, durable audit/retry and ABA protection.028 conservatively marks
+ALL pre-existing definitions native-unreconciled; no retirement until supported
+native migration, no manual flag clearing. Unused/uncertain native authority and
+unfinished/unreleased work refuse. Final510 app, full CLI races17.835s, affected
+native management races2.119s,45 rebuilt affected browser plus17 fresh WASM SSH
+checks and builds/static checks pass locally. Detailed failed/final receipts and
+state review: exam-retirement.md. Main count remains11/38; full legacy retirement
+and critical C3/C9 remain open. C16/C18 choices are now approved in the question
+dialog and recorded in todo-design-decisions.md; no unanswered design questions.
+Nothing deployed, no remote access or production action.
+
 October22 C4 hold-metadata safety outcome: actual root-namespace CLI reproduced a
 missing held flag as released/candidate (RED0.142s; cleanup remained disabled).
 The existing v1 reader now requires complete explicit/unambiguous/non-null/UTF-8

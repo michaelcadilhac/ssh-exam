@@ -4,6 +4,7 @@ import { api, chicago, remaining } from "./api.js";
 import { Modal } from "./modal.js";
 import { CreateAdministrator } from "./create-administrator.js";
 import { ExamSettings } from "./exam-settings.js";
+import { ExamRetirement, type RetirementAction } from "./exam-retirement.js";
 import { StudentImport } from "./student-import.js";
 import { EnrollmentSetting } from "./enrollment-setting.js";
 import { AttemptGrantsDialog } from "./attempt-grants.js";
@@ -57,6 +58,13 @@ export function Admin({
 }) {
   const [exams, setExams] = useState<any[]>([]),
     [exam, setExam] = useState("");
+  const [lifecycle, setLifecycle] = useState<"active" | "archived" | "all">(
+    "active",
+  );
+  const [retiring, setRetiring] = useState<{
+    exam: any;
+    action: RetirementAction;
+  } | null>(null);
   const [data, setData] = useState<any>(null),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState<DashboardView>("");
@@ -91,10 +99,10 @@ export function Admin({
       ? "unavailable"
       : Notification.permission,
   );
-  const query = useRef({ exam, search, filter, offset }),
+  const query = useRef({ exam, search, filter, offset, lifecycle }),
     selectedRef = useRef<any>(null),
     soundRef = useRef(sound);
-  query.current = { exam, search, filter, offset };
+  query.current = { exam, search, filter, offset, lifecycle };
   soundRef.current = sound;
   const requestPending = useRef(0),
     lastUpdate = useRef(0);
@@ -117,7 +125,7 @@ export function Admin({
     requestPending.current = request;
     try {
       const [list, result] = await Promise.all([
-        api("/admin/exams"),
+        api(`/admin/exams?lifecycle=${q.lifecycle}`),
         q.exam
           ? api(
               `/admin/exams/${q.exam}/dashboard?q=${encodeURIComponent(q.search)}&offset=${q.offset}&view=${q.filter}${review ? `&review=${review}` : ""}`,
@@ -127,7 +135,8 @@ export function Admin({
       if (
         !mounted.current ||
         request !== version.current ||
-        q.exam !== query.current.exam
+        q.exam !== query.current.exam ||
+        q.lifecycle !== query.current.lifecycle
       )
         return;
       lastUpdate.current = performance.now();
@@ -190,7 +199,7 @@ export function Admin({
       ++version.current;
       clearInterval(timer);
     };
-  }, [exam, search, offset, filter, refresh]);
+  }, [exam, search, offset, filter, lifecycle, refresh]);
   useEffect(() => {
     const timer = setInterval(
       () => setClock(Date.now() + serverOffset.current),
@@ -224,7 +233,13 @@ export function Admin({
     clearView();
     setGrantsFor(null);
     setIssuingGrants(null);
-    query.current = { exam: id, search: "", filter: "", offset: 0 };
+    query.current = {
+      ...query.current,
+      exam: id,
+      search: "",
+      filter: "",
+      offset: 0,
+    };
     setExam(id);
     setSearch("");
     setFilter("");
@@ -236,6 +251,7 @@ export function Admin({
     setRemoving(null);
     setAddingStudent(false);
     setEditingExam(null);
+    setRetiring(null);
     seen.current.clear();
     seenLoaded.current = false;
   };
@@ -328,10 +344,25 @@ export function Admin({
             {exams.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name === e.id ? e.name : `${e.name} · ${e.id}`}
+                {e.lifecycle === "archived" ? " (archived)" : ""}
               </option>
             ))}
           </select>
         </label>
+        <select
+          aria-label="Exam visibility"
+          value={lifecycle}
+          onChange={(event) => {
+            const value = event.target.value as typeof lifecycle;
+            query.current.lifecycle = value;
+            setLifecycle(value);
+            chooseExam("");
+          }}
+        >
+          <option value="active">Current exams</option>
+          <option value="archived">Archived exams</option>
+          <option value="all">All exams</option>
+        </select>
         <button className="quiet-button" onClick={() => setEditingExam({})}>
           New exam
         </button>
@@ -427,33 +458,69 @@ export function Admin({
             <div>
               <button
                 onClick={() => setEditingExam(current)}
-                disabled={!current}
+                disabled={!current || current.lifecycle === "archived"}
               >
                 Exam settings
               </button>
               <button
                 className="primary"
                 onClick={() => setAddingStudent(true)}
-                disabled={!current}
+                disabled={!current || current.lifecycle === "archived"}
               >
                 Add student
               </button>
               {exam !== "sandbox" && (
                 <button
                   onClick={() => setIssuingGrants("initial")}
-                  disabled={!current || stale}
+                  disabled={
+                    !current || stale || current.lifecycle === "archived"
+                  }
                 >
                   Issue legacy grants
                 </button>
               )}
               <button
                 onClick={() => setIssuingGrants("additional")}
-                disabled={!current || stale}
+                disabled={!current || stale || current.lifecycle === "archived"}
               >
                 {exam === "sandbox"
                   ? "Authorize practice grant"
                   : "Authorize additional attempts"}
               </button>
+              <AdminMenu
+                label="Exam actions"
+                disabled={!current || stale}
+                actions={[
+                  ...(current?.lifecycle === "archived"
+                    ? [
+                        {
+                          label: "Restore archived exam",
+                          onSelect: () =>
+                            setRetiring({
+                              exam: { ...current },
+                              action: "unarchive",
+                            }),
+                        },
+                      ]
+                    : [
+                        {
+                          label: "Archive exam",
+                          onSelect: () =>
+                            setRetiring({
+                              exam: { ...current },
+                              action: "archive",
+                            }),
+                        },
+                      ]),
+                  {
+                    label: "Delete unused exam",
+                    onSelect: () =>
+                      setRetiring({ exam: { ...current }, action: "delete" }),
+                  },
+                ]}
+              >
+                Exam actions
+              </AdminMenu>
             </div>
           </section>
           <section className="admin-roster" aria-label="Students and attempts">
@@ -1070,11 +1137,28 @@ export function Admin({
           }}
         />
       )}
+      {retiring && (
+        <ExamRetirement
+          key={`${retiring.exam.id}:${retiring.action}`}
+          exam={retiring.exam}
+          action={retiring.action}
+          onClose={() => setRetiring(null)}
+          onDone={async (result) => {
+            chooseExam("");
+            setNotice(
+              `Exam ${result.id} ${result.lifecycle}. Student history and restrictions are preserved.`,
+            );
+            await refresh();
+          }}
+        />
+      )}
       {editingExam && (
         <ExamSettings
           initial={editingExam}
           onClose={() => setEditingExam(null)}
           onSaved={async (e) => {
+            query.current.lifecycle = "active";
+            setLifecycle("active");
             chooseExam(e.id);
             await refresh();
           }}

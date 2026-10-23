@@ -526,7 +526,13 @@ An administrator should be able to discover and finish a workflow using
   this is local work, not configuration enablement or deployment.
   C8 approved October 21: delete only unused exam definitions; archive those with
   history, preserving attempts/submissions. No cascade deletion or silent grant
-  cancellation. CLI/web implementation and qualification remain outstanding.
+  cancellation. October23 local candidate now supplies matching reviewed preview/
+  delete/archive/unarchive, lifecycle visibility, audit/retry/ABA fences and
+  archived-writer refusal.028 conservatively blocks retirement of ALL pre-existing
+  definitions until supported native dependency reconciliation; absence of web
+  records cannot prove legacy native grants absent. Known saved-work references
+  and consumption without closed-attempt proof also refuse. Full legacy retirement
+  remains unfinished. Current qualification/state review: docs/exam-retirement.md.
   Inventory every web-admin action and setting, native operation and current
   incident-script workflow. Map each to a supported CLI command; record and fill
   all gaps. Include bulk operations and inspection of confirmed versus pending
@@ -710,9 +716,12 @@ Existing enrollment migration and implementation remain outstanding.
   Settings-only revisions preserve the saved starter.
   Source-tampered replies and missing sources refuse before clock/grant use.
   This does not complete saved-work grants: native deletion cannot see unused
-  gateway dependencies. C18 asks whether availability waits for durable native
-  source confirmation (recommended), or native deletion instead requires online
-  web authorization. Evidence/state review: docs/grant-workspace-sources.md.
+  gateway dependencies. C18 approved October23: availability requires durable
+  class-server source-retention confirmation. Pending issuance must support
+  inspect/cancel/retry without account reservation or running time. C16 also now
+  approves live monitoring/input authority inside the ONE attempt supervisor,
+  isolating recording IO. These decisions are not completed integration or
+  runtime enablement. Evidence/state review: docs/grant-workspace-sources.md.
   No source policy, submission, installed role or production service is changed.
   October22 exact source selection is now implemented/tested locally through
   `examctl web exams create/update --template-version HASH`, shared Exam settings

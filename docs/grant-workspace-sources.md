@@ -20,9 +20,9 @@ native real staging/TLS/restart/races, rebuilt browser issuance/revision, then
 affected broad application/native/build/browser qualification. Review every
 durable state and contradictory no-start evidence before broad qualification.
 Stop this increment at working empty/separate-template sources; saved-source
-retention is a separate integrated increment awaiting the choice below.
+retention is a separate integrated increment using the approved choice below.
 
-## Saved-source retention investigation (C18 awaiting decision)
+## Saved-source retention investigation (C18 approved October23)
 
 The existing native saved-work worker already verifies a completed protected
 attempt/checksum and copies its immutable archive. It never needs the old live
@@ -39,7 +39,7 @@ poll commands. Existing root management and C15 use that same outbound identity;
 there is no general gateway-to-root network command route. Do not assume a live
 student connection exists when an instructor authorizes recovery.
 
-Recommended: the class server durably confirms a source-retention reference
+Approved October23: the class server durably confirms a source-retention reference
 before a saved-source grant becomes available. Show honest pending state in
 CLI/web; confirmation/retry must be idempotent, inspectable and cancellable, with
 no account reservation, execution permission or started clock. A native source
@@ -55,9 +55,10 @@ references and reconcile crashes/lost replies. A gateway outage then blocks
 native deletion. Neither option permits deleting protected dependencies or
 inferring archive integrity from an old metadata acknowledgement.
 
-The instructor has been asked about this availability/authority tradeoff. This
-proposal does not complete C7, enable saved-source grants or migrate legacy
-recovery authorities. C16 live-authority placement remains a separate open choice.
+The instructor selected durable confirmation in the October23 question dialog.
+This decision does not complete C7, enable saved-source grants or migrate legacy
+recovery authorities. C16 is also settled: live monitoring/input authority belongs
+in the existing ONE supervisor per user/attempt, with recording IO isolated.
 
 ## Pre-qualification state review
 

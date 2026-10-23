@@ -7,7 +7,9 @@ metadata-only outcomes and migration 015. Attempt/clock workflows are in
 attempt-clock-management.md; interruption review/authorization, migration 016 and
 private read receipts are in interruption-management.md. Bounded monitoring
 metadata/replay and its all-read transient receipts are in monitoring-cli.md. Full management,
-saved-work grant migration and definition retirement are still pending; this is not CLI
+saved-work grant migration and native reconciliation for legacy definition
+retirement are still pending; tracked definitions have reviewed retirement in
+exam-retirement.md. This is not CLI
 completeness or production qualification. Enrollment-time initial, reviewed NEW
 legacy-unused initial and additional empty/exact-template grants now have shared
 CLI/web workflows (initial-grants-cli.md and additional-grants-cli.md). The C14

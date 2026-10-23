@@ -568,6 +568,29 @@ definitions.create(
   { ...exam, id: "versioned-source", template_version: versionHash },
   "fixture-operator",
 );
+definitions.create(
+  { ...exam, id: "retirement-history", name: "Retirement protected history" },
+  "fixture-operator",
+);
+const retirementHistoryStart = Date.now() - 10800000;
+store.db
+  .prepare(
+    "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,access_state,checksum) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+  )
+  .run(
+    "cccccccc-1234-4234-8234-123456789abc",
+    "retirement-history",
+    "retirehistory",
+    10028,
+    "COMPLETED",
+    JSON.stringify(definitions.show("retirement-history").exam),
+    retirementHistoryStart,
+    retirementHistoryStart + 5400000,
+    retirementHistoryStart + 5400000,
+    1,
+    "RELEASED",
+    "b".repeat(64),
+  );
 store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("versioned-source", "version01", null, null, null, 10021);

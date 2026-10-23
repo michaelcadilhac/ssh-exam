@@ -485,7 +485,7 @@ browser-relayed challenge protocol is introduced. Existing started deadlines,
 holds/history and original one-use outcomes remain authoritative. This settles
 the availability choice, not implementation, migration or deployment.
 
-## Live work-authority placement (C16 awaiting instructor decision)
+## Live work-authority placement (C16 approved October23)
 
 This does not reopen C12's ONE supervisor per user/attempt. The remaining choice
 is whether that process also hosts the live monitoring-proof arbiter/input-cutoff
@@ -494,7 +494,7 @@ arbiter has no live seal factory/caller; current practice supervisors own PTYs
 without loading global Engine state. See live-monitoring-renewals.md and
 retained-workload-barrier-plan.md.
 
-Recommend colocating the arbiter, input gates and kernel cutoff/barrier control
+The instructor selected colocating the arbiter, input gates and kernel cutoff/barrier control
 with the attempt supervisor: no extra authority-to-gate decision hop, coordinator
 failure stays outside its lifetime and failures remain attempt-local. Isolate and
 bound recording/publication IO from that loop; do not copy the global Engine or
@@ -510,8 +510,9 @@ of another resource budget, lifetime claim and authenticated IPC/barrier boundar
 Either requires real peer/epoch/loaded-role agreement, durable significant
 transitions, all-writer/input freeze and complete CLI/web/qualification before
 retained mode can be enabled. No deadlines, hold/recovery policy or verification
-requirements change. The instructor has been asked; neither option is implemented
-by this proposal. Independent correctness/retention work continues meanwhile.
+requirements change. The October23 question-dialog answer approves the colocated
+design, not runtime enablement or deployment. Independent correctness/retention
+work continues; integrate and qualify the authority in the existing attempt owner.
 
 ## Explicit recovery allowance synchronization (C17 approved October22)
 
@@ -532,7 +533,7 @@ monotonic revision provenance and exact source hashes must refuse stale/mixed
 roles and missing authority instead of falling back to starter files. This is a
 bounded legacy recovery repair, not unified-grant issuance or deployment.
 
-## Saved-source availability and retention (C18 awaiting decision)
+## Saved-source availability and retention (C18 approved October23)
 
 Unused gateway saved-work grants are invisible to existing offline native source
 deletion. Confirmed source inspection: native checkSubmissionDependencies covers
@@ -540,12 +541,15 @@ legacy recovery grants/unfinished restored attempts; Agent.call needs student SS
 and outbound callback delivery does not fetch commands. Saved-source issuance
 cannot safely be enabled on that basis alone.
 
-Recommend durable class-server retention confirmation before such a grant becomes
+The instructor selected durable class-server retention confirmation before a grant becomes
 available, with honest pending/inspect/cancel/retry and no account reservation or
 clock. This requires class participation before use, but offline source deletion
 can retain durable pins. Alternative: allow offline issuance from retained web
 evidence, requiring fresh gateway authorization and durable race/crash fencing
 for every native deletion; web outage then blocks deletion. Existing authenticated
 agent identities remain in use; neither option weakens protection/history/holds.
-The instructor has been asked asynchronously. Evidence and next integration
+The October23 question-dialog answer approves the durable-confirmation design.
+Pending issuance must be inspectable, cancellable and retryable without account
+reservation or running time. Source grants remain disabled until the end-to-end
+retention/deletion/issuance workflow is qualified. Evidence and integration
 boundary: grant-workspace-sources.md. Independent empty/template sources continue.

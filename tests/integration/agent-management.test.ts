@@ -552,6 +552,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       });
       let corruptCatalog: string | null = null;
       let corruptImage: string | null = null;
+      let corruptRetirement: "drop" | "scope" | null = null;
       let corruptAdministrator: "drop" | "scope" | "refusal" | null = null;
       server = https.createServer(
         { key: readFileSync(key), cert: readFileSync(cert) },
@@ -569,7 +570,10 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
               .then((reply) => {
                 let raw = reply.rawPayload;
                 if (
-                  (corruptCatalog || corruptImage || corruptAdministrator) &&
+                  (corruptCatalog ||
+                    corruptImage ||
+                    corruptAdministrator ||
+                    corruptRetirement) &&
                   req.url === "/api/agent/management"
                 ) {
                   const frame = JSON.parse(raw.toString());
@@ -577,6 +581,24 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                     Buffer.from(frame.payload, "base64").toString(),
                   );
                   let changed = false;
+                  if (
+                    corruptRetirement === "drop" &&
+                    payload.operation === "exams.delete" &&
+                    payload.ok
+                  ) {
+                    res.destroy();
+                    return;
+                  }
+                  if (
+                    corruptRetirement === "scope" &&
+                    payload.operation === "exams.retire-preview" &&
+                    payload.ok
+                  ) {
+                    payload.result.id = "elsewhere";
+                    payload.result.private =
+                      "PRIVATE-RETIREMENT-DATA-MUST-NOT-PRINT";
+                    changed = true;
+                  }
                   if (
                     corruptAdministrator &&
                     payload.operation === "administrators.create" &&
@@ -870,7 +892,73 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         code: 1,
         stderr: expect.stringContaining("already exists"),
       });
+      await expect(
+        cli(["retire-preview", "cli-exam", "--action", "delete"]),
+      ).rejects.toMatchObject({ code: 1 });
       f.config.agent.managementOperations = [...managementOperations];
+      // Actual root-mapped process -> signed TLS -> shared retirement service.
+      const unusedCreation = creation.map((v) =>
+        v === "cli-exam" ? "retire-unused" : v,
+      );
+      await cli(unusedCreation);
+      const unusedReview = JSON.parse(
+        (await cli(["retire-preview", "retire-unused", "--action", "delete"]))
+          .stdout,
+      ).result;
+      expect(unusedReview).toMatchObject({
+        id: "retire-unused",
+        allowed: true,
+        counts: { attempts: 0, grants: 0 },
+      });
+      corruptRetirement = "scope";
+      await expect(
+        cli(["retire-preview", "retire-unused", "--action", "delete"]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stdout: "",
+        stderr: expect.stringContaining("scope/review mismatch"),
+      });
+      corruptRetirement = "drop";
+      const deleteRequest = randomUUID(),
+        remove = [
+          "delete",
+          "retire-unused",
+          "--revision",
+          unusedReview.revision,
+          "--review",
+          unusedReview.review,
+          "--reason",
+          "Reviewed synthetic unused definition",
+          "--request",
+          deleteRequest,
+        ];
+      await expect(cli(remove)).rejects.toMatchObject({ code: 1, stdout: "" });
+      expect(
+        f.current.store.db
+          .prepare("SELECT id FROM exams WHERE id='retire-unused'")
+          .get(),
+      ).toBeUndefined();
+      corruptRetirement = null;
+      await f.restart();
+      const removed = JSON.parse((await cli(remove)).stdout).result;
+      expect(removed).toMatchObject({
+        action: "delete",
+        lifecycle: "deleted",
+        revision: null,
+      });
+      await f.restart();
+      await cli(unusedCreation);
+      expect(JSON.parse((await cli(remove)).stdout).result).toEqual(removed);
+      await expect(
+        cli(remove.filter((v) => v !== "--request" && v !== deleteRequest)),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("changed"),
+      });
+      expect(
+        JSON.parse((await cli(["show", "retire-unused"])).stdout).result.exam
+          .id,
+      ).toBe("retire-unused");
       expect(
         JSON.parse(
           (
@@ -1471,6 +1559,119 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           corruptCatalog = operation;
         },
       );
+      const historyMade = JSON.parse(
+        (
+          await cli(
+            creation.map((v) => (v === "cli-exam" ? "retire-history" : v)),
+          )
+        ).stdout,
+      ).result;
+      const historicalID = randomUUID(),
+        historicalStart = Date.now() - 9000000;
+      f.current.store.db
+        .prepare(
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,access_state,checksum) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          historicalID,
+          "retire-history",
+          "synthetic",
+          29999,
+          "COMPLETED",
+          JSON.stringify(historyMade.exam),
+          historicalStart,
+          historicalStart + 7200000,
+          historicalStart + 7200000,
+          1,
+          "RELEASED",
+          "b".repeat(64),
+        );
+      const originalHistory = f.current.store.attempt(historicalID);
+      const cannotDelete = JSON.parse(
+        (await cli(["retire-preview", "retire-history", "--action", "delete"]))
+          .stdout,
+      ).result;
+      expect(cannotDelete.allowed).toBe(false);
+      await expect(
+        cli([
+          "delete",
+          "retire-history",
+          "--revision",
+          cannotDelete.revision,
+          "--review",
+          cannotDelete.review,
+          "--reason",
+          "History must remain protected",
+        ]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("archive"),
+      });
+      const archiveReview = JSON.parse(
+        (await cli(["retire-preview", "retire-history", "--action", "archive"]))
+          .stdout,
+      ).result;
+      const archive = JSON.parse(
+        (
+          await cli([
+            "archive",
+            "retire-history",
+            "--revision",
+            archiveReview.revision,
+            "--review",
+            archiveReview.review,
+            "--reason",
+            "Archive protected synthetic history",
+          ])
+        ).stdout,
+      ).result;
+      expect(archive.lifecycle).toBe("archived");
+      expect(
+        JSON.parse((await cli(["list", "--lifecycle", "archived"])).stdout)
+          .result.exams,
+      ).toMatchObject([
+        { exam: { id: "retire-history" }, lifecycle: "archived" },
+      ]);
+      await expect(
+        cli([
+          "update",
+          "retire-history",
+          "--revision",
+          archive.revision,
+          "--duration-seconds",
+          "9000",
+        ]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("unarchive"),
+      });
+      const restoration = JSON.parse(
+        (
+          await cli([
+            "retire-preview",
+            "retire-history",
+            "--action",
+            "unarchive",
+          ])
+        ).stdout,
+      ).result;
+      expect(
+        JSON.parse(
+          (
+            await cli([
+              "unarchive",
+              "retire-history",
+              "--revision",
+              restoration.revision,
+              "--review",
+              restoration.review,
+              "--reason",
+              "Restore visibility without changing history",
+            ])
+          ).stdout,
+        ).result.lifecycle,
+      ).toBe("active");
+      expect(f.current.store.attempt(historicalID)).toEqual(originalHistory);
       f.config.agent.managementOperations = [];
       await expect(cli(["show", "midterm"])).rejects.toMatchObject({
         code: 1,
@@ -1479,7 +1680,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       expect(existsSync(f.dir + "/unused-native-state")).toBe(false);
       expect(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
-      ).toEqual({ n: 4 });
+      ).toEqual({ n: 5 });
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));
@@ -1809,6 +2010,7 @@ it("shares revision-checked definition writes across web and root CLI without re
     expect(list.json()).toContainEqual({
       ...exam,
       revision: created.result.revision,
+      lifecycle: "active",
     });
     const snapshot = JSON.stringify(exam);
     f.current.store.db
