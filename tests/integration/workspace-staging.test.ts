@@ -9,7 +9,9 @@ import { hash } from "../../apps/server/src/db.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 
-it.each(["e", "sandbox", "versioned"])(
+// Grant-aware sandbox staging/window/retry now lives in sandbox-grants.test.ts;
+// these preserve the explicitly supported unconverted ordinary/legacy readers.
+it.each(["e", "versioned"])(
   "%s signed SSH preflight retries a lost staging acknowledgment without consuming time; only explicit Begin starts",
   async (examID) => {
     const versioned = examID === "versioned",
@@ -128,18 +130,7 @@ it.each(["e", "sandbox", "versioned"])(
         template: "v1",
         terminals: 4,
       };
-      if (examID === "sandbox") {
-        // Exercise the supported shared operator writer, not a magic test-only
-        // rolling default. New installs intentionally have no open practice.
-        const definitions = new ExamDefinitions(store);
-        definitions.update(
-          examID,
-          { earliest: definition.earliest, latest: definition.latest },
-          definitions.show(examID).revision,
-          "fixture-operator",
-          "Configure finite synthetic practice window",
-        );
-      } else if (versioned) {
+      if (versioned) {
         const catalog = new TemplateCatalog(store, config.agent.id);
         catalog.sync(
           {
@@ -252,47 +243,6 @@ it.each(["e", "sandbox", "versioned"])(
         cookie: sessionCookie,
         "x-csrf-token": session.json().csrf,
       };
-      if (examID === "sandbox") {
-        legacyAgent = true;
-        const oldAgent = await app.inject({
-          method: "POST",
-          url: "/api/student/preflight",
-          headers,
-          payload: {},
-        });
-        expect(oldAgent.statusCode, oldAgent.body).toBe(400);
-        expect(oldAgent.json().error).toContain("lacks finite sandbox");
-        expect(operations).not.toContain("prepare-attempt");
-        legacyAgent = false;
-        const definitions = new ExamDefinitions(store);
-        const current = definitions.show(examID);
-        definitions.update(
-          examID,
-          { earliest: Date.now() + 60000, latest: Date.now() + 120000 },
-          current.revision,
-          "fixture-operator",
-          "Test closed finite synthetic practice window",
-        );
-        const closed = await app.inject({
-          method: "POST",
-          url: "/api/student/preflight",
-          headers,
-          payload: {},
-        });
-        expect(closed.statusCode, closed.body).toBe(400);
-        expect(closed.json().error).toMatch(/window/i);
-        expect(
-          store.db.prepare("SELECT count(*) n FROM attempts").get(),
-        ).toEqual({ n: 0 });
-        expect(operations).not.toContain("prepare-attempt");
-        definitions.update(
-          examID,
-          { earliest: definition.earliest, latest: definition.latest },
-          definitions.show(examID).revision,
-          "fixture-operator",
-          "Reopen explicit synthetic practice window",
-        );
-      }
       if (versioned) {
         legacyTemplateAgent = true;
         const old = await app.inject({
@@ -392,7 +342,7 @@ it.each(["e", "sandbox", "versioned"])(
           "INSERT INTO frames VALUES('f',?,'screen',0,?,0,0,?,640,480,'synthetic')",
         )
         .run(id, hash(page), Date.now());
-      if (examID === "sandbox" || versioned) {
+      if (versioned) {
         legacyAgent = true;
         legacyTemplateAgent = true;
         const refused = await app.inject({
@@ -496,43 +446,6 @@ it.each(["e", "sandbox", "versioned"])(
             (versioned ? "activate-versioned-attempt" : "activate-attempt"),
         ),
       ).toHaveLength(1);
-      if (examID === "sandbox") {
-        expect(remote.settings).toMatchObject({
-          earliest: definition.earliest,
-          latest: definition.latest,
-          duration: 300,
-          webcam: false,
-        });
-        expect(remote.deadline - remote.start).toBe(300000);
-        const before = store.attempt(id);
-        const definitions = new ExamDefinitions(store);
-        definitions.update(
-          examID,
-          { earliest: Date.now() - 120000, latest: Date.now() - 60000 },
-          definitions.show(examID).revision,
-          "fixture-operator",
-          "Close future practice without changing active clocks",
-        );
-        expect(store.attempt(id)).toEqual(before);
-        const retried = await app.inject({
-          method: "POST",
-          url: `/api/student/attempts/${id}/begin`,
-          headers: { ...headers, "x-page-instance": page },
-          payload: {
-            screen: true,
-            keyboard: true,
-            fullscreen: true,
-            focus: true,
-            visible: true,
-            webcam: false,
-          },
-        });
-        expect(retried.statusCode, retried.body).toBe(200);
-        expect(store.attempt(id).deadline).toBe(before.deadline);
-        expect(operations.filter((x) => x === "activate-attempt")).toHaveLength(
-          1,
-        );
-      }
       const connect = async () => {
         const socket = new WebSocket(
           origin.replace("http:", "ws:") + "/api/student/session",

@@ -376,6 +376,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("cannot cancel started attempt")
 			}
 			a.State = "CANCELLED_BEFORE_START"
+			a.CancellationCleanupComplete = false
 			a.PreparationPending, a.PreparationPendingSince = false, 0
 			if a.Reason == "" {
 				a.Reason = r.Reason
@@ -391,6 +392,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if err := e.cleanupTemporary(a); err != nil {
 				return err
 			}
+			a.CancellationCleanupComplete = true
 			e.acknowledgeUnappliedCancellation(a)
 			e.Audit(op, a.ID)
 			result = a
@@ -632,12 +634,15 @@ func (e *Engine) Tick() error {
 			}
 			e.expirePreflight(a, Millis())
 			if a.Start == 0 && a.State == "CANCELLED_BEFORE_START" {
+				a.CancellationCleanupComplete = false
 				if err := e.terminateWriters(a); err != nil {
 					a.Errors = appendError(a.Errors, err.Error())
 				} else {
 					a.Units = nil
 					if err := e.cleanupTemporary(a); err != nil {
 						a.Errors = appendError(a.Errors, err.Error())
+					} else {
+						a.CancellationCleanupComplete = true
 					}
 					e.acknowledgeUnappliedCancellation(a)
 				}

@@ -206,7 +206,7 @@ func (e *Engine) freshPolicyTransport(a *Attempt, monitor int) error {
 // Explicitly acknowledge normal access for cancelled preparations that never applied
 // a policy, including records written before this acknowledgement was introduced.
 func (e *Engine) acknowledgeUnappliedCancellation(a *Attempt) {
-	if e.temporaryPolicy(a) && a.State == "CANCELLED_BEFORE_START" && a.Start == 0 && a.Deadline == 0 && a.OriginalDeadline == 0 && a.PolicyGeneration == "" && a.PolicyError == "" && a.PolicyState == "" {
+	if a.State == "CANCELLED_BEFORE_START" && a.Start == 0 && a.Deadline == 0 && a.OriginalDeadline == 0 && a.PolicyGeneration == "" && a.PolicyError == "" && a.PolicyState == "" {
 		a.PolicyState = "NORMAL"
 		e.Audit("account-policy-unapplied", a.ID)
 	}

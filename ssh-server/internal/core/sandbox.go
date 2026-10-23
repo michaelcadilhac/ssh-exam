@@ -10,6 +10,21 @@ const SandboxDurationSeconds int64 = 300
 
 func sandboxAttempt(a *Attempt) bool { return a.Exam == SandboxExamID }
 
+// Called only inside a current state transaction at prepare/final Begin.
+// Positive retained practice-grant history activates the protocol fence; do not
+// invent a mode from missing legacy records or alter committed legacy intervals.
+func (e *Engine) practiceGrantMode(a *Attempt) error {
+	if !sandboxAttempt(a) || a.Start > 0 || a.Grant != nil {
+		return nil
+	}
+	for _, prior := range e.state.Attempts {
+		if sandboxAttempt(prior) && validGrant(prior.Grant) && prior.Grant.Kind == "PRACTICE" {
+			return errors.New("saved practice grant required after unified practice activation; preserve legacy state, positively cancel only an unstarted preparation and retry grant-aware preflight; no clock authorized")
+		}
+	}
+	return nil
+}
+
 // Begin admission only: never apply to continuation or an already committed
 // interval. Legacy indefinite preparations need explicit cancellation/reissue.
 func sandboxBeginWindow(s Settings, at int64) error {

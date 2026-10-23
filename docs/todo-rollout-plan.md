@@ -57,10 +57,31 @@ installations closed until then. Inventory/cancel and recreate legacy unstarted
 indefinite preparations with supported commands, never rewrite saved snapshots.
 Preserve all started intervals, continuation, protected history and account holds.
 Use matching gateway/native roles and verify signed sandbox-begin-window-v1
-capability plus actual Begin/late-setup refusal. There is no schema/backfill here;
-unified issuance is a later migration. An old version restores the old indefinite
+capability plus actual Begin/late-setup refusal. The original window-only increment
+had no schema/backfill; the later unified practice candidate requires027 and the
+additional matched-role gates below. An old version restores the old indefinite
 exception and is not an equivalent policy rollback: keep admission closed and
 repair forward rather than silently downgrading enforcement. No rollout is run.
+
+The unified C14 practice candidate adds027 claim/writer fences and typed PRACTICE
+bindings plus signed cancellation_cleanup_complete. Back up grants, immutable
+revisions, claims/Begin intents, request/review history, original intervals and
+all native state/receipts/archives consistently. No historical snapshot backfill
+or conversion is automatic. Positively cancel legacy unstarted practice through
+supported workflows before cutover. Match EVERY gateway/CLI/native writer and
+verify unified-sandbox-grants-v1 AND verified-preflight-cancellation-v1 together
+with ordered grants, exact sources, staging and fresh outbound C15 verification.
+A compiled health advertisement does not establish loaded-role agreement.
+Qualify first/repeated practice, revoked/expired unused changes, unknown replies,
+positive cleanup/restoration refusal, protected history/original holds and actual
+SSH/PAM/cgroup boundaries using the exact new artifact before reopening admission.
+Inventory independent practice supervisors AND all three canonical/temporary agent
+owners in the proposed full drain/consolidation; execute no consolidation here.
+Rollback must retain027 mode fences, PRACTICE provenance, cancellation proofs and
+all later consumption/history. An older writer can discard them or restore the
+old grantless path; keep admission closed and repair forward unless compatibility
+is positively established. Never restore older AVAILABLE grants over consumption,
+clear holds or shorten original intervals to make a downgrade work.
 
 The approved C10 private-arbiter refactor has no live caller, enabled mode,
 configuration or durable-state migration. It is not independently deployable as

@@ -44,7 +44,14 @@ Protected history, original deadlines and account holds remain authoritative;
 neither metadata confirmation nor another grant reopens/overrides an old attempt.
 Additional starters: --work empty, or --work template --work-template NAME
 --work-template-version HASH. Omitted work uses the materials template at issuance.
-Saved-work sources and sandbox grants remain unfinished.
+Saved-work sources remain unfinished. Sandbox practice automatically saves each
+five-minute/no-webcam/four-terminal grant within its finite configured window.
+Cancelled retries reuse unused authority. Expired/revoked grants do not silently
+regenerate: revise an expired unused grant, or explicitly review NEW practice with
+additional-preview sandbox USER --duration-minutes 5 and the usual source/window/
+reason flags. Sandbox grants retain fixed policy; manual new grants use the same
+review/inspect/cancel/confirm workflow. Repeats need protected completion and normal
+access release; changing defaults never edits issued grants or started deadlines.
 Inspect templates verify/sync, then web exams show/update before new enrollment.
 
 Grant settings are saved at issuance. Later exam/roster default edits do NOT
@@ -362,7 +369,10 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 		rows = []grantResult{row}
 	}
 	for _, g := range rows {
-		if (g.Issuance != "ENROLLMENT" && g.Issuance != "REVIEWED_NEW" && g.Issuance != "ADDITIONAL_TEMPLATE") || g.IssuanceOrder < 1 {
+		if (g.Issuance != "ENROLLMENT" && g.Issuance != "REVIEWED_NEW" && g.Issuance != "ADDITIONAL_TEMPLATE" && g.Issuance != "PRACTICE") || g.IssuanceOrder < 1 || ((g.Exam == "sandbox") != (g.Issuance == "PRACTICE")) {
+			return fail
+		}
+		if g.Exam == "sandbox" && (g.Settings.Duration != 300 || g.Settings.Webcam || g.Settings.Terminals != 4) {
 			return fail
 		}
 		if g.Agent != agent || g.ID == "" || g.Revision < 1 || g.Exam == "" || g.Username == "" || (scope.Exam != "" && g.Exam != scope.Exam) || (scope.Username != "" && g.Username != scope.Username) || g.Settings.ID != g.Exam || g.Settings.TemplateVersion == "" || !validGrantWorkResult(g.Work) || len(g.Hash) != 64 || g.Settings.Duration < 60 || g.Settings.Latest <= g.Settings.Earliest || len(g.Claims) > 100 || len(g.History) > 50 {

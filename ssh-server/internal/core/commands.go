@@ -95,16 +95,32 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	versionedBegin := cmd.Op == "activate-versioned-attempt"
 	recoveryBegin := cmd.Op == "activate-recovery-attempt"
 	additionalBegin := cmd.Op == "activate-additional-grant-attempt"
-	grantBegin := cmd.Op == "activate-grant-attempt" || additionalBegin
-	if grantBegin && (cmd.Body.Grant == nil || (cmd.Body.Grant.Kind == "ADDITIONAL") != additionalBegin) {
+	practiceBegin := cmd.Op == "activate-practice-grant-attempt"
+	grantBegin := cmd.Op == "activate-grant-attempt" || additionalBegin || practiceBegin
+	expectedKind := ""
+	if additionalBegin {
+		expectedKind = "ADDITIONAL"
+	}
+	if practiceBegin {
+		expectedKind = "PRACTICE"
+	}
+	if grantBegin && (cmd.Body.Grant == nil || cmd.Body.Grant.Kind != expectedKind) {
 		return nil, errors.New("grant authority type requires its matching distinct Begin purpose; no clock authorized")
 	}
 	if versionedBegin || recoveryBegin || grantBegin {
 		cmd.Op = "activate-attempt"
 	}
 	additionalPrepare := cmd.Op == "prepare-additional-grant-attempt"
-	if cmd.Op == "prepare-grant-attempt" || additionalPrepare {
-		if !validGrant(cmd.Body.Grant) || (cmd.Body.Grant.Kind == "ADDITIONAL") != additionalPrepare || cmd.Body.ExpectedRecovery != "" || cmd.Body.Settings.TemplateVersion == "" {
+	practicePrepare := cmd.Op == "prepare-practice-grant-attempt"
+	expectedKind = ""
+	if additionalPrepare {
+		expectedKind = "ADDITIONAL"
+	}
+	if practicePrepare {
+		expectedKind = "PRACTICE"
+	}
+	if cmd.Op == "prepare-grant-attempt" || additionalPrepare || practicePrepare {
+		if !validGrant(cmd.Body.Grant) || cmd.Body.Grant.Kind != expectedKind || cmd.Body.ExpectedRecovery != "" || cmd.Body.Settings.TemplateVersion == "" {
 			return nil, errors.New("exact initial grant/version binding required; no preparation or clock authorized")
 		}
 		cmd.Op = "prepare-attempt"

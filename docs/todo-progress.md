@@ -2410,6 +2410,22 @@ build/static checks pass. Detailed evidence, initial failures/state review and
 privileged limits: grant-workspace-sources.md. Nothing deployed. Saved sources
 still need C18 retention authority; C16 remains open. Continue independent C14.
 
+## Unified sandbox practice grants (C14; October23 local milestone)
+
+Student preflight/Begin and reviewed CLI/web practice issuance now use saved
+fixed300-second/no-webcam/four-terminal grants, exact work, fresh signed native
+verification and one-use intervals.027 preserves history and fences old grantless
+writers after activation. Confirmed cleanup plus NORMAL restoration releases only
+an exactly proven unstarted claim; whole-grant consumed/interval/protected evidence
+prevents false cancellation/purge. Revoked/expired grants require explicit changes.
+490 app tests, full native race/resource and62 final affected browser checks pass,
+with13 focused corrections, native actual transport retry, build/static checks.
+Full baseline134pass/11fixture failures and corrected evidence remain in
+sandbox-grants.md. No installed role or production state changes. Main TODO stays
+11/38 because broader saved-source and retention investigations remain open.
+Next independent investigation: historical cleanup errors after positive success
+and accurate alert disposition; C16/C18 remain pending decisions.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are

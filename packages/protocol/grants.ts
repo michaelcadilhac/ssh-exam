@@ -16,7 +16,7 @@ export const grantBinding = z
     id: z.string().uuid(),
     revision: z.number().int().positive(),
     hash: z.string().regex(/^[a-f0-9]{64}$/),
-    kind: z.literal("ADDITIONAL").optional(),
+    kind: z.enum(["ADDITIONAL", "PRACTICE"]).optional(),
     issuance_order: z.number().int().positive().safe().optional(),
     initial_grant: z.string().uuid().optional(),
     work: grantWorkspace.optional(),

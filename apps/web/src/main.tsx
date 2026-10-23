@@ -465,7 +465,9 @@ function App() {
                             <option key={g.id} value={g.id}>
                               {g.issuance === "ADDITIONAL_TEMPLATE"
                                 ? "Additional"
-                                : "Initial"}{" "}
+                                : g.issuance === "PRACTICE"
+                                  ? "Practice"
+                                  : "Initial"}{" "}
                               · {g.settings.duration / 60} minutes ·{" "}
                               {chicago(g.settings.earliest)} –{" "}
                               {chicago(g.settings.latest)} · {g.id.slice(-8)}
@@ -481,6 +483,9 @@ function App() {
                       </p>
                     ) : (
                       <>
+                        {info.practice_blocked && (
+                          <p role="status">{info.practice_blocked.message}</p>
+                        )}
                         {info.selected_grant && (
                           <p style={{ overflowWrap: "anywhere" }}>
                             Workspace:{" "}
@@ -638,6 +643,7 @@ function App() {
                           <button
                             className="primary"
                             disabled={
+                              !!info.practice_blocked ||
                               browserBlocked ||
                               !!navigation ||
                               grantSelectionRequired

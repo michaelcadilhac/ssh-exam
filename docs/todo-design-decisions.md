@@ -32,8 +32,10 @@ signed definition list/show/create/update; retirement/full coverage remain pendi
 | Workspace retention metadata / holds / cleanup | Native private per-attempt controls | Local `workspaces list/show/hold/release-hold`, audited hold revision and missing-record fail-closed markers; actual CLI/native race/app/build pass. No fresh eligibility proof, unknown-orphan cleanup or deletion is enabled; not deployed |
 | Root emergency release | Native OverrideAccess | Existing `override-access`; retain secured-copy/termination/audit prerequisites; never suggest automatically |
 | Protected manifest/export/delete | Native protected bundle | Existing `manifest/export/delete`; rename discovery as submission operations while retaining aliases; add export audit and explicit output safety |
-| Recovery grants | Incident JSON and separate enrollment helpers | Missing; `grants create/validate/list/show/revoke` coordinated with unified model; cannot silently synchronize offline edits |
-| Template install/version/inspection | Separate native immutable catalog, optional exact-version readers and signed metadata registry; gateway snapshots still legacy | Local `templates validate/install/list/show/verify/jobs/clean/sync`, root `web templates list/show` and read-only admin catalog pass actual CLI/TLS/native verification/restart and browser checks. Acknowledgement is timestamped evidence, not a live availability lease or source selection. Privileged guest and unified grant selection/issuance/migration remain pending; not deployed |
+| Initial/additional grants and independent starters | Shared AttemptGrants/GrantIssuance browser/root services and fresh native Begin | Enrollment-time initial snapshots, reviewed NEW legacy-unused issuance, reviewed additional allowances, exact materials plus empty/separate-template work, list/show/history/unused revise/revoke are qualified locally. `web grants` help exposes all paths; see initial-grants-cli.md and additional-grants-cli.md. No deployment |
+| Sandbox practice grants | Shared grant services, automatic authenticated preflight, typed native purposes | C14 implemented/tested locally: finite-window automatic fixed practice, protected/released repeat, explicit reviewed NEW and unused management.490 app tests, full native race/resource and62 final affected browser checks pass; baseline failures/13 corrections retained in sandbox-grants.md. No silent replacement of expired/revoked authority; not deployed |
+| Saved-work grants | Legacy root catalog plus explicit per-student allowance ledger | `recovery-grants` provides read-only native visibility and C17 preflight reconciles explicitly authorized unused duration edits. Full unified source issuance/revoke/migration remains blocked on C18 retention availability/authority choice; cannot silently synchronize offline edits |
+| Template install/version/inspection | Native immutable catalog, signed registry and exact-version grant selection | Local `templates validate/install/list/show/verify/jobs/clean/sync`, root `web templates list/show`, read-only admin catalog and exact-source enrollment/additional selection are qualified locally. Acknowledgement is timestamped evidence, not a live availability lease. Exact-artifact privileged qualification and complete saved-source migration remain open; not deployed |
 | Monitoring metadata/replay/media/deletion | Shared MonitoringManagement and durable isolated purge jobs | Local `web monitoring show/list/replay/image/export/delete/purges/purge-status`; private transient reads, complete purpose-signed private copies, reviewed ended-only deletion, durable isolated physical status and bounded retired-job inventory snapshots. Implemented/tested locally, not deployed; monitoring is separate from protected submissions |
 | Alert test/outbox/manual reminders/desktop sound | Shared AlertManagement web/root service and browser-local preferences | Local `web alerts list/show/test/remind`, metadata-only inspection, stable intent/revision, explicit reason and no automatic reminders; 309 app tests, CLI/TLS/SMTP and 31 browser checks pass. Desktop permission/sound remain browser-local |
 | Agent lifecycle/readiness/accounts | Native health/accounts and systemctl | Existing `agent start/stop/restart/status`, `health/accounts`; diagnose callbacks/leases/policy without stopping independent watchdog |
@@ -462,8 +464,11 @@ replaces indefinite sandbox admission for new grants, not ordinary account holds
 protected history, monitoring or verified-collection requirements. CLI and web
 must expose the same window configuration. Approval is not implementation or
 deployment. Finite-window CLI/web configuration and gateway/native admission are
-implemented/tested locally; unified fixed-settings grant
-issuance/migration remain pending. See exam-definition-management.md.
+implemented/tested locally. Unified fixed-settings practice now has an integrated
+workflow with490 application, full native race/resource and62 affected final
+browser checks passing.027 preserves legacy rows and fences older writers
+after activation; it is not executed against any installation. See
+sandbox-grants.md and exam-definition-management.md.
 
 ## Fresh native Begin verification (C15 approved October22)
 

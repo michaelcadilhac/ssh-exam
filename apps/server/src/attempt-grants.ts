@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { examSchema } from "../../../packages/protocol/index.js";
-import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import {
+  isSandbox,
+  hasSandboxWindow,
+} from "../../../packages/protocol/sandbox.js";
 import {
   grantBinding,
   grantList,
@@ -60,11 +63,20 @@ export class AttemptGrants {
     const settings = examSchema.parse(JSON.parse(row.settings)),
       work = grantWorkspace.parse(JSON.parse(row.work));
     if (
-      !["ENROLLMENT", "REVIEWED_NEW", "ADDITIONAL_TEMPLATE"].includes(
-        row.issuance,
-      ) ||
+      ![
+        "ENROLLMENT",
+        "REVIEWED_NEW",
+        "ADDITIONAL_TEMPLATE",
+        "PRACTICE",
+      ].includes(row.issuance) ||
       !Number.isSafeInteger(row.issuance_order) ||
       row.issuance_order < 1 ||
+      isSandbox(row.exam) !== (row.issuance === "PRACTICE") ||
+      (isSandbox(row.exam) &&
+        (settings.duration !== 300 ||
+          settings.webcam ||
+          settings.terminals !== 4 ||
+          !hasSandboxWindow(settings))) ||
       !settings.template_version ||
       hash(JSON.stringify({ settings, work })) !== row.hash
     )
@@ -97,6 +109,16 @@ export class AttemptGrants {
   }
   snapshot(input: unknown, selectedWork?: unknown) {
     const settings = examSchema.parse(input);
+    if (
+      isSandbox(settings.id) &&
+      (settings.duration !== 300 ||
+        settings.webcam ||
+        settings.terminals !== 4 ||
+        !hasSandboxWindow(settings))
+    )
+      return conflict(
+        "Sandbox practice grants require exactly five minutes, no webcam, four terminals and a finite explicit Begin window; inspect web exams show sandbox. No authority changed.",
+      );
     if (!settings.template_version)
       return conflict(
         "Grants require an exact authenticated template version before authorization; run templates verify/sync, then web exams update --template-version HASH. No grant or enrollment changed.",
@@ -126,7 +148,7 @@ export class AttemptGrants {
     webcam: boolean | null,
     actor: string,
   ) {
-    if (isSandbox(exam)) return null; // C14 repeat issuance is a later integrated boundary.
+    if (isSandbox(exam)) return null; // Repeatable practice issues at authenticated preflight.
     if (!this.store.db.inTransaction)
       throw Error(
         "Initial issuance requires its shared enrollment/import transaction; no partial grant authorized",
@@ -211,13 +233,12 @@ export class AttemptGrants {
     const value = this.snapshot(settings, work),
       exam = value.settings.id;
     if (
-      isSandbox(exam) ||
       !this.store.db
         .prepare("SELECT 1 FROM enrollments WHERE exam=? AND username=?")
         .get(exam, username)
     )
       return conflict(
-        "Additional grants require an enrolled ordinary student; no history/default/clock changed",
+        "New grants require an enrolled student; no history/default/clock changed",
       );
     return this.issueGrant(
       exam,
@@ -225,9 +246,70 @@ export class AttemptGrants {
       value,
       actor,
       reason,
-      "ADDITIONAL_TEMPLATE",
-      this.initialFor(exam, username)?.id ?? null,
+      isSandbox(exam) ? "PRACTICE" : "ADDITIONAL_TEMPLATE",
+      isSandbox(exam) ? null : (this.initialFor(exam, username)?.id ?? null),
     );
+  }
+  // Runtime caller: authenticated student preflight, after native role/UID and
+  // prior completion/release checks. This transaction never waits on native IO.
+  practice(username: string) {
+    return this.store.db.transaction(() => {
+      if (this.available("sandbox", username).length) return;
+      const last = this.store.db
+        .prepare(
+          "SELECT id,status FROM attempt_grants WHERE agent=? AND exam='sandbox' AND username=? ORDER BY rowid DESC LIMIT 1",
+        )
+        .get(this.agent, username) as any;
+      if (last && last.status !== "CONSUMED")
+        return conflict(
+          "Unused practice authority is expired or revoked. Inspect examctl web grants list sandbox; explicitly revise an expired unused grant, or review NEW authority with web grants additional-preview sandbox --duration-minutes 5. No automatic replacement or clock authorized.",
+        );
+      if (
+        last &&
+        !this.store.db
+          .prepare(
+            "SELECT 1 FROM grant_claims c JOIN grant_begin_intents b ON b.attempt=c.attempt JOIN attempts a ON a.id=c.attempt JOIN attempt_grants g ON g.id=c.grant_id JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE c.grant_id=? AND g.issuance='PRACTICE' AND c.state='CONSUMED' AND b.state='CONSUMED' AND a.state='COMPLETED' AND a.protected=1 AND a.access_state IN ('RELEASED','OVERRIDDEN') AND a.grant_id=g.id AND a.grant_revision=c.revision AND c.revision=g.revision AND a.grant_hash=c.hash AND c.hash=r.hash AND a.settings=r.settings AND a.uid=c.uid AND a.username=g.username AND a.exam=g.exam AND a.grant_kind='PRACTICE' AND a.grant_issued_order=g.rowid AND a.grant_begin_intent=b.id AND a.start=b.start AND a.original_deadline=b.deadline AND b.start>0 AND b.deadline-b.start=300000",
+          )
+          .get(last.id)
+      )
+        return conflict(
+          "Previous practice consumption, protected completion or access release is unconfirmed; inspect the original attempt. No new allowance authorized.",
+        );
+      const prior = this.store.db
+        .prepare(
+          "SELECT state,protected,access_state FROM attempts WHERE exam='sandbox' AND username=? ORDER BY rowid DESC LIMIT 1",
+        )
+        .get(username) as any;
+      if (
+        prior &&
+        (prior.state !== "COMPLETED" ||
+          !prior.protected ||
+          !["RELEASED", "OVERRIDDEN"].includes(prior.access_state))
+      )
+        return conflict(
+          "Previous practice is unresolved or restricted; preserve its original attempt/clock and complete supported cancellation or protection/release before a new allowance.",
+        );
+      const definition = JSON.parse(
+        (
+          this.store.db
+            .prepare("SELECT config FROM exams WHERE id='sandbox'")
+            .get() as any
+        ).config,
+      );
+      const value = this.snapshot(definition);
+      if (now() < value.settings.earliest || now() > value.settings.latest)
+        return conflict(
+          "Outside configured practice Begin window; inspect examctl web exams show sandbox. No grant, account or clock reserved.",
+        );
+      this.issueGrant(
+        "sandbox",
+        username,
+        value,
+        "policy:sandbox",
+        "Automatic five-minute practice in explicit operator window",
+        "PRACTICE",
+      );
+    })();
   }
   private issueGrant(
     exam: string,
@@ -238,7 +320,8 @@ export class AttemptGrants {
     issuance:
       | "ENROLLMENT"
       | "REVIEWED_NEW"
-      | "ADDITIONAL_TEMPLATE" = "ENROLLMENT",
+      | "ADDITIONAL_TEMPLATE"
+      | "PRACTICE" = "ENROLLMENT",
     initial: string | null = null,
   ) {
     const id = randomUUID(),
@@ -272,9 +355,11 @@ export class AttemptGrants {
     const issued = this.view(this.row(id));
     this.store.audit(
       actor,
-      issuance === "ADDITIONAL_TEMPLATE"
-        ? "issue-additional-grant"
-        : "issue-initial-grant",
+      issuance === "PRACTICE"
+        ? "issue-practice-grant"
+        : issuance === "ADDITIONAL_TEMPLATE"
+          ? "issue-additional-grant"
+          : "issue-initial-grant",
       id,
       JSON.stringify({
         exam,
@@ -451,6 +536,14 @@ export class AttemptGrants {
       .get(this.agent, exam, username) as any;
     return row ? this.view(this.row(row.id)) : null;
   }
+  lastPracticeFor(username: string) {
+    const row = this.store.db
+      .prepare(
+        "SELECT id FROM attempt_grants WHERE agent=? AND exam='sandbox' AND username=? ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(this.agent, username) as any;
+    return row ? this.view(this.row(row.id)) : null;
+  }
   select(exam: string, username: string, id: string) {
     const grant = this.view(this.row(id));
     if (grant.exam !== exam || grant.username !== username)
@@ -478,7 +571,9 @@ export class AttemptGrants {
       hash: grant.hash,
       ...(grant.issuance === "ADDITIONAL_TEMPLATE"
         ? { kind: "ADDITIONAL" }
-        : {}),
+        : grant.issuance === "PRACTICE"
+          ? { kind: "PRACTICE" }
+          : {}),
       issuance_order: grant.issuance_order,
       ...(grant.initial_grant ? { initial_grant: grant.initial_grant } : {}),
       ...(grant.work.kind === "template" &&
@@ -765,16 +860,6 @@ export class AttemptGrants {
     })();
   }
   private unstartedEvidence(a: Attempt) {
-    if (
-      a.grant_issued_order !== null &&
-      !isDeepStrictEqual(
-        this.binding(this.select(a.exam, a.username, a.grant_id!)),
-        this.bindingForAttempt(a),
-      )
-    )
-      return conflict(
-        "Cancelled preparation contradicts original issuance/type evidence; preserve grant/monitoring history before retirement",
-      );
     const claim = this.store.db
       .prepare("SELECT * FROM grant_claims WHERE attempt=?")
       .get(a.id) as any;
@@ -788,12 +873,38 @@ export class AttemptGrants {
       return conflict(
         "Cancelled preparation lacks its exact retained grant claim; preserve history and restore matching authority before retirement",
       );
+    if (a.grant_issued_order !== null) {
+      const current = this.row(a.grant_id!),
+        revision = this.store.db
+          .prepare(
+            "SELECT settings,work,hash FROM grant_revisions WHERE grant_id=? AND revision=?",
+          )
+          .get(a.grant_id, a.grant_revision) as any;
+      if (
+        !revision ||
+        (current.revision !== a.grant_revision &&
+          claim.state !== "CANCELLED") ||
+        !isDeepStrictEqual(
+          this.binding(
+            this.view({ ...current, ...revision, revision: a.grant_revision }),
+          ),
+          this.bindingForAttempt(a),
+        ) ||
+        !isDeepStrictEqual(
+          JSON.parse(revision.settings),
+          JSON.parse(a.settings),
+        )
+      )
+        return conflict(
+          "Cancelled preparation contradicts original issuance/type evidence; preserve grant/monitoring history before retirement",
+        );
+    }
     if (
       this.store.db
         .prepare(
-          "SELECT 1 FROM grant_claims c LEFT JOIN grant_begin_intents b ON b.attempt=c.attempt WHERE c.attempt=? AND (c.state='CONSUMED' OR b.state='CONSUMED' OR b.start IS NOT NULL OR b.deadline IS NOT NULL)",
+          "SELECT 1 FROM attempt_grants WHERE id=? AND status='CONSUMED' UNION ALL SELECT 1 FROM grant_claims c LEFT JOIN grant_begin_intents b ON b.attempt=c.attempt WHERE c.grant_id=? AND (c.state='CONSUMED' OR b.state='CONSUMED' OR b.start IS NOT NULL OR b.deadline IS NOT NULL) UNION ALL SELECT 1 FROM attempts WHERE grant_id=? AND (start IS NOT NULL OR deadline IS NOT NULL OR original_deadline IS NOT NULL OR protected<>0 OR checksum IS NOT NULL) LIMIT 1",
         )
-        .get(a.id)
+        .get(a.grant_id, a.grant_id, a.grant_id)
     )
       return conflict(
         "Cancellation contradicts durable grant consumption/interval evidence; preserve history and inspect native status before retirement",

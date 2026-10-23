@@ -47,17 +47,23 @@ October22 C14 approval: retain automatic repeatable five-minute/no-webcam sandbo
 practice within an explicit finite operator-configured Begin window. Every new
 grant saves its settings; no new Begin outside the window. Existing started
 attempts retain their deadlines. Matching CLI/web configuration and native/gateway
-window enforcement are implemented/tested locally; unified
-issuance remains implementation work. No deployment. See
-docs/exam-definition-management.md; the broad grant TODOs remain unchecked.
+window enforcement are implemented/tested locally. October23 unified practice
+candidate now integrates automatic saved grants, reviewed NEW CLI/web issuance,
+unused revision/revoke, typed native staging/fresh Begin and positive cancellation
+cleanup/restoration. Final490 application tests, full native race/resource tests,
+13 corrected-fixture browser checks and62 affected final browser checks pass,
+with matching builds/static checks. See docs/sandbox-grants.md and docs/exam-definition-management.md;
+the broad grant TODOs remain unchecked. No deployment.
 
 October22 C15 approval: unified Begin requires fresh verification over the
 existing authenticated native-agent outbound HTTPS path. If unavailable, refuse
 before starting time with retry/inspection guidance; no offline permit or new
 browser relay. Existing started deadlines/holds/history and uncertain one-use
 outcomes are preserved. The first ordinary enrollment-time workflow now
-implements/tests this locally; additional, legacy-migration and sandbox grant
-scopes remain pending. Nothing is deployed; see unified-grant-first-attempt.md.
+implements/tests this locally; additional and reviewed legacy initial workflows
+are also qualified locally. Sandbox integration is now implemented/tested locally;
+saved-work grant migration remains pending. Nothing is deployed; see
+unified-grant-first-attempt.md and sandbox-grants.md.
 
 October22 recovery-admission follow-up: a per-student allowance change can leave
 an unused native saved-work grant with an older duration; its strict rejection
@@ -648,8 +654,12 @@ Existing enrollment migration and implementation remain outstanding.
   account holds while allowing explicit grant-bound additional attempts.469
   application tests, full native race/resource qualification and ten matching
   browser checks (nine broad plus the corrected focused enrollment workflow)
-  pass locally, with matching builds/typecheck/vet. Independent empty/saved-work,
-  sandbox issuance and complete legacy-source migration remain unfinished; this
+  pass locally, with matching builds/typecheck/vet. Independent empty/separate
+  exact-template starters are now qualified locally (grant-workspace-sources.md).
+  Unified practice issuance is now qualified locally:490 app tests, full native
+  race/resource,13 corrected-fixture and62 final affected browser checks pass
+  (sandbox-grants.md). All earlier failed receipts remain documented.
+  Saved-work issuance and complete legacy-source migration remain unfinished; this
   broad investigation stays unchecked. See docs/additional-template-grants.md,
   docs/additional-grants-cli.md and the earlier feature guides. Nothing deployed.
   Consider per-exam attempt limits/defaults plus per-student and bulk grants,

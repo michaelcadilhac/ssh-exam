@@ -256,6 +256,9 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await page.getByRole("button", { name: "New exam", exact: true }).click();
   await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue("");
   await page.getByLabel("Exam ID", { exact: true }).fill("admin-created");
+  await page
+    .getByLabel("Immutable template hash (optional)")
+    .fill("a".repeat(64));
   await page.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(
     "admin-created",

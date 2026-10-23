@@ -37,7 +37,7 @@ func validGrant(g *GrantBinding) bool {
 	if g == nil || !attemptID.MatchString(g.ID) || g.Revision < 1 || g.Revision > 9007199254740991 || len(g.Hash) != 64 {
 		return false
 	}
-	if (g.Kind != "" && g.Kind != "ADDITIONAL") || g.Order < 0 || g.Order > 9007199254740991 || (g.Kind == "ADDITIONAL" && g.Order == 0) {
+	if (g.Kind != "" && g.Kind != "ADDITIONAL" && g.Kind != "PRACTICE") || g.Order < 0 || g.Order > 9007199254740991 || (g.Kind != "" && g.Order == 0) {
 		return false
 	}
 	if g.Initial != "" && (g.Kind != "ADDITIONAL" || !attemptID.MatchString(g.Initial) || g.Initial == g.ID) {

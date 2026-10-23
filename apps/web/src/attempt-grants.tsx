@@ -253,7 +253,9 @@ export function AttemptGrantsDialog({
                   <option key={g.id} value={g.id}>
                     {g.issuance === "ADDITIONAL_TEMPLATE"
                       ? "Additional"
-                      : "Initial"}{" "}
+                      : g.issuance === "PRACTICE"
+                        ? "Practice"
+                        : "Initial"}{" "}
                     · {g.status} · {g.settings.duration / 60} minutes · {g.id}
                   </option>
                 ))}
@@ -324,6 +326,10 @@ export function AttemptGrantsDialog({
                         setDraft({ ...draft, [key]: e.target.value })
                       }
                       required
+                      readOnly={
+                        grant.exam === "sandbox" &&
+                        ["duration", "terminals"].includes(key)
+                      }
                       style={{ width: "100%", minWidth: 0 }}
                     />
                   </label>
@@ -332,6 +338,7 @@ export function AttemptGrantsDialog({
                   Saved webcam requirement
                   <select
                     value={draft.webcam}
+                    disabled={grant.exam === "sandbox"}
                     onChange={(e) =>
                       setDraft({ ...draft, webcam: e.target.value })
                     }

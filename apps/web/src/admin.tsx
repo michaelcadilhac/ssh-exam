@@ -446,14 +446,14 @@ export function Admin({
                   Issue legacy grants
                 </button>
               )}
-              {exam !== "sandbox" && (
-                <button
-                  onClick={() => setIssuingGrants("additional")}
-                  disabled={!current || stale}
-                >
-                  Authorize additional attempts
-                </button>
-              )}
+              <button
+                onClick={() => setIssuingGrants("additional")}
+                disabled={!current || stale}
+              >
+                {exam === "sandbox"
+                  ? "Authorize practice grant"
+                  : "Authorize additional attempts"}
+              </button>
             </div>
           </section>
           <section className="admin-roster" aria-label="Students and attempts">

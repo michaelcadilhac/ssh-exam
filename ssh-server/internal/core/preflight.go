@@ -35,6 +35,7 @@ func (e *Engine) cancelAbsentPreparation(r Request) (*Attempt, error) {
 	a := &Attempt{ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, Transport: r.Transport, State: "CANCELLED_BEFORE_START", Ended: Millis(), Reason: r.Reason}
 	a.PolicyRequired = e.temporaryPolicy(a)
 	e.acknowledgeUnappliedCancellation(a)
+	a.CancellationCleanupComplete = true // Positive absence/source/consumption checks above; no native workload existed.
 	e.state.Attempts[r.ID] = a
 	e.Audit("cancel-absent-preparation", a.ID)
 	return a, nil
@@ -55,6 +56,7 @@ func (e *Engine) expirePreflight(a *Attempt, at int64) bool {
 		return false
 	}
 	a.State = "CANCELLED_BEFORE_START"
+	a.CancellationCleanupComplete = false
 	a.PreparationPending, a.PreparationPendingSince = false, 0
 	a.Reason = PreflightExpiredReason
 	a.Ended = at

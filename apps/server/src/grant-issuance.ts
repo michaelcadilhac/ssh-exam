@@ -70,9 +70,13 @@ export class GrantIssuance {
       b.request,
       { operation: additional ? "additional-preview" : "issue-preview", ...b },
       () => {
-        if (isSandbox(b.exam))
+        if (isSandbox(b.exam) && !additional)
           return refuse(
-            "Sandbox requires its repeatable practice workflow; legacy initial issuance is ordinary exams only",
+            "Sandbox uses repeatable practice; explicit NEW authority uses web grants additional-preview sandbox --duration-minutes 5, not legacy initial issuance",
+          );
+        if (isSandbox(b.exam) && (b.duration !== 300 || b.webcam === true))
+          return refuse(
+            "Sandbox practice grants are fixed at five minutes/no webcam; use --duration-minutes 5 and omit webcam or select optional. No grant issued.",
           );
         const definition = this.definitions.show(b.exam);
         if (
@@ -96,8 +100,9 @@ export class GrantIssuance {
               duration: additional
                 ? b.duration!
                 : (enrollment.duration ?? definition.exam.duration),
-              webcam:
-                additional && b.webcam !== undefined
+              webcam: isSandbox(b.exam)
+                ? false
+                : additional && b.webcam !== undefined
                   ? b.webcam
                   : enrollment.webcam === null
                     ? definition.exam.webcam
@@ -125,9 +130,11 @@ export class GrantIssuance {
         const id = randomUUID(),
           created = now(),
           snapshot = JSON.stringify({
-            kind: additional
-              ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
-              : "NEW_LEGACY_INITIAL_GRANTS",
+            kind: isSandbox(b.exam)
+              ? "NEW_SANDBOX_PRACTICE_GRANTS"
+              : additional
+                ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+                : "NEW_LEGACY_INITIAL_GRANTS",
             agent: this.agent,
             exam: b.exam,
             actor,
@@ -150,9 +157,11 @@ export class GrantIssuance {
           );
         this.store.audit(
           actor,
-          additional
-            ? "preview-additional-template-grants"
-            : "preview-new-legacy-grants",
+          isSandbox(b.exam)
+            ? "preview-practice-grants"
+            : additional
+              ? "preview-additional-template-grants"
+              : "preview-new-legacy-grants",
           id,
           JSON.stringify({
             exam: b.exam,
@@ -257,7 +266,7 @@ export class GrantIssuance {
               this.eligible(
                 saved.exam,
                 r.username,
-                saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS",
+                saved.kind !== "NEW_LEGACY_INITIAL_GRANTS",
               ),
             ) !== r.enrollment
           )
@@ -271,7 +280,7 @@ export class GrantIssuance {
         }
         const issued = saved.rows.map((r: any) => {
           const grant =
-            saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+            saved.kind !== "NEW_LEGACY_INITIAL_GRANTS"
               ? this.grants.additional(
                   r.settings,
                   r.username,
@@ -298,9 +307,11 @@ export class GrantIssuance {
           .run(JSON.stringify(issued), id);
         this.store.audit(
           actor,
-          saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS"
-            ? "confirm-additional-template-grants"
-            : "confirm-new-legacy-grants",
+          saved.kind === "NEW_SANDBOX_PRACTICE_GRANTS"
+            ? "confirm-practice-grants"
+            : saved.kind === "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+              ? "confirm-additional-template-grants"
+              : "confirm-new-legacy-grants",
           id,
           JSON.stringify({ revision: row.revision, issued }),
         );

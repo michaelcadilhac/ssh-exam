@@ -10,7 +10,7 @@ import (
 // readiness and configuration copying never own the shared state transaction.
 // Nothing here starts a clock, grants a lease or admits a workload.
 func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error) {
-	if r.Grant != nil && (!validGrant(r.Grant) || r.ExpectedRecovery != "" || r.Settings.TemplateVersion == "" || r.Exam == SandboxExamID) {
+	if r.Grant != nil && (!validGrant(r.Grant) || r.ExpectedRecovery != "" || r.Settings.TemplateVersion == "" || ((r.Grant.Kind == "PRACTICE") != (r.Exam == SandboxExamID)) || (r.Grant.Kind == "PRACTICE" && (r.Settings.Duration != SandboxDurationSeconds || r.Settings.Webcam || r.Settings.Terminals != 4))) {
 		return nil, errors.New("invalid initial grant scope/source; preserve original settings and use grant-aware preflight")
 	}
 	lock, err := e.accountWorkLock(r.UID)
@@ -49,6 +49,9 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 			return errors.New("invalid attempt identifier")
 		}
 		if a := e.state.Attempts[r.ID]; a != nil {
+			if err := e.practiceGrantMode(a); err != nil {
+				return err
+			}
 			if a.Username != r.Username || a.UID != r.UID || e.state.Registrations[r.Transport] != r.Username {
 				return errors.New("preparation ownership mismatch")
 			}
@@ -94,6 +97,10 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 			return err
 		}
 		candidate = &Attempt{ExpectedRecovery: r.ExpectedRecovery, PreparationPending: true, PreparationPendingSince: Millis(), BrowserSSH: r.BrowserSSH, ID: r.ID, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "PREPARING", Transport: r.Transport, WorkPath: e.directory(), Units: []string{}, Errors: []string{}}
+		candidate.Grant = r.Grant
+		if err := e.practiceGrantMode(candidate); err != nil {
+			return err
+		}
 		if r.Grant != nil {
 			grant := *r.Grant
 			candidate.Grant = &grant
@@ -105,7 +112,7 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 					return errors.New("grant identity changed after preparation, including cancelled claims; preserve original grant/UID history for explicit review")
 				}
 				knownAdditionalAfterInitial := prior.Grant != nil && validGrant(prior.Grant) && prior.Grant.Kind == "ADDITIONAL" && prior.Grant.Initial == r.Grant.ID && r.Grant.Order > 0 && r.Grant.Order < prior.Grant.Order && prior.UID == r.UID && prior.Username == r.Username && attemptID.MatchString(prior.GrantBeginIntent)
-				if r.Grant.Kind != "ADDITIONAL" && !knownAdditionalAfterInitial && prior.Exam == r.Exam && (prior.UID == r.UID || prior.Username == r.Username) && prior.Start > 0 {
+				if r.Grant.Kind == "" && !knownAdditionalAfterInitial && prior.Exam == r.Exam && (prior.UID == r.UID || prior.Username == r.Username) && prior.Start > 0 {
 					return fmt.Errorf("initial grant conflicts with native attempt history %s; preserve the completed/original interval and obtain explicit additional-attempt authorization; no new preparation or clock", prior.ID)
 				}
 			}

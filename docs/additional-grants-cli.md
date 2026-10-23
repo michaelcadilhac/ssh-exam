@@ -3,8 +3,9 @@
 Local implementation/qualification only; not deployed. Evidence and privileged
 limits: additional-template-grants.md. These commands do not authorize production
 changes. Empty/separate-template initialization is implemented/tested locally
-(grant-workspace-sources.md). Saved-work initialization and sandbox grants remain
-unfinished.
+(grant-workspace-sources.md). Saved-work initialization remains unfinished.
+Sandbox practice uses the same review and inspection workflows with fixed policy;
+see sandbox-grants.md for the candidate and its qualification status.
 
 ## Authorize and review
 
@@ -114,3 +115,42 @@ compatible rollback is unavailable. The unexecuted plan is todo-rollout-plan.md.
 Independent sources additionally require026 and independent-workspace-grants-v1,
 including the native Work field/private receipts in every writer/backup. Older
 default-source bindings stay readable; do not mix source-blind native writers.
+
+## Sandbox practice (C14)
+
+Configure an attested exact material version and finite Begin window with
+`examctl web exams show sandbox` and the revision-fenced `web exams update`
+workflow in exam-definition-management.md. For example, select actual hashes
+from the catalog and definition before replacing the placeholders below:
+
+```sh
+sudo examctl web templates list
+sudo examctl web exams show sandbox
+sudo examctl web exams update sandbox --revision DEFINITION_HASH --template TEMPLATE_NAME --template-version TEMPLATE_HASH --earliest '2026-10-26T09:00:00-05:00' --latest '2026-10-26T17:00:00-05:00' --reason 'Open finite practice with verified exact materials'
+```
+
+Changing just the window does not upgrade a legacy mutable source. No installation
+is changed by this documentation. Authenticated preflight automatically
+saves a five-minute/no-webcam/four-terminal PRACTICE grant within that window.
+Cancelled unstarted preparation reuses it. Each next automatic allowance requires
+positive protected completion and normal access release of the preceding attempt.
+No waiting or failed preparation consumes time; each actual Begin fixes a new
+five-minute interval. Closing defaults never changes an issued grant or interval.
+
+Inspect with `web grants list sandbox --username USER` and `web grants show UUID`.
+Expired unused grants require explicit `web grants revise UUID --revision N`
+with the selected finite dates and reason. Revoked grants do not regenerate;
+authorize reviewed NEW practice through `web grants additional-preview sandbox
+USER --duration-minutes 5` with the usual definition/source/window/reason flags,
+then `issue-show`, `issue-confirm` or `issue-cancel` as above. Manual windows may
+be outside closed defaults. Policy stays300 seconds/no webcam/four terminals;
+other values refuse. Web: Authorize practice grant; Student Actions → Attempt
+grants for inspection/revision/revoke. Earlier grants and attempts remain history.
+
+For an unresolved preparation, inspect native `info ATTEMPT --read-only` and use
+the supported cancellation/restoration workflow. A CANCELLED label or timeout
+alone cannot release its claim. Matching signed cleanup-complete AND NORMAL
+policy plus consistent no-start evidence are required before unused changes.
+Never clear claims or consumption records to force a retry. Migration027 and
+matching practice/verified-cancellation roles are future drained rollout gates;
+no installation, migration or production change is performed here.

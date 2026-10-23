@@ -93,12 +93,16 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
           webcam: false,
           terminals: 4,
           template: "sample-exam",
+          template_version: "a".repeat(64),
           earliest: Date.now() - 60000,
           latest: Date.now() + 3600000,
         };
         expect(
           (
-            await admin.post("/api/admin/exams", { headers, data: configured })
+            await admin.post("/api/admin/exams/versioned", {
+              headers,
+              data: configured,
+            })
           ).ok(),
         ).toBe(true);
         expect(

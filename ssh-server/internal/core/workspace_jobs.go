@@ -125,7 +125,7 @@ func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
 				return nil, errWorkspaceReceiptMetadata
 			}
 		}
-		if _, present := binding["kind"]; present && r.Grant.Kind != "ADDITIONAL" {
+		if _, present := binding["kind"]; present && r.Grant.Kind != "ADDITIONAL" && r.Grant.Kind != "PRACTICE" {
 			return nil, errWorkspaceReceiptMetadata
 		}
 		if _, present := binding["issuance_order"]; present && r.Grant.Order < 1 {
@@ -402,6 +402,9 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 		a, err := e.Find(snapshot.ID)
 		if err != nil || !workspaceFence(a, snapshot) {
 			return errors.New("preparation changed during activation checks; no interval committed; inspect and retry Begin")
+		}
+		if err := e.practiceGrantMode(a); err != nil {
+			return err
 		}
 		if expires > 0 && expires <= Millis() {
 			return errors.New("Begin command expired during setup; no interval committed; restore monitoring and retry Begin")

@@ -23,7 +23,18 @@ Sandbox uses the same `web exams show sandbox`/revision-fenced `update sandbox
 --earliest RFC3339 --latest RFC3339` workflow. C14's local candidate keeps practice
 repeatable/five-minute/no-webcam but requires an explicit finite Begin window;
 new installs start closed. Defaults never rewrite saved preparations or started
-deadlines. Full unified issuance/migration remain pending; no deployment.
+deadlines. Unified saved practice issuance is now an integrated candidate;
+qualification and policy details are in sandbox-grants.md. No deployment.
+Use `examctl help grants` or `examctl web grants help` for initial enrollment-time
+snapshots, reviewed NEW legacy-unused initial issuance, reviewed additional
+attempts, and paginated inspection/unused revision/revoke. Initial/additional
+workflows are qualified locally; saved-source grants and complete legacy recovery
+migration remain unfinished. Exact materials and writable initializer can differ:
+`--work empty` or `--work template --work-template NAME --work-template-version
+HASH`. Later defaults never revise issued grants. Review confirmation saves
+authority; only fresh native Begin starts time. See initial-grants-cli.md and
+additional-grants-cli.md for complete flags, finite windows, idempotent review/
+request retries, protected history and supported cancellation/restoration guidance.
 Collection setting flags are `--collection-file-mib` (default 128) and
 `--collection-total-mib` (default 512), in logical MiB, not allocated/compressed
 size. Existing preparations/attempts/bundles keep their snapshots; absent legacy

@@ -1143,6 +1143,154 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           ])
         ).status,
       ).toBe("REVOKED");
+      const sandboxBefore = JSON.parse(
+        (await cli(["show", "sandbox"])).stdout,
+      ).result;
+      const practiceFrom = new Date(Date.now() - 60000).toISOString(),
+        practiceUntil = new Date(Date.now() + 600000).toISOString();
+      const sandboxSaved = JSON.parse(
+        (
+          await cli([
+            "update",
+            "sandbox",
+            "--revision",
+            sandboxBefore.revision,
+            "--template",
+            "v1",
+            "--template-version",
+            "a".repeat(64),
+            "--earliest",
+            practiceFrom,
+            "--latest",
+            practiceUntil,
+            "--reason",
+            "Configure finite exact CLI practice window",
+          ])
+        ).stdout,
+      ).result;
+      expect(sandboxSaved.exam).toMatchObject({
+        id: "sandbox",
+        duration: 300,
+        webcam: false,
+        terminals: 4,
+        template_version: "a".repeat(64),
+      });
+      expect(
+        JSON.parse((await students(["add", "sandbox", "practicecli"])).stdout)
+          .result.ok,
+      ).toBe(true);
+      const practiceReviewArgs = [
+        "additional-preview",
+        "sandbox",
+        "practicecli",
+        "--duration-minutes",
+        "5",
+        "--definition-revision",
+        sandboxSaved.revision,
+        "--template-version",
+        "a".repeat(64),
+        "--earliest",
+        practiceFrom,
+        "--latest",
+        practiceUntil,
+        "--reason",
+        "Explicit NEW CLI practice allowance",
+        "--request",
+        randomUUID(),
+      ];
+      const practiceReview = await grantsCLI(practiceReviewArgs);
+      expect(practiceReview).toMatchObject({
+        kind: "NEW_SANDBOX_PRACTICE_GRANTS",
+        status: "REVIEW",
+        rows: [
+          {
+            username: "practicecli",
+            settings: { duration: 300, webcam: false, terminals: 4 },
+          },
+        ],
+      });
+      expect(await grantsCLI(practiceReviewArgs)).toEqual(practiceReview);
+      const practiceConfirm = [
+        "issue-confirm",
+        practiceReview.id,
+        "--revision",
+        practiceReview.revision,
+        "--request",
+        randomUUID(),
+      ];
+      const practiceIssued = await grantsCLI(practiceConfirm);
+      await f.restart();
+      expect(await grantsCLI(practiceConfirm)).toEqual(practiceIssued);
+      const practiceGrant = await grantsCLI([
+        "show",
+        practiceIssued.issued[0].grant,
+      ]);
+      expect(practiceGrant).toMatchObject({
+        issuance: "PRACTICE",
+        status: "AVAILABLE",
+        settings: { duration: 300, webcam: false, terminals: 4 },
+      });
+      await expect(
+        grantsCLI([
+          "revise",
+          practiceGrant.id,
+          "--revision",
+          "1",
+          "--duration-minutes",
+          "6",
+          "--reason",
+          "Refuse changing fixed practice allowance",
+        ]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("five minutes"),
+      });
+      expect((await grantsCLI(["show", practiceGrant.id])).revision).toBe(1);
+      const practiceRevised = await grantsCLI([
+        "revise",
+        practiceGrant.id,
+        "--revision",
+        "1",
+        "--latest",
+        new Date(Date.now() + 720000).toISOString(),
+        "--reason",
+        "Explicit unused practice window revision",
+      ]);
+      expect(practiceRevised).toMatchObject({
+        revision: 2,
+        settings: { duration: 300, webcam: false, terminals: 4 },
+      });
+      expect(
+        (
+          await grantsCLI([
+            "revoke",
+            practiceGrant.id,
+            "--revision",
+            "2",
+            "--reason",
+            "Withdraw unused CLI practice grant",
+          ])
+        ).status,
+      ).toBe("REVOKED");
+      const practiceCancelled = await grantsCLI([
+        ...practiceReviewArgs.slice(0, -2),
+        "--request",
+        randomUUID(),
+      ]);
+      expect(
+        (
+          await grantsCLI([
+            "issue-cancel",
+            practiceCancelled.id,
+            "--revision",
+            practiceCancelled.revision,
+          ])
+        ).status,
+      ).toBe("CANCELLED");
+      expect(
+        (await grantsCLI(["list", "sandbox", "--username", "practicecli"]))
+          .grants,
+      ).toHaveLength(1);
       const allowanceArgs = [
         "settings",
         "cli-exam",

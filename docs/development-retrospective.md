@@ -91,6 +91,18 @@ state ownership, and bound individual browser actions against observed accessibl
 roles. AGENTS.md now states this explicitly. Failed setup/locator results remain
 recorded and are not counted as product regressions or passes.
 
+The C14 full browser pass also exposed stale shared fixture producers: new
+definitions without exact sources, reuse of another test's reserved account and
+an unstarted retry that retained its old mocked transport. Inventory producers
+alongside consumers when migrating admission contracts; do not test only the
+new feature file. A clipboard test additionally raced Modal's asynchronous focus
+restoration. Wait for that actual boundary before moving focus and pressing keys.
+Global fake UTC across real worker processes was also unsuitable for signed
+freshness; use an explicitly controlled release dependency while keeping protocol
+UTC real. Corrections retain the failed receipts and preserve enforcement. The
+existing AGENTS.md rules already require these controls; applying them before
+broad qualification saves repeated suite time.
+
 The additional-grant state review also caught a real authority-proof gap BEFORE
 the first broad run: sequence alone could not prove the original initial grant
 after missing web history. A two-case missing/foreign-identity control failed;

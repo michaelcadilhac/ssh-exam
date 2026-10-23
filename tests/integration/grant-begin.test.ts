@@ -24,6 +24,10 @@ it.each([
   "wrong-native-order",
   "cancelled-retry",
   "cancelled-consumption-contradiction",
+  "cancelled-other-consumption",
+  "cancelled-consumption-status",
+  "cancelled-consumption-web-interval",
+  "cancelled-consumption-protected",
   "cancelled-wrong-proof",
   "preflight-before-window",
   "cancelled-uid-change",
@@ -68,6 +72,7 @@ it.each([
             "immutable-template-versions-v1",
             "exact-template-begin-v1",
             "unified-initial-grants-v1",
+            "verified-preflight-cancellation-v1",
             ...(orderedSupport ? ["ordered-template-grants-v1"] : []),
             ...(sourceSupport ? ["independent-workspace-grants-v1"] : []),
             ...(reviewedSupport ? ["reviewed-initial-grants-v1"] : []),
@@ -144,6 +149,7 @@ it.each([
         Object.assign(a, {
           state: "CANCELLED_BEFORE_START",
           policy_state: "NORMAL",
+          cancellation_cleanup_complete: true,
           ended: Date.now(),
         });
         return { ...a };
@@ -587,6 +593,10 @@ it.each([
       if (
         [
           "cancelled-consumption-contradiction",
+          "cancelled-other-consumption",
+          "cancelled-consumption-status",
+          "cancelled-consumption-web-interval",
+          "cancelled-consumption-protected",
           "cancelled-wrong-proof",
         ].includes(scenario)
       ) {
@@ -605,6 +615,55 @@ it.each([
             )
             .run(randomUUID(), id, native.get(id).transport, Date.now());
         }
+        if (scenario === "cancelled-other-consumption") {
+          const other = randomUUID();
+          store.db
+            .prepare(
+              "INSERT INTO grant_claims VALUES(?,?,1,?,10001,'CANCELLED',?,?)",
+            )
+            .run(other, issued.id, issued.hash, Date.now(), Date.now());
+          store.db
+            .prepare(
+              "INSERT INTO grant_begin_intents(id,attempt,transport,state,created_at,start,deadline) VALUES(?,?,?,'CONSUMED',?,100,7200100)",
+            )
+            .run(randomUUID(), other, "retained-other-attempt", Date.now());
+        }
+        if (scenario === "cancelled-consumption-status") {
+          store.db
+            .prepare("UPDATE attempt_grants SET status='CONSUMED' WHERE id=?")
+            .run(issued.id);
+          expect(
+            store.db
+              .prepare("SELECT status FROM attempt_grants WHERE id=?")
+              .get(issued.id),
+          ).toEqual({ status: "CONSUMED" });
+        }
+        if (scenario === "cancelled-consumption-web-interval") {
+          store.db
+            .prepare("UPDATE attempts SET original_deadline=7200100 WHERE id=?")
+            .run(id);
+          expect(store.attempt(id).original_deadline).toBe(7200100);
+        }
+        if (scenario === "cancelled-consumption-protected") {
+          store.db
+            .prepare("UPDATE attempts SET protected=1,checksum=? WHERE id=?")
+            .run(hash("retained protected source"), id);
+          expect(store.attempt(id).protected).toBe(1);
+        }
+        if (
+          [
+            "cancelled-consumption-status",
+            "cancelled-consumption-web-interval",
+            "cancelled-consumption-protected",
+          ].includes(scenario)
+        )
+          expect(
+            store.db
+              .prepare(
+                "SELECT count(*) AS n FROM grant_begin_intents WHERE attempt=?",
+              )
+              .get(id),
+          ).toEqual({ n: 0 });
         await app.inject({
           method: "POST",
           url: "/api/logout",
@@ -629,7 +688,10 @@ it.each([
         headers = await login();
         const refused = await preflight();
         expect(refused.statusCode).toBe(
-          scenario === "cancelled-consumption-contradiction" ? 409 : 400,
+          scenario.startsWith("cancelled-consumption") ||
+            scenario === "cancelled-other-consumption"
+            ? 409
+            : 400,
         );
         expect(
           store.db

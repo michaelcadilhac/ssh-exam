@@ -46,8 +46,11 @@ func webGrantIssuanceMain(args []string) int {
 	body := map[string]any{}
 	switch w[1] {
 	case "issue-preview", "additional-preview":
-		if len(w) < 4 || len(w) > 203 || !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(w[2]) || w[2] == "sandbox" {
-			return usage("choose an ordinary exam and 1..200 explicit legacy unused students")
+		if len(w) < 4 || len(w) > 203 || !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(w[2]) {
+			return usage("choose an exam and 1..200 explicit enrolled students")
+		}
+		if w[2] == "sandbox" && w[1] == "issue-preview" {
+			return usage("practice uses additional-preview sandbox --duration-minutes 5, not legacy initial issuance")
 		}
 		if !digest.MatchString(*definition) || !digest.MatchString(*source) || len(strings.TrimSpace(*reason)) < 8 || len(*reason) > 1000 {
 			return usage("select current --definition-revision and --template-version hashes with an 8..1000 character reason")
@@ -85,6 +88,9 @@ func webGrantIssuanceMain(args []string) int {
 			if duration < 60 || duration > 21600 {
 				return usage("additional allowance must be60..21600 seconds")
 			}
+			if w[2] == "sandbox" && duration != 300 {
+				return usage("sandbox practice is fixed at five minutes; use --duration-minutes 5")
+			}
 			allowed["duration-minutes"], allowed["duration-seconds"], allowed["webcam"] = true, true, true
 			allowed["work"], allowed["work-template"], allowed["work-template-version"] = true, true, true
 			work, err := workFlags.selection(present)
@@ -98,6 +104,9 @@ func webGrantIssuanceMain(args []string) int {
 			if present["webcam"] {
 				if *webcam != "required" && *webcam != "optional" {
 					return usage("webcam override must be required/optional; omit to preserve each student's effective requirement")
+				}
+				if w[2] == "sandbox" && *webcam == "required" {
+					return usage("sandbox practice is fixed to no webcam; omit webcam or choose optional")
 				}
 				body["webcam"] = *webcam == "required"
 			}
@@ -184,7 +193,7 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 	}
 	uuid := regexp.MustCompile(`^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$`)
 	digest := regexp.MustCompile(`^[a-f0-9]{64}$`)
-	if !uuid.MatchString(result.ID) || (result.Kind != "NEW_LEGACY_INITIAL_GRANTS" && result.Kind != "NEW_ADDITIONAL_TEMPLATE_GRANTS") || result.Agent != agent || result.Actor != "agent:"+agent+":root" || result.Exam == "" || result.Exam == "sandbox" || !digest.MatchString(result.Revision) || !digest.MatchString(result.DefinitionRevision) || len(result.Rows) < 1 || len(result.Rows) > 200 || (scope.ID != "" && scope.ID != result.ID) || (scope.Exam != "" && scope.Exam != result.Exam) || (scope.Revision != "" && scope.Revision != result.Revision) {
+	if !uuid.MatchString(result.ID) || (result.Kind != "NEW_LEGACY_INITIAL_GRANTS" && result.Kind != "NEW_ADDITIONAL_TEMPLATE_GRANTS" && result.Kind != "NEW_SANDBOX_PRACTICE_GRANTS") || ((result.Exam == "sandbox") != (result.Kind == "NEW_SANDBOX_PRACTICE_GRANTS")) || result.Agent != agent || result.Actor != "agent:"+agent+":root" || result.Exam == "" || !digest.MatchString(result.Revision) || !digest.MatchString(result.DefinitionRevision) || len(result.Rows) < 1 || len(result.Rows) > 200 || (scope.ID != "" && scope.ID != result.ID) || (scope.Exam != "" && scope.Exam != result.Exam) || (scope.Revision != "" && scope.Revision != result.Revision) {
 		return fail
 	}
 	switch result.Status {
@@ -198,11 +207,17 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 			return fail
 		}
 		seen[row.Username] = true
+		if result.Exam == "sandbox" && (row.Settings.Duration != 300 || row.Settings.Webcam || row.Settings.Terminals != 4) {
+			return fail
+		}
 	}
 	if op == "grants.issue-preview" || op == "grants.additional-preview" {
 		expectedKind := "NEW_LEGACY_INITIAL_GRANTS"
 		if op == "grants.additional-preview" {
 			expectedKind = "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+			if scope.Exam == "sandbox" {
+				expectedKind = "NEW_SANDBOX_PRACTICE_GRANTS"
+			}
 		}
 		if result.Kind != expectedKind || result.DefinitionRevision != scope.DefinitionRevision {
 			return fail

@@ -2070,6 +2070,25 @@ Saved-source retention remains C18 investigation:
 unused web references need a native deletion fence before saved grants are usable.
 See grant-workspace-sources.md. No deployment or source-history mutation occurs.
 
+October23 C14 local implementation unifies sandbox practice through immutable PRACTICE
+grants. Authenticated preflight auto-issues only within the finite configured
+window; repeat requires positively protected/released completion. Each grant
+saves300 seconds/no webcam/four terminals and its exact independent starter.
+Retries reuse unused authority; expired/revoked grants need explicit revision or
+reviewed NEW issuance in the shared CLI/web workflow. Manual windows may be
+outside defaults. Distinct signed preparation/Begin purposes and fresh C15
+verification bind the one-use grant before actual time starts.027 preserves old
+rows and fences grantless sandbox writers after mode activation; native retained
+positive practice history fences legacy preparation/final Begin across accounts.
+Started legacy intervals keep their original deadlines and restrictions.
+Cancellation releases an unstarted claim only with exact signed cleanup-complete,
+NORMAL account restoration and no contradictory whole-grant consumption history.
+No timeout, bare CANCELLED label or old capability is positive cleanup evidence.
+Detailed state review, tests and remaining privileged limits: sandbox-grants.md.
+Final490 application tests, full native race/resource and62 affected rebuilt
+browser checks pass after13 focused fixture corrections. This is local
+implementation/testing, not deployment or retained-SSH enablement.
+
 October23 locally implemented/tested reviewed legacy issuance adds actor-bound fifteen-minute
 reviews, exact current-definition/source selection, per-user effective policies
 and atomic NEW confirmation through matching CLI/web. It labels REVIEWED_NEW

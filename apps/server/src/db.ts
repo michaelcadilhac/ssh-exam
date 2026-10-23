@@ -189,6 +189,10 @@ export class Store {
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/026.sql", "utf8")),
       )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=27").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/027.sql", "utf8")),
+      )();
   }
   audit(actor: string, action: string, target: string, detail = "") {
     this.db

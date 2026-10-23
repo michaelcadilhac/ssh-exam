@@ -106,10 +106,18 @@ test("covered and locked terminals cannot replace or paste the attempt clipboard
   const f = await setup(page);
   output(f, Buffer.concat([osc("allowed"), Buffer.from("READY")]));
   await expect(page.locator(".xterm-rows")).toContainText("READY");
-  await page.getByRole("button", { name: "Finish exam", exact: true }).click();
+  const finish = page.getByRole("button", { name: "Finish exam", exact: true });
+  await finish.click();
+  await expect(
+    page.getByRole("dialog", { name: "Finish exam?", exact: true }),
+  ).toBeVisible();
   output(f, Buffer.concat([osc("covered"), Buffer.from("IGNORED")]));
   await expect(page.locator(".xterm-rows")).toContainText("IGNORED");
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // Modal cleanup restores its opener in an animation frame. Observe that
+  // boundary before intentionally moving focus to the terminal for paste.
+  await expect(finish).toBeFocused();
   await paste(page);
   await expect.poll(() => pasted(f)).toBe("allowed");
   await page.evaluate(() => document.exitFullscreen());

@@ -833,7 +833,14 @@ export async function createApp(
       latest?.state === "COMPLETED" &&
       latest.protected &&
       ["RELEASED", "OVERRIDDEN"].includes(latest.access_state);
-    const initialGrant = grants.initialFor(s.exam!, s.username);
+    const practiceGrant = isSandbox(s.exam)
+      ? grants.lastPracticeFor(s.username)
+      : null;
+    const initialGrant = isSandbox(s.exam)
+      ? practiceGrant?.status === "CONSUMED"
+        ? null
+        : practiceGrant
+      : grants.initialFor(s.exam!, s.username);
     const settings =
       latest && !repeat && latest.state !== "CANCELLED_BEFORE_START"
         ? JSON.parse(latest.settings)
@@ -854,6 +861,18 @@ export async function createApp(
       attempt: repeat ? null : latest || null,
       grants: availableGrants,
       selected_grant: selectedGrant?.id ?? null,
+      practice_blocked:
+        isSandbox(s.exam) &&
+        !availableGrants.length &&
+        initialGrant &&
+        initialGrant.status !== "CONSUMED"
+          ? {
+              id: initialGrant.id,
+              status: initialGrant.status,
+              message:
+                "Your unused practice grant is expired or revoked. Ask your instructor to inspect and explicitly revise it or authorize NEW practice; changing defaults does not replace this grant.",
+            }
+          : null,
       previous_attempt:
         repeat && latest
           ? {
@@ -911,6 +930,21 @@ export async function createApp(
     if (!h.ready) throw Error("Class server guards not ready");
     requireSandboxAgent(s.exam, h);
     if (
+      isSandbox(s.exam) &&
+      ![
+        "unified-sandbox-grants-v1",
+        "verified-preflight-cancellation-v1",
+        "ordered-template-grants-v1",
+        "sandbox-begin-window-v1",
+        "immutable-template-versions-v1",
+        "exact-template-begin-v1",
+        "private-workspace-staging",
+      ].every((cap) => h.capabilities?.includes(cap))
+    )
+      throw Error(
+        "Class server lacks saved practice grant admission and fresh Begin verification; verify matching native roles before preflight. No grant, account or clock reserved.",
+      );
+    if (
       h.functional_test &&
       (!config.functionalTest || config.mode !== "development")
     )
@@ -957,6 +991,13 @@ export async function createApp(
         ["RELEASED", "OVERRIDDEN"].includes(previous.access_state)
       )
         previous = undefined;
+    }
+    if (isSandbox(s.exam)) {
+      if (previous?.state === "PREPARING" && !previous.grant_id)
+        throw Error(
+          "This legacy unstarted practice retains its old snapshot. Sign out to positively cancel it, then reopen preflight for a NEW saved practice grant; no old clock is reopened.",
+        );
+      if (!previous && !chosenGrant) grants.practice(s.username);
     }
     const choices = grants.available(s.exam!, s.username);
     let initialGrant =
@@ -1012,6 +1053,13 @@ export async function createApp(
     if (initialGrant && !h.capabilities?.includes("ordered-template-grants-v1"))
       throw Error(
         "Class server lacks ordered grant authority/type support; verify matching native roles before preflight. No grant or clock consumed.",
+      );
+    if (
+      initialGrant &&
+      !h.capabilities?.includes("verified-preflight-cancellation-v1")
+    )
+      throw Error(
+        "Class server lacks verified grant cancellation/cleanup receipts; verify matching native roles before preflight. No claim or clock consumed.",
       );
     if (
       initialGrant &&
@@ -1185,9 +1233,7 @@ export async function createApp(
             initialGrant?.id ?? null,
             initialGrant?.revision ?? null,
             initialGrant?.hash ?? null,
-            initialGrant?.issuance === "ADDITIONAL_TEMPLATE"
-              ? "ADDITIONAL"
-              : null,
+            initialGrant ? (grants.binding(initialGrant).kind ?? null) : null,
             initialGrant?.issuance_order ?? null,
             initialGrant?.initial_grant ?? null,
             initialGrant && grants.binding(initialGrant).work
@@ -1210,9 +1256,11 @@ export async function createApp(
     const expectedGrant = initialGrant ? grants.binding(initialGrant) : null;
     const prepared = await agent.call(
       expectedGrant
-        ? expectedGrant.kind === "ADDITIONAL"
-          ? "prepare-additional-grant-attempt"
-          : "prepare-grant-attempt"
+        ? expectedGrant.kind === "PRACTICE"
+          ? "prepare-practice-grant-attempt"
+          : expectedGrant.kind === "ADDITIONAL"
+            ? "prepare-additional-grant-attempt"
+            : "prepare-grant-attempt"
         : recovery
           ? "prepare-recovery-attempt"
           : "prepare-attempt",
@@ -1429,9 +1477,11 @@ export async function createApp(
       const beginIntent = initialGrant ? grants.begin(a, conn.transport) : null;
       const result = await agent.call(
         initialGrant
-          ? initialGrant.kind === "ADDITIONAL"
-            ? "activate-additional-grant-attempt"
-            : "activate-grant-attempt"
+          ? initialGrant.kind === "PRACTICE"
+            ? "activate-practice-grant-attempt"
+            : initialGrant.kind === "ADDITIONAL"
+              ? "activate-additional-grant-attempt"
+              : "activate-grant-attempt"
           : recovery
             ? "activate-recovery-attempt"
             : currentSettings.template_version

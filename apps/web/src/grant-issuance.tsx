@@ -15,6 +15,7 @@ export function GrantIssuanceDialog({
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
+  const practice = initial.id === "sandbox";
   const [definition, setDefinition] = useState(initial),
     [usernames, setUsernames] = useState(""),
     [earliest, setEarliest] = useState(
@@ -137,9 +138,11 @@ export function GrantIssuanceDialog({
         );
       if (
         result.kind !==
-        (additional
-          ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
-          : "NEW_LEGACY_INITIAL_GRANTS")
+        (practice
+          ? "NEW_SANDBOX_PRACTICE_GRANTS"
+          : additional
+            ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
+            : "NEW_LEGACY_INITIAL_GRANTS")
       )
         throw Error(
           "Select the matching initial/additional grant workflow to inspect this review; no new authorization confirmed",
@@ -178,13 +181,25 @@ export function GrantIssuanceDialog({
   return (
     <Modal
       title={
-        additional ? "Authorize additional attempts" : "Issue legacy grants"
+        practice
+          ? "Authorize practice grant"
+          : additional
+            ? "Authorize additional attempts"
+            : "Issue legacy grants"
       }
       onClose={close}
       wide
     >
       {additional ? (
         <p>
+          {practice && (
+            <>
+              Practice is fixed at five minutes, no webcam and four terminals.
+              Use this explicit NEW review after revocation or to authorize
+              another finite window; automatic practice never replaces
+              revoked/expired authority.{" "}
+            </>
+          )}
           Authorize separate attempts under the same exam, with a chosen
           allowance and exact template. Earlier submissions, clocks and account
           restrictions remain protected. Preview reserves no account or time.
@@ -252,24 +267,27 @@ export function GrantIssuanceDialog({
                   max={21600}
                   step={1}
                   value={duration}
+                  readOnly={practice}
                   onChange={(e) => setDuration(e.target.value)}
                 />
               </label>
-              <label>
-                Webcam requirement
-                <select
-                  value={webcam}
-                  onChange={(e) => setWebcam(e.target.value)}
-                >
-                  <option value="effective">
-                    Preserve each student's effective requirement
-                  </option>
-                  <option value="required">Explicitly require webcam</option>
-                  <option value="optional">
-                    Explicitly make webcam optional
-                  </option>
-                </select>
-              </label>
+              {!practice && (
+                <label>
+                  Webcam requirement
+                  <select
+                    value={webcam}
+                    onChange={(e) => setWebcam(e.target.value)}
+                  >
+                    <option value="effective">
+                      Preserve each student's effective requirement
+                    </option>
+                    <option value="required">Explicitly require webcam</option>
+                    <option value="optional">
+                      Explicitly make webcam optional
+                    </option>
+                  </select>
+                </label>
+              )}
             </>
           )}
           <label>
@@ -378,7 +396,11 @@ export function GrantIssuanceDialog({
               disabled={busy}
               onClick={() => void perform("confirm")}
             >
-              {additional ? "Confirm additional grants" : "Confirm NEW grants"}
+              {practice
+                ? "Confirm practice grant"
+                : additional
+                  ? "Confirm additional grants"
+                  : "Confirm NEW grants"}
             </button>
             <button disabled={busy} onClick={() => void perform("cancel")}>
               Cancel review
@@ -390,7 +412,11 @@ export function GrantIssuanceDialog({
             disabled={busy || !definition.template_version}
             onClick={() => void perform("preview")}
           >
-            {additional ? "Preview additional grants" : "Preview NEW grants"}
+            {practice
+              ? "Preview practice grant"
+              : additional
+                ? "Preview additional grants"
+                : "Preview NEW grants"}
           </button>
         ) : null}
         {!pending && (

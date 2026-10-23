@@ -31,12 +31,16 @@ const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
 const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
 const approvalAccounts = { approval01: 10020 };
+// The sandbox repeat test deliberately leaves a reserved new preflight; expiry
+// qualification must own another account instead of bypassing that reservation.
+const preflightAccounts = { preflight01: 10027 };
 const versionAccounts = {
   version01: 10021,
   grant01: 10022,
   legacy01: 10023,
   legacy02: 10024,
   extra01: 10025,
+  practice01: 10026,
 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
@@ -121,6 +125,9 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         "immutable-template-versions-v1",
         "exact-template-begin-v1",
         "unified-initial-grants-v1",
+        "verified-preflight-cancellation-v1",
+        "unified-sandbox-grants-v1",
+        "sandbox-begin-window-v1",
         "ordered-template-grants-v1",
         "independent-workspace-grants-v1",
         "reviewed-initial-grants-v1",
@@ -134,6 +141,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...closureAccounts,
       ...monitoringAccounts,
       ...approvalAccounts,
+      ...preflightAccounts,
       ...versionAccounts,
       policytest01: 12001,
       student01: 10001,
@@ -173,17 +181,38 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (
     op === "prepare-attempt" ||
     op === "prepare-grant-attempt" ||
-    op === "prepare-additional-grant-attempt"
+    op === "prepare-additional-grant-attempt" ||
+    op === "prepare-practice-grant-attempt"
   ) {
     if (
       b.grant &&
-      (b.grant.kind === "ADDITIONAL") !==
-        (op === "prepare-additional-grant-attempt")
+      b.grant.kind !==
+        (op === "prepare-practice-grant-attempt"
+          ? "PRACTICE"
+          : op === "prepare-additional-grant-attempt"
+            ? "ADDITIONAL"
+            : undefined)
     )
       throw Error("Fixture grant authority type/purpose mismatch");
-    if (!attempts.has(b.id))
-      attempts.set(b.id, { ...b, state: "PREPARING", generation: 0 });
-    return attempts.get(b.id);
+    const existing = attempts.get(b.id);
+    if (existing) {
+      if (existing.state === "PREPARING" && !existing.start) {
+        if (
+          existing.exam !== b.exam ||
+          existing.username !== b.username ||
+          existing.uid !== b.uid ||
+          JSON.stringify(existing.grant) !== JSON.stringify(b.grant) ||
+          JSON.stringify(existing.settings) !== JSON.stringify(b.settings)
+        )
+          throw Error("Fixture preparation retry differs from saved authority");
+        existing.transport = b.transport;
+        existing.browser_ssh = b.browser_ssh;
+      }
+      return existing;
+    }
+    const prepared = { ...b, state: "PREPARING", generation: 0 };
+    attempts.set(b.id, prepared);
+    return prepared;
   }
   const a = attempts.get(b.id);
   if (!a) throw Error("Unknown fixture attempt");
@@ -223,10 +252,13 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     case "cancel-attempt":
       if (a.start) throw Error("Cannot cancel started attempt");
       a.state = "CANCELLED_BEFORE_START";
+      a.cancellation_cleanup_complete = true;
+      a.policy_state = "NORMAL";
       break;
     case "activate-versioned-attempt":
     case "activate-grant-attempt":
     case "activate-additional-grant-attempt":
+    case "activate-practice-grant-attempt":
     case "activate-attempt":
       if (
         a.settings.template_version &&
@@ -234,6 +266,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           "activate-versioned-attempt",
           "activate-grant-attempt",
           "activate-additional-grant-attempt",
+          "activate-practice-grant-attempt",
         ].includes(op) ||
           JSON.stringify(b.settings) !== JSON.stringify(a.settings))
       )
@@ -244,9 +277,14 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       if (a.grant) {
         if (
           (op !== "activate-grant-attempt" &&
-            op !== "activate-additional-grant-attempt") ||
-          (a.grant.kind === "ADDITIONAL") !==
-            (op === "activate-additional-grant-attempt") ||
+            op !== "activate-additional-grant-attempt" &&
+            op !== "activate-practice-grant-attempt") ||
+          a.grant.kind !==
+            (op === "activate-practice-grant-attempt"
+              ? "PRACTICE"
+              : op === "activate-additional-grant-attempt"
+                ? "ADDITIONAL"
+                : undefined) ||
           JSON.stringify(a.grant) !== JSON.stringify(b.grant)
         )
           throw Error("Grant-aware Begin and exact binding required");
@@ -434,6 +472,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       ...closureAccounts,
       policytest01: 12001,
       ...approvalAccounts,
+      ...preflightAccounts,
       ...versionAccounts,
       student01: 10001,
       student02: 10002,
@@ -614,7 +653,11 @@ attempts.set(extraHistoryID, {
 });
 definitions.update(
   "sandbox",
-  { earliest: exam.earliest, latest: exam.latest },
+  {
+    earliest: exam.earliest,
+    latest: exam.latest,
+    template_version: versionHash,
+  },
   definitions.show("sandbox").revision,
   "fixture-operator",
   "Configure finite synthetic practice window",
@@ -667,7 +710,7 @@ for (const [id, username, uid] of [
   ["approval-feedback", "approval01", 10020],
   ["isolation-a", "isolation01", 10015],
   ["isolation-b", "isolation02", 10016],
-  ["preflight-limit", "student04", 10004],
+  ["preflight-limit", "preflight01", 10027],
 ] as const) {
   store.db
     .prepare("INSERT INTO exams VALUES(?,?)")

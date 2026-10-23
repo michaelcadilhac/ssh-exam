@@ -7,8 +7,12 @@ metadata-only outcomes and migration 015. Attempt/clock workflows are in
 attempt-clock-management.md; interruption review/authorization, migration 016 and
 private read receipts are in interruption-management.md. Bounded monitoring
 metadata/replay and its all-read transient receipts are in monitoring-cli.md. Full management,
-unified grants and definition retirement are still pending; this is not CLI
-completeness or production qualification.
+saved-work grant migration and definition retirement are still pending; this is not CLI
+completeness or production qualification. Enrollment-time initial, reviewed NEW
+legacy-unused initial and additional empty/exact-template grants now have shared
+CLI/web workflows (initial-grants-cli.md and additional-grants-cli.md). The C14
+sandbox candidate uses those review/inspection paths with fixed practice policy;
+its qualification status is in sandbox-grants.md.
 
 The October22 administrator candidate adds named default-deny metadata list/show
 and secret-safe creation through the same agent identity. Shared browser/root

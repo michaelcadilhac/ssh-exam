@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 async function signIn(page: Page) {
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("preflight-limit");
-  await page.getByLabel("Enrolled username").fill("student04");
+  await page.getByLabel("Enrolled username").fill("preflight01");
   await page.getByRole("button", { name: "Start SSH sign-in" }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
   await page.getByRole("button", { name: "Respond to this host" }).click();

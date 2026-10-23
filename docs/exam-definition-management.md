@@ -143,7 +143,14 @@ Logs: /tmp/ssh-exam-sandbox-window-{app,native,browser,build}.log. No missing co
 These use synthetic identities/data; native OS activation is supplied by test
 guards and the browser shell is a fixture, not privileged containment proof.
 The pinned boolean host guard reports BUSY; no new guest or upload is attempted.
-Nothing is deployed and unified fixed-settings grant records remain unimplemented.
+Nothing is deployed. The October23 unified fixed-settings practice candidate
+supersedes the earlier grantless practice path; implementation/qualification is
+tracked in sandbox-grants.md. Existing expired/revoked authority requires an
+explicit unused revision or reviewed NEW practice, not silent regeneration.
+Exam-default edits change future automatic issuance only; issued snapshots and
+started deadlines remain fixed. Matching CLI/web workflows are documented in
+additional-grants-cli.md.027 and matching native writers require a future verified
+drain; the earlier429-test result does not qualify these new artifacts.
 
 All 301 application tests in 51 files pass with actual compiled CLI-to-gateway
 TLS create/update, explicit-zone conversion, partial preservation, stale refusal

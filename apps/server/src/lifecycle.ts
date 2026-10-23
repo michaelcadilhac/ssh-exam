@@ -581,6 +581,16 @@ export class Lifecycle {
           errorDetail,
         );
       }
+      if (
+        a.grant_id &&
+        remote.cancellation_cleanup_complete === true &&
+        remote.policy_state === "NORMAL"
+      )
+        this.store.db.transaction(() =>
+          new AttemptGrants(this.store, this.agent.id).retire(
+            this.store.attempt(id),
+          ),
+        )();
       this.monitoring.delete(id, "unstarted-preparation");
       this.onEnd(this.store.attempt(id));
     }
@@ -962,6 +972,14 @@ export class Lifecycle {
         "The previous preparation was cancelled, but account access restoration is not yet confirmed. Retry shortly; contact your instructor if this continues.",
       );
     }
+    if (
+      a.grant_id &&
+      (remote.cancellation_cleanup_complete !== true ||
+        remote.policy_state !== "NORMAL")
+    )
+      throw Error(
+        "Cancelled grant cleanup/restoration is not positively complete. Preserve the claim; inspect examctl info ATTEMPT --read-only and retry supported native cancellation/restoration with matching roles before new authorization.",
+      );
     if (
       remote.id !== a.id ||
       remote.exam !== a.exam ||
