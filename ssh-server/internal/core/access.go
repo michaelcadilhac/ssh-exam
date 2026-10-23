@@ -86,7 +86,7 @@ func workloadAllowed(a *Attempt, purpose string) error {
 	if purpose == "practice" && a.State == "PREPARING" && a.Start == 0 && !preflightExpired(a, Millis()) {
 		return nil
 	}
-	if purpose == "exam" && a.State == "ACTIVE" && !expired(a) && a.Lease > Millis() && a.AccessState == "HELD" {
+	if (purpose == "exam" || purpose == framedPanePurpose) && a.State == "ACTIVE" && !expired(a) && a.Lease > Millis() && a.AccessState == "HELD" {
 		return nil
 	}
 	return errors.New("workload not admitted; ended, locked or stale channel")

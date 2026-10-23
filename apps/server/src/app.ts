@@ -2958,7 +2958,17 @@ export async function createApp(
           );
           if (closingSessions) return;
           if (!conn.panes.has(m.pane)) {
-            send(ws, { type: "closed", pane: m.pane });
+            if (c.inputEpoch)
+              send(ws, {
+                type: "opened",
+                pane: m.pane,
+                input: { protocol: "v1", epoch: c.inputEpoch },
+              });
+            send(ws, {
+              type: "closed",
+              pane: m.pane,
+              input_epoch: c.inputEpoch,
+            });
             return;
           }
           if (!practice && !(conn instanceof BrowserConnection))
@@ -2984,13 +2994,25 @@ export async function createApp(
                 type: "output",
                 pane: m.pane,
                 data: bytes.toString("base64"),
+                input_epoch: c.inputEpoch,
               });
           });
           c.on("close", () => {
             const target = sockets.get(a!.id);
-            if (target) send(target, { type: "closed", pane: m.pane });
+            if (target)
+              send(target, {
+                type: "closed",
+                pane: m.pane,
+                input_epoch: c.inputEpoch,
+              });
           });
-          send(ws, { type: "opened", pane: m.pane });
+          send(ws, {
+            type: "opened",
+            pane: m.pane,
+            input: c.inputEpoch
+              ? { protocol: "v1", epoch: c.inputEpoch }
+              : undefined,
+          });
           c.resume();
         } else {
           const c = conn.panes.get(m.pane);
@@ -3002,10 +3024,33 @@ export async function createApp(
             if (m.generation !== a.generation)
               throw Error("Stale input generation");
             if (c.writableLength > 65536) throw Error("PTY backpressure");
-            c.write(m.data);
+            if (c.inputEpoch) {
+              if (m.input?.epoch !== c.inputEpoch) return;
+              if (!c.writeInputFrame)
+                throw Error(
+                  "Native framed input handler unavailable; preserve this pane and inspect matching loaded versions",
+                );
+              c.writeInputFrame(m.input, m.data);
+            } else {
+              if (m.input) return; // Stale framed packet cannot become raw input.
+              c.write(m.data);
+            }
           }
           if (m.type === "resize") {
-            c.setWindow(m.rows, m.cols, 0, 0);
+            if (c.inputEpoch) {
+              // The optimistic window can resize before its native context
+              // arrives. Discard that captured packet without a false modal,
+              // ownership incident, permission change or later relabelling.
+              if (m.input?.epoch !== c.inputEpoch) return;
+              if (!c.resizeInputFrame)
+                throw Error(
+                  "Native framed resize handler unavailable; preserve this pane and inspect matching loaded versions",
+                );
+              c.resizeInputFrame(m.input, m.rows, m.cols);
+            } else {
+              if (m.input) return;
+              c.setWindow(m.rows, m.cols, 0, 0);
+            }
             if (a.state === "ACTIVE" && !(conn instanceof BrowserConnection))
               monitoring.record(a.id, m.pane, {
                 event: "resize",

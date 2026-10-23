@@ -77,6 +77,15 @@ export type State =
   | "COMPLETED"
   | "COLLECTION_FAILED"
   | "CANCELLED_BEFORE_START";
+// Captured at the key/resize event, before any WebSocket/RPC/worker queue.
+// This is an input scope, never monitoring permission or a hold/thaw receipt.
+export const capturedPaneInputSchema = z
+  .object({
+    epoch: z.string().regex(/^[a-f0-9]{64}$/),
+    sequence: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict();
+export type CapturedPaneInput = z.infer<typeof capturedPaneInputSchema>;
 export const readySchema = z.object({
   fullscreen: z.literal(true),
   focus: z.literal(true),
@@ -129,6 +138,7 @@ export const messageSchema = z.discriminatedUnion("type", [
     pane: z.string().uuid(),
     data: z.string().max(16384),
     generation: z.number().int(),
+    input: capturedPaneInputSchema.optional(),
   }),
   z.object({
     v: z.literal(1),
@@ -136,6 +146,7 @@ export const messageSchema = z.discriminatedUnion("type", [
     pane: z.string().uuid(),
     cols: z.number().int().min(2).max(500),
     rows: z.number().int().min(2).max(200),
+    input: capturedPaneInputSchema.optional(),
   }),
   z.object({
     v: z.literal(1),

@@ -2599,3 +2599,20 @@ generated screenshots restored. All runners ended. C3/C16 live authority,
 all-writer retention/recovery, installed-role/capacity/container gates remain open;
 this does not close the critical TODO or establish the incident cause. No
 deployment, production action, missing executable or unanswered design question.
+
+## October23: actual framed input and pane replacement
+
+Implemented/tested locally: captured input/resize through JS/IPC/WASM/SSH/native
+PTYs, with fresh per-pane epochs and stale output/EOF/close fences. Fixes actual
+READY ordering, false resize-modal/SSH-loss paths and unbounded framed queuing;
+existing host/admin workflows keep supported legacy negotiation. Read-only
+examctl exposes captured epochs with useful help. Final native race/resource and
+exact root framed/timed/collector profiles pass; app533 passes and all151 browser
+scenarios are covered by broad150 plus corrected authenticated-summary focus
+(not a single green full run). Detailed artifacts, failed controls and limits:
+framed-pane-input.md. Original uncommitted screenshot remains untouched.
+
+Critical C3/C16 hold/live-authority/input-discard/approved Continue remains open;
+no retention or automatic recovery enabled. Continue that integrated workflow,
+not another standalone primitive. No push, deployment, production/student mutation
+or temporary-service consolidation.

@@ -177,6 +177,18 @@ services are changed; no grant/clock is consumed by refusal/cancellation.
   scenarios, builds/static checks and same-candidate collector isolation pass.
   Implemented/tested locally; see docs/renewal-receipt-recovery.md.
   This does not complete C3/C16 containment/live authority or this critical item.
+  The subsequent local framing candidate connects capture-time keys/resize
+  through actual JS/IPC/WASM/SSH/native PTYs and fences stale close/output across
+  same-pane replacement.533 application tests pass;150 browser scenarios passed
+  in the broad run and the remaining additional-grant fixture now passes after
+  explicitly awaiting its authenticated summary response. This is151 scenarios
+  across broad+focus, not one all-green full browser run. A late native supported-
+  account offer correction passes focused and full native race/resource tests
+  plus NEW guarded framed-owner/legacy-owner/collector profiles (10/9/12). A bounded
+  queue reports unsent input without declaring authentication loss. This does not
+  implement retained policy pause, C16 live authority or technical-hold recovery;
+  keep this item open. State review/current artifacts: docs/framed-pane-input.md.
+  Nothing deployed.
   October22 C10/C11 are now approved: verified renewals take effect in the live
   root authority without waiting for disk sync, while restart requires fresh
   verification and durable starts/deadlines/ownership/audit remain mandatory;

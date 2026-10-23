@@ -71,6 +71,29 @@ func TestFramedInputDecoderPreservesSharedFixtureAcrossFragmentedAndConsecutiveF
 	// Repeated sequence decoding here is intentional: replay/epoch admission is
 	// the future controller's job, not evidence that a codec can authorize input.
 }
+
+func TestFramedResizeIsExplicitScopedControlAndBoundsDimensions(t *testing.T) {
+	want, data := framedInputFixture(t)
+	wire := append([]byte{}, data[:framedInputHeaderBytes]...)
+	wire[5] = 1
+	binary.BigEndian.PutUint32(wire[64:68], 8)
+	wire = append(wire, make([]byte, 8)...)
+	for _, size := range [][2]uint32{{2, 2}, {40, 120}, {500, 500}, {1, 120}, {40, 0}, {501, 120}, {40, 501}} {
+		binary.BigEndian.PutUint32(wire[framedInputHeaderBytes:], size[0])
+		binary.BigEndian.PutUint32(wire[framedInputHeaderBytes+4:], size[1])
+		got, err := readFramedInput(&fragmentedInputReader{r: bytes.NewReader(wire), n: 1})
+		valid := size[0] >= 2 && size[0] <= 500 && size[1] >= 2 && size[1] <= 500
+		if !valid {
+			if err == nil || got.Data != nil {
+				t.Fatal("invalid resize escaped validation", size)
+			}
+			continue
+		}
+		if err != nil || got.Kind != 1 || got.Epoch != want.Epoch || got.Pane != want.Pane || got.Sequence != want.Sequence || len(got.Data) != 8 {
+			t.Fatal("scoped resize changed context or kind", size, err)
+		}
+	}
+}
 func TestFramedInputDecoderBoundsPayloadAndRejectsUnsafeHeadersBeforeReadingBodies(t *testing.T) {
 	_, wire := framedInputFixture(t)
 	for _, mutate := range []func([]byte){

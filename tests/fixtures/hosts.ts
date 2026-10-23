@@ -40,6 +40,15 @@ export async function hosts(
     failures: [] as string[],
     active: 0,
     maxActive: 0,
+    framed: {
+      accepted: [] as {
+        pane: string;
+        epoch: string;
+        sequence: number;
+        kind: number;
+      }[],
+      rejected: 0,
+    },
     dropReply: undefined as
       | undefined
       | ((command: any, result: any) => boolean | "eof"),
@@ -258,6 +267,10 @@ export async function hosts(
           let admitted = false;
           let registration = false;
           let attemptId = "";
+          let inputEpoch = "",
+            inputPane = "",
+            inputSequence = 0;
+          let framedBuffer = Buffer.alloc(0);
           let previousCR = false;
           const prompt = () => stream.write("/work $ ");
           const command = (line: string) => {
@@ -283,7 +296,91 @@ export async function hosts(
             }
             prompt();
           };
+          const key = (ch: string) => {
+            if (ch === "\n" && previousCR) {
+              previousCR = false;
+              return true;
+            }
+            previousCR = ch === "\r";
+            if (ch === "\r" || ch === "\n") {
+              stream.write("\r\n");
+              const line = buffer.trim();
+              buffer = "";
+              command(line);
+            } else if (ch === "\u007f" || ch === "\b") {
+              if (buffer.length) {
+                buffer = buffer.slice(0, -1);
+                stream.write("\b \b");
+              }
+            } else if (ch === "\u0003") {
+              buffer = "";
+              stream.write("^C\r\n");
+              prompt();
+            } else if (ch === "\u0004" && !buffer.length) {
+              stream.exit(0);
+              stream.end();
+              return false;
+            } else if (ch >= " ") {
+              buffer += ch;
+              stream.write(ch);
+            }
+            return true;
+          };
           stream.on("data", (d: Buffer) => {
+            // Explicit synthetic native framing only. This models wire scope/
+            // ordering, never root/kernel policy or writer containment.
+            if (admitted && inputEpoch) {
+              framedBuffer = Buffer.concat([framedBuffer, d]);
+              while (framedBuffer.length >= 68) {
+                const h = framedBuffer.subarray(0, 68),
+                  size = h.readUInt32BE(64),
+                  kind = h[5];
+                if (
+                  h.subarray(0, 4).toString() !== "EXIN" ||
+                  h[4] !== 1 ||
+                  kind > 1 ||
+                  h[6] ||
+                  h[7] ||
+                  size > 32768 ||
+                  (kind === 1 && size !== 8)
+                ) {
+                  stream.end("EXAM-ERROR invalid framed input\n");
+                  return;
+                }
+                if (framedBuffer.length < 68 + size) return;
+                const payload = framedBuffer.subarray(68, 68 + size);
+                if (
+                  kind === 1 &&
+                  [payload.readUInt32BE(0), payload.readUInt32BE(4)].some(
+                    (dimension) => dimension < 2 || dimension > 500,
+                  )
+                ) {
+                  stream.end("EXAM-ERROR invalid framed resize\n");
+                  return;
+                }
+                const epoch = h.subarray(8, 40).toString("hex"),
+                  rawPane = h.subarray(40, 56).toString("hex");
+                const pane = `${rawPane.slice(0, 8)}-${rawPane.slice(8, 12)}-${rawPane.slice(12, 16)}-${rawPane.slice(16, 20)}-${rawPane.slice(20)}`;
+                const sequence = Number(h.readBigUInt64BE(56));
+                framedBuffer = framedBuffer.subarray(68 + size);
+                if (
+                  epoch !== inputEpoch ||
+                  pane !== inputPane ||
+                  !Number.isSafeInteger(sequence) ||
+                  sequence <= inputSequence
+                ) {
+                  control.framed.rejected++;
+                  continue;
+                }
+                inputSequence = sequence;
+                control.framed.accepted.push({ pane, epoch, sequence, kind });
+                if (control.framed.accepted.length > 512)
+                  control.framed.accepted.shift();
+                if (kind === 0)
+                  for (const ch of payload.toString()) if (!key(ch)) return;
+              }
+              return;
+            }
             for (const ch of d.toString()) {
               if (!admitted) {
                 if (ch !== "\n") {
@@ -300,6 +397,8 @@ export async function hosts(
                 }
                 admitted = true;
                 attemptId = cap.id;
+                inputEpoch = cap.input_epoch || "";
+                inputPane = cap.pane || "";
                 registration = cap.purpose === "register";
                 if (registration)
                   stream.write(
@@ -318,6 +417,9 @@ export async function hosts(
                     transport: transportID,
                     ...(cap.registered_owner
                       ? { registered_owner: cap.registered_owner }
+                      : {}),
+                    ...(inputEpoch
+                      ? { input_epoch: inputEpoch, input_protocol: "v1" }
                       : {}),
                   };
                   stream.write(
@@ -340,33 +442,7 @@ export async function hosts(
                 continue;
               }
               if (registration) continue;
-              if (ch === "\n" && previousCR) {
-                previousCR = false;
-                continue;
-              }
-              previousCR = ch === "\r";
-              if (ch === "\r" || ch === "\n") {
-                stream.write("\r\n");
-                const line = buffer.trim();
-                buffer = "";
-                command(line);
-              } else if (ch === "\u007f" || ch === "\b") {
-                if (buffer.length) {
-                  buffer = buffer.slice(0, -1);
-                  stream.write("\b \b");
-                }
-              } else if (ch === "\u0003") {
-                buffer = "";
-                stream.write("^C\r\n");
-                prompt();
-              } else if (ch === "\u0004" && !buffer.length) {
-                stream.exit(0);
-                stream.end();
-                return;
-              } else if (ch >= " ") {
-                buffer += ch;
-                stream.write(ch);
-              }
+              if (!key(ch)) return;
             }
           });
         });
@@ -513,7 +589,9 @@ export async function hosts(
       if (op.startsWith("issue-")) {
         const token = secret();
         caps.set(token, { ...r, purpose });
-        return { token };
+        return r.input_epoch
+          ? { token, input_epoch: r.input_epoch, input_protocol: "v1" }
+          : { token };
       }
       throw Error("Fixture agent operation unavailable");
     },

@@ -17,6 +17,7 @@ import (
 )
 
 type Request struct {
+	framedInput      bool
 	renewalReceipt   bool
 	RenewalNonce     string `json:"renewal_nonce,omitempty"`
 	ownerRequired    bool
@@ -271,6 +272,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if err := requireRegisteredPage(a, r.PageEpoch); err != nil {
 				return err
 			}
+			if r.framedInput && (r.Purpose != "exam" || !currentRegisteredOwner(a) || !a.BrowserSSH || !a.TerminalSupervised || e.hostAccess(a)) {
+				return errors.New("framed input requires a current supervised timed BrowserSSH owner; no raw fallback is authorized; inspect matching native roles and the registered page before reopening this pane")
+			}
 			if r.Username != a.Username || r.Transport != a.Transport || !attemptID.MatchString(r.Pane) {
 				return errors.New("pane identity mismatch")
 			}
@@ -295,6 +299,10 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			capability := Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + 15000}
 			if a.RegisteredOwner != nil {
 				capability.RegisteredOwner = *a.RegisteredOwner
+			}
+			if r.framedInput {
+				capability.InputEpoch = Token() // Per pane incarnation, never the attempt authorization epoch.
+				capability.Purpose = framedPanePurpose
 			}
 			result = e.issue(capability)
 		case "close-pane":
@@ -430,7 +438,11 @@ func (e *Engine) issue(c Capability) any {
 		}
 	}
 	e.state.Caps[Hash([]byte(token))] = c
-	return map[string]string{"token": token}
+	result := map[string]string{"token": token}
+	if c.InputEpoch != "" {
+		result["input_protocol"], result["input_epoch"] = "v1", c.InputEpoch
+	}
+	return result
 }
 func (e *Engine) initialize(a *Attempt) error {
 	if a.Settings.TemplateVersion != "" {

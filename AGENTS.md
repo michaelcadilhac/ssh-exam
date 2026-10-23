@@ -32,10 +32,13 @@
   file. After a patch fails, inspect current context before retrying it.
   A truncated tool result is unread evidence: reread the relevant missing span
   before relying on it, especially operational safety prerequisites.
-- Read an existing helper's signature and state ownership before calling it;
+- Read an existing helper's signature, serialized fields and state ownership
+  before calling it;
   do not infer argument order or invent setter names. Bound individual browser
   actions and use observed accessible roles so a bad locator cannot consume the
   whole workflow timeout. A locator failure is not a product refusal oracle.
+  First-grant fixtures use a fresh synthetic exam namespace and authored source;
+  never clear history or relax source permissions to fit a prepared legacy base.
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.

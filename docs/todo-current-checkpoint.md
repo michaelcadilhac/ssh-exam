@@ -1,80 +1,89 @@
 # Current local TODO checkpoint
 
-Updated October 23, 2026. Local development, tests and commits only. **Never
-push/deploy, consolidate agents or change production records/config/services.**
-Stop on a missing executable; none was missing. Follow AGENTS.md.
+Updated October23,2026. Local development/testing/commits only. **Never push,
+deploy, consolidate services or modify production/student state.** Guarded
+volatile csc-sys qualification only; busy/uncertain means NO TEST. Stop on a
+missing executable; none was missing. Existing dirty screenshot is preserved.
+Follow AGENTS.md and use exact resolved source paths/serialized fields.
 
-## Current milestone: exact renewal receipt recovery — validated locally
+## Current milestone: retained input/hold/approved Continue — IN PROGRESS
 
-Last validated local commit: **00c6c7f**, pending timed-owner cohort fenced before
-recording IO. The working candidate connects native signed receipt recovery,
-both gateway transports and loaded WASM exact-command cancellation. It recovers
-only a positively committed original legacy cutoff; no query renews work, changes
-time or invents confirmation after agent restart. Missing probes preserve the
-original command path, with no earlier failure timeout. No retained mode enabled.
-
-State review, runtime callers, failed controls, exact artifacts and verification:
+Last validated local commit **d992d3f**: exact committed renewal-reply recovery.
+Older full app/native/browser/root receipts and hashes are in
 [renewal-receipt-recovery.md](renewal-receipt-recovery.md).
 
-- Focused native signed-entry PASS 16.495s; confirmation-bypass mutant RED 0.018s.
-  Ten actual HTTP/WS/worker/SSH recovery/refusal/clock cases pass. Real SSH exact
-  cancellation/full client race PASS 1.049s/1.572s; actual WASM focus PASS 12s.
-- Full application PASS **524 tests / 97 files, 284.09s**. Full native race,
-  resource, user-namespace, compiler and default-size IO PASS **core 431.478s /
-  CLI 39.509s**. Builds, vet/types and 35 Python runner safety checks pass.
-- Guarded exact-candidate timed-owner guest PASS 9 assertions, including actually
-  discarded renewal reply and two exact signed queries; evidence
-  `/var/tmp/ssh-exam-overlay-43b6iwk0`.
-- Collector guest PASS 12 assertions, 24 healthy renewals (maximum 0.087440s),
-  exact retry and unchanged intervals; `/var/tmp/ssh-exam-overlay-faydv6nj`.
-  Both wrappers exit 0; all host/base preservation checks pass.
-- Full browser PASS **150/150 scenarios, 15.2m**, including the actual WASM
-  dropped-reply case. All runners ended; frozen source/client hashes match.
+Uncommitted framing increment connects actual keyboard/resize → JS/IPC/WASM/SSH
+→ signed versioned native admission → supervised PTY, with same-UUID stale-input/
+output/EOF fences, raw-before-READY, bounded queue and discoverable examctl
+input_epochs. No live C16 authority, all-writer freeze/drain/discard, retained
+policy pause or technical recovery is enabled. Current pauses still kill shells.
+Runtime callers, state/proof-writer review and detailed failed/passing evidence:
+[framed-pane-input.md](framed-pane-input.md).
 
-Frozen 551-file source manifest:
-`/tmp/ssh-exam-renewal-receipt-qualified-source.sha256`, SHA256
-`e6d98315111d0a695686202e5b850949925ce2b03762a55cf64a220db268e1b3`.
-Private audited bundle:
-`/var/tmp/ssh-exam-renewal-receipt-upload.ihb3080l/bundle`.
-Agent `8ba2588bd917852d38063a1bb3b8c4ba53ac69ce3aead3a01d2c5401b0fc64f7`;
-core test `6408147f18a2ed525fb861d2d95aba46313dd6cae28d4ea0fe830e26cffbfcff`.
-Client manifest `/tmp/ssh-exam-renewal-receipt-browser.sha256` still matches.
+App PASS533/97files292.96s; Go client race PASS1.572s; builds/types/vet/35Python
+checks pass. Broad browser150 PASS/1FAIL15.6m; corrected additional-grant fixture
+now observes the actual authenticated summary response/exact grant IDs, then
+asserts selection. Corrected focus PASS9.2s/12.7s total, unchanged rerun9.9s also
+passed. All151 scenarios covered across broad+focus; NOT one all-green full run.
+App/JS/WASM artifacts are unchanged; retain150 unaffected cases' evidence.
+Nine new generated screenshots restored; original dirty screenshot is exact.
 
-**Exact next action:** commit this validated increment locally (all generated
-screenshots restored except the preserved original below). Then continue the actual retained
-policy-pause → verified hold → approved Continue workflow described in
-[retained-workload-barrier-plan.md](retained-workload-barrier-plan.md), including
-its source-writer map. Do not expand another unused helper chain or claim C3/C16
-complete. Current policy pauses still kill shells.
+Late native review reproduced an over-broad framing offer for host/admin
+exceptions (signed entry RED0.021s). Registration now omits that codec offer;
+existing legacy admin workflows remain usable and direct unsupported framed
+requests still refuse. Corrected native/entry/CLI/READY/input focus PASS5.568s,
+reviewed before requalification. This changes native artifacts: older root/native
+passes DO NOT qualify them. No new durable state or policy relaxation.
 
-## Settled decisions and remaining scope
+**Current NEW native candidate:** private bundle-supported under
+/var/tmp/ssh-exam-framed-input-upload.I9Wjwk; local path in
+/tmp/ssh-exam-framed-supported-artifacts-path. Agent
+cbf0f9e04828fc3a20590c3d556e8d1a1013aa729e2dcdcaac7bb0254b7225d9;
+core testc2f46bf576e4f13175cd3bad1b5d48d18b4995d896fdc3cf2fac361092462e42.
+NEW root framed-owner PASS10, wrapper0/preservation; evidence
+/var/tmp/ssh-exam-overlay-i8zj8ijj. NEW timed-owner PASS9, wrapper0/preservation;
+/var/tmp/ssh-exam-overlay-0kijbqh_. NEW collector PASS12, wrapper0/preservation;
+/var/tmp/ssh-exam-overlay-t_ot0ga5;24 healthy renewals maximum0.0842s and exact40MiB
+retry/original intervals. Full final native race/resource/compiler/default-size
+PASS core412.027s; CLI valid cached unchanged binary. Final vet/types pass.
 
-**C1–C18 are settled; no unanswered design question.** See
-[todo-design-decisions.md](todo-design-decisions.md). C16 places live monitoring/
-input authority inside the ONE supervisor per user/attempt, isolated from recording
-IO. C18 requires durable native retention confirmation before a saved-source grant
-is usable; pending inspection/cancel/retry reserves no account or clock.
+**Exact next action:** verify frozen manifests and commit the validated coherent
+framing increment locally (exclude original dirty screenshot), then update this
+checkpoint to its actual revision. Continue actual policy-pause → verified retained
+hold → approved Continue; wire C16 in the existing supervisor, pinned SSH, closed
+admission/all-writer stop-assisted freeze and revoked/drained/discarded input.
+Current cohort/recording-fault authority must rebind explicitly across generation
+rotation without weakening stale-report fences. Do not stop after framing.
 
-Critical live authority, all-writer stop-assisted freeze/input discard and C9
-recovery remain open. So do saved-source retention/migration, legacy retirement
-reconciliation, destructive cleanup, full management and installed-role/capacity
-qualification. Main TODO count remains 11/38, not an effort percentage. Incident
-cause is unproven. Container packaging is unverified: configured local Docker
-socket is absent; no daemon start or production context was substituted.
+581-source manifest /tmp/ssh-exam-framed-qualified-source.sha256 hash
+360de2a804cee8e09b9c3d28b633f374dc9a8849decc627e901bad9e55ec6e0c.
+58client manifest /tmp/ssh-exam-framed-client.sha256 hash
+1ae447872f86ad990ab6bcf3436ab362fb495df72fdabcc70d1dcd098bce9a9e;
+65server manifest /tmp/ssh-exam-framed-server-build.sha256 hash
+30205b9c38fbee4b59db2b9f822dc67524878c7d50e91b02a79388f42a05285b.
+Historical native/root failures/passes and superseded hashes stay in the feature
+doc. Only two native files and a browser fixture changed after initial freeze;
+all other source/build artifacts were positively verified unchanged.
 
-Earlier validated scopes: ca8873b registered-page identity (029), 7bc50fe real-root
-timed ownership, 3450963 collector isolation, 00c6c7f pending owner race; detailed
-receipts/limits are in their feature docs and [todo-progress.md](todo-progress.md).
-Fresh guarded disposable csc-sys qualification is authorized; busy/uncertain means
-NO TEST. No installed host service/config/student data was changed.
+## Decisions and remaining scope
 
-[The rollout/migration/rollback plan](todo-rollout-plan.md), including the proposed
-canonical/live-upgrade/deferred-recovery agent consolidation and independent
-attempt-owner drain, is **unexecuted**. Preserve newer authority/receipts/history;
-never stop needed PTYs or downgrade incompatible writers. Repair forward with
-admission closed if a compatible drained rollback is unavailable.
+C1–C18 settled; **no unanswered design question**. C16 authority runs inside ONE
+supervisor per user/attempt, recording IO isolated. C18 saved-source grants need
+durable native retention confirmation before use; pending operations reserve no
+account/clock. See [todo-design-decisions.md](todo-design-decisions.md).
 
-Original dirty `docs/screenshots/preflight-fifteen-minute-timeout.png`: 31754 bytes,
-SHA256 `144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb`;
-backup `/tmp/ssh-exam-preserved-preflight-screenshot.png`. Never stage/restore it.
-Local commits need no instructor approval.
+Critical live authority, stop-assisted all-writer freeze/input discard/C9 recovery,
+saved-source retention/migration, legacy retirement reconciliation, manual cleanup,
+full management and installed-role/capacity qualification remain. Main TODO11/38
+is not effort%. Incident cause unproven. Docker packaging unverified: local socket
+absent; no daemon start or production context substitution.
+
+[Rollout/migration/rollback](todo-rollout-plan.md), including temporary canonical/
+live-upgrade/deferred-recovery agent consolidation and independent-owner drain,
+remains **unexecuted**. Preserve newer receipts/nonces/grants/history/holds; never
+stop needed PTYs or downgrade incompatible writers. Repair forward on uncertainty.
+
+Original dirty docs/screenshots/preflight-fifteen-minute-timeout.png:31754bytes,
+SHA256144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb;
+backup /tmp/ssh-exam-preserved-preflight-screenshot.png. Never stage/restore it.
+Local commits require no instructor approval.

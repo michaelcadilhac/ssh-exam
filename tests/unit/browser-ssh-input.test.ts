@@ -18,7 +18,9 @@ function fixture() {
 it("drops input while blocked and clears early terminal input across recovery", async () => {
   const { client, c, request } = fixture();
   client.terminal({ type: "input", pane: "a", data: "early" });
-  expect(c.earlyInputs.get("a")).toEqual(["early"]);
+  expect(c.earlyInputs.get("a").map((value: any) => value.data)).toEqual([
+    "early",
+  ]);
   client.setInputEnabled(false);
   client.terminal({ type: "input", pane: "a", data: "blocked" });
   expect(c.earlyInputs.size).toBe(0);
@@ -133,6 +135,212 @@ for (const fail of [false, true])
     expect(request).toHaveBeenLastCalledWith("input", {
       pane: "same",
       data: "fresh",
+    });
+    client.close();
+  });
+
+it("preserves captured native contexts and orders resize with input across the worker queue", async () => {
+  const { client, c, request } = fixture();
+  const epoch = "a".repeat(64),
+    events: any[] = [];
+  client.subscribe((m) => events.push(m));
+  client.handle({
+    type: "browser-request",
+    id: "framed-open",
+    op: "open",
+    args: { pane: "same", input_epoch: epoch },
+  });
+  for (let n = 0; n < 8; n++) await Promise.resolve();
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  request.mockImplementation(async (...values: unknown[]) => {
+    const [op, args] = values as [string, { data?: string }];
+    if (op === "input-framed" && args.data === "first") await pending;
+    return {};
+  });
+  const first = { epoch, sequence: 1 },
+    second = { epoch, sequence: 2 },
+    third = { epoch, sequence: 3 };
+  expect(
+    client.terminal({
+      type: "input",
+      pane: "same",
+      data: "first",
+      input: first,
+    }),
+  ).toBe(true);
+  await Promise.resolve();
+  expect(
+    request.mock.calls.filter(([op]) => op === "input-framed"),
+  ).toHaveLength(1);
+  expect(
+    client.terminal({
+      type: "resize",
+      pane: "same",
+      rows: 38,
+      cols: 113,
+      input: second,
+    }),
+  ).toBe(true);
+  client.terminal({ type: "input", pane: "same", data: "last", input: third });
+  // Mutation of the producer's later state must not alter an already captured packet.
+  first.epoch = second.epoch = third.epoch = "b".repeat(64);
+  first.sequence = second.sequence = third.sequence = 999;
+  expect(
+    request.mock.calls.filter(
+      ([op]) => typeof op === "string" && op.endsWith("-framed"),
+    ),
+  ).toHaveLength(1);
+  release();
+  await c.inputChains.get("same");
+  expect(
+    request.mock.calls.filter(
+      ([op]) => typeof op === "string" && op.endsWith("-framed"),
+    ),
+  ).toEqual([
+    ["input-framed", { pane: "same", epoch, sequence: 1, data: "first" }],
+    [
+      "resize-framed",
+      { pane: "same", epoch, sequence: 2, rows: 38, cols: 113 },
+    ],
+    ["input-framed", { pane: "same", epoch, sequence: 3, data: "last" }],
+  ]);
+  client.terminal({
+    type: "resize",
+    pane: "same",
+    rows: 39,
+    cols: 114,
+    input: { epoch, sequence: 3 },
+  });
+  client.terminal({
+    type: "input",
+    pane: "same",
+    data: "replay",
+    input: { epoch, sequence: 3 },
+  });
+  await c.inputChains.get("same");
+  expect(
+    request.mock.calls.filter(
+      ([op]) => typeof op === "string" && op.endsWith("-framed"),
+    ),
+  ).toHaveLength(3);
+  expect(events.filter((m) => ["loss", "closed"].includes(m.type))).toEqual([]);
+  client.close();
+});
+
+it("never relabels keys captured before framed admission or falls back to raw input", async () => {
+  const { client, c, request } = fixture();
+  const epoch = "c".repeat(64);
+  client.terminal({
+    type: "input",
+    pane: "same",
+    data: "before-native-context",
+  });
+  client.handle({
+    type: "browser-request",
+    id: "framed-open",
+    op: "open",
+    args: { pane: "same", input_epoch: epoch },
+  });
+  for (let n = 0; n < 8; n++) await Promise.resolve();
+  client.terminal({ type: "input", pane: "same", data: "unscoped" });
+  client.terminal({ type: "resize", pane: "same", rows: 38, cols: 113 });
+  client.terminal({
+    type: "input",
+    pane: "same",
+    data: "wrong-epoch",
+    input: { epoch: "d".repeat(64), sequence: 100 },
+  });
+  client.terminal({
+    type: "input",
+    pane: "same",
+    data: "fresh",
+    input: { epoch, sequence: 1 },
+  });
+  await c.inputChains.get("same");
+  expect(request.mock.calls).toEqual([
+    ["open", { pane: "same", input_epoch: epoch }],
+    ["input-framed", { pane: "same", epoch, sequence: 1, data: "fresh" }],
+  ]);
+  client.close();
+});
+
+it("does not send optimistic raw resize to a closing or unopened worker incarnation", async () => {
+  const { client, c, request } = fixture();
+  const epoch = "e".repeat(64),
+    events: any[] = [];
+  client.subscribe((m) => events.push(m));
+  client.handle({
+    type: "browser-request",
+    id: "open",
+    op: "open",
+    args: { pane: "same", input_epoch: epoch },
+  });
+  for (let n = 0; n < 8; n++) await Promise.resolve();
+  client.terminal({ type: "close", pane: "same" });
+  expect(
+    client.terminal({ type: "resize", pane: "same", rows: 38, cols: 113 }),
+  ).toBe(false);
+  await Promise.resolve();
+  expect(request.mock.calls.map(([op]) => op)).toEqual(["open"]);
+  expect(events).toEqual([]);
+  client.close();
+});
+
+for (const [payload, limit] of [
+  ["key", 64],
+  ["漢".repeat(8000), 2],
+] as const)
+  it(`bounds framed input waiting for a worker by ${limit === 64 ? "frame count" : "UTF-8 bytes"} without declaring SSH loss`, async () => {
+    const { client, c, request } = fixture(),
+      events: any[] = [];
+    const epoch = "f".repeat(64);
+    client.subscribe((m) => events.push(m));
+    client.handle({
+      type: "browser-request",
+      id: "open",
+      op: "open",
+      args: { pane: "same", input_epoch: epoch },
+    });
+    for (let n = 0; n < 8; n++) await Promise.resolve();
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    request.mockImplementation(async (...values: unknown[]) => {
+      const [op] = values;
+      if (op === "input-framed") await pending;
+      return {};
+    });
+    for (let sequence = 1; sequence <= 1000; sequence++)
+      client.terminal({
+        type: "input",
+        pane: "same",
+        data: payload,
+        input: { epoch, sequence },
+      });
+    await Promise.resolve();
+    release();
+    await c.inputChains.get("same");
+    expect(
+      request.mock.calls.filter(([op]) => op === "input-framed"),
+    ).toHaveLength(limit);
+    expect(events).toEqual([{ type: "input-backpressure", pane: "same" }]);
+    expect(events.some((m) => ["loss", "closed"].includes(m.type))).toBe(false);
+    client.terminal({
+      type: "input",
+      pane: "same",
+      data: "fresh",
+      input: { epoch, sequence: 1001 },
+    });
+    await c.inputChains.get("same");
+    expect(request).toHaveBeenLastCalledWith("input-framed", {
+      pane: "same",
+      data: "fresh",
+      epoch,
+      sequence: 1001,
     });
     client.close();
   });

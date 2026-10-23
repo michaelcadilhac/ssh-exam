@@ -68,6 +68,60 @@ it("an isolated SSH worker obtains current command authority from its owning par
     await h.close();
   }
 });
+it("isolated pane IPC drops stale close/output/write for a replacement using the same UI ID", async () => {
+  const h = await hosts({ mfaDelayMs: 10 });
+  const config: any = {
+    mode: "development",
+    jump: h.jump,
+    class: h.class,
+    agent: h.agentConfig,
+  };
+  const c = new IsolatedConnection(
+    "student",
+    "e",
+    config,
+    new Agent(config.agent),
+  );
+  try {
+    await c.connect(async (_, __, prompts) =>
+      prompts.map(() => "shared-password"),
+    );
+    const old = await c.open("a", "same"),
+      instance = (old as any).ipcInstance;
+    await old.close();
+    const fresh = await c.open("a", "same"),
+      data: string[] = [];
+    fresh.on("data", (chunk: Buffer) => data.push(chunk.toString()));
+    fresh.resume();
+    (c as any).receiveWorker({ kind: "pane-close", pane: "same", instance });
+    (c as any).receiveWorker({
+      kind: "pane-data",
+      pane: "same",
+      instance,
+      data: Buffer.from("STALE-OUTPUT"),
+    });
+    c.post({
+      kind: "pane",
+      pane: "same",
+      instance,
+      op: "write",
+      args: ["STALE-WRITE\n"],
+    });
+    await c.rpc("close-pane", ["same", instance]);
+    fresh.write("fresh-after-stale-IPC\n");
+    await vi.waitFor(() =>
+      expect(data.join("")).toContain("Echo: fresh-after-stale-IPC"),
+    );
+    expect(data.join("")).not.toContain("STALE-");
+    expect(c.panes.get("same")).toBe(fresh);
+    expect(c.alive).toBe(true);
+  } finally {
+    c.close();
+    await exited(c);
+    await h.close();
+  }
+});
+
 it("a fatal worker rejects pending operations, removes panes, and leaves another real SSH connection usable", async () => {
   const h = await hosts({ mfaDelayMs: 10 });
   const config: any = {

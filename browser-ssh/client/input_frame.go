@@ -1,8 +1,8 @@
 package client
 
-// UNWIRED C3/H4 codec. Client.Input still uses the existing raw protocol. Future
-// callers must carry the epoch captured at the original key event, not substitute
-// a later current epoch after a queued operation or blocked write resumes.
+// Runtime codec for explicitly negotiated Client.InputFramed/ResizeFramed and
+// WASM RPCs. Legacy Client.Input stays raw. Callers preserve capture-time epochs;
+// decoding/framing does not authorize retained holds, continuation or thaw.
 
 import (
 	"encoding/binary"

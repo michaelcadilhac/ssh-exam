@@ -3,7 +3,7 @@
 Requires its preinstalled agent, isolated work/rootfs and root-only test signing key.
 Never run against a real student's state or home. Refuses non-fixture guard reports.
 """
-import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil, signal, threading, shlex
+import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil, signal, threading, shlex, struct, fcntl, termios
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 
 parser=argparse.ArgumentParser(description=__doc__)
@@ -12,12 +12,13 @@ parser.add_argument('--handoff-only',action='store_true',help='Verify automatic 
 parser.add_argument('--setup-only',action='store_true',help='Focused temporary setup, lingering and offline-expiry recovery')
 parser.add_argument('--worker-isolation',action='store_true',help='Real collection-worker death alongside another live SSH PTY; private overlay only')
 parser.add_argument('--timed-owner',action='store_true',help='Real BrowserSSH timed owner, two shells, guest coordinator stop and current-policy pause; private overlay only')
+parser.add_argument('--framed-owner',action='store_true',help='Actual C15 initial-grant Begin and scoped input/resize/replacement; private overlay only')
 parser.add_argument('--peer',help='Separate synthetic guest account for worker isolation')
 parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
 parser.add_argument('--gateway-key',default='/etc/exam-agent/gateway.key')
 a=parser.parse_args()
-browser_mode=a.timed_owner or a.worker_isolation
+browser_mode=a.timed_owner or a.worker_isolation or a.framed_owner
 assert os.geteuid()==0, 'Run as root inside the disposable guest'
 config=json.loads(pathlib.Path('/etc/exam-agent/agent.json').read_text())
 guards=json.loads(pathlib.Path(config['guard_report']).read_text())
@@ -54,6 +55,7 @@ def agent_ready():
 class Connection:
     def __init__(self,keyfile=None,certificate=None,username=None):
         self.username=username or a.username
+        self.exam='qualification'
         self.target=self.username+'@127.0.0.1'
         self.ssh=[*ssh]
         if keyfile:self.ssh[self.ssh.index('-i')+1]=keyfile
@@ -91,10 +93,29 @@ class Connection:
             return result
         if 'error' in value: raise RuntimeError(value['error'])
         return value['result']
-    def start(self,activate=True,duration=60):
+    def start(self,activate=True,duration=60,initial_grant=False):
         account=pwd.getpwnam(self.username)
-        self.transport=self.command('register',{'exam':'qualification'})['transport'];id=str(uuid.uuid4())
-        self.command('prepare-attempt',{'id':id,'exam':'qualification','uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':browser_mode,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}})
+        if initial_grant:self.exam='qualification-framed-'+uuid.uuid4().hex[:12]
+        self.transport=self.command('register',{'exam':self.exam})['transport'];id=str(uuid.uuid4())
+        body={'id':id,'exam':self.exam,'uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':browser_mode,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}}
+        if initial_grant:
+            assert a.framed_owner and temporary and self.username=='examq'
+            body['settings']['earliest']=int(time.time()*1000)-1000
+            # Author a new public synthetic package. The prepared legacy
+            # template intentionally has private materials permissions; never
+            # chmod that base or weaken immutable-catalog validation for it.
+            authored=pathlib.Path(tempfile.mkdtemp(prefix='qualification-framed-source-',dir='/root'))
+            for tree in ('work','materials'):(authored/tree).mkdir(mode=0o755)
+            for relative,text in (('work/answer.txt','synthetic initial work\n'),('materials/instructions.txt','Private synthetic framing qualification\n')):
+                path=authored/relative;path.write_text(text);path.chmod(0o644)
+            source=str(authored)
+            version=json.loads(root('examctl','templates','validate',source))['info']['hash']
+            root('examctl','templates','install','qualification',source,'--expected',version,'--reason','Private synthetic framed grant qualification')
+            body['settings']['template_version']=version
+            self.grant={'id':str(uuid.uuid4()),'revision':1,'hash':hashlib.sha256(json.dumps(body['settings'],sort_keys=True).encode()).hexdigest()}
+            body['grant']=self.grant
+            self.page_epoch=hashlib.sha256(uuid.uuid4().bytes).hexdigest()
+        self.command('prepare-grant-attempt' if initial_grant else 'prepare-attempt',body)
         if temporary:
             self.command('prepare-account-policy',{'id':id})
             try:self.command('activate-attempt',{'id':id});raise AssertionError('Bootstrap started exam')
@@ -106,7 +127,7 @@ class Connection:
             denied(run([*ssh[:ssh.index('-i')+1],keyfile,*ssh[ssh.index('-i')+2:],'-o','CertificateFile='+certfile,self.target,'echo BYPASS']),'handoff certificate cannot launch an ordinary command')
             self.close()
             fresh=Connection(keyfile,certfile,self.username);self.socket=fresh.socket;self.ssh=fresh.ssh;self.keydir=directory;self.transport=""
-            self.transport=self.command('register',{'exam':'qualification','handoff':grant['id']})['transport']
+            self.transport=self.command('register',{'exam':self.exam,'handoff':grant['id']})['transport']
             denied(run([*self.ssh,self.target,'echo BYPASS']),'consumed handoff certificate cannot authenticate another transport')
             assert info(id)['start']==0,'Setup consumed exam time'
         if activate:
@@ -121,18 +142,40 @@ class Connection:
             assert receipt['attempt']==id and receipt['uid']==account.pw_uid
             assert base.stat().st_mode&0o077==0 and (base/'workspace-ready').stat().st_mode&0o077==0
             staged_inode=(base/'workspace-ready/work').stat().st_ino
-            self.command('activate-attempt',{'id':id})
+            activation={'id':id}
+            if initial_grant:
+                activation.update(settings=staged['settings'],grant=self.grant,grant_begin_intent=str(uuid.uuid4()),page_epoch=self.page_epoch)
+                expected={'type':'grant-begin/v1','agent':config['agent_id'],'attempt':id,'exam':self.exam,'username':self.username,'uid':account.pw_uid,'grant':self.grant,'intent':activation['grant_begin_intent'],'transport':self.transport,'boot':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),'settings':staged['settings'],'page_epoch':self.page_epoch}
+                descriptor=os.open('/run/qualification-framed-grant.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+                with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry)
+            self.command('activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
             begun=info(id)
             assert begun['deadline']-begun['start']==duration*1000 and begun['original_deadline']==begun['deadline']
             assert (base/'work').stat().st_ino==staged_inode, 'Begin did not publish the exact staged directory'
             ok('private staging consumes no time; Begin publishes exact work and full allowance')
         return id
-    def pane(self,id):
-        token=self.command('issue-channel-admission',{'id':id,'username':self.username,'transport':self.transport,'pane':str(uuid.uuid4()),'purpose':'exam'})['token']
+    def pane(self,id,framed=False,pane_id=None):
+        pane_id=pane_id or str(uuid.uuid4())
+        admission=self.command('issue-framed-owner-channel-admission' if framed else 'issue-channel-admission',{'id':id,'username':self.username,'transport':self.transport,'pane':pane_id,'purpose':'exam',**({'page_epoch':self.page_epoch} if framed else {})})
+        token=admission['token']
         p=subprocess.Popen([*self.ssh,'-S',self.socket,'-tt',self.target,'exam-gateway'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-        read_until(p,b'EXAM-GATE/1');p.stdin.write((json.dumps({'token':token})+'\n').encode());p.stdin.flush();read_until(p,b'EXAM-READY');return p
+        read_until(p,b'EXAM-GATE/1');p.stdin.write((json.dumps({'token':token})+'\n').encode());p.stdin.flush()
+        ready=read_until(p,b'EXAM-READY ',line=framed)
+        if framed:
+            value=json.loads(ready.split(b'EXAM-READY ',1)[1].split(b'\n',1)[0]);proof=value['proof'];payload=base64.b64decode(proof['payload'],validate=True)
+            agent_key.verify(base64.b64decode(proof['signature'],validate=True),payload);receipt=json.loads(payload)
+            assert receipt['type']=='ssh-pane-receipt' and receipt['nonce']==hashlib.sha256(token.encode()).hexdigest() and receipt['transport']==self.transport and receipt['username']==self.username and receipt['expires']>int(time.time()*1000)
+            result=receipt['result'];assert result['attempt']==id and result['pane']==pane_id and result['input_protocol']==admission['input_protocol']=='v1' and result['input_epoch']==admission['input_epoch']
+            p.input_epoch=admission['input_epoch'];p.native_pane=pane_id;p.input_sequence=0
+        return p
+    def input(self,p,data,epoch=None,sequence=None,kind=0,pane=None):
+        if sequence is None:p.input_sequence+=1;sequence=p.input_sequence
+        payload=data.encode() if isinstance(data,str) else data
+        assert 0<sequence<=9007199254740991 and len(payload)<=32768 and kind in (0,1)
+        header=struct.pack('!4sBBH32s16sQI',b'EXIN',1,kind,0,bytes.fromhex(epoch or p.input_epoch),uuid.UUID(pane or p.native_pane).bytes,sequence,len(payload))
+        p.stdin.write(header+payload);p.stdin.flush()
 
-def read_until(p,needle,timeout=15):
+def read_until(p,needle,timeout=15,line=False):
     output=b''; end=time.monotonic()+timeout
     while time.monotonic()<end:
         if select.select([p.stdout],[],[],.2)[0]:
@@ -140,7 +183,7 @@ def read_until(p,needle,timeout=15):
             if not data: break
             output+=data
             if b'COMMAND_NOT_FOUND:' in output: raise RuntimeError(output.decode(errors='replace'))
-            if needle in output:return output
+            if needle in output and (not line or b'\n' in output.split(needle,1)[1]):return output
     raise AssertionError(('Terminal marker missing',needle,output[-2000:]))
 def denied(p,label):
     assert p.returncode!=0 and 'BYPASS' not in p.stdout,(label,p.returncode,p.stdout,p.stderr)
@@ -186,6 +229,84 @@ def normal_access(label):
     ok(label)
 
 wait_for(agent_ready,40)
+
+if a.framed_owner:
+    marker=json.loads(pathlib.Path('/run/ssh-exam-qualification-input/run.json').read_text())
+    assert a.username=='examq' and marker['username']=='examq' and marker['profile']=='framed-owner'
+    assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn' and temporary
+    connection=Connection();panes=[]
+    try:
+        id=connection.start(duration=90,initial_grant=True);original=info(id)
+        assert original['registered_owner']['page_epoch']==connection.page_epoch and original['registered_owner']['transport_hash']==connection.transport
+        assert original['grant']==connection.grant and original['browser_ssh'] and original['terminal_supervised']
+        ok('actual exact catalog source, initial-grant preparation and authenticated C15 Begin issue registered ownership without seeded state')
+        values=['unsaved-'+uuid.uuid4().hex for _ in range(2)]
+        for number in range(2):
+            connection.command('renew-owner-execution-lease',{'id':id,'page_epoch':connection.page_epoch})
+            pane=connection.pane(id,framed=True);panes.append(pane)
+            connection.input(pane,"buffer="+values[number]+"; printf 'FRAMED-%s:%s:END\\n' initial \"$buffer\"\n")
+            read_until(pane,('FRAMED-initial:'+values[number]+':END').encode())
+            captured=json.loads(root('examctl','panes','show',id,pane.native_pane))
+            assert captured['read_only'] and captured['complete'] and captured['panes'][0]['input_epochs']==[pane.input_epoch]
+        owner=json.loads(root('examctl','panes','supervisor',id))
+        assert owner['attached_panes']==2 and owner['registered_owner']==original['registered_owner']
+        ok('two actual framed SSH shells share one attempt supervisor; signed pane receipts and root CLI agree on distinct input epochs')
+        pane=panes[0]
+        connection.input(pane,struct.pack('!II',38,113),kind=1)
+        unit=next(unit for unit in owner['attached_units'] if pane.native_pane in unit)
+        def resized():
+            for item in (pathlib.Path('/sys/fs/cgroup/exam.slice')/unit/'cgroup.procs').read_text().split():
+                pid=int(item);status=pathlib.Path('/proc',item,'status').read_text()
+                uids=next(line.split()[1:] for line in status.splitlines() if line.startswith('Uid:'))
+                if list(map(int,uids))!=[account.pw_uid]*4:continue
+                pinned=os.pidfd_open(pid);descriptor=None
+                try:
+                    poll=select.poll();poll.register(pinned,select.POLLIN)
+                    if poll.poll(0):continue
+                    descriptor=os.open('/proc/'+item+'/fd/0',os.O_RDONLY|os.O_NOCTTY|os.O_CLOEXEC)
+                    size=struct.unpack('HHHH',fcntl.ioctl(descriptor,termios.TIOCGWINSZ,bytes(8)))
+                    if not poll.poll(0) and size[:2]==(38,113):return True
+                finally:
+                    if descriptor is not None:os.close(descriptor)
+                    os.close(pinned)
+            return False
+        wait_for(resized,timeout=3,interval=.02)
+        for invalid in ({'epoch':hashlib.sha256(uuid.uuid4().bytes).hexdigest(),'sequence':100},{'pane':str(uuid.uuid4()),'sequence':100},{'sequence':1}):
+            connection.input(pane,'exit\n',**invalid)
+        connection.input(pane,"printf 'FRAMED-%s:%s:END\\n' checked \"$buffer\"\n")
+        read_until(pane,('FRAMED-checked:'+values[0]+':END').encode(),timeout=3)
+        ok('actual scoped resize reaches the inner PTY; wrong epoch/pane and replayed exit frames are refused before a positive shell-memory response')
+        old_epoch,old_pane=pane.input_epoch,pane.native_pane
+        connection.input(pane,'exit\n');pane.wait(timeout=5)
+        connection.command('close-pane',{'id':id,'pane':old_pane})
+        connection.command('renew-owner-execution-lease',{'id':id,'page_epoch':connection.page_epoch})
+        fresh=connection.pane(id,framed=True,pane_id=old_pane);panes.append(fresh)
+        assert fresh.input_epoch!=old_epoch
+        connection.input(fresh,'exit\n',epoch=old_epoch,sequence=100)
+        connection.input(fresh,"printf 'FRAMED-%s:END\\n' replacement-live\n")
+        read_until(fresh,b'FRAMED-replacement-live:END',timeout=3)
+        connection.input(panes[1],"printf 'FRAMED-%s:%s:END\\n' sibling-live \"$buffer\"\n")
+        read_until(panes[1],('FRAMED-sibling-live:'+values[1]+':END').encode(),timeout=3)
+        current=info(id)
+        assert all(current[k]==original[k] for k in ('start','deadline','original_deadline','grant','registered_owner')) and current['state']=='ACTIVE'
+        ok('same UI UUID replacement receives a fresh native epoch; delayed old exit cannot kill it or its sibling or change time/grants')
+        root('examctl','pause',id,'--reason','Private synthetic current-policy framed pause control')
+        wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
+        assert info(id)['state']=='LOCKED'
+        ok('current policy still terminates framed panes on real pause; no partial retained mode enabled')
+        root('examctl','stop',id,'--reason','Private synthetic framed qualification collection')
+        wait_for(lambda:info(id)['state']=='COMPLETED' and info(id)['protected'],timeout=45)
+        final,archive,checksum=secure(id)
+        assert all(final[k]==original[k] for k in ('start','deadline','original_deadline','grant','registered_owner'))
+        ok('actual protected collection preserves grant, page ownership and the original authoritative interval')
+    finally:
+        for pane in panes:
+            if pane.poll() is None:pane.kill();pane.wait(timeout=5)
+        connection.close()
+    wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,original['deadline']/1000-time.time())+30)
+    normal_access('original deadline restores ordinary SSH/SFTP after framed qualification without override')
+    print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_lockout':False}),flush=True)
+    raise SystemExit(0)
 
 if a.timed_owner:
     marker=json.loads(pathlib.Path('/run/ssh-exam-qualification-input/run.json').read_text())

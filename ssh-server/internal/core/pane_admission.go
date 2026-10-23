@@ -107,6 +107,9 @@ func (e *Engine) paneAdmission(token, name, identity string, account Account) (C
 	if err := workloadAllowed(a, cap.Purpose); err != nil {
 		return cap, nil, err
 	}
+	if (cap.Purpose == framedPanePurpose) != (cap.InputEpoch != "") || (cap.InputEpoch != "" && (!monitoringDigest.MatchString(cap.InputEpoch) || !currentRegisteredOwner(a) || !a.TerminalSupervised || !a.BrowserSSH)) {
+		return cap, nil, errors.New("framed pane binding is unavailable or changed; preserve the attempt and request a fresh explicit framed admission; no raw fallback")
+	}
 	if (a.RegisteredOwner == nil && cap.RegisteredOwner != (monitoringOwner{})) || (a.RegisteredOwner != nil && (!currentRegisteredOwner(a) || cap.RegisteredOwner != *a.RegisteredOwner)) {
 		return cap, nil, errRegisteredOwner
 	}
@@ -210,8 +213,8 @@ func (e *Engine) reserveClosedPane(p *paneLaunchAdmission, token, name, unit str
 		if kind != "scope" {
 			return errPaneBootstrap
 		}
-		proof = PaneInstance{Attempt: a.ID, Pane: cap.Pane, ID: instance, Boot: boot(), ClosedUntil: cap.Expires, ClosedBootUntil: now + remaining}
-		if a.TerminalSupervised && cap.Purpose == "exam" {
+		proof = PaneInstance{Attempt: a.ID, Pane: cap.Pane, ID: instance, Boot: boot(), ClosedUntil: cap.Expires, ClosedBootUntil: now + remaining, InputEpoch: cap.InputEpoch}
+		if a.TerminalSupervised && (cap.Purpose == "exam" || cap.Purpose == framedPanePurpose) {
 			pending := 0
 			for _, prior := range e.state.PaneInstances {
 				if prior.Attempt == a.ID && prior.Recording != "" {

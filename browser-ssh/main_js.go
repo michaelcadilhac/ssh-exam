@@ -86,7 +86,7 @@ func handle(r request) (any, error) {
 			raw.Close()
 			return nil, err
 		}
-		return map[string]bool{"connected": true, "command_cancel": true}, nil
+		return map[string]bool{"connected": true, "command_cancel": true, "framed_input": true}, nil
 	case "answers":
 		var a struct {
 			Round   string   `json:"round"`
@@ -126,9 +126,42 @@ func handle(r request) (any, error) {
 		}
 		return map[string]bool{"cancelled": sshClient.CancelCommand(a.Nonce)}, nil
 	case "open":
-		var a struct{ Pane, Token string }
-		json.Unmarshal(r.Args, &a)
+		var a struct {
+			Pane, Token string
+			InputEpoch  string `json:"input_epoch,omitempty"`
+		}
+		if json.Unmarshal(r.Args, &a) != nil {
+			return nil, errors.New("invalid pane request")
+		}
+		if a.InputEpoch != "" {
+			return sshClient.OpenFramed(a.Pane, a.Token, a.InputEpoch)
+		}
 		return sshClient.Open(a.Pane, a.Token)
+	case "input-framed":
+		var a struct {
+			Pane, Epoch, Data string
+			Sequence          uint64
+		}
+		if json.Unmarshal(r.Args, &a) != nil || len(a.Data) > 32768 {
+			return nil, errors.New("invalid framed input")
+		}
+		return nil, sshClient.InputFramed(a.Pane, a.Epoch, a.Sequence, a.Data)
+	case "resize-framed":
+		var a struct {
+			Pane, Epoch string
+			Sequence    uint64
+			Rows, Cols  int
+		}
+		if json.Unmarshal(r.Args, &a) != nil {
+			return nil, errors.New("invalid framed resize")
+		}
+		return nil, sshClient.ResizeFramed(a.Pane, a.Epoch, a.Sequence, a.Rows, a.Cols)
+	case "change-input-epoch":
+		var a struct{ Pane, Previous, Next string }
+		if json.Unmarshal(r.Args, &a) != nil {
+			return nil, errors.New("invalid pane epoch change")
+		}
+		return nil, sshClient.ChangeInputEpoch(a.Pane, a.Previous, a.Next)
 	case "input":
 		var a struct{ Pane, Data string }
 		json.Unmarshal(r.Args, &a)

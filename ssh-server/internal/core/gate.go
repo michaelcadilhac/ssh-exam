@@ -20,9 +20,22 @@ import (
 )
 
 type LocalRequest struct {
-	Token    string       `json:"token"`
-	Ordinary bool         `json:"ordinary"`
-	Command  *SignedFrame `json:"command,omitempty"`
+	InputProtocol string       `json:"input_protocol,omitempty"`
+	Token         string       `json:"token"`
+	Ordinary      bool         `json:"ordinary"`
+	Command       *SignedFrame `json:"command,omitempty"`
+}
+
+// Only the actual exam-login ready publisher calls this. The private hook lets
+// an isolated child test inspect its real PTY exactly before output publication.
+var gateReadyCheckpoint func()
+
+func writeGateReady(ready []byte) error {
+	if gateReadyCheckpoint != nil {
+		gateReadyCheckpoint()
+	}
+	_, err := fmt.Printf("EXAM-READY %s\n", ready)
+	return err
 }
 
 func transportIdentity(pid int, uid int) (string, error) { // Bind capabilities to a live, root-owned sshd transport ancestor, including boot and PID start time.
@@ -205,6 +218,9 @@ func (e *Engine) local(c *net.UnixConn) {
 		if err != nil {
 			return err
 		}
+		if cap.InputEpoch != "" && r.InputProtocol != "v1" {
+			return errors.New("framed pane requires matching loaded exam-login input protocol; preserve this attempt and inspect native roles; no raw fallback or new clock authorized")
+		}
 		pending = &paneLaunchAdmission{capability: cap, account: account, authority: paneLaunchAuthority(a)}
 		return nil
 	})
@@ -312,6 +328,9 @@ func (e *Engine) local(c *net.UnixConn) {
 		result = map[string]any{"directory": a.WorkPath, "deadline": a.Deadline, "attempt": a.ID, "pane": cap.Pane, "transport": identity}
 		if a.RegisteredOwner != nil {
 			result["registered_owner"] = *a.RegisteredOwner
+		}
+		if cap.InputEpoch != "" {
+			result["input_protocol"], result["input_epoch"] = "v1", cap.InputEpoch
 		}
 		if e.Config.CallbackKey != "" {
 			proof, err := e.SSHReceipt("ssh-pane-receipt", Hash([]byte(r.Token)), name, identity, result, nil)
@@ -544,6 +563,7 @@ func Gate(socket string) error {
 	if json.Unmarshal(line, &request) != nil || len(request.Token) != 64 {
 		return errors.New("invalid admission frame")
 	}
+	request.InputProtocol = "v1" // This loaded entry performs raw setup before readiness.
 	b, _ := json.Marshal(request)
 	if _, _, err = conn.WriteMsgUnix(b, syscall.UnixRights(0), nil); err != nil {
 		return err
@@ -569,7 +589,6 @@ func Gate(socket string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("EXAM-READY %s\n", ready)
 	// Only the inner PTY handles editing/signals. Otherwise Ctrl-C kills this
 	// outer gate and canonical buffering prevents interactive editor input.
 	restore, err := rawTerminal(0)
@@ -577,6 +596,9 @@ func Gate(socket string) error {
 		return err
 	}
 	defer restore()
+	if err := writeGateReady(ready); err != nil {
+		return err
+	}
 	fmt.Print(response.Welcome)
 	conn.Write([]byte{1})
 	ended, err := reader.ReadBytes('\n')

@@ -93,6 +93,8 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	// Versioned owner purposes refuse in older loaded agents before any positive
 	// operation. The internal flag cannot be supplied through request JSON.
 	switch cmd.Op {
+	case "issue-framed-owner-channel-admission":
+		cmd.Op, cmd.Body.ownerRequired, cmd.Body.framedInput = "issue-channel-admission", true, true
 	case "renew-owner-receipted-execution-lease":
 		cmd.Body.ownerRequired = true
 		fallthrough
@@ -302,7 +304,14 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 				}
 			}
 			e.state.Registrations[transport] = username
-			result = map[string]any{"transport": transport, "uid": account.UID, "execution_renewal_receipts": "v1"}
+			features := map[string]any{"transport": transport, "uid": account.UID, "execution_renewal_receipts": "v1"}
+			// Negotiate only paths that can actually own the framed decoder.
+			// Trusted host/admin services keep their existing legacy protocol;
+			// otherwise a successful Begin could lead to an unusable terminal.
+			if !account.SandboxOnly && !e.hostAccess(&Attempt{Username: username, UID: account.UID}) {
+				features["framed_pane_input"] = "v1"
+			}
+			result = features
 			return nil
 		}
 		if cmd.Transport != transport || e.state.Registrations[transport] != username {

@@ -42,7 +42,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
    agent.verify(base64.b64decode(self.headers['X-Exam-Signature']),raw)
    data=json.loads(raw);assert data['agent']==config['agent_id']
    result={'ok':True}
-   if self.path=='/api/agent/timing':
+   if self.path=='/api/agent/grant-begin':
+    # One explicitly authored synthetic grant, never a wildcard/offline permit.
+    registry=Path('/run/qualification-framed-grant.json')
+    metadata=registry.stat();assert metadata.st_uid==0 and metadata.st_mode&0o777==0o600 and metadata.st_size<=65536
+    expected=json.loads(registry.read_bytes())
+    assert expected['type']=='grant-begin/v1' and expected['agent']==config['agent_id']
+    assert all(data.get(k)==v for k,v in expected.items())
+    reply={k:data[k] for k in ('type','nonce','attempt','grant','intent','transport','boot','page_epoch')}
+    reply.update(audience=config['agent_id'],expires=int(time.time()*1000)+30000)
+    payload=json.dumps(reply,separators=(',',':')).encode()
+    result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
+   elif self.path=='/api/agent/timing':
     a=data['attempt'];assert a['deadline']<=int(time.time()*1000)
     reply={'type':'deadline-timing','audience':config['agent_id'],'id':a['id'],'nonce':data['nonce'],
            'expires':int(time.time()*1000)+30000,'deadline':a['deadline'],'clock_revision':a.get('clock_revision',0),'collect':True}

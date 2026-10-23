@@ -22,6 +22,7 @@ type NativePane struct {
 	RecordedKinds       []string `json:"recorded_kinds"`
 	Incarnations        []string `json:"incarnations"`
 	RecordedSupervisors []string `json:"recorded_supervisors"`
+	InputEpochs         []string `json:"input_epochs,omitempty"`
 	PendingAdmissions   int      `json:"pending_admissions"`
 	PendingUnexpired    int      `json:"pending_unexpired_at_read"`
 	ClosedStartups      int      `json:"closed_startups"`
@@ -113,6 +114,13 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 			v.Incarnations = append(v.Incarnations, instance)
 			units = append(units, unit)
 			proof := state.PaneInstances[unit]
+			if proof.InputEpoch != "" {
+				if !monitoringDigest.MatchString(proof.InputEpoch) {
+					v.Unsafe = true
+				} else {
+					v.InputEpochs = append(v.InputEpochs, proof.InputEpoch)
+				}
+			}
 			controlProof := proof
 			controlProof.RecordingAck, controlProof.RecordingRevision, controlProof.RecordingClosed = "", 0, false
 			proofs[unit] = controlProof // Receipt diagnostics cannot invalidate exact reviewed closure.
@@ -142,9 +150,11 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 	sort.Strings(v.RecordedKinds)
 	sort.Strings(v.Incarnations)
 	sort.Strings(v.RecordedSupervisors)
+	sort.Strings(v.InputEpochs)
 	sort.Strings(units)
 	type pendingFact struct {
 		Hash                                       string
+		InputEpoch                                 string
 		Expires                                    int64
 		Practice, Exam, OwnerMatch, TransportMatch bool
 	}
@@ -161,7 +171,10 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 			v.Unsafe = true
 			continue
 		}
-		facts = append(facts, pendingFact{Hash: hash, Expires: cap.Expires, Practice: cap.Purpose == "practice", Exam: cap.Purpose == "exam", OwnerMatch: cap.Username == a.Username, TransportMatch: cap.Transport == a.Transport})
+		if (cap.Purpose == framedPanePurpose) != (cap.InputEpoch != "") || (cap.InputEpoch != "" && !monitoringDigest.MatchString(cap.InputEpoch)) {
+			v.Unsafe = true
+		}
+		facts = append(facts, pendingFact{Hash: hash, InputEpoch: cap.InputEpoch, Expires: cap.Expires, Practice: cap.Purpose == "practice", Exam: cap.Purpose == "exam" || cap.Purpose == framedPanePurpose, OwnerMatch: cap.Username == a.Username, TransportMatch: cap.Transport == a.Transport})
 	}
 	v.Present = len(v.RecordedKinds) > 0 || v.PendingAdmissions > 0
 	if v.Unsafe {

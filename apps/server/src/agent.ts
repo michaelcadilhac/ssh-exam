@@ -121,7 +121,10 @@ export class Agent {
       const attempt = this.findAttempt((body as any).id);
       if (attempt) {
         if (op === "issue-channel-admission" && attempt.registered_owner)
-          op = "issue-owner-channel-admission";
+          op =
+            (body as any).framed_input === true
+              ? "issue-framed-owner-channel-admission"
+              : "issue-owner-channel-admission";
         if (op === "renew-execution-lease" && attempt.registered_owner)
           op = "renew-owner-execution-lease";
         if (
@@ -132,6 +135,7 @@ export class Agent {
         if (op === "consume-continuation" && attempt.registered_owner)
           op = "consume-owner-continuation";
         const value = { ...body } as Record<string, unknown>;
+        delete value.framed_input; // Local negotiation, not a native JSON setter.
         delete value.page_epoch;
         if (typeof value.grant_begin_intent === "string") {
           const original = this.store.db

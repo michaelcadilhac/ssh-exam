@@ -68,6 +68,29 @@ it("accepts only agent-signed SSH identity/results with exact nonce, account and
   };
   try {
     expect(await conn.command("health")).toEqual({ trusted: true });
+    const inputEpoch = "a".repeat(64);
+    change = (r) => {
+      r.result = {
+        token: "framed-token",
+        input_protocol: "v1",
+        input_epoch: inputEpoch,
+      };
+    };
+    await expect(
+      conn.command("issue-framed-owner-channel-admission", { id: "attempt" }),
+    ).resolves.toMatchObject({ input_epoch: inputEpoch });
+    for (const invalid of [
+      {},
+      { input_protocol: "v0", input_epoch: inputEpoch },
+      { input_protocol: "v1", input_epoch: "bad" },
+    ]) {
+      change = (r) => {
+        r.result = { token: "no-raw-fallback", ...invalid };
+      };
+      await expect(
+        conn.command("issue-framed-owner-channel-admission", { id: "attempt" }),
+      ).rejects.toThrow("no raw fallback");
+    }
     change = (r) => {
       r.error = "cannot renew locked/ended workload";
       r.result = {

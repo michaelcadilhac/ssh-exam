@@ -396,6 +396,14 @@ func TestActualTimedPaneRegistersPageOwnerInIndependentSupervisor(t *testing.T) 
 	testPracticeSupervisorWorkflow(t, "timed-owner-registered", nil, nil)
 }
 
+func TestActualFramedTimedPaneFencesInputAndResizeAcrossSamePaneReplacement(t *testing.T) {
+	testPracticeSupervisorWorkflow(t, "timed-owner-framed", nil, nil)
+}
+
+func TestActualFramedPaneRefusesAnOldLoadedEntryBeforeExec(t *testing.T) {
+	testPracticeSupervisorWorkflow(t, "timed-owner-framed-old-entry", nil, nil)
+}
+
 func TestActualTimedAdmissionSurvivesInitialAckAndContainsPrestartFault(t *testing.T) {
 	for _, mode := range []string{"initial-ack", "prestart-fault"} {
 		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-owner-"+mode, nil, nil) })
@@ -447,6 +455,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		t.Skip("explicit owned local user-systemd qualification only")
 	}
 	supervised := strings.HasPrefix(mode, "timed-owner") || strings.HasPrefix(mode, "timed-supervised-")
+	registered := mode == "timed-owner-registered" || strings.HasPrefix(mode, "timed-owner-framed")
 	if strings.HasPrefix(mode, "timed-supervised-") {
 		mode = "timed-fault-" + strings.TrimPrefix(mode, "timed-supervised-")
 	}
@@ -454,11 +463,11 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		defer close(failed)
 	}
 	cliBinary := ""
-	if mode == "observation" || (mode == "timed-owner" && os.Getenv("EXAM_MANAGEMENT_USERNS") == "1") {
+	if mode == "observation" || ((mode == "timed-owner" || mode == "timed-owner-framed") && os.Getenv("EXAM_MANAGEMENT_USERNS") == "1") {
 		cliBinary = observationCLIBinary(t)
 	}
 	e, key, r := preparationFixture(t)
-	if mode == "timed-owner-registered" {
+	if registered {
 		if os.Getuid() < 1000 {
 			t.Skip("student owner contract requires UID>=1000")
 		}
@@ -488,7 +497,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 			a.State = "ACTIVE"
 			a.BrowserSSH = true
 			commitStart(a, Millis(), uptime(), boot())
-			if mode == "timed-owner-registered" {
+			if registered {
 				if err := registerPageOwner(a, Hash([]byte("synthetic registered page")), Token()); err != nil {
 					return err
 				}
@@ -560,9 +569,12 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		}
 	}
 	cmd := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "issue-channel-admission", Username: r.Username, Transport: r.Transport, Body: Request{ID: r.ID, Pane: finalID, Purpose: purpose, Username: r.Username, Transport: r.Transport}}
-	if mode == "timed-owner-registered" {
+	if registered {
 		cmd.Op = "issue-owner-channel-admission"
 		cmd.Body.PageEpoch = Hash([]byte("synthetic registered page"))
+	}
+	if strings.HasPrefix(mode, "timed-owner-framed") {
+		cmd.Op = "issue-framed-owner-channel-admission"
 	}
 	issued, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
 	if err != nil {
@@ -673,13 +685,40 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	}
 	defer master.Close()
 	defer slave.Close()
-	frame, _ := json.Marshal(LocalRequest{Token: issued.(map[string]string)["token"]})
+	if mode == "timed-owner-framed" {
+		// The real exam-login entry makes its own outer PTY raw before SCM_RIGHTS.
+		// This direct-gate fixture owns the entire disposable PTY; never restore
+		// through a numeric FD after the local duplicate has been closed below.
+		if _, err := rawTerminal(slave.Fd()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	localRequest := LocalRequest{Token: issued.(map[string]string)["token"]}
+	if mode == "timed-owner-framed" {
+		localRequest.InputProtocol = "v1"
+	}
+	frame, _ := json.Marshal(localRequest)
 	if _, _, err := client.WriteMsgUnix(frame, syscall.UnixRights(int(slave.Fd())), nil); err != nil {
 		t.Fatal(err)
 	}
 	var ready map[string]any
-	if err := json.NewDecoder(client).Decode(&ready); err != nil || ready["error"] != nil {
-		t.Fatal("actual gate missed ready", ready, err, diagnostics.String())
+	readyErr := json.NewDecoder(client).Decode(&ready)
+	if mode == "timed-owner-framed-old-entry" {
+		if readyErr != nil || !strings.Contains(fmt.Sprint(ready["error"]), "matching loaded exam-login") {
+			t.Fatal("old entry did not reach the explicit protocol refusal", readyErr)
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := state.Attempts[r.ID]
+		if len(a.Units) != 0 || a.State != "ACTIVE" || a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline {
+			t.Fatal("old-entry refusal released a workload or changed the interval")
+		}
+		return
+	}
+	if readyErr != nil || ready["error"] != nil {
+		t.Fatal("actual gate missed ready", ready, readyErr, diagnostics.String())
 	}
 	if _, err := client.Write([]byte{1}); err != nil {
 		t.Fatal(err)
@@ -780,6 +819,10 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	}
 	if out, err := supervisionReadUntil(fd, "SYNTHETIC-CLOSED-PANE-EXEC", 4*time.Second); err != nil {
 		t.Fatal("actual shell never executed", out, err, diagnostics.String())
+	}
+	if mode == "timed-owner-framed" {
+		testFramedSupervisorReplacement(t, e, key, cmd, client, master, ready, issued.(map[string]string)["input_epoch"], listener.Addr().(*net.UnixAddr), cliBinary)
+		return
 	}
 	if _, err := unix.Write(fd, []byte("check\n")); err != nil {
 		t.Fatal(err)

@@ -11,6 +11,21 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The local framed-input candidate keeps schema029 and adds optional packet epochs
+to native one-use capabilities/pane proofs. Qualify matching loaded JS producer,
+WASM, gateway, exam-login, agent and attempt supervisor. A new WASM file alone
+does not establish a loaded JS producer. Framed admissions use a distinct purpose
+that older native owners refuse; trusted host-service exceptions remain unsupported.
+This is not C3 retention/live authority or a production policy change.
+
+Before a separately authorized install/rollback, inventory and drain independent
+owners and every canonical/temporary agent role. Preserve the new proof fields,
+original deadlines, grants/nonces, protected submissions and audit. Never let an
+older writer drop packet epochs or stop a needed PTY to force a downgrade. A
+compatible fully drained rollback must be proven; otherwise close admission and
+repair forward. The proposed temporary-service consolidation below remains
+unexecuted. See framed-pane-input.md for exact qualification and fixture limits.
+
 The October23 renewal-receipt candidate requires matching loaded native, gateway
 and browser/WASM roles. Signed native v1 negotiation and running WASM exact-channel
 cancellation gate use; older roles keep the legacy path. New lease fields are

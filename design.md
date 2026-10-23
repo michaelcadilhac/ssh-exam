@@ -2653,3 +2653,21 @@ lockouts still terminate/disconnect. Keep the full native live-authority, all-wr
 stop-assisted freeze/input barrier and combined privileged fault qualification
 gates. No deployment/restart/consolidation is authorized. Implementation, state
 review, fixture limitations and verification: docs/registered-owner-workflow.md.
+
+## Framed terminal input (local candidate; retention disabled)
+
+Registered supervised browser panes can explicitly negotiate EXINv1 data and
+resize. Running JS, running WASM and signed native registration must agree.
+Distinct exam-framed-v1 admissions bind fresh per-pane packet epochs, separate
+from the attempt authorization epoch; older gates/owners refuse the purpose.
+The entry becomes raw before READY. Captured scope/sequence survives browser
+queues, IPC and SSH; stale keys, resize, output and EOF cannot affect replacement
+panes. A bounded queue reports unsent input without declaring SSH loss.
+
+Existing deadlines, monitoring and policy containment remain authoritative.
+Framing is not the retained-workload hold/drain/discard or live-authority barrier;
+current pauses terminate shells. Trusted host-service exceptions refuse this
+framed path. Read-only examctl panes show exposes captured input_epochs, with
+help explaining their limits. Preserve additive proof fields and drain independent
+owners before a future separately authorized matched-role rollout or rollback.
+State review and qualification: docs/framed-pane-input.md. Nothing deployed.

@@ -5,6 +5,7 @@ package core
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
@@ -25,6 +26,9 @@ type supervisedRecordingResult struct {
 }
 
 type supervisedRecordingIO struct {
+	inputEpoch           string // Immutable pane-incarnation fence, not monitoring authority.
+	inputSequence        uint64 // Owned only by the input decoder goroutine.
+	resizes              chan windowSize
 	recorder             *terminalRecorder
 	original, master     *os.File
 	originalFD, masterFD int
@@ -72,8 +76,8 @@ func recordingPoll(fd int, events int16) error {
 	return err
 }
 
-func newSupervisedRecordingIO(r *terminalRecorder, original, master *os.File, onFault func()) (*supervisedRecordingIO, error) {
-	if r == nil || onFault == nil {
+func newSupervisedRecordingIO(r *terminalRecorder, original, master *os.File, inputEpoch string, onFault func()) (*supervisedRecordingIO, error) {
+	if r == nil || onFault == nil || (inputEpoch != "" && !monitoringDigest.MatchString(inputEpoch)) {
 		return nil, errors.New("recording setup incomplete")
 	}
 	input, err := recordingPTYCopy(original)
@@ -86,6 +90,7 @@ func newSupervisedRecordingIO(r *terminalRecorder, original, master *os.File, on
 		return nil, err
 	}
 	s := &supervisedRecordingIO{recorder: r, original: input, master: output,
+		inputEpoch: inputEpoch, resizes: make(chan windowSize, 1),
 		inputEnded: make(chan struct{}), stopInput: make(chan struct{}),
 		inputDone: make(chan struct{}), resizeDone: make(chan struct{}), outputDone: make(chan struct{}), deliveryDone: make(chan struct{}), deliveryOffset: r.committed.Load(), onFault: onFault}
 	s.originalFD, s.masterFD = int(input.Fd()), int(output.Fd())
@@ -120,6 +125,10 @@ func (s *supervisedRecordingIO) failed(stage string) {
 func (s *supervisedRecordingIO) input() {
 	defer close(s.inputDone)
 	defer close(s.inputEnded)
+	if s.inputEpoch != "" {
+		s.framedInput()
+		return
+	}
 	buffer := make([]byte, 32*1024)
 	for {
 		select {
@@ -161,6 +170,90 @@ func (s *supervisedRecordingIO) input() {
 		if err != nil || n == 0 {
 			return
 		}
+	}
+}
+
+// Only the explicit signed framed admission reaches this decoder. It fences
+// pane incarnation/sequence, not live monitoring or the future C3 held state.
+// Legacy cutoff/policy enforcement remains unchanged until that full workflow.
+func (s *supervisedRecordingIO) framedInput() {
+	reader := supervisedFrameReader{s}
+	for {
+		frame, err := readFramedInput(reader)
+		if err != nil {
+			return // No malformed body is reinterpreted as terminal bytes.
+		}
+		if frame.Epoch != s.inputEpoch || frame.Pane != s.recorder.pane || frame.Sequence <= s.inputSequence {
+			continue // Captured stale input is discarded, never relabelled.
+		}
+		s.inputSequence = frame.Sequence // Consume before any partial delivery.
+		if frame.Kind == 1 {
+			size := windowSize{Row: uint16(binary.BigEndian.Uint32(frame.Data)), Col: uint16(binary.BigEndian.Uint32(frame.Data[4:]))}
+			// Existing resize sampling already coalesces intermediate sizes.
+			// Preserve record-before-apply in its independent storage worker;
+			// the decoder/next key never waits for a recorder's disk lock.
+			select {
+			case s.resizes <- size:
+			default:
+				select {
+				case <-s.resizes:
+				default:
+				}
+				select {
+				case s.resizes <- size:
+				default:
+				}
+			}
+			continue
+		}
+		for at := 0; at < len(frame.Data); {
+			select {
+			case <-s.stopInput:
+				return
+			default:
+			}
+			n, writeErr := unix.Write(s.masterFD, frame.Data[at:])
+			if n > 0 {
+				at += n
+			}
+			if writeErr == nil {
+				continue
+			}
+			if writeErr != unix.EAGAIN && writeErr != unix.EINTR {
+				return
+			}
+			if recordingPoll(s.masterFD, unix.POLLOUT) != nil {
+				return
+			}
+		}
+	}
+}
+
+type supervisedFrameReader struct{ stream *supervisedRecordingIO }
+
+func (r supervisedFrameReader) Read(p []byte) (int, error) {
+	for {
+		select {
+		case <-r.stream.stopInput:
+			return 0, io.EOF
+		default:
+		}
+		n, err := unix.Read(r.stream.originalFD, p)
+		if n > 0 {
+			return n, nil
+		}
+		if err == unix.EINTR {
+			continue
+		}
+		if err == unix.EAGAIN {
+			if err = recordingPoll(r.stream.originalFD, unix.POLLIN); err == nil {
+				continue
+			}
+		}
+		if err != nil {
+			return 0, err
+		}
+		return 0, io.EOF
 	}
 }
 
@@ -275,6 +368,27 @@ func (s *supervisedRecordingIO) deliver() {
 
 func (s *supervisedRecordingIO) resize() {
 	defer close(s.resizeDone)
+	if s.inputEpoch != "" {
+		for {
+			select {
+			case <-s.stopInput:
+				return
+			case size := <-s.resizes:
+				if s.recorder.record(map[string]any{"event": "resize", "rows": size.Row, "cols": size.Col}) != nil {
+					s.failed("resize")
+					return
+				}
+				select {
+				case <-s.stopInput:
+					return // Late storage completion cannot apply a retired resize.
+				default:
+				}
+				if ioctl(uintptr(s.masterFD), syscall.TIOCSWINSZ, unsafePointer(&size)) != nil {
+					return
+				}
+			}
+		}
+	}
 	timer := time.NewTicker(100 * time.Millisecond)
 	defer timer.Stop()
 	var last windowSize

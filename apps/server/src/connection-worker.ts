@@ -17,6 +17,7 @@ try {
 }
 let connection: Connection;
 let sequence = 0;
+const paneInstances = new Map<string, string>();
 const answers = new Map<number, (answers: string[]) => void>();
 const authorizations = new Map<
   number,
@@ -134,6 +135,7 @@ process.on("message", async (m: any) => {
     answers.get(m.id)?.(m.answers);
     answers.delete(m.id);
   } else if (m.kind === "pane") {
+    if (paneInstances.get(m.pane) !== m.instance) return;
     const pane = connection.panes.get(m.pane);
     if (!pane) return;
     switch (m.op) {
@@ -142,6 +144,16 @@ process.on("message", async (m: any) => {
         break;
       case "setWindow":
         pane.setWindow(m.args[0], m.args[1], 0, 0);
+        break;
+      case "writeInputFrame":
+        // An old IPC message can arrive after the same UI pane is replaced.
+        // Discard its captured context; never crash the worker or relabel it.
+        if (pane.inputEpoch && m.args[0]?.epoch === pane.inputEpoch)
+          pane.writeInputFrame?.(m.args[0], m.args[1]);
+        break;
+      case "resizeInputFrame":
+        if (pane.inputEpoch && m.args[0]?.epoch === pane.inputEpoch)
+          pane.resizeInputFrame?.(m.args[0], m.args[1], m.args[2]);
         break;
       case "pause":
         pane.pause();
@@ -175,18 +187,29 @@ process.on("message", async (m: any) => {
           result = await connection.command(m.args[0], m.args[1]);
           break;
         case "open": {
-          const [attempt, id, purpose] = m.args;
+          const [attempt, id, purpose, instance] = m.args;
           const pane = await connection.open(attempt, id, purpose);
+          paneInstances.set(id, instance);
           pane.on("data", (data: Buffer) =>
-            send({ kind: "pane-data", pane: id, data }),
+            send({ kind: "pane-data", pane: id, instance, data }),
           );
-          pane.once("close", () => send({ kind: "pane-close", pane: id }));
+          pane.once("close", () => {
+            if (paneInstances.get(id) === instance) paneInstances.delete(id);
+            send({ kind: "pane-close", pane: id, instance });
+          });
           pane.pause();
-          if (!connection.panes.has(id)) send({ kind: "pane-close", pane: id });
+          if (!connection.panes.has(id)) {
+            if (paneInstances.get(id) === instance) paneInstances.delete(id);
+            send({ kind: "pane-close", pane: id, instance });
+          }
+          result = pane.inputEpoch
+            ? { input_protocol: "v1", input_epoch: pane.inputEpoch }
+            : undefined;
           break;
         }
         case "close-pane":
-          await connection.panes.get(m.args[0])?.close();
+          if (paneInstances.get(m.args[0]) === m.args[1])
+            await connection.panes.get(m.args[0])?.close();
           break;
         default:
           throw Error("Unsupported connection operation");

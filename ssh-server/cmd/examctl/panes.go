@@ -50,6 +50,11 @@ durable Begin/clock/monitoring permission. Missing notice is UNKNOWN, not no-sta
 Optional registered_owner identifies the accepted signed page/transport/boot and
 attempt authorization epoch. Compare info ATTEMPT --read-only and web attempt
 metadata; it is not a live permit, per-pane input epoch or verified freeze receipt.
+Optional input_epochs lists captured per-pane packet epochs, distinct from the
+attempt authorization epoch. New framed panes also bind them in their versioned
+one-use admissions and signed pane receipts. These strings are NOT live input/
+monitoring permission, a writer drain or freeze/thaw proof. Missing metadata
+means legacy/unknown, never permission to relabel queued input or clear records.
 Unavailable/changed/timed-out replies prove neither process death nor misconduct.
 reports reads at most16 private timed recording receipts, without global state,
 keys, IPC or mutation. It reports recording/cleanup/delivery separately; missing

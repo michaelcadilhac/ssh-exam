@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import { BrowserConnection } from "../../apps/server/src/browser-ssh.js";
 
 afterEach(() => vi.useRealTimers());
-async function setup() {
+async function setup(epoch?: string) {
   const messages: any[] = [];
   const socket = Object.assign(new EventEmitter(), {
     readyState: 1,
@@ -33,15 +33,55 @@ async function setup() {
   conn.alive = true;
   const command = vi
     .spyOn(conn, "command")
-    .mockResolvedValue({ token: "admission" });
+    .mockResolvedValue({ token: "admission", input_epoch: epoch });
   // Admission signatures/scoping are covered by browser-ssh.test.ts. Here use
   // real BrowserPane objects and the real request/pending/timer lifecycle.
   vi.spyOn(conn as any, "receipt").mockReturnValue({
-    result: { attempt: "attempt", pane: "pane" },
+    result: {
+      attempt: "attempt",
+      pane: "pane",
+      input_epoch: epoch,
+      input_protocol: epoch ? "v1" : undefined,
+    },
   });
   const pane = await conn.open("attempt", "pane");
   return { conn, pane, command, socket, messages, authority };
 }
+it("refuses mismatched framed receipts and stale EOF without losing a healthy pane or SSH", async () => {
+  const epoch = "a".repeat(64);
+  const { conn, pane, messages } = await setup(epoch);
+  const closed = vi.fn();
+  pane.on("close", closed);
+  conn.receive({
+    type: "browser-pane-closed",
+    pane: "pane",
+    input_epoch: "b".repeat(64),
+  });
+  conn.receive({ type: "browser-pane-closed", pane: "pane" });
+  expect(conn.panes.get("pane")).toBe(pane);
+  expect(closed).not.toHaveBeenCalled();
+  vi.mocked((conn as any).receipt).mockReturnValueOnce({
+    result: {
+      attempt: "attempt",
+      pane: "bad",
+      input_protocol: "v1",
+      input_epoch: "b".repeat(64),
+    },
+  });
+  await expect(conn.open("attempt", "bad")).rejects.toThrow("no raw fallback");
+  expect(conn.panes.get("pane")).toBe(pane);
+  expect(conn.alive).toBe(true);
+  expect(messages.filter((m) => m.type === "browser-notify")).toEqual([
+    { v: 1, type: "browser-notify", op: "close-pane", args: { pane: "bad" } },
+  ]);
+  conn.receive({
+    type: "browser-pane-closed",
+    pane: "pane",
+    input_epoch: epoch,
+  });
+  expect(closed).toHaveBeenCalledOnce();
+  conn.close();
+});
 it("a current-owner receipt refusal never exposes the native pane and closes only that channel", async () => {
   const { conn, pane, messages, authority } = await setup();
   pane.dispose();

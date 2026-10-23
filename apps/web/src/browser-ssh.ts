@@ -1,5 +1,6 @@
 import { terminalInputChunks } from "./terminal-input.js";
 import { socket } from "./api.js";
+import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
 
 export class BrowserSSH {
   private lifecycle = 0;
@@ -24,11 +25,19 @@ export class BrowserSSH {
   private disconnected = 0;
   private buffers = new Map<string, any[]>();
   private readyPanes = new Set<string>();
-  private earlyInputs = new Map<string, string[]>();
+  private earlyInputs = new Map<
+    string,
+    { data: string; input?: CapturedPaneInput }[]
+  >();
+  private nativeInput = new Map<string, { epoch: string; sequence: number }>();
   private inputChains = new Map<string, Promise<any>>();
   // Capture before queuing; a closed pane's late writes/rejections must not
   // target a replacement using the same UI identifier. Not a native input epoch.
   private paneInputOwners = new Map<string, object>();
+  private framedBudgets = new Map<
+    string,
+    { owner: object; frames: number; bytes: number; warned: boolean }
+  >();
   get active() {
     return !!this.worker && !this.stopped;
   }
@@ -121,14 +130,29 @@ export class BrowserSSH {
         this.close();
         return;
       }
+      // A retired worker's already-posted output/EOF must not affect a later
+      // pane using the same UI identifier, including the gap before admission.
+      if (
+        (m.type === "closed" || m.type === "output") &&
+        m.input_epoch &&
+        m.input_epoch !== this.nativeInput.get(m.pane)?.epoch
+      )
+        return;
       if (m.type === "closed") {
         const opening = this.openingPanes.get(m.pane);
         if (opening) opening.closed = true;
-        this.sendControl({ v: 1, type: "browser-pane-closed", pane: m.pane });
+        this.sendControl({
+          v: 1,
+          type: "browser-pane-closed",
+          pane: m.pane,
+          input_epoch: m.input_epoch,
+        });
         this.readyPanes.delete(m.pane);
         this.earlyInputs.delete(m.pane);
         this.inputChains.delete(m.pane);
         this.paneInputOwners.delete(m.pane);
+        this.framedBudgets.delete(m.pane);
+        this.nativeInput.delete(m.pane);
       }
       this.emit(m);
     };
@@ -184,15 +208,29 @@ export class BrowserSSH {
         }
         const lifecycle = this.lifecycle;
         const opening = m.op === "open" ? { closed: false } : undefined;
-        if (opening) this.openingPanes.set(m.args.pane, opening);
+        if (opening) {
+          this.openingPanes.set(m.args.pane, opening);
+          if (m.args.input_epoch) {
+            this.nativeInput.set(m.args.pane, {
+              epoch: m.args.input_epoch,
+              sequence: 0,
+            });
+            // Keys captured before the native context was known have no scoped
+            // epoch. Never stamp them later when this open completes.
+            this.earlyInputs.delete(m.args.pane);
+          } else this.nativeInput.delete(m.args.pane);
+        }
         promise = this.request(m.op, m.args)
           .then((result) => {
             if (this.lifecycle !== lifecycle || this.stopped) return result;
+            if (m.op === "connect")
+              return { ...result, loaded_pane_input: "v1" };
             if (m.op === "open" && !opening?.closed) {
               this.readyPanes.add(m.args.pane);
               const pending = this.earlyInputs.get(m.args.pane) || [];
               this.earlyInputs.delete(m.args.pane);
-              for (const data of pending) this.input(m.args.pane, data);
+              for (const value of pending)
+                this.input(m.args.pane, value.data, value.input);
             }
             return result;
           })
@@ -231,6 +269,13 @@ export class BrowserSSH {
       if (m.op === "close") {
         this.emit({ type: "loss" });
         this.close();
+      } else if (m.op === "input-framed" || m.op === "resize-framed") {
+        this.framed(
+          m.args.pane,
+          { epoch: m.args.epoch, sequence: m.args.sequence },
+          m.op,
+          m.args,
+        );
       } else void this.request(m.op, m.args).catch(() => {});
       return true;
     }
@@ -254,13 +299,13 @@ export class BrowserSSH {
       if (!this.inputEnabled || !this.controlReady) return true;
       if (!this.readyPanes.has(m.pane)) {
         const q = this.earlyInputs.get(m.pane) || [];
-        if (q.reduce((n, s) => n + s.length, 0) + m.data.length <= 65536) {
-          q.push(m.data);
+        if (q.reduce((n, s) => n + s.data.length, 0) + m.data.length <= 65536) {
+          q.push({ data: m.data, input: m.input ? { ...m.input } : undefined });
           this.earlyInputs.set(m.pane, q);
         }
         return true;
       }
-      this.input(m.pane, m.data);
+      this.input(m.pane, m.data, m.input);
       return true;
     }
     if (m.type === "close") {
@@ -268,12 +313,29 @@ export class BrowserSSH {
       this.earlyInputs.delete(m.pane);
       this.inputChains.delete(m.pane);
       this.paneInputOwners.delete(m.pane);
+      this.framedBudgets.delete(m.pane);
+      this.nativeInput.delete(m.pane);
       const opening = this.openingPanes.get(m.pane);
       if (opening) opening.closed = true;
       // The server authorizes close and then asks the worker once. Do not race
       // an unsigned direct worker close against that same server operation.
       return false;
     }
+    // An optimistic viewport event can arrive after local close but before the
+    // old worker pane retires, or before replacement admission completes. Do
+    // not send a raw worker resize into that incarnation. The authenticated
+    // server orders legacy resize after open and drops unscoped framed resize;
+    // framed opened publishes a fresh captured viewport separately.
+    if (!this.readyPanes.has(m.pane)) return false;
+    if (this.nativeInput.has(m.pane)) {
+      if (this.inputEnabled && this.controlReady)
+        this.framed(m.pane, m.input, "resize-framed", {
+          rows: m.rows,
+          cols: m.cols,
+        });
+      return true; // The server must not send a duplicate unscoped SSH resize.
+    }
+    if (m.input) return true; // No fallback to a legacy resize.
     const lifecycle = this.lifecycle;
     const op = m.type;
     void this.request(op, {
@@ -287,11 +349,48 @@ export class BrowserSSH {
     });
     return m.type === "input";
   }
-  private input(pane: string, data: string) {
+  private input(pane: string, data: string, input?: CapturedPaneInput) {
+    if (this.nativeInput.has(pane)) {
+      if (data.length <= 8000)
+        this.framed(pane, input, "input-framed", { data });
+      return; // Chunk at key capture, never reuse a sequence while dequeuing.
+    }
+    if (input) return; // No raw fallback from an unagreed captured context.
     if (data.length > 8000) {
       for (const chunk of terminalInputChunks(data)) this.input(pane, chunk);
       return;
     }
+    this.queuePaneInput(pane, "input", { pane, data });
+  }
+  private framed(
+    pane: string,
+    input: CapturedPaneInput | undefined,
+    op: string,
+    value: any,
+  ) {
+    const context = this.nativeInput.get(pane);
+    if (
+      !context ||
+      input?.epoch !== context.epoch ||
+      !Number.isSafeInteger(input.sequence) ||
+      input.sequence <= context.sequence ||
+      input.sequence > Number.MAX_SAFE_INTEGER
+    )
+      return;
+    context.sequence = input.sequence;
+    this.queuePaneInput(
+      pane,
+      op,
+      { ...value, pane, epoch: input.epoch, sequence: input.sequence },
+      context.epoch,
+    );
+  }
+  private queuePaneInput(
+    pane: string,
+    op: string,
+    args: any,
+    nativeEpoch?: string,
+  ) {
     const epoch = this.inputEpoch;
     const lifecycle = this.lifecycle;
     let owner = this.paneInputOwners.get(pane);
@@ -299,26 +398,56 @@ export class BrowserSSH {
       owner = {};
       this.paneInputOwners.set(pane, owner);
     }
+    const bytes = nativeEpoch
+      ? op === "input-framed"
+        ? new TextEncoder().encode(args.data).length
+        : 8
+      : 0;
+    let budget = nativeEpoch ? this.framedBudgets.get(pane) : undefined;
+    if (nativeEpoch) {
+      if (!budget || budget.owner !== owner) {
+        budget = { owner, frames: 0, bytes: 0, warned: false };
+        this.framedBudgets.set(pane, budget);
+      }
+      if (budget.frames >= 64 || budget.bytes + bytes > 65536) {
+        if (!budget.warned) {
+          budget.warned = true;
+          this.emit({ type: "input-backpressure", pane });
+        }
+        return; // No retained promise/bytes and no replay or authentication loss.
+      }
+      budget.frames++;
+      budget.bytes += bytes;
+    }
     const chain = (this.inputChains.get(pane) || Promise.resolve())
       .then(() => {
         if (
           lifecycle === this.lifecycle &&
           epoch === this.inputEpoch &&
           this.paneInputOwners.get(pane) === owner &&
+          (!nativeEpoch || this.nativeInput.get(pane)?.epoch === nativeEpoch) &&
           this.inputEnabled &&
           this.controlReady &&
           this.readyPanes.has(pane)
         )
-          return this.request("input", { pane, data });
+          return this.request(op, args);
       })
       .catch(() => {
         if (
           lifecycle === this.lifecycle &&
           epoch === this.inputEpoch &&
           this.paneInputOwners.get(pane) === owner &&
+          (!nativeEpoch || this.nativeInput.get(pane)?.epoch === nativeEpoch) &&
           !this.stopped
         )
           this.emit({ type: "closed", pane });
+      })
+      .finally(() => {
+        if (budget) {
+          budget.frames--;
+          budget.bytes -= bytes;
+          if (!budget.frames) budget.warned = false;
+        }
       });
     this.inputChains.set(pane, chain);
   }
@@ -372,6 +501,8 @@ export class BrowserSSH {
     this.earlyInputs.clear();
     this.inputChains.clear();
     this.paneInputOwners.clear();
+    this.framedBudgets.clear();
+    this.nativeInput.clear();
     for (const p of this.callbacks.values())
       p.reject(Error("SSH connection ended"));
     this.callbacks.clear();

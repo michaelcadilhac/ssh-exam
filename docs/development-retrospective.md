@@ -167,3 +167,16 @@ an approved new page instead of demanding the old one. Existing AGENTS.md rules
 already require these reviews; follow them rather than adding more generic rules.
 Only affected/remaining browser cases were repeated after fixture-only changes;
 unchanged full application/native/client evidence was retained with checked hashes.
+
+Framed-input root qualification follow-up: three private fixture errors cost
+additional guest cycles: reusing a legacy package with intentionally private
+materials, issuing an initial grant into an exam with native history, and asserting
+a guessed owner field instead of its serialized transport_hash. Native refusals
+protected history/source policy and no guard was weakened. The driver now authors
+a fresh synthetic source and exam, uses actual C15 issuance rather than seeding
+owner records, and checks the real serializer. All other artifact hashes were
+verified unchanged; only the corrected driver/manifest was transferred to new
+private bundles. Broad unchanged application/browser/native runs were retained,
+not restarted for fixture-only edits. AGENTS.md now explicitly includes serialized
+fields and fresh first-grant namespaces in pre-test review. Keep these checks
+proportionate; do not add another speculative fixture framework.

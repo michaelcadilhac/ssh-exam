@@ -15,6 +15,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -104,10 +105,13 @@ func PasswordPrompt(p Prompt, user, host string) bool {
 }
 
 type Pane struct {
-	session *ssh.Session
-	in      io.WriteCloser
-	out     *bufio.Reader
-	mu      sync.Mutex
+	session       *ssh.Session
+	in            io.WriteCloser
+	out           *bufio.Reader
+	mu            sync.Mutex
+	inputEpoch    string
+	inputSequence uint64
+	eventEpoch    atomic.Pointer[string] // Never wait on a blocked stdin write to scope output/EOF.
 }
 type pendingPane struct{ cancel context.CancelFunc }
 type pendingCommand struct{ cancel context.CancelFunc }
@@ -400,6 +404,10 @@ func (c *Client) CancelCommand(nonce string) bool {
 	return true
 }
 func (c *Client) Open(pane, token string) (json.RawMessage, error) {
+	return c.open(pane, token, "")
+}
+
+func (c *Client) open(pane, token, epoch string) (json.RawMessage, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
 	opening := &pendingPane{cancel: cancel}
 	c.mu.Lock()
@@ -472,7 +480,8 @@ func (c *Client) Open(pane, token string) (json.RawMessage, error) {
 	if result == nil {
 		return nil, errors.New("session gate missing acknowledgment")
 	}
-	p := &Pane{session: s, in: in, out: reader}
+	p := &Pane{session: s, in: in, out: reader, inputEpoch: epoch}
+	p.eventEpoch.Store(&epoch)
 	c.mu.Lock()
 	if ctx.Err() != nil || c.opening[pane] != opening {
 		c.mu.Unlock()
@@ -486,7 +495,11 @@ func (c *Client) Open(pane, token string) (json.RawMessage, error) {
 		for {
 			n, err := reader.Read(b)
 			if n > 0 {
-				c.Emit(map[string]any{"type": "output", "pane": pane, "data": base64.StdEncoding.EncodeToString(b[:n])})
+				event := map[string]any{"type": "output", "pane": pane, "data": base64.StdEncoding.EncodeToString(b[:n])}
+				if currentEpoch := *p.eventEpoch.Load(); currentEpoch != "" {
+					event["input_epoch"] = currentEpoch
+				}
+				c.Emit(event)
 			}
 			if err != nil {
 				break
@@ -501,7 +514,11 @@ func (c *Client) Open(pane, token string) (json.RawMessage, error) {
 		replaced := (current != nil && current != p) || (c.opening[pane] != nil && c.opening[pane] != opening)
 		c.mu.Unlock()
 		if !replaced && c.ctx.Err() == nil {
-			c.Emit(map[string]any{"type": "closed", "pane": pane})
+			event := map[string]any{"type": "closed", "pane": pane}
+			if currentEpoch := *p.eventEpoch.Load(); currentEpoch != "" {
+				event["input_epoch"] = currentEpoch
+			}
+			c.Emit(event)
 		}
 	}()
 	return result, nil
@@ -515,6 +532,9 @@ func (c *Client) Input(pane, data string) error {
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.inputEpoch != "" {
+		return errors.New("raw input is unavailable on this framed pane; preserve the captured native epoch and sequence")
+	}
 	_, err := io.WriteString(p.in, data)
 	return err
 }
@@ -524,6 +544,11 @@ func (c *Client) Resize(pane string, rows, cols int) error {
 	c.mu.Unlock()
 	if p == nil {
 		return nil
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.inputEpoch != "" {
+		return errors.New("raw SSH resize is unavailable on this framed pane; send the captured native epoch and sequence")
 	}
 	return p.session.WindowChange(rows, cols)
 }

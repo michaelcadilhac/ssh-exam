@@ -113,6 +113,7 @@ func TestPaneInputGateRejectsWrongReplayAndOversizedFramesWithoutBlockingHealthy
 		paneGateFrame(epoch, 0, "private"), paneGateFrame(epoch, 5, "private"), paneGateFrame(epoch, framedInputMaxSequence+1, "private"),
 		paneGateFrame(strings.Repeat("b", 64), 6, "private"), {Epoch: epoch, Pane: "wrong", Sequence: 6, Data: []byte("private")},
 		paneGateFrame(epoch, 6, strings.Repeat("x", framedInputMaxData+1)),
+		{Epoch: epoch, Pane: testInputPane, Sequence: 6, Kind: 1, Data: make([]byte, 8)},
 	} {
 		if n, err := g.forward(f, write); n != 0 || err != errPaneInputScope || strings.Contains(err.Error(), "private") {
 			t.Fatal("invalid input admitted or leaked", n, err)

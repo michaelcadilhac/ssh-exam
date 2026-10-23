@@ -337,3 +337,14 @@ WebSocket replies still confirm the connection when HTTP polling delivers newer 
 state first. The 15-second network limit and instructor recovery policy remain in
 force; delayed, replayed or previous-connection replies cannot reopen a paused exam.
 Monitoring incident diagnostics include acknowledgment age and rejected-snapshot count.
+
+Local framed-input candidate (not deployed) connects captured keys/resize through
+matching loaded JS/WASM/native roles and fences delayed events after a pane is
+closed/reopened. `examctl panes show ATTEMPT PANE` exposes `input_epochs`; compare
+captured metadata only, never interpret it as monitoring permission or freeze
+proof. A nonmodal unsent-input notice means the bounded browser queue dropped
+recent input: wait for terminal output and enter it again. No automatic replay,
+reauthentication or misconduct finding follows from that notice. A framed-role
+mismatch refuses admission with operator guidance; preserve work and inspect
+matching loaded roles, never clear state or force raw fallback. Policy pauses
+still terminate panes; retained SSH remains unfinished. See framed-pane-input.md.

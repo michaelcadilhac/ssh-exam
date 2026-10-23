@@ -154,6 +154,7 @@ type DeniedSSHTransport struct {
 	Monitor  int    `json:"monitor"`
 }
 type Capability struct {
+	InputEpoch      string          `json:"input_epoch,omitempty"`
 	RegisteredOwner monitoringOwner `json:"registered_owner,omitzero"`
 	Username        string          `json:"username"`
 	ID              string          `json:"id"`
@@ -182,6 +183,7 @@ type State struct {
 // It is not live execution/monitoring authority, freeze proof or restart recovery.
 // Never backfill this observation from a legacy unit name or restored snapshot.
 type PaneInstance struct {
+	InputEpoch        string                   `json:"input_epoch,omitempty"`
 	Attempt           string                   `json:"attempt"`
 	Pane              string                   `json:"pane"`
 	ID                string                   `json:"id"`

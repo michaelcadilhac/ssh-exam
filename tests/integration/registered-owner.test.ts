@@ -301,6 +301,20 @@ it("accepted signed native start records historical ownership, canonical signing
       op: "issue-owner-channel-admission",
       body: { page_epoch: f.page },
     });
+    const framed = f.agent.sign(
+      "issue-channel-admission",
+      "synthetic",
+      f.transport,
+      { id: f.id, framed_input: true, page_epoch: hash("stale caller page") },
+    );
+    const framedCommand = JSON.parse(
+      Buffer.from(framed.payload, "base64").toString(),
+    );
+    expect(framedCommand).toMatchObject({
+      op: "issue-framed-owner-channel-admission",
+      body: { page_epoch: f.page },
+    });
+    expect(framedCommand.body).not.toHaveProperty("framed_input");
     expect(() => f.agent.verifyRegisteredPaneOwner(f.id, owner)).not.toThrow();
     expect(() =>
       f.agent.verifyRegisteredPaneOwner(f.id, {

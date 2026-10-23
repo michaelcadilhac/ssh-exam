@@ -9,6 +9,7 @@ import {
   type RenewalCommandContext,
 } from "./agent.js";
 import { LoginPassword, isPasswordPrompt } from "./login-password.js";
+import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
 import {
   monitoringBootTimeMS,
   MonitoringBootClockUnavailable,
@@ -22,12 +23,25 @@ type CommandExchange = {
   promise: Promise<any>;
   cancel: () => Promise<void>;
 };
+export type PaneInputChannel = ClientChannel & {
+  inputEpoch?: string;
+  writeInputFrame?: (input: CapturedPaneInput, data: string) => boolean;
+  resizeInputFrame?: (
+    input: CapturedPaneInput,
+    rows: number,
+    cols: number,
+  ) => void;
+};
 export class Connection {
   protected browserCommands = false;
   protected canRecoverRenewalReceipts() {
     return true;
   }
   private renewalReceipts = false;
+  protected framedPaneInput = false;
+  protected canUseFramedPaneInput() {
+    return false;
+  }
   get supportsAutomaticHandoff(): boolean {
     return false;
   }
@@ -36,7 +50,7 @@ export class Connection {
   }
   jump = new Client();
   class = new Client();
-  panes = new Map<string, ClientChannel>();
+  panes = new Map<string, PaneInputChannel>();
   transport = "";
   alive = false;
   onLoss = () => {};
@@ -494,9 +508,10 @@ export class Connection {
       this.transport,
       this.browserCommands ? { ...body, browser_ssh: true } : body,
     );
-    const nonce = JSON.parse(
+    const signedCommand = JSON.parse(
       Buffer.from(envelope.payload, "base64").toString(),
-    ).nonce;
+    );
+    const nonce = signedCommand.nonce;
     const started =
       op === "execution-renewal-receipt" ? monitoringBootTimeMS() : 0;
     // Canonical scope is private parent/worker metadata for refusal attribution;
@@ -509,10 +524,12 @@ export class Connection {
     const promise = exchange.promise.then(async (response) => {
       const signed =
         this.browserCommands ||
+        signedCommand.op === "issue-framed-owner-channel-admission" ||
         op === "renew-receipted-execution-lease" ||
         op === "execution-renewal-receipt" ||
         (op === "register" &&
-          response?.result?.execution_renewal_receipts === "v1");
+          (response?.result?.execution_renewal_receipts === "v1" ||
+            response?.result?.framed_pane_input === "v1"));
       const acknowledgment = signed
         ? this.receipt(
             response?.proof,
@@ -527,6 +544,14 @@ export class Connection {
           acknowledgment.result,
         );
       const result = acknowledgment.result;
+      if (
+        signedCommand.op === "issue-framed-owner-channel-admission" &&
+        (result?.input_protocol !== "v1" ||
+          !/^[a-f0-9]{64}$/.test(result?.input_epoch || ""))
+      )
+        throw Error(
+          "Native framed pane context is missing or unsupported; no raw fallback is authorized",
+        );
       if (op === "register") {
         if (
           signed &&
@@ -536,6 +561,7 @@ export class Connection {
           throw Error("Invalid SSH registration");
         this.renewalReceipts =
           signed && result?.execution_renewal_receipts === "v1";
+        this.framedPaneInput = signed && result?.framed_pane_input === "v1";
       }
       if (signed)
         await this.agent.acceptRegisteredOwnerObservation(
@@ -741,7 +767,11 @@ export class Connection {
       channel.once("error", failed);
     });
   }
-  async open(attempt: string, pane: string, purpose = "exam") {
+  async open(
+    attempt: string,
+    pane: string,
+    purpose = "exam",
+  ): Promise<PaneInputChannel> {
     if (this.config.loginOnly)
       throw Error("Terminals are unavailable during login-only testing");
     if (!this.alive)

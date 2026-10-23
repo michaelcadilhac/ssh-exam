@@ -159,7 +159,7 @@ func (g *paneInputGate) forward(frame framedInput, write func(context.Context, [
 		g.mu.Unlock()
 		return 0, errPaneInputHeld
 	}
-	if frame.Epoch != g.epoch || frame.Pane != g.pane || frame.Sequence <= g.sequence || frame.Sequence > framedInputMaxSequence || len(frame.Data) > framedInputMaxData || write == nil {
+	if frame.Kind != 0 || frame.Epoch != g.epoch || frame.Pane != g.pane || frame.Sequence <= g.sequence || frame.Sequence > framedInputMaxSequence || len(frame.Data) > framedInputMaxData || write == nil {
 		g.mu.Unlock()
 		return 0, errPaneInputScope
 	}

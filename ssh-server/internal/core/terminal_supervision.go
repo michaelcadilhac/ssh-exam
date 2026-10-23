@@ -32,6 +32,7 @@ type terminalSupervisorInit struct {
 	State   string `json:"state"`
 }
 type terminalSupervisorAttach struct {
+	InputEpoch      string                   `json:"input_epoch,omitempty"`
 	RegisteredOwner monitoringOwner          `json:"registered_owner,omitzero"`
 	Attempt         string                   `json:"attempt"`
 	Pane            string                   `json:"pane"`
@@ -364,7 +365,7 @@ func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *
 			resultErr = fmt.Errorf("%w (terminal handoff: %s): %v", errTerminalSupervisor, stage, resultErr)
 		}
 	}()
-	if p.capability.Purpose != "practice" && !(p.capability.Purpose == "exam" && p.authority.TerminalSupervised && p.authority.BrowserSSH) {
+	if p.capability.Purpose != "practice" && !((p.capability.Purpose == "exam" || p.capability.Purpose == framedPanePurpose) && p.authority.TerminalSupervised && p.authority.BrowserSSH) {
 		return nil, errTerminalSupervisor
 	}
 	stage = "owner-connect"
@@ -393,8 +394,9 @@ func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *
 	request := terminalSupervisorAttach{Attempt: p.authority.ID, Pane: p.capability.Pane, Unit: unit, PID: process.pid, UID: p.account.UID, Username: p.authority.Username, Purpose: p.capability.Purpose, Expires: p.capability.Expires, Proof: PaneInstance{Attempt: p.authority.ID, Pane: p.capability.Pane}}
 	_, _, request.Proof.ID, _ = recordedPaneIdentity(p.authority.ID, unit)
 	request.Proof.Boot = boot()
+	request.InputEpoch, request.Proof.InputEpoch = p.capability.InputEpoch, p.capability.InputEpoch
 	fds := []int{int(accepted.Fd()), int(original.Fd()), int(master.Fd()), int(process.handle.Fd()), int(process.proc.Fd())}
-	if request.Purpose == "exam" {
+	if request.Purpose == "exam" || request.Purpose == framedPanePurpose {
 		stage = "scoped-recording-storage"
 		p.recordingPID = supervisor.process.pid
 		p.recordingStart, err = terminalOwnerStart(supervisor.process)
@@ -637,8 +639,11 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	if terminalDecode(buf[:n], &r) != nil || r.Attempt != s.id || !attemptID.MatchString(r.Pane) || r.PID <= 1 || r.UID < 0 || r.Proof.Attempt != s.id || r.Proof.Pane != r.Pane || r.Proof.Boot != boot() || r.Expires <= Millis() || r.Expires > Millis()+15000 {
 		return
 	}
-	timed := r.Purpose == "exam"
+	timed := r.Purpose == "exam" || r.Purpose == framedPanePurpose
 	bound := r.RegisteredOwner != (monitoringOwner{})
+	if (r.Purpose == framedPanePurpose) != (r.InputEpoch != "") || r.InputEpoch != r.Proof.InputEpoch || (r.InputEpoch != "" && (!timed || !bound || !monitoringDigest.MatchString(r.InputEpoch))) {
+		return
+	}
 	if bound && (!timed || !validMonitoringOwner(r.RegisteredOwner) || r.RegisteredOwner.Attempt != s.id || r.RegisteredOwner.Username != r.Username || r.RegisteredOwner.UID != r.UID || r.RegisteredOwner.Boot != r.Proof.Boot) {
 		return
 	}
@@ -673,6 +678,9 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		var term syscall.Termios
 		if ioctl(f.Fd(), syscall.TCGETS, unsafe.Pointer(&term)) != nil {
 			return
+		}
+		if f == owned.files[1] && r.InputEpoch != "" && (term.Iflag&(syscall.IGNBRK|syscall.BRKINT|syscall.PARMRK|syscall.ISTRIP|syscall.INLCR|syscall.IGNCR|syscall.ICRNL|syscall.IXON) != 0 || term.Oflag&syscall.OPOST != 0 || term.Lflag&(syscall.ECHO|syscall.ECHONL|syscall.ICANON|syscall.ISIG|syscall.IEXTEN) != 0 || term.Cflag&syscall.CSIZE != syscall.CS8 || term.Cflag&syscall.PARENB != 0) {
+			return // Framing requires the actual byte-preserving exam-login PTY.
 		}
 	}
 	process := &uidProcess{pid: r.PID, handle: owned.files[3], proc: owned.files[4]}
@@ -853,7 +861,7 @@ func (s *terminalSupervisor) attachRecorded(c, outer *net.UnixConn, original, ma
 		return
 	}
 	fault := make(chan struct{}, 1)
-	stream, err := newSupervisedRecordingIO(recorder, original, master, func() {
+	stream, err := newSupervisedRecordingIO(recorder, original, master, r.InputEpoch, func() {
 		// Fault containment cannot wait for the normal startup notice: the
 		// coordinator may still be syncing final readiness or may have died.
 		// This IO worker has no canonical lock and targets only its verified

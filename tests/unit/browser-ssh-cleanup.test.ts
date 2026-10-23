@@ -50,6 +50,19 @@ function fixture() {
   };
   return { client, c: client as any, events, start };
 }
+it("the loaded JS producer explicitly negotiates framing separately from the WASM module", async () => {
+  const { client, start } = fixture();
+  const { socket } = await start();
+  expect(
+    socket.send.mock.calls.map(([value]: any[]) => JSON.parse(value)),
+  ).toContainEqual(
+    expect.objectContaining({
+      type: "browser-result",
+      result: { loaded_pane_input: "v1" },
+    }),
+  );
+  client.close();
+});
 it("logout clears workers, control socket, callbacks, reply cache and authentication listener", async () => {
   const { client, c, start } = fixture();
   const { worker, socket } = await start();
@@ -183,6 +196,56 @@ it("natural exit fences old unsent input and late RPC errors from a replacement 
   await flush();
   expect(c.paneInputOwners.size).toBe(0);
 });
+it("late framed EOF and output cannot affect the gap or a replacement with the same pane ID", async () => {
+  const { client, c, events, start } = fixture();
+  const { worker, socket } = await start();
+  const old = "a".repeat(64),
+    fresh = "b".repeat(64);
+  const open = async (epoch: string) => {
+    client.handle({
+      type: "browser-request",
+      id: epoch,
+      op: "open",
+      args: { pane: "same", input_epoch: epoch },
+    });
+    worker.respond({
+      type: "rpc-result",
+      id: worker.requests.at(-1).id,
+      result: {},
+    });
+    await flush();
+  };
+  await open(old);
+  client.terminal({ type: "close", pane: "same" });
+  const before = socket.send.mock.calls.length;
+  worker.respond({ type: "closed", pane: "same", input_epoch: old });
+  await open(fresh);
+  worker.respond({ type: "closed", pane: "same", input_epoch: old });
+  worker.respond({
+    type: "output",
+    pane: "same",
+    input_epoch: old,
+    data: "old",
+  });
+  expect(
+    events.filter((m) => ["closed", "output", "loss"].includes(m.type)),
+  ).toEqual([]);
+  expect(
+    socket.send.mock.calls
+      .slice(before)
+      .map(([value]: any[]) => JSON.parse(value).type),
+  ).not.toContain("browser-pane-closed");
+  expect(c.readyPanes.has("same")).toBe(true);
+  worker.respond({
+    type: "output",
+    pane: "same",
+    input_epoch: fresh,
+    data: "fresh",
+  });
+  expect(events.at(-1)).toMatchObject({ type: "output", input_epoch: fresh });
+  client.close();
+});
+
 it("worker postMessage and control send failures do not retain callbacks or throw in reply handlers", async () => {
   const { client, c, start } = fixture();
   const { worker, socket } = await start();

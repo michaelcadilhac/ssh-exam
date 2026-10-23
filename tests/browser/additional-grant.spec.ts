@@ -198,9 +198,22 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     .getByRole("button", { name: "Start SSH sign-in", exact: true })
     .click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
+  // SSH authentication, HTTP session completion and destination loading are
+  // separate stages. Bound the actual summary response before asserting its
+  // controls; the default five-second visibility wait is not a sign-in bound.
+  const summaryReady = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/student/exam",
+    { timeout: 15000 },
+  );
   await page
     .getByRole("button", { name: "Respond to this host", exact: true })
     .click();
+  const summaryResponse = await summaryReady;
+  expect(summaryResponse.status()).toBe(200);
+  const summary = await summaryResponse.json();
+  expect(summary.grants.map((grant: any) => grant.id).sort()).toEqual(
+    [ninety, other.id].sort(),
+  );
   await expect(
     page.getByRole("combobox", { name: "Attempt authorization", exact: true }),
   ).toBeVisible();

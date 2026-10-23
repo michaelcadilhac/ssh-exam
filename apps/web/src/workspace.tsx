@@ -23,6 +23,7 @@ import {
   continuationNotice,
 } from "./continuation-status.js";
 import { examBrowserIssue } from "./browser-support.js";
+import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
 import "@xterm/xterm/css/xterm.css";
 import "winbox/dist/css/winbox.min.css";
 type Pane = {
@@ -32,6 +33,7 @@ type Pane = {
   fit: FitAddon;
   box: any;
   observer: ResizeObserver;
+  input?: CapturedPaneInput;
 };
 export function Workspace({
   reservation,
@@ -84,6 +86,7 @@ export function Workspace({
     [count, setCount] = useState(0),
     [clock, setClock] = useState(Date.now()),
     [message, setMessage] = useState(""),
+    [inputNotice, setInputNotice] = useState(false),
     [resumedGeneration, setResumedGeneration] = useState<number | null>(null),
     [dialog, setDialog] = useState<any>(null),
     [dialogBusy, setDialogBusy] = useState(false),
@@ -222,6 +225,29 @@ export function Workspace({
         }),
       );
     }
+  };
+  const capturePaneInput = (p: Pane): CapturedPaneInput | undefined | null => {
+    if (!p.input) return undefined; // Explicit legacy pane.
+    if (p.input.sequence >= Number.MAX_SAFE_INTEGER) {
+      setMessage(
+        "Terminal input counter is exhausted; input remains blocked. Preserve this pane and ask the operator to inspect it.",
+      );
+      return null;
+    }
+    // Capture before send(), BrowserSSH's promise chain, or a WebSocket queue.
+    // Return a copy so later keys/resizes cannot relabel an earlier packet.
+    return { epoch: p.input.epoch, sequence: ++p.input.sequence };
+  };
+  const sendPaneResize = (p: Pane) => {
+    const input = capturePaneInput(p);
+    if (input === null) return;
+    send({
+      type: "resize",
+      pane: p.id,
+      rows: p.term.rows,
+      cols: p.term.cols,
+      input,
+    });
   };
   const conditions = () => ({
     fullscreen: document.fullscreenElement === root.current,
@@ -382,13 +408,8 @@ export function Workspace({
         return;
       try {
         fit.fit();
-        if (term.cols > 1 && term.rows > 1)
-          send({
-            type: "resize",
-            pane: paneId,
-            cols: term.cols,
-            rows: term.rows,
-          });
+        const target = panes.current.get(paneId);
+        if (target && term.cols > 1 && term.rows > 1) sendPaneResize(target);
       } catch {}
     };
     const updateControls = () => {
@@ -453,17 +474,20 @@ export function Workspace({
     });
     const observer = new ResizeObserver(resize);
     observer.observe(el);
-    const pane = { id: paneId, name, term, fit, box, observer };
+    const pane: Pane = { id: paneId, name, term, fit, box, observer };
     panes.current.set(paneId, pane);
     term.open(el);
     term.onData((data) => {
       for (const chunk of terminalInputChunks(data)) {
         if (coveredRef.current || !interaction()) break;
+        const input = capturePaneInput(pane);
+        if (input === null) break;
         send({
           type: "input",
           pane: paneId,
           data: chunk,
           generation: attemptRef.current.generation,
+          input,
         });
       }
     });
@@ -757,6 +781,31 @@ export function Workspace({
             armed.current = true;
           }
         }
+        if (m.type === "opened" && m.input) {
+          const p = panes.current.get(m.pane);
+          if (p) {
+            if (
+              m.input.protocol !== "v1" ||
+              !/^[a-f0-9]{64}$/.test(m.input.epoch || "")
+            ) {
+              p.term.options.disableStdin = true;
+              setMessage(
+                "Native terminal input agreement is unsupported. Preserve this pane and ask the operator to inspect matching versions.",
+              );
+              return;
+            }
+            if (p.input?.epoch !== m.input.epoch)
+              p.input = { epoch: m.input.epoch, sequence: 0 };
+            p.fit.fit();
+            sendPaneResize(p); // Fresh current viewport, not a relabelled queued resize.
+          }
+        }
+        if (
+          (m.type === "closed" || m.type === "output") &&
+          m.input_epoch &&
+          m.input_epoch !== panes.current.get(m.pane)?.input?.epoch
+        )
+          return;
         if (m.type === "output") {
           const p = panes.current.get(m.pane);
           if (p && interaction())
@@ -784,6 +833,7 @@ export function Workspace({
     };
     connect();
     const unsubscribe = browserSSH.subscribe((m) => {
+      if (m.type === "input-backpressure") setInputNotice(true);
       if (m.type === "output") {
         const p = panes.current.get(m.pane);
         if (p && interaction())
@@ -1169,12 +1219,7 @@ export function Workspace({
     setResumedGeneration(attemptRef.current.generation);
     for (const p of panes.current.values()) {
       p.fit.fit();
-      send({
-        type: "resize",
-        pane: p.id,
-        cols: p.term.cols,
-        rows: p.term.rows,
-      });
+      sendPaneResize(p);
     }
   };
   const restricted = armed.current || attempt.state === "LOCKED";
@@ -1228,12 +1273,7 @@ export function Workspace({
                       Math.min(28, size + (action === "in" ? 1 : -1)),
                     );
               p.fit.fit();
-              send({
-                type: "resize",
-                pane: p.id,
-                cols: p.term.cols,
-                rows: p.term.rows,
-              });
+              sendPaneResize(p);
             }
             closeTerminalMenu();
           }}
@@ -1336,6 +1376,15 @@ export function Workspace({
           </button>
         )}
       </header>
+      {inputNotice && !covered && (
+        <div className="status warn" role="status">
+          Recent terminal input was not sent. Wait for terminal output, then
+          enter it again.
+          <button onClick={() => setInputNotice(false)}>
+            Dismiss input notice
+          </button>
+        </div>
+      )}
       {attempt.state === "ACTIVE" &&
         !covered &&
         resumedGeneration === attempt.generation && (

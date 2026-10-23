@@ -1,5 +1,6 @@
 import { fork, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { WebSocket } from "ws";
@@ -9,8 +10,8 @@ import {
   AgentCommandStateError,
   type Agent,
 } from "./agent.js";
-import type { Connection, Dialogue } from "./ssh.js";
-import type { ClientChannel } from "ssh2";
+import type { Connection, Dialogue, PaneInputChannel } from "./ssh.js";
+import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
 export type ConnectionHandle = Pick<
   Connection,
   | "username"
@@ -40,6 +41,8 @@ export type ConnectionFailure = {
 const running = new Set<IsolatedConnection>();
 const MAX_PACKET = 8 * 1024 * 1024;
 class RemotePane extends EventEmitter {
+  readonly ipcInstance = randomUUID();
+  inputEpoch?: string;
   writableLength = 0;
   disposed = false;
   private closing?: Promise<void>;
@@ -51,22 +54,48 @@ class RemotePane extends EventEmitter {
   }
   write(data: string) {
     if (this.disposed || this.closing) return false;
-    this.owner.post({ kind: "pane", pane: this.id, op: "write", args: [data] });
+    this.post("write", [data]);
     return true;
   }
+  writeInputFrame(input: CapturedPaneInput, data: string) {
+    if (
+      this.disposed ||
+      this.closing ||
+      !this.inputEpoch ||
+      input?.epoch !== this.inputEpoch
+    )
+      return false;
+    this.post("writeInputFrame", [{ ...input }, data]);
+    return true;
+  }
+  resizeInputFrame(input: CapturedPaneInput, rows: number, cols: number) {
+    if (
+      this.disposed ||
+      this.closing ||
+      !this.inputEpoch ||
+      input?.epoch !== this.inputEpoch
+    )
+      return;
+    this.post("resizeInputFrame", [{ ...input }, rows, cols]);
+  }
   setWindow(rows: number, cols: number) {
+    this.post("setWindow", [rows, cols]);
+  }
+  pause() {
+    this.post("pause", []);
+  }
+  resume() {
+    this.post("resume", []);
+  }
+  private post(op: string, args: unknown[]) {
+    if (this.disposed || this.closing) return;
     this.owner.post({
       kind: "pane",
       pane: this.id,
-      op: "setWindow",
-      args: [rows, cols],
+      instance: this.ipcInstance,
+      op,
+      args,
     });
-  }
-  pause() {
-    this.owner.post({ kind: "pane", pane: this.id, op: "pause", args: [] });
-  }
-  resume() {
-    this.owner.post({ kind: "pane", pane: this.id, op: "resume", args: [] });
   }
   dispose() {
     if (this.disposed) return;
@@ -77,7 +106,7 @@ class RemotePane extends EventEmitter {
   }
   close() {
     return (this.closing ??= this.owner
-      .rpc("close-pane", [this.id])
+      .rpc("close-pane", [this.id, this.ipcInstance])
       .then(() => {})
       .finally(() => this.dispose()));
   }
@@ -86,7 +115,7 @@ class RemotePane extends EventEmitter {
 // SSH clients, signing and browser-operation lifecycles run in a disposable OS
 // process. The HTTP-side proxy owns only bounded IPC and supervision state.
 export class IsolatedConnection implements ConnectionHandle {
-  panes = new Map<string, ClientChannel>();
+  panes = new Map<string, PaneInputChannel>();
   alive = false;
   transport = "";
   onLoss = () => {};
@@ -364,9 +393,12 @@ export class IsolatedConnection implements ConnectionHandle {
     } else if (m.kind === "socket-end") {
       this.sockets.get(m.socket)?.close(m.code, m.reason);
     } else if (m.kind === "pane-close") {
-      (this.panes.get(m.pane) as any)?.dispose();
+      const pane = this.panes.get(m.pane) as RemotePane | undefined;
+      if (pane && pane.ipcInstance === m.instance) pane.dispose();
     } else if (m.kind === "pane-data") {
-      this.panes.get(m.pane)?.emit("data", Buffer.from(m.data));
+      const pane = this.panes.get(m.pane) as RemotePane | undefined;
+      if (pane && pane.ipcInstance === m.instance)
+        pane.emit("data", Buffer.from(m.data));
     } else if (m.kind === "diagnostic") {
       this.onDiagnostic(m.host, m.detail);
     } else if (m.kind === "loss") {
@@ -410,7 +442,20 @@ export class IsolatedConnection implements ConnectionHandle {
     const channel = new RemotePane(pane, this);
     this.panes.set(pane, channel as any);
     try {
-      await this.rpc("open", [attempt, pane, purpose]);
+      const result = await this.rpc("open", [
+        attempt,
+        pane,
+        purpose,
+        channel.ipcInstance,
+      ]);
+      if (result?.input_epoch) {
+        if (
+          result.input_protocol !== "v1" ||
+          !/^[a-f0-9]{64}$/.test(result.input_epoch)
+        )
+          throw Error("Invalid native pane input context");
+        channel.inputEpoch = result.input_epoch;
+      }
       return channel as any;
     } catch (error) {
       channel.dispose();

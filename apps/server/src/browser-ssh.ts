@@ -3,6 +3,7 @@ import { randomUUID, sign, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { WebSocket } from "ws";
 import { Connection, type Dialogue } from "./ssh.js";
+import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
 import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
 import type { Config } from "../../../packages/config/index.js";
 
@@ -14,15 +15,42 @@ class BrowserPane extends EventEmitter {
     public pane: string,
     private attempt: string,
     private owner: BrowserConnection,
+    public readonly inputEpoch?: string,
   ) {
     super();
   }
   write(data: string) {
+    if (this.inputEpoch)
+      throw Error("Native framed pane context required; raw input refused");
     this.owner.notify("input", { pane: this.pane, data });
     return true;
   }
   setWindow(rows: number, cols: number) {
+    if (this.inputEpoch)
+      throw Error("Native framed pane context required; raw resize refused");
     this.owner.notify("resize", { pane: this.pane, rows, cols });
+  }
+  writeInputFrame(input: CapturedPaneInput, data: string) {
+    if (!this.inputEpoch || input?.epoch !== this.inputEpoch)
+      throw Error("Stale native pane input context; no input sent");
+    this.owner.notify("input-framed", {
+      pane: this.pane,
+      epoch: input.epoch,
+      sequence: input.sequence,
+      data,
+    });
+    return true;
+  }
+  resizeInputFrame(input: CapturedPaneInput, rows: number, cols: number) {
+    if (!this.inputEpoch || input?.epoch !== this.inputEpoch)
+      throw Error("Stale native pane input context; no resize sent");
+    this.owner.notify("resize-framed", {
+      pane: this.pane,
+      epoch: input.epoch,
+      sequence: input.sequence,
+      rows,
+      cols,
+    });
   }
   pause() {}
   resume() {}
@@ -59,6 +87,10 @@ class BrowserPane extends EventEmitter {
 export class BrowserConnection extends Connection {
   protected override browserCommands = true;
   private commandCancellationSupported = false;
+  private framedInputSupported = false;
+  protected override canUseFramedPaneInput() {
+    return this.framedInputSupported;
+  }
   protected override canRecoverRenewalReceipts() {
     return this.commandCancellationSupported;
   }
@@ -104,7 +136,7 @@ export class BrowserConnection extends Connection {
   private detachment?: NodeJS.Timeout;
   private detachedAt: number | null = null;
   private closed = false;
-  private opening = new Map<string, { closed: boolean }>();
+  private opening = new Map<string, { closed: boolean; inputEpoch?: string }>();
   constructor(
     user: string,
     private exam: string,
@@ -195,8 +227,11 @@ export class BrowserConnection extends Connection {
     if (m.type === "browser-pane-closed") {
       if (typeof m.pane !== "string") return false;
       const pane = this.panes.get(m.pane);
-      if (pane instanceof BrowserPane) pane.dispose();
       const opening = this.opening.get(m.pane);
+      const expected = pane?.inputEpoch || opening?.inputEpoch;
+      if ((m.input_epoch || expected) && m.input_epoch !== expected)
+        return true;
+      if (pane instanceof BrowserPane) pane.dispose();
       if (opening) opening.closed = true;
       return true;
     }
@@ -306,6 +341,9 @@ export class BrowserConnection extends Connection {
         controlToken: this.controlToken,
       });
       this.commandCancellationSupported = connected?.command_cancel === true;
+      this.framedInputSupported =
+        connected?.framed_input === true &&
+        connected?.loaded_pane_input === "v1";
       sshAuthenticated = true;
       this.alive = true;
       const result = await this.command("register", {
@@ -365,7 +403,7 @@ export class BrowserConnection extends Connection {
   override async open(attempt: string, pane: string, purpose = "exam") {
     if (this.panes.has(pane) || this.opening.has(pane))
       throw Error("Terminal already opening or open");
-    const opening = { closed: false };
+    const opening: { closed: boolean; inputEpoch?: string } = { closed: false };
     this.opening.set(pane, opening);
     let requested = false;
     try {
@@ -375,11 +413,16 @@ export class BrowserConnection extends Connection {
         transport: this.transport,
         username: this.username,
         purpose,
+        framed_input:
+          purpose === "exam" &&
+          this.framedPaneInput &&
+          this.canUseFramedPaneInput(),
       });
+      opening.inputEpoch = admission.input_epoch;
       requested = true;
       const acknowledgment = await this.request(
         "open",
-        { pane, token: admission.token },
+        { pane, token: admission.token, input_epoch: admission.input_epoch },
         15000,
       );
       const receipt = this.receipt(
@@ -390,11 +433,24 @@ export class BrowserConnection extends Connection {
       );
       if (receipt.result?.attempt !== attempt || receipt.result?.pane !== pane)
         throw Error("Pane acknowledgment mismatch");
+      if (
+        admission.input_epoch &&
+        (receipt.result?.input_epoch !== admission.input_epoch ||
+          receipt.result?.input_protocol !== "v1")
+      )
+        throw Error(
+          "Native framed pane acknowledgment mismatch; no raw fallback is authorized",
+        );
       await this.authority.confirmRegisteredPaneOwner(
         attempt,
         receipt.result?.registered_owner,
       );
-      const channel = new BrowserPane(pane, attempt, this);
+      const channel = new BrowserPane(
+        pane,
+        attempt,
+        this,
+        admission.input_epoch,
+      );
       if (!this.alive || this.closed)
         throw new AgentCommandDisconnectedError(
           "SSH connection ended during terminal admission",

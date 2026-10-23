@@ -31,6 +31,7 @@ const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
 const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
 const receiptAccounts = { receipt01: 10029 };
+const framedAccounts = { framed01: 10030 };
 const approvalAccounts = { approval01: 10020 };
 // The sandbox repeat test deliberately leaves a reserved new preflight; expiry
 // qualification must own another account instead of bypassing that reservation.
@@ -93,6 +94,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (
     [
       "issue-owner-channel-admission",
+      "issue-framed-owner-channel-admission",
       "renew-owner-execution-lease",
       "consume-owner-continuation",
     ].includes(op)
@@ -104,10 +106,16 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       (op !== "consume-owner-continuation" && owner.page_epoch !== b.page_epoch)
     )
       throw Error("Registered fixture owner mismatch");
-    if (op === "issue-owner-channel-admission")
+    if (
+      op === "issue-owner-channel-admission" ||
+      op === "issue-framed-owner-channel-admission"
+    )
       return h.agent.call("issue-channel-admission", {
         ...b,
         registered_owner: owner,
+        ...(op === "issue-framed-owner-channel-admission"
+          ? { input_epoch: hash(randomUUID()) }
+          : {}),
       });
     op =
       op === "renew-owner-execution-lease"
@@ -166,6 +174,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...closureAccounts,
       ...monitoringAccounts,
       ...receiptAccounts,
+      ...framedAccounts,
       ...approvalAccounts,
       ...preflightAccounts,
       ...versionAccounts,
@@ -592,6 +601,8 @@ h.control.dropReply = (frame) =>
 h.control.command = async (op, b, frame) => {
   if (op === "register") {
     const result = await fixtureCall(op, b);
+    if (b.exam === "framed-input")
+      return { ...result, framed_pane_input: "v1" };
     return b.exam === "monitoring-receipt"
       ? { ...result, execution_renewal_receipts: "v1" }
       : result;
@@ -725,6 +736,20 @@ definitions.create(
 new RosterManagement(store, undefined, "class").add(
   "initial-grant",
   { username: "grant01" },
+  "fixture-operator",
+);
+definitions.create(
+  {
+    ...exam,
+    id: "framed-input",
+    name: "Framed input browser grant",
+    template_version: versionHash,
+  },
+  "fixture-operator",
+);
+new RosterManagement(store, undefined, "class").add(
+  "framed-input",
+  { username: "framed01" },
   "fixture-operator",
 );
 definitions.create(
@@ -893,6 +918,7 @@ store.db
   .run("temporary-access", "policytest01", null, null, null, 12001);
 // Disposable browser-test instrumentation only; never part of the production app.
 app.get("/api/fixture/runtime", async () => ({
+  framedInput: h.control.framed,
   renewalReceipts: {
     recovered: recoveredRenewalReceipts,
     activeCommands: h.control.active,
