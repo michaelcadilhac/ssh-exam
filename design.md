@@ -44,6 +44,18 @@ and committed-start fences make the entitlement one-use. After Begin, normal
 deadlines, monitoring, interruption authorization and collection apply. This does
 not make ordinary exam clocks pausable or reopen completed original submissions.
 
+The local rejected-preparation repair keeps positive cancellation confirmation:
+authenticated student logout can persist a no-start tombstone for an exact web
+preparation UUID absent from valid native authority. It fences delayed prepare
+across restart, without account/process changes, a clock or grant consumption.
+Existing native UUIDs retain normal unstarted-only cancellation. Root operators
+have `examctl cancel-absent UUID --exam EXAM --username USER --reason REASON`;
+missing/unsafe authority and existing UUIDs refuse. Gateway retirement still
+requires matching native cancellation and normal account policy; an error/timeout
+is never no-start evidence. Allowance synchronization remains a separate pending
+decision; strict saved-source/duration checks are not relaxed. Evidence and
+compatibility: docs/recovery-admission-consistency.md. Not deployed.
+
 Saved-work restoration explicitly reapplies archived ordinary file modes and
 available modification times after student ownership, independently of umask.
 Never restore privileged ownership/bits or invent absent metadata. Current

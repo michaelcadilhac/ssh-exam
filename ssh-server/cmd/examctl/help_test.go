@@ -41,6 +41,10 @@ func cliProcess(t *testing.T, args ...string) (string, int) {
 }
 
 func TestEverySupportedCommandHasDiscoverableProcessHelp(t *testing.T) {
+	output, code := cliProcess(t, "help")
+	if code != 0 || !strings.Contains(output, "cancel-absent") {
+		t.Fatal("root help hides orphan recovery workflow", code, output)
+	}
 	for topic := range guides {
 		t.Run(topic, func(t *testing.T) {
 			for _, args := range [][]string{{"help", topic}, {topic, "--config", "/missing/configuration", "--help"}} {
@@ -56,7 +60,7 @@ func TestEverySupportedCommandHasDiscoverableProcessHelp(t *testing.T) {
 }
 
 func TestInvalidCLIUsagePointsToRelevantHelpBeforeRootOrConfiguration(t *testing.T) {
-	for _, args := range [][]string{{"unknown"}, {"delete"}, {"stop", "ATTEMPT"}, {"workspace-prepare"}, {"workspace-repair", "ATTEMPT"}, {"recovery-grants", "unexpected-target"}, {"recovery-grants", "--active"}, {"agent", "shutdown"}, {"info", "one", "two"}, {"list", "--wrong-flag"}, {"info", "id", "--output", "file"}} {
+	for _, args := range [][]string{{"unknown"}, {"delete"}, {"stop", "ATTEMPT"}, {"cancel-absent", "ATTEMPT", "--reason", "Concrete missing identity"}, {"cancel", "ATTEMPT", "--username", "student", "--reason", "Wrong command account flag"}, {"workspace-prepare"}, {"workspace-repair", "ATTEMPT"}, {"recovery-grants", "unexpected-target"}, {"recovery-grants", "--active"}, {"agent", "shutdown"}, {"info", "one", "two"}, {"list", "--wrong-flag"}, {"info", "id", "--output", "file"}} {
 		output, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(output, "help") || strings.Contains(output, "Cannot load") {
 			t.Fatalf("misleading syntax result %d: %s", code, output)

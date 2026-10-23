@@ -19,7 +19,7 @@ import (
 func takesValue(arg string) bool {
 	name := strings.TrimLeft(strings.SplitN(arg, "=", 2)[0], "-")
 	switch name {
-	case "config", "state", "reason", "exam", "output", "request", "limit", "after", "name", "template", "template-version", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib":
+	case "config", "state", "reason", "exam", "username", "output", "request", "limit", "after", "name", "template", "template-version", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib":
 		return strings.HasPrefix(arg, "-")
 	}
 	return false
@@ -88,6 +88,7 @@ func main() {
 	reason := flags.String("reason", "", "audited administrator reason")
 	active := flags.Bool("active", false, "list only started unfinished attempts")
 	exam := flags.String("exam", "", "filter list by exam ID")
+	username := flags.String("username", "", "exact approved account for cancel-absent only")
 	asJSON := flags.Bool("json", false, "machine-readable list")
 	output := flags.String("output", "", "create a new private export file; never overwrite")
 	readOnly := flags.Bool("read-only", false, "observe native metadata without initialization, reconciliation or writes; list/info only")
@@ -118,8 +119,10 @@ func main() {
 		invalid = "provide --reason with a concrete audited administrator reason of at least 8 characters"
 	} else if *output != "" && op != "export" {
 		invalid = "--output is only supported by export"
-	} else if (*active && op != "list" && op != "info") || (*exam != "" && op != "list" && op != "info" && op != "recovery-grants") {
-		invalid = "--active filters only list/info; --exam also filters recovery-grants, never mutations by UUID"
+	} else if (provided["username"] && op != "cancel-absent") || (op == "cancel-absent" && (*exam == "" || *username == "")) {
+		invalid = "cancel-absent requires --exam EXAM and --username USER; --username is unavailable for other commands"
+	} else if (*active && op != "list" && op != "info") || (*exam != "" && op != "list" && op != "info" && op != "recovery-grants" && op != "cancel-absent") {
+		invalid = "--active filters only list/info; --exam filters list/info/recovery-grants or names the exact orphan exam for cancel-absent"
 	} else if op == "info" && *exam != "" && flags.Arg(1) != "" {
 		invalid = "choose info ATTEMPT or list --exam EXAM; do not combine an attempt target and exam filter"
 	} else if (*readOnly || provided["state"] || provided["limit"] || provided["after"]) && (!*readOnly || (op != "list" && op != "info")) {
@@ -288,6 +291,8 @@ func main() {
 			fail(fmt.Errorf("export incomplete; inspect any partial destination before retry: %w", err))
 		}
 		return
+	case "cancel-absent":
+		result, err = e.CancelAbsentPreparation(id, *exam, *username, *reason)
 	default:
 		result, err = e.Admin(op, id, *reason)
 	}

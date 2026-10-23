@@ -9,6 +9,43 @@ import (
 	"syscall"
 )
 
+// Root-only CLI recovery of a gateway orphan. Refuse an existing UUID rather
+// than assuming it is the preparation the operator intended to cancel.
+func (e *Engine) CancelAbsentPreparation(id, exam, username, reason string) (any, error) {
+	if len(strings.TrimSpace(reason)) < 8 {
+		return nil, errors.New("provide a concrete audited reason of at least 8 characters")
+	}
+	// Unlike student cancellation, root has no registered SSH transport proving
+	// a previously loaded authority. Do not initialize empty state as no-start
+	// evidence when an operator meant to repair an existing gateway record.
+	root, err := readOnlyRoot(e.Config.State)
+	if err != nil {
+		return nil, errors.New("existing native state unavailable or unsafe; preserve records and repair authority before cancel-absent; no no-start proof can be issued")
+	}
+	_, _, observedErr := readOnlyStateFile(root)
+	root.Close()
+	if observedErr != nil {
+		return nil, errors.New("existing native state unavailable or unsafe; preserve records and repair authority before cancel-absent; no no-start proof can be issued")
+	}
+	var result *Attempt
+	err = e.WithState(func() error {
+		account, ok := e.account(username)
+		if !ok || !attemptID.MatchString(id) || !identifier.MatchString(exam) || !identifier.MatchString(username) {
+			return errors.New("provide an exact absent attempt UUID, exam ID and locally approved username; inspect examctl help cancel-absent")
+		}
+		if e.state.Attempts[id] != nil {
+			return errors.New("attempt exists; inspect examctl info ATTEMPT --read-only and use normal examctl cancel only if unstarted; no absent-attempt cancellation performed")
+		}
+		if err := e.appendNativeManagementAudit(map[string]any{"at": Millis(), "action": "administrator-cancel-absent", "attempt": id, "exam": exam, "username": username, "reason": reason, "actor_uid": os.Getuid(), "effective_uid": os.Geteuid()}); err != nil {
+			return err
+		}
+		var err error
+		result, err = e.cancelAbsentPreparation(Request{ID: id, Exam: exam, Username: username, UID: account.UID, Reason: "administrator: " + reason})
+		return err
+	})
+	return result, err
+}
+
 func (e *Engine) List(active bool, exam string) ([]*Attempt, error) {
 	if err := e.reconcileAccessOutside(""); err != nil {
 		return nil, err

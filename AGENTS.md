@@ -61,6 +61,9 @@
   inspection, cancellation, crash/restart, expiry, stale completion and admission
   bypass. No pending operation may become an indefinite account reservation or
   execution permission. Complete this review before freezing milestone artifacts.
+  For absence/no-start receipts, check contradictory durable workspace, submission
+  and consumption evidence before the first broad run; a missing canonical row
+  alone is not enough. Catching this late requires requalifying native artifacts.
 - Run broad application/integration/native-race/build/browser checks at coherent
   milestone boundaries according to affected surfaces and risk. Do not rerun
   unchanged application/browser suites for every private native helper. Record

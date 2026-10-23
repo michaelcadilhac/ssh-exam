@@ -300,6 +300,18 @@ account policy is normal. If policy was never applied, the agent explicitly conf
 that fact after cancellation/restart. Actual restoration failures remain blocked and
 are reported as account-restoration failures rather than uncertain start status.
 
+Local candidate only: if native preparation refused before creating a record,
+student logout can now durably fence its absent UUID and confirm normal policy.
+Retry preflight retires the cancelled web row only after native confirmation.
+An unknown cancellation still stays pending; do not delete web rows by hand.
+For an exact orphan from gateway diagnostics, root can use
+`examctl cancel-absent UUID --exam EXAM --username USER --reason 'Concrete reason'`
+and inspect `examctl info UUID --read-only`, then have the student reconnect/retry.
+This command refuses existing native UUIDs and missing/unsafe state; it never
+stops processes, releases holds, consumes a grant or revises an allowance. Review
+`examctl help cancel-absent` and recovery-admission-consistency.md. No production
+repair or rollout is performed by this local development.
+
 Monitoring acknowledgment freshness is independent of status snapshot order. Healthy
 WebSocket replies still confirm the connection when HTTP polling delivers newer exam
 state first. The 15-second network limit and instructor recovery policy remain in

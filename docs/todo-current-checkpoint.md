@@ -5,13 +5,39 @@ no push, deployment, production changes, service restart or consolidation.
 Stop on a missing command. Preserve all work, history, protected submissions,
 deadlines, holds and credential cleanup. Follow AGENTS.md and the retrospective.
 
-## Current validated milestone: timed recording isolation
+## Current validated local milestone: rejected recovery preparation cancellation
 
-Latest validated HEAD is204d439: incomplete/ambiguous workspace hold metadata
+Validated increment: local commit titled **Fence rejected recovery preparations
+before retry**, based on75fb5cb. Evidence/state review/limits:
+recovery-admission-consistency.md. Signed absent-preparation cancellation and
+root `examctl cancel-absent` persist a no-start fence; existing/started attempts,
+unsafe authority and contradictory workspace/submission/consumption evidence
+refuse. Positive retry preserves saved source and receives the full4500seconds
+only at actual Begin. No failure consumes a grant/clock or bypasses policy/holds.
+
+Verification:438 app/84 files; final native races/resources/namespaces/compiler/
+default-size core303.991s/CLI26.717s;3 rebuilt browser checks plus final artifact-
+path check; matching builds/vet/typecheck/diff pass. All runners finished. Native
+OS readiness/setup are test seams; no installed-role/production qualification.
+Existing generated screenshot stays uncommitted; future screenshots use test output.
+
+NOT yet fixed: duration-only synchronization of explicit per-student edits with
+unused native saved-work grants. Awaiting whether the allowance edit itself
+authorizes deferred revision at authenticated preflight (recommended), or a
+separate explicit grant-revision action. Preserve source/checksum; refuse consumed/
+already-prepared grants; never apply default edits silently. The regression's
+manual synthetic correction is not a synchronization implementation.
+Exact next action: apply that answer to the shared web/examctl settings → native
+unused-grant workflow, then rerun its actual interfaces. C16 remains independent
+and unanswered; do not expand this repair into retained-mode architecture.
+
+## Earlier validated milestones
+
+Earlier validated runtime204d439: incomplete/ambiguous workspace hold metadata
 refuses through actual CLI/native workflows instead of defaulting to released.
 Full native312.137s/CLI29.516s and static build/vet/diff pass; all runners finish.
 The prior supervisor diagnostic workflow is committed inc601746. Detailed evidence
-and the independent-work handoff follow below; no runtime change is left uncommitted.
+and the independent-work handoff follow below; that earlier milestone was committed.
 
 Actual timed Engine.local/Unix/PTY recording no longer holds unrelated attempts
 behind one Engine-wide mutex. Recorder context is only storage/budget/IDs.

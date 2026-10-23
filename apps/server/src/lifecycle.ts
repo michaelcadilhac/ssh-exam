@@ -867,7 +867,16 @@ export class Lifecycle {
       return true;
     };
     try {
-      await this.agent.call("cancel-attempt", { id, reason });
+      await this.agent.call("cancel-attempt", {
+        id,
+        reason,
+        exam: a.exam,
+        username: a.username,
+        uid: a.uid,
+        settings: JSON.parse(a.settings),
+        // The connection supplies its authenticated transport, never a browser
+        // assertion. This identity also lets root fence an absent preparation.
+      });
       stage = "confirm-cancellation";
       if (this.store.attempt(id).state !== "CANCELLED_BEFORE_START")
         await this.reconcile(id);

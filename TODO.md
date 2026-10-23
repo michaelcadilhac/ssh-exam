@@ -47,6 +47,16 @@ before starting time with retry/inspection guidance; no offline permit or new
 browser relay. Existing started deadlines/holds/history and uncertain one-use
 outcomes are preserved. Protocol implementation/qualification remain pending.
 
+October22 recovery-admission follow-up: a per-student allowance change can leave
+an unused native saved-work grant with an older duration; its strict rejection
+can precede native attempt creation and strand the gateway PREPARING row. The
+local cancellation-fencing repair passes focused signed-native/real SSH-web/CLI,
+full app/native race/resource/build and rebuilt browser qualification. It is
+implemented/tested locally, not deployed. Duration/source synchronization is still
+investigated/awaiting the explicit-edit policy answer, not implemented by this
+note. See docs/recovery-admission-consistency.md. No student records, installed
+roles or services are changed; no grant/clock is consumed by refusal/cancellation.
+
 ## Critical priority: eliminate heartbeat-induced false lockouts
 
 - [ ] **Redesign monitoring liveness and execution authorization; do not turn a

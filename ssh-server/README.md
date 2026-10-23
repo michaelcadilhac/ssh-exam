@@ -43,6 +43,16 @@ with `examctl cancel ATTEMPT --reason REASON`; late checks cannot revive it. A
 crashed pending-readiness reservation expires without starting the exam. See
 [preflight isolation](../docs/preflight-isolation.md); no production change.
 
+The local rejected-preparation repair also supports `examctl cancel-absent UUID
+--exam EXAM --username USER --reason REASON` for an exact gateway preparation
+that never existed in valid native state. It writes a durable no-start tombstone
+and refuses existing UUIDs or missing/unsafe authority; it does not initialize
+authority as absence proof, alter an account/process/source/grant or reset time.
+Student signed logout performs the same absence fencing automatically. The gateway
+still requires positive cancellation/restoration confirmation before retirement.
+See `examctl help cancel-absent` and
+[recovery admission consistency](../docs/recovery-admission-consistency.md).
+
 Unflagged legacy `examctl list/info` initialize native state and may reconcile
 eligible access. For a non-mutating investigation, the local candidate supports:
 

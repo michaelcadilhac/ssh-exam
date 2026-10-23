@@ -67,7 +67,7 @@ test("fifteen-minute age ends a connected preflight, closes SSH and practice, th
     deadline: null,
   });
   await page.screenshot({
-    path: "docs/screenshots/preflight-fifteen-minute-timeout.png",
+    path: test.info().outputPath("preflight-fifteen-minute-timeout.png"),
     fullPage: true,
   });
   await page

@@ -65,6 +65,10 @@ it("logout logs the actual command failure, signs out and defers its contextual 
     expect(call).toHaveBeenCalledWith("cancel-attempt", {
       id,
       reason: "Signed out before starting",
+      exam: "test",
+      username: "alice",
+      uid: 1001,
+      settings: {},
     });
     const diagnostic = logs
       .split("\n")

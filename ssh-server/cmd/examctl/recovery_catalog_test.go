@@ -88,6 +88,45 @@ func TestRecoveryCatalogCLIInRootUserNamespace(t *testing.T) {
 	if code != 1 || !strings.Contains(out, "account restriction") || !strings.Contains(out, "recovery-grants") || !strings.Contains(out, "Original deadline") {
 		t.Fatal("actual destructive refusal lacks guidance", code, out)
 	}
+	const absent = "22222222-1234-1234-1234-123456789abc"
+	for _, args := range [][]string{
+		{"cancel-absent", absent, "--exam", "retake", "--reason", "Synthetic missing account refusal"},
+		{"cancel-absent", absent, "--exam", "retake", "--username", "unapproved", "--reason", "Synthetic unknown account refusal"},
+		{"cancel-absent", source, "--exam", "retake", "--username", "student", "--reason", "Synthetic existing history refusal"},
+	} {
+		if out, code := invoke(args...); code == 0 {
+			t.Fatal("unsafe absent cancellation accepted", args, out)
+		}
+	}
+	out, code = invoke("cancel-absent", absent, "--exam", "retake", "--username", "student", "--reason", "Synthetic refused preparation cleanup")
+	var tombstone core.Attempt
+	if code != 0 || json.Unmarshal([]byte(out), &tombstone) != nil || tombstone.ID != absent || tombstone.Exam != "retake" || tombstone.Username != "student" || tombstone.UID != 29999 || tombstone.State != "CANCELLED_BEFORE_START" || tombstone.Start != 0 || tombstone.Deadline != 0 || tombstone.OriginalDeadline != 0 {
+		t.Fatal("actual absent cancellation failed", code, out)
+	}
+	out, code = invoke("info", absent, "--read-only")
+	if code != 0 || !strings.Contains(out, "CANCELLED_BEFORE_START") {
+		t.Fatal("tombstone not discoverable", code, out)
+	}
+	out, code = invoke("cancel-absent", absent, "--exam", "retake", "--username", "student", "--reason", "Synthetic duplicate command refusal")
+	if code != 1 || !strings.Contains(out, "attempt exists") {
+		t.Fatal("existing UUID not fenced", code, out)
+	}
+	after, _ = os.ReadFile(statePath)
+	var changed core.State
+	if json.Unmarshal(after, &changed) != nil {
+		t.Fatal("state unreadable")
+	}
+	oldSource, _ := json.Marshal(state.Attempts[source])
+	newSource, _ := json.Marshal(changed.Attempts[source])
+	if !bytes.Equal(oldSource, newSource) {
+		t.Fatal("orphan cleanup changed source interval/protection/hold")
+	}
+	if _, err := os.Stat(filepath.Join(c.Work, absent)); !os.IsNotExist(err) {
+		t.Fatal("cancellation touched workspace", err)
+	}
+	if _, err := os.Stat(filepath.Join(c.State, "recovery-preparations", "retake", "student.json.consumed")); !os.IsNotExist(err) {
+		t.Fatal("cancellation consumed grant", err)
+	}
 	// Actual root CLI must agree with Begin's strict parser without exposing
 	// malformed private fields or interpreting them as an absent authorization.
 	grantPath := filepath.Join(c.State, "recovery-preparations", "retake", "student.json")

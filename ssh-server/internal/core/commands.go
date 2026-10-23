@@ -276,7 +276,18 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			}
 			prepare = true
 			return nil // Commit authenticated scope and one-use nonce before slow IO.
-		case "inspect-attempt", "submission-status", "submission-manifest", "cancel-attempt":
+		case "cancel-attempt":
+			if e.state.Attempts[r.ID] == nil {
+				r.Transport = transport // authenticated command scope, not browser data
+				var err error
+				result, err = e.cancelAbsentPreparation(r)
+				return err
+			}
+			a, err := e.Find(r.ID)
+			if err != nil || a.Username != username {
+				return errors.New("attempt owner mismatch")
+			}
+		case "inspect-attempt", "submission-status", "submission-manifest":
 			a, err := e.Find(r.ID)
 			if err != nil || a.Username != username {
 				return errors.New("attempt owner mismatch")
