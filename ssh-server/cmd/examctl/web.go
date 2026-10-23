@@ -88,22 +88,25 @@ authenticated gateway operation completed, not that any native action was perfor
 List includes per-definition revision hashes and a next cursor; show takes an
 exam ID, not an attempt UUID. Student credentials are never used or retained.
 Offline web requests fail honestly; native list/info remain available locally.
-Definition retirement, independent empty/saved-work sources, sandbox grants and
-full management remain pending. Initial, reviewed legacy and additional-template
-grant workflows: examctl web grants help.
+Initial enrollment-time snapshots, reviewed NEW legacy/additional grants,
+empty or separate-template starters and finite repeatable sandbox practice are
+supported: examctl web grants help. New enrollment/practice requires an attested
+exact template version; a legacy mutable default is not new grant authority.
+Definition retirement, saved-work grant migration, configuration mutation and
+full management remain pending. Existing attempts/holds/history stay protected.
 
 Examples:
   sudo examctl web exams list --limit 50
   sudo examctl web exams list --after midterm
   sudo examctl web exams show midterm
-  sudo examctl web exams create midterm --name 'Midterm' --template v1 --earliest '2026-10-22T09:00:00-05:00' --latest '2026-10-22T09:30:00-05:00'
+  sudo examctl web exams create midterm --name 'Midterm' --template v1 --template-version HASH-FROM-CATALOG --earliest '2026-10-26T09:00:00-05:00' --latest '2026-10-26T09:30:00-05:00'
   sudo examctl web exams update midterm --revision HASH-FROM-SHOW --duration-seconds 7200 --webcam optional
   sudo examctl web exams show midterm --request UUID-FROM-PREVIOUS-REQUEST
 
 Exit status: 0 authenticated result, 1 refusal/operational failure, 2 syntax error.
 Unknown/unverified replies never imply success; retain the request ID for retry.`)
 	fmt.Fprintln(out, "\nRoster/CSV workflows: examctl web students help (list/add/remove/settings/import-preview/import-confirm/export/example).")
-	fmt.Fprintln(out, "Attempt grants: examctl web grants help (enrollment, reviewed legacy/additional-template issuance, inspect/revise/revoke).")
+	fmt.Fprintln(out, "Attempt grants: examctl web grants help (enrollment, reviewed NEW legacy/additional issuance, empty/separate-template work, sandbox practice, inspect/revise/revoke).")
 	fmt.Fprintln(out, "Gateway administrators: examctl web administrators help (bounded metadata list/show, secret-safe create; no credential reset/overwrite).")
 	fmt.Fprintln(out, "Authenticated source attestations: examctl web templates help (list/show); native templates sync verifies before registering metadata.")
 	fmt.Fprintln(out, "Alert inspection/test/manual reminders: examctl web alerts help (list/show/test/remind).")

@@ -491,6 +491,14 @@ An administrator should be able to discover and finish a workflow using
 ## examctl completeness and usability work
 
 - [ ] **Audit command coverage against the complete management policy above.**
+  October23 source/interface inventory now distinguishes current supported
+  workflows from actual remaining gates (docs/examctl-coverage-audit.md).
+  Protected-export audit/new-private-output safety was already implemented;
+  stale global help incorrectly hid working grants/sources/practice. Three
+  actual process regressions RED, then focused help and full CLI races15.259s
+  pass with build/vet. C8 retirement, saved-source migration, destructive cleanup,
+  configuration activation and full privileged operator journey remain open;
+  this audit does not close them or authorize deployment.
   October22 administrator parity candidate now adds shared browser/root
   `web administrators list/show/create`, explicit named agent authorization,
   original-password strong-verifier retries, secret-safe TTY/stdin and no account
@@ -520,6 +528,12 @@ An administrator should be able to discover and finish a workflow using
   No deployment, direct state editing or whole-attempt substitute is implied.
 
 - [ ] **Redesign help around discoverable management workflows.**
+  October23 global help/management/web entry points now discover current initial,
+  reviewed additional/legacy, empty/separate-template and sandbox workflows via
+  web grants help. They explicitly identify saved-work migration and remaining
+  management gaps, and new-enrollment examples select an attested exact source.
+  Process-help RED/focused/full CLI races/build/vet pass; broader pending features
+  still need their supported workflows. No production change.
   Administrator candidate help covers full privilege consequences, named
   permissions, exact secret input, scope-safe metadata, original-intent retry,
   no reset/overwrite and actionable known-cause refusals. Unknown signed errors

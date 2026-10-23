@@ -1,6 +1,7 @@
 # Current examctl workflows
 
-Local source update October 21, 2026; **not deployed**. Full web-management
+Local source update October 23, 2026; **not deployed**. Current coverage/source
+audit and corrected global discovery: examctl-coverage-audit.md. Full web-management
 coverage is not implemented yet; see the explicit inventory/decisions in
 [todo-design-decisions.md](todo-design-decisions.md). The firm requirement is that
 every supported management action has a supported CLI workflow, sharing authority,
@@ -193,5 +194,7 @@ Process-level tests invoke the actual CLI entry point for every command's help,
 usage errors, target/reason restrictions and unavailable configuration. Native
 tests verify protected export, immutable bytes and refusal when audit persistence
 fails. Create/import/clock/authorize workflows now have actual CLI/gateway tests;
-unified-grant workflows and real root-host
-qualification remain pending; this document does not imply CLI completeness.
+saved-work grant migration, retirement/cleanup/configuration writes and current
+exact-artifact root-host qualification remain pending. This document does not
+imply CLI completeness or deployment. Current initial/additional/practice and
+empty/separate-template workflows are supported; use examctl web grants help.

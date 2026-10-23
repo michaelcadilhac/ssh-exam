@@ -152,7 +152,46 @@ func printHelp(w io.Writer, topic string) bool {
 		return true
 	}
 	if topic == "management" {
-		fmt.Fprintln(w, "examctl must cover every web/native management workflow. Current native commands do not yet satisfy full coverage.\nSigned root-agent workflows cover definitions, roster/CSV, alerts, attempts/clocks, interruptions and bounded monitoring reads/complete private export/reviewed deletion/purge inventory: use examctl web help and web students/alerts/attempts/clocks/interruptions/monitoring help. Explicit gateway operation authorization is required. Clock acceptance is not native confirmation; inspect each intent and native info. Interruption approval alone is not execution permission. Monitoring logical deletion is not physical purge completion; inspect fresh monitoring show or purge-status. Monitoring export requires a NEW private directory and successful signed completion; it is not a protected submission or work permission. Local immutable catalog workflows use examctl templates help; installation is not gateway confirmation or student version binding. Gateway administrator list/show/secret-safe creation use examctl web administrators help; creation never resets or overwrites credentials. Definition retirement, unified grants, template binding/synchronization, configuration mutation and remaining full management are pending. No supported offline SQL/JSON editing or separate agent control API exists. Continue using the authenticated administrator dashboard for remaining web workflows.\nUse examctl help for supported local commands. See docs/todo-design-decisions.md for the coverage investigation.")
+		fmt.Fprintln(w, `examctl must cover every web/native management workflow. Current native commands
+do not yet satisfy full coverage. Help and syntax need no root/configuration.
+
+Gateway workflows use the existing root agent identity over verified outbound
+HTTPS, with explicit named operation authorization; no browser login is required:
+  examctl web help                     definitions and future settings
+  examctl web students help            roster, settings and reviewed CSV import
+  examctl web grants help              attempt grants and workspace sources
+  examctl web templates help           authenticated exact source metadata
+  examctl web attempts help            attempt and pending-operation inspection
+  examctl web clocks help              reviewed individual/bulk clock changes
+  examctl web interruptions help       review and continuation authorization
+  examctl web alerts help              delivery/status and explicit reminders
+  examctl web monitoring help          reads, private export, deletion/purge status
+  examctl web administrators help      metadata and secret-safe creation
+
+Grant workflows save initial settings at enrollment, support reviewed NEW legacy
+initial/additional allowances, exact materials with empty or separate-template
+work, and finite repeatable sandbox practice. Inspect/revise/revoke unused grants;
+only fresh native Begin starts time. Changing defaults never revises issued grants.
+Saved-work grant migration remains pending; inspect legacy recovery-grants and
+preserve protected sources. Never replace unknown consumption as a retry.
+
+Local root workflows: templates help installs/verifies/syncs immutable sources;
+workspaces help covers retention metadata/holds (no deletion enabled); panes help
+covers targeted inspection/closure. Native manifest/export/delete concern protected
+submissions, not exam definitions. Configuration show/validate is offline only;
+use config help. Agent stop/restart requires a separately authorized full drain.
+
+Gateway clock acceptance is not native application: inspect each intent and native
+info ATTEMPT --read-only. Interruption approval is not execution permission.
+Monitoring logical deletion is not completed physical purge. Monitoring export
+requires a NEW private directory and signed completion; it is not a protected
+submission. Administrator creation never resets/overwrites existing credentials.
+
+Definition retirement, saved-work grant migration, complete workspace cleanup,
+configuration mutation and remaining full management are pending. No supported
+offline SQL/JSON editing or separate agent control API exists. See each command's
+help and docs/todo-design-decisions.md for current coverage and safety gates.
+Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
 		return true
 	}
 	if topic != "" {
@@ -172,6 +211,7 @@ func printHelp(w io.Writer, topic string) bool {
 		fmt.Fprintln(w, "Workspace retention metadata/holds: workspaces list/show/hold/release-hold; use examctl help workspaces (no deletion enabled).")
 		fmt.Fprintln(w, "Native targeted panes: panes list/show/close and panes supervisor; offline snapshots, bounded root-owner Unix observations and durably audited revision-fenced closure. Use examctl help panes; clocks/holds/other panes are preserved.")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")
+		fmt.Fprintln(w, "Gateway attempt grants and sources: web grants; use examctl web grants help (initial/additional, independent work and finite sandbox practice).")
 		fmt.Fprintln(w, "Gateway roster/CSV: web students; use examctl web students help.")
 		fmt.Fprintln(w, "Gateway administrators: web administrators list/show/create; use examctl web administrators help (secret-safe input, no credential reset/overwrite).")
 		fmt.Fprintln(w, "Gateway email delivery/manual reminders: web alerts; use examctl web alerts help.")

@@ -1,6 +1,6 @@
 # TODO architecture investigation and decisions
 
-Updated 2026-10-21, local source inspection and instructor decisions. **C1–C8 are
+Updated 2026-10-23, local source/interface audit and instructor decisions. **C1–C8 are
 approved for local implementation. The instructor subsequently revoked the
 conditional deployment authorization: do not deploy or execute service
 consolidation at the end of this work. Nothing here is a deployment receipt.**
@@ -15,7 +15,10 @@ monitoring and the outbox. Native root state owns committed intervals, admission
 workspaces, protected archives, policy restoration and the recovery JSON grants.
 Signed commands travel over student SSH; signed callbacks/timing checks travel
 outbound to the gateway. Keep this architecture. Local examctl now supports
-signed definition list/show/create/update; retirement/full coverage remain pending.
+signed definitions, roster/CSV, grants/sources/practice, attempts/clocks,
+interruptions, alerts, monitoring and administrator workflows. Current source/
+interface coverage and actual remaining integration gates are audited in
+examctl-coverage-audit.md; retirement/full coverage remain pending.
 
 | Supported operation / setting | Present interface | CLI status and proposed workflow |
 | --- | --- | --- |
@@ -31,7 +34,7 @@ signed definition list/show/create/update; retirement/full coverage remain pendi
 | Inspect/reconcile original/current account restriction | Native state/helper journal | Existing `info/reconcile`; improve actionable release/deletion diagnostics |
 | Workspace retention metadata / holds / cleanup | Native private per-attempt controls | Local `workspaces list/show/hold/release-hold`, audited hold revision and missing-record fail-closed markers; actual CLI/native race/app/build pass. No fresh eligibility proof, unknown-orphan cleanup or deletion is enabled; not deployed |
 | Root emergency release | Native OverrideAccess | Existing `override-access`; retain secured-copy/termination/audit prerequisites; never suggest automatically |
-| Protected manifest/export/delete | Native protected bundle | Existing `manifest/export/delete`; rename discovery as submission operations while retaining aliases; add export audit and explicit output safety |
+| Protected manifest/export/delete | Native protected bundle | `manifest/export/delete` are grouped under Submissions in help. OpenExport already verifies/audits before returning bytes; file output is new0600/no overwrite with sync/close errors. Preserve history/holds/source dependencies. Do not redo the older stale export-audit gap; installed-role/operator-journey qualification remains separate |
 | Initial/additional grants and independent starters | Shared AttemptGrants/GrantIssuance browser/root services and fresh native Begin | Enrollment-time initial snapshots, reviewed NEW legacy-unused issuance, reviewed additional allowances, exact materials plus empty/separate-template work, list/show/history/unused revise/revoke are qualified locally. `web grants` help exposes all paths; see initial-grants-cli.md and additional-grants-cli.md. No deployment |
 | Sandbox practice grants | Shared grant services, automatic authenticated preflight, typed native purposes | C14 implemented/tested locally: finite-window automatic fixed practice, protected/released repeat, explicit reviewed NEW and unused management.490 app tests, full native race/resource and62 final affected browser checks pass; baseline failures/13 corrections retained in sandbox-grants.md. No silent replacement of expired/revoked authority; not deployed |
 | Saved-work grants | Legacy root catalog plus explicit per-student allowance ledger | `recovery-grants` provides read-only native visibility and C17 preflight reconciles explicitly authorized unused duration edits. Full unified source issuance/revoke/migration remains blocked on C18 retention availability/authority choice; cannot silently synchronize offline edits |

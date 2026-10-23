@@ -59,6 +59,32 @@ func TestEverySupportedCommandHasDiscoverableProcessHelp(t *testing.T) {
 	}
 }
 
+func TestGrantWorkflowsAreDiscoverableFromCurrentManagementHelp(t *testing.T) {
+	for _, entry := range []struct {
+		name string
+		args []string
+	}{{"overview", []string{"help"}}, {"management", []string{"help", "management"}}, {"web", []string{"web", "help"}}} {
+		t.Run(entry.name, func(t *testing.T) {
+			output, code := cliProcess(t, entry.args...)
+			if code != 0 || !strings.Contains(output, "web grants help") {
+				t.Fatal("supported grant workflow is hidden from first-time management discovery", code, output)
+			}
+			if entry.name != "overview" {
+				for _, supported := range []string{"empty", "separate-template", "sandbox", "saved-work grant migration"} {
+					if !strings.Contains(strings.ToLower(output), supported) {
+						t.Fatal("help omits supported source/practice scope or the actual remaining migration", supported, output)
+					}
+				}
+				for _, stale := range []string{"Definition retirement, unified grants, template binding/synchronization", "independent empty/saved-work sources, sandbox grants"} {
+					if strings.Contains(output, stale) {
+						t.Fatal("help incorrectly reports implemented workflows as missing", stale, output)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestInvalidCLIUsagePointsToRelevantHelpBeforeRootOrConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"unknown"}, {"delete"}, {"stop", "ATTEMPT"}, {"cancel-absent", "ATTEMPT", "--reason", "Concrete missing identity"}, {"cancel", "ATTEMPT", "--username", "student", "--reason", "Wrong command account flag"}, {"workspace-prepare"}, {"workspace-repair", "ATTEMPT"}, {"recovery-grants", "unexpected-target"}, {"recovery-grants", "--active"}, {"agent", "shutdown"}, {"info", "one", "two"}, {"list", "--wrong-flag"}, {"info", "id", "--output", "file"}} {
 		output, code := cliProcess(t, args...)

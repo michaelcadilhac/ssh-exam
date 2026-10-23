@@ -2437,6 +2437,18 @@ Two regressions RED1.09s;36 focused callback/SMTP/alert checks pass21.15s, then
 artifacts are unchanged from f8738d2 and were not unnecessarily requalified.
 Evidence: preflight-cleanup-alert-disposition.md. No production change.
 
+## Current management coverage and discoverability (October23, local)
+
+Overview/management/web help no longer hide implemented grant, exact-source,
+independent starter or practice workflows. They link supported grant help and
+retain explicit true gaps. Source inventory confirms protected export audit and
+private/no-overwrite output already exist; do not reimplement stale TODO gaps.
+Three process regressions RED0.011s, focused/all-command help0.181s and complete
+CLI race/TLS/namespace qualification15.259s pass with static build/vet/gofmt/diff.
+No application/native-core/client contract changed;495-app and qualified native/
+browser evidence remains applicable. Actual pending integration gates and
+verification limits: examctl-coverage-audit.md. No push/deployment/consolidation.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are
