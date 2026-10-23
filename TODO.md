@@ -83,6 +83,15 @@ services are changed; no grant/clock is consumed by refusal/cancellation.
 
 ## Critical priority: eliminate heartbeat-induced false lockouts
 
+October23 capacity acceptance is settled:16 simultaneous synthetic students and64
+terminals. No capacity/design question remains pending. A fresh authenticated
+Begin consistency correction is under local qualification: contradictory durable
+interval/protected-work/ownership or other-claim consumption refuses before any
+new signed start response, preserving the original intent and allowance. Focused
+10 checks, full551 application tests, types/server build pass. Implemented/tested
+locally, not deployed; see docs/begin-no-start-evidence.md. This closes no broader
+retained-mode/monitoring investigation.
+
 - [ ] **Redesign monitoring liveness and execution authorization; do not turn a
   delayed control exchange into a student violation or destructive lockout.**
   Requested October 21. Initial read-only investigation confirms that the

@@ -418,6 +418,14 @@ they cannot fall back to image receipt timestamps. Restart requires new capture.
 This is pre-start readiness, not C16 live authority or a verified retained hold.
 Qualification/state review: docs/challenged-preflight-capture.md. Nothing deployed.
 
+The authenticated unused-grant Begin callback also requires consistent no-start
+history across the whole grant. PREPARING/AVAILABLE labels cannot override an
+existing interval, protected work, registered owner or another claim's consumed
+intent. Refuse before signing or updating verification metadata, preserve all
+history and inspect the matching native outcome. No automatic repair/refund or
+replacement clock is authorized. See docs/begin-no-start-evidence.md for local
+regression and application qualification; no deployment.
+
 October 21 local implementation stages work privately in a bounded native OS
 worker during preflight, before any clock/legacy consumption marker. Begin only
 rechecks the exact staged receipt/current authority, commits the original hold/

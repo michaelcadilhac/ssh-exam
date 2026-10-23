@@ -3,6 +3,15 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October23 actual authenticated Begin now refuses contradictory durable interval,
+protected-work, registered-owner or other-claim consumption before signing.
+Corrected negative fixtures positively reach the original erroneous HTTP200;
+final10 focused and551 full application checks/100files291.46s, types/server build
+pass. Original intents, saved sources, allowances and history are preserved.
+No new migration/management capability or deployment; no broader critical TODO
+is closed. Details: begin-no-start-evidence.md. Capacity target confirmed by the
+instructor:16 simultaneous students/64 terminals; no pending design question.
+
 October23 C8 tracked-definition retirement: shared reviewed web/root CLI now
 supports unused deletion/history archive/unarchive, visibility, exact dependency/
 revision fences, durable audit/retry and ABA protection.028 conservatively marks

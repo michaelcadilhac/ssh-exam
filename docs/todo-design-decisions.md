@@ -1,5 +1,9 @@
 # TODO architecture investigation and decisions
 
+October23 capacity acceptance: the instructor confirmed **16 simultaneous
+students and64 terminals** is sufficient for final synthetic qualification.
+This sets the test target; it changes no production setting or admission limit.
+
 Updated 2026-10-23, local source/interface audit and instructor decisions. **C1–C8 are
 approved for local implementation. The instructor subsequently revoked the
 conditional deployment authorization: do not deploy or execute service

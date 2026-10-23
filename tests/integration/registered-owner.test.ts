@@ -286,6 +286,122 @@ it("authenticated native Begin requires the original current page before verific
   }
 });
 
+it.each([
+  "start",
+  "deadline",
+  "original_deadline",
+  "protected",
+  "checksum",
+  "registered_owner",
+  "other-consumption",
+  "intent-interval",
+])(
+  "fresh authenticated Begin refuses contradictory no-start evidence (%s)",
+  async (kind) => {
+    const f = await fixture();
+    try {
+      const a = f.store.attempt(f.id),
+        ticket = f.monitoring.captureChallenge(a, f.page, "screen");
+      await f.monitoring.challengedFrame(
+        a,
+        {
+          source: "screen",
+          seq: 1,
+          challenge: ticket.challenge,
+          captured: Date.now(),
+          monotonic: 1,
+          data: (
+            await sharp({
+              create: {
+                width: 40,
+                height: 30,
+                channels: 3,
+                background: "white",
+              },
+            })
+              .jpeg()
+              .toBuffer()
+          ).toString("base64"),
+          readiness: {
+            fullscreen: true,
+            visible: true,
+            focus: true,
+            keyboard: true,
+            screen: true,
+            webcam: false,
+          },
+        },
+        f.page,
+      );
+      if (kind === "other-consumption") {
+        const other = randomUUID();
+        f.store.db
+          .prepare(
+            "INSERT INTO grant_claims VALUES(?,?,1,?,10001,'CANCELLED',?,?)",
+          )
+          .run(other, f.g.id, f.g.hash, Date.now(), Date.now());
+        // A partial restore can retain consumption on a retired claim while
+        // the current grant/claim still look available. Respect the unique
+        // unresolved-claim index; do not disable it to manufacture this case.
+        f.store.db
+          .prepare(
+            "INSERT INTO grant_begin_intents(id,attempt,transport,state,created_at,start,deadline) VALUES(?,?,?,'CONSUMED',?,100,600100)",
+          )
+          .run(randomUUID(), other, f.transport, Date.now());
+      } else if (kind === "intent-interval") {
+        f.store.db
+          .prepare(
+            "UPDATE grant_begin_intents SET start=100,deadline=600100 WHERE id=?",
+          )
+          .run(f.intent);
+      } else {
+        const values: Record<string, string | number> = {
+          start: Date.now(),
+          deadline: Date.now() + 600000,
+          original_deadline: Date.now() + 600000,
+          protected: 1,
+          checksum: hash("synthetic retained protected source"),
+          registered_owner: JSON.stringify({
+            attempt: f.id,
+            exam: "owner",
+            username: "synthetic",
+            uid: 10001,
+            transport_hash: f.transport,
+            boot: f.request.boot,
+            page_epoch: f.page,
+            input_epoch: hash(randomUUID()),
+            generation: 0,
+            clock_revision: 0,
+          }),
+        };
+        // The interpolated identifier comes ONLY from the fixed test case list.
+        f.store.db
+          .prepare(`UPDATE attempts SET ${kind}=? WHERE id=?`)
+          .run(values[kind], f.id);
+      }
+      const before = f.store.attempt(f.id);
+      const refused = await f.authenticated("/api/agent/grant-begin", {
+        ...f.request,
+        page_epoch: f.page,
+      });
+      expect(refused.statusCode, refused.body).toBe(409);
+      expect(f.store.attempt(f.id)).toEqual(before);
+      expect(
+        f.store.db
+          .prepare("SELECT status FROM attempt_grants WHERE id=?")
+          .get(f.g.id),
+      ).toEqual({ status: "AVAILABLE" });
+      expect(
+        f.store.db
+          .prepare("SELECT verified_at FROM grant_begin_intents WHERE id=?")
+          .get(f.intent),
+      ).toEqual({ verified_at: null });
+    } finally {
+      await f.close();
+    }
+  },
+);
+
 it("accepted signed native start records historical ownership, canonical signing fences page confusion, and completion can retain it after page logout", async () => {
   const f = await fixture();
   try {

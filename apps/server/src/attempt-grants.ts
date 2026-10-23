@@ -757,6 +757,10 @@ export class AttemptGrants {
       return conflict(
         "Fresh grant Begin verification refused; preserve original intent/attempt and inspect current grant, owner, window and native status. No refund or new clock authorized.",
       );
+    // PREPARING/AVAILABLE labels alone do not establish an unused allowance:
+    // retained interval, protected work, ownership or other-claim consumption
+    // must refuse before signing anything that can authorize a native start.
+    this.unstartedEvidence(a);
     // This in-memory observation is checked again at the authenticated native
     // request, after any slow handoff/source work. It is not an ACTIVE permit.
     const remaining = freshCapture(a);
@@ -920,7 +924,7 @@ export class AttemptGrants {
       claim.uid !== a.uid
     )
       return conflict(
-        "Cancelled preparation lacks its exact retained grant claim; preserve history and restore matching authority before retirement",
+        "No-start verification lacks its exact retained grant claim; preserve history and restore matching authority before Begin or retirement",
       );
     if (a.grant_issued_order !== null) {
       const current = this.row(a.grant_id!),
@@ -945,18 +949,18 @@ export class AttemptGrants {
         )
       )
         return conflict(
-          "Cancelled preparation contradicts original issuance/type evidence; preserve grant/monitoring history before retirement",
+          "No-start verification contradicts original issuance/type evidence; preserve grant/monitoring history before Begin or retirement",
         );
     }
     if (
       this.store.db
         .prepare(
-          "SELECT 1 FROM attempt_grants WHERE id=? AND status='CONSUMED' UNION ALL SELECT 1 FROM grant_claims c LEFT JOIN grant_begin_intents b ON b.attempt=c.attempt WHERE c.grant_id=? AND (c.state='CONSUMED' OR b.state='CONSUMED' OR b.start IS NOT NULL OR b.deadline IS NOT NULL) UNION ALL SELECT 1 FROM attempts WHERE grant_id=? AND (start IS NOT NULL OR deadline IS NOT NULL OR original_deadline IS NOT NULL OR protected<>0 OR checksum IS NOT NULL) LIMIT 1",
+          "SELECT 1 FROM attempt_grants WHERE id=? AND status='CONSUMED' UNION ALL SELECT 1 FROM grant_claims c LEFT JOIN grant_begin_intents b ON b.attempt=c.attempt WHERE c.grant_id=? AND (c.state='CONSUMED' OR b.state='CONSUMED' OR b.start IS NOT NULL OR b.deadline IS NOT NULL) UNION ALL SELECT 1 FROM attempts WHERE grant_id=? AND (start IS NOT NULL OR deadline IS NOT NULL OR original_deadline IS NOT NULL OR protected<>0 OR checksum IS NOT NULL OR registered_owner IS NOT NULL) LIMIT 1",
         )
         .get(a.grant_id, a.grant_id, a.grant_id)
     )
       return conflict(
-        "Cancellation contradicts durable grant consumption/interval evidence; preserve history and inspect native status before retirement",
+        "No-start verification contradicts durable grant consumption/interval, protected-work or ownership evidence; preserve history and inspect native status before Begin or retirement",
       );
   }
   checkRetirement(a: Attempt) {
