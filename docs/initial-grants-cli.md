@@ -34,8 +34,50 @@ First issuance activates a new-enrollment writer fence for that exam. An old
 gateway cannot add a new unused student without atomic issuance or insert a
 legacy attempt for a known grant. Existing legacy enrollments/history are not
 backfilled. Reenrollment cannot create another initial allowance or change an
-issued snapshot. Additional grants, reviewed legacy migration and sandbox saved
-grant issuance remain pending; this candidate does not provide those commands.
+issued snapshot. Additional grants and sandbox saved-grant issuance remain
+pending. Reviewed NEW initial issuance for legacy unused enrollments is described
+below; current qualification is in legacy-initial-grant-issuance.md.
+
+## Reviewed NEW issuance for legacy unused enrollments
+
+This does not reconstruct past enrollment settings or convert root-only recovery
+grants. Select1..200 enrolled ordinary students with no grant or web attempt
+history; native admission independently refuses known prior timed history or
+conflicting saved-work authority. Current effective allowance/webcam are preserved
+unless you later explicitly revise an unused issued grant. Review each resolved
+snapshot, exact source and explicit finite Begin window before confirmation:
+
+```sh
+sudo examctl web exams show midterm
+sudo examctl web grants issue-preview midterm student01 student02 --definition-revision DEFINITION_HASH --template-version SOURCE_HASH --earliest '2026-10-26T09:00:00-05:00' --latest '2026-10-26T09:30:00-05:00' --reason 'Review NEW initial grants for existing unused enrollments'
+sudo examctl web grants issue-show PREVIEW_UUID
+sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH --request REQUEST_UUID
+sudo examctl web grants list midterm
+# To cancel an unconfirmed review instead:
+sudo examctl web grants issue-cancel PREVIEW_UUID --revision REVIEW_HASH
+```
+
+The definition/review revisions are hashes; unused-grant revisions are numeric.
+The source hash must match the explicitly selected current definition. The Begin
+window may lie outside its default window. Preview reserves no account or clock,
+expires after fifteen minutes and is bound to its actor/class agent. Changed
+definitions/enrollments or new history/grants require a new review; no partial
+batch is issued. Failed/unavailable native verification never consumes time.
+
+Reuse the SAME `--request` and arguments after lost replies. Confirmation and
+`issue-show` retain the issued IDs across restart; they never issue twice. Use a
+fresh request ID for fresh inspection. Confirmed review is an issuance receipt,
+not current grant availability: inspect each grant before revision/revoke. Cancel
+cannot undo confirmation or erase history. Explicit named grants.issue-preview/
+issue-show/issue-confirm/issue-cancel authorization is default deny.
+
+Web: selected exam → Issue legacy grants → enter named students/reason and select
+the current source/window → Preview NEW grants → inspect each saved policy →
+Confirm NEW grants. The dialog supports exact lost-reply retry and saved review
+inspection after reload. REVIEWED_NEW provenance distinguishes these authorizations
+from ENROLLMENT snapshots. Matching reviewed-initial-grants-v1 native support is
+required before preparation; older roles refuse without allocating an attempt.
+Do not remove history, holds or recovery records to make a refusal disappear.
 
 ## Inspect, revise, revoke
 

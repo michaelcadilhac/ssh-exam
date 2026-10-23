@@ -7,6 +7,7 @@ import { ExamSettings } from "./exam-settings.js";
 import { StudentImport } from "./student-import.js";
 import { EnrollmentSetting } from "./enrollment-setting.js";
 import { AttemptGrantsDialog } from "./attempt-grants.js";
+import { GrantIssuanceDialog } from "./grant-issuance.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
@@ -82,6 +83,7 @@ export function Admin({
   const [alertsError, setAlertsError] = useState("");
   const [templateCatalog, setTemplateCatalog] = useState(false);
   const [grantsFor, setGrantsFor] = useState<string | null>(null);
+  const [issuingGrants, setIssuingGrants] = useState(false);
   const [permission, setPermission] = useState(
     typeof Notification === "undefined"
       ? "unavailable"
@@ -219,6 +221,7 @@ export function Admin({
   const chooseExam = (id: string) => {
     clearView();
     setGrantsFor(null);
+    setIssuingGrants(false);
     query.current = { exam: id, search: "", filter: "", offset: 0 };
     setExam(id);
     setSearch("");
@@ -433,6 +436,14 @@ export function Admin({
               >
                 Add student
               </button>
+              {exam !== "sandbox" && (
+                <button
+                  onClick={() => setIssuingGrants(true)}
+                  disabled={!current || stale}
+                >
+                  Issue legacy grants
+                </button>
+              )}
             </div>
           </section>
           <section className="admin-roster" aria-label="Students and attempts">
@@ -1006,6 +1017,13 @@ export function Admin({
             )}
           </section>
         </>
+      )}
+      {issuingGrants && current && (
+        <GrantIssuanceDialog
+          initial={current}
+          onClose={() => setIssuingGrants(false)}
+          onChanged={refresh}
+        />
       )}
       {grantsFor && (
         <AttemptGrantsDialog

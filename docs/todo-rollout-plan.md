@@ -773,3 +773,30 @@ unavailable, keep admission closed and repair forward. C13 legacy issuance,
 additional/work-source/sandbox grants, C8 retirement and retained SSH remain
 separate unfinished scopes. The temporary-agent consolidation above is a plan,
 not an executed action.
+
+## Reviewed legacy initial issuance (migration024; proposed only)
+
+After a separately authorized complete drain and exact-artifact qualification,
+back up023 authority plus all native canonical/legacy/protected history.024 adds
+actor-bound immutable review/confirmation receipts and issuance provenance; it
+issues nothing automatically and preserves every existing settings/claim/interval.
+Review NEW legacy-unused authorization explicitly through matching CLI/web,
+selecting current definition/source and a finite Begin window. Preserve each
+effective webcam/allowance. Uncertain native-only recovery/history is never
+converted, erased or treated as absent to make migration possible.
+
+Upgrade gateway, native history fences/capability, CLI receipt schema and ALL
+state writers together. Include preparing/pending claims, independent practice
+owners and all three agent owners in the drain/consolidation above. Matching
+reviewed-initial-grants-v1 is required before new reviewed preparation; verify
+both real prior-history refusal and allowed unrelated/unstarted cases. An old
+native role must not receive new reviewed admission after a partial rollback.
+
+Keep every review snapshot/hash, status/expiry, original successful intent,
+issued ID and issuance origin with subsequent revisions/claims/consumption.
+Never restore an earlier REVIEW/AVAILABLE database over newer confirmation or
+native work. Confirmed receipt is history, not current unused availability.
+Rollback must preserve and understand these records; otherwise keep admission
+closed and repair forward. Native SSH/PAM/installed-role qualification, additional/
+saved-work grants and sandbox issuance remain separate gates. Nothing in this
+plan deploys, migrates student records or consolidates running services.

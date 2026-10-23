@@ -13,7 +13,7 @@ const fields = [
   ["collection_file_mib", "Per-file limit MiB"],
   ["collection_total_mib", "Total limit MiB"],
 ] as const;
-function beginTime(value: string) {
+export function beginTime(value: string) {
   const parts =
     /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/.exec(
       value,

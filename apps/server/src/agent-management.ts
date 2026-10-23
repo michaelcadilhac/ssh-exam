@@ -15,6 +15,7 @@ import type { Agent } from "./agent.js";
 import { ExamDefinitions } from "./exam-definitions.js";
 import { RosterManagement, rosterPreview } from "./roster-management.js";
 import { AttemptGrants } from "./attempt-grants.js";
+import { GrantIssuance } from "./grant-issuance.js";
 import {
   parseRosterAsync,
   RosterUsernameError,
@@ -76,6 +77,7 @@ export function registerAgentManagement(
   const templates = new TemplateCatalog(store, config.agent.id);
   const roster = new RosterManagement(store, describe, config.agent.id);
   const grants = new AttemptGrants(store, config.agent.id);
+  const grantIssuance = new GrantIssuance(store, config.agent.id);
   const alerts = new AlertManagement(store, () => !!config.smtp);
   const interruptions = new InterruptionManagement(store);
   const administratorManagement =
@@ -416,6 +418,29 @@ export function registerAgentManagement(
                 const raw = z.record(z.string(), z.unknown()).parse(r.body);
                 let value: unknown;
                 switch (r.operation) {
+                  case "grants.issue-preview":
+                    value = grantIssuance.preview(raw, actor);
+                    break;
+                  case "grants.issue-show":
+                    value = grantIssuance.show(
+                      z.object({ id: z.string().uuid() }).strict().parse(raw)
+                        .id,
+                      actor,
+                    );
+                    break;
+                  case "grants.issue-confirm":
+                  case "grants.issue-cancel": {
+                    const { id, ...body } = raw;
+                    value = grantIssuance.change(
+                      z.string().uuid().parse(id),
+                      body,
+                      actor,
+                      r.operation === "grants.issue-confirm"
+                        ? "confirm"
+                        : "cancel",
+                    );
+                    break;
+                  }
                   case "grants.list":
                     value = grants.list(raw);
                     break;

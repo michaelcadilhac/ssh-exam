@@ -41,6 +41,7 @@ export class AttemptGrants {
     const settings = examSchema.parse(JSON.parse(row.settings)),
       work = JSON.parse(row.work);
     if (
+      !["ENROLLMENT", "REVIEWED_NEW"].includes(row.issuance) ||
       !settings.template_version ||
       work.kind !== "template" ||
       work.name !== settings.template ||
@@ -61,6 +62,7 @@ export class AttemptGrants {
       issued_at: row.issued_at,
       actor: row.actor,
       reason: row.reason,
+      issuance: row.issuance,
       hash: row.hash,
       settings,
       work,
@@ -71,7 +73,7 @@ export class AttemptGrants {
         .all(row.id),
     };
   }
-  private snapshot(input: unknown) {
+  snapshot(input: unknown) {
     const settings = examSchema.parse(input);
     if (!settings.template_version)
       return conflict(
@@ -124,11 +126,58 @@ export class AttemptGrants {
       duration: duration ?? definition.duration,
       webcam: webcam ?? definition.webcam,
     });
-    const id = randomUUID(),
-      at = now(),
-      reason = "Initial ordinary grant at enrollment";
+    return this.issueInitial(
+      exam,
+      username,
+      value,
+      actor,
+      "Initial ordinary grant at enrollment",
+    );
+  }
+  reviewedInitial(
+    settings: unknown,
+    username: string,
+    actor: string,
+    reason: string,
+  ) {
+    if (!this.store.db.inTransaction)
+      throw Error("Reviewed issuance requires its confirmation transaction");
+    const value = this.snapshot(settings),
+      exam = value.settings.id;
+    if (
+      isSandbox(exam) ||
+      !this.store.db
+        .prepare("SELECT 1 FROM enrollments WHERE exam=? AND username=?")
+        .get(exam, username) ||
+      this.store.db
+        .prepare("SELECT 1 FROM attempt_grants WHERE exam=? AND username=?")
+        .get(exam, username) ||
+      this.store.db
+        .prepare("SELECT 1 FROM attempts WHERE exam=? AND username=?")
+        .get(exam, username)
+    )
+      return conflict(
+        "Reviewed initial issuance requires an enrolled ordinary student with no grant or attempt history; inspect existing authority, never replace it",
+      );
+    const grant = this.issueInitial(exam, username, value, actor, reason);
     this.store.db
-      .prepare("INSERT INTO attempt_grants VALUES(?,?,?,?,1,'AVAILABLE',?,?,?)")
+      .prepare("UPDATE attempt_grants SET issuance='REVIEWED_NEW' WHERE id=?")
+      .run(grant.id);
+    return this.view(this.row(grant.id));
+  }
+  private issueInitial(
+    exam: string,
+    username: string,
+    value: ReturnType<AttemptGrants["snapshot"]>,
+    actor: string,
+    reason: string,
+  ) {
+    const id = randomUUID(),
+      at = now();
+    this.store.db
+      .prepare(
+        "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason) VALUES(?,?,?,?,1,'AVAILABLE',?,?,?)",
+      )
       .run(id, this.agent, exam, username, at, actor, reason);
     this.store.db
       .prepare("INSERT INTO grant_revisions VALUES(?,1,?,?,?,?,?,?)")
@@ -185,7 +234,7 @@ export class AttemptGrants {
       history_next: history.length > 50 ? history[49].revision : null,
     };
   }
-  private request<T>(
+  request<T>(
     actor: string,
     request: string | undefined,
     intent: unknown,

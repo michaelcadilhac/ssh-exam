@@ -33,6 +33,16 @@ recording the decision; no production records or services are changed. Developme
 must follow the outcome-first guardrails in AGENTS.md; the scope retrospective is
 in docs/development-retrospective.md.
 
+October23 C13 workflow now provides matching reviewed NEW initial-grant preview,
+inspect/cancel/confirm in CLI/web, with per-student current settings, exact source
+and a finite selected window. It performs no automatic backfill or conversion of
+native-only recovery authority. Focused actual HTTP/root CLI/student/native and
+rebuilt browser acceptance pass;461 application tests, full native race/resource
+qualification and nine rebuilt browser checks pass with matching builds/static
+analysis. It also closes
+an independently reproduced native-history admission gap. See
+docs/legacy-initial-grant-issuance.md. No production records/services are changed.
+
 October22 C14 approval: retain automatic repeatable five-minute/no-webcam sandbox
 practice within an explicit finite operator-configured Begin window. Every new
 grant saves its settings; no new Begin outside the window. Existing started

@@ -19,11 +19,24 @@ func webGrantsHelp(out io.Writer) {
        sudo examctl web grants show GRANT_UUID [--before REVISION]
        sudo examctl web grants revise GRANT_UUID --revision N --reason TEXT SETTINGS
        sudo examctl web grants revoke GRANT_UUID --revision N --reason TEXT
+       sudo examctl web grants issue-preview EXAM USER... --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT
+       sudo examctl web grants issue-show PREVIEW_UUID
+       sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH
+       sudo examctl web grants issue-cancel PREVIEW_UUID --revision REVIEW_HASH
 
 Initial ordinary grants are issued atomically at NEW enrollment/CSV import, with
 an exact attested template version and finite explicit Begin window. Existing
-legacy enrollments/history are not automatically backfilled. This first workflow
-does not issue extra attempts, migrate legacy recovery or create sandbox grants.
+legacy enrollments/history are not automatically backfilled. Reviewed issue-*
+workflows create NEW initial grants for 1..200 existing unused enrollments with
+no grants/attempt history. They do not reconstruct historical enrollment settings.
+Select the current definition revision/exact source and an explicit finite Begin
+window (independent of definition defaults); effective duration/webcam are shown
+per student for review. A preview reserves no account/allowance and expires after
+15 minutes. Inspect before confirming; changed definitions/enrollments require a
+new preview. issue-cancel cannot undo confirmed issuance. Root-only legacy saved-
+work authority is not converted or declared absent; native preparation refuses
+conflicts without consuming time. Additional attempts and sandbox grants remain
+separate workflows not yet implemented.
 Inspect templates verify/sync, then web exams show/update before new enrollment.
 
 Grant settings are saved at issuance. Later exam/roster default edits do NOT
@@ -47,7 +60,7 @@ Native Begin needs fresh authenticated outbound HTTPS agreement. An outage
 refuses before time starts; inspect the SAME intent/attempt before retrying.
 
 Existing root identity, pinned HTTPS and explicit named grants.list/show/revise/
-revoke managementOperations authorization; default deny. No browser/student
+revoke and named grants.issue-* managementOperations authorization; default deny. No browser/student
 credentials. --config FILE selects protected root configuration. --request UUID
 is a durable intent ID: repeat IDENTICAL arguments after a lost reply; a changed
 intent or refreshed read needs a new ID. Help needs no root/configuration.
@@ -65,6 +78,22 @@ func webGrantsMain(args []string) int {
 	if _, help := helpRequest(args); help {
 		webGrantsHelp(os.Stdout)
 		return 0
+	}
+	position := 0
+	for i := 0; i < len(args); i++ {
+		if takesValue(args[i]) {
+			if !strings.Contains(args[i], "=") {
+				i++
+			}
+			continue
+		}
+		if strings.HasPrefix(args[i], "-") {
+			continue
+		}
+		if position == 1 && strings.HasPrefix(args[i], "issue-") {
+			return webGrantIssuanceMain(args)
+		}
+		position++
 	}
 	flags := flag.NewFlagSet("examctl web grants", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
@@ -252,6 +281,7 @@ type grantResult struct {
 	IssuedAt    int64                `json:"issued_at"`
 	Actor       string               `json:"actor"`
 	Reason      string               `json:"reason"`
+	Issuance    string               `json:"issuance"`
 	Hash        string               `json:"hash"`
 	Settings    core.Settings        `json:"settings"`
 	Work        grantWorkResult      `json:"work"`
@@ -263,6 +293,9 @@ type grantResult struct {
 func validateGrantResult(op string, body any, raw json.RawMessage, agent string) error {
 	if !strings.HasPrefix(op, "grants.") {
 		return nil
+	}
+	if strings.HasPrefix(op, "grants.issue-") {
+		return validateGrantIssuanceResult(op, body, raw, agent)
 	}
 	fail := errors.New("Unconfirmed grant reply scope/schema; no private output. Inspect the requested grant and retry with the original --request UUID")
 	b, err := json.Marshal(body)
@@ -307,6 +340,9 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 		rows = []grantResult{row}
 	}
 	for _, g := range rows {
+		if g.Issuance != "ENROLLMENT" && g.Issuance != "REVIEWED_NEW" {
+			return fail
+		}
 		if g.Agent != agent || g.ID == "" || g.Revision < 1 || g.Exam == "" || g.Username == "" || (scope.Exam != "" && g.Exam != scope.Exam) || (scope.Username != "" && g.Username != scope.Username) || g.Settings.ID != g.Exam || g.Settings.TemplateVersion == "" || g.Work.Kind != "template" || g.Work.Name != g.Settings.Template || g.Work.Hash != g.Settings.TemplateVersion || len(g.Hash) != 64 || g.Settings.Duration < 60 || g.Settings.Latest <= g.Settings.Earliest || len(g.Claims) > 100 || len(g.History) > 50 {
 			return fail
 		}

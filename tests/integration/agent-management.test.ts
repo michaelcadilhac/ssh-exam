@@ -962,6 +962,84 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         ).status,
       ).toBe("REVOKED");
       const allowanceRequest = randomUUID();
+      f.current.store.db
+        .prepare("INSERT INTO exams VALUES('legacy-cli',?)")
+        .run(JSON.stringify({ ...made.result.exam, id: "legacy-cli" }));
+      f.current.store.db
+        .prepare(
+          "INSERT INTO enrollments(exam,username,uid,duration,webcam) VALUES('legacy-cli','old01',0,4500,1),('legacy-cli','old02',0,NULL,NULL)",
+        )
+        .run();
+      const legacyDefinition = JSON.parse(
+        (await cli(["show", "legacy-cli"])).stdout,
+      ).result;
+      const reviewArgs = [
+        "issue-preview",
+        "legacy-cli",
+        "old01",
+        "old02",
+        "--definition-revision",
+        legacyDefinition.revision,
+        "--template-version",
+        "a".repeat(64),
+        "--earliest",
+        new Date(Date.now() + 3600000).toISOString(),
+        "--latest",
+        new Date(Date.now() + 7200000).toISOString(),
+        "--reason",
+        "Reviewed NEW unused CLI grants",
+        "--request",
+        randomUUID(),
+      ];
+      const review = await grantsCLI(reviewArgs);
+      expect(review).toMatchObject({
+        status: "REVIEW",
+        kind: "NEW_LEGACY_INITIAL_GRANTS",
+        rows: [
+          { username: "old01", settings: { duration: 4500, webcam: true } },
+          { username: "old02", settings: { duration: 7200, webcam: false } },
+        ],
+      });
+      expect(await grantsCLI(reviewArgs)).toEqual(review);
+      expect((await grantsCLI(["issue-show", review.id])).status).toBe(
+        "REVIEW",
+      );
+      const abandonedArgs = [...reviewArgs];
+      abandonedArgs[abandonedArgs.length - 1] = randomUUID();
+      const abandonedReview = await grantsCLI(abandonedArgs);
+      expect(
+        (
+          await grantsCLI([
+            "issue-cancel",
+            abandonedReview.id,
+            "--revision",
+            abandonedReview.revision,
+          ])
+        ).status,
+      ).toBe("CANCELLED");
+      const confirmArgs = [
+        "issue-confirm",
+        review.id,
+        "--revision",
+        review.revision,
+        "--request",
+        randomUUID(),
+      ];
+      const issuedLegacy = await grantsCLI(confirmArgs);
+      expect(issuedLegacy.status).toBe("CONFIRMED");
+      expect(issuedLegacy.issued).toHaveLength(2);
+      await f.restart();
+      expect(await grantsCLI(confirmArgs)).toEqual(issuedLegacy);
+      await expect(
+        grantsCLI(["issue-cancel", review.id, "--revision", review.revision]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("already confirmed"),
+      });
+      expect(
+        (await grantsCLI(["show", issuedLegacy.issued[0].grant])).settings
+          .duration,
+      ).toBe(4500);
       const allowanceArgs = [
         "settings",
         "cli-exam",

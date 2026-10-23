@@ -36,6 +36,7 @@ import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
 import { RecoverySources } from "./recovery-source.js";
 import { AttemptGrants } from "./attempt-grants.js";
+import { GrantIssuance } from "./grant-issuance.js";
 import { grantBinding } from "../../../packages/protocol/grants.js";
 import type { ConnectionHandle as Connection } from "./connection-process.js";
 import {
@@ -939,6 +940,13 @@ export async function createApp(
       throw Error(
         "Class server requires matching grant-aware preparation and fresh outbound Begin verification; no grant or clock consumed. Inspect examctl web grants show GRANT and update matching roles.",
       );
+    if (
+      initialGrant?.issuance === "REVIEWED_NEW" &&
+      !h.capabilities?.includes("reviewed-initial-grants-v1")
+    )
+      throw Error(
+        "Class server lacks reviewed-initial native history fences; update matching roles before this NEW grant can prepare. No clock or grant consumed.",
+      );
     const settings = previous
       ? JSON.parse(previous.settings)
       : initialGrant
@@ -1664,6 +1672,28 @@ export async function createApp(
   registerTemplateAdmin(app, store, config.agent.id, principal);
   const roster = new RosterManagement(store, describeAttempt, config.agent.id);
   const grants = new AttemptGrants(store, config.agent.id);
+  const grantIssuance = new GrantIssuance(store, config.agent.id);
+  app.post("/api/admin/exams/:exam/grants/issue-preview", async (req: any) => {
+    const actor = principal(req, "admin");
+    return grantIssuance.preview(
+      { ...req.body, exam: req.params.exam },
+      actor.username,
+    );
+  });
+  app.get("/api/admin/grant-issuance/:id", async (req: any) => {
+    const actor = principal(req, "admin");
+    return grantIssuance.show(req.params.id, actor.username);
+  });
+  app.post("/api/admin/grant-issuance/:id/:operation", async (req: any) => {
+    const actor = principal(req, "admin");
+    const operation = z.enum(["confirm", "cancel"]).parse(req.params.operation);
+    return grantIssuance.change(
+      req.params.id,
+      req.body,
+      actor.username,
+      operation,
+    );
+  });
   app.get("/api/admin/exams/:exam/grants", async (req: any) => {
     principal(req, "admin");
     return grants.list({

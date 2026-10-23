@@ -25,6 +25,9 @@ func TestGrantCLIHelpAndSyntaxBeforeAuthority(t *testing.T) {
 		{"web", "grants", "revise", id, "--revision", "1", "--reason", "Concrete revision", "--latest", "2026-10-23T09:00"},
 		{"web", "grants", "revise", id, "--revision", "1", "--reason", "Concrete revision", "--template-version", "legacy"},
 		{"web", "grants", "revoke", id, "--revision", "1", "--reason", "Concrete revocation", "--duration-minutes", "90"},
+		{"web", "grants", "issue-confirm", id, "--revision", "1"},
+		{"--config", "/missing", "web", "grants", "issue-preview", "exam", "student", "--definition-revision", "bad"},
+		{"web", "grants", "issue-show", id, "--revision", strings.Repeat("a", 64)},
 	} {
 		output, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(output, "grants help") || strings.Contains(output, "Load root") {
@@ -36,6 +39,7 @@ func TestGrantCLIHelpAndSyntaxBeforeAuthority(t *testing.T) {
 func TestGrantCLIRejectsWrongNestedScopeAndPrivateFieldsBeforeOutput(t *testing.T) {
 	const id = "33333333-1234-4234-8234-123456789abc"
 	valid := grantResult{ID: id, Agent: "class", Exam: "exam", Username: "student", Revision: 1, Status: "AVAILABLE", IssuedAt: 100, Actor: "instructor", Reason: "Initial synthetic ordinary grant", Hash: strings.Repeat("a", 64), Settings: core.Settings{ID: "exam", Name: "Exam", Template: "v1", TemplateVersion: strings.Repeat("b", 64), Duration: 5400, Earliest: 100, Latest: 200, Terminals: 2}, Work: grantWorkResult{Kind: "template", Name: "v1", Hash: strings.Repeat("b", 64)}, Claims: []grantClaimResult{{Attempt: "44444444-1234-4234-8234-123456789abc", UID: 10001, Revision: 1, Hash: strings.Repeat("a", 64), State: "PREPARING", CreatedAt: 100}}}
+	valid.Issuance = "ENROLLMENT"
 	raw, _ := json.Marshal(valid)
 	if err := validateGrantResult("grants.show", map[string]any{"id": id}, raw, "class"); err != nil {
 		t.Fatal("valid scoped claim rejected", err)
@@ -76,6 +80,58 @@ func TestGrantCLIRejectsWrongNestedScopeAndPrivateFieldsBeforeOutput(t *testing.
 			}
 			if err := validateGrantResult(op, body, encoded, "class"); err == nil || strings.Contains(err.Error(), "PRIVATE-SENTINEL") {
 				t.Fatal("unconfirmed/private grant reply accepted or echoed", err)
+			}
+		})
+	}
+}
+
+func TestGrantCLIIssuanceRejectsUnconfirmedScopeBeforeOutput(t *testing.T) {
+	const id = "33333333-1234-4234-8234-123456789abc"
+	settings := core.Settings{ID: "exam", Name: "Reviewed exam", Template: "v1", TemplateVersion: strings.Repeat("b", 64), Duration: 5400, Earliest: 100, Latest: 200, Terminals: 2}
+	valid := map[string]any{"id": id, "kind": "NEW_LEGACY_INITIAL_GRANTS", "agent": "class", "exam": "exam", "actor": "agent:class:root", "reason": "Reviewed NEW initial grant", "definition_revision": strings.Repeat("c", 64), "revision": strings.Repeat("a", 64), "created": 100, "expires": 900100, "status": "REVIEW", "issued": []any{}, "rows": []any{map[string]any{"username": "student", "settings": settings, "work": grantWorkResult{Kind: "template", Name: "v1", Hash: settings.TemplateVersion}, "hash": strings.Repeat("d", 64)}}}
+	raw, _ := json.Marshal(valid)
+	body := map[string]any{"exam": "exam", "usernames": []string{"student"}}
+	if err := validateGrantResult("grants.issue-preview", body, raw, "class"); err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"agent", "actor", "exam", "id", "student", "settings", "source", "private", "row-private", "confirmed-without-ids", "duplicate", "review-hash"} {
+		t.Run(kind, func(t *testing.T) {
+			var value map[string]any
+			json.Unmarshal(raw, &value)
+			op := "grants.issue-preview"
+			scope := body
+			row := value["rows"].([]any)[0].(map[string]any)
+			switch kind {
+			case "agent":
+				value["agent"] = "foreign"
+			case "actor":
+				value["actor"] = "agent:foreign:root"
+			case "exam":
+				value["exam"] = "foreign"
+			case "id":
+				op = "grants.issue-show"
+				scope = map[string]any{"id": "44444444-1234-4234-8234-123456789abc"}
+			case "student":
+				row["username"] = "foreign"
+			case "settings":
+				row["settings"].(map[string]any)["id"] = "foreign"
+			case "source":
+				row["work"].(map[string]any)["hash"] = strings.Repeat("f", 64)
+			case "private":
+				value["callback_key"] = "PRIVATE-SENTINEL"
+			case "row-private":
+				row["credential"] = "PRIVATE-SENTINEL"
+			case "confirmed-without-ids":
+				value["status"] = "CONFIRMED"
+			case "duplicate":
+				value["rows"] = []any{row, row}
+			case "review-hash":
+				op = "grants.issue-confirm"
+				scope = map[string]any{"id": id, "revision": strings.Repeat("f", 64)}
+			}
+			encoded, _ := json.Marshal(value)
+			if err := validateGrantResult(op, scope, encoded, "class"); err == nil || strings.Contains(err.Error(), "PRIVATE-SENTINEL") {
+				t.Fatal("unconfirmed issuance output accepted or exposed", err)
 			}
 		})
 	}

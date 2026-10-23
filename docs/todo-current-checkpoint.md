@@ -5,21 +5,41 @@ no push, deployment, production changes, service restart or consolidation.
 Stop on a missing command. Preserve all work, history, protected submissions,
 deadlines, holds and credential cleanup. Follow AGENTS.md and the retrospective.
 
-## Next milestone: reviewed new grants for legacy unused enrollments (C13)
+## Next milestone: explicit additional exact-template attempts (C2/C5)
 
-Use the approved current-settings/exact-version/finite-window review, never
-invented enrollment-time history. Entry points must be matching CLI/web reviewed
-preview/inspection/cancel/confirmation, followed by the existing student grant
-preflight/Begin. Preserve enrollment, active/historical attempts, native legacy
-saved-work authority and all account restrictions. No automatic schema backfill.
-Before editing, record the bounded acceptance/state review; exercise actual
-shared HTTP/root CLI/browser and student admission, not metadata helpers alone.
-Additional/independent-work-source grants and sandbox saved grants follow.
-C16 authority placement is still open, not a global blocker; C17 is settled.
+Continue the approved same-exam grant model through matching reviewed CLI/web
+authorization and student selection/preflight/fresh native Begin. First bounded
+additional workflow: chosen allowance and finite window outside exam defaults,
+exact selected template, separate new attempt and preserved prior submission.
+Keep legacy ordinary uniqueness until a tested grant-only replacement exists;
+never remove account-busy/access holds or initial-only native history checks.
+Additional permission must have distinct authenticated purpose/type and one-use
+identity, not relabel an initial grant. Independent empty/saved-work selection
+and sandbox saved grants follow as integrated increments, not implied completion.
+Exact next action: map the current uniqueness/selection/native-purpose callers,
+record acceptance and required tests, then implement that end-to-end workflow.
+C16 authority placement remains open, not a global blocker; C17 is settled.
+
+## Latest validated local milestone: reviewed NEW legacy initial grants (C13)
+
+This coherent source milestone is based on b8bcec2.024 adds actor-bound immutable
+previews/issuance provenance, with CLI/web review/inspect/cancel/confirm and
+student SSH/C15 Begin. No backfill, account reservation or clock from preview.
+Independent native prior timed history refuses initial admission; old roles
+refuse reviewed preparation. Recovery sources/history/holds remain protected.
+
+461 app/89 files166.85s; full native race/resource/namespace/compiler/default-size
+core328.921s/CLI26.575s; nine rebuilt Chromium/WASM checks1.2m; matching build,
+typecheck/static/vet/format/diff pass. All runners finished. State review, current
+focused evidence, effective mutation and corrected fixture failures are in
+legacy-initial-grant-issuance.md. Commands: initial-grants-cli.md. No production
+records, installed roles, services, deployment or consolidation changed. Native
+OS setup remains a test seam; no installed SSH/PAM/cgroup qualification claimed.
+Preserve/exclude the existing uncommitted PNG and continue independent work.
 
 ## Latest validated local milestone: initial ordinary grants
 
-This milestone's source is based on32e1eec; local commit follows qualification.
+Validated local commit b8bcec2, based on32e1eec.
 NEW enrollment/CSV → immutable initial settings/source → CLI/web inspect/revise/
 revoke → student portal/preflight → fresh C15 native outbound Begin. Migration023
 retains ordinary uniqueness/holds, mode fences, UID-bound cancelled claims and

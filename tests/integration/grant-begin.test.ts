@@ -10,6 +10,8 @@ import { hosts } from "../fixtures/hosts.js";
 
 it.each([
   "ordinary",
+  "reviewed-legacy",
+  "reviewed-old-native",
   "outbound-unavailable",
   "wrong-native-uid",
   "cancelled-retry",
@@ -37,6 +39,7 @@ it.each([
     const sockets: WebSocket[] = [],
       operations: string[] = [],
       intents: string[] = [];
+    let reviewedSupport = scenario !== "reviewed-old-native";
     let failed = false,
       verifiedUID = 10001;
     h.control.command = async (op, b) => {
@@ -52,6 +55,7 @@ it.each([
             "immutable-template-versions-v1",
             "exact-template-begin-v1",
             "unified-initial-grants-v1",
+            ...(reviewedSupport ? ["reviewed-initial-grants-v1"] : []),
           ],
         };
       if (op === "prepare-grant-attempt") {
@@ -240,16 +244,51 @@ it.each([
           cookie: `session=${admin.token}`,
           "x-csrf-token": admin.csrf,
         };
-      expect(
-        (
-          await app.inject({
-            method: "POST",
-            url: "/api/admin/exams/ordinary/roster/add",
-            headers: adminHeaders,
-            payload: { username: "student", duration: 7200, webcam: false },
-          })
-        ).statusCode,
-      ).toBe(200);
+      if (scenario.startsWith("reviewed-")) {
+        store.db
+          .prepare(
+            "INSERT INTO enrollments(exam,username,uid,duration,webcam) VALUES('ordinary','student',0,7200,0)",
+          )
+          .run();
+        const reviewed = await app.inject({
+          method: "POST",
+          url: "/api/admin/exams/ordinary/grants/issue-preview",
+          headers: adminHeaders,
+          payload: {
+            definition_revision: hash(JSON.stringify(definition)),
+            template_version: digest,
+            earliest: definition.earliest,
+            latest: definition.latest,
+            usernames: ["student"],
+            reason: "Reviewed NEW initial authorization for legacy enrollment",
+            request: randomUUID(),
+          },
+        });
+        expect(reviewed.statusCode, reviewed.body).toBe(200);
+        const confirmed = await app.inject({
+          method: "POST",
+          url: `/api/admin/grant-issuance/${reviewed.json().id}/confirm`,
+          headers: adminHeaders,
+          payload: {
+            revision: reviewed.json().revision,
+            request: randomUUID(),
+          },
+        });
+        expect(confirmed.statusCode, confirmed.body).toBe(200);
+        expect(
+          store.db.prepare("SELECT count(*) n FROM attempts").get(),
+        ).toEqual({ n: 0 });
+      } else
+        expect(
+          (
+            await app.inject({
+              method: "POST",
+              url: "/api/admin/exams/ordinary/roster/add",
+              headers: adminHeaders,
+              payload: { username: "student", duration: 7200, webcam: false },
+            })
+          ).statusCode,
+        ).toBe(200);
       const issued = (
         await app.inject({
           url: "/api/admin/exams/ordinary/grants?username=student",
@@ -358,6 +397,18 @@ it.each([
           payload: {},
         });
       let prepared = await preflight();
+      if (scenario === "reviewed-old-native") {
+        expect(prepared.statusCode).toBe(400);
+        expect(prepared.body).toContain(
+          "reviewed-initial native history fences",
+        );
+        expect(
+          store.db.prepare("SELECT count(*) n FROM attempts").get(),
+        ).toEqual({ n: 0 });
+        expect(operations).not.toContain("prepare-grant-attempt");
+        reviewedSupport = true;
+        prepared = await preflight();
+      }
       expect(prepared.statusCode, prepared.body).toBe(200);
       if (
         [

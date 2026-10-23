@@ -2355,6 +2355,27 @@ unified-grant-first-attempt.md. Operator workflows: initial-grants-cli.md.
 Additional/work-source grants, reviewed legacy issuance and sandbox snapshots
 remain open. C16 is still independent; continue actionable work rather than stop.
 
+## October23: reviewed NEW legacy initial grants (C13)
+
+Existing unused enrollments can receive reviewed NEW initial grants through
+matching CLI/web preview/inspect/cancel/confirm, then existing student SSH/C15
+Begin. Effective duration/webcam, selected exact version and independent finite
+window are shown before atomic confirmation. Actor-bound previews expire without
+reserving accounts; restart/lost-reply retries return original issued IDs.024
+adds provenance/receipts without automatic issuance or invented historical data.
+Native known prior timed history refuses initial admission even after release;
+unrelated scopes/cancelled unstarted preflights remain eligible. Root-only recovery
+sources/holds/history remain protected; old roles refuse reviewed preparation.
+
+Focused24 actual HTTP/compiled-root CLI/TLS/student tests61.68s, current native
+grant/commit/TLS/health/CLI races, twenty history/scope repeats3.153s and rebuilt
+whole browser flow pass. Final461 app/89 files166.85s; full native race/resource/
+namespace/compiler/default-size core328.921s/CLI26.575s; nine rebuilt browser
+checks1.2m; matching build/typecheck/static/vet/format/diff pass. Exact state review,
+invalid fixture corrections, effective mutation control and privileged limits:
+legacy-initial-grant-issuance.md. No deployment or production changes. Continue
+additional/independent-work-source and sandbox grants; C16 remains independent.
+
 ## Proposed rollout boundary
 
 Separate instructor authorization and a verified maintenance/drain window are

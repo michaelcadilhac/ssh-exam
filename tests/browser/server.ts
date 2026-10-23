@@ -31,7 +31,12 @@ const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
 const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
 const approvalAccounts = { approval01: 10020 };
-const versionAccounts = { version01: 10021, grant01: 10022 };
+const versionAccounts = {
+  version01: 10021,
+  grant01: 10022,
+  legacy01: 10023,
+  legacy02: 10024,
+};
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -115,6 +120,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         "immutable-template-versions-v1",
         "exact-template-begin-v1",
         "unified-initial-grants-v1",
+        "reviewed-initial-grants-v1",
       ],
     };
   if (op === "resolve-course-accounts") {
@@ -513,6 +519,21 @@ new RosterManagement(store, undefined, "class").add(
   { username: "grant01" },
   "fixture-operator",
 );
+definitions.create(
+  {
+    ...exam,
+    id: "legacy-grant",
+    name: "Reviewed browser grant",
+    webcam: true,
+    template_version: versionHash,
+  },
+  "fixture-operator",
+);
+store.db
+  .prepare(
+    "INSERT INTO enrollments(exam,username,uid,duration,webcam) VALUES('legacy-grant','legacy01',0,NULL,0),('legacy-grant','legacy02',0,4500,1)",
+  )
+  .run();
 definitions.update(
   "initial-grant",
   { duration: 3600, webcam: true },

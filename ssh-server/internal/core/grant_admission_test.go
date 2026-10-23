@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func initialGrantFixture(t *testing.T, configure ...func(*Settings)) (*Engine, ed25519.PrivateKey, Request) {
+func initialGrantUnpreparedFixture(t *testing.T, configure ...func(*Settings)) (*Engine, ed25519.PrivateKey, Request) {
 	t.Helper()
 	e, _, key := boundTemplateFixture(t)
 	var settings Settings
@@ -35,6 +35,12 @@ func initialGrantFixture(t *testing.T, configure ...func(*Settings)) (*Engine, e
 	r := Request{ID: "22222222-1234-4234-8234-123456789abc", Exam: "exam", Username: "student", UID: os.Getuid(), Transport: "ssh-a", Settings: settings, Grant: &GrantBinding{ID: "33333333-1234-4234-8234-123456789abc", Revision: 1, Hash: strings.Repeat("a", 64)}}
 	e.preparationReady = func() (bool, []string) { return true, nil }
 	e.preparationHome = func(*Attempt) error { return nil }
+	return e, key, r
+}
+
+func initialGrantFixture(t *testing.T, configure ...func(*Settings)) (*Engine, ed25519.PrivateKey, Request) {
+	t.Helper()
+	e, key, r := initialGrantUnpreparedFixture(t, configure...)
 	cmd := preparationCommand(r)
 	cmd.Op = "prepare-grant-attempt"
 	if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
@@ -45,7 +51,7 @@ func initialGrantFixture(t *testing.T, configure ...func(*Settings)) (*Engine, e
 		t.Fatal("real exact private workspace staging", err)
 	}
 	a := assertUnstartedWorkspace(t, e, r.ID)
-	if a.Workspace == nil || !sameGrant(a.Grant, r.Grant) || !sameGrant(a.Workspace.Grant, r.Grant) || a.Workspace.Source.Version != settings.TemplateVersion {
+	if a.Workspace == nil || !sameGrant(a.Grant, r.Grant) || !sameGrant(a.Workspace.Grant, r.Grant) || a.Workspace.Source.Version != r.Settings.TemplateVersion {
 		t.Fatal("stage lost immutable grant/source", a.Workspace)
 	}
 	return e, key, r
@@ -228,6 +234,74 @@ func TestInitialGrantSignedStageFreshTLSBeginAndRestart(t *testing.T) {
 	cmd.Op = "prepare-grant-attempt"
 	if _, err := restarted.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil || !strings.Contains(err.Error(), "consumed") {
 		t.Fatal("durable one-use grant fence was not reached", err)
+	}
+}
+
+func TestInitialGrantRefusesIndependentNativeHistory(t *testing.T) {
+	for _, kind := range []string{"same-account", "changed-uid", "changed-username"} {
+		t.Run(kind, func(t *testing.T) {
+			e, key, r := initialGrantUnpreparedFixture(t)
+			started := Millis() - 7200000
+			prior := &Attempt{ID: "99999999-1234-4234-8234-123456789abc", Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "COMPLETED", AccessState: "RELEASED", Start: started, Deadline: started + 5400000, OriginalDeadline: started + 5400000, Protected: true}
+			if kind == "changed-uid" {
+				prior.UID++
+			}
+			if kind == "changed-username" {
+				prior.Username = "oldstudent"
+			}
+			if err := e.WithState(func() error { e.state.Attempts[prior.ID] = prior; return nil }); err != nil {
+				t.Fatal(err)
+			}
+			cmd := preparationCommand(r)
+			cmd.Op = "prepare-grant-attempt"
+			if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil || !strings.Contains(err.Error(), "native attempt history") {
+				t.Fatal("initial issuance bypassed independent completed/released native history", err)
+			}
+			if err := e.WithState(func() error {
+				if e.state.Attempts[r.ID] != nil || e.state.Attempts[prior.ID].Start != prior.Start || !e.state.Attempts[prior.ID].Protected {
+					t.Fatal("refusal modified historical work or created a new preparation")
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestInitialGrantHistoryFencePreservesUnstartedAndOtherScopes(t *testing.T) {
+	for _, kind := range []string{"different-exam", "different-account", "cancelled-preflight"} {
+		t.Run(kind, func(t *testing.T) {
+			e, key, r := initialGrantUnpreparedFixture(t)
+			started := Millis() - 7200000
+			prior := &Attempt{ID: "99999999-1234-4234-8234-123456789abc", Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, State: "COMPLETED", AccessState: "RELEASED", Start: started, Deadline: started + 5400000, OriginalDeadline: started + 5400000, Protected: true}
+			switch kind {
+			case "different-exam":
+				prior.Exam = "other-exam"
+			case "different-account":
+				prior.Username = "otherstudent"
+				prior.UID++
+			case "cancelled-preflight":
+				prior.State = "CANCELLED_BEFORE_START"
+				prior.Start = 0
+				prior.Deadline = 0
+				prior.OriginalDeadline = 0
+				prior.Protected = false
+			}
+			if err := e.WithState(func() error { e.state.Attempts[prior.ID] = prior; return nil }); err != nil {
+				t.Fatal(err)
+			}
+			cmd := preparationCommand(r)
+			cmd.Op = "prepare-grant-attempt"
+			result, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+			if err != nil {
+				t.Fatal("unrelated history/unstarted preflight falsely prevented initial preparation", err)
+			}
+			a := result.(*Attempt)
+			if a.State != "PREPARING" || a.Start != 0 || a.Deadline != 0 {
+				t.Fatal("preparation started an allowance", a)
+			}
+		})
 	}
 }
 

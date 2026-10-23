@@ -31,6 +31,31 @@ export const grantRevision = z
   })
   .strict();
 export const grantRevocation = grantRevision.omit({ changes: true }).strict();
+export const grantIssuePreview = z
+  .object({
+    exam: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    definition_revision: z.string().regex(/^[a-f0-9]{64}$/),
+    template_version: z.string().regex(/^[a-f0-9]{64}$/),
+    earliest: z.number().int().safe(),
+    latest: z.number().int().safe(),
+    usernames: z
+      .array(username)
+      .min(1)
+      .max(200)
+      .refine(
+        (a) => new Set(a).size === a.length,
+        "Choose each student only once",
+      ),
+    reason: z.string().trim().min(8).max(1000),
+    request: z.string().uuid().optional(),
+  })
+  .strict();
+export const grantIssueIntent = z
+  .object({
+    revision: z.string().regex(/^[a-f0-9]{64}$/),
+    request: z.string().uuid().optional(),
+  })
+  .strict();
 export const grantBeginRequest = z
   .object({
     type: z.literal("grant-begin/v1"),

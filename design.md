@@ -2044,6 +2044,16 @@ evidence/limits and docs/initial-grants-cli.md for supported operator workflows.
 
 ### Approved grant webcam/Begin-window policy (October 21; implementation pending)
 
+October23 locally implemented/tested reviewed legacy issuance adds actor-bound fifteen-minute
+reviews, exact current-definition/source selection, per-user effective policies
+and atomic NEW confirmation through matching CLI/web. It labels REVIEWED_NEW
+provenance, never invented enrollment-time settings. Reviews reserve no account
+or clock; changed roster/defaults/history or expiry require a new review. Native
+initial admission independently refuses prior same-exam UID/name timed history,
+including completed/released attempts; new reviewed capability is required before
+web preparation. Native-only recovery records remain protected and unconverted.
+State review and qualification: docs/legacy-initial-grant-issuance.md. No deployment.
+
 At issuance preserve the student's current effective webcam requirement (exam
 default plus individual override), unless explicitly overridden for the student
 or grant batch. Show and snapshot the resolved value; later enrollment/default
