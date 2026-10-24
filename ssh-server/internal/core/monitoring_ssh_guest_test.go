@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -35,6 +36,8 @@ func TestMonitoringSSHProcessGuestRefusesUnqualifiedHost(t *testing.T) {
 		{"TestWriterThreadGroupGuest", "EXAM_WRITER_THREADS_GUEST"},
 		{"TestMonitoringThreadTTYGuest", "EXAM_MONITORING_THREAD_TTY_GUEST"},
 		{"TestPaneAcknowledgementGuest", "EXAM_PANE_ACK_GUEST"},
+		{"TestRetainedPolicyAgentGuest", "EXAM_RETAINED_POLICY_GUEST"},
+		{"TestRetainedPolicyWatchdogGuest", "EXAM_RETAINED_POLICY_GUEST"},
 	} {
 		t.Run(item.test, func(t *testing.T) {
 			command := exec.Command("/usr/bin/env", item.optIn+"=1", "GORACE=atexit_sleep_ms=0", os.Args[0], "-test.run=^"+item.test+"$", "-test.count=1")
@@ -51,42 +54,52 @@ func requireMonitoringGuest(t *testing.T, profile, optIn string) int {
 	if os.Getenv(optIn) != "1" {
 		t.Skip("requires explicit disposable overlay qualification profile")
 	}
+	uid, err := monitoringGuestIdentity(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return uid
+}
+
+// Shared by opt-in tests and raw role dispatch in the compiled TEST executable.
+// This preserves the same private container/mount/config/account guards.
+func monitoringGuestIdentity(profile string) (int, error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
-		t.Fatal("private guest root required")
+		return 0, fmt.Errorf("private guest root required")
 	}
 	container, err := os.ReadFile("/run/systemd/container")
 	if err != nil || strings.TrimSpace(string(container)) != "systemd-nspawn" {
-		t.Fatal("refuse outside the private systemd guest")
+		return 0, fmt.Errorf("refuse outside the private systemd guest")
 	}
 	const input = "/run/ssh-exam-qualification-input"
 	marker, err := os.ReadFile(input + "/run.json")
 	var run struct{ Username, Unit, Profile string }
 	if err != nil || len(marker) > 4096 || json.Unmarshal(marker, &run) != nil || run.Username != "examq" || run.Profile != profile || !strings.HasPrefix(run.Unit, "ssh-exam-qualification-") || !strings.HasSuffix(run.Unit, ".service") {
-		t.Fatal("private monitoring qualification identity required")
+		return 0, fmt.Errorf("private monitoring qualification identity required")
 	}
 	mounts, err := os.ReadFile("/proc/self/mountinfo")
 	if err != nil || !strings.Contains(string(mounts), " "+input+" ") || !strings.Contains(string(mounts), " /run/ssh-exam-qualification-output ") {
-		t.Fatal("private fixture mounts required")
+		return 0, fmt.Errorf("private fixture mounts required")
 	}
 	configBytes, err := os.ReadFile("/etc/exam-agent/agent.json")
 	var config Config
 	if err != nil || len(configBytes) > 65536 || json.Unmarshal(configBytes, &config) != nil || config.Socket != "/run/exam-agent/gate.sock" || !config.TemporaryAccountPolicy || config.FunctionalTestAccount != "" {
-		t.Fatal("private strict account-policy fixture required")
+		return 0, fmt.Errorf("private strict account-policy fixture required")
 	}
 	guardBytes, err := os.ReadFile(config.GuardReport)
 	var guard struct{ Fixture string }
 	if err != nil || len(guardBytes) > 65536 || json.Unmarshal(guardBytes, &guard) != nil || !strings.HasPrefix(guard.Fixture, "Private qualification") {
-		t.Fatal("private guard report required")
+		return 0, fmt.Errorf("private guard report required")
 	}
 	account, err := user.Lookup(run.Username)
 	if err != nil {
-		t.Fatal("synthetic local account unavailable")
+		return 0, fmt.Errorf("synthetic local account unavailable")
 	}
 	uid, err := strconv.Atoi(account.Uid)
 	if err != nil || uid < 1000 {
-		t.Fatal("invalid synthetic account UID")
+		return 0, fmt.Errorf("invalid synthetic account UID")
 	}
-	return uid
+	return uid, nil
 }
 
 func TestMonitoringSSHProcessGuest(t *testing.T) {

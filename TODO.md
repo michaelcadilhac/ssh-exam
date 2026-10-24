@@ -8,6 +8,17 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October23 local root milestone: the guarded disposable retained-policy profile
+now passes real initial-grant Begin, two SSH panes, CLI pause, positive task stops
+and cgroup freezes, explicit fresh native Continue, retained shell buffers, stale
+input refusal, protected collection and original-deadline SSH/SFTP restoration
+(11 assertions; installed host/base preservation passes). It exposed and fixed
+rejection of the real root Bubblewrap guardians: the barrier now pins/verifies
+and stops them too. Synthetic capture is explicit; installed admission remains
+disabled. Editors/background/asynchronous writers, failure/clock/loaded-role and
+combined16/64 qualification remain open; this does not close a broad checkbox or
+imply deployment. Exact evidence: docs/live-monitoring-runtime.md.
+
 Reviewed October 20, 2026 (America/Chicago), after the 3 p.m. incident.
 
 **Do not implement or deploy these items during the current exams.** This file is

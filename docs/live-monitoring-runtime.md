@@ -378,3 +378,68 @@ OLDER source receipt, not full qualification of these new native bytes. Root
 all-writer/async IO, last child/hold/thaw races, explicit clock/fault handover,
 independent failure and loaded-role/capacity qualification remain open. Guard
 OFF; no production action. This correction closes no broader TODO by itself.
+
+## Actual root retained-policy qualification in progress
+
+The existing disposable profile now uses the compiled core TEST executable for
+the coordinator/watchdog and their real raw role dispatch. It restores captured
+production terminal/collection factories only after the exact private nspawn,
+mounted input/output, profile/account/config/guard checks. No installed executable
+has a retained-mode bypass. Negative host/raw-role and production-factory races
+PASS1.187s. All40 Python safety/fixture checks pass. The candidate bundle is
+code-only62,143,908bytes; exact manifest checks apply inside the runner.
+
+The actual driver now joins fresh v3 Begin, two real authenticated framed panes,
+root CLI pause and finite explicit synthetic approval/native Continue. Capture
+is an explicitly synthetic signed callback; this is NOT combined real-camera
+qualification. The callback admits only its authored grant/owner, refuses absent,
+expired or mismatched approval and preserves transport/page/clock on rotation.
+Its memory-only coverage cannot restore native execution after restart. These
+fixture states reserve no production account and cannot extend a native deadline.
+
+The first root run reached seven prior interface assertions then refused an
+unverified hold. Preservation PASSED; evidence /var/tmp/ssh-exam-overlay-6y4abnr5,
+local /tmp/ssh-exam-retained-root-continue-qualification.log. Diagnostic repeats
+preserved /var/tmp/ssh-exam-overlay-8znb4iy6 and
+/var/tmp/ssh-exam-overlay-1adr1giv; the latter's local receipt is
+/tmp/ssh-exam-retained-root-continue-scope-diagnostic.log.
+They show two root-owned /usr/bin/bwrap guardians plus the student shell in each
+actual workload scope. terminalThreadGroup currently requires the student UID
+for EVERY scope thread; it rejects these real root guardians before a verified
+stop/freeze. Desktop scopes lacked those guardians. This is a confirmed candidate
+inventory defect, not permission to exempt arbitrary root/student processes or
+report success from a partial freeze. The same root workflow remains the
+regression and stopping boundary; guard stays OFF.
+
+The correction includes root guardians in the SAME barrier, not an exemption.
+Their root TGID/proc view and pidfd, actual installed root-owned/non-writable
+Bubblewrap inode, registered scope and complete root credentials must agree.
+The normal complete student-UID inventory remains. Every guardian is signalled
+and observed stopped before freezing; unrecognized/moved/changed/exited processes
+refuse success. Continue preserves each group's original stopped state. No new
+durable authority or permission is created by this inventory.
+
+Focused actual monitored lifecycle/default-closed/guardian refusal races
+PASS60.384s; log /tmp/ssh-exam-retained-guardian-native-focus.log. Native release
+builds and vet PASS. All40 Python safety/callback checks PASS. The previous full
+native run PASS491.788s/CLI31.280s predates this correction; it is not a receipt for
+the new bytes. Unchanged application/browser/WASM evidence above still applies.
+
+NEW exact-artifact root retained-policy run PASSES11 assertions and finishes
+OVERLAY_QUALIFICATION_OK. It exercises actual full student UID/root guardians,
+real SSH/PAM/cgroups and production role factories, CLI pause, absent-approval
+refusal, fresh finite approval/Continue, both retained shell buffers, old locked
+and stale-epoch exit refusal, protected collection and original-deadline SSH/SFTP.
+Every observed scope task is positively stopped and its populated cgroup frozen.
+Live binaries/config/authority and guest-base preservation PASS. Session42244
+completed0; local /tmp/ssh-exam-retained-guardian-root-qualification.log, private
+/var/tmp/ssh-exam-overlay-zu02weld. Bundle retained-guardian-artifacts.e9mtnxay,
+62,162,325bytes; remote /var/tmp/ssh-exam-retained-guardian-upload.sAhNgw/bundle.
+Agent SHA256 7e345d3ab414eed1abc0d479169e129b9285d77370676db6baae4041bf9f1a9b;
+compiled test SHA256 7e64c705ad6819b9befcd836c2fd1e56873088e4a283f29f3d76d78efc881c88.
+
+This is the first positive root pause/Continue boundary, not complete C3/C16/C9
+qualification. Capture remains synthetic; real HTTP/JPEG/browser contracts were
+qualified separately. Original job stops, editors, async writers, last-child and
+partial-thaw races, recording/clock handover, independent failures, mixed loaded
+roles and16/64 capacity remain OPEN. Installed guard OFF; no deployment.

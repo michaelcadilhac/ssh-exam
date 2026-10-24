@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -49,6 +50,7 @@ func (s *terminalSupervisor) observeAuthorityExpiry() {
 
 type terminalHoldGroup struct {
 	process         *uidProcess
+	uid             int
 	originalStopped bool
 	signalled       bool
 }
@@ -161,6 +163,46 @@ func terminalThreadGroup(tid, uid int) (int, error) {
 		}
 	}
 	return id.TGID, nil
+}
+
+// Bubblewrap keeps root-owned namespace guardians in the actual pane scope.
+// Include them in the stop barrier, never exempt them as transport processes.
+// This caller has already pinned/inventoried that registered workload scope.
+func pinTerminalGuardian(tid int, unit string) (*terminalHoldGroup, error) {
+	tgid, err := terminalThreadGroup(tid, 0)
+	if err != nil {
+		return nil, errTerminalHold
+	}
+	p, err := pinUIDProcess(tgid, 0)
+	if err != nil || p == nil {
+		return nil, errTerminalHold
+	}
+	keep := false
+	defer func() {
+		if !keep {
+			p.close()
+		}
+	}()
+	// Resolve exe through the pinned proc directory, not a reused numeric PID
+	// or a student namespace's pathname. Only the installed root-owned inode.
+	actual, err := os.Stat(fmt.Sprintf("/proc/self/fd/%d/exe", p.proc.Fd()))
+	trusted, trustedErr := os.Stat("/usr/bin/bwrap")
+	if err != nil || trustedErr != nil || !trusted.Mode().IsRegular() || trusted.Mode().Perm()&0022 != 0 || trusted.Sys().(*syscall.Stat_t).Uid != 0 || !os.SameFile(actual, trusted) {
+		return nil, errors.New("owned pane root guardian is not the installed trusted Bubblewrap executable")
+	}
+	group, err := terminalWorkloadGroup(unit)
+	cgroup, readErr := p.read("cgroup", 131072)
+	prefix := strings.TrimSuffix(strings.TrimPrefix(group, "0::"), "\n")
+	if err != nil || readErr != nil || prefix == "" || (string(cgroup) != group && !strings.HasPrefix(string(cgroup), "0::"+prefix+"/")) {
+		return nil, errors.New("root guardian left the registered pane scope")
+	}
+	observation, err := observeRetainedTask(p, tid, 0)
+	if err != nil || observation.Identity.UIDs != [4]uint32{} {
+		return nil, errTerminalHold
+	}
+	keep = true
+	state := observation.States[0]
+	return &terminalHoldGroup{process: p, uid: 0, originalStopped: state == 'T' || state == 't'}, nil
 }
 
 func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) (terminalHoldView, error) {
@@ -300,10 +342,10 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 				p.close()
 				return fail(errTerminalHold)
 			}
-			h.groups[p.pid] = &terminalHoldGroup{process: p, originalStopped: state == 'T' || state == 't'}
+			h.groups[p.pid] = &terminalHoldGroup{process: p, uid: owner.UID, originalStopped: state == 'T' || state == 't'}
 		}
 		allStopped := true
-		for _, scope := range h.scopes {
+		for unit, scope := range h.scopes {
 			tree, err := observeRetainedScopeTree(scope)
 			if err != nil {
 				return fail(err)
@@ -312,14 +354,26 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 				for _, tid := range node.Threads {
 					tgid, err := terminalThreadGroup(tid, owner.UID)
 					if err != nil {
-						return fail(err)
+						guardian, guardianErr := pinTerminalGuardian(tid, unit)
+						if guardianErr != nil {
+							return fail(fmt.Errorf("pane scope thread %d: %w", tid, guardianErr))
+						}
+						tgid = guardian.process.pid
+						if h.groups[tgid] != nil {
+							guardian.process.close()
+						} else if len(h.groups) >= retainedThreadLimit {
+							guardian.process.close()
+							return fail(errors.New("retained writer inventory limit reached; hold remains unverified"))
+						} else {
+							h.groups[tgid] = guardian
+						}
 					}
 					g := h.groups[tgid]
 					if g == nil {
 						allStopped = false
 						continue
 					}
-					observation, err := observeRetainedTask(g.process, tid, owner.UID)
+					observation, err := observeRetainedTask(g.process, tid, g.uid)
 					if err != nil {
 						return fail(err)
 					}

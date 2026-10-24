@@ -2,17 +2,71 @@
 """Minimal signed HTTPS callback/timing fixture. Disposable guest only, no exam control API."""
 import base64
 import datetime
+import hashlib
 import http.server
 import ipaddress
 import json
 import os
 from pathlib import Path
 import ssl
+import stat
+import threading
 import time
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
+
+
+def private_registry(path):
+ descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC)
+ try:
+  metadata=os.fstat(descriptor)
+  assert stat.S_ISREG(metadata.st_mode) and metadata.st_uid==0 and metadata.st_nlink==1
+  assert metadata.st_mode&0o777==0o600 and 0<metadata.st_size<=65536
+  raw=os.read(descriptor,65537);assert len(raw)==metadata.st_size
+  return json.loads(raw)
+ finally:os.close(descriptor)
+
+
+def fixture_reply(path,data,expected,approval,owners,now):
+ """Finite synthetic capture, NOT real camera qualification or a control API."""
+ def key(owner):return json.dumps(owner,sort_keys=True,separators=(',',':'))
+ def bootstrap(owner):
+  encoded=key(owner);coverage=hashlib.sha256(encoded.encode()).hexdigest()
+  owners[encoded]=coverage
+  return {'type':'monitoring-bootstrap/v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
+ assert data['agent']==expected['agent']
+ if path=='/api/agent/grant-begin':
+  assert expected['type'] in ('grant-begin/v2','grant-begin/v3')
+  assert all(data.get(k)==v for k,v in expected.items())
+  reply={k:data[k] for k in ('type','nonce','attempt','grant','intent','transport','boot','page_epoch')}
+  reply.update(audience=data['agent'],expires=now+15000,capture_valid_for_ms=15000)
+  if data['type']=='grant-begin/v3':
+   owner=data['initial_owner']
+   assert set(owner)=={'attempt','exam','username','uid','transport_hash','boot','page_epoch','input_epoch','generation','clock_revision'}
+   assert all(owner[k]==data[v] for k,v in (('attempt','attempt'),('exam','exam'),('username','username'),('uid','uid'),('transport_hash','transport'),('boot','boot'),('page_epoch','page_epoch')))
+   assert owner['generation']==0 and owner['clock_revision']==0 and len(bytes.fromhex(owner['input_epoch']))==32
+   reply['bootstrap']=bootstrap(owner)
+  return reply
+ if path=='/api/agent/monitoring-evidence':
+  assert data['type']=='monitoring-execution-challenge-v1'
+  coverage=owners[key(data['owner'])]
+  assert data['coverage_epoch']==coverage and 0<data['after_sequence']<9007199254740991
+  return {'type':'monitoring-execution-evidence-v1','audience':data['agent'],'nonce':data['nonce'],
+          'owner':data['owner'],'coverage_epoch':coverage,'sequence':data['after_sequence']+1,'age_ms':0,'complete':True}
+ assert path=='/api/agent/monitoring-continue' and data['type']=='monitoring-continue/v1'
+ assert approval and approval['expires']>now and approval['expires']<=now+300000
+ previous,owner=data['previous_owner'],data['owner']
+ assert previous==approval['previous_owner'] and key(previous) in owners
+ assert owner['generation']==approval['generation'] and owner['generation']>previous['generation']
+ assert set(owner)==set(previous) and all(owner[k]==v for k,v in previous.items() if k not in ('generation','input_epoch'))
+ assert owner['input_epoch']!=previous['input_epoch'] and len(bytes.fromhex(owner['input_epoch']))==32
+ seed=bootstrap(owner)
+ return {'type':'monitoring-continue/v1','audience':data['agent'],'nonce':data['nonce'],
+         'previous_owner':previous,'owner':owner,'authorization_expires':approval['expires'],
+         'expires':min(approval['expires'],now+15000),'capture_valid_for_ms':15000,'bootstrap':seed}
+
 
 assert os.geteuid()==0
 config=json.loads(Path('/etc/exam-agent/agent.json').read_text())
@@ -33,6 +87,8 @@ certificate=(x509.CertificateBuilder().subject_name(name).issuer_name(name).publ
 Path('/etc/exam-agent/callback-tls.key').write_bytes(key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.TraditionalOpenSSL,serialization.NoEncryption()))
 os.chmod('/etc/exam-agent/callback-tls.key',0o600)
 Path(config['callback_ca']).write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+owners={}
+owner_lock=threading.Lock()
 class Handler(http.server.BaseHTTPRequestHandler):
  def log_message(self,*args):pass
  def do_POST(self):
@@ -42,17 +98,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
    agent.verify(base64.b64decode(self.headers['X-Exam-Signature']),raw)
    data=json.loads(raw);assert data['agent']==config['agent_id']
    result={'ok':True}
-   if self.path=='/api/agent/grant-begin':
-    # One explicitly authored synthetic grant, never a wildcard/offline permit.
-    registry=Path('/run/qualification-framed-grant.json')
-    metadata=registry.stat();assert metadata.st_uid==0 and metadata.st_mode&0o777==0o600 and metadata.st_size<=65536
-    expected=json.loads(registry.read_bytes())
-    assert expected['type']=='grant-begin/v2' and expected['agent']==config['agent_id']
-    assert all(data.get(k)==v for k,v in expected.items())
-    reply={k:data[k] for k in ('type','nonce','attempt','grant','intent','transport','boot','page_epoch')}
-    # Synthetic native-owner qualification only; real preflight freshness is
-    # tested through authenticated HTTP/JPEG in the application suites.
-    reply.update(audience=config['agent_id'],expires=int(time.time()*1000)+15000,capture_valid_for_ms=15000)
+   if self.path in ('/api/agent/grant-begin','/api/agent/monitoring-evidence','/api/agent/monitoring-continue'):
+    expected=private_registry('/run/qualification-framed-grant.json')
+    assert expected['agent']==config['agent_id']
+    approval=private_registry('/run/qualification-retained-approval.json') if self.path.endswith('/monitoring-continue') else None
+    with owner_lock:reply=fixture_reply(self.path,data,expected,approval,owners,int(time.time()*1000))
     payload=json.dumps(reply,separators=(',',':')).encode()
     result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
    elif self.path=='/api/agent/timing':

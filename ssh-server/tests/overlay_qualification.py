@@ -84,7 +84,9 @@ def authority(config):
               'deadline', 'original_deadline', 'clock_revision', 'protected',
               'checksum', 'access_state', 'policy_state', 'clock_resets',
               'grant', 'grant_begin_intent', 'registered_owner', 'workspace',
-              'expected_recovery', 'browser_ssh', 'terminal_supervised')
+              'expected_recovery', 'browser_ssh', 'terminal_supervised',
+              'monitoring_mode', 'retained_hold', 'monitoring_hold_kind',
+              'monitoring_resume_nonce')
     return {key: {field: a.get(field) for field in fields}
             for key, a in attempts.items()}
 

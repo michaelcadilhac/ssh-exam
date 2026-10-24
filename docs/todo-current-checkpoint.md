@@ -8,86 +8,52 @@ No unanswered design/capacity question. Main TODO11/38 is not effort percentage.
 
 ## Current outcome and validated increment
 
-Policy pause → verified retained hold → approved Continue, same open page/SSH/
-shell/editor, original deadlines. Local commit7ece84d joins this guarded runtime through real native/HTTP/IPC/browser/WASM callers;
-it does NOT complete all privileged qualification or enable C3/C16/C9.
-Base b1e8758 audited overlapping TODOs; b5e0ce3 and1163190 are earlier qualified
-pin/history fixes. Old root bundles DO NOT qualify this newer native candidate.
-Use [todo-delivery-audit.md](todo-delivery-audit.md) for six actual outcomes;
-[live-monitoring-runtime.md](live-monitoring-runtime.md) owns detailed evidence.
+Policy pause → verified retained hold → approved Continue, same page/SSH/shell/
+editor and original deadlines. Runtime7ece84d joins native/HTTP/IPC/browser/WASM;
+cf7bb2c qualifies a real delayed manager;7a6969d fences final exec against live
+revocation around persistence. Current guarded root increment fixes actual root
+Bubblewrap guardians: pin/verify installed inode/root credentials/registered scope,
+stop them too, retain complete student-UID checks. Never exempt unknown writers.
 
-- Native fresh v3 Begin and live signed renewals run inside ONE attempt owner;
-  supervisor/watchdog share actual SCM_RIGHTS cutoff, preserving original boot
-  deadlines and independent technical expiry despite stale disk observations.
-- Actual native pause/Continue retains the same tested shell memory, discards
-  old input and retries pending/expired/cancelled operations. Pending launch
-  uncertainty now freezes known writers before returning UNVERIFIED; no all-writer
-  receipt is invented. Actual delayed manager/final exec remains to qualify.
-- Migration030 records legacy/v1 and observational holds. Signed native intent
-  remains web-LOCKED until physical-pane input agreement. Native/browser/final
-  HTTP lost replies retry the same operation/clock; consumed approval still
-  refuses fresh SSH. Status `completing` grants no permission.
-- Physical output/EOF identity survives input epoch changes and early SSH output;
-  before-clock JS/WASM/native disagreement refuses. Challenge timeout is technical
-  input blocking/retry, not policy; real track loss remains policy.
-- **Installed guard always refuses v1; no environment/config enable switch.**
-  Local desktop tests substitute installed SSH ancestry and restrict inventory
-  to owned scopes. Positive root CLI/all-UID/async/failure guarantees remain OPEN.
+The SAME actual retained-policy root profile now PASSES11 assertions: actual v3
+Begin, two real framed SSH panes, CLI pause, every observed task stopped and each
+populated scope frozen, absent approval refusal, finite fresh approval/Continue,
+both shell buffers/SSH retained, old input refused, protected collection and
+original-deadline SSH/SFTP restoration. Host binaries/config/authority and guest
+base preservation PASS. Root capture is explicitly synthetic, not a real camera.
 
-## Verification and current runners
+Installed guard remains OFF, with no environment/config enable switch. No broad
+checkbox closes on this first boundary. Current outcome gaps are in
+[todo-delivery-audit.md](todo-delivery-audit.md); exact receipts, prior REDs,
+mutation and fixture limitations belong in [live-monitoring-runtime.md](live-monitoring-runtime.md).
 
-All runners ended. Final full app566 PASS/2 conditional skipped284.82s, then BOTH
-conditional real root-mapped examctl/HTTPS workflows PASS6.93s (all568 covered
-across runs). Six affected browser-SSH files27 PASS2.2m; new timeout/Continue UI
-and real WASM focus2 PASS24.1s. Full native race/resource/userns/compiler/default-
-size PASS core481.631s/CLI31.996s; full encrypted client races PASS1.511s. Types,
-app/WASM/server/native release builds and native/client vet PASS. Initial six
-application fixture failures were preserved/corrected and focused before final
-rerun. See feature document for exact receipts and seams. No new root/capacity
-qualification, deployment or incident-cause claim. Frozen final manifest is
-/tmp/ssh-exam-retained-joined-qualified-source.json.
+## Verification and runners
 
-## Current qualification increment and exact next action
+All runners ended. Current actual lifecycle/default-closed/guardian refusal races
+PASS60.384s; all40 Python safety/callback checks PASS; fresh native release builds
+and vet PASS. Exact new root bundle62,162,325bytes:
+var/collection-tests/retained-guardian-artifacts.e9mtnxay; root evidence
+/var/tmp/ssh-exam-overlay-zu02weld; local receipt
+/tmp/ssh-exam-retained-guardian-root-qualification.log (session42244 completed0).
+Older full native PASS491.788s/CLI31.280s predates guardian fix; it does not qualify
+changed bytes. Unchanged7ece84d contracts retain all568 application scenarios,
+27 affected real browser-SSH cases, full client races and matched builds/typecheck.
+Do not rerun unchanged app/browser suites for private native changes.
 
-cf7bb2c validates a real delayed manager/bootstrap across pause (7.469s); only
-test files changed from runtime7ece84d at that point. The current final-exec
-correction: actual revocation AFTER launch-ready let a bootstrap
-consume Code1 despite ACTIVE canonical state. RED durable witness proves it.
-Closed launch now imports a dedicated owner/deadline-bound live cutoff/peer
-OUTSIDE the state lock; both pre/post-save final checks read it directly. No
-Root IPC or disk read joins those checks. Watchdog reuses the same import helper.
-A test-only checkpoint exposes the actual post-save/pre-permit boundary.
+## Exact next milestone
 
-Before-exec AND after-save refusal/actual child and supervisor retirement/verified
-original-shell hold/fresh Continue PASS8.639s. Initial fixture compile typo and
-seam-installation race are retained/corrected; test seam setup now joins e.mu.
-A PRIVATE source-copy mutation removing ONLY the second check fails on actual
-consumed-permit witness (not timeout/race); working tree untouched. Receipt:
-var/collection-tests/final-exec-mutation.log; snapshot
-/tmp/ssh-exam-final-exec-mutation.4qacb3it. Code guard remains OFF.
-
-Final affected complete monitored lifecycle/default-closed guard/closed-bootstrap
-races PASS65.464s; session99063 completed0,
-/tmp/ssh-exam-retained-final-exec-native-focus.log. Native release build/vet PASS;
-all runners ended. App/browser/WASM contracts unchanged, so7ece84d's568 app/27
-browser results still apply. Its481.631s full native receipt is OLDER source,
-not qualification of these changed bytes. Current commit contains this bounded
-fix; preserve the original RED, fixture race and mutation evidence in the feature
-document. No new root/capacity qualification or enablement.
-
-NEXT: continue actual original job stops/background and asynchronous writers,
-recording-fault/clock handover, independent owner death/stall and loaded-role
-agreement; extend the SAME guarded root retained-policy driver through Continue.
-Inspect existing qualification role factories/guard before adding fixture code.
-Last child/hold/thaw races and C9 technical recovery remain open. No new design
-question or deployment. Do not rerun unchanged app/browser suites for native-only
-changes; qualify NEW exact native artifacts at coherent boundaries.
+Extend the SAME real root CLI pause/Continue entry to actual editor buffers,
+originally stopped jobs, background and linked asynchronous writers; refuse
+unknown root tasks and retry only after exact cleanup. Keep native sources frozen
+while their focused tests run. Read focused completion before broad qualification.
+Then recording-fault/clock handover, independent owner/coordinator death/stall,
+last child/partial-thaw races, loaded-role agreement, C9 and combined16/64 capacity.
+Do not enable an incomplete mechanism. No unanswered design question.
 
 Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
 retirement reconciliation, manual secured-workspace cleanup, configuration/full
-CLI journey and combined16/64 installed capacity. No new architecture question.
-Proposed rollout/migration/rollback and temporary three-agent consolidation remain
-in todo-rollout-plan.md ONLY. Never execute them without new authorization.
+CLI journey. Proposed rollout/migration/rollback and temporary three-agent
+consolidation remain in todo-rollout-plan.md ONLY; execute none.
 
 ## Preserved workspace data
 

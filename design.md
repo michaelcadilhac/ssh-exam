@@ -2714,3 +2714,22 @@ framed path. Read-only examctl panes show exposes captured input_epochs, with
 help explaining their limits. Preserve additive proof fields and drain independent
 owners before a future separately authorized matched-role rollout or rollback.
 State review and qualification: docs/framed-pane-input.md. Nothing deployed.
+
+## Guarded retained monitoring candidate (October23 local status)
+
+The candidate now joins native v3 Begin/live supervisor authority, framed input,
+verified hold and same-page Continue through the application/WASM interfaces.
+One supervisor per attempt retains its SSH/PTY ownership. The actual root CLI
+pause/Continue profile preserves two shells and their memory, discards old input,
+keeps the original deadline/grant, secures collection and restores ordinary access
+at the original deadline. Its signed capture callback is explicitly synthetic.
+The stop barrier also inventories the actual root Bubblewrap guardians: only the
+installed root-owned executable inode in a registered pane scope qualifies, and
+those pinned groups are stopped/frozen too. Unknown processes still refuse a
+verified hold. No process-name exception grants execution.
+
+Installed admission still unconditionally refuses this mode; no configuration or
+environment enable switch exists. Complete editor/background/async-writer, fault,
+clock/role agreement and capacity qualification remains required. The compiled
+private-guest test adapter is never an installed operator recovery path. Current
+state review, exact artifacts and limitations: docs/live-monitoring-runtime.md.

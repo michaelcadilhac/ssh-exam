@@ -13,7 +13,7 @@ parser.add_argument('--setup-only',action='store_true',help='Focused temporary s
 parser.add_argument('--worker-isolation',action='store_true',help='Real collection-worker death alongside another live SSH PTY; private overlay only')
 parser.add_argument('--timed-owner',action='store_true',help='Real BrowserSSH timed owner, two shells, guest coordinator stop and current-policy pause; private overlay only')
 parser.add_argument('--framed-owner',action='store_true',help='Actual C15 initial-grant Begin and scoped input/resize/replacement; private overlay only')
-parser.add_argument('--retained-policy',action='store_true',help='Candidate C3 real CLI pause must preserve authenticated panes and verify frozen kernel scopes; private overlay only')
+parser.add_argument('--retained-policy',action='store_true',help='Guarded test roles: actual CLI pause/verified frozen panes/fresh approved Continue; private overlay only')
 parser.add_argument('--peer',help='Separate synthetic guest account for worker isolation')
 parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
@@ -146,10 +146,10 @@ class Connection:
             activation={'id':id}
             if initial_grant:
                 activation.update(settings=staged['settings'],grant=self.grant,grant_begin_intent=str(uuid.uuid4()),page_epoch=self.page_epoch)
-                expected={'type':'grant-begin/v2','agent':config['agent_id'],'attempt':id,'exam':self.exam,'username':self.username,'uid':account.pw_uid,'grant':self.grant,'intent':activation['grant_begin_intent'],'transport':self.transport,'boot':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),'settings':staged['settings'],'page_epoch':self.page_epoch}
+                expected={'type':'grant-begin/v3' if a.retained_policy else 'grant-begin/v2','agent':config['agent_id'],'attempt':id,'exam':self.exam,'username':self.username,'uid':account.pw_uid,'grant':self.grant,'intent':activation['grant_begin_intent'],'transport':self.transport,'boot':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),'settings':staged['settings'],'page_epoch':self.page_epoch}
                 descriptor=os.open('/run/qualification-framed-grant.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
                 with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry)
-            self.command('activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
+            self.command('activate-monitored-grant-attempt' if a.retained_policy else 'activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
             begun=info(id)
             assert begun['deadline']-begun['start']==duration*1000 and begun['original_deadline']==begun['deadline']
             assert (base/'work').stat().st_ino==staged_inode, 'Begin did not publish the exact staged directory'
@@ -243,7 +243,7 @@ if a.framed_owner or a.retained_policy:
         ok('actual exact catalog source, initial-grant preparation and authenticated C15 Begin issue registered ownership without seeded state')
         values=['unsaved-'+uuid.uuid4().hex for _ in range(2)]
         for number in range(2):
-            connection.command('renew-owner-execution-lease',{'id':id,'page_epoch':connection.page_epoch})
+            if not a.retained_policy:connection.command('renew-owner-execution-lease',{'id':id,'page_epoch':connection.page_epoch})
             pane=connection.pane(id,framed=True);panes.append(pane)
             connection.input(pane,"buffer="+values[number]+"; printf 'FRAMED-%s:%s:END\\n' initial \"$buffer\"\n")
             read_until(pane,('FRAMED-initial:'+values[number]+':END').encode())
@@ -281,33 +281,96 @@ if a.framed_owner or a.retained_policy:
         old_epoch,old_pane=pane.input_epoch,pane.native_pane
         connection.input(pane,'exit\n');pane.wait(timeout=5)
         connection.command('close-pane',{'id':id,'pane':old_pane})
-        connection.command('renew-owner-execution-lease',{'id':id,'page_epoch':connection.page_epoch})
+        if not a.retained_policy:connection.command('renew-owner-execution-lease',{'id':id,'page_epoch':connection.page_epoch})
         fresh=connection.pane(id,framed=True,pane_id=old_pane);panes.append(fresh)
         assert fresh.input_epoch!=old_epoch
         connection.input(fresh,'exit\n',epoch=old_epoch,sequence=100)
         connection.input(fresh,"printf 'FRAMED-%s:END\\n' replacement-live\n")
         read_until(fresh,b'FRAMED-replacement-live:END',timeout=3)
+        connection.input(fresh,"buffer="+values[0]+"; printf 'FRAMED-%s:%s:END\\n' retained-ready \"$buffer\"\n")
+        read_until(fresh,('FRAMED-retained-ready:'+values[0]+':END').encode(),timeout=3)
         connection.input(panes[1],"printf 'FRAMED-%s:%s:END\\n' sibling-live \"$buffer\"\n")
         read_until(panes[1],('FRAMED-sibling-live:'+values[1]+':END').encode(),timeout=3)
         current=info(id)
         assert all(current[k]==original[k] for k in ('start','deadline','original_deadline','grant','registered_owner')) and current['state']=='ACTIVE'
         ok('same UI UUID replacement receives a fresh native epoch; delayed old exit cannot kill it or its sibling or change time/grants')
-        root('examctl','pause',id,'--reason','Private synthetic retained policy pause acceptance' if a.retained_policy else 'Private synthetic current-policy framed pause control')
+        try:
+            root('examctl','pause',id,'--reason','Private synthetic retained policy pause acceptance' if a.retained_policy else 'Private synthetic current-policy framed pause control')
+        except AssertionError:
+            # Preserve the actual hold refusal BEFORE fixture cleanup retires
+            # its shells. Bounded metadata only, never command lines/input.
+            print('HOLD_REFUSAL_OBSERVATION',root('examctl','panes','supervisor',id),flush=True)
+            for unit in current['units']:
+                directory=pathlib.Path('/sys/fs/cgroup/exam.slice')/unit
+                for tid in (directory/'cgroup.threads').read_text().split():
+                    process=pathlib.Path('/proc')/tid
+                    try:
+                        status=(process/'status').read_text()
+                        fields=[line for line in status.splitlines() if line.startswith(('Uid:','Tgid:','State:'))]
+                        print('HOLD_REFUSAL_SCOPE_TASK',tid,fields,os.readlink(process/'exe'),flush=True)
+                    except (FileNotFoundError,ProcessLookupError):continue
+            observed=0
+            for process in pathlib.Path('/proc').iterdir():
+                if not process.name.isdecimal():continue
+                try:
+                    status=(process/'status').read_text()
+                    uid_line=next(line.split()[1:] for line in status.splitlines() if line.startswith('Uid:'))
+                    if account.pw_uid not in map(int,uid_line):continue
+                    observed+=1;assert observed<=256,'Refusal diagnostic bound exceeded'
+                    parent=next(line for line in status.splitlines() if line.startswith('PPid:'))
+                    print('HOLD_REFUSAL_UID_PROCESS',process.name,parent,(process/'comm').read_text().strip(),os.readlink(process/'exe'),(process/'cgroup').read_text().strip(),flush=True)
+                except (FileNotFoundError,ProcessLookupError):continue
+            raise
         if a.retained_policy:
-            # First real C3 acceptance boundary, deliberately RED on the legacy
-            # policy. This is not complete Continue/epoch/async-writer coverage.
             assert all(p.poll() is None for p in (panes[1],fresh)), 'real CLI pause ended an existing authenticated SSH pane'
             paused=connection.command('inspect-attempt',{'id':id})
-            assert paused['state']=='LOCKED' and paused['transport']==original['transport']
+            assert paused['state']=='LOCKED' and paused['transport']==original['transport'] and paused['retained_hold']=='held'
             assert all(paused[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
             held=json.loads(root('examctl','panes','supervisor',id))
             assert held['pid']==owner['pid'] and held['attached_panes']==2
             assert len(paused.get('units',[]))==2 and set(paused['units'])==set(held['attached_units']), 'retained writer ownership was discarded'
             for scope in held['attached_units']:
                 assert scope.startswith('exam-'+id+'-') and scope.endswith('.scope')
-                events=dict(line.split() for line in (pathlib.Path('/sys/fs/cgroup/exam.slice')/scope/'cgroup.events').read_text().splitlines())
+                directory=pathlib.Path('/sys/fs/cgroup/exam.slice')/scope
+                events=dict(line.split() for line in (directory/'cgroup.events').read_text().splitlines())
                 assert events.get('frozen')=='1' and events.get('populated')=='1', 'retained hold lacks positive populated kernel freeze'
-            ok('actual CLI pause preserves the same authenticated SSH and two live pane owners with positively frozen kernel scopes; Continue remains unqualified')
+                guardians=0
+                for tid in (directory/'cgroup.threads').read_text().split():
+                    process=pathlib.Path('/proc')/tid;status=(process/'status').read_text()
+                    task=dict(line.split(':',1) for line in status.splitlines() if ':' in line)
+                    assert task['State'].split()[0] in ('T','t','Z'), 'freezer hid a task that was never positively stopped'
+                    if task['Uid'].split()==['0']*4:
+                        guardians+=1
+                        assert os.path.samefile(process/'exe','/usr/bin/bwrap'), 'unexpected root task in owned pane scope'
+                assert guardians>0,'real root Bubblewrap guardian path was not exercised'
+            ok('actual CLI pause preserves authenticated SSH and two live pane owners with positively frozen kernel scopes')
+            live=(fresh,panes[1]);previous_epochs={p.native_pane:p.input_epoch for p in live}
+            # Delayed input captured while locked must never execute after thaw.
+            for p in live:connection.input(p,'exit\n')
+            try:
+                connection.command('consume-monitored-continuation',{'id':id,'generation':paused['generation'],'page_epoch':connection.page_epoch})
+                raise AssertionError('Continue succeeded without explicit fixture approval')
+            except RuntimeError:pass
+            assert info(id)['state']=='LOCKED' and all(p.poll() is None for p in live)
+            approval={'previous_owner':original['registered_owner'],'generation':paused['generation'],'expires':min(original['deadline'],int(time.time()*1000)+60000)}
+            descriptor=os.open('/run/qualification-retained-approval.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+            with os.fdopen(descriptor,'w') as registry:json.dump(approval,registry)
+            result=connection.command('consume-monitored-continuation',{'id':id,'generation':paused['generation'],'page_epoch':connection.page_epoch})
+            continued=result['attempt'];assert continued['state']=='ACTIVE' and continued['transport']==original['transport']
+            assert all(continued[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+            assert continued['registered_owner']['generation']==paused['generation']
+            assert continued['registered_owner']['page_epoch']==connection.page_epoch
+            assert set(result['input_epochs'])==set(previous_epochs)
+            for number,p in enumerate(live):
+                p.input_epoch=result['input_epochs'][p.native_pane];p.input_sequence=0
+                assert p.input_epoch!=previous_epochs[p.native_pane]
+                connection.input(p,'exit\n',epoch=previous_epochs[p.native_pane],sequence=1000)
+                connection.input(p,"printf 'FRAMED-%s:%s:END\\n' continued \"$buffer\"\n")
+                read_until(p,('FRAMED-continued:'+values[number]+':END').encode(),timeout=3)
+            observation=json.loads(root('examctl','panes','supervisor',id))
+            assert observation['pid']==owner['pid'] and observation['attached_panes']==2 and observation['ssh_peer']=='pinned-live'
+            assert observation['registered_owner']==continued['registered_owner']
+            ok('fresh explicitly approved native Continue preserves both shells/buffers/SSH and original time; locked and stale-epoch exit packets cannot execute')
         else:
             wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
             assert info(id)['state']=='LOCKED'
@@ -315,7 +378,8 @@ if a.framed_owner or a.retained_policy:
         root('examctl','stop',id,'--reason','Private synthetic framed qualification collection')
         wait_for(lambda:info(id)['state']=='COMPLETED' and info(id)['protected'],timeout=45)
         final,archive,checksum=secure(id)
-        assert all(final[k]==original[k] for k in ('start','deadline','original_deadline','grant','registered_owner'))
+        assert all(final[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+        assert final['registered_owner']==(continued if a.retained_policy else original)['registered_owner']
         ok('actual protected collection preserves grant, page ownership and the original authoritative interval')
     finally:
         for pane in panes:
@@ -323,7 +387,7 @@ if a.framed_owner or a.retained_policy:
         connection.close()
     wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,original['deadline']/1000-time.time())+30)
     normal_access('original deadline restores ordinary SSH/SFTP after framed qualification without override')
-    print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_freeze_only':a.retained_policy,'retained_lockout':False}),flush=True)
+    print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_lockout':a.retained_policy,'synthetic_capture':a.retained_policy}),flush=True)
     raise SystemExit(0)
 
 if a.timed_owner:

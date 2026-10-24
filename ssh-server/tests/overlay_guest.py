@@ -110,6 +110,34 @@ def monitoring_owner_command():
             '-test.timeout=60s']
 
 
+def retained_role_override(role):
+    assert role in ('Agent', 'Watchdog'), 'Unknown private test role'
+    return ('[Service]\nExecStart=\nExecStart=' + str(INPUT / 'core-qualification.test') +
+            ' -test.run=^TestRetainedPolicy' + role + 'Guest$ -test.timeout=12m\n' +
+            'Environment=EXAM_RETAINED_POLICY_GUEST=1\n')
+
+
+def prepare_retained_roles():
+    # Called only AFTER main's complete private-container/mount/config guards.
+    # TestMain dispatches the actual native role functions/factories. No desktop
+    # ancestry, UID inventory, cgroup, filesystem or cleanup substitute is used.
+    assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
+    assert INPUT.is_mount() and OUTPUT.is_mount()
+    marker = json.loads((INPUT / 'run.json').read_text())
+    assert marker['profile'] == 'retained-policy' and marker['username'] == 'examq'
+    services = ('exam-agent.service', 'exam-deadline-watchdog.service')
+    subprocess.run(['systemctl', 'stop', *services], check=True, timeout=45)
+    for service, role in zip(services, ('Agent', 'Watchdog')):
+        parent = Path('/etc/systemd/system') / (service + '.d')
+        parent.mkdir(mode=0o755, exist_ok=True)
+        override = parent / '90-private-retained-test.conf'
+        descriptor = os.open(override, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'w') as output:
+            output.write(retained_role_override(role))
+    subprocess.run(['systemctl', 'daemon-reload'], check=True, timeout=30)
+    subprocess.run(['systemctl', 'start', *services], check=True, timeout=45)
+
+
 def monitoring_freeze_command():
     return [str(INPUT / 'core-qualification.test'),
             '-test.run=^TestMonitoringFreezePTYGuest$', '-test.v', '-test.count=5',
@@ -273,6 +301,7 @@ def main():
         profiles = (['--framed-owner'],)
     elif settings.get('profile') == 'retained-policy':
         assert username == 'examq', 'Exact synthetic retained-policy fixture required'
+        prepare_retained_roles()
         profiles = (['--retained-policy'],)
     else:
         profiles = (['--handoff-only'], ['--setup-only'], [])

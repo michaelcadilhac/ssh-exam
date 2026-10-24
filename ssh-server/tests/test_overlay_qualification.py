@@ -82,7 +82,9 @@ class OverlayTests(unittest.TestCase):
                              ('grant_begin_intent', 'original-intent'),
                              ('registered_owner', {'page_epoch': 'native-page'}),
                              ('workspace', {'source': {'kind': 'saved', 'checksum': 'protected'}}),
-                             ('terminal_supervised', True)]:
+                             ('terminal_supervised', True), ('monitoring_mode', 'v1'),
+                             ('retained_hold', 'held'), ('monitoring_hold_kind', 'policy'),
+                             ('monitoring_resume_nonce', 'current-operation')]:
             with self.subTest(field=field):
                 self.assertNotEqual(original, overlay.authority(self.state({**attempt, field: value})))
 
@@ -121,6 +123,15 @@ class OverlayTests(unittest.TestCase):
             '/run/ssh-exam-qualification-input/core-qualification.test',
             '-test.run=^TestMonitoringFreezePTYGuest$', '-test.v', '-test.count=5',
             '-test.timeout=60s'])
+
+    def test_retained_roles_are_only_bounded_manifested_test_entries(self):
+        for role in ('Agent', 'Watchdog'):
+            self.assertEqual(guest.retained_role_override(role),
+                '[Service]\nExecStart=\nExecStart=/run/ssh-exam-qualification-input/core-qualification.test '
+                '-test.run=^TestRetainedPolicy' + role + 'Guest$ -test.timeout=12m\n'
+                'Environment=EXAM_RETAINED_POLICY_GUEST=1\n')
+        with self.assertRaisesRegex(AssertionError, 'Unknown private test role'):
+            guest.retained_role_override('InstalledAgent')
 
     def test_asyncio_profile_uses_a_manifested_unprivileged_fixture_and_bounded_test(self):
         self.assertEqual(overlay.FILES['asyncio-probe'], (None, 0o755))

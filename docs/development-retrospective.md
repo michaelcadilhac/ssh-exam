@@ -12,6 +12,15 @@ encrypted browser workflow caught it, and physical identity now publishes before
 open while input waits for verified acknowledgement. These concrete fixes reduce
 repeat investigations; they do not close the remaining root freeze qualification.
 
+The first joined root hold test then found a boundary absent from desktop scopes:
+the actual Bubblewrap launch retains root namespace guardians. A student-only
+thread check safely refused them. Run that root entry acceptance before the next
+full native suite; launching the eight-minute suite ahead of this known unpassed
+boundary wasted a qualification cycle. Keep exact failure-stage diagnostics in
+the existing root driver so one refusal does not require repeated guest runs
+merely to recover the actual task identities. Preserve, rather than exempt, the
+guardians in the same verified stop/freeze barrier.
+
 The instructor asked why roughly two days of work had not finished a backlog
 that initially looked small. The expanded TODO then had 11 checked main items
 out of 38. That count is neither the original scope nor a percentage of effort.

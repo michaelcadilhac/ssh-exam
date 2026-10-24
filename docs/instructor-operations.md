@@ -11,9 +11,10 @@ or reset restrictions to work around the limit. This message correction is not
 deployed and does not change instructor authorization requirements.
 
 Critical local monitoring work is staged, not deployed. Contact-only browser
-receipts are not native work permission. Signed evidence/coverage and framed
-terminal-input candidates are currently unwired; they do not make a timeout safe
-to ignore, retain an editor through a lockout or allow automatic continuation.
+receipts are not native work permission. The guarded candidate now joins signed
+evidence, live native authority, framed input and same-page Continue through the
+actual application interfaces. The installed admission guard still refuses this
+mode; there is no operator configuration/environment switch to enable it.
 Verified all-writer freeze, input revocation/discard, current ownership and the
 approved full recovery conditions must pass together before any new mode can be
 enabled. See monitoring-liveness-plan.md and retained-ssh-input-protocol.md.
@@ -22,8 +23,11 @@ The local private authority/ownership/provisional-publisher increments likewise
 do not enable retained mode or provide a management recovery command. Internal
 worker flags are not operator workflows; do not invoke them or install/start the
 proposed publisher slice against existing exams. Native monitoring authority must
-never be restored from a provisional file. See native-monitoring-publication.md;
-the active-renewal durability choice and full C3/CLI/web integration remain open.
+never be restored from a provisional file. Live verified renewals without waiting
+for disk are approved; restart requires fresh verification. Full root all-writer,
+failure and capacity qualification remains open. Current evidence and exact gaps
+are in live-monitoring-runtime.md; do not use internal test roles as an operator
+recovery workflow.
 
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
