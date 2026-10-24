@@ -196,6 +196,33 @@ def secure(id):
     assert checksum==x['checksum'];assert base.stat().st_mode&0o077==0
     return x,archive,checksum
 
+def retained_continue(connection,id,paused,previous,live,original):
+    """Actual signed native Continue with one explicitly finite fixture approval."""
+    body={'id':id,'generation':paused['generation'],'page_epoch':connection.page_epoch}
+    try:
+        connection.command('consume-monitored-continuation',body)
+        raise AssertionError('Continue succeeded without current explicit fixture approval')
+    except RuntimeError:pass
+    assert info(id)['state']=='LOCKED' and all(p.poll() is None for p in live)
+    approval={'previous_owner':previous,'generation':paused['generation'],'expires':min(original['deadline'],int(time.time()*1000)+60000)}
+    descriptor,temporary=tempfile.mkstemp(prefix='qualification-retained-approval-',dir='/run')
+    try:
+        with os.fdopen(descriptor,'w') as registry:
+            json.dump(approval,registry);registry.flush();os.fsync(registry.fileno())
+        os.replace(temporary,'/run/qualification-retained-approval.json')
+    finally:pathlib.Path(temporary).unlink(missing_ok=True)
+    result=connection.command('consume-monitored-continuation',body)
+    continued=result['attempt'];assert continued['state']=='ACTIVE' and continued['transport']==original['transport']
+    assert all(continued[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+    assert continued['registered_owner']['generation']==paused['generation']
+    assert continued['registered_owner']['page_epoch']==connection.page_epoch
+    assert set(result['input_epochs'])=={p.native_pane for p in live}
+    for p in live:
+        previous_epoch=p.input_epoch;p.input_epoch=result['input_epochs'][p.native_pane];p.input_sequence=0
+        assert p.input_epoch!=previous_epoch
+        connection.input(p,'exit\n',epoch=previous_epoch,sequence=1000)
+    return continued
+
 def check_jobs():
     # Checker must reject already scheduled account writers before activation.
     fixture=pathlib.Path('/etc/cron.d/qualification-writer')
@@ -237,7 +264,7 @@ if a.framed_owner or a.retained_policy:
     assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn' and temporary
     connection=Connection();panes=[]
     try:
-        id=connection.start(duration=90,initial_grant=True);original=info(id)
+        id=connection.start(duration=120 if a.retained_policy else 90,initial_grant=True);original=info(id)
         assert original['registered_owner']['page_epoch']==connection.page_epoch and original['registered_owner']['transport_hash']==connection.transport
         assert original['grant']==connection.grant and original['browser_ssh'] and original['terminal_supervised']
         ok('actual exact catalog source, initial-grant preparation and authenticated C15 Begin issue registered ownership without seeded state')
@@ -344,33 +371,75 @@ if a.framed_owner or a.retained_policy:
                         assert os.path.samefile(process/'exe','/usr/bin/bwrap'), 'unexpected root task in owned pane scope'
                 assert guardians>0,'real root Bubblewrap guardian path was not exercised'
             ok('actual CLI pause preserves authenticated SSH and two live pane owners with positively frozen kernel scopes')
-            live=(fresh,panes[1]);previous_epochs={p.native_pane:p.input_epoch for p in live}
+            live=(fresh,panes[1])
             # Delayed input captured while locked must never execute after thaw.
             for p in live:connection.input(p,'exit\n')
-            try:
-                connection.command('consume-monitored-continuation',{'id':id,'generation':paused['generation'],'page_epoch':connection.page_epoch})
-                raise AssertionError('Continue succeeded without explicit fixture approval')
-            except RuntimeError:pass
-            assert info(id)['state']=='LOCKED' and all(p.poll() is None for p in live)
-            approval={'previous_owner':original['registered_owner'],'generation':paused['generation'],'expires':min(original['deadline'],int(time.time()*1000)+60000)}
-            descriptor=os.open('/run/qualification-retained-approval.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-            with os.fdopen(descriptor,'w') as registry:json.dump(approval,registry)
-            result=connection.command('consume-monitored-continuation',{'id':id,'generation':paused['generation'],'page_epoch':connection.page_epoch})
-            continued=result['attempt'];assert continued['state']=='ACTIVE' and continued['transport']==original['transport']
-            assert all(continued[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
-            assert continued['registered_owner']['generation']==paused['generation']
-            assert continued['registered_owner']['page_epoch']==connection.page_epoch
-            assert set(result['input_epochs'])==set(previous_epochs)
+            continued=retained_continue(connection,id,paused,original['registered_owner'],live,original)
             for number,p in enumerate(live):
-                p.input_epoch=result['input_epochs'][p.native_pane];p.input_sequence=0
-                assert p.input_epoch!=previous_epochs[p.native_pane]
-                connection.input(p,'exit\n',epoch=previous_epochs[p.native_pane],sequence=1000)
                 connection.input(p,"printf 'FRAMED-%s:%s:END\\n' continued \"$buffer\"\n")
                 read_until(p,('FRAMED-continued:'+values[number]+':END').encode(),timeout=3)
             observation=json.loads(root('examctl','panes','supervisor',id))
             assert observation['pid']==owner['pid'] and observation['attached_panes']==2 and observation['ssh_peer']=='pinned-live'
             assert observation['registered_owner']==continued['registered_owner']
             ok('fresh explicitly approved native Continue preserves both shells/buffers/SSH and original time; locked and stale-epoch exit packets cannot execute')
+
+            work=pathlib.Path(config['work'])/id/'work'
+            writer_code="import time\nf=open('/work/retained-writer','ab',buffering=0)\nwhile True:\n f.write(b'x');time.sleep(.005)"
+            connection.input(fresh,"PS1='RETAINED-PROMPT> '; sleep 60 & stopped=$!; kill -STOP \"$stopped\"; printf '%s' \"$stopped\" > /work/stopped.pid; python3 -c "+shlex.quote(writer_code)+" & writer=$!; nano -I -w /work/retained-editor.txt\n")
+            read_until(fresh,b'Exit',timeout=5) # Actual Nano footer, not the echoed command.
+            editor_value='buffer-'+uuid.uuid4().hex[:17];assert len(editor_value)==24
+            connection.input(fresh,editor_value+'\x03')
+            read_until(fresh,b'char 24/25',timeout=3) # Nano consumed the unsaved keys.
+            assert not (work/'retained-editor.txt').exists()
+            wait_for(lambda:(work/'retained-writer').exists() and (work/'retained-writer').stat().st_size>0,timeout=3,interval=.02)
+            before=(work/'retained-writer').stat().st_size
+            wait_for(lambda:(work/'retained-writer').stat().st_size>before,timeout=2,interval=.02)
+            scope=next(unit for unit in observation['attached_units'] if fresh.native_pane in unit)
+            directory=pathlib.Path('/sys/fs/cgroup/exam.slice')/scope
+            namespace_pid=(work/'stopped.pid').read_text()
+            stopped=[]
+            for pid in (directory/'cgroup.procs').read_text().split():
+                status=dict(line.split(':',1) for line in (pathlib.Path('/proc')/pid/'status').read_text().splitlines() if ':' in line)
+                if status['NSpid'].split()[-1]==namespace_pid:stopped.append(int(pid))
+            assert len(stopped)==1,'originally stopped job not positively identified in its real pane scope'
+            stopped_handle=os.pidfd_open(stopped[0])
+            intruder=subprocess.Popen(['/usr/bin/sleep','20'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            intruder_handle=os.pidfd_open(intruder.pid)
+            try:
+                (directory/'cgroup.procs').write_text(str(intruder.pid))
+                assert str(intruder.pid) in (directory/'cgroup.procs').read_text().split() and intruder.poll() is None
+                refused=run(['examctl','pause',id,'--reason','Private unexpected root task refusal control'])
+                assert refused.returncode!=0 and 'hold is unverified' in refused.stderr
+                rejected=json.loads(root('examctl','panes','supervisor',id))
+                assert rejected['retained_hold']['phase']=='unverified' and 'installed trusted Bubblewrap' in rejected['retained_hold']['error']
+                assert info(id)['state']=='LOCKED' and not (work/'retained-editor.txt').exists()
+                ok('real CLI hold refuses an unrelated root executable in the owned pane scope without inventing a freeze receipt')
+            finally:
+                signal.pidfd_send_signal(intruder_handle,signal.SIGKILL);intruder.wait(timeout=3);os.close(intruder_handle)
+            try:
+                root('examctl','pause',id,'--reason','Private editor and background writer retention acceptance')
+                paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
+                stable=(work/'retained-writer').stat().st_size;time.sleep(.2)
+                assert (work/'retained-writer').stat().st_size==stable,'background writer advanced during verified hold'
+                assert not (work/'retained-editor.txt').exists()
+                signal.pidfd_send_signal(stopped_handle,0)
+                assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
+                for p in live:connection.input(p,'STALE-EDITOR-KEYS\n')
+                continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
+                connection.input(fresh,'\x03');read_until(fresh,b'char 24/25',timeout=3)
+                wait_for(lambda:(work/'retained-writer').stat().st_size>stable,timeout=2,interval=.02)
+                signal.pidfd_send_signal(stopped_handle,0)
+                assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
+                connection.input(fresh,'\x0f');read_until(fresh,b'File Name to Write',timeout=3)
+                connection.input(fresh,'\r');read_until(fresh,b'Wrote 1 line',timeout=3)
+                assert (work/'retained-editor.txt').read_text()==editor_value+'\n','editor buffer changed or old keys leaked'
+                connection.input(fresh,'\x18');read_until(fresh,b'RETAINED-PROMPT>',timeout=3)
+                connection.input(fresh,"kill -KILL \"$stopped\" \"$writer\"; wait \"$writer\" \"$stopped\" 2>/dev/null; printf 'FRAMED-%s:%s:END\\n' editor-done \"$buffer\"\n")
+                read_until(fresh,('FRAMED-editor-done:'+values[0]+':END').encode(),timeout=3)
+                connection.input(panes[1],"printf 'FRAMED-%s:%s:END\\n' editor-peer \"$buffer\"\n")
+                read_until(panes[1],('FRAMED-editor-peer:'+values[1]+':END').encode(),timeout=3)
+                ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry/Continue; writer stops/resumes and originally stopped job stays stopped')
+            finally:os.close(stopped_handle)
         else:
             wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
             assert info(id)['state']=='LOCKED'

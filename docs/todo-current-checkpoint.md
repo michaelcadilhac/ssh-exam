@@ -29,7 +29,7 @@ mutation and fixture limitations belong in [live-monitoring-runtime.md](live-mon
 
 ## Verification and runners
 
-All runners ended. Current actual lifecycle/default-closed/guardian refusal races
+Validated commit ec754c6. Actual lifecycle/default-closed/guardian refusal races
 PASS60.384s; all40 Python safety/callback checks PASS; fresh native release builds
 and vet PASS. Exact new root bundle62,162,325bytes:
 var/collection-tests/retained-guardian-artifacts.e9mtnxay; root evidence
@@ -42,9 +42,16 @@ Do not rerun unchanged app/browser suites for private native changes.
 
 ## Exact next milestone
 
-Extend the SAME real root CLI pause/Continue entry to actual editor buffers,
-originally stopped jobs, background and linked asynchronous writers; refuse
-unknown root tasks and retry only after exact cleanup. Keep native sources frozen
+DONE locally: same root entry passes actual Nano's unsaved buffer, a positively
+running writer, an originally stopped job, and unexpected-root refusal followed
+by exact cleanup/retry/Continue. All13 root assertions, final deadline restoration
+and host/base preservation PASS. Scripts only; native bytes EXACTLY ec754c6's
+qualified bundle. All runners ended. Receipt
+/tmp/ssh-exam-retained-editor-root-qualification.log, local artifact
+var/collection-tests/retained-editor-artifacts.gfn1_uev; private root evidence
+/var/tmp/ssh-exam-overlay-fg_dk2it. NEXT: linked async writers through the SAME
+actual CLI pause/Continue, with positive pending/completion and held-write oracles.
+Keep native sources frozen
 while their focused tests run. Read focused completion before broad qualification.
 Then recording-fault/clock handover, independent owner/coordinator death/stall,
 last child/partial-thaw races, loaded-role agreement, C9 and combined16/64 capacity.

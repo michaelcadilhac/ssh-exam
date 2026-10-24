@@ -19,7 +19,7 @@ excuse it. No checkbox is closed merely to improve the count.
 
 | Public outcome / entry | What already works locally | Actual completion gap / acceptance | TODO requirements covered |
 | --- | --- | --- | --- |
-| Student policy lock → `examctl web interruptions authorize` → Continue on the same page/SSH | Independent timed PTYs, registered/framed input, actual SSH pidfd pin, approval presentation, challenged preflight; C16 gateway proof/bootstrap WIP | Actual root supervisor consumes fresh scoped proof; every input/launch/writer is stopped and verified without losing buffers; scoped Continue discards old input and preserves original deadlines. Real CLI/web/SSH tests must pass, including delayed proof, old packets, original job stops, async writes and a healthy peer. Current CLI pause still kills shells. | Critical liveness; four lockout/approval/ownership items; genuine policy vs technical recovery |
+| Student policy lock → `examctl web interruptions authorize` → Continue on the same page/SSH | Joined gateway/native/HTTP/browser/WASM workflow; actual root CLI pause/verified hold/finite approved Continue preserves two SSH shells and Nano memory, rejects stale keys/unexpected root tasks, stops/resumes a background writer and preserves an original job stop; original deadlines/collection/access restoration pass | Linked async IO, last-child/partial-thaw, recording/clock/death and actual loaded-role agreement, combined capture/root and16/64 qualification remain. Installed admission guard is still closed. Root capture is explicitly synthetic; it does not replace real-camera tests. | Critical liveness; four lockout/approval/ownership items; genuine policy vs technical recovery |
 | Authorize a new90-minute attempt from the student's secured saved work, via web AND examctl; student begins a separate workspace | Initial/extra grants, immutable settings, finite independent windows, empty/exact-template sources, legacy verified restore and explicit allowance synchronization | C18 durable class-server archive retention before availability; inspect/cancel/retry/revoke pending issuance; same-exam saved-source Begin and full allowance; source deletion races; reviewed legacy migration preserving history. No additional policy question is pending. | Unified-model mapping/authorization/source/settings/retake/workflow/migration; recovery administration/compatibility/failure cases; C5 policy tooling |
 | Retire legacy exam definitions through `web exams retire-preview` and delete/archive | Reviewed retirement of lifecycle-tracked definitions;028 conservatively fences pre-existing definitions | Supported native dependency reconciliation/migration, including legacy recovery grants. Do not clear the fence manually. | C8 portion of command coverage/refusals and unified migration |
 | Inspect/dry-run/manually clean one eligible workspace using examctl | Audited workspace holds and fail-closed metadata; bounded mount observations | Fresh protected-archive verification, complete writer/mount/use/repair proof, exact reviewed deletion and idempotent retry. No grace period; do not weaken account holds or submissions. | Workspace cleanup; associated CLI/refusal/journey coverage |
@@ -44,14 +44,14 @@ These restrictions do not block unrelated local implementation or guarded tests.
 
 ## Next integrated result and stopping rule
 
-Keep the critical retained-lockout public outcome first. Freeze the current C16
-gateway work at its43 focused HTTP/JPEG/ledger checks and typecheck; it is WIP,
-not a delivered feature. Next edits must join existing code to the ACTUAL native
-Begin/supervisor/proof/hold/Continue path. No new unused primitive, observer or
-parallel subsystem is justified by this plan. The concrete pending root test
-already reaches real CLI pause and fails because it ends the authenticated pane.
-Extend that same test through verified hold and approved Continue, rather than
-starting another unrelated prototype/test matrix.
+Keep the critical retained-lockout public outcome first. The former gateway WIP
+is now joined through actual runtime callers; the original failing root pause test
+passes through approved Continue, real Nano/background/original-stop controls and
+protected collection with unchanged deadlines. Qualification is still incomplete
+and installed admission remains closed. Extend that SAME root driver to linked
+asynchronous writers and remaining actual failure/role boundaries. Do not restart
+the old gateway prototype or invent another unrelated subsystem. Detailed exact
+receipts and seams are in live-monitoring-runtime.md.
 
 Use focused tests during integration. Broad suites run at a coherent public
 workflow boundary, after reviewing focused completion and all new intermediate

@@ -213,6 +213,9 @@ def main():
         if not shutil.which(command):
             print('COMMAND_NOT_FOUND: ' + command, flush=True)
             return 127
+    if settings.get('profile') == 'retained-policy' and not shutil.which('nano'):
+        print('COMMAND_NOT_FOUND: nano', flush=True)
+        return 127
     config = prepare_normal_filesystem(config)
     if settings.get('profile') == 'monitoring-owner':
         assert username == 'examq', 'Exact synthetic owner fixture required'

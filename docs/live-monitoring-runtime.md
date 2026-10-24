@@ -443,3 +443,31 @@ qualification. Capture remains synthetic; real HTTP/JPEG/browser contracts were
 qualified separately. Original job stops, editors, async writers, last-child and
 partial-thaw races, recording/clock handover, independent failures, mixed loaded
 roles and16/64 capacity remain OPEN. Installed guard OFF; no deployment.
+
+## Real editor, background writer and original job stop
+
+The SAME root entry now additionally starts Nano and a positively advancing
+background Python writer, and stops a real sleep job BEFORE the hold. Nano's
+cursor-position response proves it consumed24 unsaved characters; exact saved
+bytes after Continue prove preservation and exclusion of locked/stale keys.
+An exact pidfd pins the original stopped job: it remains T after Continue while
+the writer positively resumes and the sibling shell retains its memory.
+
+A deliberately owned root sleep process is temporarily moved into the actual
+pane scope. Real CLI pause MUST refuse and supervisor observation must name the
+installed-Bubblewrap check; generic timeout/refusal is insufficient. Only that
+pinned intruder is killed, then the SAME attempt successfully retries hold and
+Continue. This also tests partial containment/retry without losing the editor.
+No source/allowance/deadline or historical attempt changes. The later interruption
+refuses the previous approval before issuing its exact new finite approval.
+
+Root profile PASSES13 assertions, OVERLAY_QUALIFICATION_OK and full host/base
+preservation. Session90725 completed0; receipt
+/tmp/ssh-exam-retained-editor-root-qualification.log; private
+/var/tmp/ssh-exam-overlay-fg_dk2it. Local bundle
+retained-editor-artifacts.gfn1_uev, remote
+/var/tmp/ssh-exam-retained-editor-upload.Gsxgkz/bundle. Native executable and
+compiled-test hashes are EXACTLY ec754c6's bundle above; only qualification
+scripts changed. All40 Python checks pass. No redundant app/browser/native suite
+was run for test-script-only changes. Linked async IO, last-child/partial-thaw,
+fault/clock/death/loaded-role and capacity gates remain open; installed guard OFF.
