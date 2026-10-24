@@ -4,7 +4,7 @@ Updated October23,2026. Local development/testing/commits only. **No push,
 deploy, consolidation or production/student mutation.** Guarded disposable
 csc-sys qualification only; busy/uncertain means NO TEST. Stop on missing commands;
 none missing. C1–C18 settled; synthetic capacity target16 students/64 panes.
-No unanswered design/capacity question. Main TODO11/38 is not effort percentage.
+No unanswered design/capacity question. Clock-only fact transfer approved October24 UTC. Main TODO11/38 is not effort percentage.
 
 ## Current outcome and validated increment
 
@@ -52,12 +52,44 @@ var/collection-tests/retained-linked-final-artifacts.v5o875xs. Prior fixture glo
 baseline collision and its failed full run are retained in the feature document;
 only matrix io_baseline changed, not legacy account checks or product enforcement.
 
-NEXT: reproduce the existing signed clock-management entry with healthy live
-authority/stale disk lease; verify explicit clock changes agree with the live
-owner/deadline and keep the original interval. Inspect before assuming missing
-work. Then recording/death, last-child/partial-thaw, loaded roles/C9 and16/64.
-Keep source frozen during focused tests; inspect their completion before broader
-qualification. Installed guard OFF. No unanswered design question or deployment.
+Current clock milestone (uncommitted): the original signed clock-live RED is
+fixed through the real supervisor. Instructor approved carrying identical live
+facts across an authorized clock revision; original age/cutoff/coverage/sequence
+remain unchanged. Native check is nonpermitting; existing ClockReset saves first,
+then all gates/owner/cutoff swap. Old proofs/timers cannot change replacement
+mapping; same-intent retry is exact. Held clocks remain held, post-Continue clock
+changes work, and an actual state.json.tmp directory fault refuses before any
+live interval extension. Focused native/legacy races PASS9.015s, including actual
+clock-live6.59s (/tmp/ssh-exam-retained-clock-final-focus.log). Gateway transfer
+has24 focused passing ledger/real admin/JPEG/signed callback/evidence HTTP checks
+(/tmp/ssh-exam-retained-clock-http-focus2.log); native health and initial started
+lineage are explicit fixture observations. Next: mutation oracle, actual guarded
+root clock in SAME retained-policy profile, then coherent broader qualification.
+Mutation omitting gate deadline rebind FAILS at actual shell input, as required.
+Final focused races PASS9.106s;41 Python safety/fixture tests PASS; native builds/
+vet, app build and typecheck pass. Code-only bundle retained-clock-artifacts.h2o0mf3w
+has fresh agent f071a5e6d7c8fd0c821e0e42f647a00a353cbba049cefda84e1614259f691cf7
+and core test c689d2012d274329df3dc0da2e0e286ebe9f3a97d75c5cfe23f16622d87e821c.
+Root17577 completed0: all20 assertions including actual two-pane clock/retry,
+CLI hold/Continue, Nano, six linked-IO pairs, protected collection and original-
+deadline SSH/SFTP. FULL host/base preservation PASS, private
+/var/tmp/ssh-exam-overlay-h736xpp9.18 affected rebuilt browser checks PASS1.6m.
+All runners ended: full application102 files/570 tests PASS304.45s; new full
+native uncached race/resource/compiler/default-size qualification PASS core494.586s,
+CLI36.227s. Exact logs: /tmp/ssh-exam-retained-clock-{application,native-full}.log.
+Build/vet/typecheck,41 Python checks,18 affected browser checks and exact fresh
+root20 assertions all pass. Ready for a coherent local clock commit. Next native
+critical checks are recording/death/last-child/partial-thaw/loaded-role and combined
+real capture/root16/64; independent approved saved-source integration continues. Installed guard OFF.
+
+Independent C18 branch source-grant-retention at var/worktrees/source-grant-retention
+now has validated local commit bcc88e9: actual HTTP/compiled root CLI/TLS/restart
+and two rebuilt browser pending-source workflows pass, final CLI races1.367s,
+typecheck/build pass. Grants stay PENDING_NATIVE; no claim/account/clock/history
+change. Native retention/sync and saved-source Begin remain unimplemented. Exact
+receipts/state review are in that branch's grant-workspace-sources.md. Preserve
+its untracked node_modules dependency symlink; do not stage it. After the clock
+workflow, continue durable pins/ack/staging/Begin there. Nothing is deployed.
 
 Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
 retirement reconciliation, manual secured-workspace cleanup, configuration/full

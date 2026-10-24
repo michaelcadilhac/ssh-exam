@@ -324,6 +324,28 @@ if a.framed_owner or a.retained_policy:
         current=info(id)
         assert all(current[k]==original[k] for k in ('start','deadline','original_deadline','grant','registered_owner')) and current['state']=='ACTIVE'
         ok('same UI UUID replacement receives a fresh native epoch; delayed old exit cannot kill it or its sibling or change time/grants')
+        if a.retained_policy:
+            request={'id':id,'reset_id':str(uuid.uuid4()),'actor':'private-qualification-instructor','requested_at':int(time.time()*1000),'remaining_seconds':60,'clock_revision':current.get('clock_revision',0),'deadline':current['deadline']}
+            clocked=connection.command('reset-clock',request)
+            assert clocked['clock_revision']==current.get('clock_revision',0)+1 and clocked['deadline']==request['requested_at']+60000
+            assert all(clocked[k]==current[k] for k in ('start','original_deadline','grant','transport','units')) and clocked['state']=='ACTIVE'
+            expected_owner={**current['registered_owner'],'clock_revision':clocked['clock_revision']}
+            assert clocked['registered_owner']==expected_owner
+            assert connection.command('reset-clock',request)['clock_resets']==clocked['clock_resets'], 'clock acknowledgement retry applied another allowance'
+            registry=pathlib.Path('/run/qualification-framed-grant.json')
+            expected=json.loads(registry.read_text());expected['clock_transfer']={'previous_owner':current['registered_owner'],'owner':expected_owner}
+            descriptor,temporary_registry=tempfile.mkstemp(prefix='qualification-clock-transfer-',dir='/run')
+            try:
+                with os.fdopen(descriptor,'w') as output:json.dump(expected,output);output.flush();os.fsync(output.fileno())
+                os.replace(temporary_registry,registry)
+            finally:pathlib.Path(temporary_registry).unlink(missing_ok=True)
+            original=clocked # Current interval baseline; immutable original_deadline/start/grant checked above.
+            for number,p in enumerate((fresh,panes[1])):
+                connection.input(p,"printf 'FRAMED-%s:%s:END\\n' clock-live \"$buffer\"\n")
+                read_until(p,('FRAMED-clock-live:'+values[number]+':END').encode(),timeout=3)
+            observed=json.loads(root('examctl','panes','supervisor',id))
+            assert observed['registered_owner']==expected_owner and observed['pid']==owner['pid'] and observed['attached_panes']==2
+            ok('actual signed instructor clock change/retry preserves both SSH shells/input and supervisor ownership; original deadline/grant remain immutable')
         try:
             root('examctl','pause',id,'--reason','Private synthetic retained policy pause acceptance' if a.retained_policy else 'Private synthetic current-policy framed pause control')
         except AssertionError:
@@ -524,7 +546,7 @@ if a.framed_owner or a.retained_policy:
         for pane in panes:
             if pane.poll() is None:pane.kill();pane.wait(timeout=5)
         connection.close()
-    wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,original['deadline']/1000-time.time())+30)
+    wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,max(original['deadline'],original['original_deadline'])/1000-time.time())+30)
     normal_access('original deadline restores ordinary SSH/SFTP after framed qualification without override')
     print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_lockout':a.retained_policy,'synthetic_capture':a.retained_policy}),flush=True)
     raise SystemExit(0)

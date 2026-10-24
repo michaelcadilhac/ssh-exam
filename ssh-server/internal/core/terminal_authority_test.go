@@ -45,7 +45,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "clock-live", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -205,6 +205,29 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				t.Fatal(err)
 			}
 			testActualSharedCutoffWatch(t, e, a)
+			if mode == "clock-live" {
+				// The public signed clock operation must use actual live authority,
+				// not the deliberately stale durable lease verified just above.
+				request := resetRequest(a)
+				request.RemainingSeconds, request.ExtendSeconds = 0, 60
+				clock := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "reset-clock", Username: a.Username, Transport: a.Transport, Body: request}
+				if _, err := e.Command(signedCommand(key, clock), a.Username, a.Transport); err != nil {
+					t.Fatal("actual signed clock extension refused healthy live authority because of a stale disk lease", err)
+				}
+				changed, err := readStateSnapshot(e.Config.State)
+				if err != nil {
+					t.Fatal(err)
+				}
+				next := changed.Attempts[a.ID]
+				if next.Start != a.Start || next.OriginalDeadline != a.OriginalDeadline || next.Deadline != a.Deadline+60000 || next.ClockRevision != a.ClockRevision+1 || len(next.ClockResets) != 1 || next.State != "ACTIVE" {
+					t.Fatal("explicit clock extension lost original authority or changed the allowance twice", next)
+				}
+				live, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *next.RegisteredOwner}, nil, false)
+				if err != nil || live.View == nil || !live.View.ExecutionAuthorized || live.View.DeadlineUptimeMS != int64(next.UptimeDeadline*1000) {
+					t.Fatal("applied clock acknowledgement disagrees with actual live owner/deadline", live, err)
+				}
+				a = next
+			}
 			testActualMonitoredPaneInput(t, e, key, a, mode, func(mode int32) {
 				if mode != 0 && (resumeMode.Load() == 0 || (mode == 4 && resumeMode.Load() != 4)) {
 					approvalUntil.Store(Millis() + 60000)
@@ -647,6 +670,97 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	if err != nil {
 		t.Fatal("verified live authority did not admit actual shell input", err)
 	}
+	if mode == "clock-live" {
+		// Stop only this fixture's producer so the transfer oracle cannot mistake
+		// an unrelated fresh renewal for facts carried by the clock operation.
+		e.stopTerminalMonitoring()
+		prior, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+		if err != nil || prior.View == nil || !prior.View.ExecutionAuthorized {
+			t.Fatal(prior, err)
+		}
+		oldWatch, err := e.openTerminalCutoff(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer oldWatch.close()
+		challenge, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "challenge", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+		if err != nil || challenge.Challenge == nil {
+			t.Fatal(challenge, err)
+		}
+		request := resetRequest(a)
+		request.ResetID, request.RemainingSeconds, request.ExtendSeconds = ManagementID(), 0, 60
+		clock := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "reset-clock", Username: a.Username, Transport: a.Transport, Body: request}
+		// A real local publication fault must refuse before the supervisor gains
+		// any extended interval. Keep the native authority/facts and durable row.
+		fault := filepath.Join(e.Config.State, "state.json.tmp")
+		if err := os.Mkdir(fault, 0700); err != nil {
+			t.Fatal(err)
+		}
+		_, failed := e.Command(signedCommand(key, clock), a.Username, a.Transport)
+		if err := os.Remove(fault); err != nil {
+			t.Fatal(err)
+		}
+		if failed == nil || !strings.Contains(failed.Error(), "is a directory") {
+			t.Fatal("fixture missed the actual durable clock publication refusal", failed)
+		}
+		unchanged, err := readStateSnapshot(e.Config.State)
+		if err != nil || unchanged.Attempts[a.ID].ClockRevision != a.ClockRevision || unchanged.Attempts[a.ID].Deadline != a.Deadline {
+			t.Fatal("failed publication consumed clock intent", err)
+		}
+		oldLive, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+		if err != nil || oldLive.View == nil || !oldLive.View.ExecutionAuthorized || oldLive.View.DeadlineUptimeMS != prior.View.DeadlineUptimeMS || oldLive.View.AuthorityUntilMS != prior.View.AuthorityUntilMS {
+			t.Fatal("failed publication changed live clock/freshness", oldLive, err)
+		}
+		clock.Nonce = Token()
+		if _, err := e.Command(signedCommand(key, clock), a.Username, a.Transport); err != nil {
+			t.Fatal("live-pane clock handover failed", err)
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		next := state.Attempts[a.ID]
+		after, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *next.RegisteredOwner}, nil, false)
+		if err != nil || after.View == nil || !after.View.ExecutionAuthorized || after.View.AuthorityUntilMS != prior.View.AuthorityUntilMS || after.View.CoverageEpoch != prior.View.CoverageEpoch || after.View.Sequence != prior.View.Sequence || after.View.DeadlineUptimeMS != int64(next.UptimeDeadline*1000) {
+			t.Fatal("clock edit refreshed/forgot capture facts or left old deadline", prior, after, err)
+		}
+		oldProof := monitoringEvidence{Type: "monitoring-execution-evidence-v1", Audience: "class", Nonce: challenge.Challenge.Nonce, Owner: *a.RegisteredOwner, CoverageEpoch: prior.View.CoverageEpoch, Sequence: prior.View.Sequence + 1, AgeMS: 0, Complete: true}
+		payload, _ := json.Marshal(oldProof)
+		frame := SignedFrame{Payload: base64.StdEncoding.EncodeToString(payload), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))}
+		if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "proof", Attempt: a.ID, Owner: *a.RegisteredOwner, Frame: &frame}, nil, false); err == nil {
+			t.Fatal("old-clock signed proof renewed the replacement scope")
+		}
+		// A delayed observer can zero only the retired mapping, never the new one.
+		oldWatch.slot.expire(prior.View.AuthorityUntilMS)
+		freshWatch, err := e.openTerminalCutoff(next)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if freshWatch.slot.until() != prior.View.AuthorityUntilMS {
+			freshWatch.close()
+			t.Fatal("stale old-clock observer revoked current facts")
+		}
+		freshWatch.close()
+		clock.Nonce = Token()
+		if _, err := e.Command(signedCommand(key, clock), a.Username, a.Transport); err != nil {
+			t.Fatal("same durable clock intent could not recover its acknowledgement", err)
+		}
+		retried, err := readStateSnapshot(e.Config.State)
+		if err != nil || retried.Attempts[a.ID].Deadline != next.Deadline || len(retried.Attempts[a.ID].ClockResets) != len(a.ClockResets)+1 {
+			t.Fatal("clock retry applied another allowance", err)
+		}
+		write(2, 0, []byte("check\n"))
+		memory, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
+		if err != nil || !strings.Contains(memory, "synthetic-buffer-not-on-disk") {
+			t.Fatal("clock transition held input or lost the original shell", memory, err)
+		}
+		// New-revision challenges must continue through the actual signed HTTPS
+		// exchange; merely preserving the original cutoff is insufficient.
+		if err := e.refreshTerminalMonitoring(context.Background(), a.ID, *next.RegisteredOwner); err != nil {
+			t.Fatal("new clock revision could not renew", err)
+		}
+		a = next
+	}
 	if mode == "revoked-before-exec" || mode == "revoked-after-save" {
 		barrier := "final-release"
 		if mode == "revoked-after-save" {
@@ -829,6 +943,24 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		t.Fatal("administrator pause claimed a hold without actual kernel freeze", err)
 	}
 	inspectCLI("held", 0)
+	if mode == "clock-live" {
+		request := resetRequest(held)
+		request.ResetID, request.RemainingSeconds, request.ExtendSeconds = ManagementID(), 0, 60
+		clock := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "reset-clock", Username: a.Username, Transport: a.Transport, Body: request}
+		if _, err := e.Command(signedCommand(key, clock), a.Username, a.Transport); err != nil {
+			t.Fatal("clock change of an already verified hold failed", err)
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		held = state.Attempts[a.ID]
+		next, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *held.RegisteredOwner}, nil, false)
+		if err != nil || next.View == nil || next.View.ExecutionAuthorized || next.Hold == nil || next.Hold.Phase != "held" || next.View.Sequence != revoked.View.Sequence || held.Deadline != a.Deadline+60000 || held.State != "LOCKED" || held.OriginalDeadline != a.OriginalDeadline {
+			t.Fatal("clock edit thawed held work or changed original facts", next, err)
+		}
+		a = held
+	}
 	if cli != "" {
 		configPath := filepath.Join(t.TempDir(), "synthetic-agent.json")
 		complete := e.Config
@@ -860,18 +992,22 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 			t.Fatal("actual examctl pause did not join the existing supervisor hold", string(out), err)
 		}
 	}
-	write(2, 0, []byte("finish\n"))
+	heldSequence := uint64(2)
+	if mode == "clock-live" {
+		heldSequence = 3
+	}
+	write(heldSequence, 0, []byte("finish\n"))
 	size := make([]byte, 8)
 	binary.BigEndian.PutUint32(size, 46)
 	binary.BigEndian.PutUint32(size[4:], 119)
-	write(3, 1, size)
+	write(heldSequence+1, 1, size)
 	var observed terminalAuthorityReply
 	for until := time.Now().Add(2 * time.Second); ; {
 		observed, err = e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(observed.Panes) == 1 && observed.Panes[0].DiscardedInput == 2 && observed.Panes[0].DiscardedResize == 3 {
+		if len(observed.Panes) == 1 && observed.Panes[0].DiscardedInput == heldSequence && observed.Panes[0].DiscardedResize == heldSequence+1 {
 			break
 		}
 		if time.Now().After(until) {
@@ -902,7 +1038,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 			t.Fatal("invalid continuation changed original state/time", mode, err)
 		}
 	}
-	late := encode(4, 0, []byte("finish\n"))
+	late := encode(heldSequence+2, 0, []byte("finish\n"))
 	send(late[:framedInputHeaderBytes-3]) // Decoder is mid-old-frame during Continue.
 	authorize(4)
 	resume.Nonce = Token()
@@ -994,6 +1130,29 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	stalePause := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "lock-attempt", Username: a.Username, Transport: a.Transport, Body: Request{ID: a.ID, Generation: held.Generation, Reason: "old already completed pause"}}
 	if value, err := e.Command(signedCommand(key, stalePause), a.Username, a.Transport); err != nil || value.(*Attempt).State != "ACTIVE" {
 		t.Fatal("delayed original pause revoked a successfully continued owner", value, err)
+	}
+	if mode == "clock-live" {
+		request := resetRequest(active)
+		request.ResetID, request.RemainingSeconds, request.ExtendSeconds = ManagementID(), 0, 60
+		clock := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "reset-clock", Username: a.Username, Transport: a.Transport, Body: request}
+		if _, err := e.Command(signedCommand(key, clock), a.Username, a.Transport); err != nil {
+			t.Fatal("completed Continue receipt incorrectly blocked clock management", err)
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a = state.Attempts[a.ID]
+		if a.State != "ACTIVE" || a.Deadline != active.Deadline+60000 || a.Start != active.Start || a.OriginalDeadline != active.OriginalDeadline {
+			t.Fatal("post-Continue clock changed original authority", a)
+		}
+		if err := e.refreshTerminalMonitoring(context.Background(), a.ID, *a.RegisteredOwner); err != nil {
+			t.Fatal("post-Continue clock could not renew", err)
+		}
+		write(2, 0, []byte("check\n"))
+		if _, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second); err != nil {
+			t.Fatal("post-Continue clock lost live input", err)
+		}
 	}
 	authorize(0)
 	pausedAgain, err := e.Admin("pause", a.ID, "synthetic second retained pause")

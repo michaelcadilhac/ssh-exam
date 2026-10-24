@@ -1,9 +1,9 @@
 package core
 
-// UNWIRED C3/H4 primitive. No bridge, lease consumer or attempt transition calls
-// this controller. A drained receipt is NOT a freeze, peer/owner, queue-discard
-// or held-recovery proof. Those must be established by the native caller before
-// arming, with durable all-pane/admission and epoch/authority fences.
+// Current per-pane input/resize gate inside supervised recording IO. A drained
+// receipt is NOT a freeze, peer/owner, queue-discard or held-recovery proof.
+// The supervisor establishes those barriers before arming new epochs; a clock
+// handover keeps epochs/sequences while atomically rebinding all gate deadlines.
 
 import (
 	"context"

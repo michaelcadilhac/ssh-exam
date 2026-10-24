@@ -55,6 +55,7 @@ type terminalAuthorityRequest struct {
 	Proof               *PaneInstance    `json:"proof,omitempty"`
 	NextOwner           *monitoringOwner `json:"next_owner,omitempty"`
 	Generation          int              `json:"generation,omitempty"`
+	Clock               *ClockReset      `json:"clock,omitempty"`
 }
 
 type terminalAuthorityReply struct {
@@ -136,6 +137,7 @@ type terminalAuthorityRuntime struct {
 	launches                                          map[string]PaneInstance // Includes pending scopes before manager startup.
 	resume                                            *terminalResumePrepared
 	resumeNonce                                       string
+	clockReset                                        *ClockReset      // Exact durable clock intent; lost replies never apply it twice.
 	cancelledResumeOwner                              *monitoringOwner // Negative-control alias only; never positive permission.
 	start, deadline, originalDeadline, deadlineBootMS int64
 }
@@ -491,6 +493,13 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		_ = c.SetDeadline(time.Now().Add(5 * time.Second))
 	}
 	switch q.Op {
+	case "check-clock", "commit-clock":
+		view, err := s.changeAuthorityClock(q)
+		if err != nil {
+			reply.Error = err.Error()
+			return
+		}
+		reply.View = &view
 	case "live-cutoff":
 		s.mu.Lock()
 		runtime := s.workAuthority

@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,11 +37,14 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 			if previous.Actor != r.Actor || previous.RequestedAt != r.RequestedAt || previous.RemainingSeconds != r.RemainingSeconds || previous.ExtendSeconds != r.ExtendSeconds || previous.Revision != r.ClockRevision+1 || previous.PreviousDeadline != r.Deadline {
 				return errors.New("conflicting clock reset retry")
 			}
+			if a.MonitoringMode == "v1" && previous.Revision == a.ClockRevision && !a.Protected && (a.State == "ACTIVE" || a.State == "LOCKED") {
+				return e.commitTerminalClock(a, previous)
+			}
 			return nil // Lost acknowledgments do not restart the clock again.
 		}
 	}
 	now := Millis()
-	if a.Start == 0 || a.Protected || (a.State != "ACTIVE" && a.State != "LOCKED") || (!offline && (expired(a) || (a.State == "ACTIVE" && (a.Lease <= now || a.Boot != boot())))) {
+	if a.Start == 0 || a.Protected || (a.State != "ACTIVE" && a.State != "LOCKED") || (!offline && (expired(a) || (a.State == "ACTIVE" && ((a.MonitoringMode != "v1" && a.Lease <= now) || a.Boot != boot())))) {
 		return errors.New("clock reset requires a live, unfinished exam")
 	}
 	if a.ClockRevision != r.ClockRevision || a.Deadline != r.Deadline {
@@ -49,6 +53,10 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 	if r.RequestedAt < a.Start || r.RequestedAt >= a.Deadline || r.RequestedAt > now+1000 {
 		return errors.New("clock reset request expired")
 	}
+	// Build the proposed interval without publishing it. Retained mode checks
+	// current root authority, rather than a deliberately coalesced disk lease.
+	proposed := *a
+	a = &proposed
 	if a.OriginalDeadline == 0 {
 		a.OriginalDeadline = a.Deadline
 		a.OriginalUptimeDeadline = a.UptimeDeadline
@@ -63,19 +71,42 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 	} else {
 		a.Deadline = r.RequestedAt + r.RemainingSeconds*1000
 	}
-	a.UptimeDeadline = uptime() + float64(a.Deadline-now)/1000
+	if a.MonitoringMode == "v1" {
+		a.UptimeDeadline += float64(a.Deadline-previous) / 1000
+	} else {
+		a.UptimeDeadline = uptime() + float64(a.Deadline-now)/1000
+	}
 	a.TimingPendingSince = 0
 	a.TimingNextCheck = 0
 	a.TimingVerifiedAt = 0
 	a.TimingVerifiedDeadline = 0
 	a.ClockRevision++
 	refreshRegisteredOwnerClock(a)
-	a.ClockResets = append(a.ClockResets, ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, ExtendSeconds: r.ExtendSeconds, Revision: a.ClockRevision})
+	change := ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, ExtendSeconds: r.ExtendSeconds, Revision: a.ClockRevision}
+	if a.MonitoringMode == "v1" {
+		q, err := e.terminalClockRequest(a, change)
+		if err != nil {
+			return err
+		}
+		if _, err := e.callTerminalAuthority(q, nil, false); err != nil {
+			return err
+		}
+	}
+	a.ClockResets = append(append([]ClockReset(nil), a.ClockResets...), change)
+	// Preserve the caller's canonical object/result while publishing only after
+	// the nonpermitting check. A failed live check cannot consume the clock intent.
+	*e.state.Attempts[a.ID] = *a
+	a = e.state.Attempts[a.ID]
 	// Persist before releasing the cutoff barrier, not just at the caller's final save.
 	if err := e.save(); err != nil {
 		return err
 	}
 	e.Audit("instructor-clock-reset", a.ID)
+	if a.MonitoringMode == "v1" {
+		if err := e.commitTerminalClock(a, change); err != nil {
+			return fmt.Errorf("clock intent %s is durably recorded; %w", change.ID, err)
+		}
+	}
 	return nil
 }
 

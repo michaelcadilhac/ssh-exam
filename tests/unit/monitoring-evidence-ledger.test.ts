@@ -66,6 +66,62 @@ function fixture(webcam = true, limit = 32) {
   };
 }
 
+it("carries identical trusted clock facts without refreshing age, cutoff, coverage or sequence", () => {
+  const f = fixture();
+  f.full();
+  const request = f.request(),
+    first = f.ledger.issueForNativeChallenge(f.binding, request),
+    next = { ...owner, clock_revision: owner.clock_revision + 1 };
+  f.at(4000);
+  const before = f.ledger.inspect(f.binding);
+  expect(f.ledger.transferTrustedClock(f.binding, next)).toBe(f.binding);
+  expect(f.ledger.inspect(f.binding)).toEqual({
+    ...before,
+    retainedNativeReceipts: 0,
+  });
+  expect(() => f.ledger.issueForNativeChallenge(f.binding, request)).toThrow(
+    /ownership/,
+  );
+  expect(
+    f.ledger.issueForNativeChallenge(f.binding, {
+      ...f.request(),
+      owner: next,
+    }),
+  ).toMatchObject({
+    owner: next,
+    sequence: first.sequence,
+    coverage_epoch: first.coverage_epoch,
+    age_ms: 4000,
+  });
+  for (const changed of [
+    { ...next, clock_revision: next.clock_revision + 2 },
+    {
+      ...next,
+      clock_revision: next.clock_revision + 1,
+      generation: next.generation + 1,
+    },
+    {
+      ...next,
+      clock_revision: next.clock_revision + 1,
+      input_epoch: "f".repeat(64),
+    },
+  ])
+    expect(() => f.ledger.transferTrustedClock(f.binding, changed)).toThrow(
+      /ownership/,
+    );
+  f.at(15000);
+  f.ledger.transferTrustedClock(f.binding, {
+    ...next,
+    clock_revision: next.clock_revision + 1,
+  });
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, {
+      ...f.request(),
+      owner: { ...next, clock_revision: next.clock_revision + 1 },
+    }),
+  ).toThrow(/technical-gap/);
+});
+
 it("combined capture preserves original challenge age and requires every saved capture source", () => {
   const f = fixture();
   const screen = f.ledger.issueBrowserChallenge(f.binding, "screen");
