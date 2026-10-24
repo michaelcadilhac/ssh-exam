@@ -15,9 +15,15 @@ An explicitly refused inventory is retried through the same strict barrier;
 persistent unknown writers never receive a held receipt or permission. Focused
 regressions/mutation control, fresh guarded root34/FULL preservation and final
 native races/resources/default-size checks pass. The earlier isolated uncontained
-UID observation's exact process class remains unproven. Loaded-role, remaining
-control/last-task and combined16/64 gates keep admission OFF. No deployment or
-broad checkbox closure; see docs/retained-continuation-recovery.md.
+UID observation's exact process class remains unproven. A later actual reviewed
+close of one held pane reproduced stale process/cgroup handles blocking Continue
+for its peers. Positive pidfd/pinned-kernel retirement and surviving-epoch results
+now pass fresh root35/FULL preservation, including cached three-pane preparation;
+final native races/resources/default-size PASS core527.227s/CLI31.847s.
+See docs/retained-pane-retirement.md.
+Loaded-role, remaining control-loss and combined16/64 gates keep admission OFF.
+No deployment or broad checkbox closure; prior recovery evidence is in
+docs/retained-continuation-recovery.md.
 
 October24 actual retained-foreground qualification: the existing dead-main-thread
 probe now runs through real framed SSH, CLI hold and fresh Continue. Its positively

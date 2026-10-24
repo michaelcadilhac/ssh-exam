@@ -39,6 +39,15 @@ inspection plus `examctl panes supervisor ATTEMPT` for captured pending/hold
 status; these observations do not authorize work. Detailed recovery/verification:
 retained-continuation-recovery.md. This candidate is not enabled or deployed.
 
+The local held-pane candidate supports reviewed `examctl panes show`/`close` of
+one held pane followed by the same explicitly approved Continue for its surviving
+peers. Closing the pane is irreversible for that pane; it does not change the
+attempt's allowance/deadline, release account restrictions or authorize Continue.
+Live or unverified remaining writers refuse retirement. Inspect the supervisor
+and repair the reported condition; never delete state/cgroup paths to clear it.
+Actual guarded-root closure/retry and final native race/resource checks pass.
+See retained-pane-retirement.md. Retained mode remains disabled and undeployed.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

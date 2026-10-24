@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -58,13 +59,14 @@ type terminalHoldGroup struct {
 }
 
 type terminalHold struct {
-	mu     sync.Mutex
-	phase  string
-	error  string
-	groups map[int]*terminalHoldGroup
-	scopes map[string]*os.File
-	input  map[string]*paneInputDrain
-	resize map[string]*paneInputDrain
+	mu          sync.Mutex
+	phase       string
+	error       string
+	groups      map[int]*terminalHoldGroup
+	scopes      map[string]*os.File
+	scopeEvents map[string]*os.File
+	input       map[string]*paneInputDrain
+	resize      map[string]*paneInputDrain
 }
 
 // Both runtime callers use the pinned current process hierarchy: stop parents
@@ -139,6 +141,9 @@ func (h *terminalHold) close() {
 	for _, g := range h.groups {
 		g.process.close()
 	}
+	for _, events := range h.scopeEvents {
+		events.Close()
+	}
 	for _, scope := range h.scopes {
 		scope.Close()
 	}
@@ -203,6 +208,135 @@ func terminalScopeFrozen(scope *os.File) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// Runtime caller: hold capture pins this core file relative to its owned cgroup.
+// It remains the SAME kernel object after a scope's pathname is removed/reused.
+func pinTerminalScopeEvents(scope *os.File) (*os.File, error) {
+	if _, err := retainedScopeStat(scope); err != nil {
+		return nil, err
+	}
+	raw, err := scope.SyscallConn()
+	if err != nil {
+		return nil, err
+	}
+	fd := -1
+	var inner error
+	if err := raw.Control(func(parent uintptr) {
+		fd, inner = unix.Openat(int(parent), "cgroup.events", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+	}); err != nil {
+		return nil, err
+	}
+	if inner != nil {
+		return nil, inner
+	}
+	events := os.NewFile(uintptr(fd), "owned-held-scope-events")
+	if _, err := retainedScopeHasNoTasks(events); err != nil {
+		events.Close()
+		return nil, err
+	}
+	return events, nil
+}
+
+// Only fixed cgroup.events descriptors opened above qualify. Linux kernfs
+// llseek returns ENODEV when this pinned node is deactivated; ordinary empty/
+// changed live files remain seekable. Otherwise require positive populated=0.
+// Missing paths, link counts, read failures and poll notifications prove nothing.
+func retainedScopeHasNoTasks(events *os.File) (bool, error) {
+	if events == nil {
+		return false, errTerminalHold
+	}
+	raw, err := events.SyscallConn()
+	if err != nil {
+		return false, errTerminalHold
+	}
+	valid := false
+	if err := raw.Control(func(fd uintptr) {
+		var fs unix.Statfs_t
+		var info unix.Stat_t
+		valid = unix.Fstatfs(int(fd), &fs) == nil && fs.Type == unix.CGROUP2_SUPER_MAGIC && unix.Fstat(int(fd), &info) == nil && info.Mode&unix.S_IFMT == unix.S_IFREG
+	}); err != nil || !valid {
+		return false, errTerminalHold
+	}
+	at, err := events.Seek(0, io.SeekStart)
+	if errors.Is(err, unix.ENODEV) {
+		return true, nil
+	}
+	if err != nil || at != 0 {
+		return false, errTerminalHold
+	}
+	data, err := io.ReadAll(io.LimitReader(events, 4097))
+	if err != nil {
+		// Removal may occur between the successful seek and read. Confirm it
+		// through the same kernel lifetime operation, never from read failure.
+		if _, seekErr := events.Seek(0, io.SeekStart); errors.Is(seekErr, unix.ENODEV) {
+			return true, nil
+		}
+		return false, errTerminalHold
+	}
+	if len(data) > 4096 {
+		return false, errTerminalHold
+	}
+	found, empty := false, false
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return false, errTerminalHold
+		}
+		if fields[0] == "populated" {
+			if found || (fields[1] != "0" && fields[1] != "1") {
+				return false, errTerminalHold
+			}
+			found, empty = true, fields[1] == "0"
+		}
+	}
+	if !found {
+		return false, errTerminalHold
+	}
+	return empty, nil
+}
+
+// Caller holds h.mu and snapshots active requests/launches under supervisor.mu.
+// Cleanup is negative-only: no live process, requested scope or unknown kernel
+// object is discarded. Validate every retirement before closing any handle.
+func (h *terminalHold) pruneExited(active map[string]bool) error {
+	dead := []int{}
+	retired := []string{}
+	for pid, group := range h.groups {
+		if group == nil || group.process == nil || group.process.pid != pid {
+			return errTerminalHold
+		}
+		live, err := group.process.live()
+		if err != nil {
+			return err
+		}
+		if !live {
+			dead = append(dead, pid)
+		}
+	}
+	for unit := range h.scopes {
+		if active[unit] {
+			continue
+		}
+		empty, err := retainedScopeHasNoTasks(h.scopeEvents[unit])
+		if err != nil || !empty {
+			return fmt.Errorf("closed pane scope %s has live or unverified tasks; preserve the held attempt and inspect panes supervisor before retrying", unit)
+		}
+		retired = append(retired, unit)
+	}
+	for _, pid := range dead {
+		h.groups[pid].process.close()
+		delete(h.groups, pid)
+	}
+	for _, unit := range retired {
+		h.scopeEvents[unit].Close()
+		h.scopes[unit].Close()
+		delete(h.scopeEvents, unit)
+		delete(h.scopes, unit)
+		delete(h.input, unit)
+		delete(h.resize, unit)
+	}
+	return nil
 }
 
 func terminalThreadGroup(tid, uid int) (int, error) {
@@ -298,13 +432,18 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 		streams[unit] = stream
 	}
 	pendingLaunch := false
+	active := make(map[string]bool, len(requests)+len(runtime.launches))
+	for unit := range requests {
+		active[unit] = true
+	}
 	for unit := range runtime.launches {
+		active[unit] = true
 		if _, attached := requests[unit]; !attached {
 			pendingLaunch = true
 		}
 	}
 	if runtime.hold == nil {
-		runtime.hold = &terminalHold{phase: "pending", groups: map[int]*terminalHoldGroup{}, scopes: map[string]*os.File{}, input: map[string]*paneInputDrain{}, resize: map[string]*paneInputDrain{}}
+		runtime.hold = &terminalHold{phase: "pending", groups: map[int]*terminalHoldGroup{}, scopes: map[string]*os.File{}, scopeEvents: map[string]*os.File{}, input: map[string]*paneInputDrain{}, resize: map[string]*paneInputDrain{}}
 	}
 	h := runtime.hold
 	s.mu.Unlock()
@@ -312,14 +451,17 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 		return terminalHoldView{Phase: "pending"}, errTerminalHold
 	}
 	defer h.mu.Unlock()
-	if h.phase == "held" {
-		return terminalHoldView{Phase: "held"}, nil
-	}
-	h.phase, h.error = "pending", ""
 	fail := func(err error) (terminalHoldView, error) {
 		h.phase, h.error = "unverified", err.Error()
 		return terminalHoldView{Phase: h.phase, Error: h.error}, errTerminalHold
 	}
+	if err := h.pruneExited(active); err != nil {
+		return fail(err)
+	}
+	if h.phase == "held" {
+		return terminalHoldView{Phase: "held"}, nil
+	}
+	h.phase, h.error = "pending", ""
 	for unit, stream := range streams {
 		if stream.inputGate == nil || stream.resizeGate == nil || stream.inputPTY == nil {
 			return fail(errPaneInputBarrier)
@@ -344,7 +486,12 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 			if err != nil {
 				return fail(err)
 			}
-			h.scopes[unit] = f
+			events, err := pinTerminalScopeEvents(f)
+			if err != nil {
+				f.Close()
+				return fail(err)
+			}
+			h.scopes[unit], h.scopeEvents[unit] = f, events
 		}
 	}
 	units := make([]string, 0, len(requests))

@@ -358,6 +358,65 @@ def qualify_partial_transition(connection,id,body,stage,live,original,approval):
     ok('actual '+stage+' fault positively observed, then all scopes/tasks re-held without losing SSH or changing original time/authorization; fresh same-approval retry follows')
 
 
+def qualify_held_pane_closure(connection,id,continued,live,original,values):
+    """Actual reviewed CLI closure of a held pane, then surviving-pane Continue."""
+    assert a.retained_policy and temporary and len(live)==len(values)==2
+    extra=connection.pane(id,framed=True);handles=[];scope=None
+    try:
+        value='close-'+uuid.uuid4().hex
+        connection.input(extra,"buffer="+value+"; printf 'HELD-%s:%s\\n' ready \"$buffer\"\n")
+        read_until(extra,('HELD-ready:'+value).encode(),timeout=3)
+        root('examctl','pause',id,'--reason','Private held-pane closure and survivor recovery acceptance')
+        paused=info(id);owner=json.loads(root('examctl','panes','supervisor',id))
+        assert paused['state']=='LOCKED' and paused['retained_hold']=='held' and owner['attached_panes']==3
+        try:
+            connection.command('consume-monitored-continuation',{'id':id,'generation':paused['generation'],'page_epoch':connection.page_epoch})
+            raise AssertionError('held-pane fixture unexpectedly consumed an approval before closure')
+        except RuntimeError as error:
+            assert 'approval is unavailable' in str(error),error
+        prepared_at=time.monotonic() # Keep this exact cached three-pane intent live across closure.
+        units=[unit for unit in owner['attached_units'] if extra.native_pane in unit];assert len(units)==1
+        directory=pathlib.Path('/sys/fs/cgroup/exam.slice')/units[0]
+        events=dict(line.split() for line in (directory/'cgroup.events').read_text().splitlines())
+        assert events['frozen']==events['populated']=='1'
+        scope=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        lifetime=select.poll();student=False
+        for pid in (directory/'cgroup.procs').read_text().split():
+            status=(pathlib.Path('/proc')/pid/'status').read_text()
+            uids=list(map(int,next(line.split()[1:] for line in status.splitlines() if line.startswith('Uid:'))))
+            assert uids in ([0]*4,[account.pw_uid]*4);student=student or uids==[account.pw_uid]*4
+            handle=os.pidfd_open(int(pid));handles.append(handle);lifetime.register(handle,select.POLLIN)
+        assert student and handles and not lifetime.poll(0),'held target lacks positively live pinned tasks'
+        snapshot=json.loads(root('examctl','panes','show',id,extra.native_pane));pane=snapshot['panes'][0]
+        assert snapshot['read_only'] and snapshot['complete'] and pane['recorded_present'] and not pane['unsafe_metadata']
+        closed=json.loads(root('examctl','panes','close',id,extra.native_pane,'--revision',pane['revision'],'--reason','Private verified held-pane retirement acceptance'))
+        assert closed['recorded_targets_quiesced'] and not closed['clock_changed'] and not closed['access_released']
+        wait_for(lambda:len({fd for fd,event in lifetime.poll(0) if event&select.POLLIN})==len(handles),timeout=3,interval=.01)
+        extra.wait(timeout=3)
+        wait_for(lambda:json.loads(root('examctl','panes','supervisor',id))['attached_panes']==2,timeout=3,interval=.02)
+        current=info(id)
+        assert len(current['units'])==2 and all(current[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+        assert time.monotonic()-prepared_at<10,'fixture missed the15s cached-intent boundary'
+        print('CLOSED_HELD_SCOPE_OBSERVATION',units[0],'nlink',os.fstat(scope).st_nlink,'path_present',directory.exists(),flush=True)
+        try:continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
+        except Exception:
+            observation=run(['examctl','panes','supervisor',id])
+            print('HELD_PANE_CLOSURE_RESUME_OBSERVATION',observation.stdout[:8192],observation.stderr[:1024],flush=True)
+            raise
+        for number,pane in enumerate(live):
+            connection.input(pane,"printf 'HELD-%s:%s:END\\n' survivor \"$buffer\"\n")
+            read_until(pane,('HELD-survivor:'+values[number]+':END').encode(),timeout=3)
+        observed=json.loads(root('examctl','panes','supervisor',id))
+        assert observed['pid']==owner['pid'] and observed['attached_panes']==2 and all(p.poll() is None for p in live)
+        ok('actual reviewed close proves all held target tasks exited; approved Continue preserves the original two shells/buffers/SSH without stale retired-scope records or clock changes')
+        return continued
+    finally:
+        for handle in handles:os.close(handle)
+        if scope is not None:os.close(scope)
+        if extra.poll() is not None:
+            extra.stdin.close();extra.stdout.close()
+
+
 def qualify_saved_source_grant(original):
     """Real root CLI pin -> actual saved staging/Begin/collection in this guest."""
     assert a.retained_policy and temporary and account.pw_uid>=1000
@@ -707,6 +766,8 @@ if a.framed_owner or a.retained_policy:
                 read_until(panes[1],('FRAMED-editor-peer:'+values[1]+':END').encode(),timeout=3)
                 ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry and twelve Continue cycles; writer stops/resumes and originally stopped job stays stopped')
             finally:os.close(stopped_handle)
+
+            continued=qualify_held_pane_closure(connection,id,continued,live,original,values)
 
             # The existing manifested probe has a dead main thread and a live
             # foreground worker. Exercise the ACTUAL monitored hold/Continue,

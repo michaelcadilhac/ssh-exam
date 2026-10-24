@@ -2817,3 +2817,14 @@ through the complete writer/input barrier. This retry creates no work permission
 or policy exception; unknown writers continue to refuse a held receipt. Actual
 coordinator death and injected first-inventory refusal are qualified in the
 guarded guest. Broader retained-mode gates remain open.
+
+A reviewed `examctl panes close` while held must retire only that pane. Hold and
+Continue prune positively exited whole-process handles and unrequested/unlaunched
+scopes only after their pinned core cgroup.events file proves no tasks or kernel
+deactivation. Missing metadata/pathnames and generic I/O failures do not prove
+exit. Validate all retirements before closing handles. A prepared Continue stays
+immutable; its successful result contains only surviving panes' epochs, retaining
+the same nonce/owner/approval age and original interval. Actual root CLI closure
+and surviving-shell/private-buffer Continue pass35 guarded assertions with FULL
+host/base preservation and final native race/resource qualification. Installed
+admission remains closed. See docs/retained-pane-retirement.md.

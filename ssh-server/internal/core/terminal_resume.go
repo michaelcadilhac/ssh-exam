@@ -109,6 +109,16 @@ func (s *terminalSupervisor) prepareAuthorityResume(owner monitoringOwner, gener
 	if s.workAuthority != r {
 		return terminalResumePrepared{}, errMonitoringScope
 	}
+	active := make(map[string]bool, len(s.requests)+len(r.launches))
+	for unit := range s.requests {
+		active[unit] = true
+	}
+	for unit := range r.launches {
+		active[unit] = true
+	}
+	if err := h.pruneExited(active); err != nil {
+		return terminalResumePrepared{}, err
+	}
 	if p := r.resume; p != nil && p.Owner.Generation == generation && now >= p.IssuedBootMS && now-p.IssuedBootMS < 15000 {
 		return *p, nil
 	}
@@ -150,6 +160,16 @@ func (s *terminalSupervisor) prepareAuthorityResumeRecovery(owner monitoringOwne
 	if s.workAuthority != r || r.resume == nil || r.resume.Owner != owner || (r.resume.Nonce != nonce && r.resume.PreviousNonce != nonce) || len(r.launches) != len(s.requests) || len(s.requests) != len(s.timed) {
 		return terminalResumePrepared{}, errMonitoringScope
 	}
+	active := make(map[string]bool, len(s.requests)+len(r.launches))
+	for unit := range s.requests {
+		active[unit] = true
+	}
+	for unit := range r.launches {
+		active[unit] = true
+	}
+	if err := h.pruneExited(active); err != nil {
+		return terminalResumePrepared{}, err
+	}
 	if p := r.resume; p.PreviousNonce == nonce && now >= p.IssuedBootMS && now-p.IssuedBootMS < 15000 {
 		return *p, nil
 	}
@@ -185,6 +205,13 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	}
 	p, h := r.resume, r.hold
 	streams := make(map[string]*supervisedRecordingIO, len(s.timed))
+	active := make(map[string]bool, len(s.requests)+len(r.launches))
+	for unit := range s.requests {
+		active[unit] = true
+	}
+	for unit := range r.launches {
+		active[unit] = true
+	}
 	for unit, stream := range s.timed {
 		streams[unit] = stream
 	}
@@ -213,6 +240,10 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	if h.phase != "held" {
 		return monitoringAuthorityView{}, nil, errTerminalHold
 	}
+	if err := h.pruneExited(active); err != nil {
+		return monitoringAuthorityView{}, nil, err
+	}
+	epochs := make(map[string]string, len(streams))
 	for unit, stream := range streams {
 		if p.InputEpochs[stream.recorder.pane] == "" || h.scopes[unit] == nil || h.input[unit] == nil {
 			return monitoringAuthorityView{}, nil, errTerminalHold
@@ -224,8 +255,13 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 		if err := stream.inputPTY.discardKernelInput(h.input[unit]); err != nil {
 			return monitoringAuthorityView{}, nil, err
 		}
+		epochs[stream.recorder.pane] = p.InputEpochs[stream.recorder.pane]
 	}
-	next := &terminalAuthorityRuntime{owner: p.Owner, beginNonce: r.beginNonce, key: r.key, peer: r.peer, claim: r.claim, hold: h, launches: map[string]PaneInstance{}, resume: p, resumeNonce: p.Nonce, start: r.start, deadline: r.deadline, originalDeadline: r.originalDeadline, deadlineBootMS: r.deadlineBootMS}
+	// A pane may close after preparation. Narrow only the successful result;
+	// keep the prepared nonce/owner/epochs immutable for concurrent replies.
+	resumed := *p
+	resumed.InputEpochs = epochs
+	next := &terminalAuthorityRuntime{owner: p.Owner, beginNonce: r.beginNonce, key: r.key, peer: r.peer, claim: r.claim, hold: h, launches: map[string]PaneInstance{}, resume: &resumed, resumeNonce: p.Nonce, start: r.start, deadline: r.deadline, originalDeadline: r.originalDeadline, deadlineBootMS: r.deadlineBootMS}
 	next.live.Store(true)
 	cutoff, err := newMonitoringSharedCutoff(p.Owner, until, r.deadlineBootMS)
 	if err != nil {
@@ -343,7 +379,7 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	}
 	s.mu.Unlock()
 	h.phase, success = "resumed", true
-	return view, p.InputEpochs, nil
+	return view, epochs, nil
 }
 
 // Both the initial successful RPC and a lost-reply retry must complete the same
