@@ -61,6 +61,7 @@ export class GrantIssuance {
       duration?: number;
       webcam?: boolean;
       work?: z.infer<typeof grantAdditionalPreview>["work"];
+      saved_sources?: z.infer<typeof grantAdditionalPreview>["saved_sources"];
     },
     actor: string,
     additional: boolean,
@@ -90,8 +91,10 @@ export class GrantIssuance {
           return refuse(
             "Choose an explicit finite Begin window that has not closed; no grant issued",
           );
+        const sources = new Map(b.saved_sources?.map((s) => [s.username, s]));
         const rows = [...b.usernames].sort().map((username) => {
           const enrollment = this.eligible(b.exam, username, additional);
+          const source = sources.get(username);
           const value = this.grants.snapshot(
             {
               ...definition.exam,
@@ -108,7 +111,13 @@ export class GrantIssuance {
                     ? definition.exam.webcam
                     : !!enrollment.webcam,
             },
-            b.work,
+            source
+              ? {
+                  kind: "saved",
+                  attempt: source.attempt,
+                  checksum: source.checksum,
+                }
+              : b.work,
             username,
           );
           return {
@@ -120,7 +129,7 @@ export class GrantIssuance {
                   existing_grants: (
                     this.store.db
                       .prepare(
-                        "SELECT count(*) n FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND status='AVAILABLE'",
+                        "SELECT count(*) n FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND status IN ('AVAILABLE','PENDING_NATIVE')",
                       )
                       .get(this.agent, b.exam, username) as any
                   ).n,

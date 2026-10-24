@@ -5,6 +5,7 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
   page,
 }, testInfo) => {
   test.setTimeout(60000);
+  page.setDefaultTimeout(10000);
   await page.setViewportSize({ width: 430, height: 1000 });
   await simulatedMedia(page);
   await page.goto("/admin");

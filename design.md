@@ -2153,8 +2153,15 @@ verified protected completion or positive no-start cleanup; absence/expiry never
 releases a dependency. CLI/web settings, UID, stale-revision and deletion fences
 agree. Full574 application tests, native race/resource/compiler/default-size
 qualification,22 rebuilt browser checks and27 guarded-root assertions pass locally.
-Per-student bulk saved-source selection and native legacy authority migration
-remain separate open workflows; no retained-mode guard is enabled.
+October24 bulk saved-source issuance now accepts a complete explicit source map
+per selected user. Matching CLI --saved-sources CSV and web fields preserve each
+owner/checksum, effective camera and fixed allowance/window. Review/confirm/retry/
+cancel are atomic and source loss during confirmation rolls back the whole batch;
+every grant still needs its separate native pin acknowledgement.575 full app
+checks, full CLI races,23 affected browser checks across fresh private fixtures
+and matching builds/static checks pass locally. Native authority/core code and
+formats are unchanged, retaining their exact C18 qualification. Native legacy
+authority migration remains open; no retained-mode guard is enabled.
 Older source-blind native writers cannot safely participate in this workflow.
 See grant-workspace-sources.md. No deployment or source-history mutation occurs.
 

@@ -28,6 +28,9 @@ export function GrantIssuanceDialog({
     [workMode, setWorkMode] = useState("materials"),
     [workName, setWorkName] = useState(initial.template),
     [workHash, setWorkHash] = useState(initial.template_version ?? ""),
+    [savedSources, setSavedSources] = useState<
+      Record<string, { attempt: string; checksum: string }>
+    >({}),
     [review, setReview] = useState<any>(null),
     [previewID, setPreviewID] = useState(""),
     [pending, setPending] = useState<{
@@ -37,10 +40,17 @@ export function GrantIssuanceDialog({
     } | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const selectedStudents = usernames
+      .trim()
+      .split(/[\s,]+/)
+      .filter(Boolean),
+    bulkSaved =
+      additional && workMode === "saved" && selectedStudents.length > 1;
   const perform = async (operation: "preview" | "confirm" | "cancel") => {
     if (busy) return;
     setError("");
     try {
+      let sourceSelection: Record<string, unknown> = {};
       if (!pending && operation === "preview") {
         if (
           additional &&
@@ -72,6 +82,27 @@ export function GrantIssuanceDialog({
           throw Error(
             "Latest Begin must be after earliest Begin; use an explicit finite window",
           );
+        if (additional) {
+          if (bulkSaved) {
+            sourceSelection = {
+              saved_sources: names.map((username) => {
+                const selected = savedSources[username] ?? {
+                  attempt: "",
+                  checksum: "",
+                };
+                try {
+                  workspaceChoice("saved", selected.attempt, selected.checksum);
+                } catch (e) {
+                  throw Error(`${username}: ${(e as Error).message}`);
+                }
+                return { username, ...selected };
+              }),
+            };
+          } else {
+            const work = workspaceChoice(workMode, workName, workHash);
+            sourceSelection = work ? { work } : {};
+          }
+        }
       }
       const intent =
         pending ??
@@ -92,11 +123,7 @@ export function GrantIssuanceDialog({
                 ...(additional
                   ? {
                       duration: Number(duration),
-                      ...(workspaceChoice(workMode, workName, workHash)
-                        ? {
-                            work: workspaceChoice(workMode, workName, workHash),
-                          }
-                        : {}),
+                      ...sourceSelection,
                       ...(webcam !== "effective"
                         ? { webcam: webcam === "required" }
                         : {}),
@@ -250,6 +277,7 @@ export function GrantIssuanceDialog({
             <>
               <GrantWorkspaceFields
                 materials
+                perStudentSaved={bulkSaved}
                 mode={workMode}
                 name={workName}
                 hash={workHash}
@@ -259,6 +287,54 @@ export function GrantIssuanceDialog({
                   setWorkHash(hash);
                 }}
               />
+              {bulkSaved && (
+                <fieldset>
+                  <legend>Protected saved source for each student</legend>
+                  <p>
+                    Choose each student's exact attempt and checksum. No source
+                    is selected automatically.
+                  </p>
+                  {Array.from(new Set(selectedStudents))
+                    .slice(0, 200)
+                    .map((username) => (
+                      <div key={username}>
+                        <h3>{username}</h3>
+                        <label>
+                          Protected source attempt for {username}
+                          <input
+                            value={savedSources[username]?.attempt ?? ""}
+                            onChange={(e) => {
+                              const attempt = e.target.value;
+                              setSavedSources((previous) => ({
+                                ...previous,
+                                [username]: {
+                                  attempt,
+                                  checksum: previous[username]?.checksum ?? "",
+                                },
+                              }));
+                            }}
+                          />
+                        </label>
+                        <label>
+                          Protected source checksum for {username}
+                          <input
+                            value={savedSources[username]?.checksum ?? ""}
+                            onChange={(e) => {
+                              const checksum = e.target.value;
+                              setSavedSources((previous) => ({
+                                ...previous,
+                                [username]: {
+                                  attempt: previous[username]?.attempt ?? "",
+                                  checksum,
+                                },
+                              }));
+                            }}
+                          />
+                        </label>
+                      </div>
+                    ))}
+                </fieldset>
+              )}
               <label>
                 Additional allowance seconds
                 <input

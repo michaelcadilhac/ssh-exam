@@ -42,6 +42,7 @@ const versionAccounts = {
   legacy01: 10023,
   legacy02: 10024,
   extra01: 10025,
+  extra02: 10028,
   practice01: 10026,
 };
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
@@ -820,6 +821,31 @@ attempts.set(extraHistoryID, {
   protected: true,
   checksum: "b".repeat(64),
   access_state: "RELEASED",
+});
+const secondExtraHistoryID = "bbbbbbbb-1234-4234-8234-123456789abc";
+store.db
+  .prepare(
+    "INSERT INTO enrollments(exam,username,uid,webcam) VALUES('additional-template','extra02',0,1)",
+  )
+  .run();
+store.db
+  .prepare(
+    "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state,export_status) VALUES(?,'additional-template','extra02',10028,'COMPLETED',?,?,?,?,1,?,'RELEASED','server-only')",
+  )
+  .run(
+    secondExtraHistoryID,
+    JSON.stringify(extraDefinition),
+    extraHistoryStart,
+    extraHistoryStart + 5400000,
+    extraHistoryStart + 5400000,
+    "c".repeat(64),
+  );
+attempts.set(secondExtraHistoryID, {
+  ...attempts.get(extraHistoryID)!,
+  id: secondExtraHistoryID,
+  username: "extra02",
+  uid: 10028,
+  checksum: "c".repeat(64),
 });
 definitions.update(
   "sandbox",

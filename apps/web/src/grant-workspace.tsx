@@ -31,11 +31,13 @@ export function GrantWorkspaceFields({
   hash,
   onChange,
   materials = false,
+  perStudentSaved = false,
 }: {
   mode: string;
   name: string;
   hash: string;
   materials?: boolean;
+  perStudentSaved?: boolean;
   onChange: (mode: string, name: string, hash: string) => void;
 }) {
   return (
@@ -54,7 +56,7 @@ export function GrantWorkspaceFields({
           <option value="saved">Protected saved work</option>
         </select>
       </label>
-      {(mode === "template" || mode === "saved") && (
+      {(mode === "template" || (mode === "saved" && !perStudentSaved)) && (
         <>
           <label>
             {mode === "saved"

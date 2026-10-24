@@ -115,8 +115,43 @@ export const grantAdditionalPreview = grantIssuePreview
     duration: z.number().int().min(60).max(21600),
     webcam: z.boolean().optional(),
     work: grantWorkspace.optional(),
+    saved_sources: z
+      .array(
+        z
+          .object({
+            username,
+            attempt: z.string().uuid(),
+            checksum: z.string().regex(/^[a-f0-9]{64}$/),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(200)
+      .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((b, ctx) => {
+    if (!b.saved_sources) return;
+    if (b.work !== undefined)
+      ctx.addIssue({
+        code: "custom",
+        path: ["saved_sources"],
+        message: "Choose shared work OR explicit saved_sources, never both",
+      });
+    const selected = new Set(b.usernames),
+      mapped = new Set(b.saved_sources.map((s) => s.username));
+    if (
+      mapped.size !== b.saved_sources.length ||
+      mapped.size !== selected.size ||
+      b.saved_sources.some((s) => !selected.has(s.username))
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["saved_sources"],
+        message:
+          "Provide exactly one protected attempt/checksum for every selected student; no duplicates, omissions or unselected owners",
+      });
+  });
 export const grantBeginRequest = z
   .object({
     type: z.enum(["grant-begin/v2", "grant-begin/v3"]),

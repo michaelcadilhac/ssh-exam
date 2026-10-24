@@ -67,10 +67,61 @@ sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH
 ```
 
 Recorded info is inspection, not fresh archive verification; source-sync performs
-that verification below. A saved-work preview currently supports one student's
-source. Per-student source mappings for a bulk saved-work review remain pending;
-do not select one student's source for other students or remove source ownership
-checks. Empty/template batch issuance already supports the reviewed student list.
+that verification below. A saved-work preview may instead select a different
+source for every student using --saved-sources FILE. This is implemented/tested
+locally through full application, CLI-race and affected browser qualification.
+Do not share one student's archive across owners or remove the ownership check.
+
+Use a regular CSV file of at most64 KiB and1..200 distinct rows, with this exact
+header and each student's actual protected source UUID/checksum:
+
+```csv
+username,attempt,checksum
+student01,SOURCE_01_UUID,SOURCE_01_SHA256
+student02,SOURCE_02_UUID,SOURCE_02_SHA256
+```
+
+```sh
+sudo examctl web grants additional-preview midterm --saved-sources selected-sources.csv --duration-minutes 90 --definition-revision DEFINITION_HASH --template-version MATERIAL_HASH --earliest '2026-10-26T18:00:00-05:00' --latest '2026-10-26T18:30:00-05:00' --reason 'Explicit second ninety-minute attempt from each student selected protected work'
+sudo examctl web grants issue-show PREVIEW_UUID
+sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH --request REQUEST_UUID
+```
+
+CSV rows select participants when no usernames are given. An explicit username
+list must match every CSV row exactly; duplicates, omissions and unselected owners
+refuse. Do not combine this flag with shared --work flags. Review each source,
+allowance, effective webcam and finite window before confirmation. Confirmation is
+atomic; losing one source's protection issues no partial batch. Preserve CSV,
+request and review IDs after reply loss; inspect the SAME review after restart.
+Changed contents require new review. Each grant still needs source-sync below;
+pending grants never reserve accounts or time.
+
+Web: enter usernames, select Protected saved work and fill each separately labelled
+attempt/checksum. Correct an owner refusal and preview again; inspect both rows
+before confirming. A lost confirm offers exact retry and saved-review inspection.
+Revoking one selected unused grant preserves other grants and all prior attempts.
+
+To compare/select submissions, use the selected exam's student rows: each attempt
+has its own numbered Review action. Open Timing and monitoring details for its UUID/timing, and
+Submission for its collection reason/status/inventory. Student Actions → Attempt
+grants shows the new grant's source UUID/checksum and claimed new attempt UUID;
+match those exact IDs rather than assuming the latest row is the graded one.
+No submission replaces its source and no automatic grading preference is imposed.
+
+The matching CLI inspection/export workflow is:
+
+```sh
+sudo examctl web grants list midterm --username student01
+sudo examctl web grants show GRANT_UUID
+sudo examctl info SOURCE_UUID --read-only
+sudo examctl info NEW_ATTEMPT_UUID --read-only
+sudo examctl export SOURCE_UUID --output /PRIVATE/NEW-SOURCE-EXPORT
+sudo examctl export NEW_ATTEMPT_UUID --output /PRIVATE/NEW-ATTEMPT-EXPORT
+```
+
+Select actual IDs from grant source/claim history. Export uses a new private file
+and refuses overwrite; inspect any partial output after an interrupted export.
+These commands never reopen an attempt, release a hold or choose a grading policy.
 
 Saved-source issuance first creates PENDING_NATIVE. It reserves no account,
 consumes no time and cannot begin. Confirm the exact archive's durable native pin

@@ -555,6 +555,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       let corruptImage: string | null = null;
       let corruptRetirement: "drop" | "scope" | null = null;
       let corruptAdministrator: "drop" | "scope" | "refusal" | null = null;
+      let corruptSavedSelection: "swap" | "drop-confirm" | null = null;
       server = https.createServer(
         { key: readFileSync(key), cert: readFileSync(cert) },
         (req, res) => {
@@ -574,7 +575,8 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                   (corruptCatalog ||
                     corruptImage ||
                     corruptAdministrator ||
-                    corruptRetirement) &&
+                    corruptRetirement ||
+                    corruptSavedSelection) &&
                   req.url === "/api/agent/management"
                 ) {
                   const frame = JSON.parse(raw.toString());
@@ -582,6 +584,27 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                     Buffer.from(frame.payload, "base64").toString(),
                   );
                   let changed = false;
+                  if (
+                    corruptSavedSelection === "drop-confirm" &&
+                    payload.operation === "grants.issue-confirm" &&
+                    payload.ok
+                  ) {
+                    res.destroy();
+                    return;
+                  }
+                  if (
+                    corruptSavedSelection === "swap" &&
+                    payload.operation === "grants.additional-preview" &&
+                    payload.ok &&
+                    payload.result.rows.length === 2
+                  ) {
+                    [payload.result.rows[0].work, payload.result.rows[1].work] =
+                      [
+                        payload.result.rows[1].work,
+                        payload.result.rows[0].work,
+                      ];
+                    changed = true;
+                  }
                   if (
                     corruptRetirement === "drop" &&
                     payload.operation === "exams.delete" &&
@@ -1592,7 +1615,28 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           "INSERT INTO enrollments(exam,username,uid,webcam) VALUES('saved-cli','saved01',10001,1)",
         )
         .run();
-      const savedHistory = f.current.store.attempt(savedSourceID);
+      // Both protected histories precede activation of this synthetic namespace's
+      // grant mode. Never insert grantless history after the first issuance.
+      const secondSavedSource = randomUUID();
+      f.current.store.db
+        .prepare(
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state) VALUES(?,'saved-cli','saved02',10002,'COMPLETED',?,?,?,?,1,?,'RELEASED')",
+        )
+        .run(
+          secondSavedSource,
+          JSON.stringify(savedDefinition.exam),
+          savedSourceEnded - 5400000,
+          savedSourceEnded,
+          savedSourceEnded,
+          "c".repeat(64),
+        );
+      f.current.store.db
+        .prepare(
+          "INSERT INTO enrollments(exam,username,uid,webcam) VALUES('saved-cli','saved02',10002,0)",
+        )
+        .run();
+      const savedHistory = f.current.store.attempt(savedSourceID),
+        secondSavedHistory = f.current.store.attempt(secondSavedSource);
       const savedReview = await grantsCLI([
         "additional-preview",
         "saved-cli",
@@ -1653,6 +1697,139 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           ])
         ).status,
       ).toBe("REVOKED");
+      expect(f.current.store.attempt(savedSourceID)).toEqual(savedHistory);
+      const savedCSV = f.dir + "/saved-sources.csv";
+      writeFileSync(
+        savedCSV,
+        `username,attempt,checksum\nsaved01,${savedSourceID},${"b".repeat(64)}\nsaved02,${secondSavedSource},${"c".repeat(64)}\n`,
+        { mode: 0o600 },
+      );
+      const bulkSavedArgs = [
+        "additional-preview",
+        "saved-cli",
+        "--saved-sources",
+        savedCSV,
+        "--duration-minutes",
+        "90",
+        "--definition-revision",
+        savedDefinition.revision,
+        "--template-version",
+        "a".repeat(64),
+        "--earliest",
+        new Date(Date.now() - 1000).toISOString(),
+        "--latest",
+        new Date(Date.now() + 600000).toISOString(),
+        "--reason",
+        "Explicit bulk protected sources chosen separately per student",
+      ];
+      corruptSavedSelection = "swap";
+      await expect(invoke("grants", bulkSavedArgs)).rejects.toMatchObject({
+        code: 1,
+        stdout: "",
+        stderr: expect.stringContaining(
+          "Unconfirmed issuance reply scope/schema",
+        ),
+      });
+      corruptSavedSelection = null;
+      const bulkSavedReview = await grantsCLI(bulkSavedArgs);
+      expect(bulkSavedReview.rows).toHaveLength(2);
+      expect(bulkSavedReview.rows[0]).toMatchObject({
+        username: "saved01",
+        work: {
+          kind: "saved",
+          attempt: savedSourceID,
+          checksum: "b".repeat(64),
+        },
+        settings: { duration: 5400, webcam: true },
+      });
+      expect(bulkSavedReview.rows[1]).toMatchObject({
+        username: "saved02",
+        work: {
+          kind: "saved",
+          attempt: secondSavedSource,
+          checksum: "c".repeat(64),
+        },
+        settings: { duration: 5400, webcam: false },
+      });
+      const bulkConfirm = [
+        "issue-confirm",
+        bulkSavedReview.id,
+        "--revision",
+        bulkSavedReview.revision,
+        "--request",
+        randomUUID(),
+      ];
+      corruptSavedSelection = "drop-confirm";
+      await expect(invoke("grants", bulkConfirm)).rejects.toMatchObject({
+        code: 1,
+        stdout: "",
+      });
+      await f.restart();
+      corruptSavedSelection = null;
+      const bulkSavedIssued = await grantsCLI(bulkConfirm);
+      expect(bulkSavedIssued.status).toBe("CONFIRMED");
+      expect((await grantsCLI(bulkConfirm)).issued).toEqual(
+        bulkSavedIssued.issued,
+      );
+      expect(
+        (await grantsCLI(["issue-show", bulkSavedReview.id])).rows,
+      ).toEqual(bulkSavedReview.rows);
+      for (const [index, source] of [
+        savedSourceID,
+        secondSavedSource,
+      ].entries()) {
+        const grantID = bulkSavedIssued.issued.find(
+          (g: any) => g.username === `saved0${index + 1}`,
+        ).grant;
+        const result = await grantsCLI(["show", grantID]);
+        expect(result).toMatchObject({
+          status: "PENDING_NATIVE",
+          work: { kind: "saved", attempt: source },
+          settings: { duration: 5400, webcam: index === 0 },
+        });
+        expect(
+          f.current.store.db
+            .prepare("SELECT count(*) n FROM grant_claims WHERE grant_id=?")
+            .get(grantID),
+        ).toEqual({ n: 0 });
+      }
+      const badCSV = f.dir + "/bad-saved-sources.csv";
+      for (const contents of [
+        "username,attempt,checksum\nsaved01,invalid,not-a-hash\n",
+        `username,attempt,checksum\nsaved01,${savedSourceID},${"b".repeat(64)}\nsaved01,${secondSavedSource},${"c".repeat(64)}\n`,
+        "attempt,username,checksum\ninvalid,saved01,not-a-hash\n",
+        "x".repeat(65537),
+      ]) {
+        writeFileSync(badCSV, contents, { mode: 0o600 });
+        await expect(
+          invoke(
+            "grants",
+            bulkSavedArgs.map((v) => (v === savedCSV ? badCSV : v)),
+          ),
+        ).rejects.toMatchObject({
+          code: 2,
+          stdout: "",
+          stderr: expect.stringMatching(/saved.sources/),
+        });
+      }
+      await expect(
+        invoke("grants", [
+          ...bulkSavedArgs.slice(0, 2),
+          "saved01",
+          ...bulkSavedArgs.slice(2),
+        ]),
+      ).rejects.toMatchObject({
+        code: 2,
+        stdout: "",
+        stderr: expect.stringContaining("map every selected student"),
+      });
+      await expect(
+        invoke("grants", [...bulkSavedArgs, "--work", "empty"]),
+      ).rejects.toMatchObject({
+        code: 2,
+        stdout: "",
+        stderr: expect.stringContaining("never both"),
+      });
       expect(f.current.store.attempt(savedSourceID)).toEqual(savedHistory);
       const historyMade = JSON.parse(
         (
@@ -1773,9 +1950,13 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         stderr: expect.stringContaining("managementOperations"),
       });
       expect(existsSync(f.dir + "/unused-native-state")).toBe(false);
+      expect(f.current.store.attempt(secondSavedSource)).toEqual(
+        secondSavedHistory,
+      );
       expect(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
-      ).toEqual({ n: 6 });
+        "Management must retain exactly the seven explicitly authored synthetic histories, including both saved sources",
+      ).toEqual({ n: 7 });
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));

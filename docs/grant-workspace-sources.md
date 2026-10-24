@@ -159,6 +159,58 @@ roles. Back up031, source-retentions, independent source-retention markers and
 all existing interval/receipt/consumption history. Do not roll back to a writer
 which cannot enforce saved sources or retention. Production remains untouched.
 
+## Bulk saved-source workflow (October24; implemented/tested locally)
+
+Runtime entries remain additional-preview/issue-show/confirm/cancel in CLI and
+Authorize additional attempts in web admin. Additional preview now accepts
+saved_sources, exactly one explicit username/attempt/checksum per selected user,
+mutually exclusive with shared work. Ownership, protected completion, UID and
+checksum use the existing per-row snapshot check. Nothing chooses a latest archive.
+CLI --saved-sources FILE reads bounded regular CSV; its rows can select the users,
+and any explicit participant list must match exactly. Web renders each student's
+source pair and reviews it with their effective webcam and fixed allowance/window.
+Signed CLI replies must match every requested source before confirmed output.
+
+State review before broad qualification: no new table/native authority format.
+Only existing immutable review rows and exact request intents retain the mapping.
+Reviews expire/cancel without account reservation. Confirmation rechecks current
+definition/enrollment/source in one transaction; if the second source loses
+protection, the first issuance rolls back too. Confirmed rows stay PENDING_NATIVE
+until separate existing root pin acknowledgements. A failed native sync cannot
+authorize another student's work or alter a deadline. Original review/confirmation
+retry after reply loss/restart never adds another grant. Changed CSV contents
+cannot amend the original intent/review. Explicit revision/revoke, source deletion
+fences, consumption/no-start and history rules remain. Pending grants now count in
+the existing-grant warning, consistent with its displayed label.
+
+Focused actual HTTP atomic/source-loss checks pass1.12s; affected HTTP5 checks
+pass2.18s. Actual compiled root-mapped CLI against the REAL gateway/TLS passes
+7.19s: swapped signed sources refuse before stdout; lost confirm/restart/exact
+retry preserve reviewed sources; malformed/duplicate/oversized CSV and mismatched
+participants refuse. Argument-order race check passes1.018s. Real browser bulk
+review/refusal-correction/lost-confirm/revoke/history passes5.6s. Its430px review
+screenshot was inspected; source hashes wrap. Earlier fixture6-to7 authored-history
+count and single-grant selector failures are retained and corrected from actual
+state; neither failed run counts as final qualification.
+
+Runtime changes are limited to issuance protocol/server/UI and CLI input/reply
+validation. Native core, SSH client, per-grant binding/fresh Begin, durable pins
+and kernel containment are unchanged. Exact C18 race/root evidence applies to
+those boundaries; no newer artifact is claimed qualified by an older bundle.
+Final full application104 files/575 checks PASS298.51s
+(/tmp/ssh-exam-bulk-saved-application-full.log,7318 completed0). Full CLI races
+PASS22.406s (...-cli-races-full.log,65485 completed0); final typecheck/CLI vet and
+matching web/server/WASM build pass. Final23 browser checks across eight FRESH
+private fixture instances ALL pass (...-browser-isolated.log,62231 completed0);
+per-file logs/screenshots: /tmp/ssh-exam-bulk-browser-isolated-q04h6ung. The earlier
+combined run was21 pass/2 rate-blocked, not a pass: its shared instructor session
+budget prevented retirement/login from reaching their intended oracles. Per-file
+fixtures preserve the production180/minute and login5/minute guards. No limiter
+or enforcement was relaxed; legacy browser actions now have an explicit10s bound.
+Runtime code stayed frozen; no redundant app/native rerun followed fixture-only
+changes. Unchanged C18 core509.239s/root27 evidence remains for those boundaries.
+The local code commit is next. No deployment.
+
 ## Current model and preserved restrictions
 
 New ordinary enrollment/import saves one initial grant in023;024's reviewed

@@ -29,6 +29,7 @@ func webGrantIssuanceMain(args []string) int {
 	seconds := f.Int64("duration-seconds", 0, "explicit additional allowance seconds")
 	webcam := f.String("webcam", "", "explicit required/optional override; omitted preserves effective value")
 	workFlags := registerGrantWork(f)
+	savedSources := f.String("saved-sources", "", "CSV username,attempt,checksum selecting one protected source per student; additional-preview only")
 	usage := func(message string) int { fmt.Fprintln(os.Stderr, message+"; run examctl web grants help"); return 2 }
 	if f.Parse(ordered(args)) != nil {
 		return usage("invalid issuance flags")
@@ -43,11 +44,50 @@ func webGrantIssuanceMain(args []string) int {
 		return usage("invalid request UUID")
 	}
 	allowed := map[string]bool{"config": true, "request": true}
+	present := map[string]bool{}
+	f.Visit(func(v *flag.Flag) { present[v.Name] = true })
 	body := map[string]any{}
 	switch w[1] {
 	case "issue-preview", "additional-preview":
-		if len(w) < 4 || len(w) > 203 || !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(w[2]) {
+		if len(w) > 203 || !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(w[2]) {
 			return usage("choose an exam and 1..200 explicit enrolled students")
+		}
+		users := w[3:]
+		if present["saved-sources"] {
+			if w[1] != "additional-preview" {
+				return usage("--saved-sources is only valid for additional-preview")
+			}
+			for _, name := range []string{"work", "work-template", "work-template-version", "work-attempt", "work-checksum"} {
+				if present[name] {
+					return usage("choose --saved-sources FILE OR shared --work flags, never both")
+				}
+			}
+			selected, err := readGrantSavedSources(*savedSources)
+			if err != nil {
+				return usage(err.Error())
+			}
+			if len(users) == 0 {
+				users = make([]string, len(selected))
+				for i, source := range selected {
+					users[i] = source.Username
+				}
+			}
+			if len(users) != len(selected) {
+				return usage("saved sources CSV must map every selected student exactly once; no omitted or unselected owners")
+			}
+			mapped := map[string]bool{}
+			for _, source := range selected {
+				mapped[source.Username] = true
+			}
+			for _, name := range users {
+				if !mapped[name] {
+					return usage("saved sources CSV differs from selected students; choose each student's exact protected source")
+				}
+			}
+			body["saved_sources"] = selected
+		}
+		if len(users) < 1 || len(users) > 200 {
+			return usage("choose1..200 explicit enrolled students, or use --saved-sources FILE to select them from its CSV rows")
 		}
 		if w[2] == "sandbox" && w[1] == "issue-preview" {
 			return usage("practice uses additional-preview sandbox --duration-minutes 5, not legacy initial issuance")
@@ -61,7 +101,7 @@ func webGrantIssuanceMain(args []string) int {
 			return usage("explicit ordered finite --earliest/--latest RFC3339 dates with zones required")
 		}
 		seen := map[string]bool{}
-		for _, user := range w[3:] {
+		for _, user := range users {
 			if seen[user] || !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,31}$`).MatchString(user) {
 				return usage("each valid student must be named once")
 			}
@@ -70,11 +110,9 @@ func webGrantIssuanceMain(args []string) int {
 		for _, name := range []string{"definition-revision", "template-version", "earliest", "latest", "reason"} {
 			allowed[name] = true
 		}
-		body["exam"], body["usernames"], body["definition_revision"], body["template_version"] = w[2], w[3:], *definition, *source
+		body["exam"], body["usernames"], body["definition_revision"], body["template_version"] = w[2], users, *definition, *source
 		body["earliest"], body["latest"], body["reason"] = from.UnixMilli(), until.UnixMilli(), *reason
 		if w[1] == "additional-preview" {
-			present := map[string]bool{}
-			f.Visit(func(v *flag.Flag) { present[v.Name] = true })
 			if present["duration-minutes"] == present["duration-seconds"] {
 				return usage("additional grants require exactly one explicit --duration-minutes or --duration-seconds")
 			}
@@ -94,6 +132,7 @@ func webGrantIssuanceMain(args []string) int {
 			allowed["duration-minutes"], allowed["duration-seconds"], allowed["webcam"] = true, true, true
 			allowed["work"], allowed["work-template"], allowed["work-template-version"] = true, true, true
 			allowed["work-attempt"], allowed["work-checksum"] = true, true
+			allowed["saved-sources"] = true
 			work, err := workFlags.selection(present)
 			if err != nil {
 				return usage(err.Error())
@@ -177,17 +216,18 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		return fail
 	}
 	var scope struct {
-		ID                 string           `json:"id"`
-		Exam               string           `json:"exam"`
-		Revision           string           `json:"revision"`
-		Usernames          []string         `json:"usernames"`
-		DefinitionRevision string           `json:"definition_revision"`
-		TemplateVersion    string           `json:"template_version"`
-		Earliest           int64            `json:"earliest"`
-		Latest             int64            `json:"latest"`
-		Duration           int64            `json:"duration"`
-		Webcam             *bool            `json:"webcam"`
-		Work               *grantWorkResult `json:"work"`
+		ID                 string             `json:"id"`
+		Exam               string             `json:"exam"`
+		Revision           string             `json:"revision"`
+		Usernames          []string           `json:"usernames"`
+		DefinitionRevision string             `json:"definition_revision"`
+		TemplateVersion    string             `json:"template_version"`
+		Earliest           int64              `json:"earliest"`
+		Latest             int64              `json:"latest"`
+		Duration           int64              `json:"duration"`
+		Webcam             *bool              `json:"webcam"`
+		Work               *grantWorkResult   `json:"work"`
+		SavedSources       []grantSavedSource `json:"saved_sources"`
 	}
 	if json.Unmarshal(encoded, &scope) != nil {
 		return fail
@@ -223,10 +263,29 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		if result.Kind != expectedKind || result.DefinitionRevision != scope.DefinitionRevision {
 			return fail
 		}
+		saved := map[string]grantSavedSource{}
+		if scope.SavedSources != nil {
+			if scope.Work != nil || len(scope.SavedSources) != len(scope.Usernames) {
+				return fail
+			}
+			for _, source := range scope.SavedSources {
+				if _, exists := saved[source.Username]; exists || !managementUUID.MatchString(source.Attempt) || !catalogHash.MatchString(source.Checksum) {
+					return fail
+				}
+				saved[source.Username] = source
+			}
+		}
 		for _, row := range result.Rows {
 			expectedWork := grantWorkResult{Kind: "template", Name: row.Settings.Template, Hash: scope.TemplateVersion}
 			if scope.Work != nil {
 				expectedWork = *scope.Work
+			}
+			if scope.SavedSources != nil {
+				source, ok := saved[row.Username]
+				if !ok {
+					return fail
+				}
+				expectedWork = grantWorkResult{Kind: "saved", Attempt: source.Attempt, Checksum: source.Checksum}
 			}
 			if row.Work != expectedWork || row.Settings.TemplateVersion != scope.TemplateVersion || row.Settings.Earliest != scope.Earliest || row.Settings.Latest != scope.Latest || (op == "grants.additional-preview" && row.Settings.Duration != scope.Duration) || (scope.Webcam != nil && row.Settings.Webcam != *scope.Webcam) {
 				return fail

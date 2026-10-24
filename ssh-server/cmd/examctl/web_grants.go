@@ -46,6 +46,14 @@ Additional starters: --work empty, or --work template --work-template NAME
 --work-template-version HASH. Omitted work uses the materials template at issuance.
 Saved source: --work saved --work-attempt UUID --work-checksum SHA256. This creates
 PENDING_NATIVE authority, unavailable until durable native source confirmation.
+Bulk saved work: additional-preview EXAM --saved-sources FILE (CSV header
+username,attempt,checksum;1..200 distinct rows, at most64 KiB). Each row selects
+that student's exact protected archive, never a latest/live folder. Student
+arguments may be omitted to select the CSV rows; if supplied they must match
+exactly. Do not combine --saved-sources with shared --work flags. Review each
+source/settings before issue-confirm; every new saved grant remains pending
+its separate durable native retention confirmation. Preserve the original CSV,
+request and review IDs after a lost reply; changed contents need a NEW review.
   sudo examctl web grants source-show GRANT --revision N
   sudo examctl web grants source-sync GRANT --revision N
 source-sync uses named grants.source-plan/source-confirm authorization, verifies

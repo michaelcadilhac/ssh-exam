@@ -19,6 +19,10 @@ func TestFlagsAfterSubcommand(t *testing.T) {
 	if !reflect.DeepEqual(got, []string{"--work", "saved", "--work-attempt", "source-uuid", "--work-checksum", "source-hash", "additional-preview", "exam", "student"}) {
 		t.Fatalf("saved-source values became positional students: %v", got)
 	}
+	got = ordered([]string{"additional-preview", "exam", "--saved-sources", "selected.csv", "--duration-minutes", "90"})
+	if !reflect.DeepEqual(got, []string{"--saved-sources", "selected.csv", "--duration-minutes", "90", "additional-preview", "exam"}) {
+		t.Fatalf("per-student source file became a positional student: %v", got)
+	}
 }
 func TestServiceStopPreservesWatchdogAndStartRestoresIt(t *testing.T) {
 	stop, err := serviceCommands("stop")

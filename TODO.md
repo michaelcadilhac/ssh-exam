@@ -15,9 +15,12 @@ application tests, full native race/resource/compiler/default-size checks,22
 affected browser scenarios and27 guarded-root assertions pass. The root test also
 found and fixed a real unordered stop/Continue job-control race; twelve Nano cycles
 now preserve buffers, foreground ownership, writers and original job stops.
-Nothing is deployed and retained admission stays disabled. Explicit per-student
-source mappings for BULK saved grants and native legacy authority migration remain
-unfinished; the broader retake/workflow/authority checkboxes stay open. Exact
+Nothing is deployed and retained admission stays disabled. Per-student BULK saved
+source mappings now also pass full575 app checks, CLI races and23 browser checks
+across fresh isolated fixtures, with no new native authority format. Complete
+CLI/web examples include exact-source review and historical submission selection.
+Native legacy migration and the broader integrated status presentation/authority
+work remain open. Exact
 evidence and limitations: grant-workspace-sources.md and live-monitoring-runtime.md.
 
 October24 UTC local clock candidate: approved unchanged-fact handover now fixes the
@@ -821,7 +824,13 @@ Existing enrollment migration and implementation remain outstanding.
   and UI. Distinguish resuming an unfinished attempt from authorizing a new one.
   Determine which recovery-specific mechanisms can become general attempt policy.
 
-- [ ] **Propose explicit authorization for additional attempts.**
+- [x] **Propose explicit authorization for additional attempts.**
+  October24 the approved model is implemented/tested locally for ordinary initial,
+  reviewed legacy-unused, additional and practice grants. Empty/template/saved
+  sources support explicit per-student and bulk issuance, finite windows, unused
+  revision/revoke, audit, one-use claims and fresh native Begin. Source pins gate
+  saved availability. Native-only legacy authority conversion remains separately
+  open below; it does not block this completed new-authorization workflow.
   October23 initial enrollment/import snapshots, reviewed NEW legacy-unused
   issuance and explicit additional exact-template grants now work through shared
   CLI/web and student selection/preflight/fresh native Begin. Additional windows
@@ -835,9 +844,10 @@ Existing enrollment migration and implementation remain outstanding.
   Unified practice issuance is now qualified locally:490 app tests, full native
   race/resource,13 corrected-fixture and62 final affected browser checks pass
   (sandbox-grants.md). All earlier failed receipts remain documented.
-  Individual saved-work issuance/retention/Begin now passes full local and guarded
-  root qualification. Bulk per-student saved sources and native legacy authority
-  migration remain unfinished; this broad investigation stays unchecked. See docs/additional-template-grants.md,
+  Individual saved-work issuance/retention/Begin passes full local and guarded
+  root qualification. Explicit bulk source mappings now pass actual HTTP/compiled
+  root CLI/TLS/restart and browser checks, full575 app tests and full CLI races.
+  Native legacy migration remains open under authority/migration below. See docs/additional-template-grants.md,
   docs/additional-grants-cli.md and the earlier feature guides. Nothing deployed.
   Consider per-exam attempt limits/defaults plus per-student and bulk grants,
   including one additional attempt and intentionally repeatable exams. Define
@@ -853,8 +863,8 @@ Existing enrollment migration and implementation remain outstanding.
   Saved sources require durable class-server retention before availability;
   deletion/corruption/UID/stale receipt failures cannot consume a clock or select
   fallback work. Both source/target limits and recoverable metadata are preserved.
-  Bulk saved-source selection and native legacy migration remain separate open
-  items; this closes the initializer choices, not those workflows or deployment.
+  Bulk saved-source selection is also qualified locally. Native legacy migration
+  and broader dashboard presentation remain separate open items; none is deployed.
   October23 empty and separate exact-template starters now have a local integrated
   CLI/web workflow: reviewed additional issuance, explicit unused source revision,
   student selection, signed private staging and fresh C15 Begin. Focused HTTP/
@@ -982,13 +992,16 @@ Existing enrollment migration and implementation remain outstanding.
   attempt's timing, collection and account restriction history; define a safe
   handoff if a prior interval is still restricted, without implicit access overrides.
 
-- [ ] **Support a second full 90-minute attempt after the midterm ends.**
+- [x] **Support a second full 90-minute attempt after the midterm ends.**
   October24 individual CLI/web/native workflow passes locally, including guarded
   root archived-byte restore, zero preflight time, separate full90-minute Begin
-  and both original/current account restrictions. Bulk saved-source review still
-  needs explicit per-student archive mappings; one shared UUID cannot serve
-  different owners. Keep this item open until that matching CLI/web workflow and
-  the complete historical submission-selection presentation pass.
+  and both original/current account restrictions. Bulk saved-source review now
+  accepts each student's separately selected archive in both CLI and web. Exact
+  ownership/mapping, effective webcam, finite outside-default windows, atomic
+  source-loss rollback, lost replies/restart and per-student revoke pass. Operator
+  documentation explains comparing numbered historical reviews/source/claim IDs
+  and exporting both protected submissions without an automatic grading choice.
+  Broader dashboard presentation and native legacy migration remain separate.
   Include this explicit instructor use case in the unified design: after the first
   midterm is over and its submission secured, grant students another attempt with
   a new full 90-minute allowance, starting from their own saved files from the
