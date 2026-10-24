@@ -445,6 +445,12 @@ export function registerAgentManagement(
                 const raw = z.record(z.string(), z.unknown()).parse(r.body);
                 let value: unknown;
                 switch (r.operation) {
+                  case "grants.source-plan":
+                    value = grants.sourcePlan(raw);
+                    break;
+                  case "grants.source-confirm":
+                    value = grants.confirmSource(raw, actor);
+                    break;
                   case "grants.additional-preview":
                     value = grantIssuance.additional(raw, actor);
                     break;

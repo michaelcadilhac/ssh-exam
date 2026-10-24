@@ -1025,3 +1025,35 @@ metadata and original authority. Never restore an old state writer over register
 owners, discard pending intent pages or clear consumption/history to reopen work.
 Keep admission closed and repair forward if no compatible rollback exists. No
 migration, installation, restart, unit removal or consolidation occurred locally.
+
+## Saved-source retention (migration031; proposed only)
+
+No deployment is authorized. After the separately authorized verified drain,
+back up the current DB/WAL, immutable grant revisions/acknowledgements, protected
+archives/manifests, canonical consumers, private workspace receipts and legacy
+consumption history. Include native source-retentions, its independent initialized
+marker and every source-retention-known marker. Losing a known pin is a repair
+condition; never recreate an empty pin to make deletion or preparation pass.
+
+Install matched gateway/CLI and EVERY native state/deletion/staging writer before
+requiring durable-saved-source-grants-v1. This includes independent attempt/practice
+supervisors and all three canonical/temporary agent owners in the drain inventory.
+Apply additive031 without inventing historical acknowledgements. Existing native
+legacy recovery grants retain their authority until separately reviewed migration;
+do not remove them merely to make new grants prepare.
+
+With synthetic data, verify reviewed saved-source issuance stays pending without
+a native pin; source-sync verifies/fsyncs before availability; lost-ack inspection
+and exact retry; unused-source deletion refusal; archive-based private staging
+and a full selected allowance only at fresh Begin; protected consumer completion;
+explicit old-revision release without releasing account holds. Expiry is not pin
+retirement. Recheck the loaded cohort and unchanged historical intervals before
+reopening admission. Temporary-agent consolidation remains the unexecuted procedure
+above, never an incidental part of a test.
+
+Rollback needs a verified drain and roles that retain/enforce031, native pins,
+consumer links and all newer one-use history. A source-blind writer may delete a
+still-needed archive and is not a safe rollback. Keep admission closed and repair
+forward if compatible rollback cannot preserve these authorities. Do not restore
+an old AVAILABLE snapshot over consumed/revoked grants or discard pins to undo
+availability. No migration, configuration activation or service action is executed.

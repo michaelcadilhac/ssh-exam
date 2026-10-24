@@ -306,6 +306,13 @@ export function AttemptGrantsDialog({
             <p>
               Waiting for durable class-server source retention confirmation.
               This grant cannot begin and reserves no account or exam time.
+              Complete on the class server:{" "}
+              <code>
+                sudo examctl web grants source-sync {grant.id} --revision{" "}
+                {grant.revision}
+              </code>
+              . Then refresh this grant. A failed synchronization stays pending;
+              inspect source-show and retry the same revision.
             </p>
           )}
           {["AVAILABLE", "PENDING_NATIVE"].includes(grant.status) && (

@@ -29,6 +29,29 @@ def private_registry(path):
  finally:os.close(descriptor)
 
 
+def source_fixture_reply(data,expected,record,now):
+ """One explicitly authored synthetic grant; never a general native command."""
+ plan=expected['plan'];grant=plan['grant'];body=data['body']
+ assert set(data)=={'version','purpose','audience','agent','actor','request','nonce','issued','expires','operation','body'}
+ assert data['version']==1 and data['purpose']=='ssh-exam-management/v1' and data['actor']=='agent-root'
+ assert data['agent']==plan['agent'] and data['audience']==expected['audience']
+ assert now-30000<=data['issued']<=now+1000 and now<data['expires']<=data['issued']+30000
+ assert len(bytes.fromhex(data['nonce']))==32
+ assert body['id']==grant['id'] and body['revision']==grant['revision']
+ if data['operation']=='grants.source-plan':
+  assert set(body)=={'id','revision'}
+  return plan
+ assert data['operation']=='grants.source-confirm'
+ assert set(body)=={'id','revision','grant_hash','state','source','retention_hash','retained_at'}
+ assert body['grant_hash']==grant['hash'] and record['plan']['grant']==grant
+ assert all(record['plan'][key]==plan[key] for key in ('exam','username','uid','settings','source'))
+ assert body['retention_hash']==record['retention_hash'] and body['retained_at']==record['retained_at']
+ assert body['source']==dict(**plan['source'],uid=plan['uid'],metadata_hash=record['metadata_hash'])
+ assert (body['state']=='RETAINED' and plan['action']=='retain' and record['phase']=='retained') or (body['state']=='RELEASED' and plan['action']=='release' and record['phase']=='released')
+ return {'id':grant['id'],'revision':grant['revision'],'state':body['state'],'retention_hash':record['retention_hash'],
+         'status':'AVAILABLE' if body['state']=='RETAINED' else plan['status']}
+
+
 def fixture_reply(path,data,expected,approval,owners,now):
  """Finite synthetic capture, NOT real camera qualification or a control API."""
  def key(owner):return json.dumps(owner,sort_keys=True,separators=(',',':'))
@@ -104,7 +127,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
    agent.verify(base64.b64decode(self.headers['X-Exam-Signature']),raw)
    data=json.loads(raw);assert data['agent']==config['agent_id']
    result={'ok':True}
-   if self.path in ('/api/agent/grant-begin','/api/agent/monitoring-evidence','/api/agent/monitoring-continue'):
+   if self.path=='/api/agent/management':
+    expected=private_registry('/run/qualification-saved-source-grant.json')
+    with owner_lock:
+     record=None
+     if data['operation']=='grants.source-confirm':
+      grant=expected['plan']['grant']
+      record=private_registry(str(Path(config['state'])/'source-retentions'/(grant['id']+'-'+str(grant['revision'])+'.json')))
+     observed=int(time.time()*1000);value=source_fixture_reply(data,expected,record,observed)
+     if data['operation']=='grants.source-confirm':
+      expected['plan']['status']=value['status']
+      descriptor=os.open('/run/qualification-saved-source-grant.json',os.O_WRONLY|os.O_TRUNC|os.O_NOFOLLOW)
+      with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry);registry.flush();os.fsync(registry.fileno())
+     reply={'version':1,'purpose':'ssh-exam-management/v1','audience':config['agent_id'],'request':data['request'],'nonce':data['nonce'],'operation':data['operation'],'at':observed,'ok':True,'status':200,'result':value}
+    payload=json.dumps(reply,separators=(',',':')).encode()
+    result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
+   elif self.path in ('/api/agent/grant-begin','/api/agent/monitoring-evidence','/api/agent/monitoring-continue'):
     expected=private_registry('/run/qualification-framed-grant.json')
     assert expected['agent']==config['agent_id']
     approval=private_registry('/run/qualification-retained-approval.json') if self.path.endswith('/monitoring-continue') else None

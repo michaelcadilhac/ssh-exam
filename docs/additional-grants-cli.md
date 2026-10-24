@@ -3,7 +3,8 @@
 Local implementation/qualification only; not deployed. Evidence and privileged
 limits: additional-template-grants.md. These commands do not authorize production
 changes. Empty/separate-template initialization is implemented/tested locally
-(grant-workspace-sources.md). Saved-work initialization remains unfinished.
+(grant-workspace-sources.md). Individual saved-work initialization is implemented
+and tested locally through broad and guarded-root qualification. Nothing is deployed.
 Sandbox practice uses the same review and inspection workflows with fixed policy;
 see sandbox-grants.md for the candidate and its qualification status.
 
@@ -47,8 +48,59 @@ allowance. Omit work to use the materials starter at NEW issuance; choose
 `--work empty`, or `--work template --work-template NAME
 --work-template-version HASH` for a separately attested starter. The same flags
 on unused `revise` explicitly change the source; omitting them preserves it,
-including when materials change. No mutable/latest fallback or saved-source
-grant is supported yet. Matching web forms show the same choices and hashes.
+including when materials change. Saved work uses `--work saved --work-attempt
+SOURCE_UUID --work-checksum SOURCE_SHA256`; it requires the same student's
+completed protected submission and preserves that exact source. There is no
+mutable/latest or live-folder fallback. Matching web forms show the same choices
+and hashes.
+
+## Confirm saved-source retention on the class server
+
+For one student's separate ninety-minute attempt, explicitly choose their
+protected attempt/checksum and the new finite Begin window:
+
+```sh
+sudo examctl info SOURCE_UUID --read-only
+sudo examctl web grants additional-preview midterm student01 --duration-minutes 90 --definition-revision DEFINITION_HASH --template-version MATERIAL_HASH --earliest '2026-10-26T18:00:00-05:00' --latest '2026-10-26T18:30:00-05:00' --work saved --work-attempt SOURCE_UUID --work-checksum SOURCE_SHA256 --reason 'Second full ninety-minute attempt from this student protected work'
+sudo examctl web grants issue-show PREVIEW_UUID
+sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH
+```
+
+Recorded info is inspection, not fresh archive verification; source-sync performs
+that verification below. A saved-work preview currently supports one student's
+source. Per-student source mappings for a bulk saved-work review remain pending;
+do not select one student's source for other students or remove source ownership
+checks. Empty/template batch issuance already supports the reviewed student list.
+
+Saved-source issuance first creates PENDING_NATIVE. It reserves no account,
+consumes no time and cannot begin. Confirm the exact archive's durable native pin
+through the existing root-authenticated outbound management connection:
+
+```sh
+sudo examctl web grants source-sync GRANT_UUID --revision 1
+sudo examctl web grants source-show GRANT_UUID --revision 1
+sudo examctl web grants show GRANT_UUID
+```
+
+Only the matching durable acknowledgement makes the grant AVAILABLE. The web
+grant dialog shows this exact completion command; refresh after synchronization.
+`source-show` inspects private native metadata without allocating accounts or
+reconciling student access. Corrupt/missing archives, changed Unix UID and stale
+revisions refuse with inspection/repair guidance. Do not issue a replacement
+grant as a retry. A lost acknowledgement leaves the pin inspectable; retry the
+same grant/revision and the printed `--request UUID` to acknowledge that same
+outcome. Starts still require fresh authenticated Begin and receive the whole
+saved allowance only then.
+
+An unused grant can be explicitly revised or revoked through the existing CLI
+or web workflow. Its previous native pin remains until `source-sync` for that
+previous revision obtains a fresh positive retirement plan. Use a NEW request
+UUID for retirement. Synchronize the new saved revision separately. Consumed
+pins release only after every recorded native consumer has verified protected
+completion or positive no-start cleanup; missing records never prove absence.
+Closing pins block new preparations and continue protecting the archive. No
+timeout or expired Begin window releases a dependency. Release does not delete
+submissions/history, clear account holds or authorize workspace cleanup.
 
 ## Inspect, revise and revoke the exact grant
 

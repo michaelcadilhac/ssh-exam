@@ -171,7 +171,9 @@ export class ExamDefinitions {
         grants.some(
           (g) =>
             !/^[a-f0-9]{64}$/.test(g.hash ?? "") ||
-            !["AVAILABLE", "CONSUMED", "REVOKED"].includes(g.status),
+            !["AVAILABLE", "PENDING_NATIVE", "CONSUMED", "REVOKED"].includes(
+              g.status,
+            ),
         )
       )
         return failure(
@@ -253,7 +255,9 @@ export class ExamDefinitions {
           blockers.push(
             "Unfinished or unreleased work remains; inspect web attempts list/show and resolve it without resetting clocks or clearing holds before archive.",
           );
-        if (grants.some((g) => g.status === "AVAILABLE"))
+        if (
+          grants.some((g) => ["AVAILABLE", "PENDING_NATIVE"].includes(g.status))
+        )
           blockers.push(
             "Unused grants remain; inspect web grants list/show and explicitly revoke or resolve them before archive. Archive never cancels an allowance.",
           );

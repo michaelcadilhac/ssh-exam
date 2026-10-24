@@ -1,6 +1,11 @@
 import { expect, it } from "vitest";
-import { randomUUID } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import {
+  generateKeyPairSync,
+  randomBytes,
+  randomUUID,
+  sign,
+} from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createApp } from "../../apps/server/src/app.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
@@ -8,7 +13,13 @@ import { grantExam } from "../fixtures/grant-exam.js";
 
 it("reviews fixed saved-work authority but keeps it unavailable and cancellable until durable native source confirmation", async () => {
   const data = mkdtempSync(tmpdir() + "/saved-source-grant-"),
-    origin = "http://localhost:3000";
+    origin = "http://localhost:3000",
+    keys = generateKeyPairSync("ed25519", {
+      publicKeyEncoding: { format: "pem", type: "spki" },
+      privateKeyEncoding: { format: "pem", type: "pkcs8" },
+    });
+  writeFileSync(data + "/agent.pub", keys.publicKey);
+  writeFileSync(data + "/gateway.key", keys.privateKey, { mode: 0o600 });
   const { app, store } = await createApp({
     mode: "development",
     origin,
@@ -17,7 +28,12 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
     maintenance: false,
     jump: { host: "localhost", port: 2222, pins: ["0".repeat(64)] },
     class: { host: "localhost", port: 2223, pins: ["1".repeat(64)] },
-    agent: { id: "class", signingKey: "/unused", callbackPublicKey: "/unused" },
+    agent: {
+      id: "class",
+      signingKey: data + "/gateway.key",
+      callbackPublicKey: data + "/agent.pub",
+      managementOperations: ["grants.source-plan", "grants.source-confirm"],
+    },
   });
   try {
     const settings = grantExam(store, "saved-work"),
@@ -62,6 +78,34 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
       },
       post = (url: string, payload: Record<string, unknown>) =>
         app.inject({ method: "POST", url, headers, payload }),
+      native = async (operation: string, body: unknown) => {
+        const payload = Buffer.from(
+          JSON.stringify({
+            version: 1,
+            purpose: "ssh-exam-management/v1",
+            audience: origin,
+            agent: "class",
+            actor: "agent-root",
+            request: randomUUID(),
+            nonce: randomBytes(32).toString("hex"),
+            issued: Date.now(),
+            expires: Date.now() + 20000,
+            operation,
+            body,
+          }),
+        );
+        return app.inject({
+          method: "POST",
+          url: "/api/agent/management",
+          headers: {
+            "content-type": "application/vnd.ssh-exam-management",
+            "x-exam-signature": sign(null, payload, keys.privateKey).toString(
+              "base64",
+            ),
+          },
+          payload,
+        });
+      },
       work = { kind: "saved", attempt: source, checksum },
       input = {
         definition_revision: definitions.show(settings.id).revision,
@@ -124,6 +168,67 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
       n: 1,
     });
     expect(store.attempt(source)).toEqual(before);
+    const retirement = await post(
+      `/api/admin/exams/${settings.id}/retirement-preview`,
+      { action: "archive" },
+    );
+    expect(retirement.statusCode, retirement.body).toBe(200);
+    expect(retirement.json().allowed).toBe(false);
+    expect(retirement.json().blockers.join(" ")).toContain(
+      "Unused grants remain",
+    );
+    const plan = await native("grants.source-plan", { id, revision: 1 });
+    expect(plan.statusCode, plan.body).toBe(200);
+    const authoritative = JSON.parse(
+      Buffer.from(plan.json().payload, "base64").toString(),
+    ).result;
+    expect(authoritative).toMatchObject({
+      action: "retain",
+      grant: { id, revision: 1, work },
+      uid: 10001,
+      settings: { duration: 5400, webcam: false },
+      source: { attempt: source, checksum },
+    });
+    // This HTTP boundary simulates the trusted native receipt. Actual archive
+    // verification/fsync/delete races are the separate compiled CLI acceptance.
+    const receipt = {
+      id,
+      revision: 1,
+      grant_hash: pending.json().hash,
+      state: "RETAINED",
+      source: {
+        attempt: source,
+        checksum,
+        metadata_hash: "c".repeat(64),
+        uid: 10001,
+      },
+      retention_hash: "d".repeat(64),
+      retained_at: Date.now(),
+    };
+    const wrong = await native("grants.source-confirm", {
+      ...receipt,
+      source: { ...receipt.source, uid: 10002 },
+    });
+    expect(
+      JSON.parse(Buffer.from(wrong.json().payload, "base64").toString()),
+    ).toMatchObject({ ok: false, status: 409 });
+    expect(
+      (await app.inject({ url: `/api/admin/grants/${id}`, headers })).json()
+        .status,
+    ).toBe("PENDING_NATIVE");
+    const acknowledged = await native("grants.source-confirm", receipt);
+    expect(acknowledged.statusCode, acknowledged.body).toBe(200);
+    expect(
+      JSON.parse(Buffer.from(acknowledged.json().payload, "base64").toString()),
+    ).toMatchObject({
+      ok: true,
+      status: 200,
+      result: { id, revision: 1, state: "RETAINED", status: "AVAILABLE" },
+    });
+    expect(
+      (await app.inject({ url: `/api/admin/grants/${id}`, headers })).json()
+        .status,
+    ).toBe("AVAILABLE");
     const cancelled = await post(`/api/admin/grants/${id}/revoke`, {
       revision: 1,
       request: randomUUID(),
@@ -132,6 +237,20 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
     });
     expect(cancelled.statusCode, cancelled.body).toBe(200);
     expect(cancelled.json()).toMatchObject({ id, status: "REVOKED", work });
+    expect(
+      JSON.parse(
+        Buffer.from(
+          (await native("grants.source-confirm", receipt)).json().payload,
+          "base64",
+        ).toString(),
+      ),
+    ).toMatchObject({ ok: false, status: 409 });
+    const closing = await native("grants.source-plan", { id, revision: 1 });
+    expect(closing.statusCode, closing.body).toBe(200);
+    expect(
+      JSON.parse(Buffer.from(closing.json().payload, "base64").toString())
+        .result.action,
+    ).toBe("release");
     expect(store.attempt(source)).toEqual(before);
     expect(
       store.db.prepare("SELECT count(*) n FROM grant_claims").get(),

@@ -1,15 +1,15 @@
 # Independent grant workspace sources
 
-Local investigation/development, October 23, 2026. Nothing deployed.
+Local investigation/development, October 24, 2026. Nothing deployed.
 
-Current isolated C18 increment: reviewed saved-source issuance through the real
+The validated first C18 increment (bcc88e9) provides reviewed saved-source issuance through the real
 HTTP API, compiled root-mapped examctl/TLS and instructor browser. Issued grants
 remain PENDING_NATIVE. They fix the archive/checksum, allowance, webcam and finite
 window immediately; no claim, account reservation, clock or history changes.
 Confirmation retry reuses the same grant; inspect and revoke work after restart.
 Eligibility requires that student's completed protected attempt and exact checksum.
-Native retention/synchronization and saved-source Begin remain UNIMPLEMENTED;
-an explicit readiness refusal prevents fallback or use. This does not complete C18.
+That increment did not implement native retention/synchronization or saved-source
+Begin. Those are wired in the current candidate below, awaiting full qualification.
 
 Verification: all28 affected HTTP checks PASS151.23s; actual compiled CLI workflow
 PASS7.20s (/tmp/ssh-exam-saved-source-real-cli-final5.log); two rebuilt real-WASM
@@ -45,6 +45,140 @@ never account reservation or execution permission. Revocation/revision/consumed
 release needs matching positive evidence, including all linked native consumers
 and contradictory workspace/submission/consumption checks. No timeout releases
 a source. Existing staging/publication/one-use/metadata barriers are reused.
+
+## C18 individual workflow and state review (October24; tested locally)
+
+Current runtime entries: instructor saved-source preview/confirm -> root
+`examctl web grants source-sync GRANT --revision N` -> student preflight/staging/
+fresh Begin. `source-show` inspects the durable native pin without hashing work.
+The same signed outbound agent identity has explicit grants.source-plan and
+source-confirm authorization. No student connection, root control listener,
+general command poller or new daemon is required for native confirmation.
+
+031 keeps immutable per-revision native acknowledgement history. Root source-sync
+verifies the actual protected archive/manifest/UID outside the shared agent,
+writes a private pin and independent initialized/known markers, fsyncs file and
+directories, then acknowledges. Only an exact current acknowledgement promotes
+PENDING_NATIVE to AVAILABLE. Failed/lost replies preserve data and retry the same
+revision. A later release is a NEW confirmation intent. Pending grants count as
+unused dependencies in definition-retirement review; none reserves an account or
+starts a clock. Source settings/window/camera stay fixed, independently of current
+default edits. A changed authenticated Unix UID refuses before web/native claim.
+
+Native consumer UUIDs are registered before canonical preparation. Foreign
+history, orphan work and cross-grant UUID reuse refuse. A consumer link is data
+retention, never permission. Private saved staging binds the exact grant/source
+and retention hash in the existing receipt; full hash/metadata verification and
+both source/target limits still apply. Unified grants use their existing C15
+canonical one-use interval, rather than legacy recovery consumption marker files.
+Legacy authority/storage/consumption guards are unchanged. A native legacy grant
+still conflicts until reviewed migration; this candidate does not silently retire
+or convert it. There is no source fallback, refund or reopened historical attempt.
+
+Retirement has retained -> closing -> released phases and retains its exact
+positive fresh gateway retirement plan. Closing blocks new consumers and keeps
+the archive pinned; a started recorded consumer may still repair its original
+publication. Release requires every linked native consumer to be either freshly
+protected/verified COMPLETED or a positively cleaned no-start tombstone, with no
+contradictory clock/owner/work/submission/consumption evidence. Missing rows alone
+refuse. No timeout releases a pin. Partial publication/lost markers are inspectable;
+known-record loss refuses instead of recreating missing consumer history. Exact
+JSON shape rejects aliases/nulls/unknown fields; FIFO/link metadata refuses without
+blocking. Released records/history persist and stale retain plans cannot revive
+them. Account holds, submission retention and manual workspace cleanup are separate.
+
+Focused evidence: actual root-mapped CLI/TLS/full archive/lost-ack/retry/unused
+release PASS1.270s; actual native deletion/consumer/loss/malformed-metadata and
+signed saved staging/SIGKILL/restart/fresh Begin/protected collection PASS7.623s.
+Three real student SSH/HTTP cases PASS16.21s, including old-role and UID refusal;
+actual signed acknowledgement/definition-retirement HTTP PASS1.08s. Native byte
+verification and gateway acknowledgement are separate interface tests at this
+stage; their mocked boundaries are explicit. Earlier saved staging failures
+exposed a legacy-only consumption-storage probe and receipt key whitelist;
+both are corrected without removing C15 one-use or legacy fences. The crash
+oracle now requires the actual SIGKILL plus its existing private receipt.
+
+New actual root/PAM/SSH qualification uses the same retained-policy guest:
+real source-sync/unused deletion refusal -> new monitored additional saved grant ->
+archived Nano bytes despite a changed old live folder -> full90-minute Begin ->
+protected consumer/explicit pin release with original account hold intact. The
+first native source was frozen (agent SHA256
+66826c1ddc90cca014881307d65b95c3a9fe82bf30c2c6f37d2c5a317950de69).
+The first guest reached source-sync refusal before pinning: its synthetic plan
+copied legacy settings without the exam ID required in a new snapshot. The
+fixture now authors that ID; product validation is unchanged. Failure evidence
+is /tmp/ssh-exam-saved-source-root-qualification.log and private
+/var/tmp/ssh-exam-overlay-abyxrfn3; host/base preservation passed. A fresh bundle
+saved-source-artifacts.fx82ytez changed only that Python fixture and ran
+as /tmp/ssh-exam-saved-source-root-qualification2.log.42 Python tests, matched
+build/typecheck/vet and two rebuilt browser workflows (14.7s) pass. Browser
+pending-state acceptance now asserts the exact supported source-sync command.
+The private Go-overlay mutation omitting checkGrantSourceDependencies fails both
+actual public deletion routes at the explicit refusal oracle (0.601s), proving
+the regression detects removal of this fence; repository code was unchanged.
+The second guest passed all27 functional assertions, including the actual saved
+Begin/full allowance/collection/release, then its old final runner assertion
+incorrectly demanded that the new90-minute restriction be released. The fixture
+now positively verifies exactly that completed/protected saved consumer, source,
+pin, allowance and still-authoritative hold; all other guest work must be idle.
+It never clears a hold.43 Python safety tests cover refusal of active, unprotected,
+wrong-grant/UID/allowance, expired or unrelated holds; the host idle guard is
+unchanged. The third fresh guest exposed a separate intermittent retained-mode
+job-control defect before saved recovery: unordered stop/continue let Bash report
+Nano stopped. Evidence and its bounded parent-order fix belong in
+live-monitoring-runtime.md. No failed guest is counted as a full pass.
+Final exact root run5 PASSES all27 assertions, including twelve Nano cycles,
+all six linked-IO pairs, source-sync before availability, unused deletion refusal,
+archived bytes despite poisoned old live work, full90-minute Begin, protected
+consumer/explicit release and both still-authoritative holds. OVERLAY_QUALIFICATION_OK
+and FULL host binaries/config/authority/base preservation pass. Log
+/tmp/ssh-exam-saved-source-root-qualification5.log, session66821 completed0;
+private /var/tmp/ssh-exam-overlay-b4ffkxx2. Exact bundle
+saved-source-ordered-artifacts.x8di_ur3,62,304,810bytes, remote
+/var/tmp/ssh-exam-saved-source-upload.lotHuS/bundle; agent SHA256
+7e02717a891d5ab373ec0d2775266c248d27a7c72c135ca55135c72e6a5f3279,
+core test664dc34892a32e5db0cc3d30d2e71d81804da726bb58f564ac40b215ed376244.
+Capture in this guest remains explicitly synthetic; real gateway/JPEG/browser
+coverage is separate.22 affected rebuilt browser checks pass1.8m (session99975
+completed0). Full application103 files/574 checks PASS301.75s; full uncached native
+race/resource/compiler/default-size qualification PASS core509.239s/CLI29.781s.
+Logs: /tmp/ssh-exam-source-retention-application-full.log (22474 completed0),
+native-full.log (96334 completed0), browser-broad.log (99975 completed0).
+Final actual root-mapped CLI/TLS/catalog contention check PASS1.288s, including
+private owner/mode/inode, exact signed plan receipt, no pin/ack while the shared
+catalog is held and successful retry after release. A private Go overlay omitting
+native flock enforcement fails at that actual CLI refusal oracle and instead
+reaches retained/lost-ack publication (0.034s); neither a timeout nor missing
+fixture file is counted. Receipts: /tmp/ssh-exam-source-retention-catalog-cli-final.log
+and catalog-mutation.log. The final extension changes ONLY a CLI test, outside
+the root artifact manifest; runtime source/contracts stay frozen. Original exact
+qualified bundle remains the artifact receipt. No deployment or source-history
+migration is claimed. Bulk saved issuance still needs per-student source mappings.
+Before future availability, drain ALL source-blind writers and install matching
+roles. Back up031, source-retentions, independent source-retention markers and
+all existing interval/receipt/consumption history. Do not roll back to a writer
+which cannot enforce saved sources or retention. Production remains untouched.
+
+## Current model and preserved restrictions
+
+New ordinary enrollment/import saves one initial grant in023;024's reviewed
+legacy-unused issuance creates NEW authority without reconstructing history.
+025 permits explicit ordered additional grants while retaining the one-unbound-
+ordinary-attempt index for legacy rows, initial lineage and UID/one-use claims.
+027 expresses repeatable practice as finite-window saved grants.026 records the
+independent work source immutably;031 and native sidecars protect unused saved
+sources before availability. Shared CLI/web issuance/revision and student
+selection/preflight/Begin use those same snapshots, not later enrollment defaults.
+
+Canonical native Begin fixes each original interval and consumption intent.
+Account restrictions and protected collection are separate admission authorities:
+another grant never overrides an existing held interval. Interruption Continue
+resumes the SAME attempt; a new saved-source grant creates a separate attempt and
+workspace. Historical attempts/submissions and legacy native recovery files/
+consumption markers remain authoritative. Recovery-specific verified restoration
+is reused for general saved initializers; it does not copy live work, restore
+process memory, refund clocks or reopen completion. Native-only legacy authority
+migration/retirement is the remaining separate workflow, never implicit conversion.
 
 ## Current bounded milestone
 

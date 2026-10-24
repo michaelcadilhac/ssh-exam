@@ -2142,9 +2142,20 @@ child crash/archive acceptance and39 final rebuilt browser checks pass locally.
 Saved-source review/issuance now has matching local web and examctl workflows.
 It saves the exact protected source/checksum and settings as PENDING_NATIVE;
 inspect, retry and revoke create no account reservation or running interval.
-Actual HTTP/compiled CLI/browser checks pass. Native durable retention/sync and
-saved-source Begin remain unimplemented, so these grants cannot become AVAILABLE.
-Unused web references still need a native deletion fence before use.
+Actual HTTP/compiled CLI/browser checks pass. October24's integrated C18 candidate
+adds signed root `examctl web grants source-sync/source-show`: verify the protected
+archive outside the shared agent, fsync private source pins/known markers, then
+acknowledge the exact revision into031 before availability. Pending grants reserve
+no account or clock. Native preparations register consumers before allocation;
+private saved staging and fresh Begin bind the exact source/pin and chosen full
+allowance. Explicit retirement keeps closing pins until all consumers have
+verified protected completion or positive no-start cleanup; absence/expiry never
+releases a dependency. CLI/web settings, UID, stale-revision and deletion fences
+agree. Full574 application tests, native race/resource/compiler/default-size
+qualification,22 rebuilt browser checks and27 guarded-root assertions pass locally.
+Per-student bulk saved-source selection and native legacy authority migration
+remain separate open workflows; no retained-mode guard is enabled.
+Older source-blind native writers cannot safely participate in this workflow.
 See grant-workspace-sources.md. No deployment or source-history mutation occurs.
 
 October23 C14 local implementation unifies sandbox practice through immutable PRACTICE

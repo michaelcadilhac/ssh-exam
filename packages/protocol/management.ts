@@ -33,6 +33,8 @@ export const managementOperations = [
   "grants.issue-confirm",
   "grants.issue-cancel",
   "grants.additional-preview",
+  "grants.source-plan",
+  "grants.source-confirm",
   "alerts.list",
   "alerts.show",
   "alerts.test",

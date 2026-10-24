@@ -366,6 +366,10 @@ test("saved-work review stays pending without native confirmation and can be can
     "Waiting for durable class-server source retention confirmation",
   );
   await expect(management).toContainText("reserves no account or exam time");
+  await expect(management).toContainText(
+    `sudo examctl web grants source-sync ${saved.id} --revision ${saved.revision}`,
+  );
+  await expect(management).toContainText("inspect source-show and retry");
   await management
     .getByLabel("Reason", { exact: true })
     .fill("Cancel unconfirmed saved-source grant with history intact");

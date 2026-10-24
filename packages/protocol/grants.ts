@@ -51,6 +51,28 @@ export const grantShow = z
     before: z.number().int().positive().optional(),
   })
   .strict();
+export const grantSourceRequest = z
+  .object({
+    id: z.string().uuid(),
+    revision: z.number().int().positive().safe(),
+  })
+  .strict();
+export const grantSourceConfirmation = grantSourceRequest
+  .extend({
+    grant_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    state: z.enum(["RETAINED", "RELEASED"]),
+    source: z
+      .object({
+        attempt: z.string().uuid(),
+        checksum: z.string().regex(/^[a-f0-9]{64}$/),
+        metadata_hash: z.string().regex(/^[a-f0-9]{64}$/),
+        uid: z.number().int().min(1000).safe(),
+      })
+      .strict(),
+    retention_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    retained_at: z.number().int().positive().safe(),
+  })
+  .strict();
 export const grantRevision = z
   .object({
     revision: z.number().int().positive(),
