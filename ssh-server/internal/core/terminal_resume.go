@@ -290,6 +290,10 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 		}
 		stream.inputScope.Store(&supervisedInputScope{epoch: epoch})
 	}
+	ordered, err := orderedTerminalHoldGroups(h.groups)
+	if err != nil {
+		return monitoringAuthorityView{}, nil, err
+	}
 	for _, scope := range h.scopes {
 		if !next.authority.check().ExecutionAuthorized {
 			return monitoringAuthorityView{}, nil, errMonitoringAuthority
@@ -298,7 +302,8 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 			return monitoringAuthorityView{}, nil, err
 		}
 	}
-	for _, g := range h.groups {
+	for index := len(ordered) - 1; index >= 0; index-- {
+		g := ordered[index]
 		if !g.signalled || g.originalStopped {
 			continue
 		}

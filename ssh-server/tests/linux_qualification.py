@@ -442,19 +442,20 @@ if a.framed_owner or a.retained_policy:
             finally:
                 signal.pidfd_send_signal(intruder_handle,signal.SIGKILL);intruder.wait(timeout=3);os.close(intruder_handle)
             try:
-                root('examctl','pause',id,'--reason','Private editor and background writer retention acceptance')
-                paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
-                stable=(work/'retained-writer').stat().st_size;time.sleep(.2)
-                assert (work/'retained-writer').stat().st_size==stable,'background writer advanced during verified hold'
-                assert not (work/'retained-editor.txt').exists()
-                signal.pidfd_send_signal(stopped_handle,0)
-                assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
-                for p in live:connection.input(p,'STALE-EDITOR-KEYS\n')
-                continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
-                connection.input(fresh,'\x03');read_until(fresh,b'char 24/25',timeout=3)
-                wait_for(lambda:(work/'retained-writer').stat().st_size>stable,timeout=2,interval=.02)
-                signal.pidfd_send_signal(stopped_handle,0)
-                assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
+                for cycle in range(12):
+                    root('examctl','pause',id,'--reason','Private editor and background writer retention acceptance')
+                    paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
+                    stable=(work/'retained-writer').stat().st_size;time.sleep(.2)
+                    assert (work/'retained-writer').stat().st_size==stable,'background writer advanced during verified hold'
+                    assert not (work/'retained-editor.txt').exists()
+                    signal.pidfd_send_signal(stopped_handle,0)
+                    assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
+                    for p in live:connection.input(p,'STALE-EDITOR-KEYS\n')
+                    continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
+                    connection.input(fresh,'\x03');read_until(fresh,b'char 24/25',timeout=3)
+                    wait_for(lambda:(work/'retained-writer').stat().st_size>stable,timeout=2,interval=.02)
+                    signal.pidfd_send_signal(stopped_handle,0)
+                    assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
                 connection.input(fresh,'\x0f');read_until(fresh,b'File Name to Write',timeout=3)
                 connection.input(fresh,'\r');read_until(fresh,b'Wrote 1 line',timeout=3)
                 assert (work/'retained-editor.txt').read_text()==editor_value+'\n','editor buffer changed or old keys leaked'
@@ -463,7 +464,7 @@ if a.framed_owner or a.retained_policy:
                 read_until(fresh,('FRAMED-editor-done:'+values[0]+':END').encode(),timeout=3)
                 connection.input(panes[1],"printf 'FRAMED-%s:%s:END\\n' editor-peer \"$buffer\"\n")
                 read_until(panes[1],('FRAMED-editor-peer:'+values[1]+':END').encode(),timeout=3)
-                ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry/Continue; writer stops/resumes and originally stopped job stays stopped')
+                ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry and twelve Continue cycles; writer stops/resumes and originally stopped job stays stopped')
             finally:os.close(stopped_handle)
 
             for kind,mode,dispatch in (('pipe','basic','normal'),('pipe','basic','forced'),('pipe','sqpoll','normal'),('pipe','sqpoll','forced'),('timer','basic','normal'),('timer','sqpoll','normal')):

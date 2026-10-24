@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,6 +52,7 @@ func (s *terminalSupervisor) observeAuthorityExpiry() {
 type terminalHoldGroup struct {
 	process         *uidProcess
 	uid             int
+	parent          int
 	originalStopped bool
 	signalled       bool
 }
@@ -63,6 +65,64 @@ type terminalHold struct {
 	scopes map[string]*os.File
 	input  map[string]*paneInputDrain
 	resize map[string]*paneInputDrain
+}
+
+// Both runtime callers use the pinned current process hierarchy: stop parents
+// before their children, then continue children before their stopped parents.
+// Otherwise an interactive shell can consume a temporary job-stop notification
+// and take the foreground terminal away from an editor during the barrier.
+func orderedTerminalHoldGroups(groups map[int]*terminalHoldGroup) ([]*terminalHoldGroup, error) {
+	ids := make([]int, 0, len(groups))
+	for pid, g := range groups {
+		data, err := g.process.read("status", 16384)
+		identity, _, parseErr := retainedStatus(data)
+		if err != nil || parseErr != nil || identity.TID != pid || identity.TGID != pid {
+			return nil, errTerminalHold
+		}
+		parent, seen := 0, false
+		for _, line := range strings.Split(string(data), "\n") {
+			name, value, _ := strings.Cut(line, ":")
+			if name != "PPid" {
+				continue
+			}
+			value = strings.TrimSpace(value)
+			n, err := strconv.ParseInt(value, 10, 32)
+			if seen || err != nil || n < 0 || strconv.FormatInt(n, 10) != value || int(n) == pid {
+				return nil, errTerminalHold
+			}
+			parent, seen = int(n), true
+		}
+		if !seen {
+			return nil, errTerminalHold
+		}
+		g.parent = parent
+		ids = append(ids, pid)
+	}
+	sort.Ints(ids)
+	ordered := make([]*terminalHoldGroup, 0, len(groups))
+	visiting, visited := map[int]bool{}, map[int]bool{}
+	var visit func(int) error
+	visit = func(pid int) error {
+		if visiting[pid] {
+			return errTerminalHold
+		}
+		if visited[pid] || groups[pid] == nil {
+			return nil
+		}
+		visiting[pid] = true
+		if err := visit(groups[pid].parent); err != nil {
+			return err
+		}
+		visiting[pid], visited[pid] = false, true
+		ordered = append(ordered, groups[pid])
+		return nil
+	}
+	for _, pid := range ids {
+		if err := visit(pid); err != nil {
+			return nil, err
+		}
+	}
+	return ordered, nil
 }
 
 type terminalHoldView struct {
@@ -345,6 +405,7 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 			h.groups[p.pid] = &terminalHoldGroup{process: p, uid: owner.UID, originalStopped: state == 'T' || state == 't'}
 		}
 		allStopped := true
+		stoppedGroups := map[int]bool{}
 		for unit, scope := range h.scopes {
 			tree, err := observeRetainedScopeTree(scope)
 			if err != nil {
@@ -377,19 +438,33 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 					if err != nil {
 						return fail(err)
 					}
+					if _, seen := stoppedGroups[tgid]; !seen {
+						stoppedGroups[tgid] = true
+					}
 					for _, state := range observation.States {
 						if state != 'T' && state != 't' && state != 'Z' {
 							allStopped = false
+							stoppedGroups[tgid] = false
 						}
-					}
-					if !g.originalStopped && !g.signalled {
-						if err := g.process.control(func(fd int) error { return unix.PidfdSendSignal(fd, unix.SIGSTOP, nil, 0) }); err != nil {
-							return fail(err)
-						}
-						g.signalled, allStopped = true, false
 					}
 				}
 			}
+		}
+		ordered, err := orderedTerminalHoldGroups(h.groups)
+		if err != nil {
+			return fail(err)
+		}
+		for _, g := range ordered {
+			// A sent signal alone is insufficient: the next complete scope scan
+			// must positively observe every parent thread stopped before a child
+			// receives SIGSTOP. That also includes newly-created threads/children.
+			if g.originalStopped || g.signalled || (h.groups[g.parent] != nil && !stoppedGroups[g.parent]) {
+				continue
+			}
+			if err := g.process.control(func(fd int) error { return unix.PidfdSendSignal(fd, unix.SIGSTOP, nil, 0) }); err != nil {
+				return fail(err)
+			}
+			g.signalled, allStopped = true, false
 		}
 		if allStopped {
 			break
