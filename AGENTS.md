@@ -113,6 +113,11 @@
   failure and explain the correction. Never infer new-artifact qualification
   from an older test bundle.
 - Verify that a regression's setup actually reaches the intended refusal/state.
+  Resolve focused selectors from declared test names; a no-tests receipt is no
+  verification. Before extending a long interface fixture, match the real
+  producer's serialized schema and define its intended final state. A test of a
+  preserved long-lived hold must verify that exact hold, not demand early release
+  or weaken the host idle guard to satisfy an unrelated final assertion.
   If a mutation control passes, strengthen its oracle or record the limitation;
   never count it as proof. Prefer direct observable effects over assumptions about
   unavailable workers, incidental timestamps or coalesced filesystem events.

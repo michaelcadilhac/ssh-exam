@@ -1,109 +1,71 @@
 # Current local TODO checkpoint
 
-Updated October23,2026. Local development/testing/commits only. **No push,
-deploy, consolidation or production/student mutation.** Guarded disposable
-csc-sys qualification only; busy/uncertain means NO TEST. Stop on missing commands;
-none missing. C1–C18 settled; synthetic capacity target16 students/64 panes.
-No unanswered design/capacity question. Clock-only fact transfer approved October24 UTC. Main TODO11/38 is not effort percentage.
+Updated October24,2026 (America/Chicago). Local development/tests/commits only.
+NO push/deployment, consolidation, production services/config/student changes.
+csc-sys only guarded disposable qualification; busy/uncertain means NO TEST.
+Instructor explicitly authorized resuming without optional go tool buildid. Do
+not use/install it. Stop for any other missing executable. All design choices
+C1–C18/clock-fact transfer are settled; no unanswered question. Capacity16/64.
+Checklist15/38 represents overlapping requirements, not an effort percentage.
 
-## Current outcome and validated increment
+## Validated revision and delivered local workflows
 
-Policy pause → verified retained hold → approved Continue, same page/SSH/shell/
-editor and original deadlines. Runtime7ece84d joins native/HTTP/IPC/browser/WASM;
-cf7bb2c qualifies a real delayed manager;7a6969d fences final exec against live
-revocation around persistence. Current guarded root increment fixes actual root
-Bubblewrap guardians: pin/verify installed inode/root credentials/registered scope,
-stop them too, retain complete student-UID checks. Never exempt unknown writers.
+Main50067c3: durable instructor clock revision preserves identical fresh facts,
+all input gates, supervisor/panes and original restrictions. Worktree branch
+source-grant-retention imports it as1063910 and includes process-doc01ee7e4 and
+1a5c968: parent-first positively observed stops/child-first continuation fix the
+actual Bash/Nano job-control race; the real SSH regression now repeats12 cycles.
+This checkpoint accompanies the validated C18 individual saved-source integration:
+reviewed web/CLI issuance -> PENDING_NATIVE -> root source-sync/show -> durable
+archive pins/deletion fence -> private exact-source staging/fresh full allowance
+at Begin -> protected consumer/explicit pin release. No account/time reservation
+from pending grants; no deadline/UID/history/legacy-consumption weakening.
 
-The SAME actual retained-policy root profile now PASSES11 assertions: actual v3
-Begin, two real framed SSH panes, CLI pause, every observed task stopped and each
-populated scope frozen, absent approval refusal, finite fresh approval/Continue,
-both shell buffers/SSH retained, old input refused, protected collection and
-original-deadline SSH/SFTP restoration. Host binaries/config/authority and guest
-base preservation PASS. Root capture is explicitly synthetic, not a real camera.
+Full574 app/103 files PASS301.75s; full uncached native race/resource/compiler/
+default-size PASS core509.239s/CLI29.781s;22 rebuilt real-WASM browser checks
+PASS1.8m;43 Python, matching builds/types/vet PASS. Final root27 assertions PASS,
+including12 Nano cycles, six linked-IO pairs, full90-minute saved restore/Begin,
+collection and preserved access/policy HELD. FULL host/base preservation PASS.
+All runners ended. CLI catalog contention/retry PASS1.288s; omitting native flock
+fails its exact signed-CLI oracle. Removing pin fence fails both deletion entries.
 
-Installed guard remains OFF, with no environment/config enable switch. No broad
-checkbox closes on this first boundary. Current outcome gaps are in
-[todo-delivery-audit.md](todo-delivery-audit.md); exact receipts, prior REDs,
-mutation and fixture limitations belong in [live-monitoring-runtime.md](live-monitoring-runtime.md).
+Exact qualified bundle saved-source-ordered-artifacts.x8di_ur3,62,304,810bytes;
+agent7e02717a/core664dc348, remote upload.lotHuS/bundle; private root evidence
+/var/tmp/ssh-exam-overlay-b4ffkxx2. Full hashes/receipts and earlier failed runs
+are in grant-workspace-sources.md/live-monitoring-runtime.md. Synthetic root
+capture is explicit; combined real capture/root16/64 remains open. Use the frozen
+qualified bundle for receipts: subsequent commits alter Go VCS metadata, so a
+fresh binary hash alone is not evidence of changed runtime code or qualification.
+Retained admission stays OFF. No deployment/broad liveness completion is claimed.
 
-## Verification and runners
+## Current bounded milestone / exact next action
 
-Validated commit ec754c6. Actual lifecycle/default-closed/guardian refusal races
-PASS60.384s; all40 Python safety/callback checks PASS; fresh native release builds
-and vet PASS. Exact new root bundle62,162,325bytes:
-var/collection-tests/retained-guardian-artifacts.e9mtnxay; root evidence
-/var/tmp/ssh-exam-overlay-zu02weld; local receipt
-/tmp/ssh-exam-retained-guardian-root-qualification.log (session42244 completed0).
-Older full native PASS491.788s/CLI31.280s predates guardian fix; it does not qualify
-changed bytes. Unchanged7ece84d contracts retain all568 application scenarios,
-27 affected real browser-SSH cases, full client races and matched builds/typecheck.
-Do not rerun unchanged app/browser suites for private native changes.
+Finish committing the validated C18 increment in
+var/worktrees/source-grant-retention; preserve untracked node_modules symlink.
+Then deliver reviewed BULK saved-source issuance using explicit per-student
+archive/checksum mappings in existing additional-preview/confirm, with matching
+CLI help/errors and web fields. Current shared work UUID correctly refuses other
+owners; never infer a latest archive or weaken that check. Acceptance: two students
+select different protected sources, same chosen90-minute allowance/finite window,
+preserved effective webcam; review/lost-reply/restart/revoke and separate native
+confirmation/Begin remain safe. Require actual HTTP + compiled CLI/TLS + browser
+review/selection and existing source/UID/deletion/time guards. Review all new
+intermediate states, collect focused results before broad checks, document why
+unchanged native evidence applies. No new native authority format is planned.
 
-## Exact next milestone
-
-All root runners ended. Script-only six-pair linked-IO baseline/held matrix PASSES
-all19 assertions, protected collection, original-deadline SSH/SFTP and full host/
-base preservation. Current native hashes remain exactly ec754c6's qualified bundle.
-All40 Python checks pass. Receipt
-/tmp/ssh-exam-retained-linked-io-matrix-final-root-qualification.log (32865 completed0),
-private /var/tmp/ssh-exam-overlay-inypdjev; local artifact
-var/collection-tests/retained-linked-final-artifacts.v5o875xs. Prior fixture global
-baseline collision and its failed full run are retained in the feature document;
-only matrix io_baseline changed, not legacy account checks or product enforcement.
-
-Current clock milestone (uncommitted): the original signed clock-live RED is
-fixed through the real supervisor. Instructor approved carrying identical live
-facts across an authorized clock revision; original age/cutoff/coverage/sequence
-remain unchanged. Native check is nonpermitting; existing ClockReset saves first,
-then all gates/owner/cutoff swap. Old proofs/timers cannot change replacement
-mapping; same-intent retry is exact. Held clocks remain held, post-Continue clock
-changes work, and an actual state.json.tmp directory fault refuses before any
-live interval extension. Focused native/legacy races PASS9.015s, including actual
-clock-live6.59s (/tmp/ssh-exam-retained-clock-final-focus.log). Gateway transfer
-has24 focused passing ledger/real admin/JPEG/signed callback/evidence HTTP checks
-(/tmp/ssh-exam-retained-clock-http-focus2.log); native health and initial started
-lineage are explicit fixture observations. Next: mutation oracle, actual guarded
-root clock in SAME retained-policy profile, then coherent broader qualification.
-Mutation omitting gate deadline rebind FAILS at actual shell input, as required.
-Final focused races PASS9.106s;41 Python safety/fixture tests PASS; native builds/
-vet, app build and typecheck pass. Code-only bundle retained-clock-artifacts.h2o0mf3w
-has fresh agent f071a5e6d7c8fd0c821e0e42f647a00a353cbba049cefda84e1614259f691cf7
-and core test c689d2012d274329df3dc0da2e0e286ebe9f3a97d75c5cfe23f16622d87e821c.
-Root17577 completed0: all20 assertions including actual two-pane clock/retry,
-CLI hold/Continue, Nano, six linked-IO pairs, protected collection and original-
-deadline SSH/SFTP. FULL host/base preservation PASS, private
-/var/tmp/ssh-exam-overlay-h736xpp9.18 affected rebuilt browser checks PASS1.6m.
-All runners ended: full application102 files/570 tests PASS304.45s; new full
-native uncached race/resource/compiler/default-size qualification PASS core494.586s,
-CLI36.227s. Exact logs: /tmp/ssh-exam-retained-clock-{application,native-full}.log.
-Build/vet/typecheck,41 Python checks,18 affected browser checks and exact fresh
-root20 assertions all pass. Ready for a coherent local clock commit. Next native
-critical checks are recording/death/last-child/partial-thaw/loaded-role and combined
-real capture/root16/64; independent approved saved-source integration continues. Installed guard OFF.
-
-Independent C18 branch source-grant-retention at var/worktrees/source-grant-retention
-now has validated local commit bcc88e9: actual HTTP/compiled root CLI/TLS/restart
-and two rebuilt browser pending-source workflows pass, final CLI races1.367s,
-typecheck/build pass. Grants stay PENDING_NATIVE; no claim/account/clock/history
-change. Native retention/sync and saved-source Begin remain unimplemented. Exact
-receipts/state review are in that branch's grant-workspace-sources.md. Preserve
-its untracked node_modules dependency symlink; do not stage it. After the clock
-workflow, continue durable pins/ack/staging/Begin there. Nothing is deployed.
-
-Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
-retirement reconciliation, manual secured-workspace cleanup, configuration/full
-CLI journey. Proposed rollout/migration/rollback and temporary three-agent
-consolidation remain in todo-rollout-plan.md ONLY; execute none.
+After bulk: critical recording/death/last-child/partial-thaw/loaded-role and
+combined capture/root16/64 qualification; reviewed native legacy authority
+migration/retirement; manual secured-workspace cleanup; configuration/full CLI
+journey. Use todo-delivery-audit.md to avoid reimplementing completed work.
+Rollout/migration/rollback and temporary three-agent consolidation remain ONLY
+the proposal in todo-rollout-plan.md; execute NONE.
 
 ## Preserved workspace data
 
-Never stage/restore the original dirty
-`docs/screenshots/preflight-fifteen-minute-timeout.png`:31754bytes SHA256
-144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb;
-backup /tmp/ssh-exam-preserved-preflight-screenshot.png. Nine other browser-made
-documentation screenshots remain dirty/unstaged: automatic review rejected their
-restoration because ownership was not established in its evidence. Do not bypass.
-All preserved with hashes in /tmp/ssh-exam-challenged-screenshots-4zc1qzm_.
-Future browser writers use per-test output. Nothing in these images belongs in
-an implementation commit.
+Main's10 dirty documentation PNGs are unchanged (all backup hashes verified).
+Original preflight-fifteen-minute-timeout.png:31754bytes SHA256
+144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb,
+backup /tmp/ssh-exam-preserved-preflight-screenshot.png. Nine backups/hashes:
+/tmp/ssh-exam-challenged-screenshots-4zc1qzm_. Automatic review previously refused
+restoration for uncertain ownership; preserve them, never stage or bypass.
+Recovery stash40f1fb64187db13783ea23c0125d66824d65b301 remains; newer WIP is in files.

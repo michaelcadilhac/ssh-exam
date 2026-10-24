@@ -1,5 +1,6 @@
 """Runner safety contracts; real guest results are recorded separately."""
 import importlib.util
+import copy
 import json
 from pathlib import Path
 import tempfile
@@ -71,6 +72,38 @@ class OverlayTests(unittest.TestCase):
         for path in ('/usr/bin/control.sock', '/etc/control.sock', '/var/control.sock'):
             with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, 'unexpected guest service socket'):
                 guest.normal_filesystem_settings(original, [path])
+
+    def test_final_guest_hold_must_be_the_exact_protected_saved_work_consumer(self):
+        plan = dict(action='release', status='CONSUMED', exam='synthetic', username='examq', uid=20001,
+                    source=dict(attempt='source', checksum='source-checksum'),
+                    grant={'id': 'saved-grant'}, settings={'duration': 5400})
+        source = dict(id='source', state='COMPLETED', protected=True, access_state='RELEASED',
+                      checksum='source-checksum', uid=20001, start=1000)
+        consumer = dict(id='consumer', state='COMPLETED', protected=True, access_state='HELD', policy_state='HELD',
+                        checksum='consumer-checksum', exam='synthetic', username='examq', uid=20001,
+                        grant=plan['grant'], settings=plan['settings'], start=2000, deadline=5402000,
+                        original_deadline=5402000,
+                        workspace=dict(source=dict(kind='saved', **plan['source']), recovery_hash='retention'))
+        state = {'attempts': {'source': source, 'consumer': consumer}}
+        pin = dict(phase='released', consumers=['consumer'], retention_hash='retention')
+        guest.verify_finished_guest(state, 'retained-policy', plan, pin, 3000)
+        for change in ({'state': 'ACTIVE'}, {'protected': False}, {'checksum': ''},
+                       {'grant': {'id': 'other'}}, {'uid': 20002}, {'deadline': 5402001},
+                       {'policy_state': 'RESTORE_FAILED'}, {'policy_state': 'NORMAL'},
+                       {'policy_error': 'unverified'}, {'access_error': 'unverified'},
+                       {'settings': {'duration': 60}}):
+            bad = copy.deepcopy(state); bad['attempts']['consumer'].update(change)
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                guest.verify_finished_guest(bad, 'retained-policy', plan, pin, 3000)
+        with self.assertRaises(AssertionError):
+            guest.verify_finished_guest(state, 'enforcement', plan, pin, 3000)
+        with self.assertRaises(AssertionError):
+            guest.verify_finished_guest(state, 'retained-policy', plan, {**pin, 'phase': 'retained'}, 3000)
+        with self.assertRaises(AssertionError):
+            guest.verify_finished_guest(state, 'retained-policy', plan, pin, 5402000)
+        bad = copy.deepcopy(state); bad['attempts']['source']['access_state'] = 'HELD'
+        with self.assertRaises(AssertionError):
+            guest.verify_finished_guest(bad, 'retained-policy', plan, pin, 3000)
 
     def test_preservation_tracks_authority_not_background_delivery_timestamps(self):
         attempt = {'state': 'COMPLETED', 'deadline': 1234, 'original_deadline': 5678,

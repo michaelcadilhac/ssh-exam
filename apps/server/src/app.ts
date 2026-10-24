@@ -1154,6 +1154,13 @@ export async function createApp(
       throw Error(
         "Class server lacks independent grant workspace enforcement; verify matching native roles before preflight. No account, grant or clock consumed.",
       );
+    if (
+      initialGrant?.work.kind === "saved" &&
+      !h.capabilities?.includes("durable-saved-source-grants-v1")
+    )
+      throw Error(
+        "Class server lacks durable saved-source retention/staging enforcement; verify matching loaded roles and run examctl web grants source-sync before preflight. No account, claim or clock consumed.",
+      );
     if (initialGrant && !h.capabilities?.includes("unified-initial-grants-v1"))
       throw Error(
         "Class server requires matching grant-aware preparation and fresh outbound Begin verification; no grant or clock consumed. Inspect examctl web grants show GRANT and update matching roles.",

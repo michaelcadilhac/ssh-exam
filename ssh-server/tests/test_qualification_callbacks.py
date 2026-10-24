@@ -12,12 +12,32 @@ source = Path(__file__).with_name('qualification_callbacks.py')
 tree = ast.parse(source.read_text())
 namespace = {'hashlib': hashlib, 'json': json}
 exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n, ast.FunctionDef)
-                             and n.name == 'fixture_reply'], type_ignores=[]),
+                             and n.name in ('fixture_reply','source_fixture_reply')], type_ignores=[]),
              str(source), 'exec'), namespace)
 reply = namespace['fixture_reply']
+source_reply = namespace['source_fixture_reply']
 
 
 class CallbackTests(unittest.TestCase):
+    def test_source_management_requires_exact_plan_and_already_published_pin(self):
+        plan=dict(version=1,agent='private-agent',grant=dict(id='one-grant',revision=1,hash='a'*64),
+                  exam='retake',username='examq',uid=20001,settings={'duration':5400},
+                  source=dict(attempt='source',checksum='b'*64),action='retain',current_revision=1,status='PENDING_NATIVE')
+        expected=dict(audience='https://127.0.0.1:9444',plan=plan)
+        request=dict(version=1,purpose='ssh-exam-management/v1',audience=expected['audience'],agent=plan['agent'],actor='agent-root',
+                     request='one-request',nonce='e'*64,issued=1000000,expires=1030000,operation='grants.source-plan',body=dict(id='one-grant',revision=1))
+        self.assertEqual(source_reply(request,expected,None,1000000),plan)
+        record=dict(plan=copy.deepcopy(plan),phase='retained',metadata_hash='c'*64,retention_hash='d'*64,retained_at=1000000)
+        request['operation']='grants.source-confirm'
+        request['body']=dict(id='one-grant',revision=1,grant_hash='a'*64,state='RETAINED',source=dict(**plan['source'],uid=20001,metadata_hash='c'*64),retention_hash='d'*64,retained_at=1000000)
+        self.assertEqual(source_reply(request,expected,record,1000000)['status'],'AVAILABLE')
+        for change in ({'phase':'closing'},{'metadata_hash':'f'*64},{'retention_hash':'f'*64}):
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                source_reply(request,expected,{**record,**change},1000000)
+        for change in ({'actor':'browser'},{'audience':'https://other.invalid'},{'operation':'arbitrary-native-command'}):
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                source_reply({**request,**change},expected,record,1000000)
+
     def setUp(self):
         self.owner = dict(attempt='synthetic-attempt', exam='qualification', username='examq',
                           uid=20001, transport_hash='a'*64, boot='synthetic-boot',

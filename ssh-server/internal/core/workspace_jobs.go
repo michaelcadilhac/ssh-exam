@@ -39,6 +39,13 @@ func (e *Engine) workspaceSource(a *Attempt) (WorkspaceSource, string, error) {
 			return WorkspaceSource{}, "", errors.New("invalid grant workspace source; preserve issued authority, no fallback permitted")
 		}
 		w := a.Grant.Work
+		if w.Kind == "saved" {
+			pin, err := e.grantSourceForAttempt(a)
+			if err != nil {
+				return WorkspaceSource{}, "", err
+			}
+			return WorkspaceSource{Kind: "saved", Attempt: w.Attempt, Checksum: w.Checksum}, pin.RetentionHash, nil
+		}
 		return WorkspaceSource{Kind: w.Kind, Template: w.Name, Version: w.Hash}, "", nil
 	}
 	if !identifier.MatchString(a.Settings.Template) {
@@ -140,11 +147,11 @@ func decodeWorkspaceReceipt(b []byte) (*WorkspaceReceipt, error) {
 			if !validGrantWork(r.Grant.Work) || json.Unmarshal(rawWork, &work) != nil || work == nil {
 				return nil, errWorkspaceReceiptMetadata
 			}
-			if r.Grant.Work.Kind == "empty" && len(work) != 1 || r.Grant.Work.Kind == "template" && len(work) != 3 {
+			if r.Grant.Work.Kind == "empty" && len(work) != 1 || (r.Grant.Work.Kind == "template" || r.Grant.Work.Kind == "saved") && len(work) != 3 {
 				return nil, errWorkspaceReceiptMetadata
 			}
 			for key := range work {
-				if key != "kind" && key != "name" && key != "hash" {
+				if key != "kind" && !((r.Grant.Work.Kind == "template" && (key == "name" || key == "hash")) || (r.Grant.Work.Kind == "saved" && (key == "attempt" || key == "checksum"))) {
 					return nil, errWorkspaceReceiptMetadata
 				}
 			}
@@ -231,7 +238,7 @@ func (e *Engine) stageWorkspace(snapshot *Attempt) error {
 	if err != nil {
 		return err
 	}
-	if source.Kind == "saved" {
+	if source.Kind == "saved" && snapshot.Grant == nil {
 		if err := e.probeRecoveryConsumptionStorage(snapshot); err != nil {
 			return fmt.Errorf("saved-work consumption storage unavailable before Begin; no interval consumed; verify writable supported storage and retry examctl workspace-prepare %s without changing grants/markers: %w", snapshot.ID, err)
 		}
@@ -566,7 +573,7 @@ func (e *Engine) publishWorkspace(a *Attempt) error {
 	if err := e.checkWorkspaceReceipt(a, r); err != nil {
 		return err
 	}
-	if r.Source.Kind == "saved" {
+	if r.Source.Kind == "saved" && a.Grant == nil {
 		if err := e.commitRecoveryConsumption(a); err != nil {
 			return err
 		}

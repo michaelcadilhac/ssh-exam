@@ -15,13 +15,15 @@ import (
 )
 
 type GrantWork struct {
-	Kind string `json:"kind"`
-	Name string `json:"name,omitempty"`
-	Hash string `json:"hash,omitempty"`
+	Kind     string `json:"kind"`
+	Name     string `json:"name,omitempty"`
+	Hash     string `json:"hash,omitempty"`
+	Attempt  string `json:"attempt,omitempty"`
+	Checksum string `json:"checksum,omitempty"`
 }
 
 func validGrantWork(w *GrantWork) bool {
-	return w != nil && ((w.Kind == "empty" && w.Name == "" && w.Hash == "") || (w.Kind == "template" && identifier.MatchString(w.Name) && templateDigest.MatchString(w.Hash)))
+	return w != nil && ((w.Kind == "empty" && w.Name == "" && w.Hash == "" && w.Attempt == "" && w.Checksum == "") || (w.Kind == "template" && identifier.MatchString(w.Name) && templateDigest.MatchString(w.Hash) && w.Attempt == "" && w.Checksum == "") || (w.Kind == "saved" && w.Name == "" && w.Hash == "" && attemptID.MatchString(w.Attempt) && templateDigest.MatchString(w.Checksum)))
 }
 
 type GrantBinding struct {

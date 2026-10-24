@@ -236,6 +236,9 @@ func (e *Engine) RecoveryGrants(exam string) ([]RecoveryGrantView, error) {
 // Isolated verification before source deletion. The root coordinator owns the
 // source-attempt and catalog locks across this check and the final short commit.
 func (e *Engine) checkSubmissionDependencies(source *Attempt) error {
+	if err := e.checkGrantSourceDependencies(source.ID); err != nil {
+		return err
+	}
 	for _, a := range e.state.Attempts {
 		if a.Workspace != nil && a.Workspace.Source.Kind == "saved" && a.Workspace.Source.Attempt == source.ID && a.State != "COMPLETED" && a.State != "CANCELLED_BEFORE_START" {
 			return fmt.Errorf("submission is required by unfinished saved-work attempt %s (%s); inspect examctl info %s and examctl recovery-grants; preserve source and all intervals", a.ID, a.State, a.ID)

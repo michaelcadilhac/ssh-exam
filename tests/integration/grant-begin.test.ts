@@ -20,6 +20,9 @@ it.each([
   "reviewed-old-native",
   "additional-after-completed",
   "additional-empty",
+  "additional-saved",
+  "additional-saved-old-native",
+  "additional-saved-uid-change",
   "additional-source-old-native",
   "additional-source-tamper",
   "additional-wrong-anchor",
@@ -66,7 +69,8 @@ it.each([
       orderedSupport = scenario !== "old-ordered-role",
       sourceSupport = scenario !== "additional-source-old-native";
     let failed = false,
-      verifiedUID = 10001;
+      verifiedUID = 10001,
+      savedSupport = scenario !== "additional-saved-old-native";
     h.control.command = async (op, b) => {
       operations.push(op);
       if (op === "register") return { uid: verifiedUID };
@@ -83,6 +87,7 @@ it.each([
             "verified-preflight-cancellation-v1",
             ...(orderedSupport ? ["ordered-template-grants-v1"] : []),
             ...(sourceSupport ? ["independent-workspace-grants-v1"] : []),
+            ...(savedSupport ? ["durable-saved-source-grants-v1"] : []),
             ...(reviewedSupport ? ["reviewed-initial-grants-v1"] : []),
           ],
         };
@@ -136,11 +141,20 @@ it.each([
           source:
             a.grant.work?.kind === "empty"
               ? { kind: "empty" }
-              : {
-                  kind: "template",
-                  template: a.settings.template,
-                  version: a.settings.template_version,
-                },
+              : a.grant.work?.kind === "saved"
+                ? {
+                    kind: "saved",
+                    attempt: a.grant.work.attempt,
+                    checksum: a.grant.work.checksum,
+                  }
+                : {
+                    kind: "template",
+                    template: a.settings.template,
+                    version: a.settings.template_version,
+                  },
+          ...(a.grant.work?.kind === "saved"
+            ? { recovery_hash: "d".repeat(64) }
+            : {}),
         };
         if (scenario === "additional-source-tamper" && !failed) {
           failed = true;
@@ -391,7 +405,15 @@ it.each([
             ...(scenario === "additional-empty" ||
             scenario.startsWith("additional-source-")
               ? { work: { kind: "empty" } }
-              : {}),
+              : scenario.startsWith("additional-saved")
+                ? {
+                    work: {
+                      kind: "saved",
+                      attempt: historyID,
+                      checksum: priorHistory.checksum,
+                    },
+                  }
+                : {}),
             reason:
               "Explicit separate additional allowance after completed attempt",
             request: randomUUID(),
@@ -456,6 +478,82 @@ it.each([
           headers: adminHeaders,
         })
       ).json().grants[0];
+      if (scenario.startsWith("additional-saved")) {
+        expect(issued.status).toBe("PENDING_NATIVE");
+        (config.agent as any).managementOperations = [
+          "grants.source-plan",
+          "grants.source-confirm",
+        ];
+        const nativeManagement = async (operation: string, body: unknown) => {
+          const payload = Buffer.from(
+            JSON.stringify({
+              version: 1,
+              purpose: "ssh-exam-management/v1",
+              audience: origin,
+              agent: "class",
+              actor: "agent-root",
+              request: randomUUID(),
+              nonce: randomBytes(32).toString("hex"),
+              issued: Date.now(),
+              expires: Date.now() + 20000,
+              operation,
+              body,
+            }),
+          );
+          const response = await app.inject({
+            method: "POST",
+            url: "/api/agent/management",
+            headers: {
+              "content-type": "application/vnd.ssh-exam-management",
+              "x-exam-signature": sign(null, payload, h.callbackKey).toString(
+                "base64",
+              ),
+            },
+            payload,
+          });
+          expect(response.statusCode, response.body).toBe(200);
+          const envelope = response.json(),
+            signed = Buffer.from(envelope.payload, "base64");
+          expect(
+            verify(
+              null,
+              signed,
+              readFileSync(config.agent.signingKey),
+              Buffer.from(envelope.signature, "base64"),
+            ),
+          ).toBe(true);
+          const result = JSON.parse(signed.toString());
+          expect(result.ok, JSON.stringify(result)).toBe(true);
+          return result.result;
+        };
+        const plan = await nativeManagement("grants.source-plan", {
+          id: issued.id,
+          revision: issued.revision,
+        });
+        expect(plan).toMatchObject({
+          action: "retain",
+          source: { attempt: priorHistory.id, checksum: priorHistory.checksum },
+          uid: 10001,
+          settings: { duration: 5400, webcam: false },
+        });
+        // Native byte verification is the actual Go CLI/staging-child test;
+        // this authenticated HTTP receipt simulates that native outcome only.
+        await nativeManagement("grants.source-confirm", {
+          id: issued.id,
+          revision: issued.revision,
+          grant_hash: issued.hash,
+          state: "RETAINED",
+          source: {
+            attempt: priorHistory.id,
+            checksum: priorHistory.checksum,
+            uid: 10001,
+            metadata_hash: "c".repeat(64),
+          },
+          retention_hash: "d".repeat(64),
+          retained_at: Date.now(),
+        });
+        if (scenario === "additional-saved-uid-change") verifiedUID = 10002;
+      }
       store.db.prepare("UPDATE exams SET config=? WHERE id='ordinary'").run(
         JSON.stringify({
           ...definition,
@@ -558,6 +656,41 @@ it.each([
           payload: {},
         });
       let prepared = await preflight();
+      if (scenario === "additional-saved-uid-change") {
+        expect(prepared.statusCode, prepared.body).toBe(409);
+        expect(prepared.body).toContain(
+          "Saved source retention does not match this verified Unix identity",
+        );
+        expect(operations).not.toContain("prepare-additional-grant-attempt");
+        expect(
+          store.db.prepare("SELECT count(*) n FROM grant_claims").get(),
+        ).toEqual({ n: 0 });
+        expect(
+          store.db
+            .prepare("SELECT count(*) n FROM attempts WHERE state='PREPARING'")
+            .get(),
+        ).toEqual({ n: 0 });
+        expect(store.attempt(priorHistory.id)).toMatchObject({
+          uid: 10001,
+          start: priorHistory.start,
+          deadline: priorHistory.deadline,
+          checksum: priorHistory.checksum,
+          protected: 1,
+        });
+        return;
+      }
+      if (scenario === "additional-saved-old-native") {
+        expect(prepared.statusCode).toBe(400);
+        expect(prepared.body).toContain(
+          "durable saved-source retention/staging",
+        );
+        expect(operations).not.toContain("prepare-additional-grant-attempt");
+        expect(
+          store.db.prepare("SELECT count(*) n FROM grant_claims").get(),
+        ).toEqual({ n: 0 });
+        savedSupport = true;
+        prepared = await preflight();
+      }
       if (scenario === "additional-source-old-native") {
         expect(prepared.statusCode).toBe(400);
         expect(prepared.body).toContain(
@@ -762,6 +895,12 @@ it.each([
         expect(() => store.attempt(old)).toThrow("Attempt not found");
       }
       const { id, page, settings } = prepared.json();
+      if (scenario.startsWith("additional-saved"))
+        expect(JSON.parse(store.attempt(id).grant_work!)).toEqual({
+          kind: "saved",
+          attempt: priorHistory.id,
+          checksum: priorHistory.checksum,
+        });
       if (
         scenario === "additional-empty" ||
         scenario.startsWith("additional-source-")

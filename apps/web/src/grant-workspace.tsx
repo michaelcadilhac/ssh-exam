@@ -1,6 +1,18 @@
 export function workspaceChoice(mode: string, name: string, hash: string) {
   if (mode === "materials") return undefined;
   if (mode === "empty") return { kind: "empty" };
+  if (mode === "saved") {
+    if (
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
+        name,
+      ) ||
+      !/^[a-f0-9]{64}$/.test(hash)
+    )
+      throw Error(
+        "Choose the student's protected attempt UUID and exact archive checksum; native retention confirmation is required before use",
+      );
+    return { kind: "saved", attempt: name, checksum: hash };
+  }
   if (
     mode !== "template" ||
     !/^[a-zA-Z0-9_-]{1,64}$/.test(name) ||
@@ -39,19 +51,24 @@ export function GrantWorkspaceFields({
           )}
           <option value="empty">Empty workspace</option>
           <option value="template">Exact template starter</option>
+          <option value="saved">Protected saved work</option>
         </select>
       </label>
-      {mode === "template" && (
+      {(mode === "template" || mode === "saved") && (
         <>
           <label>
-            Starter template name
+            {mode === "saved"
+              ? "Protected source attempt UUID"
+              : "Starter template name"}
             <input
               value={name}
               onChange={(e) => onChange(mode, e.target.value, hash)}
             />
           </label>
           <label>
-            Starter template version
+            {mode === "saved"
+              ? "Protected source archive checksum"
+              : "Starter template version"}
             <input
               value={hash}
               onChange={(e) => onChange(mode, name, e.target.value)}

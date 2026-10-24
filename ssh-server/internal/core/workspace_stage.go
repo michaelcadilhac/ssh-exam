@@ -86,10 +86,22 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 		if prior == nil || prior.Username != a.Username || prior.UID != a.UID || prior.State != "COMPLETED" || !prior.Protected || prior.Checksum != source.Checksum {
 			return nil, errors.New("verified saved workspace source unavailable")
 		}
-		manifest, err := ReadProtected(filepath.Join(e.Config.State, "submissions", prior.ID), prior)
+		var manifest *Manifest
+		var err error
+		if a.Grant != nil && a.Grant.Work != nil && a.Grant.Work.Kind == "saved" {
+			manifest, err = e.verifySourceRetentionArchive(prior)
+		} else {
+			manifest, err = ReadProtected(filepath.Join(e.Config.State, "submissions", prior.ID), prior)
+		}
 		if err != nil {
 			e.invalidateManifestReceipt(prior, err)
 			return nil, err
+		}
+		if a.Grant != nil && a.Grant.Work != nil && a.Grant.Work.Kind == "saved" {
+			pin, err := e.grantSourceForAttempt(a)
+			if err != nil || pin.MetadataHash != manifest.metadataHash {
+				return nil, errSourceRetention
+			}
 		}
 		recovery := &RecoveryPreparation{SourceAttempt: prior.ID, Checksum: source.Checksum}
 		if err := e.restoreRecoveryFiles(a, recovery, manifest, dest); err != nil {

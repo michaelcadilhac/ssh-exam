@@ -94,12 +94,18 @@ class Connection:
             return result
         if 'error' in value: raise RuntimeError(value['error'])
         return value['result']
-    def start(self,activate=True,duration=60,initial_grant=False):
+    def start(self,activate=True,duration=60,initial_grant=False,issued=None):
         account=pwd.getpwnam(self.username)
-        if initial_grant:self.exam='qualification-framed-'+uuid.uuid4().hex[:12]
+        if issued:
+            assert a.retained_policy and initial_grant and issued['grant']['kind']=='ADDITIONAL'
+            self.exam=issued['exam'];duration=issued['settings']['duration']
+        elif initial_grant:self.exam='qualification-framed-'+uuid.uuid4().hex[:12]
         self.transport=self.command('register',{'exam':self.exam})['transport'];id=str(uuid.uuid4())
         body={'id':id,'exam':self.exam,'uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':browser_mode,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}}
-        if initial_grant:
+        if issued:
+            body['settings']=dict(issued['settings']);self.grant=dict(issued['grant']);body['grant']=self.grant
+            self.page_epoch=hashlib.sha256(uuid.uuid4().bytes).hexdigest()
+        elif initial_grant:
             assert (a.framed_owner or a.retained_policy) and temporary and self.username=='examq'
             body['settings']['earliest']=int(time.time()*1000)-1000
             # Author a new public synthetic package. The prepared legacy
@@ -116,10 +122,10 @@ class Connection:
             version=json.loads(root('examctl','templates','validate',source))['info']['hash']
             root('examctl','templates','install','qualification',source,'--expected',version,'--reason','Private synthetic framed grant qualification')
             body['settings']['template_version']=version
-            self.grant={'id':str(uuid.uuid4()),'revision':1,'hash':hashlib.sha256(json.dumps(body['settings'],sort_keys=True).encode()).hexdigest()}
+            self.grant={'id':str(uuid.uuid4()),'revision':1,'hash':hashlib.sha256(json.dumps(body['settings'],sort_keys=True).encode()).hexdigest(),'issuance_order':1}
             body['grant']=self.grant
             self.page_epoch=hashlib.sha256(uuid.uuid4().bytes).hexdigest()
-        self.command('prepare-grant-attempt' if initial_grant else 'prepare-attempt',body)
+        self.command('prepare-additional-grant-attempt' if issued else 'prepare-grant-attempt' if initial_grant else 'prepare-attempt',body)
         if temporary:
             self.command('prepare-account-policy',{'id':id})
             try:self.command('activate-attempt',{'id':id});raise AssertionError('Bootstrap started exam')
@@ -150,9 +156,16 @@ class Connection:
             if initial_grant:
                 activation.update(settings=staged['settings'],grant=self.grant,grant_begin_intent=str(uuid.uuid4()),page_epoch=self.page_epoch)
                 expected={'type':'grant-begin/v3' if a.retained_policy else 'grant-begin/v2','agent':config['agent_id'],'attempt':id,'exam':self.exam,'username':self.username,'uid':account.pw_uid,'grant':self.grant,'intent':activation['grant_begin_intent'],'transport':self.transport,'boot':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),'settings':staged['settings'],'page_epoch':self.page_epoch}
-                descriptor=os.open('/run/qualification-framed-grant.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-                with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry)
-            self.command('activate-monitored-grant-attempt' if a.retained_policy else 'activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
+                if issued:
+                    descriptor,temporary_registry=tempfile.mkstemp(prefix='qualification-additional-begin-',dir='/run')
+                    try:
+                        with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry);registry.flush();os.fsync(registry.fileno())
+                        os.replace(temporary_registry,'/run/qualification-framed-grant.json')
+                    finally:pathlib.Path(temporary_registry).unlink(missing_ok=True)
+                else:
+                    descriptor=os.open('/run/qualification-framed-grant.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+                    with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry)
+            self.command('activate-monitored-additional-grant-attempt' if issued and a.retained_policy else 'activate-monitored-grant-attempt' if a.retained_policy else 'activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
             begun=info(id)
             assert begun['deadline']-begun['start']==duration*1000 and begun['original_deadline']==begun['deadline']
             assert (base/'work').stat().st_ino==staged_inode, 'Begin did not publish the exact staged directory'
@@ -225,6 +238,70 @@ def retained_continue(connection,id,paused,previous,live,original):
         assert p.input_epoch!=previous_epoch
         connection.input(p,'exit\n',epoch=previous_epoch,sequence=1000)
     return continued
+
+
+def qualify_saved_source_grant(original):
+    """Real root CLI pin -> actual saved staging/Begin/collection in this guest."""
+    assert a.retained_policy and temporary and account.pw_uid>=1000
+    def registry(value):
+        descriptor,name=tempfile.mkstemp(prefix='qualification-saved-plan-',dir='/run')
+        try:
+            with os.fdopen(descriptor,'w') as output:json.dump(value,output);output.flush();os.fsync(output.fileno())
+            os.replace(name,'/run/qualification-saved-source-grant.json')
+        finally:pathlib.Path(name).unlink(missing_ok=True)
+    old=info(original['id'])
+    assert old['state']=='COMPLETED' and old['protected'] and old['access_state']=='RELEASED'
+    # Legacy-shaped guest settings omit id; the real gateway's issued snapshot
+    # includes the exam id. Author that complete new snapshot, not a weaker plan.
+    settings=dict(old['settings'],id=old['exam'],duration=5400,earliest=int(time.time()*1000)-1000,latest=int(time.time()*1000)+600000)
+    work={'kind':'saved','attempt':old['id'],'checksum':old['checksum']}
+    grant={'id':str(uuid.uuid4()),'revision':1,'hash':hashlib.sha256(json.dumps({'settings':settings,'work':work},sort_keys=True).encode()).hexdigest(),
+           'kind':'ADDITIONAL','issuance_order':old['grant']['issuance_order']+1,'initial_grant':old['grant']['id'],'work':work}
+    plan={'version':1,'agent':config['agent_id'],'grant':grant,'exam':old['exam'],'username':a.username,'uid':account.pw_uid,'settings':settings,
+          'source':{'attempt':old['id'],'checksum':old['checksum']},'action':'retain','current_revision':1,'status':'PENDING_NATIVE'}
+    expected={'audience':config['callback_url'],'plan':plan};registry(expected)
+    synchronized=json.loads(root('examctl','web','grants','source-sync',grant['id'],'--revision','1'))
+    assert synchronized['confirmed'] and synchronized['result']['status']=='AVAILABLE'
+    pin=json.loads(root('examctl','web','grants','source-show',grant['id'],'--revision','1'))
+    assert pin['phase']=='retained' and pin['consumers']==[] and pin['plan']['settings']['duration']==5400
+    refused=run(['examctl','delete',old['id'],'--reason','Private synthetic unused source dependency refusal'])
+    assert refused.returncode!=0 and 'submission retained by saved-source grant' in refused.stderr, (refused.returncode,refused.stderr)
+    ok('actual root source-sync signs fixed-purpose HTTPS, durably pins the real archive before availability and blocks unused-source deletion')
+    live=pathlib.Path(config['work'])/old['id']/'work/retained-editor.txt'
+    saved=live.read_bytes();assert saved
+    live.write_bytes(b'Private synthetic stale live folder; restore must use the protected archive\n')
+    connection=Connection();pane=None
+    try:
+        at=int(time.time()*1000)
+        id=connection.start(duration=5400,initial_grant=True,issued=plan)
+        active=info(id)
+        assert id!=old['id'] and active['start']>=at and active['deadline']-active['start']==5400000 and active['original_deadline']==active['deadline']
+        assert active['grant']==grant and active['workspace']['source']==dict(kind='saved',**plan['source'])
+        assert active['workspace']['recovery_hash']==pin['retention_hash']
+        assert (pathlib.Path(config['work'])/id/'work/retained-editor.txt').read_bytes()==saved
+        assert all(info(old['id'])[key]==old[key] for key in ('start','deadline','original_deadline','grant','checksum','protected'))
+        pane=connection.pane(id,framed=True)
+        connection.input(pane,"IFS= read -r saved < /work/retained-editor.txt; printf 'SAVED-%s:END\\n' \"$saved\"\n")
+        read_until(pane,('SAVED-'+saved.decode().splitlines()[0]+':END').encode(),timeout=3)
+        ok('actual additional saved-work grant restores archived Nano bytes instead of the changed old live folder and starts its separate full ninety-minute interval only at Begin')
+        connection.input(pane,'exit\n');pane.wait(timeout=5)
+        connection.command('close-pane',{'id':id,'pane':pane.native_pane})
+        root('examctl','stop',id,'--reason','Private synthetic saved grant protected completion')
+        wait_for(lambda:info(id)['state']=='COMPLETED' and info(id)['protected'],timeout=45)
+        finished,archive,checksum=secure(id)
+        assert finished['start']==active['start'] and finished['original_deadline']==active['original_deadline'] and finished['grant']==grant
+        assert finished['access_state']=='HELD' and finished['original_deadline']>int(time.time()*1000)
+        denied(run([*ssh,target,'echo SAVED-SOURCE-BYPASS']),'new saved-work completion keeps its original ninety-minute ordinary SSH restriction')
+        plan['action'],plan['status']='release','CONSUMED';registry(expected)
+        released=json.loads(root('examctl','web','grants','source-sync',grant['id'],'--revision','1'))
+        assert released['confirmed'] and released['result']['state']=='RELEASED'
+        current=json.loads(root('examctl','web','grants','source-show',grant['id'],'--revision','1'))
+        assert current['phase']=='released' and current['retention_hash']==pin['retention_hash'] and current['consumers']==[id]
+        assert info(id)['access_state']=='HELD' and all(info(old['id'])[key]==old[key] for key in ('start','deadline','original_deadline','checksum','protected'))
+        ok('actual protected saved-work consumer permits explicit pin retirement while both submissions/history and the new original account hold remain intact')
+    finally:
+        if pane is not None and pane.poll() is None:pane.kill();pane.wait(timeout=5)
+        connection.close()
 
 def check_jobs():
     # Checker must reject already scheduled account writers before activation.
@@ -442,19 +519,20 @@ if a.framed_owner or a.retained_policy:
             finally:
                 signal.pidfd_send_signal(intruder_handle,signal.SIGKILL);intruder.wait(timeout=3);os.close(intruder_handle)
             try:
-                root('examctl','pause',id,'--reason','Private editor and background writer retention acceptance')
-                paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
-                stable=(work/'retained-writer').stat().st_size;time.sleep(.2)
-                assert (work/'retained-writer').stat().st_size==stable,'background writer advanced during verified hold'
-                assert not (work/'retained-editor.txt').exists()
-                signal.pidfd_send_signal(stopped_handle,0)
-                assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
-                for p in live:connection.input(p,'STALE-EDITOR-KEYS\n')
-                continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
-                connection.input(fresh,'\x03');read_until(fresh,b'char 24/25',timeout=3)
-                wait_for(lambda:(work/'retained-writer').stat().st_size>stable,timeout=2,interval=.02)
-                signal.pidfd_send_signal(stopped_handle,0)
-                assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
+                for cycle in range(12):
+                    root('examctl','pause',id,'--reason','Private editor and background writer retention acceptance')
+                    paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
+                    stable=(work/'retained-writer').stat().st_size;time.sleep(.2)
+                    assert (work/'retained-writer').stat().st_size==stable,'background writer advanced during verified hold'
+                    assert not (work/'retained-editor.txt').exists()
+                    signal.pidfd_send_signal(stopped_handle,0)
+                    assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
+                    for p in live:connection.input(p,'STALE-EDITOR-KEYS\n')
+                    continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
+                    connection.input(fresh,'\x03');read_until(fresh,b'char 24/25',timeout=3)
+                    wait_for(lambda:(work/'retained-writer').stat().st_size>stable,timeout=2,interval=.02)
+                    signal.pidfd_send_signal(stopped_handle,0)
+                    assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
                 connection.input(fresh,'\x0f');read_until(fresh,b'File Name to Write',timeout=3)
                 connection.input(fresh,'\r');read_until(fresh,b'Wrote 1 line',timeout=3)
                 assert (work/'retained-editor.txt').read_text()==editor_value+'\n','editor buffer changed or old keys leaked'
@@ -463,7 +541,7 @@ if a.framed_owner or a.retained_policy:
                 read_until(fresh,('FRAMED-editor-done:'+values[0]+':END').encode(),timeout=3)
                 connection.input(panes[1],"printf 'FRAMED-%s:%s:END\\n' editor-peer \"$buffer\"\n")
                 read_until(panes[1],('FRAMED-editor-peer:'+values[1]+':END').encode(),timeout=3)
-                ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry/Continue; writer stops/resumes and originally stopped job stays stopped')
+                ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry and twelve Continue cycles; writer stops/resumes and originally stopped job stays stopped')
             finally:os.close(stopped_handle)
 
             for kind,mode,dispatch in (('pipe','basic','normal'),('pipe','basic','forced'),('pipe','sqpoll','normal'),('pipe','sqpoll','forced'),('timer','basic','normal'),('timer','sqpoll','normal')):
@@ -548,6 +626,7 @@ if a.framed_owner or a.retained_policy:
         connection.close()
     wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,max(original['deadline'],original['original_deadline'])/1000-time.time())+30)
     normal_access('original deadline restores ordinary SSH/SFTP after framed qualification without override')
+    if a.retained_policy:qualify_saved_source_grant(info(id))
     print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_lockout':a.retained_policy,'synthetic_capture':a.retained_policy}),flush=True)
     raise SystemExit(0)
 

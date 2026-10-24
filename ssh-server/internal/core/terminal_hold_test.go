@@ -2,8 +2,32 @@ package core
 
 import (
 	"os"
+	"os/exec"
 	"testing"
 )
+
+func TestRetainedHoldOrdersPinnedParentsBeforeChildren(t *testing.T) {
+	child := exec.Command("/bin/sleep", "15")
+	if err := child.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = child.Process.Kill(); _ = child.Wait() })
+	groups := map[int]*terminalHoldGroup{}
+	for _, pid := range []int{child.Process.Pid, os.Getpid()} {
+		p, err := pinUIDProcess(pid, os.Getuid())
+		if err != nil || p == nil {
+			t.Fatal("real process pin unavailable", err)
+		}
+		t.Cleanup(p.close)
+		groups[pid] = &terminalHoldGroup{process: p, uid: os.Getuid()}
+	}
+	for range 20 {
+		ordered, err := orderedTerminalHoldGroups(groups)
+		if err != nil || len(ordered) != 2 || ordered[0].process.pid != os.Getpid() || ordered[1].process.pid != child.Process.Pid || ordered[1].parent != os.Getpid() {
+			t.Fatal("pinned hierarchy did not order parent-stop/child-continue", ordered, err)
+		}
+	}
+}
 
 func TestRetainedGuardianNeverAcceptsAnUnrelatedLiveExecutable(t *testing.T) {
 	// This exact process is alive and has a real proc directory/pidfd. Neither

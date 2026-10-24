@@ -18,6 +18,9 @@ func (e *Engine) prepareAttempt(r Request, expires int64) (result any, err error
 		return nil, err
 	}
 	defer lock.Close()
+	if err := e.registerGrantSourceConsumer(r); err != nil {
+		return nil, err
+	}
 	var candidate *Attempt
 	var account Account
 	existing := false

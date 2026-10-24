@@ -242,3 +242,23 @@ writers now use Playwright per-test output. Seven real browser workflows pass
 and generate all nine images there while every existing repository image stays
 byte-for-byte unchanged. Runtime build hashes are unchanged. This removes the
 need for destructive screenshot cleanup or routine approval during future tests.
+
+## October24 saved-source and retained-job follow-up
+
+Two avoidable fixture mismatches delayed the root workflow: copying legacy native
+settings omitted the exam ID in the new grant snapshot, and the final guest
+assertion demanded NORMAL access/policy even though this test deliberately ended
+with a completed/protected ninety-minute retake still HELD. The first end-state
+correction checked only access, overlooking policy HELD; it required another run.
+Read the actual producer and both restriction fields before extending a long
+fixture. Verify the exact intended synthetic hold and reject every unrelated or
+uncertain one; never clear holds or relax the host guard to obtain a pass. A
+mistyped focused selector also ran zero cases and was explicitly discarded.
+
+A separate actual failure was productive evidence: unordered stop/continue let
+Bash consume Nano's transient job-stop notification. Earlier successful runs did
+not establish absence of that race. The bounded fix orders pinned parents/children
+and strengthens the same public SSH/CLI regression to twelve Nano cycles. Keep
+that product defect distinct from fixture errors and retain every failed receipt.
+AGENTS.md now makes producer/final-state/selector review explicit; no speculative
+test framework or new runtime subsystem is justified by these corrections.

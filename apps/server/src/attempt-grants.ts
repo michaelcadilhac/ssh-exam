@@ -15,6 +15,8 @@ import {
   grantRevocation,
   grantBeginRequest,
   grantWorkspace,
+  grantSourceRequest,
+  grantSourceConfirmation,
 } from "../../../packages/protocol/grants.js";
 import { hash, now, type Store, type Attempt } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
@@ -36,6 +38,140 @@ export class AttemptGrants {
     private store: Store,
     private agent: string,
   ) {}
+  // The only runtime caller is the explicitly authorized root management
+  // synchronization workflow, never a browser's claimed native receipt.
+  sourcePlan(input: unknown) {
+    const b = grantSourceRequest.parse(input),
+      current = this.row(b.id),
+      revision = this.store.db
+        .prepare(
+          "SELECT * FROM grant_revisions WHERE grant_id=? AND revision=?",
+        )
+        .get(b.id, b.revision) as any;
+    if (!revision)
+      return conflict(
+        "Grant revision not found; inspect its retained history before source synchronization",
+      );
+    const snapshot = this.view({
+        ...current,
+        ...revision,
+        revision: b.revision,
+      }),
+      work = snapshot.work;
+    if (work.kind !== "saved")
+      return conflict(
+        "This revision has no saved-work source; select its original saved-source revision for retention reconciliation",
+      );
+    const source = this.store.attempt(work.attempt),
+      retain =
+        current.revision === b.revision &&
+        ["PENDING_NATIVE", "AVAILABLE"].includes(current.status);
+    if (retain)
+      new ExamDefinitions(this.store, this.agent).requireActive(current.exam);
+    if (
+      !source ||
+      source.username !== current.username ||
+      !Number.isSafeInteger(source.uid) ||
+      source.uid < 1000 ||
+      source.checksum !== work.checksum ||
+      (retain &&
+        (source.state !== "COMPLETED" ||
+          !source.protected ||
+          !source.start ||
+          !source.original_deadline))
+    )
+      return conflict(
+        "Source identity/protection differs from issued authority; preserve source and grant history; no retention acknowledgement or fallback accepted",
+      );
+    return {
+      version: 1,
+      agent: this.agent,
+      grant: this.binding(snapshot),
+      exam: current.exam,
+      username: current.username,
+      uid: source.uid,
+      settings: snapshot.settings,
+      source: { attempt: work.attempt, checksum: work.checksum },
+      action: retain ? "retain" : "release",
+      current_revision: current.revision,
+      status: current.status,
+    };
+  }
+  confirmSource(input: unknown, actor: string) {
+    const b = grantSourceConfirmation.parse(input);
+    return this.store.db.transaction(() => {
+      const plan = this.sourcePlan({ id: b.id, revision: b.revision });
+      if (
+        b.grant_hash !== plan.grant.hash ||
+        b.source.attempt !== plan.source.attempt ||
+        b.source.checksum !== plan.source.checksum ||
+        b.source.uid !== plan.uid ||
+        b.retained_at > now() + 1000 ||
+        (b.state === "RETAINED") !== (plan.action === "retain")
+      )
+        return conflict(
+          "Native retention confirmation is stale or differs from the exact grant/source; retry source-sync for the SAME revision after inspecting current history",
+        );
+      const old = this.store.db
+        .prepare(
+          "SELECT * FROM grant_source_retentions WHERE grant_id=? AND revision=?",
+        )
+        .get(b.id, b.revision) as any;
+      if (
+        old &&
+        (old.grant_hash !== b.grant_hash ||
+          old.source_attempt !== b.source.attempt ||
+          old.checksum !== b.source.checksum ||
+          old.uid !== b.source.uid ||
+          old.metadata_hash !== b.source.metadata_hash ||
+          old.retention_hash !== b.retention_hash ||
+          old.retained_at !== b.retained_at ||
+          (old.state === "RELEASED" && b.state !== "RELEASED"))
+      )
+        return conflict(
+          "Native retention identity changed; preserve both receipts and inspect source-show; do not overwrite a pin or revive released authority",
+        );
+      this.store.db
+        .prepare(
+          "INSERT INTO grant_source_retentions VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(grant_id,revision) DO UPDATE SET state=excluded.state,acknowledged_at=excluded.acknowledged_at",
+        )
+        .run(
+          b.id,
+          b.revision,
+          b.grant_hash,
+          b.source.attempt,
+          b.source.checksum,
+          b.source.uid,
+          b.source.metadata_hash,
+          b.retention_hash,
+          b.retained_at,
+          b.state,
+          now(),
+        );
+      if (b.state === "RETAINED")
+        this.store.db
+          .prepare(
+            "UPDATE attempt_grants SET status='AVAILABLE' WHERE id=? AND revision=? AND status='PENDING_NATIVE'",
+          )
+          .run(b.id, b.revision);
+      this.store.audit(
+        actor,
+        "native-grant-source-" + b.state.toLowerCase(),
+        b.id,
+        JSON.stringify({
+          revision: b.revision,
+          retention_hash: b.retention_hash,
+        }),
+      );
+      return {
+        id: b.id,
+        revision: b.revision,
+        state: b.state,
+        retention_hash: b.retention_hash,
+        status: this.row(b.id).status,
+      };
+    })();
+  }
   private row(id: string): any {
     z.string().uuid().parse(id);
     const row = this.store.db
@@ -115,7 +251,7 @@ export class AttemptGrants {
         .all(row.id),
     };
   }
-  snapshot(input: unknown, selectedWork?: unknown) {
+  snapshot(input: unknown, selectedWork?: unknown, username?: string) {
     const settings = examSchema.parse(input);
     if (
       isSandbox(settings.id) &&
@@ -147,6 +283,25 @@ export class AttemptGrants {
         name: work.name,
         hash: work.hash,
       });
+    if (work.kind === "saved") {
+      const source = this.store.attempt(work.attempt);
+      if (
+        !username ||
+        !source ||
+        source.username !== username ||
+        !Number.isSafeInteger(source.uid) ||
+        source.uid < 1000 ||
+        source.state !== "COMPLETED" ||
+        !source.protected ||
+        source.checksum !== work.checksum ||
+        !source.start ||
+        !source.deadline ||
+        !source.original_deadline
+      )
+        return conflict(
+          "Choose this student's completed protected attempt and exact checksum; inspect its history before issuance. No source fallback, account reservation or clock authorized.",
+        );
+    }
     return { settings, work, hash: hash(JSON.stringify({ settings, work })) };
   }
   initial(
@@ -238,7 +393,7 @@ export class AttemptGrants {
       throw Error(
         "Additional issuance requires its reviewed confirmation transaction",
       );
-    const value = this.snapshot(settings, work),
+    const value = this.snapshot(settings, work, username),
       exam = value.settings.id;
     if (
       !this.store.db
@@ -337,13 +492,14 @@ export class AttemptGrants {
     new ExamDefinitions(this.store, this.agent).requireActive(exam);
     this.store.db
       .prepare(
-        "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason,issuance,initial_grant) VALUES(?,?,?,?,1,'AVAILABLE',?,?,?,?,?)",
+        "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason,issuance,initial_grant) VALUES(?,?,?,?,1,?,?,?,?,?,?)",
       )
       .run(
         id,
         this.agent,
         exam,
         username,
+        value.work.kind === "saved" ? "PENDING_NATIVE" : "AVAILABLE",
         at,
         actor,
         reason,
@@ -448,7 +604,10 @@ export class AttemptGrants {
   }
   private unused(id: string, revision: number) {
     const row = this.row(id);
-    if (row.status !== "AVAILABLE" || row.revision !== revision)
+    if (
+      !["AVAILABLE", "PENDING_NATIVE"].includes(row.status) ||
+      row.revision !== revision
+    )
       return conflict(
         "Grant is unavailable or revision changed; inspect examctl web grants show GRANT before a new intent",
       );
@@ -501,6 +660,7 @@ export class AttemptGrants {
             id: row.exam,
           },
           b.work ?? previous.work,
+          row.username,
         ),
         revision = row.revision + 1;
       this.store.db
@@ -516,8 +676,12 @@ export class AttemptGrants {
           now(),
         );
       this.store.db
-        .prepare("UPDATE attempt_grants SET revision=? WHERE id=?")
-        .run(revision, id);
+        .prepare("UPDATE attempt_grants SET revision=?,status=? WHERE id=?")
+        .run(
+          revision,
+          value.work.kind === "saved" ? "PENDING_NATIVE" : "AVAILABLE",
+          id,
+        );
       this.store.audit(
         actor,
         "revise-unused-grant",
@@ -626,6 +790,24 @@ export class AttemptGrants {
       return conflict(
         "Grant is revoked or consumed; ask your instructor to inspect grant history; no allowance started",
       );
+    if (grant.work.kind === "saved") {
+      const retained = this.store.db
+        .prepare(
+          "SELECT * FROM grant_source_retentions WHERE grant_id=? AND revision=?",
+        )
+        .get(id, grant.revision) as any;
+      if (
+        !retained ||
+        retained.state !== "RETAINED" ||
+        retained.grant_hash !== grant.hash ||
+        retained.uid !== uid ||
+        retained.source_attempt !== grant.work.attempt ||
+        retained.checksum !== grant.work.checksum
+      )
+        return conflict(
+          "Saved source retention does not match this verified Unix identity/current grant. Ask your instructor to inspect source-show/source-sync; no preparation, account reservation, grant or clock consumed.",
+        );
+    }
     if (
       this.store.db
         .prepare(
@@ -860,11 +1042,38 @@ export class AttemptGrants {
       const source =
         expected.work.kind === "empty"
           ? { kind: "empty" }
-          : {
-              kind: "template",
-              template: expected.work.name,
-              version: expected.work.hash,
-            };
+          : expected.work.kind === "saved"
+            ? {
+                kind: "saved",
+                attempt: expected.work.attempt,
+                checksum: expected.work.checksum,
+              }
+            : {
+                kind: "template",
+                template: expected.work.name,
+                version: expected.work.hash,
+              };
+      if (expected.work.kind === "saved") {
+        const retention = this.store.db
+          .prepare(
+            "SELECT * FROM grant_source_retentions WHERE grant_id=? AND revision=?",
+          )
+          .get(a.grant_id, a.grant_revision) as any;
+        if (
+          !retention ||
+          retention.grant_hash !== a.grant_hash ||
+          retention.source_attempt !== expected.work.attempt ||
+          retention.checksum !== expected.work.checksum ||
+          retention.uid !== a.uid ||
+          !remote.workspace ||
+          remote.workspace.recovery_hash !== retention.retention_hash ||
+          (retention.state !== "RETAINED" &&
+            !(remote.state === "COMPLETED" && remote.protected))
+        )
+          return conflict(
+            "Saved-source readiness differs from durable native retention/source; inspect source-show/source-sync and preserve original authority. No fallback, grant consumption or clock authorized.",
+          );
+      }
       if (
         !remote.workspace ||
         !isDeepStrictEqual(remote.workspace.grant, expected) ||

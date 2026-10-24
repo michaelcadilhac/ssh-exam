@@ -39,6 +39,33 @@ def normal_filesystem_settings(config, sockets):
             'host_filesystem_hidden_paths': sorted(hidden)}
 
 
+def verify_finished_guest(state, profile, plan=None, pin=None, now=0):
+    """Only the completed saved-work test intentionally ends with its new hold."""
+    held = [a for a in state['attempts'].values() if a.get('access_state') == 'HELD']
+    expected = None
+    if profile == 'retained-policy':
+        assert plan and pin and plan['action'] == 'release' and plan['status'] == 'CONSUMED'
+        assert pin['phase'] == 'released' and len(pin['consumers']) == 1
+        assert len(held) == 1 and held[0]['id'] == pin['consumers'][0]
+        expected = held[0]
+        source = state['attempts'][plan['source']['attempt']]
+        assert source['state'] == 'COMPLETED' and source['protected'] and source['access_state'] == 'RELEASED'
+        assert source['checksum'] == plan['source']['checksum']
+        assert expected['state'] == 'COMPLETED' and expected['protected'] and expected['checksum']
+        assert expected['policy_state'] == 'HELD' and not expected.get('policy_error') and not expected.get('access_error')
+        assert expected['exam'] == plan['exam'] and expected['username'] == plan['username'] == 'examq'
+        assert expected['uid'] == plan['uid'] == source['uid'] and expected['grant'] == plan['grant']
+        assert expected['settings'] == plan['settings'] and expected['settings']['duration'] == 5400
+        assert expected['start'] > source['start'] and expected['deadline'] == expected['original_deadline'] > now
+        assert expected['deadline'] - expected['start'] == 5400000
+        assert expected['workspace']['source'] == dict(kind='saved', **plan['source'])
+        assert expected['workspace']['recovery_hash'] == pin['retention_hash']
+    assert all(a['state'] in ('COMPLETED', 'CANCELLED_BEFORE_START')
+               and (a.get('access_state') != 'HELD' or a is expected)
+               and (a.get('policy_state', 'NORMAL') == 'NORMAL' or a is expected)
+               for a in state['attempts'].values()), 'Guest restrictions remain unresolved'
+
+
 def prepare_normal_filesystem(config):
     state = json.loads((Path(config['state']) / 'state.json').read_text())
     assert all(a['state'] in ('COMPLETED', 'CANCELLED_BEFORE_START')
@@ -332,10 +359,14 @@ def main():
             subprocess.run(['systemctl', '--no-pager', 'status', 'ssh.service', 'exam-agent.service'], timeout=15)
             return result.returncode
     state = json.loads((Path(config['state']) / 'state.json').read_text())
-    assert all(a['state'] in ('COMPLETED', 'CANCELLED_BEFORE_START')
-               and a.get('access_state') != 'HELD'
-               and a.get('policy_state', 'NORMAL') == 'NORMAL'
-               for a in state['attempts'].values()), 'Guest restrictions remain unresolved'
+    plan, pin = None, None
+    if settings.get('profile') == 'retained-policy':
+        plan = json.loads(Path('/run/qualification-saved-source-grant.json').read_text())['plan']
+        grant = plan['grant']
+        pin = json.loads((Path(config['state']) / 'source-retentions' /
+                          (grant['id'] + '-' + str(grant['revision']) + '.json')).read_text())
+    import time
+    verify_finished_guest(state, settings.get('profile'), plan, pin, int(time.time() * 1000))
     print('OVERLAY_QUALIFICATION_OK', flush=True)
     return 0
 

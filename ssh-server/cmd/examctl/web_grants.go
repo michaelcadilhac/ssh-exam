@@ -44,7 +44,18 @@ Protected history, original deadlines and account holds remain authoritative;
 neither metadata confirmation nor another grant reopens/overrides an old attempt.
 Additional starters: --work empty, or --work template --work-template NAME
 --work-template-version HASH. Omitted work uses the materials template at issuance.
-Saved-work sources remain unfinished. Sandbox practice automatically saves each
+Saved source: --work saved --work-attempt UUID --work-checksum SHA256. This creates
+PENDING_NATIVE authority, unavailable until durable native source confirmation.
+  sudo examctl web grants source-show GRANT --revision N
+  sudo examctl web grants source-sync GRANT --revision N
+source-sync uses named grants.source-plan/source-confirm authorization, verifies
+the protected archive in this separate CLI process, durably pins it BEFORE the
+gateway can make it AVAILABLE. Lost replies retry the SAME grant/revision. After
+explicit revoke/revision, synchronize the OLD source revision to release its pin
+only after every linked consumer has verified completed/no-start evidence.
+--request retries one exact confirmation. A later release is a NEW intent:
+omit --request or choose a new UUID. Never reuse the earlier retain intent ID.
+Migration of root-only legacy saved-work authority remains separate. Sandbox practice automatically saves each
 five-minute/no-webcam/four-terminal grant within its finite configured window.
 Cancelled retries reuse unused authority. Expired/revoked grants do not silently
 regenerate: revise an expired unused grant, or explicitly review NEW practice with
@@ -110,6 +121,9 @@ func webGrantsMain(args []string) int {
 		}
 		if position == 1 && (strings.HasPrefix(args[i], "issue-") || args[i] == "additional-preview") {
 			return webGrantIssuanceMain(args)
+		}
+		if position == 1 && strings.HasPrefix(args[i], "source-") {
+			return webGrantSourcesMain(args)
 		}
 		position++
 	}
@@ -196,6 +210,7 @@ func webGrantsMain(args []string) int {
 		}
 		changes := map[string]any{}
 		allowed["work"], allowed["work-template"], allowed["work-template-version"] = true, true, true
+		allowed["work-attempt"], allowed["work-checksum"] = true, true
 		work, err := workFlags.selection(seen)
 		if err != nil {
 			return usage(err.Error())
@@ -276,9 +291,11 @@ func webGrantsMain(args []string) int {
 }
 
 type grantWorkResult struct {
-	Kind string `json:"kind"`
-	Name string `json:"name"`
-	Hash string `json:"hash"`
+	Kind     string `json:"kind"`
+	Name     string `json:"name"`
+	Hash     string `json:"hash"`
+	Attempt  string `json:"attempt"`
+	Checksum string `json:"checksum"`
 }
 type grantHistoryResult struct {
 	Revision int64           `json:"revision"`
@@ -379,7 +396,7 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 			return fail
 		}
 		switch g.Status {
-		case "AVAILABLE", "REVOKED", "CONSUMED":
+		case "AVAILABLE", "PENDING_NATIVE", "REVOKED", "CONSUMED":
 		default:
 			return fail
 		}

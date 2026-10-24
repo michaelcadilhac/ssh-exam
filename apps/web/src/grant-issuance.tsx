@@ -357,7 +357,9 @@ export function GrantIssuanceDialog({
                 Workspace:{" "}
                 {row.work.kind === "empty"
                   ? "Empty workspace"
-                  : `${row.work.name} · ${row.work.hash}`}
+                  : row.work.kind === "saved"
+                    ? `Protected attempt ${row.work.attempt} · ${row.work.checksum}`
+                    : `${row.work.name} · ${row.work.hash}`}
               </p>
               {review.issued.find((g: any) => g.username === row.username) && (
                 <p style={{ overflowWrap: "anywhere" }}>

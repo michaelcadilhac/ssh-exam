@@ -93,6 +93,7 @@ func webGrantIssuanceMain(args []string) int {
 			}
 			allowed["duration-minutes"], allowed["duration-seconds"], allowed["webcam"] = true, true, true
 			allowed["work"], allowed["work-template"], allowed["work-template-version"] = true, true, true
+			allowed["work-attempt"], allowed["work-checksum"] = true, true
 			work, err := workFlags.selection(present)
 			if err != nil {
 				return usage(err.Error())

@@ -31,6 +31,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { createApp } from "../../apps/server/src/app.js";
 import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
+import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 import {
   managementPurpose,
   managementOperations,
@@ -1559,6 +1560,100 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           corruptCatalog = operation;
         },
       );
+      const savedSourceID = randomUUID(),
+        savedSourceEnded = Date.now() - 3600000;
+      const savedDefinition = new ExamDefinitions(
+        f.current.store,
+        "class",
+      ).create(
+        {
+          ...legacyDefinition.exam,
+          id: "saved-cli",
+          name: "Saved source CLI fixture",
+          earliest: savedSourceEnded - 5400000,
+          latest: savedSourceEnded - 1000,
+        },
+        "synthetic-fixture",
+      );
+      f.current.store.db
+        .prepare(
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state) VALUES(?,'saved-cli','saved01',10001,'COMPLETED',?,?,?,?,1,?,'RELEASED')",
+        )
+        .run(
+          savedSourceID,
+          JSON.stringify(savedDefinition.exam),
+          savedSourceEnded - 5400000,
+          savedSourceEnded,
+          savedSourceEnded,
+          "b".repeat(64),
+        );
+      f.current.store.db
+        .prepare(
+          "INSERT INTO enrollments(exam,username,uid,webcam) VALUES('saved-cli','saved01',10001,1)",
+        )
+        .run();
+      const savedHistory = f.current.store.attempt(savedSourceID);
+      const savedReview = await grantsCLI([
+        "additional-preview",
+        "saved-cli",
+        "saved01",
+        "--duration-minutes",
+        "90",
+        "--definition-revision",
+        savedDefinition.revision,
+        "--template-version",
+        "a".repeat(64),
+        "--earliest",
+        new Date(Date.now() - 1000).toISOString(),
+        "--latest",
+        new Date(Date.now() + 600000).toISOString(),
+        "--work",
+        "saved",
+        "--work-attempt",
+        savedSourceID,
+        "--work-checksum",
+        "b".repeat(64),
+        "--reason",
+        "Explicit fixed saved-work CLI grant pending durable native protection",
+      ]);
+      expect(savedReview.rows[0]).toMatchObject({
+        work: {
+          kind: "saved",
+          attempt: savedSourceID,
+          checksum: "b".repeat(64),
+        },
+        settings: { duration: 5400, webcam: true },
+      });
+      const savedIssued = await grantsCLI([
+        "issue-confirm",
+        savedReview.id,
+        "--revision",
+        savedReview.revision,
+      ]);
+      const savedGrant = await grantsCLI(["show", savedIssued.issued[0].grant]);
+      expect(savedGrant).toMatchObject({
+        status: "PENDING_NATIVE",
+        work: {
+          kind: "saved",
+          attempt: savedSourceID,
+          checksum: "b".repeat(64),
+        },
+      });
+      await f.restart();
+      expect(await grantsCLI(["show", savedGrant.id])).toEqual(savedGrant);
+      expect(
+        (
+          await grantsCLI([
+            "revoke",
+            savedGrant.id,
+            "--revision",
+            "1",
+            "--reason",
+            "Cancel saved-work source confirmation without reserving account",
+          ])
+        ).status,
+      ).toBe("REVOKED");
+      expect(f.current.store.attempt(savedSourceID)).toEqual(savedHistory);
       const historyMade = JSON.parse(
         (
           await cli(
@@ -1680,7 +1775,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       expect(existsSync(f.dir + "/unused-native-state")).toBe(false);
       expect(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
-      ).toEqual({ n: 5 });
+      ).toEqual({ n: 6 });
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));

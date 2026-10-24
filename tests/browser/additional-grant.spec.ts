@@ -277,3 +277,105 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   ])
     expect(kept[key], key).toEqual(original[key]);
 });
+
+test("saved-work review stays pending without native confirmation and can be cancelled without changing protected history", async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  page.setDefaultTimeout(8000);
+  await page.goto("/admin");
+  await page.getByLabel("Username", { exact: true }).fill("instructor");
+  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByLabel("Selected exam").selectOption("additional-template");
+  const source = "aaaaaaaa-1234-4234-8234-123456789abc";
+  const history = async () =>
+    (
+      await (
+        await page.request.get("/api/admin/exams/additional-template/dashboard")
+      ).json()
+    ).students
+      .find((s: any) => s.username === "extra01")
+      .attempts.find((a: any) => a.id === source);
+  const before = await history();
+  expect(before.protected).toBeTruthy();
+  await page
+    .getByRole("button", { name: "Authorize additional attempts", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Authorize additional attempts",
+    exact: true,
+  });
+  await dialog
+    .getByLabel("Additional attempt students", { exact: true })
+    .fill("extra01");
+  await dialog.getByLabel("Additional allowance seconds").fill("5400");
+  await dialog
+    .getByRole("combobox", { name: "Workspace initialization", exact: true })
+    .selectOption("saved");
+  await dialog.getByLabel("Protected source attempt UUID").fill(source);
+  await dialog
+    .getByLabel("Protected source archive checksum")
+    .fill("b".repeat(64));
+  await dialog
+    .getByLabel("Earliest Begin (RFC3339 with zone)")
+    .fill(new Date(Date.now() - 1000).toISOString());
+  await dialog
+    .getByLabel("Latest Begin (RFC3339 with zone)")
+    .fill(new Date(Date.now() + 600000).toISOString());
+  await dialog
+    .getByLabel("Reason for additional attempt")
+    .fill(
+      "Explicit new saved-work browser grant awaiting durable native protection",
+    );
+  await dialog
+    .getByRole("button", { name: "Preview additional grants", exact: true })
+    .click();
+  await expect(dialog).toContainText("90 minutes · Webcam not required");
+  await expect(dialog).toContainText(`Protected attempt ${source}`);
+  await dialog
+    .getByRole("button", { name: "Confirm additional grants", exact: true })
+    .click();
+  await expect(dialog).toContainText("Status: CONFIRMED");
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  const grants = (
+    await (
+      await page.request.get(
+        "/api/admin/exams/additional-template/grants?username=extra01",
+      )
+    ).json()
+  ).grants;
+  const saved = grants.find(
+    (g: any) => g.work.kind === "saved" && g.status === "PENDING_NATIVE",
+  );
+  expect(saved).toBeTruthy();
+  await page
+    .getByRole("button", { name: "Actions for student extra01", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Attempt grants…", exact: true })
+    .click();
+  const management = page.getByRole("dialog", {
+    name: "Attempt grants for extra01",
+    exact: true,
+  });
+  await management
+    .getByRole("combobox", { name: "Saved grant", exact: true })
+    .selectOption(saved.id);
+  await expect(management).toContainText(
+    "Waiting for durable class-server source retention confirmation",
+  );
+  await expect(management).toContainText("reserves no account or exam time");
+  await expect(management).toContainText(
+    `sudo examctl web grants source-sync ${saved.id} --revision ${saved.revision}`,
+  );
+  await expect(management).toContainText("inspect source-show and retry");
+  await management
+    .getByLabel("Reason", { exact: true })
+    .fill("Cancel unconfirmed saved-source grant with history intact");
+  await management
+    .getByRole("button", { name: "Revoke unused grant", exact: true })
+    .click();
+  await expect(management).toContainText("REVOKED");
+  expect(await history()).toEqual(before);
+});

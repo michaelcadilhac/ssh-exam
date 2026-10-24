@@ -307,12 +307,40 @@ func TestInitialGrantSignedStageFreshTLSBeginAndRestart(t *testing.T) {
 }
 
 func TestExplicitGrantWorkspaceSignedStageTLSBeginAndRestart(t *testing.T) {
-	for _, kind := range []string{"empty", "template", "missing"} {
+	for _, kind := range []string{"empty", "template", "missing", "saved"} {
 		t.Run(kind, func(t *testing.T) {
 			e, key, r := initialGrantUnpreparedFixture(t)
 			r.Grant.Kind, r.Grant.Order = "ADDITIONAL", 2
 			r.Grant.Work = &GrantWork{Kind: "empty"}
-			if kind != "empty" {
+			var savedPlan SourceRetentionPlan
+			if kind == "saved" {
+				r.Settings.Duration = 5400 // Explicit NEW full ninety-minute allowance.
+				priorSettings := r.Settings
+				priorSettings.ID = "saved-history"
+				priorSettings.Duration = 3600
+				prior := &Attempt{ID: "99999999-1234-4234-8234-123456789abc", Exam: priorSettings.ID, Username: r.Username, UID: r.UID, State: "COMPLETED", Settings: priorSettings, Start: Millis() - 10800000, Deadline: Millis() - 5400000, AccessState: "RELEASED", PolicyState: "NORMAL"}
+				prior.Deadline = prior.Start + priorSettings.Duration*1000
+				prior.Settings.Earliest, prior.Settings.Latest = prior.Start-1000, prior.Start+1000
+				prior.OriginalDeadline = prior.Deadline
+				work := t.TempDir()
+				if err := os.WriteFile(filepath.Join(work, "answer.txt"), []byte("VERIFIED SAVED ANSWER\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				checksum, err := Collect(work, filepath.Join(e.Config.State, "submissions", prior.ID), prior)
+				if err != nil {
+					t.Fatal(err)
+				}
+				prior.Checksum, prior.Protected = checksum, true
+				if err := e.WithState(func() error { e.state.Attempts[prior.ID] = prior; return nil }); err != nil {
+					t.Fatal(err)
+				}
+				r.Grant.Work = &GrantWork{Kind: "saved", Attempt: prior.ID, Checksum: checksum}
+				savedPlan = SourceRetentionPlan{Version: 1, Agent: e.Config.AgentID, Grant: r.Grant, Exam: r.Exam, Username: r.Username, UID: r.UID, Settings: r.Settings, Source: SourceRetentionSource{Attempt: prior.ID, Checksum: checksum}, Action: "retain", CurrentRevision: 1, Status: "PENDING_NATIVE"}
+				if _, err := e.RetainGrantSource(savedPlan); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if kind == "template" || kind == "missing" {
 				source := templateSourceFixture(t)
 				if err := os.WriteFile(filepath.Join(source, "work", "main.c"), []byte("INDEPENDENT STARTER\n"), 0644); err != nil {
 					t.Fatal(err)
@@ -341,16 +369,20 @@ func TestExplicitGrantWorkspaceSignedStageTLSBeginAndRestart(t *testing.T) {
 			// source binding. Only privileged systemd/writer setup is injected.
 			childCollections(e, "success")
 			e.workerTimeout = 10 * time.Second
-			if kind == "template" {
+			if kind == "template" || kind == "saved" {
 				childCollections(e, "workspace-kill-private")
 				e.workerTimeout = 10 * time.Second
-				if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err == nil {
+				_, killed := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+				if killed == nil {
 					t.Fatal("synthetic child death after private publication was not observed")
 				}
 				assertUnstartedWorkspace(t, e, r.ID)
 				receipt, err := readWorkspaceReceipt(e.workspaceBase(r.ID))
 				if err != nil || !sameGrant(receipt.Grant, r.Grant) {
-					t.Fatal("child death lost frozen private source receipt", err)
+					t.Fatal("child death lost frozen private source receipt", err, "worker:", killed)
+				}
+				if !strings.Contains(killed.Error(), "signal: killed") {
+					t.Fatal("fixture missed actual post-publication SIGKILL boundary", killed)
 				}
 				childCollections(e, "success")
 				e.workerTimeout = 10 * time.Second
@@ -403,6 +435,16 @@ func TestExplicitGrantWorkspaceSignedStageTLSBeginAndRestart(t *testing.T) {
 				b, err := os.ReadFile(filepath.Join(e.workspaceBase(r.ID), "workspace-ready", "work", "main.c"))
 				if err != nil || string(b) != "INDEPENDENT STARTER\n" {
 					t.Fatal("wrong exact starter", string(b), err)
+				}
+			}
+			if kind == "saved" {
+				content, err := os.ReadFile(filepath.Join(e.workspaceBase(r.ID), "workspace-ready", "work", "answer.txt"))
+				if err != nil || string(content) != "VERIFIED SAVED ANSWER\n" {
+					t.Fatal("saved archive did not reach actual private staging", string(content), err)
+				}
+				pin, err := e.SourceRetention(r.Grant.ID, r.Grant.Revision)
+				if err != nil || len(pin.Consumers) != 1 || pin.Consumers[0] != r.ID || a.Workspace.RecoveryHash != pin.RetentionHash {
+					t.Fatal("staging lost its durable source/consumer binding", pin, err)
 				}
 			}
 			var corrupt atomic.Bool
@@ -460,11 +502,17 @@ func TestExplicitGrantWorkspaceSignedStageTLSBeginAndRestart(t *testing.T) {
 				t.Fatal("protected archive lost explicit source binding", err)
 			}
 			wantFiles := 0
-			if kind == "template" {
+			if kind == "template" || kind == "saved" {
 				wantFiles = 1
 			}
 			if len(manifest.Files) != wantFiles {
 				t.Fatal("wrong starter collected", len(manifest.Files))
+			}
+			if kind == "saved" {
+				savedPlan.Action, savedPlan.Status = "release", "CONSUMED"
+				if _, err := restarted.ReleaseGrantSource(savedPlan); err != nil {
+					t.Fatal("verified protected consumer could not retire its source dependency", err)
+				}
 			}
 		})
 	}

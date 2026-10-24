@@ -626,3 +626,53 @@ monitoring facts, panes and original restrictions; it does not close the broader
 critical liveness/retained-SSH checkbox. Recording/death/last-child/partial-thaw,
 loaded-role, combined real capture/root and16/64 acceptance remain. No deployment
 or runtime guard enablement has occurred.
+
+
+## October24 follow-up: real job-control ordering defect (tested locally)
+
+C18's third disposable guest reproduced a critical retained-mode defect before
+saved recovery: after verified Continue, Bash reported Nano/background jobs
+stopped and reclaimed the terminal. The actual Nano cursor-position oracle failed
+with shell output, not a locator/runner timeout. Retained admission stays OFF.
+Exact failure: /tmp/ssh-exam-saved-source-root-qualification3.log, private
+/var/tmp/ssh-exam-overlay-_neeevs2; host/base preservation passed. Earlier passes
+are retained but do not disprove this intermittent failure.
+
+Runtime cause: hold/Continue iterated the process map in unspecified order.
+Stopping an editor before its parent is positively stopped lets the parent
+consume the transient stop notification; continuing the parent first has a
+similar race. The bounded candidate uses each pinned process's current PPid,
+rejects invalid/cyclic identity, stops parents before children and requires a
+fresh complete scope/thread observation of the stopped parent before signaling
+its child. Continue traverses the same hierarchy children first, leaving original
+stops untouched. Full UID/scope/guardian/input/permission checks and existing
+partial-thaw retry remain. No new durable state, timeout policy or permission is
+introduced. Failures still retain an unverified hold, never a synthetic receipt.
+
+Actual entry/acceptance: the SAME signed/native/CLI hold and approved Continue
+must preserve real Nano foreground ownership/unsaved bytes, background writer,
+original stopped job, peer and deadlines through twelve cycles, then linked IO,
+collection and saved-source recovery. Local pinned-parent and actual supervisor
+regressions precede a fresh exact root bundle and broad milestone qualification.
+This necessary correctness fix is separate from optional capacity enhancements;
+no new component chain or enabling switch is added.
+
+
+The corrected exact candidate now passes root run5/all27 assertions, including
+TWELVE real Nano hold/Continue cycles, original job stops/writer/peer buffers,
+six paired linked-IO cases, clock/collection/deadline and saved-source recovery.
+/tmp/ssh-exam-saved-source-root-qualification5.log completed0; private
+/var/tmp/ssh-exam-overlay-b4ffkxx2. Exact bundle
+saved-source-ordered-artifacts.x8di_ur3: agent SHA256
+7e02717a891d5ab373ec0d2775266c248d27a7c72c135ca55135c72e6a5f3279,
+core test664dc34892a32e5db0cc3d30d2e71d81804da726bb58f564ac40b215ed376244.
+OVERLAY_QUALIFICATION_OK and installed host/base preservation pass. The final
+fixture verifies the completed protected retake's BOTH access/policy HELD states;
+it never clears them.43 Python safety/helper checks and final build/vet pass.
+Focused real-supervisor/hierarchy races pass68.789s. Full574 application checks
+PASS301.75s; full uncached native race/resource/compiler/default-size checks PASS
+core509.239s/CLI29.781s.22 affected rebuilt browser checks pass1.8m on unchanged
+client artifacts. Final43 Python checks, matched build/types/vet pass. The later
+CLI catalog-contention test/control changes no root artifact/runtime contract;
+its final focus supplements the unchanged broad evidence without rerunning it.
+No retained guard enablement or broad liveness completion is claimed.

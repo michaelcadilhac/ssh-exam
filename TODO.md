@@ -8,6 +8,18 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October24 local saved-source milestone: individual reviewed issuance now connects
+web/CLI pending grants to root source-sync, durable archive pins/deletion fences,
+private verified restore and a separate full allowance only at fresh Begin. All574
+application tests, full native race/resource/compiler/default-size checks,22
+affected browser scenarios and27 guarded-root assertions pass. The root test also
+found and fixed a real unordered stop/Continue job-control race; twelve Nano cycles
+now preserve buffers, foreground ownership, writers and original job stops.
+Nothing is deployed and retained admission stays disabled. Explicit per-student
+source mappings for BULK saved grants and native legacy authority migration remain
+unfinished; the broader retake/workflow/authority checkboxes stay open. Exact
+evidence and limitations: grant-workspace-sources.md and live-monitoring-runtime.md.
+
 October24 UTC local clock candidate: approved unchanged-fact handover now fixes the
 actual signed clock refusal caused by a stale disk lease. It persists the existing
 clock intent before switching the same supervisor/all input gates/watchdog scope,
@@ -790,7 +802,14 @@ grant revisions; do not defer the snapshot until preflight. Confirmed immutable
 template/source versions and finite Begin windows are issuance prerequisites.
 Existing enrollment migration and implementation remain outstanding.
 
-- [ ] **Map the present model and its restrictions.**
+- [x] **Map the present model and its restrictions.**
+  October24 current implementation map is recorded in the Current model section
+  of docs/grant-workspace-sources.md: ordinary/unbound uniqueness, initial/additional
+  lineage, finite practice, claims/UIDs, immutable source snapshots, root pins,
+  account restrictions and within-attempt Continue are distinct authorities.
+  Verified recovery restoration now also serves general saved initializers.
+  This completes the map, not the separate legacy migration below. Tested locally;
+  no historical or production authority has been converted.
   October 21 local D1b increment exposes native-only legacy authorizations through
   `examctl recovery-grants` and blocks dependency-blind source deletion, including
   uncertain consumption and unfinished restored attempts. Tests/status are in
@@ -816,8 +835,9 @@ Existing enrollment migration and implementation remain outstanding.
   Unified practice issuance is now qualified locally:490 app tests, full native
   race/resource,13 corrected-fixture and62 final affected browser checks pass
   (sandbox-grants.md). All earlier failed receipts remain documented.
-  Saved-work issuance and complete legacy-source migration remain unfinished; this
-  broad investigation stays unchecked. See docs/additional-template-grants.md,
+  Individual saved-work issuance/retention/Begin now passes full local and guarded
+  root qualification. Bulk per-student saved sources and native legacy authority
+  migration remain unfinished; this broad investigation stays unchecked. See docs/additional-template-grants.md,
   docs/additional-grants-cli.md and the earlier feature guides. Nothing deployed.
   Consider per-exam attempt limits/defaults plus per-student and bulk grants,
   including one additional attempt and intentionally repeatable exams. Define
@@ -827,7 +847,14 @@ Existing enrollment migration and implementation remain outstanding.
   one initial grant by default; additional attempts require explicit grants.
   Unbound legacy attempts retain their one-attempt restriction.
 
-- [ ] **Define clear `/work` initialization choices.**
+- [x] **Define clear `/work` initialization choices.**
+  October24 individual empty, exact-template and verified saved-source workflows
+  are implemented/tested locally through CLI/web and native staging/fresh Begin.
+  Saved sources require durable class-server retention before availability;
+  deletion/corruption/UID/stale receipt failures cannot consume a clock or select
+  fallback work. Both source/target limits and recoverable metadata are preserved.
+  Bulk saved-source selection and native legacy migration remain separate open
+  items; this closes the initializer choices, not those workflows or deployment.
   October23 empty and separate exact-template starters now have a local integrated
   CLI/web workflow: reviewed additional issuance, explicit unused source revision,
   student selection, signed private staging and fresh C15 Begin. Focused HTTP/
@@ -836,8 +863,13 @@ Existing enrollment migration and implementation remain outstanding.
   Actual worker SIGKILL/retry and protected-archive collection also pass.
   Settings-only revisions preserve the saved starter.
   Source-tampered replies and missing sources refuse before clock/grant use.
-  This does not complete saved-work grants: native deletion cannot see unused
-  gateway dependencies. C18 approved October23: availability requires durable
+  Saved-source review/confirm/show/revoke now passes actual HTTP, compiled root
+  CLI/TLS and instructor-browser checks locally. Grants initially remain
+  PENDING_NATIVE with no account/clock use; source-sync now verifies/fsyncs the
+  exact native archive pin before signed acknowledgement makes them AVAILABLE.
+  Both native deletion entries enforce these unused dependencies. Source-bound
+  staging/SIGKILL/retry/restart/fresh Begin/protected completion and explicit pin
+  retirement pass. C18 approved October23: availability requires durable
   class-server source-retention confirmation. Pending issuance must support
   inspect/cancel/retry without account reservation or running time. C16 also now
   approves live monitoring/input authority inside the ONE attempt supervisor,
@@ -935,7 +967,13 @@ Existing enrollment migration and implementation remain outstanding.
   Do not imply that unsaved editor buffers or process state are restored. Define
   behavior when the source is unavailable, damaged or has documented omissions.
 
-- [ ] **Separate time allowance and monitoring settings from workspace choice.**
+- [x] **Separate time allowance and monitoring settings from workspace choice.**
+  Implemented/tested locally: enrollment/import and explicit extra/practice
+  issuance save the allowance, effective camera/material settings and independent
+  finite window. Explicit unused revisions preserve the chosen source unless
+  changed; default edits never rewrite issued or started settings. Native fresh
+  Begin starts the full saved allowance after private staging, including90 minutes
+  from protected saved work. Previous intervals/holds/history remain authoritative.
   An additional attempt might receive the exam default duration, an individual
   duration, or explicitly credited remaining time plus compensation, regardless
   of which files it starts with. Specify when webcam/template/duration settings
@@ -945,6 +983,12 @@ Existing enrollment migration and implementation remain outstanding.
   handoff if a prior interval is still restricted, without implicit access overrides.
 
 - [ ] **Support a second full 90-minute attempt after the midterm ends.**
+  October24 individual CLI/web/native workflow passes locally, including guarded
+  root archived-byte restore, zero preflight time, separate full90-minute Begin
+  and both original/current account restrictions. Bulk saved-source review still
+  needs explicit per-student archive mappings; one shared UUID cannot serve
+  different owners. Keep this item open until that matching CLI/web workflow and
+  the complete historical submission-selection presentation pass.
   Include this explicit instructor use case in the unified design: after the first
   midterm is over and its submission secured, grant students another attempt with
   a new full 90-minute allowance, starting from their own saved files from the
@@ -1426,13 +1470,16 @@ the approval is not a production change or a completed investigation.
   permissions, restrictive umask, nested directories and metadata absent from older
   archives, including how restoration affects tools such as `make`.
 
-- [ ] **Confirm the intended recovery webcam policy and start window.**
+- [x] **Confirm the intended recovery webcam policy and start window.**
   Local design status: C5 approved October 21—preserve each student's current
   effective webcam requirement unless explicitly overridden, and require a finite,
   explicit Begin window fixed at grant issuance. An extra attempt may have a window
   outside the exam default window; do not intersect them or reopen ordinary
-  admissions. Implementation, web/CLI/native verification and migration remain
-  open; no existing production grants, windows or snapshots were changed.
+  admissions. Unified initial/additional/practice and individual saved-source
+  policy is implemented/tested locally through shared web/CLI issuance, immutable
+  snapshots and native fresh Begin, including outside-default windows. Native
+  legacy authority migration remains a separate open item; no existing production
+  grants, windows or snapshots were changed.
   The incident setup preserved individual webcam settings and opened a very broad
   start window for delayed returns. Confirm the instructor's intended policy and
   make it explicit in the dashboard and grant tooling. Email text alone is not
