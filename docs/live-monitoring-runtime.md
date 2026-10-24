@@ -471,3 +471,38 @@ compiled-test hashes are EXACTLY ec754c6's bundle above; only qualification
 scripts changed. All40 Python checks pass. No redundant app/browser/native suite
 was run for test-script-only changes. Linked async IO, last-child/partial-thaw,
 fault/clock/death/loaded-role and capacity gates remain open; installed guard OFF.
+
+## Linked asynchronous writes through the actual retained workload
+
+The actual staged catalog source now contains the existing manifested C probe;
+it runs as the student inside the existing SSH pane/Bubblewrap scope. Private
+0600 single-link student-owned FIFOs control the linked dependency and completion.
+Every case positively reaches submitted pending IO before pause. The root test
+supplies its byte while held, or lets the BOOTTIME timer expire while held, and
+requires zero output until fresh Continue. Final completion IDs/results, exact
+saved byte and zero dropped/overflow counts must match the paired no-hold baseline.
+Every cycle also verifies original shell memory and the same grant/interval.
+
+One forced pipe case PASSED14 root assertions and full preservation first:
+/tmp/ssh-exam-retained-linked-io-root-qualification.log, private
+/var/tmp/ssh-exam-overlay-iz3tnexk. The extended six-pair matrix then passed IO and
+collection but failed the FINAL account oracle because its top-level `baseline`
+variable overwrote the account tuple. That fixture failure is retained:
+/tmp/ssh-exam-retained-linked-io-matrix-root-qualification.log, private
+/var/tmp/ssh-exam-overlay-1tqs9sa0. It is not a product/account-restoration defect
+or a passing full run. The matrix now uses `io_baseline`; legacy baseline callers
+are unchanged. No oracle or product enforcement was weakened.
+
+Corrected exact-artifact root run PASSES19 assertions, OVERLAY_QUALIFICATION_OK,
+original-deadline SSH/SFTP and full host/base preservation. Six positive baseline/
+held pairs cover pipe/basic/{normal,forced}, pipe/SQPOLL/{normal,forced} and timer/
+{basic,SQPOLL}/normal on kernel6.8.0-111-generic. Timers must still be pending when
+the hold is verified; an elapsed-before-hold fixture refuses to certify a pass.
+Session32865 completed0; receipt
+/tmp/ssh-exam-retained-linked-io-matrix-final-root-qualification.log; private
+/var/tmp/ssh-exam-overlay-inypdjev. Bundle retained-linked-final-artifacts.v5o875xs,
+remote /var/tmp/ssh-exam-retained-linked-final-upload.U16gL4/bundle. Native/compiled
+test hashes remain EXACTLY ec754c6's above; script-only changes. All40 Python
+checks pass. Unchanged application/browser/native evidence is retained, not
+repeated for the test driver. Clock/recording/death, last-child/partial-thaw,
+loaded-role/combined-capture and16/64 gates remain open. Installed guard OFF.

@@ -12,11 +12,12 @@ October23 local root milestone: the guarded disposable retained-policy profile
 now passes real initial-grant Begin, two SSH panes, CLI pause, positive task stops
 and cgroup freezes, explicit fresh native Continue, retained shell buffers, stale
 input refusal, protected collection and original-deadline SSH/SFTP restoration
-(13 assertions including real Nano buffers, a background writer and original job
-stops; installed host/base preservation passes). It exposed and fixed
+(19 assertions including real Nano buffers, a background writer, original job
+stops and six paired linked-IO baseline/held cases; installed host/base
+preservation passes). It exposed and fixed
 rejection of the real root Bubblewrap guardians: the barrier now pins/verifies
 and stops them too. Synthetic capture is explicit; installed admission remains
-disabled. Linked asynchronous writers, remaining failure/clock/loaded-role and
+disabled. Remaining writer races, failure/clock/loaded-role and
 combined16/64 qualification remain open; this does not close a broad checkbox or
 imply deployment. Exact evidence: docs/live-monitoring-runtime.md.
 

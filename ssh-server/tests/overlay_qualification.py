@@ -235,6 +235,7 @@ def run_locked(args):
         (inputs / 'run.json').write_text(json.dumps({'username': args.username, 'unit': unit, 'profile': args.profile}))
         (inputs / 'test.service').write_text(UNIT)
         command = candidate_command(unit, guest, inputs, output)
+        print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

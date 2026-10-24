@@ -3,7 +3,7 @@
 Requires its preinstalled agent, isolated work/rootfs and root-only test signing key.
 Never run against a real student's state or home. Refuses non-fixture guard reports.
 """
-import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil, signal, threading, shlex, struct, fcntl, termios
+import argparse, base64, hashlib, json, os, pathlib, pwd, select, subprocess, tarfile, time, uuid, grp, socket, tempfile, shutil, signal, threading, shlex, struct, fcntl, termios, stat, errno
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 
 parser=argparse.ArgumentParser(description=__doc__)
@@ -109,6 +109,9 @@ class Connection:
             for tree in ('work','materials'):(authored/tree).mkdir(mode=0o755)
             for relative,text in (('work/answer.txt','synthetic initial work\n'),('materials/instructions.txt','Private synthetic framing qualification\n')):
                 path=authored/relative;path.write_text(text);path.chmod(0o644)
+            if a.retained_policy:
+                probe=authored/'work/asyncio-probe'
+                shutil.copyfile('/run/ssh-exam-qualification-input/asyncio-probe',probe);probe.chmod(0o755)
             source=str(authored)
             version=json.loads(root('examctl','templates','validate',source))['info']['hash']
             root('examctl','templates','install','qualification',source,'--expected',version,'--reason','Private synthetic framed grant qualification')
@@ -440,6 +443,73 @@ if a.framed_owner or a.retained_policy:
                 read_until(panes[1],('FRAMED-editor-peer:'+values[1]+':END').encode(),timeout=3)
                 ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry/Continue; writer stops/resumes and originally stopped job stays stopped')
             finally:os.close(stopped_handle)
+
+            for kind,mode,dispatch in (('pipe','basic','normal'),('pipe','basic','forced'),('pipe','sqpoll','normal'),('pipe','sqpoll','forced'),('timer','basic','normal'),('timer','sqpoll','normal')):
+                io_baseline=None
+                for frozen in (False,True):
+                    tag='uring-'+kind+'-'+mode+'-'+dispatch+('-held' if frozen else '-baseline')
+                    connection.input(fresh,"mkfifo -m 600 /work/"+tag+"-data /work/"+tag+"-control; printf 'FRAMED-%s:END\\n' "+tag+"-fifos\n")
+                    read_until(fresh,('FRAMED-'+tag+'-fifos:END').encode(),timeout=3)
+                    fifo_handles=[]
+                    try:
+                        for name in (tag+'-data',tag+'-control'):
+                            path=work/name;metadata=path.lstat()
+                            assert metadata.st_uid==account.pw_uid and metadata.st_nlink==1 and metadata.st_mode&0o777==0o600
+                            descriptor=os.open(path,os.O_RDWR|os.O_NONBLOCK|os.O_NOFOLLOW|os.O_CLOEXEC)
+                            assert stat.S_ISFIFO(os.fstat(descriptor).st_mode)
+                            fifo_handles.append(descriptor)
+                        connection.input(fresh,"/work/asyncio-probe "+mode+' '+kind+' '+dispatch+' /work/'+tag+'-output 3</work/'+tag+'-data </work/'+tag+'-control > /work/'+tag+'-status 2>/work/'+tag+"-error & probe=$!; printf 'FRAMED-%s:END\\n' "+tag+"-running\n")
+                        read_until(fresh,('FRAMED-'+tag+'-running:END').encode(),timeout=3)
+                        def uring_phase(phase):
+                            path=work/(tag+'-status')
+                            if not path.exists():return None
+                            raw=path.read_bytes();assert len(raw)<=8192
+                            for line in raw.splitlines():
+                                try:record=json.loads(line)
+                                except json.JSONDecodeError:continue
+                                if record['phase']==phase:return record
+                            return None
+                        wait_for(lambda:uring_phase('ready'),timeout=4,interval=.01)
+                        ready=uring_phase('ready');assert ready['uid']==account.pw_uid and ready['completions']==0
+                        output=work/(tag+'-output');assert output.stat().st_size==0
+                        print('ACTUAL_LINKED_IO_PENDING',tag,json.dumps(ready),flush=True)
+                        if frozen:
+                            try:
+                                root('examctl','pause',id,'--reason','Private pending linked asynchronous writer hold acceptance '+tag)
+                            except AssertionError:
+                                print('ASYNC_HOLD_REFUSAL',root('examctl','panes','supervisor',id),flush=True)
+                                for scope in info(id)['units']:
+                                    for tid in (pathlib.Path('/sys/fs/cgroup/exam.slice')/scope/'cgroup.threads').read_text().split():
+                                        try:
+                                            status=pathlib.Path('/proc',tid,'status').read_text()
+                                            print('ASYNC_HOLD_SCOPE_TASK',tid,[line for line in status.splitlines() if line.startswith(('Name:','State:','Tgid:','Uid:','Kthread:'))],flush=True)
+                                        except (FileNotFoundError,ProcessLookupError):pass
+                                raise
+                            paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
+                            if kind=='timer':
+                                assert time.clock_gettime_ns(time.CLOCK_BOOTTIME)//1000000<ready['expires'],'timer completed before hold; fixture inconclusive'
+                            else:assert os.write(fifo_handles[0],b'X')==1
+                            until=time.monotonic()+.2
+                            if kind=='timer':until=time.monotonic()+max(0,(ready['expires']-time.clock_gettime_ns(time.CLOCK_BOOTTIME)//1000000)/1000)+.2
+                            while time.monotonic()<until:time.sleep(.02)
+                            assert output.stat().st_size==0,'pending asynchronous write advanced during verified hold'
+                            assert uring_phase('done') is None
+                            continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
+                        else:
+                            if kind=='pipe':assert os.write(fifo_handles[0],b'X')==1
+                            wait_for(lambda:output.stat().st_size==1,timeout=3,interval=.01)
+                        assert os.write(fifo_handles[1],b'Q')==1
+                        wait_for(lambda:uring_phase('done'),timeout=3,interval=.01)
+                        completed=uring_phase('done')
+                        expected={'phase':'done','first':-errno.ETIME if kind=='timer' else 1,'second':1,'saved':ord('X'),'dropped':0,'overflow':0}
+                        assert completed==expected and (not frozen or completed==io_baseline),completed
+                        assert output.read_bytes()==b'X' and not (work/(tag+'-error')).read_bytes()
+                        connection.input(fresh,"wait \"$probe\"; printf 'FRAMED-%s:%s:END\\n' "+tag+"-done \"$buffer\"\n")
+                        read_until(fresh,('FRAMED-'+tag+'-done:'+values[0]+':END').encode(),timeout=3)
+                        if frozen:ok('actual linked '+kind+'/'+mode+'/'+dispatch+' stays unwritten while held and matches its positive baseline after fresh Continue')
+                        else:io_baseline=completed
+                    finally:
+                        for descriptor in fifo_handles:os.close(descriptor)
         else:
             wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
             assert info(id)['state']=='LOCKED'

@@ -42,20 +42,22 @@ Do not rerun unchanged app/browser suites for private native changes.
 
 ## Exact next milestone
 
-DONE locally: same root entry passes actual Nano's unsaved buffer, a positively
-running writer, an originally stopped job, and unexpected-root refusal followed
-by exact cleanup/retry/Continue. All13 root assertions, final deadline restoration
-and host/base preservation PASS. Scripts only; native bytes EXACTLY ec754c6's
-qualified bundle. All runners ended. Receipt
-/tmp/ssh-exam-retained-editor-root-qualification.log, local artifact
-var/collection-tests/retained-editor-artifacts.gfn1_uev; private root evidence
-/var/tmp/ssh-exam-overlay-fg_dk2it. NEXT: linked async writers through the SAME
-actual CLI pause/Continue, with positive pending/completion and held-write oracles.
-Keep native sources frozen
-while their focused tests run. Read focused completion before broad qualification.
-Then recording-fault/clock handover, independent owner/coordinator death/stall,
-last child/partial-thaw races, loaded-role agreement, C9 and combined16/64 capacity.
-Do not enable an incomplete mechanism. No unanswered design question.
+All root runners ended. Script-only six-pair linked-IO baseline/held matrix PASSES
+all19 assertions, protected collection, original-deadline SSH/SFTP and full host/
+base preservation. Current native hashes remain exactly ec754c6's qualified bundle.
+All40 Python checks pass. Receipt
+/tmp/ssh-exam-retained-linked-io-matrix-final-root-qualification.log (32865 completed0),
+private /var/tmp/ssh-exam-overlay-inypdjev; local artifact
+var/collection-tests/retained-linked-final-artifacts.v5o875xs. Prior fixture global
+baseline collision and its failed full run are retained in the feature document;
+only matrix io_baseline changed, not legacy account checks or product enforcement.
+
+NEXT: reproduce the existing signed clock-management entry with healthy live
+authority/stale disk lease; verify explicit clock changes agree with the live
+owner/deadline and keep the original interval. Inspect before assuming missing
+work. Then recording/death, last-child/partial-thaw, loaded roles/C9 and16/64.
+Keep source frozen during focused tests; inspect their completion before broader
+qualification. Installed guard OFF. No unanswered design question or deployment.
 
 Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
 retirement reconciliation, manual secured-workspace cleanup, configuration/full
