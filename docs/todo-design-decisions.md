@@ -27,7 +27,7 @@ examctl-coverage-audit.md; retirement/full coverage remain pending.
 | Supported operation / setting | Present interface | CLI status and proposed workflow |
 | --- | --- | --- |
 | Exam ID/name/template, start window, future duration/webcam/terminal/collection limits | Shared ExamDefinitions web/root service | Local list/show/create/update with all setting flags, revisions, stable partial updates and durable retry; tested, not deployed |
-| Exam definition deletion | Neither interface has a supported workflow | Missing; add explicit `exams delete` only after dependency/hold/history policy; never alias submission deletion |
+| Exam definition deletion/archival | Shared reviewed lifecycle-tracked definition service | Local `web exams retire-preview/delete/archive/unarchive`; preserve history/dependencies.028 blocks pre-existing definitions pending native reconciliation. See exam-retirement.md; never alias submission deletion |
 | Single enrollment, removal, future duration/webcam | Shared RosterManagement web/root service | Local `web students list/add/remove/settings`, same inheritance/UID trust/sandbox and atomic batch rules; tested, not deployed |
 | CSV preview/confirm/export/example | Shared RosterManagement web/root service | Local `web students import-preview/import-confirm/export/example`; retain active snapshots, stale-preview/consumption checks and safe output; tested, not deployed |
 | Dashboard/filter/history/working status | Bounded gateway metadata and native info | Local `web attempts list/show` exposes frozen settings, presence and pending clocks without page/session/monitoring text; tested, not deployed |

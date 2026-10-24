@@ -33,8 +33,9 @@ five-minute/webcam/terminal policy but permits the same collection configuration
 
 New preflight preparations explicitly snapshot both settings. Editing defaults
 does not alter an existing preparation, started clock, hold, receipt or submission.
-Future unified grants must snapshot them at issuance too; that migration remains
-open. Legacy snapshots with both fields absent/zero retain **32/64 MiB**, not the
+Current unified initial/additional/practice grants snapshot them at issuance;
+saved-source/legacy grant migration remains open. Legacy snapshots with both
+fields absent/zero retain **32/64 MiB**, not the
 new defaults. Newly added zero-valued native scalar fields are omitted from JSON
 so old private workspace settings hashes remain byte-compatible. Partially
 specified or invalid native pairs fail closed. The matching gateway requires

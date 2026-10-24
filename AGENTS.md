@@ -47,6 +47,10 @@
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.
+  Use docs/todo-delivery-audit.md to reconcile overlapping checklist items and
+  already-implemented capabilities before adding work. Keep production-only gates
+  separate from local completion. Do not inflate completed counts or retain an
+  unrelated future requirement as a reason to reimplement a working workflow.
 - Work on one bounded end-to-end milestone at a time. Name its actual CLI/web/
   student entry point, intended outcome, required tests and stopping boundary
   before editing. Tests must exercise that entry point, not only private helpers.

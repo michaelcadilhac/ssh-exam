@@ -74,8 +74,14 @@ Incident JSON editing/transfer scripts remain unsupported management substitutes
   grant/clock/review workflows have interface evidence; a single complete journey
   through saved recovery, retirement and cleanup awaits those implementations.
   Privileged exact-artifact SSH/PAM/cgroup/cross-namespace and simultaneous-load
-  qualification still requires a positively safe disposable host. Last guard BUSY;
-  no new remote operation or production consolidation is performed.
+  qualification requires a positively safe disposable host. Earlier BUSY notes
+  are historical: subsequent guarded exact-artifact root profiles pass with host/
+  base preservation, including current framed SSH monitor pinning. Combined
+  capacity and unfinished workflow acceptance remain; see the current checkpoint.
+
+The current scope reconciliation is in todo-delivery-audit.md. Do not treat
+completed per-worker isolation as unimplemented because class-capacity testing
+is pending, or treat missing future features as a reason to redo existing help.
 
 Detailed operator workflows: examctl-workflows.md. Decisions/source evidence:
 todo-design-decisions.md, grant-workspace-sources.md and the current checkpoint.

@@ -1,5 +1,13 @@
 # Deferred work
 
+Current delivery audit and bounded public-workflow acceptance:
+[docs/todo-delivery-audit.md](docs/todo-delivery-audit.md). The main checkboxes
+overlap; component/test counts do not establish completion. The retained SSH
+policy-pause/verified-hold/approved-Continue workflow remains the first integrated
+outcome. Keep production-only consolidation/acceptance deferred, and do not add
+another unused prerequisite chain. Current implementation status is in
+docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
+
 Reviewed October 20, 2026 (America/Chicago), after the 3 p.m. incident.
 
 **Do not implement or deploy these items during the current exams.** This file is

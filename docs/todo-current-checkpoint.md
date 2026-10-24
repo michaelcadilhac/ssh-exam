@@ -9,6 +9,10 @@ architecture/capacity question; no production/admission policy change.
 
 ## Current milestone
 
+Read todo-delivery-audit.md FIRST for the reconciled public outcomes and actual
+remaining gaps. The instructor explicitly requested this reassessment after
+another11/38 progress challenge. Do not add another independent prerequisite.
+
 Actual native/web policy pause → verified retained hold → approved Continue,
 preserving the same authenticated SSH/shell/editor state and original deadlines.
 Required: closed launch/input admission, current root SSH/owner, independently
@@ -86,14 +90,19 @@ PASS; /var/tmp/ssh-exam-overlay-kd094ctn, log
 /tmp/ssh-exam-retained-policy-root-red.log. This is the missing workflow, not a
 fixture error. New driver currently tests freeze-only, not Continue/all-writers.
 
-**Exact next action:** commit the validated native pin/refusal increment only,
-then connect the actual Engine scheduler → supervisor challenge → existing
-authenticated HTTPS → supervisor accept → input/expiry barriers. Fresh pre-start
-bootstrap must be non-restorable and actual ACTIVE/root-owner-bound, with no
-permission or interval invented from disk. Continue through complete native/web
-pause/freeze/approved Continue; do not grow another unused helper chain. Recording
-IO stays isolated; no global state/key copy or shared lock across storage/freeze/
-RPC. Full combined workflow remains the stopping boundary.
+Validated native pin/refusal is now committed as **b5e0ce3**; Begin history guard
+is1163190. All runners/guests ended. Uncommitted gateway integration additionally
+implements C15v3 nonpermitting preflight bootstrap and original-age ACTIVE
+promotion: final43 focused/4files PASS2.15s and types PASS. No broad launch for
+this incomplete workflow. Exact working fields/callers/limitations/next native
+steps: live-monitoring-runtime.md. **Read it before coding.**
+
+**Exact next action:** connect the ORIGINAL native Begin control socket to a
+nonpermitting supervisor bootstrap before clock, then actual durable ACTIVE →
+existing supervisor arbiter/proof/input/expiry/hold/Continue path. Recording IO
+stays isolated; no private key/global state copy or shared metadata lock across
+network/storage/freeze. No enabled partial mode, component-only commit or stopped
+turn after this plan. Full public workflow remains the completion boundary.
 
 ## Remaining approved scope and operational limits
 

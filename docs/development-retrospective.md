@@ -31,6 +31,18 @@ milestone boundaries, not lower safety standards or misleading TODO checkmarks.
 
 ## Operating changes
 
+October23 follow-up: the instructor again challenged several days of work with
+the main count at11/38. The failure persisted: lengthy speculative architecture
+analysis and separately qualified prerequisites still displaced the actual
+policy-pause/verified-hold/Continue outcome. Fresh authenticated Begin and actual
+SSH lifetime checks are validated runtime fixes, but another1100-line gateway
+capture/bootstrap WIP does not complete C3. Admit that distinction instead of
+using test counts to imply delivery. The new todo-delivery-audit.md groups the
+overlapping original requirements into public outcomes, identifies real gaps and
+separates prohibited production actions. It changes no acceptance criteria or
+checkmarks. No more independent prerequisite work is justified before joining
+the current native/student entry to that actual failing acceptance test.
+
 C8 follow-up October23: an oversized combined read truncated the operator
 document's native-only recovery-grant caveat. The initial state review therefore
 covered gateway dependencies but missed legacy authority. Catching it after a
