@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -38,12 +39,13 @@ func TestMonitoredBeginRemainsDisabledBeforeClockAndRequiresOriginalSocket(t *te
 // Actual signed native Begin -> inherited original socket -> separate bounded
 // supervisor -> real pidfd/claim -> authenticated TLS -> durable native ACTIVE.
 // Compiled child test seams replace installed root SSH ancestry/qualification;
-// this tests NO live input, writer freeze or student shell permissions.
+// Real owned scopes exercise input, kernel hold and retained shell memory.
+// This is not installed-root SSH, whole-UID or asynchronous-writer qualification.
 func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *testing.T) {
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "delayed-manager", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -283,6 +285,149 @@ func testActualSharedCutoffWatch(t *testing.T, e *Engine, a *Attempt) {
 // Actual signed pane issuance -> Engine.local -> closed user scope -> separate
 // supervisor -> inner PTY. Installed SSH ancestry is a compiled test seam;
 // revoking input is explicitly NOT a verified all-writer hold or approved thaw.
+// Return only after the actual gate has registered a closed launcher and reached
+// the real manager-start seam. Finishing releases that manager AFTER pause and
+// requires an explicit gate refusal, actual child death and no consumed permit.
+func stageActualDelayedMonitoredLaunch(t *testing.T, e *Engine, key ed25519.PrivateKey, a *Attempt, pane string) func() {
+	t.Helper()
+	probe := filepath.Join(t.TempDir(), "late-exec-probe")
+	t.Setenv("EXAM_TEST_BOOTSTRAP_EXEC_PROBE", probe)
+	reached, released := make(chan string, 1), make(chan struct{})
+	var once sync.Once
+	release := func() { once.Do(func() { close(released) }) }
+	prior := e.paneBootstrapStart
+	type startedChild struct {
+		process *uidProcess
+		err     error
+	}
+	started := make(chan startedChild, 1)
+	e.paneBootstrapStart = func(launch *exec.Cmd, control *net.UnixConn, exe *os.File, unit string, proof PaneInstance) (*paneBootstrapPeer, bool, error) {
+		if proof.Pane != pane {
+			return prior(launch, control, exe, unit, proof)
+		}
+		reached <- unit
+		select {
+		case <-released:
+		case <-time.After(5 * time.Second):
+			return nil, false, fmt.Errorf("test manager release missing")
+		}
+		peer, didStart, err := prior(launch, control, exe, unit, proof)
+		var pinned *uidProcess
+		if err == nil && peer != nil {
+			pinned, err = pinUIDProcess(peer.process.pid, a.UID)
+		}
+		started <- startedChild{pinned, err}
+		return peer, didStart, err
+	}
+	t.Cleanup(func() { release(); e.paneBootstrapStart = prior })
+	command := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "issue-framed-owner-channel-admission", Username: a.Username, Transport: a.Transport, Body: Request{ID: a.ID, Pane: pane, Purpose: "exam", Username: a.Username, Transport: a.Transport, PageEpoch: a.RegisteredOwner.PageEpoch}}
+	value, err := e.Command(signedCommand(key, command), a.Username, a.Transport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: filepath.Join(t.TempDir(), "delayed-manager.sock"), Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	client, err := net.DialUnix("unix", nil, listener.Addr().(*net.UnixAddr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { client.Close() })
+	_ = listener.SetDeadline(time.Now().Add(time.Second))
+	accepted, err := listener.AcceptUnix()
+	if err != nil {
+		t.Fatal(err)
+	}
+	finished := make(chan struct{})
+	go func() { defer close(finished); e.local(accepted) }()
+	t.Cleanup(func() {
+		release()
+		client.Close()
+		select {
+		case <-finished:
+		case <-time.After(5 * time.Second):
+			t.Error("owned delayed manager gate did not finish")
+		}
+	})
+	master, slave, err := openPTYMasterFlags(unix.O_NONBLOCK)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { master.Close(); slave.Close() })
+	if _, err := rawTerminal(slave.Fd()); err != nil {
+		t.Fatal(err)
+	}
+	payload, _ := json.Marshal(LocalRequest{Token: value.(map[string]string)["token"], InputProtocol: "v1"})
+	if _, _, err := client.WriteMsgUnix(payload, syscall.UnixRights(int(slave.Fd())), nil); err != nil {
+		t.Fatal(err)
+	}
+	_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+	var ready map[string]any
+	if err := json.NewDecoder(client).Decode(&ready); err != nil || ready["error"] != nil {
+		t.Fatal("delayed manager missed actual admission", ready, err)
+	}
+	if _, err := client.Write([]byte{1}); err != nil {
+		t.Fatal(err)
+	}
+	var unit string
+	select {
+	case unit = <-reached:
+	case <-time.After(5 * time.Second):
+		t.Fatal("actual closed launcher never reached manager-start boundary")
+	}
+	if _, err := os.Stat(probe); !os.IsNotExist(err) {
+		t.Fatal("bootstrap executed before manager start", err)
+	}
+	return func() {
+		t.Helper()
+		release()
+		_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+		var refused map[string]any
+		if err := json.NewDecoder(client).Decode(&refused); err != nil || refused["error"] == nil {
+			t.Fatal("late manager start lacked an explicit native gate refusal", refused, err)
+		}
+		select {
+		case <-finished:
+		case <-time.After(5 * time.Second):
+			t.Fatal("late refused gate did not finish")
+		}
+		var child startedChild
+		select {
+		case child = <-started:
+		case <-time.After(time.Second):
+			t.Fatal("real delayed manager never reported its exact child")
+		}
+		if child.err != nil || child.process == nil {
+			t.Fatal("late manager never reached actual pinned bootstrap", child.err)
+		}
+		defer child.process.close()
+		for until := time.Now().Add(2 * time.Second); ; {
+			live, err := child.process.live()
+			if err == nil && !live {
+				break
+			}
+			if err != nil || time.Now().After(until) {
+				t.Fatal("refused actual bootstrap remained live", err)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if _, err := os.Stat(probe); !os.IsNotExist(err) {
+			t.Fatal("late manager consumed a closed execution permit", err)
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, recorded := range state.Attempts[a.ID].Units {
+			if recorded == unit {
+				t.Fatal("positively exited refused startup remained reserved")
+			}
+		}
+	}
+}
+
 func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKey, a *Attempt, mode string, authorize func(int32)) {
 	t.Helper()
 	// The bootstrap-only fixture deliberately omits the filesystem view. This
@@ -469,8 +614,13 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	}
 	pendingProof := PaneInstance{Attempt: a.ID, Pane: pendingPane, ID: pendingIncarnation, Boot: boot(), ClosedUntil: Millis() + 15000, ClosedBootUntil: now + 15000, InputEpoch: Token()}
 	pendingUnit := "exam-" + a.ID + "-" + pendingPane + "-" + pendingIncarnation + ".scope"
-	if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "register-launch", Attempt: a.ID, Owner: *a.RegisteredOwner, Unit: pendingUnit, Proof: &pendingProof}, nil, false); err != nil {
-		t.Fatal(err)
+	var finishDelayed func()
+	if mode == "delayed-manager" {
+		finishDelayed = stageActualDelayedMonitoredLaunch(t, e, key, a, pendingPane)
+	} else {
+		if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "register-launch", Attempt: a.ID, Owner: *a.RegisteredOwner, Unit: pendingUnit, Proof: &pendingProof}, nil, false); err != nil {
+			t.Fatal(err)
+		}
 	}
 	unverified, err := e.Admin("pause", a.ID, "synthetic pending launch pause")
 	if err == nil || !strings.Contains(err.Error(), "hold is unverified") {
@@ -512,8 +662,12 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	inspectCLI("unverified", 1)
 	// This exact synthetic launch was NEVER started. Release that promise; no
 	// real manager record/process is cleared or inferred dead from a timeout.
-	if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "cancel-launch", Attempt: a.ID, Owner: *a.RegisteredOwner, Unit: pendingUnit, Proof: &pendingProof}, nil, false); err != nil {
-		t.Fatal(err)
+	if finishDelayed != nil {
+		finishDelayed()
+	} else {
+		if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "cancel-launch", Attempt: a.ID, Owner: *a.RegisteredOwner, Unit: pendingUnit, Proof: &pendingProof}, nil, false); err != nil {
+			t.Fatal(err)
+		}
 	}
 	paused, err := e.Admin("pause", a.ID, "synthetic retained policy pause")
 	if err != nil {

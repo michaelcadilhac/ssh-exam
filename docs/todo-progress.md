@@ -2687,3 +2687,15 @@ known-writer REDs are preserved in live-monitoring-runtime.md. Root all-writer/
 async/final-exec/independent failure/clock-role and16/64 qualification remain.
 No TODO closed on component evidence. Local coherent guarded increment only;
 no push/deploy/production/student mutation. Continue actual delayed manager test.
+
+## October23: actual delayed-launch qualification
+
+Extended the same native Begin/pause/Continue entry through a real delayed owned
+manager/bootstrap start. Pausing another live shell gives UNVERIFIED plus actual
+known-writer freeze; late startup explicitly refuses, its pinned process exits
+without consuming permission, and the original shell retains memory/clock through
+two Continue cycles. Durable test-only execution witness has positive/negative
+controls and private metadata assertions. Combined native races PASS7.469s;
+test-only source changes preserve7ece84d runtime/app/browser qualification.
+Installed-root/all-UID cleanup and final-exec-after-launch-ready remain open.
+No TODO closure, enablement, production action or missing command.

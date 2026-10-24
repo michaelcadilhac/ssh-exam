@@ -9,8 +9,7 @@ No unanswered design/capacity question. Main TODO11/38 is not effort percentage.
 ## Current outcome and validated increment
 
 Policy pause → verified retained hold → approved Continue, same open page/SSH/
-shell/editor, original deadlines. The local commit containing this checkpoint
-joins this guarded runtime through real native/HTTP/IPC/browser/WASM callers;
+shell/editor, original deadlines. Local commit7ece84d joins this guarded runtime through real native/HTTP/IPC/browser/WASM callers;
 it does NOT complete all privileged qualification or enable C3/C16/C9.
 Base b1e8758 audited overlapping TODOs; b5e0ce3 and1163190 are earlier qualified
 pin/history fixes. Old root bundles DO NOT qualify this newer native candidate.
@@ -48,16 +47,27 @@ rerun. See feature document for exact receipts and seams. No new root/capacity
 qualification, deployment or incident-cause claim. Frozen final manifest is
 /tmp/ssh-exam-retained-joined-qualified-source.json.
 
-## Exact next action
+## Current qualification increment and exact next action
 
-Extend the EXISTING actual native pause test beyond its manually registered
-never-started promise: block the real owned manager/bootstrap start, pause with
-another shell running, then release that exact start and prove no student exec,
-cleanup/retirement and same-shell Continue. Use owned scopes only; never SIGSTOP
-the desktop UID. Then complete original job stops/all-writer/async IO, recording
-fault/clock handover, independent death/stall and loaded-role agreement; extend
-the SAME guarded root retained-policy driver through Continue. Keep mode OFF;
-C9 automatic technical recovery is still open. Do not grow unused helpers.
+The local commit containing this test-only extension adds actual delayed-manager
+mode to the EXISTING native Begin/pause/Continue entry. It blocks a second REAL
+owned system-manager/bootstrap start, pauses with the original shell running,
+then releases the manager. Explicit gate refusal, independently pinned child
+death, unconsumed durable exec witness and retirement pass, followed by original
+shell memory/deadline surviving two Continue cycles. Positive/negative witness
+controls verify exact private ownership/mode/links. Native focused races PASS
+7.469s, /tmp/ssh-exam-retained-actual-delayed-manager-final-focus.log; all runners
+ended. Only two Go TEST files changed since7ece84d, so its unchanged runtime/app/
+browser/build broad evidence still applies. No new root or all-writer claim.
+
+NEXT: test actual root-supervisor revocation AFTER launch-ready, at the final
+release transaction, while canonical state still looks ACTIVE. Use the existing
+paneIdentity dependency seam to stop the exact final boundary; a durable consumed-
+permit witness must make accidental execution observable, not a timeout oracle.
+Then complete original job stops/all-writer/async IO, recording fault/clock handover,
+independent death/stall and loaded-role agreement; extend the SAME guarded root
+retained-policy driver through Continue. Keep mode OFF; C9 technical recovery is
+still open. No new design question. Do not add unused helpers.
 
 Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
 retirement reconciliation, manual secured-workspace cleanup, configuration/full

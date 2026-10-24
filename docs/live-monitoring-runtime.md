@@ -320,3 +320,25 @@ application scenarios are covered across those runs. Logs
 `/tmp/ssh-exam-retained-joined-application-final-regression.log` and
 `/tmp/ssh-exam-retained-joined-management-cli.log`. Final typecheck PASS. All local
 runners ended. Source remains guarded, with the root/16x4 gaps above still open.
+
+## Actual delayed manager start after pause
+
+The existing native Begin/pause/Continue test now stages a second REAL signed
+pane gate/PTY and blocks its actual owned system-manager start. With the first
+shell running, native pause freezes known writers and remains UNVERIFIED for
+that launcher. Releasing the real manager after pause reaches a positively pinned
+closed bootstrap, explicit gate refusal and actual child death without consuming
+an exec permit; the pending record retires and the original shell completes two
+Continue cycles with its memory/interval intact. The compiled-test-only durable
+post-permit witness has positive and refused real handshake controls, with exact
+private owner/mode/link assertions. This witness is absent from installed binaries.
+
+Final combined native races PASS7.469s; session1725 completed0,
+/tmp/ssh-exam-retained-actual-delayed-manager-final-focus.log. Earlier control
+2.783s and actual delayed case5.917s also pass. Only TWO Go test files changed
+since7ece84d; its app/native-runtime/build/browser evidence still applies.
+The desktop replaces installed SSH ancestry and uses owned user scopes; native
+cleanup's production exam.slice boundary is NOT positively qualified by this
+user-scope test. Actual bootstrap death is independently pinned, not inferred
+from missing canonical metadata. Root/all-UID/async/clock/independent failure and
+final-exec revocation after launch-ready remain open. No enablement/deployment.

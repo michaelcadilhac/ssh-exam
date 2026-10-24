@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -62,6 +63,11 @@ func TestPaneBootstrapChild(t *testing.T) {
 		os.Exit(74)
 	}
 	control.Close()
+	if probe := os.Getenv("EXAM_TEST_BOOTSTRAP_EXEC_PROBE"); probe != "" {
+		if err := os.WriteFile(probe, []byte("closed-bootstrap-permit-consumed"), 0600); err != nil {
+			os.Exit(78)
+		}
+	}
 	for _, fd := range []uintptr{3, 4} {
 		if _, err := unix.FcntlInt(fd, unix.F_GETFD, 0); !errors.Is(err, unix.EBADF) {
 			os.Exit(77)
@@ -81,6 +87,8 @@ func TestPaneBootstrapChild(t *testing.T) {
 func TestPaneBootstrapInheritedIPCPermitsOnlyExactLiveRelease(t *testing.T) {
 	for _, mode := range []string{"permit", "eof", "wrong", "oversized", "missing-eof", "expired", "bad-ready", "foreign-exe", "foreign-scope", "foreign-uid"} {
 		t.Run(mode, func(t *testing.T) {
+			probe := filepath.Join(t.TempDir(), "exec-probe")
+			t.Setenv("EXAM_TEST_BOOTSTRAP_EXEC_PROBE", probe)
 			control, child, err := paneBootstrapSocket()
 			if err != nil {
 				t.Fatal(err)
@@ -173,6 +181,22 @@ func TestPaneBootstrapInheritedIPCPermitsOnlyExactLiveRelease(t *testing.T) {
 			}
 			if peer != nil && peer.current() {
 				t.Fatal("exited child retained current identity")
+			}
+			data, probeErr := os.ReadFile(probe)
+			if mode == "permit" {
+				if probeErr != nil || string(data) != "closed-bootstrap-permit-consumed" {
+					t.Fatal("positive exec probe did not reach actual permission consumption", probeErr)
+				}
+				info, err := os.Lstat(probe)
+				if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
+					t.Fatal("unsafe private exec witness", err)
+				}
+				stat, ok := info.Sys().(*syscall.Stat_t)
+				if !ok || stat.Uid != uint32(os.Getuid()) || stat.Nlink != 1 {
+					t.Fatal("exec witness owner/link mismatch")
+				}
+			} else if !os.IsNotExist(probeErr) {
+				t.Fatal("refused bootstrap consumed a permit", mode, probeErr)
 			}
 		})
 	}
