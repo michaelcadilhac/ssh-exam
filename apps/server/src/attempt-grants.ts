@@ -115,7 +115,7 @@ export class AttemptGrants {
         .all(row.id),
     };
   }
-  snapshot(input: unknown, selectedWork?: unknown) {
+  snapshot(input: unknown, selectedWork?: unknown, username?: string) {
     const settings = examSchema.parse(input);
     if (
       isSandbox(settings.id) &&
@@ -147,6 +147,25 @@ export class AttemptGrants {
         name: work.name,
         hash: work.hash,
       });
+    if (work.kind === "saved") {
+      const source = this.store.attempt(work.attempt);
+      if (
+        !username ||
+        !source ||
+        source.username !== username ||
+        !Number.isSafeInteger(source.uid) ||
+        source.uid < 1000 ||
+        source.state !== "COMPLETED" ||
+        !source.protected ||
+        source.checksum !== work.checksum ||
+        !source.start ||
+        !source.deadline ||
+        !source.original_deadline
+      )
+        return conflict(
+          "Choose this student's completed protected attempt and exact checksum; inspect its history before issuance. No source fallback, account reservation or clock authorized.",
+        );
+    }
     return { settings, work, hash: hash(JSON.stringify({ settings, work })) };
   }
   initial(
@@ -238,7 +257,7 @@ export class AttemptGrants {
       throw Error(
         "Additional issuance requires its reviewed confirmation transaction",
       );
-    const value = this.snapshot(settings, work),
+    const value = this.snapshot(settings, work, username),
       exam = value.settings.id;
     if (
       !this.store.db
@@ -337,13 +356,14 @@ export class AttemptGrants {
     new ExamDefinitions(this.store, this.agent).requireActive(exam);
     this.store.db
       .prepare(
-        "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason,issuance,initial_grant) VALUES(?,?,?,?,1,'AVAILABLE',?,?,?,?,?)",
+        "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason,issuance,initial_grant) VALUES(?,?,?,?,1,?,?,?,?,?,?)",
       )
       .run(
         id,
         this.agent,
         exam,
         username,
+        value.work.kind === "saved" ? "PENDING_NATIVE" : "AVAILABLE",
         at,
         actor,
         reason,
@@ -448,7 +468,10 @@ export class AttemptGrants {
   }
   private unused(id: string, revision: number) {
     const row = this.row(id);
-    if (row.status !== "AVAILABLE" || row.revision !== revision)
+    if (
+      !["AVAILABLE", "PENDING_NATIVE"].includes(row.status) ||
+      row.revision !== revision
+    )
       return conflict(
         "Grant is unavailable or revision changed; inspect examctl web grants show GRANT before a new intent",
       );
@@ -501,6 +524,7 @@ export class AttemptGrants {
             id: row.exam,
           },
           b.work ?? previous.work,
+          row.username,
         ),
         revision = row.revision + 1;
       this.store.db
@@ -516,8 +540,12 @@ export class AttemptGrants {
           now(),
         );
       this.store.db
-        .prepare("UPDATE attempt_grants SET revision=? WHERE id=?")
-        .run(revision, id);
+        .prepare("UPDATE attempt_grants SET revision=?,status=? WHERE id=?")
+        .run(
+          revision,
+          value.work.kind === "saved" ? "PENDING_NATIVE" : "AVAILABLE",
+          id,
+        );
       this.store.audit(
         actor,
         "revise-unused-grant",
@@ -857,6 +885,10 @@ export class AttemptGrants {
         "Native grant settings differ from the immutable issued preparation; preserve original authority before retry",
       );
     if (expected.work && (remote.workspace || remote.start)) {
+      if (expected.work.kind === "saved")
+        return conflict(
+          "Saved-source readiness requires durable class-server retention and its exact verified archive receipt; no template fallback or clock authorized",
+        );
       const source =
         expected.work.kind === "empty"
           ? { kind: "empty" }

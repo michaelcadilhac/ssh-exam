@@ -2,6 +2,50 @@
 
 Local investigation/development, October 23, 2026. Nothing deployed.
 
+Current isolated C18 increment: reviewed saved-source issuance through the real
+HTTP API, compiled root-mapped examctl/TLS and instructor browser. Issued grants
+remain PENDING_NATIVE. They fix the archive/checksum, allowance, webcam and finite
+window immediately; no claim, account reservation, clock or history changes.
+Confirmation retry reuses the same grant; inspect and revoke work after restart.
+Eligibility requires that student's completed protected attempt and exact checksum.
+Native retention/synchronization and saved-source Begin remain UNIMPLEMENTED;
+an explicit readiness refusal prevents fallback or use. This does not complete C18.
+
+Verification: all28 affected HTTP checks PASS151.23s; actual compiled CLI workflow
+PASS7.20s (/tmp/ssh-exam-saved-source-real-cli-final5.log); two rebuilt real-WASM
+browser workflows PASS17.2s (/tmp/ssh-exam-saved-source-browser.log); matched build
+and typecheck pass. Final CLI races PASS1.367s and typecheck PASS after formatting
+(/tmp/ssh-exam-saved-source-final-cli-races.log and final-static.log). The real
+CLI test found missing --work-attempt/--work-checksum entries in the global argument
+sorter; these now have a regression. Prior fixture failures (missing import,
+source history inserted after grant-mode activation, history-free helper count)
+are retained in the local logs. The corrected fixture authors protected history
+in a separate namespace before issuance; no SQL fence or history was removed.
+
+Pending-state review: physical PENDING_NATIVE is excluded by existing AVAILABLE
+claim/admission checks. It never starts time or reserves an account; expiry cannot
+create availability. Explicit revision/revocation and original idempotent review
+remain inspectable. There is no native pin yet and no deletion-side claim in this
+increment. A later native acknowledgement must bind the current exact revision
+and cannot revive a revoked/revised/expired grant. Unknown native outcomes must
+remain pending, not infer success from a missing record.
+
+Bounded end-to-end target: existing additional-preview with --work saved and
+exact protected --work-attempt/--work-checksum, reviewed issuance, durable class-
+server retention confirmation, then student staging/fresh Begin with the full
+chosen allowance. A supported explicit root CLI synchronization step uses the
+existing signed outbound management identity. No student SSH, inbound native
+listener, general command polling or new daemon is assumed. Web pending state
+must offer inspect/cancel/retry and explain the same CLI completion workflow.
+Native deletion must consult the durable pin under the existing source/catalog
+lock. Verification runs outside shared state and the shared agent; source checks
+may not crash or block every student's coordinator. Preserve original archives,
+history/UID bindings/limits and finite settings. Root pins are data retention,
+never account reservation or execution permission. Revocation/revision/consumed
+release needs matching positive evidence, including all linked native consumers
+and contradictory workspace/submission/consumption checks. No timeout releases
+a source. Existing staging/publication/one-use/metadata barriers are reused.
+
 ## Current bounded milestone
 
 Entry points: `examctl web grants additional-preview` and unused-grant `revise`,
@@ -75,7 +119,8 @@ AVAILABLE grants retain the original finite Begin window and immutable revision
 history. A settings-only revision preserves work; explicit work revision/revoke
 requires no unresolved/consumed claim or independent Begin interval evidence.
 Missing starter bytes cannot justify fallback, new authority or a clock refund.
-Saved sources remain rejected by the shared schema until C18 is implemented.
+Saved sources may now be reviewed and issued pending native confirmation; they
+remain excluded from AVAILABLE admission until C18 is integrated.
 
 026 adds nullable immutable attempt grant_work. Existing default-source attempts
 remain unchanged/null, preserving their old wire bindings. Nondefault sources

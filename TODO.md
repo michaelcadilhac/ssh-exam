@@ -828,8 +828,11 @@ Existing enrollment migration and implementation remain outstanding.
   Actual worker SIGKILL/retry and protected-archive collection also pass.
   Settings-only revisions preserve the saved starter.
   Source-tampered replies and missing sources refuse before clock/grant use.
-  This does not complete saved-work grants: native deletion cannot see unused
-  gateway dependencies. C18 approved October23: availability requires durable
+  Saved-source review/confirm/show/revoke now passes actual HTTP, compiled root
+  CLI/TLS and instructor-browser checks locally. Grants remain PENDING_NATIVE,
+  with fixed settings/source and no account/clock use. Native retention/sync and
+  saved-source Begin are still unimplemented; this does not close the item.
+  Native deletion cannot yet see unused gateway dependencies. C18 approved October23: availability requires durable
   class-server source-retention confirmation. Pending issuance must support
   inspect/cancel/retry without account reservation or running time. C16 also now
   approves live monitoring/input authority inside the ONE attempt supervisor,

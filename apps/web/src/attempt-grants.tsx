@@ -189,8 +189,8 @@ export function AttemptGrantsDialog({
                   changes,
                   work: workspaceChoice(
                     work.kind,
-                    work.name ?? "",
-                    work.hash ?? "",
+                    work.kind === "saved" ? work.attempt : (work.name ?? ""),
+                    work.kind === "saved" ? work.checksum : (work.hash ?? ""),
                   ),
                 }
               : {}),
@@ -298,9 +298,17 @@ export function AttemptGrantsDialog({
             Saved workspace:{" "}
             {grant.work.kind === "empty"
               ? "Empty workspace"
-              : `${grant.work.name} · ${grant.work.hash}`}
+              : grant.work.kind === "saved"
+                ? `Protected attempt ${grant.work.attempt} · ${grant.work.checksum}`
+                : `${grant.work.name} · ${grant.work.hash}`}
           </p>
-          {grant.status === "AVAILABLE" && (
+          {grant.status === "PENDING_NATIVE" && (
+            <p>
+              Waiting for durable class-server source retention confirmation.
+              This grant cannot begin and reserves no account or exam time.
+            </p>
+          )}
+          {["AVAILABLE", "PENDING_NATIVE"].includes(grant.status) && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -311,10 +319,20 @@ export function AttemptGrantsDialog({
                 <legend>Explicit unused-grant revision</legend>
                 <GrantWorkspaceFields
                   mode={work.kind}
-                  name={work.name ?? ""}
-                  hash={work.hash ?? ""}
+                  name={
+                    work.kind === "saved" ? work.attempt : (work.name ?? "")
+                  }
+                  hash={
+                    work.kind === "saved" ? work.checksum : (work.hash ?? "")
+                  }
                   onChange={(kind, name, hash) =>
-                    setWork(kind === "empty" ? { kind } : { kind, name, hash })
+                    setWork(
+                      kind === "empty"
+                        ? { kind }
+                        : kind === "saved"
+                          ? { kind, attempt: name, checksum: hash }
+                          : { kind, name, hash },
+                    )
                   }
                 />
                 {fields.map(([key, label]) => (

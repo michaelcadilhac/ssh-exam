@@ -11,6 +11,13 @@ export const grantWorkspace = z.discriminatedUnion("kind", [
       hash: z.string().regex(/^[a-f0-9]{64}$/),
     })
     .strict(),
+  z
+    .object({
+      kind: z.literal("saved"),
+      attempt: z.string().uuid(),
+      checksum: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .strict(),
 ]);
 export const grantBinding = z
   .object({

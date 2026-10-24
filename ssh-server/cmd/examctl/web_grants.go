@@ -44,6 +44,8 @@ Protected history, original deadlines and account holds remain authoritative;
 neither metadata confirmation nor another grant reopens/overrides an old attempt.
 Additional starters: --work empty, or --work template --work-template NAME
 --work-template-version HASH. Omitted work uses the materials template at issuance.
+Saved source: --work saved --work-attempt UUID --work-checksum SHA256. This creates
+PENDING_NATIVE authority, unavailable until durable native source confirmation.
 Saved-work sources remain unfinished. Sandbox practice automatically saves each
 five-minute/no-webcam/four-terminal grant within its finite configured window.
 Cancelled retries reuse unused authority. Expired/revoked grants do not silently
@@ -196,6 +198,7 @@ func webGrantsMain(args []string) int {
 		}
 		changes := map[string]any{}
 		allowed["work"], allowed["work-template"], allowed["work-template-version"] = true, true, true
+		allowed["work-attempt"], allowed["work-checksum"] = true, true
 		work, err := workFlags.selection(seen)
 		if err != nil {
 			return usage(err.Error())
@@ -276,9 +279,11 @@ func webGrantsMain(args []string) int {
 }
 
 type grantWorkResult struct {
-	Kind string `json:"kind"`
-	Name string `json:"name"`
-	Hash string `json:"hash"`
+	Kind     string `json:"kind"`
+	Name     string `json:"name"`
+	Hash     string `json:"hash"`
+	Attempt  string `json:"attempt"`
+	Checksum string `json:"checksum"`
 }
 type grantHistoryResult struct {
 	Revision int64           `json:"revision"`
@@ -379,7 +384,7 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 			return fail
 		}
 		switch g.Status {
-		case "AVAILABLE", "REVOKED", "CONSUMED":
+		case "AVAILABLE", "PENDING_NATIVE", "REVOKED", "CONSUMED":
 		default:
 			return fail
 		}

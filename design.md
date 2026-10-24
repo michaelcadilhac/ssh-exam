@@ -2121,8 +2121,12 @@ native durable state and fresh C15 verification;026 retains it immutably in the
 web preparation. Settings-only revisions preserve the saved starter, independently
 of material edits.474 app tests, full native race/resource qualification, actual
 child crash/archive acceptance and39 final rebuilt browser checks pass locally.
-Saved-source retention remains C18 investigation:
-unused web references need a native deletion fence before saved grants are usable.
+Saved-source review/issuance now has matching local web and examctl workflows.
+It saves the exact protected source/checksum and settings as PENDING_NATIVE;
+inspect, retry and revoke create no account reservation or running interval.
+Actual HTTP/compiled CLI/browser checks pass. Native durable retention/sync and
+saved-source Begin remain unimplemented, so these grants cannot become AVAILABLE.
+Unused web references still need a native deletion fence before use.
 See grant-workspace-sources.md. No deployment or source-history mutation occurs.
 
 October23 C14 local implementation unifies sandbox practice through immutable PRACTICE

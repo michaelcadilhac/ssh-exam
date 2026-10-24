@@ -4,7 +4,7 @@ Updated October23,2026. Local development/testing/commits only. **No push,
 deploy, consolidation or production/student mutation.** Guarded disposable
 csc-sys qualification only; busy/uncertain means NO TEST. Stop on missing commands;
 none missing. C1–C18 settled; synthetic capacity target16 students/64 panes.
-No unanswered design/capacity question. Main TODO11/38 is not effort percentage.
+No unanswered design/capacity question. Clock-fact transfer was approved October24. Main TODO11/38 is not effort percentage.
 
 ## Current outcome and validated increment
 
@@ -42,22 +42,26 @@ Do not rerun unchanged app/browser suites for private native changes.
 
 ## Exact next milestone
 
-All root runners ended. Script-only six-pair linked-IO baseline/held matrix PASSES
-all19 assertions, protected collection, original-deadline SSH/SFTP and full host/
-base preservation. Current native hashes remain exactly ec754c6's qualified bundle.
-All40 Python checks pass. Receipt
-/tmp/ssh-exam-retained-linked-io-matrix-final-root-qualification.log (32865 completed0),
-private /var/tmp/ssh-exam-overlay-inypdjev; local artifact
-var/collection-tests/retained-linked-final-artifacts.v5o875xs. Prior fixture global
-baseline collision and its failed full run are retained in the feature document;
-only matrix io_baseline changed, not legacy account checks or product enforcement.
+This branch implements the reviewed saved-source pending workflow, NOT C18
+retention or Begin. HTTP preview/confirm/retry/show/revoke:28 affected checks
+PASS151.23s. Actual compiled root CLI/TLS/restart PASS7.20s; two rebuilt browser
+checks PASS17.2s; final CLI races PASS1.367s, typecheck and matched build PASS.
+Exact evidence and pending-state review: grant-workspace-sources.md. No grants
+become AVAILABLE, and no source/archive/account/clock is mutated. node_modules
+is an untracked symlink to existing installed dependencies: never stage it.
 
-NEXT: reproduce the existing signed clock-management entry with healthy live
-authority/stale disk lease; verify explicit clock changes agree with the live
-owner/deadline and keep the original interval. Inspect before assuming missing
-work. Then recording/death, last-child/partial-thaw, loaded roles/C9 and16/64.
-Keep source frozen during focused tests; inspect their completion before broader
-qualification. Installed guard OFF. No unanswered design question or deployment.
+Next on this branch: existing root management identity -> durable native source
+pin under the deletion/catalog lock -> exact authenticated acknowledgement ->
+AVAILABLE, then student saved-work staging/fresh Begin/full selected allowance.
+Retirement/revision/revoke must retain pins until positive matching consumer
+and contradictory workspace/submission/consumption checks; no timeout release.
+
+Main ae83453 has a separate uncommitted RED signed clock-live regression and
+proposal. The instructor has now approved transferring unchanged still-fresh
+facts across an authorized clock-only revision while preserving original age,
+cutoff, coverage and sequence. Return to that critical defect after this bounded
+pending increment. Do not rebuild a parallel supervisor or reset capture age.
+Installed retained-mode guard stays OFF; no deployment.
 
 Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
 retirement reconciliation, manual secured-workspace cleanup, configuration/full

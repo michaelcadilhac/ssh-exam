@@ -109,6 +109,7 @@ export class GrantIssuance {
                     : !!enrollment.webcam,
             },
             b.work,
+            username,
           );
           return {
             username,
