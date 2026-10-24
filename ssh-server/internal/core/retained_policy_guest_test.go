@@ -30,6 +30,9 @@ func retainedGuestNativeRoles() {
 	// actual root SSH/pidfd, complete UID inventory, cgroup and resource checks.
 	terminalAuthorityReadiness = func() error { return nil }
 	terminalResumeTransitionCheckpoint = func(stage, attempt, state string) error {
+		if stage == "rehold-inventory" {
+			return testResumeTransitionFault(stage, attempt, filepath.Join(state, "qualification-rehold-inventory"))
+		}
 		return testResumeTransitionFault(stage, attempt, filepath.Join(state, "qualification-resume-transition"))
 	}
 }

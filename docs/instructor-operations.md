@@ -29,6 +29,16 @@ failure and capacity qualification remains open. Current evidence and exact gaps
 are in live-monitoring-runtime.md; do not use internal test roles as an operator
 recovery workflow.
 
+The guarded local Continue candidate also preserves the existing approval, pane
+epochs and original interval after coordinator acknowledgement loss. The same-page
+retry checks the live supervisor, completes that exact pending intent and
+reattaches monitoring. A temporary re-hold inventory failure is retried through
+the full containment barrier while input/execution remain revoked. Persistent
+unknown writers remain inspectable and unverified. Use read-only interval
+inspection plus `examctl panes supervisor ATTEMPT` for captured pending/hold
+status; these observations do not authorize work. Detailed recovery/verification:
+retained-continuation-recovery.md. This candidate is not enabled or deployed.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

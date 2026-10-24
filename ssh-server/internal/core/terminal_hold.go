@@ -39,7 +39,7 @@ func (s *terminalSupervisor) observeAuthorityExpiry() {
 	}
 	technical := false
 	for _, cause := range view.Causes {
-		if cause == "technical-expiry" || cause == "clock-unknown" || cause == "ownership-unknown" || cause == "deadline" {
+		if cause == "technical-expiry" || cause == "clock-unknown" || cause == "ownership-unknown" || cause == "deadline" || cause == "resume-unverified" {
 			technical = true
 		}
 	}
@@ -354,6 +354,11 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 	// SIGSTOP reaches the full pinned group BEFORE cgroup freezing. Repeat
 	// inventory to include children created before their parent's stop completed.
 	for {
+		if terminalResumeTransitionCheckpoint != nil {
+			if err := terminalResumeTransitionCheckpoint("rehold-inventory", s.id, s.state); err != nil {
+				return fail(err)
+			}
+		}
 		processes, err := terminalHoldProcesses(owner.UID, units)
 		if err != nil {
 			return fail(err)
@@ -391,16 +396,23 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 				return fail(fmt.Errorf("observe retained process %d cgroup: %w", p.pid, err))
 			}
 			if !contained {
-				exempt := false
-				if trustedEntryExecutable(p.pid) {
+				entry := trustedEntryExecutable(p.pid)
+				exempt, transportRead, transportMatches, peerCurrent := false, false, false, false
+				if entry {
 					identity, err := transportIdentity(p.pid, owner.UID)
-					exempt = err == nil && identity == owner.TransportHash && runtime.peer.current()
+					transportRead, transportMatches, peerCurrent = err == nil, identity == owner.TransportHash, runtime.peer.current()
+					exempt = transportRead && transportMatches && peerCurrent
 				}
 				live, lifetimeErr := p.live()
-				p.close()
 				if lifetimeErr != nil || (live && !exempt) {
-					return fail(errors.New("uncontained student UID process; retained hold unverified"))
+					// Bounded pinned identity only, never command lines or transport
+					// credentials. Diagnostic facts do not exempt another process.
+					status, statusErr := p.read("status", 16384)
+					identity, _, parseErr := retainedStatus(status)
+					p.close()
+					return fail(fmt.Errorf("uncontained student UID process %d (entry=%t transport_read=%t transport_matches=%t ssh_peer=%t lifetime_verified=%t status=%t uids=%v); retained hold unverified", p.pid, entry, transportRead, transportMatches, peerCurrent, lifetimeErr == nil, statusErr == nil && parseErr == nil, identity.UIDs))
 				}
+				p.close()
 				continue
 			}
 			status, err := p.read("status", 16384)

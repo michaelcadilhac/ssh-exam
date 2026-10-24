@@ -137,3 +137,116 @@ also PASS1.068s in /tmp/ssh-exam-retired-hold-lifetime-controls.log. Builds/vet 
 43 Python checks pass. This increment is implemented/tested locally; no deployment
 or broad TODO closure. Retained admission stays disabled for the remaining finite
 failure/role/capacity matrix.
+
+## Coordinator acknowledgement loss (current local candidate)
+
+Actual signed Continue can lose its coordinator after the supervisor successfully
+resumes but before canonical ACTIVE/resuming is cleared. RED4.267s reaches that
+exact boundary, retains the live original supervisor, discards only the local
+coordinator monitoring bridge and retries through the same signed entry. Old
+code returns success with `retained_hold=resuming`, leaving pane admission closed
+and the fresh coordinator unregistered for monitoring. Receipt:
+/tmp/ssh-exam-coordinator-ack-loss-exact-red.log. This local bridge reset is NOT
+proof of actual process-death handling; that remains a guarded-root gate.
+
+The initial positive RPC and the positively verified live resume-result retry now
+share canonical completion and monitoring initialization/registration. The live
+result must match the original boot deadline; durable completion checks exact
+owner, nonce, generation, clocks, ACTIVE state and pending/complete hold before
+mutating. Changed/expired state refuses. No new approval, pane epoch, saved permit
+or allowance is created. A missing/dead supervisor cannot supply this result.
+
+State review: a partial live transition still uses fresh signed recovery/re-hold;
+a fully resumed live transition completes only its existing exact intent; an
+already completed retry is idempotent. Coordinator key/client initialization
+failure preserves pending metadata for repair. Actual authority/gates keep their
+original cutoff during an unavailable coordinator. An expired authority cannot
+complete from disk and must undergo the existing verified hold/recovery path.
+Concurrent changed ownership/clock/lock refuses before metadata mutation. No new
+durable state, indefinite reservation or policy exception is introduced.
+
+Five affected native interface modes PASS27.105s, including positive fresh signed
+renewals in the replaced coordinator and unchanged shell memory/epochs after
+retry. Final boot-deadline focus PASS13.250s,43 Python/build/vet PASS. Native inputs
+are frozen for the root run. The driver kills only the exact pinned private
+coordinator at that blocked checkpoint, restarts its existing private service,
+retries the same approval, and requires a unique positive peer command after the
+original15-second seed has expired. Root33-case workflow ACTIVE19873,
+/tmp/ssh-exam-coordinator-completion-root.log, private overlay-02qr3vj0.
+Bundle coordinator-completion-artifacts.nf0kzt84 (62,835,074bytes), native agent
+cacedd784eb58591eff977f052c919bc3a31e6dec62133d759dbf5246bf2f601,
+coreba5cc9c9e5a98112fd722f8941c7e67b1cdf54b95f91c786fa2d8f4bfae8c5d5.
+This first new root run FAILED before reaching coordinator loss: the earlier
+scope-thawed re-hold observed an uncontained student-UID process and refused a
+held receipt. /tmp/ssh-exam-coordinator-completion-root.log,19873 completed1,
+private /var/tmp/ssh-exam-overlay-02qr3vj0. FULL installed/base preservation PASS.
+The process's actual classification is not established; neither weaken the guard
+nor assume that a preceding successful root run proves this case resolved.
+
+The refusal now captures bounded pinned PID/UID status and entry/transport/peer/
+lifetime-check flags, without command lines or credentials. Enforcement and
+exemptions are unchanged. Focused coordinator/partial-mode checks PASS17.544s:
+/tmp/ssh-exam-coordinator-uncontained-diagnostic-focus.log. Fresh diagnostic
+artifacts are being built to identify the actual refusal. No final broad native
+run has started for the new candidate. Admission remains OFF.
+
+Diagnostic root31615 completed1: both partial transitions passed, then the new
+coordinator fixture failed before signalling because it expected full attempt
+fields from the deliberately narrower read-only info DTO (KeyError retained_hold).
+Receipt /tmp/ssh-exam-coordinator-identity-root.log, overlay-gl10zll5; FULL host/
+base preservation PASS. It supplies no coordinator-death qualification and does
+not resolve the earlier uncontained-process observation. Correct the fixture to
+the existing full `examctl info` result; no inspection/enforcement schema change.
+43 Python/syntax checks pass. Corrected source is frozen for root63740,
+/tmp/ssh-exam-coordinator-full-info-root.log; bundle
+coordinator-full-info-artifacts.f8bxtbj6 (62,828,417bytes), agent
+b47ba3af33f66ddca06bfd67eb690f857fb8093a10b9d053cbeb81cded48936e,
+corec162e638b10a8f368ec49e3c278fd7602721f1f0f30f8d891f4a29f7eaabd499.
+Native bytes match the diagnostic run; only the Python fixture changed.
+
+That frozen coordinator candidate now PASSES root33,63740 completed0, FULL host
+and base preservation: /tmp/ssh-exam-coordinator-full-info-root.log, private
+overlay-altvip9u. Actual pinned coordinator SIGKILL/restart, fresh same-approval
+completion and a unique positive peer command beyond the original15s seed pass,
+alongside Nano, asynchronous writes, protection/deadlines and saved-source checks.
+Capture is synthetic. This qualifies that exact older candidate only.
+
+### Strict re-hold retry after transient inventory refusal
+
+A separate exact signed-entry regression reproduces a permanently unverified
+hold after one explicit inventory refusal (RED9.296s). The supervisor's existing
+periodic revoked-authority observer omitted resume-unverified. It now retries
+that cause through the SAME complete UID/thread/input/stop/freeze barrier, with
+the same worker bound and no positive execution authority. Persistent unknown
+writers remain unverified; no new exemption, approval, allowance or account
+release. Deadline collection, original clocks and ownership checks remain.
+Cancellation/expiry still use existing pending-transition rules. No new durable
+state or reservation is introduced; retries cannot resurrect a lost supervisor.
+
+Current three focused modes PASS17.523s. A private overlay removing ONLY this
+cause recognition FAILS the exact current re-hold refusal9.297s, proving the
+regression reaches it. Logs /tmp/ssh-exam-rehold-inventory-{retry-focus,
+retry-mutation}.log. Root will additionally inject a one-shot private inventory
+refusal, require its exact consumed receipt and positive full kernel re-hold,
+then use fresh signed Continue with unchanged buffers/time. The old isolated
+uncontained-UID sample's exact process class remains unknown; this fixes a proven
+permanent-retry omission without pretending to establish that historical cause.
+
+Builds/vet/43 Python PASS. New source/test inputs frozen; exact bundle
+coordinator-rehold-artifacts.s5nogi73 (62,831,215bytes), agent
+479cc54b61ea13c98a1e5ffb4c1c2020f14c88fc193be9e575870fbc6ba05e79,
+coredbffd6f4b3ab0d9303c5b93827db7f4c7e2e3ffe83dbf795c56e982c08af2603.
+Fresh exact-artifact root34 PASSES,22163 completed0, FULL host/base preservation:
+/tmp/ssh-exam-coordinator-rehold-root.log, overlay-1csb90qn. Actual one-shot
+inventory refusal/strict re-hold, coordinator restart/post-seed fresh command,
+Nano, linked IO, protection and original-deadline restoration all pass. Capture
+is explicitly synthetic; combined real-capture/capacity qualification remains.
+
+Final uncached native races/resources/userns/compiler/default-size qualification
+PASSES core538.190s/CLI26.047s,6361 completed0, completion read from
+/tmp/ssh-exam-coordinator-rehold-final-native.log. Builds/vet/43 Python and focused
+mutation controls pass. The unchanged gateway runtime/protocol and client retain
+the18 affected interface checks and prior575 app/23 browser evidence. This
+increment is implemented/tested locally, not deployed or retained-mode enablement.
+The earlier unknown UID process's exact origin is not established by these tests;
+refusals remain strict, inspectable and retried without granting execution.

@@ -297,3 +297,11 @@ and failed cgroup read. Old code now fails the re-hold and corrected code passes
 the same public retry. Verify fixture consumption explicitly before accepting a
 pass; this is an application of the existing oracle/signature rules, not another
 reason to expand the test framework.
+
+The coordinator-death fixture repeated the producer-schema mistake: read-only
+info intentionally returns a reduced observation, not the full attempt's pending
+hold/grant fields. Its KeyError happened before the intended signal. The failed
+receipt is retained; the private fixture now uses the existing full info workflow
+and acknowledges its reconciliation semantics. Inspect serialized result types
+before writing an interface assertion. No inspection API/framework was added to
+make a faulty fixture pass; broad native tests waited for the corrected root run.

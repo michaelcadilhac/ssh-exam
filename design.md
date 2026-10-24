@@ -2806,3 +2806,14 @@ after the pinned process pidfd proves every thread exited; live or unknown
 lifetime still refuses. No new allowance, deadline, automatic approval or saved
 permission is introduced. Focused and actual root recovery qualification is in
 docs/retained-continuation-recovery.md; installed retained admission stays closed.
+
+A positively live supervisor's completed Continue and a lost-acknowledgement retry
+share durable completion and coordinator monitoring initialization/registration.
+Completion checks the exact owner/nonce/generation and original boot/wall clocks
+before clearing only the pending hold. It reuses the existing pane epochs and
+approval; saved metadata cannot supply a successful live result. A failed re-hold
+with resume-unverified is retried by the existing bounded supervisor observer
+through the complete writer/input barrier. This retry creates no work permission
+or policy exception; unknown writers continue to refuse a held receipt. Actual
+coordinator death and injected first-inventory refusal are qualified in the
+guarded guest. Broader retained-mode gates remain open.

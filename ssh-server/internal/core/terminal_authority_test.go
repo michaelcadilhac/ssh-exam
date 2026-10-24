@@ -45,7 +45,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -1201,6 +1201,10 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 				if err := os.WriteFile(filepath.Join(e.Config.State, "synthetic-retired-hold-process"), []byte("retire-after-pin"), 0600); err != nil {
 					t.Fatal(err)
 				}
+				refusal, _ := json.Marshal(map[string]string{"stage": "rehold-inventory", "attempt": a.ID})
+				if err := os.WriteFile(filepath.Join(e.Config.State, "synthetic-rehold-inventory-refusal"), refusal, 0600); err != nil {
+					t.Fatal(err)
+				}
 			}
 		}()
 		var transitionErr error
@@ -1239,11 +1243,52 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 			time.Sleep(10 * time.Millisecond)
 		}
 		if mode == "partial-continue" {
+			refused, err := os.ReadFile(filepath.Join(e.Config.State, "synthetic-rehold-inventory-refusal.observed"))
+			var refusal map[string]string
+			if err != nil || json.Unmarshal(refused, &refusal) != nil || refusal["attempt"] != a.ID || refusal["stage"] != "rehold-inventory" {
+				t.Fatal("re-hold missed its explicit first inventory refusal", string(refused), err)
+			}
 			observed, err := os.ReadFile(filepath.Join(e.Config.State, "synthetic-retired-hold-process.observed"))
 			if err != nil || string(observed) != "pinned whole-process exit before cgroup observation" {
 				t.Fatal("re-hold missed its positively exited pinned-process inventory race", string(observed), err)
 			}
 		}
+	}
+	var resumedSequence uint64
+	if mode == "resume-ack-loss" {
+		reached := false
+		func() {
+			previous := terminalResumeTransitionCheckpoint
+			terminalResumeTransitionCheckpoint = func(stage, id, state string) error {
+				if stage == "coordinator-committed" && id == a.ID && state == e.Config.State {
+					reached = true
+					return fmt.Errorf("synthetic coordinator acknowledgement loss")
+				}
+				return nil
+			}
+			defer func() { terminalResumeTransitionCheckpoint = previous }()
+			resume.Nonce = Token()
+			if _, err := e.Command(signedCommand(key, resume), a.Username, a.Transport); err == nil || !strings.Contains(err.Error(), "synthetic coordinator acknowledgement loss") || !reached {
+				t.Fatal("fixture missed live resume before durable completion", reached, err)
+			}
+		}()
+		pending, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current := pending.Attempts[a.ID]
+		if current == nil || current.RegisteredOwner == nil {
+			t.Fatal("committed coordinator boundary lost its registered owner", current)
+		}
+		live, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *current.RegisteredOwner}, nil, false)
+		if err != nil || live.View == nil || !live.View.ExecutionAuthorized || current.State != "ACTIVE" || current.RetainedHold != "resuming" {
+			t.Fatal("fixture missed successfully resumed authority with pending canonical completion", live, err, current)
+		}
+		resumedSequence = live.View.Sequence
+		// Model only the coordinator's lost in-memory monitoring bridge here;
+		// actual process death/restart remains a guarded root qualification.
+		e.stopTerminalMonitoring()
+		e.terminalMonitoring = terminalMonitoringBridge{}
 	}
 	resume.Nonce = Token() // Fresh verification, same approval/allowance; no restored receipt permission.
 	continued, err := e.Command(signedCommand(key, resume), a.Username, a.Transport)
@@ -1253,8 +1298,29 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	result := continued.(map[string]any)
 	active := result["attempt"].(*Attempt)
 	epochs := result["input_epochs"].(map[string]string)
+	if active.RetainedHold != "" {
+		t.Fatal("confirmed native completion still blocks pane admission", active.RetainedHold)
+	}
 	if active.State != "ACTIVE" || active.Generation != held.Generation || active.Start != a.Start || active.Deadline != a.Deadline || active.OriginalDeadline != a.OriginalDeadline || active.RegisteredOwner == nil || active.RegisteredOwner.InputEpoch == a.RegisteredOwner.InputEpoch || epochs[finalID] == "" || epochs[finalID] == capability["input_epoch"] {
 		t.Fatal("Continue changed time, replaced SSH or omitted fresh native epochs", continued)
+	}
+	if mode == "resume-ack-loss" {
+		if !e.terminalMonitoring.ready.Load() {
+			t.Fatal("confirmed resume did not initialize the fresh coordinator's monitoring bridge")
+		}
+		for until := time.Now().Add(3 * time.Second); ; {
+			live, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *active.RegisteredOwner}, nil, false)
+			if err != nil || live.View == nil || !live.View.ExecutionAuthorized {
+				t.Fatal("confirmed resume lost live monitoring authority", live, err)
+			}
+			if live.View.Sequence > resumedSequence {
+				break
+			}
+			if time.Now().After(until) {
+				t.Fatal("fresh coordinator did not perform another authenticated live renewal", live.View)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 	send(late[framedInputHeaderBytes-3:])
 	write(999, 0, []byte("finish\n")) // Complete old-epoch frames stay stale too.

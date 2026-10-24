@@ -8,6 +8,17 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October24 coordinator/re-hold recovery is implemented/tested locally. A lost
+coordinator acknowledgement now completes the same live supervisor intent and
+reattaches monitoring, preserving approval, epochs, buffers and original time.
+An explicitly refused inventory is retried through the same strict barrier;
+persistent unknown writers never receive a held receipt or permission. Focused
+regressions/mutation control, fresh guarded root34/FULL preservation and final
+native races/resources/default-size checks pass. The earlier isolated uncontained
+UID observation's exact process class remains unproven. Loaded-role, remaining
+control/last-task and combined16/64 gates keep admission OFF. No deployment or
+broad checkbox closure; see docs/retained-continuation-recovery.md.
+
 October24 actual retained-foreground qualification: the existing dead-main-thread
 probe now runs through real framed SSH, CLI hold and fresh Continue. Its positively
 identified worker stops/resumes with the same acknowledged private buffer, parent

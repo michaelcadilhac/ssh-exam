@@ -346,6 +346,37 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	return view, p.InputEpochs, nil
 }
 
+// Both the initial successful RPC and a lost-reply retry must complete the same
+// canonical metadata and reconnect the coordinator's live renewal bridge. This
+// accepts only the current supervisor's verified result, never saved permission.
+func (e *Engine) finishMonitoredResume(expected *Attempt, owner monitoringOwner, nonce string, result terminalAuthorityReply) (any, error) {
+	if expected == nil || expected.RegisteredOwner == nil || *expected.RegisteredOwner != owner || expected.MonitoringResumeNonce != nonce || nonce == "" || result.View == nil || !result.View.ExecutionAuthorized || result.View.DeadlineUptimeMS != int64(expected.UptimeDeadline*1000) {
+		return expected, errMonitoringAuthority
+	}
+	if err := e.prepareTerminalMonitoring(); err != nil {
+		return expected, err
+	}
+	var committed *Attempt
+	err := e.WithState(func() error {
+		current, err := e.Find(expected.ID)
+		if err != nil {
+			return err
+		}
+		if current.State != "ACTIVE" || current.RegisteredOwner == nil || *current.RegisteredOwner != owner || current.MonitoringResumeNonce != nonce || (current.RetainedHold != "" && current.RetainedHold != "resuming") || current.Generation != expected.Generation || current.ClockRevision != expected.ClockRevision || current.Start != expected.Start || current.Deadline != expected.Deadline || current.OriginalDeadline != expected.OriginalDeadline || expired(current) {
+			return errMonitoringScope
+		}
+		current.RetainedHold = ""
+		copy := *current
+		committed = &copy
+		return nil
+	})
+	if err != nil {
+		return expected, err
+	}
+	e.registerTerminalMonitoring(committed.ID, owner, int64(committed.UptimeDeadline*1000))
+	return map[string]any{"attempt": committed, "input_epochs": result.InputEpochs}, nil
+}
+
 func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 	if a == nil || a.MonitoringMode != "v1" || a.RegisteredOwner == nil || request.Generation != a.Generation || request.PageEpoch != a.RegisteredOwner.PageEpoch || expired(a) {
 		return a, errMonitoringScope
@@ -354,7 +385,7 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 	if a.State == "ACTIVE" && a.MonitoringResumeNonce != "" {
 		result, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "resume-result", Attempt: a.ID, Owner: *a.RegisteredOwner, NextOwner: a.RegisteredOwner, Nonce: a.MonitoringResumeNonce}, nil, false)
 		if err == nil {
-			return map[string]any{"attempt": a, "input_epochs": result.InputEpochs}, nil
+			return e.finishMonitoredResume(a, *a.RegisteredOwner, a.MonitoringResumeNonce, result)
 		}
 		if !recovering {
 			return a, err
@@ -449,22 +480,10 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 	if err != nil || result.View == nil || !result.View.ExecutionAuthorized {
 		return committed, errors.Join(errMonitoringAuthority, err)
 	}
-	err = e.WithState(func() error {
-		current, err := e.Find(a.ID)
-		if err != nil {
-			return err
+	if terminalResumeTransitionCheckpoint != nil {
+		if err := terminalResumeTransitionCheckpoint("coordinator-committed", a.ID, e.Config.State); err != nil {
+			return committed, err
 		}
-		if current.State != "ACTIVE" || current.RegisteredOwner == nil || *current.RegisteredOwner != p.Owner || current.MonitoringResumeNonce != p.Nonce {
-			return errMonitoringScope
-		}
-		current.RetainedHold = ""
-		copy := *current
-		committed = &copy
-		return nil
-	})
-	if err != nil {
-		return committed, err
 	}
-	e.registerTerminalMonitoring(a.ID, p.Owner, int64(a.UptimeDeadline*1000))
-	return map[string]any{"attempt": committed, "input_epochs": result.InputEpochs}, nil
+	return e.finishMonitoredResume(committed, p.Owner, p.Nonce, result)
 }

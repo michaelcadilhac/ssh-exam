@@ -232,7 +232,7 @@ def retained_continue(connection,id,paused,previous,live,original,transition_fau
         qualify_partial_transition(connection,id,body,transition_fault,live,original,approval)
     result=connection.command('consume-monitored-continuation',body)
     continued=result['attempt'];assert continued['state']=='ACTIVE' and continued['transport']==original['transport']
-    assert all(continued[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+    assert not continued.get('retained_hold') and all(continued[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
     assert continued['registered_owner']['generation']==paused['generation']
     assert continued['registered_owner']['page_epoch']==connection.page_epoch
     assert set(result['input_epochs'])=={p.native_pane for p in live}
@@ -244,8 +244,9 @@ def retained_continue(connection,id,paused,previous,live,original,transition_fau
 
 
 def qualify_partial_transition(connection,id,body,stage,live,original,approval):
-    """Bounded compiled-role fault AFTER an actual first thaw/SIGCONT."""
-    assert a.retained_policy and temporary and stage in ('scope-thawed','process-continued') and len(live)==2
+    """Bounded compiled-role fault after real kernel or coordinator commit."""
+    assert a.retained_policy and temporary and stage in ('scope-thawed','process-continued','coordinator-committed') and len(live)==2
+    coordinator_loss=stage=='coordinator-committed'
     marker=pathlib.Path(config['state'])/'qualification-resume-transition'
     paths=[marker,pathlib.Path(str(marker)+'.observed'),pathlib.Path(str(marker)+'.release'),pathlib.Path(str(marker)+'.timed-out')]
     assert not any(p.exists() or p.is_symlink() for p in paths),'unexpected private fault evidence; preserve it'
@@ -285,17 +286,50 @@ def qualify_partial_transition(connection,id,body,stage,live,original,approval):
         until=time.monotonic()+.5
         while time.monotonic()<until:
             frozen,states=kernel_state(units)
-            visible=(sorted(frozen)==[0,1] and all(s in ('T','t','Z') for s in states)) if stage=='scope-thawed' else (frozen==[0,0] and any(s not in ('T','t','Z') for s in states) and any(s in ('T','t') for s in states))
+            visible=(sorted(frozen)==[0,1] and all(s in ('T','t','Z') for s in states)) if stage=='scope-thawed' else (frozen==[0,0] and any(s not in ('T','t','Z') for s in states) and (coordinator_loss or any(s in ('T','t') for s in states)))
             if visible:break
             time.sleep(.005)
         assert visible,('exact partial kernel transition not observed',stage,frozen,states)
+        if coordinator_loss:
+            pending=info(id) # Full supported attempt result; read-only DTO omits pending/grant fields.
+            assert pending['state']=='ACTIVE' and pending['retained_hold']=='resuming' and pending['generation']==body['generation']
+            pid=int(root('systemctl','show','exam-agent.service','--property=MainPID','--value').strip())
+            handle=os.pidfd_open(pid)
+            try:
+                process=pathlib.Path('/proc',str(pid))
+                assert process.stat().st_uid==0 and process.joinpath('cgroup').read_text().strip()=='0::/system.slice/exam-agent.service'
+                assert os.path.samefile(process/'exe','/run/ssh-exam-qualification-input/core-qualification.test')
+                signal.pidfd_send_signal(handle,0)
+                signal.pidfd_send_signal(handle,signal.SIGKILL) # Exact private coordinator only; panes have separate owners.
+                exited=select.poll();exited.register(handle,select.POLLIN)
+                assert any(events&select.POLLIN for _,events in exited.poll(2000)),'pinned coordinator did not positively exit'
+            finally:os.close(handle)
         for pane in live:connection.input(pane,'STALE-PARTIAL-KEYS\n')
+        if stage=='process-continued':
+            inventory=pathlib.Path(config['state'])/'qualification-rehold-inventory'
+            assert not inventory.exists() and not pathlib.Path(str(inventory)+'.observed').exists()
+            descriptor=os.open(inventory,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+            with os.fdopen(descriptor,'w') as output:
+                json.dump({'attempt':id,'stage':'rehold-inventory'},output);output.flush();os.fsync(output.fileno())
     finally:
         if paths[1].is_file():
             descriptor=os.open(paths[2],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
             with os.fdopen(descriptor,'w') as output:output.write('release');output.flush();os.fsync(output.fileno())
         worker.join(timeout=8)
-    assert not worker.is_alive() and len(outcome)==1 and outcome[0][0]=='error' and outcome[0][1] is RuntimeError,outcome
+    assert not worker.is_alive() and len(outcome)==1 and outcome[0][0]=='error',outcome
+    if coordinator_loss:
+        assert outcome[0][1] not in (subprocess.TimeoutExpired,TimeoutError) and not paths[3].exists(),outcome
+        root('systemctl','start','exam-agent.service');wait_for(agent_ready,timeout=10,interval=.02)
+        replacement=int(root('systemctl','show','exam-agent.service','--property=MainPID','--value').strip())
+        assert replacement>0 and replacement!=pid and os.path.samefile(pathlib.Path('/proc',str(replacement),'exe'),'/run/ssh-exam-qualification-input/core-qualification.test')
+        pending=info(id)
+        assert all(pending[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+        assert all(p.poll() is None for p in live) and json.loads(pathlib.Path('/run/qualification-retained-approval.json').read_text())==approval
+        assert not marker.exists()
+        paths[1].unlink();paths[2].unlink()
+        ok('actual pinned coordinator SIGKILL after successful supervisor resume preserves SSH and pending canonical work; fresh coordinator retries the same approval and original interval')
+        return
+    assert outcome[0][1] is RuntimeError,outcome
     assert 'synthetic transition failure after '+stage in outcome[0][2] and not paths[3].exists(),outcome
     last_hold=None;hold_states=[];until=time.monotonic()+4
     while time.monotonic()<until:
@@ -304,12 +338,21 @@ def qualify_partial_transition(connection,id,body,stage,live,original,approval):
         if last_hold.get('phase')=='held':break
         time.sleep(.02)
     assert last_hold and last_hold.get('phase')=='held',('partial transition re-hold did not complete',stage,last_hold,hold_states)
+    if any(observation.get('phase')=='unverified' for observation in hold_states):
+        print('REHOLD_OBSERVED_RETRY',stage,json.dumps(hold_states),flush=True)
     frozen,states=kernel_state(units)
     assert frozen==[1,1] and all(s in ('T','t','Z') for s in states)
     pending=info(id)
     assert pending['state']=='ACTIVE' and pending['retained_hold']=='resuming' and pending['generation']==body['generation']
     assert all(pending[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
     assert all(p.poll() is None for p in live) and json.loads(pathlib.Path('/run/qualification-retained-approval.json').read_text())==approval
+    if stage=='process-continued':
+        inventory=pathlib.Path(config['state'])/'qualification-rehold-inventory'
+        receipt=pathlib.Path(str(inventory)+'.observed');metadata=receipt.lstat()
+        assert not inventory.exists() and stat.S_ISREG(metadata.st_mode) and metadata.st_mode&0o777==0o600 and metadata.st_uid==0 and metadata.st_nlink==1
+        assert json.loads(receipt.read_text())=={'attempt':id,'stage':'rehold-inventory'}
+        receipt.unlink()
+        ok('actual first re-hold inventory refusal is automatically retried through the same strict writer barrier without a new approval or restored execution permission')
     assert not marker.exists()
     paths[1].unlink();paths[2].unlink() # Only these validated disposable test controls.
     ok('actual '+stage+' fault positively observed, then all scopes/tasks re-held without losing SSH or changing original time/authorization; fresh same-approval retry follows')
@@ -643,8 +686,13 @@ if a.framed_owner or a.retained_policy:
                     signal.pidfd_send_signal(stopped_handle,0)
                     assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
                     for p in live:connection.input(p,'STALE-EDITOR-KEYS\n')
-                    fault=('scope-thawed','process-continued')[cycle] if cycle<2 else None
+                    fault=('scope-thawed','process-continued','coordinator-committed')[cycle] if cycle<3 else None
                     continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original,transition_fault=fault)
+                    if fault=='coordinator-committed':
+                        time.sleep(16.2) # Beyond the original15s seed; positive fresh command requires renewed authority.
+                        probe=uuid.uuid4().hex
+                        connection.input(panes[1],"printf 'COORDINATOR-%s\\n' '"+probe+"'\n")
+                        read_until(panes[1],('COORDINATOR-'+probe).encode(),timeout=3)
                     connection.input(fresh,'\x03');read_until(fresh,b'char 24/25',timeout=3)
                     wait_for(lambda:(work/'retained-writer').stat().st_size>stable,timeout=2,interval=.02)
                     signal.pidfd_send_signal(stopped_handle,0)

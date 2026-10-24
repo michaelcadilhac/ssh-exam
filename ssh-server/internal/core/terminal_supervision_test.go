@@ -271,6 +271,9 @@ func TestTerminalSupervisorChild(t *testing.T) {
 		return nil
 	}
 	terminalResumeTransitionCheckpoint = func(stage, attempt, state string) error {
+		if stage == "rehold-inventory" {
+			return testResumeTransitionFault(stage, attempt, filepath.Join(state, "synthetic-rehold-inventory-refusal"))
+		}
 		return testResumeTransitionFault(stage, attempt, filepath.Join(state, "synthetic-resume-transition-refusal"))
 	}
 	terminalHoldProcesses = func(uid int, units []string) ([]*uidProcess, error) {
