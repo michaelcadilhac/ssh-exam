@@ -708,6 +708,50 @@ it("signed pending native Continue remains retryable; confirmed native consumpti
     expect(f.store.attempt(f.id).registered_owner).toBe(
       JSON.stringify(f.owner),
     );
+    // A partial native transition has installed `owner`, but its existing
+    // authorization still names the ORIGINAL previous owner until completion.
+    // Returning the live actor as that authorization owner must refuse safely.
+    const recovering = {
+        type: "monitoring-continue/v1",
+        agent: "class",
+        nonce: hash(randomUUID()),
+        previous_owner: owner,
+        owner,
+      },
+      wrongActor = await f.authenticated(
+        "/api/agent/monitoring-continue",
+        recovering,
+      );
+    expect(wrongActor.statusCode, wrongActor.body).toBe(409);
+    const retry = await f.authenticated("/api/agent/monitoring-continue", {
+      ...recovering,
+      nonce: hash(randomUUID()),
+      previous_owner: f.owner,
+    });
+    expect(retry.statusCode, retry.body).toBe(200);
+    const repeated = JSON.parse(
+      Buffer.from(retry.json().payload, "base64").toString(),
+    );
+    expect(repeated.previous_owner).toEqual(f.owner);
+    expect(repeated.owner).toEqual(owner);
+    expect(repeated.authorization_expires).toBe(seed.authorization_expires);
+    expect(repeated.bootstrap).toEqual(seed.bootstrap);
+    expect(repeated.capture_valid_for_ms).toBeLessThanOrEqual(
+      seed.capture_valid_for_ms,
+    );
+    expect(
+      f.store.db
+        .prepare("SELECT consumed FROM continuations WHERE attempt=?")
+        .get(f.id),
+    ).toEqual({ consumed: 0 });
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 1,
+      start: original.start,
+      deadline: original.deadline,
+      original_deadline: original.original_deadline,
+      registered_owner: JSON.stringify(f.owner),
+    });
     const committed = await f.authenticated("/api/agent/events", {
       agent: "class",
       sequence: 3,

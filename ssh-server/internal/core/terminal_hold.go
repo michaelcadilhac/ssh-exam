@@ -380,8 +380,15 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 				}
 			}
 			if err != nil {
+				// A short-lived UID helper may exit between the pinned inventory
+				// and this read. Only the process pidfd can prove that all its
+				// threads exited; an ESRCH or missing proc entry alone cannot.
+				live, lifetimeErr := p.live()
 				p.close()
-				return fail(err)
+				if lifetimeErr == nil && !live {
+					continue
+				}
+				return fail(fmt.Errorf("observe retained process %d cgroup: %w", p.pid, err))
 			}
 			if !contained {
 				exempt := false
@@ -462,7 +469,7 @@ func (s *terminalSupervisor) holdAuthority(owner monitoringOwner, cause string) 
 				continue
 			}
 			if err := g.process.control(func(fd int) error { return unix.PidfdSendSignal(fd, unix.SIGSTOP, nil, 0) }); err != nil {
-				return fail(err)
+				return fail(fmt.Errorf("stop retained process %d: %w", g.process.pid, err))
 			}
 			g.signalled, allStopped = true, false
 		}

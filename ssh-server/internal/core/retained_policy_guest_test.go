@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,9 @@ func retainedGuestNativeRoles() {
 	// ONLY this compiled test role, after the full private guest guard. Keep
 	// actual root SSH/pidfd, complete UID inventory, cgroup and resource checks.
 	terminalAuthorityReadiness = func() error { return nil }
+	terminalResumeTransitionCheckpoint = func(stage, attempt, state string) error {
+		return testResumeTransitionFault(stage, attempt, filepath.Join(state, "qualification-resume-transition"))
+	}
 }
 
 func TestMain(m *testing.M) {

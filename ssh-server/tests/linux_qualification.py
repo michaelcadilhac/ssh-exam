@@ -213,7 +213,7 @@ def secure(id):
     assert checksum==x['checksum'];assert base.stat().st_mode&0o077==0
     return x,archive,checksum
 
-def retained_continue(connection,id,paused,previous,live,original):
+def retained_continue(connection,id,paused,previous,live,original,transition_fault=None):
     """Actual signed native Continue with one explicitly finite fixture approval."""
     body={'id':id,'generation':paused['generation'],'page_epoch':connection.page_epoch}
     try:
@@ -228,6 +228,8 @@ def retained_continue(connection,id,paused,previous,live,original):
             json.dump(approval,registry);registry.flush();os.fsync(registry.fileno())
         os.replace(temporary,'/run/qualification-retained-approval.json')
     finally:pathlib.Path(temporary).unlink(missing_ok=True)
+    if transition_fault:
+        qualify_partial_transition(connection,id,body,transition_fault,live,original,approval)
     result=connection.command('consume-monitored-continuation',body)
     continued=result['attempt'];assert continued['state']=='ACTIVE' and continued['transport']==original['transport']
     assert all(continued[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
@@ -239,6 +241,78 @@ def retained_continue(connection,id,paused,previous,live,original):
         assert p.input_epoch!=previous_epoch
         connection.input(p,'exit\n',epoch=previous_epoch,sequence=1000)
     return continued
+
+
+def qualify_partial_transition(connection,id,body,stage,live,original,approval):
+    """Bounded compiled-role fault AFTER an actual first thaw/SIGCONT."""
+    assert a.retained_policy and temporary and stage in ('scope-thawed','process-continued') and len(live)==2
+    marker=pathlib.Path(config['state'])/'qualification-resume-transition'
+    paths=[marker,pathlib.Path(str(marker)+'.observed'),pathlib.Path(str(marker)+'.release'),pathlib.Path(str(marker)+'.timed-out')]
+    assert not any(p.exists() or p.is_symlink() for p in paths),'unexpected private fault evidence; preserve it'
+    request={'attempt':id,'stage':stage,'block':True}
+    descriptor=os.open(marker,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(descriptor,'w') as output:json.dump(request,output);output.flush();os.fsync(output.fileno())
+    outcome=[]
+    def consume():
+        try:outcome.append(('returned',connection.command('consume-monitored-continuation',body)))
+        except Exception as error:outcome.append(('error',type(error),str(error)))
+    worker=threading.Thread(target=consume,daemon=True);worker.start()
+    def kernel_state(units):
+        frozen=[];states=[]
+        for unit in units:
+            directory=pathlib.Path('/sys/fs/cgroup/exam.slice')/unit
+            frozen.append(int(dict(line.split() for line in (directory/'cgroup.events').read_text().splitlines())['frozen']))
+            for tid in (directory/'cgroup.threads').read_text().split():
+                try:status=dict(line.split(':',1) for line in (pathlib.Path('/proc')/tid/'status').read_text().splitlines() if ':' in line)
+                except (FileNotFoundError,ProcessLookupError):continue
+                assert int(status['Uid'].split()[0]) in (0,account.pw_uid)
+                states.append(status['State'].split()[0]);assert len(states)<=256
+        assert states,'owned scope task inventory is empty or unverified'
+        return frozen,states
+    try:
+        observed=False;until=time.monotonic()+2
+        while time.monotonic()<until:
+            if paths[1].is_file():observed=True;break
+            assert worker.is_alive(),('native command ended before transition checkpoint',outcome)
+            time.sleep(.005)
+        assert observed,('transition checkpoint was not observed before its independent bound',outcome)
+        metadata=paths[1].lstat()
+        assert stat.S_ISREG(metadata.st_mode) and metadata.st_mode&0o777==0o600 and metadata.st_uid==0 and metadata.st_nlink==1
+        assert json.loads(paths[1].read_text())==request and worker.is_alive()
+        observed=json.loads(root('examctl','panes','supervisor',id));units=observed['attached_units']
+        assert len(units)==2 and set(units)==set(info(id)['units'])
+        visible=False
+        until=time.monotonic()+.5
+        while time.monotonic()<until:
+            frozen,states=kernel_state(units)
+            visible=(sorted(frozen)==[0,1] and all(s in ('T','t','Z') for s in states)) if stage=='scope-thawed' else (frozen==[0,0] and any(s not in ('T','t','Z') for s in states) and any(s in ('T','t') for s in states))
+            if visible:break
+            time.sleep(.005)
+        assert visible,('exact partial kernel transition not observed',stage,frozen,states)
+        for pane in live:connection.input(pane,'STALE-PARTIAL-KEYS\n')
+    finally:
+        if paths[1].is_file():
+            descriptor=os.open(paths[2],os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+            with os.fdopen(descriptor,'w') as output:output.write('release');output.flush();os.fsync(output.fileno())
+        worker.join(timeout=8)
+    assert not worker.is_alive() and len(outcome)==1 and outcome[0][0]=='error' and outcome[0][1] is RuntimeError,outcome
+    assert 'synthetic transition failure after '+stage in outcome[0][2] and not paths[3].exists(),outcome
+    last_hold=None;hold_states=[];until=time.monotonic()+4
+    while time.monotonic()<until:
+        last_hold=json.loads(root('examctl','panes','supervisor',id)).get('retained_hold',{})
+        if len(hold_states)<16 and (not hold_states or hold_states[-1]!=last_hold):hold_states.append(last_hold)
+        if last_hold.get('phase')=='held':break
+        time.sleep(.02)
+    assert last_hold and last_hold.get('phase')=='held',('partial transition re-hold did not complete',stage,last_hold,hold_states)
+    frozen,states=kernel_state(units)
+    assert frozen==[1,1] and all(s in ('T','t','Z') for s in states)
+    pending=info(id)
+    assert pending['state']=='ACTIVE' and pending['retained_hold']=='resuming' and pending['generation']==body['generation']
+    assert all(pending[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+    assert all(p.poll() is None for p in live) and json.loads(pathlib.Path('/run/qualification-retained-approval.json').read_text())==approval
+    assert not marker.exists()
+    paths[1].unlink();paths[2].unlink() # Only these validated disposable test controls.
+    ok('actual '+stage+' fault positively observed, then all scopes/tasks re-held without losing SSH or changing original time/authorization; fresh same-approval retry follows')
 
 
 def qualify_saved_source_grant(original):
@@ -569,7 +643,8 @@ if a.framed_owner or a.retained_policy:
                     signal.pidfd_send_signal(stopped_handle,0)
                     assert 'T'==next(line.split()[1] for line in pathlib.Path('/proc',str(stopped[0]),'status').read_text().splitlines() if line.startswith('State:'))
                     for p in live:connection.input(p,'STALE-EDITOR-KEYS\n')
-                    continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
+                    fault=('scope-thawed','process-continued')[cycle] if cycle<2 else None
+                    continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original,transition_fault=fault)
                     connection.input(fresh,'\x03');read_until(fresh,b'char 24/25',timeout=3)
                     wait_for(lambda:(work/'retained-writer').stat().st_size>stable,timeout=2,interval=.02)
                     signal.pidfd_send_signal(stopped_handle,0)

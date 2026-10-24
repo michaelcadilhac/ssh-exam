@@ -533,20 +533,30 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		if err != nil {
 			reply.Error = err.Error()
 		}
-	case "prepare-resume":
-		resume, err := s.prepareAuthorityResume(q.Owner, q.Generation)
+	case "prepare-resume", "prepare-resume-recovery":
+		var resume terminalResumePrepared
+		var err error
+		if q.Op == "prepare-resume" {
+			resume, err = s.prepareAuthorityResume(q.Owner, q.Generation)
+		} else {
+			resume, err = s.prepareAuthorityResumeRecovery(q.Owner, q.Nonce)
+		}
 		if err != nil {
 			reply.Error = err.Error()
 			return
 		}
-		reply.Resume = &resume
-	case "prepare-resume-recovery":
-		resume, err := s.prepareAuthorityResumeRecovery(q.Owner, q.Nonce)
-		if err != nil {
-			reply.Error = err.Error()
+		s.mu.Lock()
+		runtime := s.workAuthority
+		if runtime == nil || runtime.resume == nil || runtime.resume.Nonce != resume.Nonce || runtime.resume.Owner != resume.Owner {
+			s.mu.Unlock()
+			reply.Error = errMonitoringScope.Error()
 			return
 		}
-		reply.Resume = &resume
+		// The original policy authorization owner may predate a partially
+		// installed transition. Return the ACTUAL held actor separately.
+		owner := runtime.owner
+		s.mu.Unlock()
+		reply.Resume, reply.HeldOwner = &resume, &owner
 	case "commit-resume", "resume-result":
 		view, epochs, err := s.commitAuthorityResume(q)
 		if err != nil {

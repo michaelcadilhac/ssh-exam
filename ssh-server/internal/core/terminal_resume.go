@@ -15,6 +15,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Compiled synthetic roles may force a failure after an ACTUAL transition.
+// Installed executables never set this; no config/environment switch exists.
+var terminalResumeTransitionCheckpoint func(stage, attempt, state string) error
+
 type terminalResumePrepared struct {
 	Nonce         string            `json:"nonce"`
 	PreviousOwner monitoringOwner   `json:"previous_owner"`
@@ -149,7 +153,7 @@ func (s *terminalSupervisor) prepareAuthorityResumeRecovery(owner monitoringOwne
 	if p := r.resume; p.PreviousNonce == nonce && now >= p.IssuedBootMS && now-p.IssuedBootMS < 15000 {
 		return *p, nil
 	}
-	p := &terminalResumePrepared{Nonce: Token(), PreviousNonce: nonce, PreviousOwner: r.owner, Owner: owner, IssuedBootMS: now, InputEpochs: map[string]string{}}
+	p := &terminalResumePrepared{Nonce: Token(), PreviousNonce: nonce, PreviousOwner: r.resume.PreviousOwner, Owner: owner, IssuedBootMS: now, InputEpochs: map[string]string{}}
 	for _, stream := range s.timed {
 		p.InputEpochs[stream.recorder.pane] = Token()
 	}
@@ -186,7 +190,7 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	}
 	s.mu.Unlock()
 	proof, err := decodeMonitoringContinuation(*q.Frame, r.key)
-	if err != nil || proof.Audience != r.authority.context.Agent || proof.Nonce != p.Nonce || proof.PreviousOwner != r.owner || proof.Owner != p.Owner {
+	if err != nil || proof.Audience != r.authority.context.Agent || proof.Nonce != p.Nonce || proof.PreviousOwner != p.PreviousOwner || proof.Owner != p.Owner {
 		return monitoringAuthorityView{}, nil, errMonitoringEvidence
 	}
 	now, err := monitoringBootMillis()
@@ -294,6 +298,7 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	if err != nil {
 		return monitoringAuthorityView{}, nil, err
 	}
+	thawed := 0
 	for _, scope := range h.scopes {
 		if !next.authority.check().ExecutionAuthorized {
 			return monitoringAuthorityView{}, nil, errMonitoringAuthority
@@ -301,7 +306,14 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 		if err := terminalScopeWrite(scope, "cgroup.freeze", "0"); err != nil {
 			return monitoringAuthorityView{}, nil, err
 		}
+		thawed++
+		if thawed == 1 && terminalResumeTransitionCheckpoint != nil {
+			if err := terminalResumeTransitionCheckpoint("scope-thawed", s.id, s.state); err != nil {
+				return monitoringAuthorityView{}, nil, err
+			}
+		}
 	}
+	continued := 0
 	for index := len(ordered) - 1; index >= 0; index-- {
 		g := ordered[index]
 		if !g.signalled || g.originalStopped {
@@ -314,6 +326,12 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 			return monitoringAuthorityView{}, nil, err
 		}
 		g.signalled = false // A failed later step must SIGSTOP this group again.
+		continued++
+		if continued == 1 && terminalResumeTransitionCheckpoint != nil {
+			if err := terminalResumeTransitionCheckpoint("process-continued", s.id, s.state); err != nil {
+				return monitoringAuthorityView{}, nil, err
+			}
+		}
 	}
 	view := next.authority.check()
 	if !view.ExecutionAuthorized {
@@ -358,6 +376,9 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 	}
 	p := prepared.Resume
 	if (!recovering && p.PreviousOwner != *a.RegisteredOwner) || (recovering && p.Owner != *a.RegisteredOwner) || p.Owner.Generation != a.Generation {
+		return a, errMonitoringScope
+	}
+	if prepared.HeldOwner == nil || (*prepared.HeldOwner != p.PreviousOwner && (!recovering || *prepared.HeldOwner != p.Owner)) {
 		return a, errMonitoringScope
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -424,7 +445,7 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 	if err != nil {
 		return a, err
 	}
-	result, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit-resume", Attempt: a.ID, Owner: p.PreviousOwner, NextOwner: &p.Owner, Nonce: p.Nonce, Frame: &frame, State: committed.State, Start: committed.Start, Deadline: committed.Deadline, OriginalDeadline: committed.OriginalDeadline, DeadlineBootMS: int64(committed.UptimeDeadline * 1000)}, nil, false)
+	result, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit-resume", Attempt: a.ID, Owner: *prepared.HeldOwner, NextOwner: &p.Owner, Nonce: p.Nonce, Frame: &frame, State: committed.State, Start: committed.Start, Deadline: committed.Deadline, OriginalDeadline: committed.OriginalDeadline, DeadlineBootMS: int64(committed.UptimeDeadline * 1000)}, nil, false)
 	if err != nil || result.View == nil || !result.View.ExecutionAuthorized {
 		return committed, errors.Join(errMonitoringAuthority, err)
 	}

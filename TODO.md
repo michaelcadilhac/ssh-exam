@@ -168,6 +168,16 @@ delayed-launch, independent failure, loaded-role and combined root/capacity
 qualification remain open. No checkbox is closed and nothing is deployed. Current
 receipts and exact limitations: docs/live-monitoring-runtime.md.
 
+October24 partial Continue recovery now preserves the original signed approval's
+previous owner separately from the actual held actor. First-thaw/first-SIGCONT
+failures re-hold before fresh same-approval retry, preserving Nano buffers, SSH
+and original time. A real exited-helper inventory race is handled only after
+the pinned whole-process pidfd confirms complete exit; missing proc data alone
+still refuses. Fresh guarded root32 checks/host-base preservation pass; final
+native races/resources/default-size qualification also passes. This does not
+close the broader liveness item or enable retained mode. See
+docs/retained-continuation-recovery.md.
+
 - [ ] **Redesign monitoring liveness and execution authorization; do not turn a
   delayed control exchange into a student violation or destructive lockout.**
   Requested October 21. Initial read-only investigation confirms that the

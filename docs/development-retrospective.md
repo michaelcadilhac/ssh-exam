@@ -278,3 +278,22 @@ review belongs BEFORE broad tests, avoiding another artifact/guest cycle. The
 original product bug (actual continued recording loss falsely retired) remains
 distinct from this candidate implementation error. No new runtime framework or
 production change is justified; requalify changed artifacts and keep the guard off.
+
+
+The partial-Continue root fixture placed a renamed fault control directly under
+/run without first checking inherited service mount hardening. ProtectSystem=
+strict made that path inappropriate; the existing state directory is explicitly
+writable. A generic checkpoint wait also obscured whether its command had already
+ended. Correct the private path/early-result oracle and preserve the failed run,
+without changing ReadWritePaths or weakening a guard. AGENTS now requires this
+specific cross-namespace check before another guest cycle. Final broad native
+qualification had deliberately not started, avoiding a redundant long rerun.
+
+The first local exited-helper fixture then used the supervisor's attempt-ID
+argument as a state path. It passed without injecting the race; that receipt is
+discarded. The corrected fixture derives the directory from an existing known
+state marker and requires positive observation of the pinned helper's full exit
+and failed cgroup read. Old code now fails the re-hold and corrected code passes
+the same public retry. Verify fixture consumption explicitly before accepting a
+pass; this is an application of the existing oracle/signature rules, not another
+reason to expand the test framework.

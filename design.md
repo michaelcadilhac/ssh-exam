@@ -2796,3 +2796,13 @@ thread with a surviving foreground worker: positive scope/thread identity and
 stop, frozen counter, same acknowledged private buffer and resumed foreground/
 parent/peer through approved Continue. This adds qualification only; remaining
 failure/role/capacity gates keep admission closed. See live-monitoring-runtime.md.
+
+Partial Continue recovery keeps the original authorization previous-owner distinct
+from the supervisor's actual held actor. Signed fresh verification uses the former;
+root IPC checks the latter before retrying the same pending transition. Failed
+kernel transitions revoke input/authority and rerun the positive stop/freeze
+barrier. A cgroup observation that loses a short-lived process may skip it only
+after the pinned process pidfd proves every thread exited; live or unknown
+lifetime still refuses. No new allowance, deadline, automatic approval or saved
+permission is introduced. Focused and actual root recovery qualification is in
+docs/retained-continuation-recovery.md; installed retained admission stays closed.

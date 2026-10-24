@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -153,6 +154,73 @@ func init() {
 	}
 }
 
+// Actual local/root synthetic supervisor callers share one bounded private
+// fault request. Consuming it proves the exact post-transition code boundary;
+// an optional release barrier permits direct kernel observation there.
+func testResumeTransitionFault(stage, attempt, path string) error {
+	if path == "" {
+		return nil
+	}
+	file, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if err := privateRecordingFile(file); err != nil {
+		return err
+	}
+	data, err := io.ReadAll(io.LimitReader(file, 4097))
+	var request struct {
+		Attempt string `json:"attempt"`
+		Stage   string `json:"stage"`
+		Block   bool   `json:"block"`
+	}
+	if err != nil || len(data) > 4096 || json.Unmarshal(data, &request) != nil {
+		return errors.New("invalid private transition fault fixture")
+	}
+	if request.Attempt != attempt || request.Stage != stage {
+		return nil
+	}
+	if _, err := os.Lstat(path + ".observed"); !os.IsNotExist(err) {
+		return errors.New("transition fault fixture already observed or unsafe")
+	}
+	if err := os.Rename(path, path+".observed"); err != nil {
+		return err
+	}
+	if request.Block {
+		released := false
+		for until := time.Now().Add(3 * time.Second); time.Now().Before(until); {
+			release, err := os.OpenFile(path+".release", os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+			if err == nil {
+				check := privateRecordingFile(release)
+				if check != nil {
+					release.Close()
+					return errors.New("unsafe private transition fault release")
+				}
+				value, readErr := io.ReadAll(io.LimitReader(release, 128))
+				release.Close()
+				if readErr != nil || string(value) != "release" {
+					return errors.New("invalid private transition fault release")
+				}
+				released = true
+				break
+			}
+			if !os.IsNotExist(err) {
+				return err
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		if !released {
+			_ = os.WriteFile(path+".timed-out", []byte("fixture release missing"), 0600)
+			return errors.New("private transition fault release timed out")
+		}
+	}
+	return fmt.Errorf("synthetic transition failure after %s", stage)
+}
+
 func TestTerminalSupervisorChild(t *testing.T) {
 	i := -1
 	for n, arg := range os.Args {
@@ -202,6 +270,9 @@ func TestTerminalSupervisorChild(t *testing.T) {
 		}
 		return nil
 	}
+	terminalResumeTransitionCheckpoint = func(stage, attempt, state string) error {
+		return testResumeTransitionFault(stage, attempt, filepath.Join(state, "synthetic-resume-transition-refusal"))
+	}
 	terminalHoldProcesses = func(uid int, units []string) ([]*uidProcess, error) {
 		// This desktop UID owns unrelated applications. Enumerate ONLY the real
 		// test-owned workload scopes; never stop or signal the whole local UID.
@@ -236,6 +307,47 @@ func TestTerminalSupervisorChild(t *testing.T) {
 			if p != nil {
 				result = append(result, p)
 			}
+		}
+		// Reproduce a real UID-inventory race without touching this desktop's
+		// unrelated processes: a helper exits after pinning but before the hold
+		// reads its cgroup. Its process pidfd must positively report full exit.
+		retired := ""
+		if stateMarker := os.Getenv("EXAM_TEST_REFUSE_RESUME_COMMIT"); stateMarker != "" {
+			retired = filepath.Join(filepath.Dir(stateMarker), "synthetic-retired-hold-process")
+		}
+		if request, err := os.ReadFile(retired); err == nil && string(request) == "retire-after-pin" {
+			if err := os.Remove(retired); err != nil {
+				closeUIDProcesses(result)
+				return nil, err
+			}
+			child := exec.Command("/bin/sleep", "15")
+			if err := child.Start(); err != nil {
+				closeUIDProcesses(result)
+				return nil, err
+			}
+			p, pinErr := pinUIDProcess(child.Process.Pid, uid)
+			killErr := child.Process.Kill()
+			_ = child.Wait()
+			if pinErr != nil || p == nil || killErr != nil {
+				closeUIDProcesses(result)
+				if p != nil {
+					p.close()
+				}
+				return nil, fmt.Errorf("synthetic retired helper pin/exit failed: %v %v", pinErr, killErr)
+			}
+			live, lifetimeErr := p.live()
+			_, readErr := p.read("cgroup", 131072)
+			if lifetimeErr != nil || live || !errors.Is(readErr, unix.ESRCH) {
+				p.close()
+				closeUIDProcesses(result)
+				return nil, fmt.Errorf("synthetic retired helper missed exact pidfd-exit/cgroup refusal: %v %v %v", live, lifetimeErr, readErr)
+			}
+			if err := os.WriteFile(retired+".observed", []byte("pinned whole-process exit before cgroup observation"), 0600); err != nil {
+				p.close()
+				closeUIDProcesses(result)
+				return nil, err
+			}
+			result = append(result, p)
 		}
 		return result, nil
 	}

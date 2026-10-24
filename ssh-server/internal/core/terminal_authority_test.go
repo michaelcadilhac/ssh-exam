@@ -45,7 +45,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -81,6 +81,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			var calls atomic.Int32
 			var resumeMode atomic.Int32
 			var approvalUntil atomic.Int64
+			var initialOwner atomic.Pointer[monitoringOwner]
 			proofReached := make(chan struct{}, 1)
 			captured := make(chan grantBeginReply, 1)
 			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
@@ -92,6 +93,8 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				if mode == "wrong-bootstrap" {
 					reply.Bootstrap.Owner.InputEpoch = strings.Repeat("d", 64)
 				}
+				owner := reply.Bootstrap.Owner
+				initialOwner.Store(&owner)
 				captured <- reply
 				return reply, 200
 			}, testLiveCallbacks{Evidence: func(q testMonitoringRequest) (monitoringEvidence, int) {
@@ -103,6 +106,15 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			}, Continue: func(q monitoringContinueRequest) (monitoringContinueReply, int) {
 				if resumeMode.Load() == 0 {
 					return monitoringContinueReply{}, 403
+				}
+				// Match the REAL gateway's unconsumed authorization contract:
+				// its previous registered owner remains older than the proposed
+				// generation until native Continue actually succeeds.
+				if mode == "partial-thaw" || mode == "partial-continue" {
+					original := initialOwner.Load()
+					if q.PreviousOwner.Generation >= q.Owner.Generation || (q.Owner.Generation == 1 && (original == nil || q.PreviousOwner != *original)) {
+						return monitoringContinueReply{}, 403
+					}
 				}
 				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
 				switch resumeMode.Load() {
@@ -1142,6 +1154,96 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		}
 		resume.Body.Generation = held.Generation
 		authorize(4) // Explicit NEW approval for the operator's new pause generation.
+	}
+	if mode == "partial-thaw" || mode == "partial-continue" {
+		stage := "scope-thawed"
+		if mode == "partial-continue" {
+			stage = "process-continued"
+		}
+		marker := filepath.Join(e.Config.State, "synthetic-resume-transition-refusal")
+		payload, _ := json.Marshal(map[string]any{"stage": stage, "attempt": a.ID, "block": true})
+		if err := os.WriteFile(marker, payload, 0600); err != nil {
+			t.Fatal(err)
+		}
+		resume.Nonce = Token()
+		frame := signedCommand(key, resume)
+		failed := make(chan error, 1)
+		go func() { _, err := e.Command(frame, a.Username, a.Transport); failed <- err }()
+		func() {
+			defer func() {
+				if err := os.WriteFile(marker+".release", []byte("release"), 0600); err != nil {
+					t.Error(err)
+				}
+			}()
+			for until := time.Now().Add(2 * time.Second); ; {
+				if _, err := os.Stat(marker + ".observed"); err == nil {
+					break
+				}
+				if time.Now().After(until) {
+					t.Fatal("partial transition never reached its exact blocked kernel checkpoint", stage)
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			pending, err := readStateSnapshot(e.Config.State)
+			if err != nil {
+				t.Fatal(err)
+			}
+			current := pending.Attempts[a.ID]
+			view, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *current.RegisteredOwner}, nil, false)
+			if err != nil || view.View == nil || !view.View.ExecutionAuthorized || current.RetainedHold != "resuming" {
+				t.Fatal("fixture missed pending metadata with verified pre-fault authority", view, err)
+			}
+			admission := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "issue-framed-owner-channel-admission", Username: a.Username, Transport: a.Transport, Body: Request{ID: a.ID, Pane: ManagementID(), Purpose: "exam", Username: a.Username, Transport: a.Transport, PageEpoch: a.RegisteredOwner.PageEpoch}}
+			if _, err := e.Command(signedCommand(key, admission), a.Username, a.Transport); err == nil || !strings.Contains(err.Error(), "attempt not active") {
+				t.Fatal("pending partial transition admitted another pane despite its closed admission metadata", err)
+			}
+			if mode == "partial-continue" {
+				if err := os.WriteFile(filepath.Join(e.Config.State, "synthetic-retired-hold-process"), []byte("retire-after-pin"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}()
+		var transitionErr error
+		select {
+		case transitionErr = <-failed:
+		case <-time.After(5 * time.Second):
+			t.Fatal("injected transition did not finish after its exact release")
+		}
+		if transitionErr == nil || !strings.Contains(transitionErr.Error(), "synthetic transition failure after "+stage) {
+			t.Fatal("fixture did not refuse after the actual kernel transition", stage, transitionErr)
+		}
+		observed, err := os.ReadFile(marker + ".observed")
+		info, statErr := os.Lstat(marker + ".observed")
+		if err != nil || statErr != nil || string(observed) != string(payload) || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 || info.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || info.Sys().(*syscall.Stat_t).Nlink != 1 {
+			t.Fatal("transition refusal missed its exact private post-kernel checkpoint", stage, err, statErr)
+		}
+		pending, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current := pending.Attempts[a.ID]
+		if current.State != "ACTIVE" || current.RetainedHold != "resuming" || current.Start != a.Start || current.Deadline != a.Deadline || current.OriginalDeadline != a.OriginalDeadline || current.RegisteredOwner == nil {
+			t.Fatal("partial transition changed original time or lost its pending owner", current)
+		}
+		for until := time.Now().Add(5 * time.Second); ; {
+			view, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *current.RegisteredOwner}, nil, false)
+			if err != nil || view.View == nil || view.View.ExecutionAuthorized {
+				t.Fatal("partial transition retained positive execution authority", view, err)
+			}
+			if view.Hold != nil && view.Hold.Phase == "held" && len(view.Panes) == 1 && view.Panes[0].Held {
+				break
+			}
+			if time.Now().After(until) {
+				t.Fatalf("partial transition did not positively re-hold the actual pane: hold=%+v view=%+v", view.Hold, view)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if mode == "partial-continue" {
+			observed, err := os.ReadFile(filepath.Join(e.Config.State, "synthetic-retired-hold-process.observed"))
+			if err != nil || string(observed) != "pinned whole-process exit before cgroup observation" {
+				t.Fatal("re-hold missed its positively exited pinned-process inventory race", string(observed), err)
+			}
+		}
 	}
 	resume.Nonce = Token() // Fresh verification, same approval/allowance; no restored receipt permission.
 	continued, err := e.Command(signedCommand(key, resume), a.Username, a.Transport)

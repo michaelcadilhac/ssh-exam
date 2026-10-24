@@ -129,6 +129,10 @@
   fixture modes/owners and the intended request/reply stage. The runner's default
   timeout is not a refusal oracle. Wait for the exact protocol boundary under test,
   not merely shell output or an incidental timestamp.
+- Put cross-process fault controls in an existing directory visible and writable
+  in each actor's actual mount namespace; inspect service hardening first. If a
+  worker ends before its checkpoint, report its outcome immediately instead of
+  hiding it behind the checkpoint wait timeout.
 - Report progress in usable outcomes and remaining gaps, not commit/test counts.
   Distinguish investigated, awaiting decision, implemented/tested locally and
   deployed. Proposals and unused helpers do not close a TODO investigation or
