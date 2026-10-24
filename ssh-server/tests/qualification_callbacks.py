@@ -37,6 +37,12 @@ def fixture_reply(path,data,expected,approval,owners,now):
   owners[encoded]=coverage
   return {'type':'monitoring-bootstrap/v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
  assert data['agent']==expected['agent']
+ transfer=expected.get('clock_transfer')
+ if transfer:
+  previous,owner=transfer['previous_owner'],transfer['owner']
+  assert set(previous)==set(owner) and owner['clock_revision']==previous['clock_revision']+1
+  assert all(owner[k]==v for k,v in previous.items() if k!='clock_revision')
+  owners[key(owner)]=owners[key(previous)]
  if path=='/api/agent/grant-begin':
   assert expected['type'] in ('grant-begin/v2','grant-begin/v3')
   assert all(data.get(k)==v for k,v in expected.items())

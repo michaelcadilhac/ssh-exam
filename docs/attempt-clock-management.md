@@ -137,3 +137,26 @@ installed privileged PAM/PTYS claim. Browser tests cover the fixed displayed
 allowance during background changes and the existing seven-timezone workflow.
 Full regression results and remaining privileged/unified-grant gates are in
 todo-progress.md. Temporary-agent consolidation remains a proposal; do not deploy.
+
+## Retained monitoring clock handover (local candidate, October24 UTC)
+
+The instructor approved carrying unchanged still-fresh monitoring facts across
+an explicit clock-only revision. The existing CLI/web clock request remains the
+entry point. The native supervisor checks the same student/page/SSH/generation,
+then the ordinary durable ClockReset precedes an atomic owner/deadline handover
+for every pane and the independent shared cutoff. Original capture age, cutoff,
+coverage, sequence, input epochs and shell/editor memory are preserved. Subsequent
+proofs use the new clock revision. A clock edit supplies no fresh capture time.
+
+A verified held attempt stays held through its adjustment and still needs explicit
+finite approval and fresh Continue verification. Pending pane startup/resume or
+unverified hold refuses the initial clock check with retry guidance. If the
+durable adjustment succeeded but acknowledgement/handover is uncertain, inspect
+the original request/native ClockResets and retry the SAME intent. Do not create
+another extension as an acknowledgement retry. Expiry or a restart cannot restore
+execution from saved metadata. Current and original access holds remain in force.
+
+This passes full application/native race/resource, affected browser and fresh
+guarded-root qualification locally; it is not deployed. Retained-mode
+installed admission remains disabled pending the complete workflow. Detailed
+receipts and limits: live-monitoring-runtime.md. No service action is authorized.

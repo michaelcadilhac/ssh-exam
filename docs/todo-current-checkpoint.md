@@ -4,7 +4,7 @@ Updated October23,2026. Local development/testing/commits only. **No push,
 deploy, consolidation or production/student mutation.** Guarded disposable
 csc-sys qualification only; busy/uncertain means NO TEST. Stop on missing commands;
 none missing. C1–C18 settled; synthetic capacity target16 students/64 panes.
-No unanswered design/capacity question. Clock-fact transfer was approved October24. Main TODO11/38 is not effort percentage.
+No unanswered design/capacity question. Clock-only fact transfer approved October24 UTC. Main TODO11/38 is not effort percentage.
 
 ## Current outcome and validated increment
 
@@ -42,26 +42,54 @@ Do not rerun unchanged app/browser suites for private native changes.
 
 ## Exact next milestone
 
-This branch implements the reviewed saved-source pending workflow, NOT C18
-retention or Begin. HTTP preview/confirm/retry/show/revoke:28 affected checks
-PASS151.23s. Actual compiled root CLI/TLS/restart PASS7.20s; two rebuilt browser
-checks PASS17.2s; final CLI races PASS1.367s, typecheck and matched build PASS.
-Exact evidence and pending-state review: grant-workspace-sources.md. No grants
-become AVAILABLE, and no source/archive/account/clock is mutated. node_modules
-is an untracked symlink to existing installed dependencies: never stage it.
+All root runners ended. Script-only six-pair linked-IO baseline/held matrix PASSES
+all19 assertions, protected collection, original-deadline SSH/SFTP and full host/
+base preservation. Current native hashes remain exactly ec754c6's qualified bundle.
+All40 Python checks pass. Receipt
+/tmp/ssh-exam-retained-linked-io-matrix-final-root-qualification.log (32865 completed0),
+private /var/tmp/ssh-exam-overlay-inypdjev; local artifact
+var/collection-tests/retained-linked-final-artifacts.v5o875xs. Prior fixture global
+baseline collision and its failed full run are retained in the feature document;
+only matrix io_baseline changed, not legacy account checks or product enforcement.
 
-Next on this branch: existing root management identity -> durable native source
-pin under the deletion/catalog lock -> exact authenticated acknowledgement ->
-AVAILABLE, then student saved-work staging/fresh Begin/full selected allowance.
-Retirement/revision/revoke must retain pins until positive matching consumer
-and contradictory workspace/submission/consumption checks; no timeout release.
+Current clock milestone (uncommitted): the original signed clock-live RED is
+fixed through the real supervisor. Instructor approved carrying identical live
+facts across an authorized clock revision; original age/cutoff/coverage/sequence
+remain unchanged. Native check is nonpermitting; existing ClockReset saves first,
+then all gates/owner/cutoff swap. Old proofs/timers cannot change replacement
+mapping; same-intent retry is exact. Held clocks remain held, post-Continue clock
+changes work, and an actual state.json.tmp directory fault refuses before any
+live interval extension. Focused native/legacy races PASS9.015s, including actual
+clock-live6.59s (/tmp/ssh-exam-retained-clock-final-focus.log). Gateway transfer
+has24 focused passing ledger/real admin/JPEG/signed callback/evidence HTTP checks
+(/tmp/ssh-exam-retained-clock-http-focus2.log); native health and initial started
+lineage are explicit fixture observations. Next: mutation oracle, actual guarded
+root clock in SAME retained-policy profile, then coherent broader qualification.
+Mutation omitting gate deadline rebind FAILS at actual shell input, as required.
+Final focused races PASS9.106s;41 Python safety/fixture tests PASS; native builds/
+vet, app build and typecheck pass. Code-only bundle retained-clock-artifacts.h2o0mf3w
+has fresh agent f071a5e6d7c8fd0c821e0e42f647a00a353cbba049cefda84e1614259f691cf7
+and core test c689d2012d274329df3dc0da2e0e286ebe9f3a97d75c5cfe23f16622d87e821c.
+Root17577 completed0: all20 assertions including actual two-pane clock/retry,
+CLI hold/Continue, Nano, six linked-IO pairs, protected collection and original-
+deadline SSH/SFTP. FULL host/base preservation PASS, private
+/var/tmp/ssh-exam-overlay-h736xpp9.18 affected rebuilt browser checks PASS1.6m.
+All runners ended: full application102 files/570 tests PASS304.45s; new full
+native uncached race/resource/compiler/default-size qualification PASS core494.586s,
+CLI36.227s. Exact logs: /tmp/ssh-exam-retained-clock-{application,native-full}.log.
+Build/vet/typecheck,41 Python checks,18 affected browser checks and exact fresh
+root20 assertions all pass. Ready for a coherent local clock commit. Next native
+critical checks are recording/death/last-child/partial-thaw/loaded-role and combined
+real capture/root16/64; independent approved saved-source integration continues. Installed guard OFF.
 
-Main ae83453 has a separate uncommitted RED signed clock-live regression and
-proposal. The instructor has now approved transferring unchanged still-fresh
-facts across an authorized clock-only revision while preserving original age,
-cutoff, coverage and sequence. Return to that critical defect after this bounded
-pending increment. Do not rebuild a parallel supervisor or reset capture age.
-Installed retained-mode guard stays OFF; no deployment.
+Independent C18 branch source-grant-retention at var/worktrees/source-grant-retention
+now has validated local commit bcc88e9: actual HTTP/compiled root CLI/TLS/restart
+and two rebuilt browser pending-source workflows pass, final CLI races1.367s,
+typecheck/build pass. Grants stay PENDING_NATIVE; no claim/account/clock/history
+change. Native retention/sync and saved-source Begin remain unimplemented. Exact
+receipts/state review are in that branch's grant-workspace-sources.md. Preserve
+its untracked node_modules dependency symlink; do not stage it. After the clock
+workflow, continue durable pins/ack/staging/Begin there. Nothing is deployed.
 
 Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
 retirement reconciliation, manual secured-workspace cleanup, configuration/full

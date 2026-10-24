@@ -8,6 +8,14 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October24 UTC local clock candidate: approved unchanged-fact handover now fixes the
+actual signed clock refusal caused by a stale disk lease. It persists the existing
+clock intent before switching the same supervisor/all input gates/watchdog scope,
+with exact retry and no new capture age. Focused signed pane/hold/Continue and
+admin/JPEG/signed callback/evidence HTTP checks pass; full570 application tests,
+full native race/resource,18 affected browser checks and fresh guarded-root20
+assertions/full host/base preservation all pass locally. This does not close the liveness/retained-SSH item or enable it.
+
 October23 local root milestone: the guarded disposable retained-policy profile
 now passes real initial-grant Begin, two SSH panes, CLI pause, positive task stops
 and cgroup freezes, explicit fresh native Continue, retained shell buffers, stale

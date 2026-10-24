@@ -1,11 +1,9 @@
 package core
 
-// UNWIRED native authority/publication arbiter. This is NOT a journal, a root
-// peer verifier, a freeze/hold or a thaw implementation. No runtime caller exists.
-// A future native caller must supply a positively verified LIVE ACTIVE context,
-// never reconstruct positive permission from disk or bootstrap a held attempt.
-// Persistence must run outside this lock in a separately bounded worker; its
-// provisional records alone are never execution permission after a crash.
+// Live authority inside the existing attempt supervisor. Begin and approved
+// Continue establish verified contexts; a clock-only handover preserves facts.
+// Persistence stays outside this lock. Provisional records alone never restore
+// execution permission after a crash; writer hold/thaw is a separate barrier.
 
 import (
 	"crypto/rand"
@@ -33,7 +31,7 @@ type monitoringActiveContext struct {
 	CoverageEpoch                      string
 	Sequence                           uint64
 	AuthorityUntilMS, DeadlineUptimeMS int64
-	verified                           *monitoringActiveSeal   // Not JSON-restorable. No live verifier exists yet.
+	verified                           *monitoringActiveSeal   // Not JSON-restorable.
 	cutoff                             *monitoringSharedCutoff // Same live word for authority and independent watchdog.
 }
 

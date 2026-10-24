@@ -67,6 +67,21 @@ class CallbackTests(unittest.TestCase):
         with self.assertRaises(AssertionError): self.begin()
         self.assertEqual(self.owners, {})
 
+    def test_clock_transfer_requires_exact_private_registry_and_preserves_coverage(self):
+        seed = self.begin()['bootstrap']
+        owner = {**self.owner, 'clock_revision': 1}
+        self.expected['clock_transfer'] = dict(previous_owner=self.owner, owner=owner)
+        query = dict(type='monitoring-execution-challenge-v1', agent='private-agent',
+                     nonce='e'*64, owner=owner, coverage_epoch=seed['coverage_epoch'], after_sequence=1)
+        actual = reply('/api/agent/monitoring-evidence', query, self.expected, None, self.owners, self.now)
+        self.assertEqual(actual['coverage_epoch'], seed['coverage_epoch'])
+        self.assertEqual(actual['owner'], owner)
+        for change in ({'generation': 1}, {'clock_revision': 2}, {'input_epoch': 'f'*64}):
+            bad = copy.deepcopy(self.expected)
+            bad['clock_transfer']['owner'].update(change)
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                reply('/api/agent/monitoring-evidence', query, bad, None, self.owners, self.now)
+
     def test_continue_requires_exact_finite_approval_and_preserves_scope(self):
         self.begin()
         owner = {**self.owner, 'generation': 1, 'input_epoch': 'f'*64}

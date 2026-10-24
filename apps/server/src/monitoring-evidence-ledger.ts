@@ -161,6 +161,26 @@ export class MonitoringEvidenceLedger {
     this.bindings.set(binding, e);
     return binding;
   }
+  // Called only for an accepted native clock outcome with otherwise identical
+  // page/student/SSH/generation/settings. Preserve every original challenge
+  // time, fact, coverage cutoff and sequence; a clock edit is not a capture.
+  transferTrustedClock(binding: MonitoringEvidenceBinding, raw: unknown) {
+    const e = this.entry(binding),
+      parsed = monitoringOwner.safeParse(raw);
+    this.touch(e, this.now());
+    if (
+      !parsed.success ||
+      parsed.data.clock_revision !== e.owner.clock_revision + 1 ||
+      JSON.stringify({
+        ...parsed.data,
+        clock_revision: e.owner.clock_revision,
+      }) !== JSON.stringify(e.owner)
+    )
+      return refuse("ownership");
+    e.owner = Object.freeze(parsed.data);
+    e.receipts.clear(); // An old native challenge cannot acquire the new scope.
+    return binding;
+  }
   // Only after actual signed native ACTIVE ownership has been accepted. Preserve
   // original server challenge times; promotion cannot mint another15 seconds.
   seedValidatedBegin(

@@ -110,6 +110,23 @@ export class Monitoring {
       previous = this.live.get(a.id);
     if (previous?.owner === encoded && previous.settings === a.settings)
       return previous;
+    if (previous && previous.settings === a.settings) {
+      const prior = monitoringOwner.safeParse(JSON.parse(previous.owner));
+      if (
+        prior.success &&
+        owner.clock_revision === prior.data.clock_revision + 1 &&
+        JSON.stringify({
+          ...owner,
+          clock_revision: prior.data.clock_revision,
+        }) === JSON.stringify(prior.data)
+      ) {
+        // Store accepts only the authenticated native interval/reset history.
+        // The existing live binding retains original capture times and tickets.
+        this.liveLedger.transferTrustedClock(previous.binding, owner);
+        previous.owner = encoded;
+        return previous;
+      }
+    }
     // Current native ACTIVE identity comes only from the accepted signed native
     // outcome in Store. Disk identity starts an EMPTY ledger, never permission.
     // Retire closed/replaced owners rather than evicting a live owner's facts.

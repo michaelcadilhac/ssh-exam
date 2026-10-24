@@ -506,3 +506,123 @@ test hashes remain EXACTLY ec754c6's above; script-only changes. All40 Python
 checks pass. Unchanged application/browser/native evidence is retained, not
 repeated for the test driver. Clock/recording/death, last-child/partial-thaw,
 loaded-role/combined-capture and16/64 gates remain open. Installed guard OFF.
+
+## Next clock workflow: reproduced defect and handover proposal
+
+Actual signed `reset-clock` with a healthy supervisor, accepted current capture
+and the deliberately stale disk lease FAILS: "clock reset requires a live,
+unfinished exam". The new clock-live subtest reaches that exact public native
+command after the positive shared-cutoff/watchdog checks. RED3.259s, receipt
+/tmp/ssh-exam-retained-live-clock-red.log. This is the historical RED before the implementation/qualification below;
+no broad native pass is claimed with this added failing regression.
+
+Inspection confirms a second boundary: the supervisor and every input gate pin
+their owner/clock revision and deadline, and independent watchdogs retain the
+same bound cutoff. Skipping the old lease check would update canonical metadata
+without updating those actual owners. Existing recorder relevance already allows
+clock-only changes; inspect/reuse that behavior rather than adding another recorder.
+
+Proposed integrated change uses the existing signed clock request/intent, native
+ClockResets history and single attempt supervisor, with no new service. Prepare
+an exact bounded nonpermitting clock handover; never extend a deadline before
+durable authorization. Persist the existing audited clock operation, then switch
+the supervisor/cutoff and all pane deadline bindings together. Preserve the
+original interval, grant, SSH, buffers and existing policy holds. Old proof/timer/
+reply identities cannot affect the new clock. Lost acknowledgement retries the
+same clock intent; uncertainty preserves restrictions/buffers and reports a
+technical pending state, never a student violation or a second allowance.
+
+One consequential choice needs explicit resolution: may the handover carry the
+SAME still-current verified capture facts into an otherwise identical scope with
+only the authorized clock revision/deadline changed? Recommended: yes, preserving
+their original age/cutoff/coverage/sequence, with fresh renewals bound to the new
+revision. No metadata can manufacture capture or reset its freshness. Alternative:
+hold work through the verified barrier until a new challenged capture is accepted;
+this adds a brief interruption/network dependency to an otherwise healthy clock
+edit. C10 had not explicitly settled this transfer; the instructor subsequently
+approved unchanged-fact transfer, implemented/qualified below. Installed guard
+remains OFF pending the broader workflow.
+
+Acceptance: real signed clock/CLI/web/student entry, active and already-held
+attempts, exact live/durable deadline agreement, original shell/interval, no extra
+allowance on retry, stale proof/timer refusal, save/restart/lost-reply and shortened-
+deadline races. Require actual HTTP/JPEG clock-scope agreement and NEW native/root
+artifacts before enablement. This proposal alone closes no TODO investigation.
+
+
+October24 UTC clock decision and focused implementation: the instructor approved
+carrying identical still-fresh facts, preserving original age/cutoff/coverage/
+sequence across a durable clock-only revision. The existing signed native reset
+now uses the live supervisor instead of its stale disk lease. Nonpermitting
+check -> existing durable ClockReset -> atomic all-gate/runtime/cutoff transfer.
+A new mapping isolates retired watchdogs, and new-revision challenges continue
+through the existing HTTPS bridge. Same-intent retry retains the original
+adjustment; held clocks remain held. No new supervisor/daemon/permission journal.
+
+Focused actual signed clock plus legacy races PASS9.015s; clock-live6.59s includes
+real pane input, publication failure before permission, unchanged fact cutoff,
+old-proof/timer refusal, retry, current-revision TLS, held-clock change and a
+post-Continue clock with the same shell. Previous extended test failed because
+its extra input reused the later held-frame sequence; corrected only that
+fixture's sequences. The first HTTP clock fixture was invalidly unbound legacy
+history; corrected to authored already-started grant/Begin lineage without
+weakening SQL/owner fences. All24 ledger/actual admin/JPEG/signed callback/evidence
+HTTP checks now pass. Logs: /tmp/ssh-exam-retained-clock-final-focus.log and
+/tmp/ssh-exam-retained-clock-http-focus2.log. Native health/started fixture and
+local-user SSH ancestry seams remain explicit; guarded root and broader tests
+are NEXT, not claimed. The installed retained-mode guard stays OFF.
+
+Clock transition state review: the check creates no durable pending operation,
+reservation or positive permission. Failure before durable publication preserves
+the old interval. Durable intent plus uncertain commit is inspectable in the
+existing clock history and retries the SAME ID; it cannot apply another allowance.
+Only an unchanged current owner can transfer live facts. Expiry/ownership loss
+cannot be restored from disk; held/expired contexts never thaw through clock
+change. A fresh mapping fences delayed old watchdogs/proofs; all input/resize
+gates switch under their locks, keeping epoch and sequence. Startup/resume or
+unverified hold refuses the check before a new clock; a concurrent hold after
+publication stays safely unconfirmed and retryable. Original deadline, grant,
+account restrictions, protected history and recording identity are unchanged.
+
+
+October24 UTC exact-artifact root clock acceptance PASSES all20 assertions. Same
+retained-policy profile now performs the real signed instructor clock change and
+same-intent retry with two real SSH panes, preserves the same supervisor and shell
+memory/input, then passes CLI pause/verified hold/finite Continue, actual Nano,
+writer/original-stop controls, all six positive baseline/held linked-IO pairs,
+protected collection and original-deadline SSH/SFTP restoration. The shortened
+current clock does not shorten the original access hold. Callback capture remains
+explicitly synthetic; actual JPEG/gateway evidence is the separate HTTP test.
+
+Exact bundle retained-clock-artifacts.h2o0mf3w,62,289,842 candidate bytes, remote
+/var/tmp/ssh-exam-retained-clock-upload.5NrPDb/bundle. Agent SHA256
+f071a5e6d7c8fd0c821e0e42f647a00a353cbba049cefda84e1614259f691cf7;
+core test c689d2012d274329df3dc0da2e0e286ebe9f3a97d75c5cfe23f16622d87e821c.
+Root receipt /tmp/ssh-exam-retained-clock-root-qualification.log, session17577
+completed0; private /var/tmp/ssh-exam-overlay-h736xpp9. OVERLAY_QUALIFICATION_OK
+and FULL installed host binaries/config/authority and base preservation PASS.
+
+The private Go-overlay mutation omitting only gate.deadline rebind FAILS at the
+actual shell input oracle (not the runner timeout), /tmp/ssh-exam-retained-clock-
+gate-mutation.log. Correct final native focus PASS9.106s;41 Python checks PASS.
+Matched app/native builds, vet and typecheck pass.18 affected rebuilt real-WASM
+browser checks PASS1.6m (/tmp/ssh-exam-retained-clock-browser.log), session39565
+completed0. Full application and new full native race/resource runs are still
+pending; no completion is inferred from prior-bundle receipts. Installed guard OFF.
+
+
+Clock milestone final coherent qualification: full application102 files/570 tests
+PASS304.45s (/tmp/ssh-exam-retained-clock-application.log,12756 completed0).
+New full native uncached race/resource/default-size/compiler qualification PASS:
+core494.586s and CLI36.227s (/tmp/ssh-exam-retained-clock-native-full.log,48809
+completed0). This is the first full native qualification of the guardian+clock
+source, alongside the exact fresh root artifact above.18 affected real-WASM
+browser cases PASS1.6m. Native release builds/vet, matched server/web/WASM build,
+typecheck and41 Python safety/callback tests pass. Unchanged browser-client code
+retains its prior complete race evidence; no new wire format was introduced.
+
+The delivered outcome is the existing instructor clock workflow with retained
+monitoring facts, panes and original restrictions; it does not close the broader
+critical liveness/retained-SSH checkbox. Recording/death/last-child/partial-thaw,
+loaded-role, combined real capture/root and16/64 acceptance remain. No deployment
+or runtime guard enablement has occurred.

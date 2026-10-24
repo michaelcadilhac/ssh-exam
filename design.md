@@ -2112,6 +2112,24 @@ pass locally. Empty/saved-work and sandbox grants, full legacy-source migration,
 retained SSH and retirement remain unfinished. Nothing is deployed. Evidence and
 commands: docs/additional-template-grants.md and docs/additional-grants-cli.md.
 
+### Approved retained clock-only monitoring handover (October24 UTC; local candidate)
+
+An explicit instructor clock adjustment may carry still-current verified facts
+when student/page/SSH/generation/settings are otherwise identical. Preserve their
+original age, cutoff, coverage and sequence; the adjustment is not a new capture
+or a continuation approval. Existing native ClockReset durability precedes the
+single supervisor's all-pane input/resize/owner/deadline switch. A new shared
+cutoff mapping fences delayed old timers, and later proofs bind the new revision.
+Held attempts remain held. Same-intent retries cannot add another allowance;
+uncertain publication/handover retains restrictions and reports a technical
+pending outcome, never a student violation or permission restored from disk.
+Original deadlines, grants, recording identity and account holds are preserved.
+Native signed clock/pane/hold/Continue and actual admin/JPEG/signed evidence HTTP
+regressions, full570 application and native race/resource suites,18 affected
+browser checks and fresh guarded-root20 assertions pass locally. Installed
+retained admission remains disabled. See docs/attempt-clock-management.md and
+docs/live-monitoring-runtime.md. No deployment has occurred.
+
 ### Approved grant webcam/Begin-window policy (October 21; partial local implementation)
 
 October23 independent workspace workflow extends exact-material grants with
