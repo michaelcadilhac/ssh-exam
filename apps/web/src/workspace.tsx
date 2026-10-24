@@ -34,6 +34,7 @@ type Pane = {
   box: any;
   observer: ResizeObserver;
   input?: CapturedPaneInput;
+  outputEpoch?: string;
 };
 export function Workspace({
   reservation,
@@ -61,6 +62,7 @@ export function Workspace({
     nextTerminal = useRef(1),
     clipboard = useRef(""),
     capture = useRef<Capture | null>(null),
+    captureFailures = useRef(new Set<string>()),
     armed = useRef(false),
     keyboard = useRef(false),
     localLocked = useRef(attemptRef.current.state === "LOCKED"),
@@ -87,6 +89,7 @@ export function Workspace({
     [clock, setClock] = useState(Date.now()),
     [message, setMessage] = useState(""),
     [inputNotice, setInputNotice] = useState(false),
+    [captureDelayed, setCaptureDelayed] = useState(false),
     [resumedGeneration, setResumedGeneration] = useState<number | null>(null),
     [dialog, setDialog] = useState<any>(null),
     [dialogBusy, setDialogBusy] = useState(false),
@@ -195,6 +198,7 @@ export function Workspace({
     ended ||
     protecting ||
     authenticationGap ||
+    captureDelayed ||
     (!connected && attempt.state === "ACTIVE");
   const dialogRef = useRef(dialog);
   dialogRef.current = dialog;
@@ -309,6 +313,7 @@ export function Workspace({
     }
   };
   const interaction = () =>
+    captureFailures.current.size === 0 &&
     !localLocked.current &&
     bound.current &&
     online.current &&
@@ -649,7 +654,18 @@ export function Workspace({
       page,
       incident,
       conditions,
-      () => attemptRef.current.state === "PREPARING",
+      () =>
+        attemptRef.current.state === "PREPARING" ||
+        (attemptRef.current.monitoring_mode === "v1" &&
+          ["ACTIVE", "LOCKED"].includes(attemptRef.current.state)),
+      (source, healthy) => {
+        if (attemptRef.current.monitoring_mode !== "v1") return false;
+        if (healthy) captureFailures.current.delete(source);
+        else captureFailures.current.add(source);
+        setCaptureDelayed(captureFailures.current.size !== 0);
+        if (!healthy) browserSSH.setInputEnabled(false);
+        return true; // Technical verification failure, never policy evidence.
+      },
     );
     for (const pane of reservation.panes || []) addPane(pane);
     let mounted = true;
@@ -802,19 +818,27 @@ export function Workspace({
             }
             if (p.input?.epoch !== m.input.epoch)
               p.input = { epoch: m.input.epoch, sequence: 0 };
+            p.outputEpoch ||= m.input.epoch;
             p.fit.fit();
             sendPaneResize(p); // Fresh current viewport, not a relabelled queued resize.
           }
         }
         if (
           (m.type === "closed" || m.type === "output") &&
-          m.input_epoch &&
-          m.input_epoch !== panes.current.get(m.pane)?.input?.epoch
+          (m.pane_instance || m.input_epoch) &&
+          (m.pane_instance
+            ? m.pane_instance !== panes.current.get(m.pane)?.outputEpoch
+            : m.input_epoch !== panes.current.get(m.pane)?.input?.epoch)
         )
           return;
         if (m.type === "output") {
           const p = panes.current.get(m.pane);
-          if (p && interaction())
+          if (
+            p &&
+            (interaction() ||
+              (attemptRef.current.monitoring_mode === "v1" &&
+                ["ACTIVE", "LOCKED"].includes(attemptRef.current.state)))
+          )
             p.term.write(Uint8Array.from(atob(m.data), (c) => c.charCodeAt(0)));
         }
         if (m.type === "closed") remove(m.pane);
@@ -840,9 +864,29 @@ export function Workspace({
     connect();
     const unsubscribe = browserSSH.subscribe((m) => {
       if (m.type === "input-backpressure") setInputNotice(true);
+      if (
+        m.type === "pane-context" &&
+        /^[a-f0-9]{64}$/.test(m.instance || "")
+      ) {
+        const p = panes.current.get(m.pane);
+        if (p) p.outputEpoch ||= m.instance;
+      }
+      if (
+        (m.type === "output" || m.type === "closed") &&
+        (m.pane_instance || m.input_epoch) &&
+        (m.pane_instance
+          ? m.pane_instance !== panes.current.get(m.pane)?.outputEpoch
+          : m.input_epoch !== panes.current.get(m.pane)?.input?.epoch)
+      )
+        return;
       if (m.type === "output") {
         const p = panes.current.get(m.pane);
-        if (p && interaction())
+        if (
+          p &&
+          (interaction() ||
+            (attemptRef.current.monitoring_mode === "v1" &&
+              ["ACTIVE", "LOCKED"].includes(attemptRef.current.state)))
+        )
           p.term.write(Uint8Array.from(atob(m.data), (c) => c.charCodeAt(0)));
       }
       if (m.type === "closed") remove(m.pane);
@@ -1217,6 +1261,24 @@ export function Workspace({
       throw Error(
         "Exam status changed while restoring. Review the current pause before continuing.",
       );
+    if (result.attempt.monitoring_mode === "v1") {
+      for (const p of panes.current.values()) {
+        const next = result.inputEpochs?.[p.id];
+        if (
+          !next ||
+          next.instance !== p.outputEpoch ||
+          !/^[a-f0-9]{64}$/.test(next.epoch || "")
+        )
+          throw Error(
+            "Terminal changed while continuing. Input remains blocked; keep this page open and retry.",
+          );
+      }
+      for (const p of panes.current.values()) {
+        const next = result.inputEpochs[p.id];
+        if (p.input?.epoch !== next.epoch)
+          p.input = { epoch: next.epoch, sequence: 0 };
+      }
+    }
     confirmActivation(epoch);
     setClock(serverClock.current.now);
     localLocked.current = false;
@@ -1311,6 +1373,11 @@ export function Workspace({
               <span className="status">
                 Screen {screen ? "on" : "off"}
                 {settings.webcam ? ` · Camera ${camera ? "on" : "off"}` : ""}
+              </span>
+            )}
+            {captureDelayed && (
+              <span className="warn" role="status">
+                Monitoring verification delayed · input blocked
               </span>
             )}
           </small>
@@ -1526,9 +1593,11 @@ export function Workspace({
                     ? "Exam paused"
                     : approval.state === "approved"
                       ? "Continuation approved"
-                      : approval.state === "expired"
-                        ? "Approval expired"
-                        : "Instructor review required"
+                      : approval.state === "completing"
+                        ? "Complete continuation"
+                        : approval.state === "expired"
+                          ? "Approval expired"
+                          : "Instructor review required"
                   : "Reconnecting"}
               </h1>
               <p>
@@ -1555,31 +1624,32 @@ export function Workspace({
                       )}
                     </p>
                   )}
-                  {!sandbox && approval.state !== "approved" && (
-                    <details className="review-request">
-                      <summary>Request instructor review</summary>
-                      <label>
-                        Message for your instructor
-                        <textarea
-                          rows={2}
-                          maxLength={1000}
-                          value={review}
-                          onChange={(e) => setReview(e.target.value)}
-                        />
-                      </label>
-                      <button
-                        onClick={() =>
-                          action(() =>
-                            api(`/student/attempts/${id}/review-request`, {
-                              message: review,
-                            }),
-                          )
-                        }
-                      >
-                        Request instructor review
-                      </button>
-                    </details>
-                  )}
+                  {!sandbox &&
+                    !["approved", "completing"].includes(approval.state) && (
+                      <details className="review-request">
+                        <summary>Request instructor review</summary>
+                        <label>
+                          Message for your instructor
+                          <textarea
+                            rows={2}
+                            maxLength={1000}
+                            value={review}
+                            onChange={(e) => setReview(e.target.value)}
+                          />
+                        </label>
+                        <button
+                          onClick={() =>
+                            action(() =>
+                              api(`/student/attempts/${id}/review-request`, {
+                                message: review,
+                              }),
+                            )
+                          }
+                        >
+                          Request instructor review
+                        </button>
+                      </details>
+                    )}
                   <div
                     className="recovery-checks"
                     hidden={authenticationGap}

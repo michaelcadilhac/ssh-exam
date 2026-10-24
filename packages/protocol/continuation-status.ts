@@ -11,6 +11,7 @@ export const continuationStatus = z
     state: z.enum([
       "waiting",
       "approved",
+      "completing",
       "expired",
       "revoked",
       "superseded",

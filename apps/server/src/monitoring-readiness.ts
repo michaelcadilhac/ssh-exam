@@ -19,6 +19,26 @@ const policy = z
   .strict();
 type Source = "screen" | "webcam";
 type Policy = z.infer<typeof policy>;
+const snapshotBrand = Symbol("validated-preflight-capture");
+export type CaptureReadinessSnapshot = Readonly<{
+  [snapshotBrand]: true;
+  attempt: string;
+  page: string;
+  generation: number;
+  settings: string;
+  webcam: boolean;
+  policy: Readonly<{ issued: number; ordinal: number; value: Policy }>;
+  frames: ReadonlyArray<
+    Readonly<{
+      source: Source;
+      issued: number;
+      ordinal: number;
+      sequence: number;
+    }>
+  >;
+}>;
+export const isCaptureReadinessSnapshot = (value: CaptureReadinessSnapshot) =>
+  value?.[snapshotBrand] === true;
 type Ticket = {
   scope: string;
   source: Source;
@@ -93,9 +113,25 @@ export class MonitoringReadiness {
       !["PREPARING", "ACTIVE", "LOCKED"].includes(a.state)
     )
       return refuse("scope");
-    return JSON.stringify([a.id, page, a.generation, a.settings]);
+    return JSON.stringify([
+      a.id,
+      page,
+      a.generation,
+      a.settings,
+      a.registered_owner,
+    ]);
   }
-  issue(a: Attempt, page: string, source: unknown, after: number) {
+  issue(
+    a: Attempt,
+    page: string,
+    source: unknown,
+    after: number,
+  ): {
+    challenge: string;
+    source: Source;
+    after_sequence: number;
+    valid_for_ms: number;
+  } {
     const scope = this.scope(a, page),
       now = this.now(),
       webcam = !!JSON.parse(a.settings).webcam;
@@ -224,6 +260,54 @@ export class MonitoringReadiness {
       entry.policy = { issued: ticket.issued, ordinal: ticket.ordinal, value };
     entry.touched = now;
     return this.inspect(a, page);
+  }
+  snapshotBeforeStart(a: Attempt, page: string): CaptureReadinessSnapshot {
+    return this.snapshot(a, page, "begin");
+  }
+  snapshotForContinuation(a: Attempt, page: string): CaptureReadinessSnapshot {
+    return this.snapshot(a, page, "continue");
+  }
+  private snapshot(
+    a: Attempt,
+    page: string,
+    purpose: "begin" | "continue",
+  ): CaptureReadinessSnapshot {
+    const state = this.inspect(a, page),
+      entry = this.entries.get(a.id);
+    if (
+      (purpose === "begin"
+        ? a.state !== "PREPARING" ||
+          a.start !== null ||
+          a.registered_owner !== null
+        : a.state !== "LOCKED" || !a.start || !a.registered_owner) ||
+      !state.complete ||
+      !entry?.policy
+    )
+      return refuse("not_ready");
+    const frames = (
+      entry.webcam ? (["screen", "webcam"] as const) : (["screen"] as const)
+    ).map((source) => {
+      const fact = entry.frames.get(source)!;
+      return Object.freeze({
+        source,
+        issued: fact.issued,
+        ordinal: fact.ordinal,
+        sequence: fact.seq,
+      });
+    });
+    return Object.freeze({
+      [snapshotBrand]: true as const,
+      attempt: a.id,
+      page,
+      generation: a.generation,
+      settings: a.settings,
+      webcam: entry.webcam,
+      policy: Object.freeze({
+        ...entry.policy,
+        value: Object.freeze({ ...entry.policy.value }),
+      }),
+      frames: Object.freeze(frames),
+    });
   }
   inspect(a: Attempt, page: string) {
     const scope = this.scope(a, page),

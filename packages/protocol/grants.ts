@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { examConfiguration, username } from "./index.js";
+import { monitoringOwner } from "./monitoring-evidence.js";
 
 export const grantWorkspace = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("empty") }).strict(),
@@ -89,7 +90,7 @@ export const grantAdditionalPreview = grantIssuePreview
   .strict();
 export const grantBeginRequest = z
   .object({
-    type: z.literal("grant-begin/v2"),
+    type: z.enum(["grant-begin/v2", "grant-begin/v3"]),
     agent: z.string(),
     nonce: z.string().regex(/^[a-f0-9]{64}$/),
     at: z.number().int(),
@@ -106,5 +107,10 @@ export const grantBeginRequest = z
       .regex(/^[a-f0-9]{64}$/)
       .optional(),
     settings: examConfiguration.strict(),
+    initial_owner: monitoringOwner.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (b) => (b.type === "grant-begin/v3") === (b.initial_owner !== undefined),
+    "New monitoring Begin requires its exact provisional owner; legacy Begin cannot carry one",
+  );

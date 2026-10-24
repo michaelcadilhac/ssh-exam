@@ -5,6 +5,7 @@ import type { Config } from "../../../packages/config/index.js";
 import type { Attempt, Store } from "./db.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { isDeepStrictEqual } from "node:util";
+import { observeNativeMonitoring } from "./native-monitoring-state.js";
 export type RenewalCommandContext = Pick<
   Attempt,
   | "id"
@@ -133,7 +134,10 @@ export class Agent {
         )
           op = "renew-owner-receipted-execution-lease";
         if (op === "consume-continuation" && attempt.registered_owner)
-          op = "consume-owner-continuation";
+          op =
+            attempt.monitoring_mode === "v1"
+              ? "consume-monitored-continuation"
+              : "consume-owner-continuation";
         const value = { ...body } as Record<string, unknown>;
         delete value.framed_input; // Local negotiation, not a native JSON setter.
         delete value.page_epoch;
@@ -204,6 +208,9 @@ export class Agent {
     if (!remote?.registered_owner || typeof remote.id !== "string") return;
     const a = this.findAttempt(remote.id);
     if (!a?.registered_owner) return; // Initial identity requires accepted Begin.
+    observeNativeMonitoring(this.store!, a, remote);
+    if (remote.monitoring_mode === "v1" && remote.retained_hold === "resuming")
+      return;
     const next = monitoringOwner.parse(remote.registered_owner),
       previous = monitoringOwner.parse(JSON.parse(a.registered_owner));
     if (

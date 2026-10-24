@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"net"
 	"os"
 )
 
@@ -67,7 +68,7 @@ func privateKey(path string) (ed25519.PrivateKey, error) {
 func (e *Engine) Command(frame SignedFrame, username, transport string) (any, error) {
 	return e.command(frame, username, transport, 0)
 }
-func (e *Engine) command(frame SignedFrame, username, transport string, monitor int) (any, error) {
+func (e *Engine) command(frame SignedFrame, username, transport string, monitor int, original ...*net.UnixConn) (any, error) {
 	payload, err := base64.StdEncoding.DecodeString(frame.Payload)
 	if err != nil || len(payload) > 32768 {
 		return nil, errors.New("invalid command payload")
@@ -89,6 +90,30 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	}
 	if cmd.Expires <= Millis() || cmd.Expires > Millis()+30000 {
 		return nil, errors.New("command expired")
+	}
+	monitoredResume := cmd.Op == "consume-monitored-continuation"
+	if monitoredResume {
+		cmd.Op, cmd.Body.ownerRequired = "consume-continuation", true
+	}
+	monitoredBegin := false
+	switch cmd.Op {
+	case "activate-monitored-grant-attempt":
+		cmd.Op, monitoredBegin = "activate-grant-attempt", true
+	case "activate-monitored-additional-grant-attempt":
+		cmd.Op, monitoredBegin = "activate-additional-grant-attempt", true
+	case "activate-monitored-practice-grant-attempt":
+		cmd.Op, monitoredBegin = "activate-practice-grant-attempt", true
+	}
+	if monitoredBegin {
+		if len(original) != 1 || original[0] == nil {
+			return nil, errors.New("monitored Begin requires its original authenticated native control socket; no clock committed")
+		}
+		if err := terminalAuthorityReadiness(); err != nil {
+			return nil, err
+		}
+		if err := e.prepareTerminalMonitoring(); err != nil {
+			return nil, err
+		}
 	}
 	// Versioned owner purposes refuse in older loaded agents before any positive
 	// operation. The internal flag cannot be supplied through request JSON.
@@ -310,6 +335,11 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			// otherwise a successful Begin could lead to an unusable terminal.
 			if !account.SandboxOnly && !e.hostAccess(&Attempt{Username: username, UID: account.UID}) {
 				features["framed_pane_input"] = "v1"
+				// The installed guard remains closed until the entire workflow is
+				// qualified. Compiled test roles may exercise negotiation now.
+				if terminalAuthorityReadiness() == nil {
+					features["retained_monitoring"] = "v1"
+				}
 			}
 			result = features
 			return nil
@@ -381,6 +411,16 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			if cmd.Op == "issue-owner-channel-admission" && a.RegisteredOwner == nil {
 				return errRegisteredOwner
 			}
+			if monitoredResume {
+				copy := *a
+				copy.Units = append([]string(nil), a.Units...)
+				if a.RegisteredOwner != nil {
+					owner := *a.RegisteredOwner
+					copy.RegisteredOwner = &owner
+				}
+				result = &copy
+				return nil // Fresh HTTPS/kernel work runs after nonce/scope commit.
+			}
 			if cmd.Op == "activate-attempt" {
 				if err := recoveryBeginSettings(a, r, recoveryBegin); err != nil {
 					return err
@@ -423,6 +463,12 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if err == nil && recoveryAllowance {
 		return e.reconcileRecoveryAllowance(cmd.Body, cmd.Expires)
 	}
+	if err == nil && monitoredResume {
+		return e.resumeMonitored(result.(*Attempt), cmd.Body)
+	}
+	if a, ok := result.(*Attempt); err == nil && cmd.Op == "lock-attempt" && ok && a.MonitoringMode == "v1" {
+		return e.finishRetainedPause(cmd.Body.ID)
+	}
 	if err == nil && health {
 		return e.observeNativeHealth()
 	}
@@ -430,6 +476,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		return e.prepareAttempt(cmd.Body, cmd.Expires)
 	}
 	if err == nil && cmd.Op == "activate-attempt" {
+		if monitoredBegin {
+			return e.activatePreparedNative(result.(*Attempt), cmd.Expires, original[0], cmd.Body.GrantBeginIntent, cmd.Body.PageEpoch)
+		}
 		return e.activatePrepared(result.(*Attempt), cmd.Expires, cmd.Body.GrantBeginIntent, cmd.Body.PageEpoch)
 	}
 	if err == nil && handoff {

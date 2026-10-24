@@ -3,6 +3,10 @@ import { AttemptGrants } from "./attempt-grants.js";
 import { PREFLIGHT_TIMEOUT_MS } from "../../../packages/protocol/preflight.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
 import {
+  observeNativeMonitoring,
+  nativeContinuationOutcomeRecorded,
+} from "./native-monitoring-state.js";
+import {
   FOCUS_GRACE_MS,
   FOCUS_GRACE_REASON,
 } from "../../../packages/protocol/focus-grace.js";
@@ -239,7 +243,11 @@ export class Lifecycle {
           "SELECT 1 FROM continuations WHERE attempt=? AND consumed=0 AND expires>?",
         )
         .get(id, now());
-      if (a.state === "ACTIVE" || granted)
+      if (
+        a.state === "ACTIVE" ||
+        granted ||
+        nativeContinuationOutcomeRecorded(a)
+      )
         this.store.db
           .prepare(
             "UPDATE attempts SET state='LOCKED',generation=generation+1,reason=? WHERE id=?",
@@ -278,7 +286,13 @@ export class Lifecycle {
       this.store.audit("gateway", "lock", id, reason);
     });
     transaction();
-    this.store.audit("gateway", "reauthentication-required", id);
+    this.store.audit(
+      "gateway",
+      a.monitoring_mode === "v1"
+        ? "retained-hold-requested"
+        : "reauthentication-required",
+      id,
+    );
     const generation = this.store.attempt(id).generation;
     const locking = this.agent.call("lock-attempt", { id, reason, generation });
     this.onPaused(this.store.attempt(id));
@@ -334,8 +348,8 @@ export class Lifecycle {
         a.deadline <= at ||
         !grant ||
         grant.generation !== generation ||
-        grant.consumed ||
-        grant.expires <= at
+        ((grant.consumed || grant.expires <= at) &&
+          !(nativeContinuationOutcomeRecorded(a) && grant.consumed))
       )
         throw Error(
           "The pause or authorization changed. Instructor review is required before continuing.",
@@ -498,6 +512,31 @@ export class Lifecycle {
       ["RELEASED", "OVERRIDDEN"].includes(remote.access_state)
     )
       this.syncAccess(id, remote);
+    // Durable native intent precedes the live supervisor's commit. Keep the
+    // same held page/approval retryable; metadata alone cannot resume or invent
+    // a new violation after a lost command acknowledgement.
+    if (remote.monitoring_mode === "v1" && remote.retained_hold === "resuming")
+      return;
+    if (
+      remote.monitoring_mode === "v1" &&
+      remote.state === "ACTIVE" &&
+      a.state === "LOCKED" &&
+      (remote.generation || 0) === a.generation &&
+      nativeContinuationOutcomeRecorded(this.store.attempt(id))
+    ) {
+      const observed = this.store.db
+        .prepare(
+          "UPDATE continuations SET consumed=1 WHERE attempt=? AND generation=? AND consumed=0",
+        )
+        .run(id, a.generation);
+      if (observed.changes)
+        this.store.audit(
+          "class-agent",
+          "native-continuation-observed",
+          id,
+          String(a.generation),
+        );
+    }
     if (remote.start && a.start === null) {
       this.store.db
         .prepare(
@@ -807,6 +846,7 @@ export class Lifecycle {
     }
   }
   syncAccess(id: string, remote: any) {
+    observeNativeMonitoring(this.store, this.store.attempt(id), remote);
     const state = ["HELD", "RELEASED", "OVERRIDDEN"].includes(
       remote.access_state,
     )

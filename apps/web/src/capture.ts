@@ -14,6 +14,7 @@ export class Capture {
     private incident: (reason: string) => void,
     private readiness: () => Record<string, boolean>,
     private preflight: () => boolean,
+    private sampleHealth?: (source: string, healthy: boolean) => boolean,
   ) {}
   async setup(source: "screen" | "webcam") {
     if (this.streams.has(source) && this.healthy(source))
@@ -55,7 +56,10 @@ export class Capture {
     if (!this.timer)
       this.timer = setInterval(() => {
         for (const s of this.streams.keys())
-          void this.sample(s).catch(() => this.incident(`${s} capture failed`));
+          void this.sample(s).catch(() => {
+            if (!this.stopped && !this.sampleHealth?.(s, false))
+              this.incident(`${s} capture failed`);
+          });
       }, 5000);
     await this.sample(source);
     return stream;
@@ -72,6 +76,7 @@ export class Capture {
     this.busy.set(source, task);
     try {
       await task;
+      if (!this.stopped) this.sampleHealth?.(source, true);
     } finally {
       if (this.busy.get(source) === task) this.busy.delete(source);
     }

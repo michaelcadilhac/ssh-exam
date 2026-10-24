@@ -92,6 +92,7 @@ func peer(c *net.UnixConn) (*syscall.Ucred, error) {
 	return result, inner
 }
 func (e *Engine) ServeLocal() error {
+	defer e.stopTerminalMonitoring()
 	os.Remove(e.Config.Socket)
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: e.Config.Socket, Net: "unix"})
 	if err != nil {
@@ -162,7 +163,7 @@ func (e *Engine) local(c *net.UnixConn) {
 			json.NewEncoder(c).Encode(map[string]string{"error": "SSH ancestry rejected"})
 			return
 		}
-		result, err := e.command(*r.Command, name, identity, monitor)
+		result, err := e.command(*r.Command, name, identity, monitor, c)
 		// Legacy fields remain for a drained rolling upgrade. Browser callers must
 		// verify the signed receipt rather than trusting these outer fields.
 		var cmd Command

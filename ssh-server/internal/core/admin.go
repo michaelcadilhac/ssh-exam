@@ -152,6 +152,9 @@ func (e *Engine) Admin(op, id, reason string) (any, error) {
 	if err == nil && operation == "activate-attempt" {
 		result, err = e.activatePrepared(result.(*Attempt), 0)
 	}
+	if a, ok := result.(*Attempt); err == nil && operation == "lock-attempt" && ok && a.MonitoringMode == "v1" {
+		return e.finishRetainedPause(id)
+	}
 	if err == nil && operation == "prepare-workspace" {
 		result, err = e.preparedWorkspace(id)
 	}

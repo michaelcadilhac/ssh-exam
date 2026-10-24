@@ -66,6 +66,86 @@ function fixture(webcam = true, limit = 32) {
   };
 }
 
+it("combined capture preserves original challenge age and requires every saved capture source", () => {
+  const f = fixture();
+  const screen = f.ledger.issueBrowserChallenge(f.binding, "screen");
+  f.at(1000);
+  f.ledger.confirmValidatedCapture(f.binding, screen, "screen", 1, ready);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/technical-gap/);
+  const webcam = f.ledger.issueBrowserChallenge(f.binding, "webcam");
+  f.at(4000);
+  f.ledger.confirmValidatedCapture(f.binding, webcam, "webcam", 2, ready);
+  expect(
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toMatchObject({ age_ms: 4000, sequence: 1 });
+  expect(() =>
+    f.ledger.confirmValidatedCapture(f.binding, webcam, "webcam", 3, ready),
+  ).toThrow(/challenge/);
+});
+
+it("late negative combined capture cannot hide behind newer positive policy, while older blur cannot restart an already-restored focus grace", () => {
+  const f = fixture();
+  const old = f.ledger.issueBrowserChallenge(f.binding, "screen");
+  const fresh = f.ledger.issueBrowserChallenge(f.binding, "webcam");
+  f.at(1000);
+  f.ledger.confirmValidatedCapture(f.binding, fresh, "webcam", 2, ready);
+  f.at(2000);
+  f.ledger.confirmValidatedCapture(f.binding, old, "screen", 1, {
+    ...ready,
+    focus: false,
+  });
+  expect(f.ledger.inspect(f.binding)).toMatchObject({
+    state: "fresh",
+    remainingMS: 13000,
+  });
+  const negative = f.ledger.issueBrowserChallenge(f.binding, "screen");
+  const positive = f.ledger.issueBrowserChallenge(f.binding, "webcam");
+  f.ledger.confirmValidatedCapture(f.binding, positive, "webcam", 3, ready);
+  f.ledger.confirmValidatedCapture(f.binding, negative, "screen", 2, {
+    ...ready,
+    fullscreen: false,
+  });
+  expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/policy-blocked/);
+});
+
+it("combined focus loss keeps the existing grace and cannot mature across missing capture coverage into a violation", () => {
+  const f = fixture(false);
+  const observe = (focus: boolean, sequence: number) =>
+    f.ledger.confirmValidatedCapture(
+      f.binding,
+      f.ledger.issueBrowserChallenge(f.binding, "screen"),
+      "screen",
+      sequence,
+      { ...ready, focus },
+    );
+  observe(false, 1);
+  f.at(5000);
+  observe(false, 2);
+  f.at(10000);
+  observe(false, 3);
+  f.at(15000);
+  observe(false, 4);
+  f.at(19999);
+  expect(f.ledger.issueForNativeChallenge(f.binding, f.request()).age_ms).toBe(
+    14999,
+  );
+  f.at(20000);
+  expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
+  const gap = fixture(false);
+  const challenge = gap.ledger.issueBrowserChallenge(gap.binding, "screen");
+  gap.ledger.confirmValidatedCapture(gap.binding, challenge, "screen", 1, {
+    ...ready,
+    focus: false,
+  });
+  gap.at(21000);
+  expect(gap.ledger.inspect(gap.binding).state).toBe("technical-gap");
+});
+
 it("requires complete fresh policy and every required challenged frame; receipt never freshens old sampling", () => {
   const f = fixture();
   const screen = f.ledger.issueBrowserChallenge(f.binding, "screen");

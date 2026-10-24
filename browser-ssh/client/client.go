@@ -111,6 +111,7 @@ type Pane struct {
 	mu            sync.Mutex
 	inputEpoch    string
 	inputSequence uint64
+	instanceEpoch string                 // Immutable physical pane fence across input reauthorization.
 	eventEpoch    atomic.Pointer[string] // Never wait on a blocked stdin write to scope output/EOF.
 }
 type pendingPane struct{ cancel context.CancelFunc }
@@ -480,7 +481,7 @@ func (c *Client) open(pane, token, epoch string) (json.RawMessage, error) {
 	if result == nil {
 		return nil, errors.New("session gate missing acknowledgment")
 	}
-	p := &Pane{session: s, in: in, out: reader, inputEpoch: epoch}
+	p := &Pane{session: s, in: in, out: reader, inputEpoch: epoch, instanceEpoch: epoch}
 	p.eventEpoch.Store(&epoch)
 	c.mu.Lock()
 	if ctx.Err() != nil || c.opening[pane] != opening {
@@ -498,6 +499,7 @@ func (c *Client) open(pane, token, epoch string) (json.RawMessage, error) {
 				event := map[string]any{"type": "output", "pane": pane, "data": base64.StdEncoding.EncodeToString(b[:n])}
 				if currentEpoch := *p.eventEpoch.Load(); currentEpoch != "" {
 					event["input_epoch"] = currentEpoch
+					event["pane_instance"] = p.instanceEpoch
 				}
 				c.Emit(event)
 			}
@@ -517,6 +519,7 @@ func (c *Client) open(pane, token, epoch string) (json.RawMessage, error) {
 			event := map[string]any{"type": "closed", "pane": pane}
 			if currentEpoch := *p.eventEpoch.Load(); currentEpoch != "" {
 				event["input_epoch"] = currentEpoch
+				event["pane_instance"] = p.instanceEpoch
 			}
 			c.Emit(event)
 		}

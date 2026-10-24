@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { examSchema } from "../../../packages/protocol/index.js";
+import { observeNativeMonitoring } from "./native-monitoring-state.js";
 import {
   isSandbox,
   hasSandboxWindow,
@@ -18,7 +19,12 @@ import {
 import { hash, now, type Store, type Attempt } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
 import { ExamDefinitions } from "./exam-definitions.js";
-import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
+import {
+  monitoringOwner,
+  monitoringBootstrap,
+  type MonitoringOwner,
+  type MonitoringBootstrap,
+} from "../../../packages/protocol/monitoring-evidence.js";
 
 const conflict = (message: string): never => {
   throw Object.assign(Error(message), { statusCode: 409 });
@@ -709,7 +715,13 @@ export class AttemptGrants {
       return id;
     })();
   }
-  verifyBegin(input: unknown, freshCapture: (a: Attempt) => number) {
+  verifyBegin(
+    input: unknown,
+    freshCapture: (
+      a: Attempt,
+      owner?: MonitoringOwner,
+    ) => number | { remainingMS: number; bootstrap: MonitoringBootstrap },
+  ) {
     const b = grantBeginRequest.parse(input),
       a = this.store.attempt(b.attempt),
       g = this.view(this.row(b.grant.id));
@@ -761,18 +773,47 @@ export class AttemptGrants {
     // retained interval, protected work, ownership or other-claim consumption
     // must refuse before signing anything that can authorize a native start.
     this.unstartedEvidence(a);
+    const initial = b.initial_owner;
+    if (
+      initial &&
+      (initial.attempt !== a.id ||
+        initial.exam !== a.exam ||
+        initial.username !== a.username ||
+        initial.uid !== a.uid ||
+        initial.transport_hash !== b.transport ||
+        initial.boot !== b.boot ||
+        initial.page_epoch !== b.page_epoch ||
+        initial.generation !== a.generation ||
+        initial.clock_revision !== a.clock_revision)
+    )
+      return conflict(
+        "Provisional monitoring owner differs from the exact unused Begin; preserve intent and retry current-page preparation without consuming time",
+      );
     // This in-memory observation is checked again at the authenticated native
     // request, after any slow handoff/source work. It is not an ACTIVE permit.
-    const remaining = freshCapture(a);
+    const observation = freshCapture(a, initial),
+      remaining =
+        typeof observation === "number" ? observation : observation.remainingMS,
+      bootstrap =
+        typeof observation === "number"
+          ? undefined
+          : monitoringBootstrap.parse(observation.bootstrap);
     if (!Number.isSafeInteger(remaining) || remaining <= 0 || remaining > 15000)
       return conflict(
         "Fresh preflight capture unavailable; sample again before retrying the same Begin intent. No interval committed.",
+      );
+    if (
+      (b.type === "grant-begin/v3") !== !!bootstrap ||
+      (bootstrap && !isDeepStrictEqual(bootstrap.owner, initial))
+    )
+      return conflict(
+        "Fresh monitoring Begin bootstrap unavailable or mismatched; require matching native/gateway roles and retry the same intent before time starts",
       );
     this.store.db
       .prepare("UPDATE grant_begin_intents SET verified_at=? WHERE id=?")
       .run(now(), b.intent);
     return {
-      type: "grant-begin/v2",
+      type: b.type,
       audience: this.agent,
       nonce: b.nonce,
       expires: now() + remaining,
@@ -783,6 +824,7 @@ export class AttemptGrants {
       transport: b.transport,
       boot: b.boot,
       ...(b.page_epoch ? { page_epoch: b.page_epoch } : {}),
+      ...(bootstrap ? { bootstrap } : {}),
     };
   }
   accept(remote: any, a: Attempt) {
@@ -881,6 +923,7 @@ export class AttemptGrants {
         "Native registered owner contradicts the original Begin scope; preserve the authoritative interval and inspect the pending original outcome, never issue a replacement clock",
       );
     this.store.db.transaction(() => {
+      observeNativeMonitoring(this.store, a, remote);
       const saved = this.store.attempt(a.id)?.registered_owner;
       const previous = saved ? monitoringOwner.parse(JSON.parse(saved)) : null;
       const stale =
@@ -891,7 +934,7 @@ export class AttemptGrants {
           (owner.generation === previous.generation &&
             owner.clock_revision === previous.clock_revision &&
             !isDeepStrictEqual(owner, previous)));
-      if (owner && !stale)
+      if (owner && !stale && remote.retained_hold !== "resuming")
         this.store.db
           .prepare("UPDATE attempts SET registered_owner=? WHERE id=?")
           .run(JSON.stringify(owner), a.id);

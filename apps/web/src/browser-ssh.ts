@@ -30,6 +30,7 @@ export class BrowserSSH {
     { data: string; input?: CapturedPaneInput }[]
   >();
   private nativeInput = new Map<string, { epoch: string; sequence: number }>();
+  private nativeInstances = new Map<string, string>();
   private inputChains = new Map<string, Promise<any>>();
   // Capture before queuing; a closed pane's late writes/rejections must not
   // target a replacement using the same UI identifier. Not a native input epoch.
@@ -134,8 +135,10 @@ export class BrowserSSH {
       // pane using the same UI identifier, including the gap before admission.
       if (
         (m.type === "closed" || m.type === "output") &&
-        m.input_epoch &&
-        m.input_epoch !== this.nativeInput.get(m.pane)?.epoch
+        (m.pane_instance || m.input_epoch) &&
+        (m.pane_instance
+          ? m.pane_instance !== this.nativeInstances.get(m.pane)
+          : m.input_epoch !== this.nativeInput.get(m.pane)?.epoch)
       )
         return;
       if (m.type === "closed") {
@@ -146,6 +149,7 @@ export class BrowserSSH {
           type: "browser-pane-closed",
           pane: m.pane,
           input_epoch: m.input_epoch,
+          pane_instance: m.pane_instance,
         });
         this.readyPanes.delete(m.pane);
         this.earlyInputs.delete(m.pane);
@@ -153,6 +157,7 @@ export class BrowserSSH {
         this.paneInputOwners.delete(m.pane);
         this.framedBudgets.delete(m.pane);
         this.nativeInput.delete(m.pane);
+        this.nativeInstances.delete(m.pane);
       }
       this.emit(m);
     };
@@ -211,6 +216,14 @@ export class BrowserSSH {
         if (opening) {
           this.openingPanes.set(m.args.pane, opening);
           if (m.args.input_epoch) {
+            this.nativeInstances.set(m.args.pane, m.args.input_epoch);
+            // SSH output can beat the server's verified opened reply. Publish
+            // only physical identity now; input still waits for that reply.
+            this.emit({
+              type: "pane-context",
+              pane: m.args.pane,
+              instance: m.args.input_epoch,
+            });
             this.nativeInput.set(m.args.pane, {
               epoch: m.args.input_epoch,
               sequence: 0,
@@ -218,13 +231,24 @@ export class BrowserSSH {
             // Keys captured before the native context was known have no scoped
             // epoch. Never stamp them later when this open completes.
             this.earlyInputs.delete(m.args.pane);
-          } else this.nativeInput.delete(m.args.pane);
+          } else {
+            this.nativeInput.delete(m.args.pane);
+            this.nativeInstances.delete(m.args.pane);
+          }
         }
-        promise = this.request(m.op, m.args)
+        promise = (
+          m.op === "change-input-epoch"
+            ? this.changeInputEpoch(m.args)
+            : this.request(m.op, m.args)
+        )
           .then((result) => {
             if (this.lifecycle !== lifecycle || this.stopped) return result;
             if (m.op === "connect")
-              return { ...result, loaded_pane_input: "v1" };
+              return {
+                ...result,
+                loaded_pane_input: "v1",
+                loaded_pane_epoch_change: "v1",
+              };
             if (m.op === "open" && !opening?.closed) {
               this.readyPanes.add(m.args.pane);
               const pending = this.earlyInputs.get(m.args.pane) || [];
@@ -281,6 +305,29 @@ export class BrowserSSH {
     }
     return false;
   }
+  private async changeInputEpoch(args: any) {
+    const { pane, previous, next, instance } = args;
+    const current = this.nativeInput.get(pane);
+    if (
+      !current ||
+      this.nativeInstances.get(pane) !== instance ||
+      !/^[a-f0-9]{64}$/.test(next || "") ||
+      previous === next ||
+      (current.epoch !== previous && current.epoch !== next)
+    )
+      throw Error("Stale retained terminal input agreement");
+    if (current.epoch === next) return; // Retry preserves the consumed sequence.
+    await this.request("change-input-epoch", { pane, previous, next });
+    if (
+      this.nativeInput.get(pane) !== current ||
+      this.nativeInstances.get(pane) !== instance
+    )
+      throw Error("Terminal changed while agreeing on retained input");
+    this.nativeInput.set(pane, { epoch: next, sequence: 0 });
+    this.earlyInputs.delete(pane);
+    this.paneInputOwners.delete(pane);
+    this.framedBudgets.delete(pane);
+  }
   answers(round: string, answers: string[]) {
     try {
       this.worker?.postMessage({
@@ -315,6 +362,7 @@ export class BrowserSSH {
       this.paneInputOwners.delete(m.pane);
       this.framedBudgets.delete(m.pane);
       this.nativeInput.delete(m.pane);
+      this.nativeInstances.delete(m.pane);
       const opening = this.openingPanes.get(m.pane);
       if (opening) opening.closed = true;
       // The server authorizes close and then asks the worker once. Do not race
@@ -498,6 +546,7 @@ export class BrowserSSH {
     this.token = "";
     this.buffers.clear();
     this.readyPanes.clear();
+    this.nativeInstances.clear();
     this.earlyInputs.clear();
     this.inputChains.clear();
     this.paneInputOwners.clear();

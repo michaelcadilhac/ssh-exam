@@ -103,6 +103,8 @@ export function continuationNotice(
       return authenticationGap
         ? "Continuation approved. SSH is disconnected: reconnect first, then restore monitoring and choose Continue. The clock continues."
         : "Continuation approved. Restore any missing conditions below, then choose Continue. Reconnect SSH only if it is actually disconnected; approval alone does not enable input.";
+    case "completing":
+      return "The class server accepted this continuation. Keep this page open and choose Continue to finish terminal agreement. Input stays blocked until it succeeds; no new approval or clock is created.";
     case "expired":
       return "Your continuation approval has expired. Request a new instructor review before continuing; no time is added.";
     case "revoked":

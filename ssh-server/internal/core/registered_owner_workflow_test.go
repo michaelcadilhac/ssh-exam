@@ -86,7 +86,7 @@ func TestRegisteredOwnerFreshTLSBeginRefusalAndOriginalInterval(t *testing.T) {
 	if os.Getuid() < 1000 {
 		t.Skip("owner contract models student UIDs; real root/student boundary is separately qualified")
 	}
-	for _, mode := range []string{"current", "missing-reply-page", "wrong-reply-page"} {
+	for _, mode := range []string{"current", "missing-reply-page", "wrong-reply-page", "wrong-bootstrap-owner", "missing-bootstrap", "old-reply-version", "wrong-bootstrap-sequence", "wrong-bootstrap-coverage"} {
 		t.Run(mode, func(t *testing.T) {
 			e, key, r := initialGrantUnpreparedFixture(t)
 			read := func() *Attempt {
@@ -110,15 +110,30 @@ func TestRegisteredOwnerFreshTLSBeginRefusalAndOriginalInterval(t *testing.T) {
 				t.Fatal(err)
 			}
 			page := strings.Repeat("b", 64)
+			declared := make(chan monitoringOwner, 1)
 			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
-				if reply.PageEpoch != page {
-					t.Error("fresh outbound request omitted reviewed page")
+				if reply.Type != "grant-begin/v3" || reply.PageEpoch != page || reply.Bootstrap == nil {
+					t.Error("fresh outbound request omitted reviewed page/provisional ownership")
+					return reply, 400
 				}
+				declared <- reply.Bootstrap.Owner
 				if mode == "missing-reply-page" {
 					reply.PageEpoch = ""
 				}
 				if mode == "wrong-reply-page" {
 					reply.PageEpoch = strings.Repeat("c", 64)
+				}
+				switch mode {
+				case "wrong-bootstrap-owner":
+					reply.Bootstrap.Owner.InputEpoch = strings.Repeat("d", 64)
+				case "missing-bootstrap":
+					reply.Bootstrap = nil
+				case "old-reply-version":
+					reply.Type = "grant-begin/v2"
+				case "wrong-bootstrap-sequence":
+					reply.Bootstrap.Sequence = 2
+				case "wrong-bootstrap-coverage":
+					reply.Bootstrap.CoverageEpoch = ""
 				}
 				return reply, 200
 			})
@@ -126,7 +141,11 @@ func TestRegisteredOwnerFreshTLSBeginRefusalAndOriginalInterval(t *testing.T) {
 			cmd.Body.GrantBeginIntent, cmd.Body.PageEpoch = "44444444-1234-4234-8234-123456789abc", page
 			_, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
 			if mode != "current" {
-				if err == nil || !strings.Contains(err.Error(), "scope/freshness") {
+				expected := "scope/freshness"
+				if strings.Contains(mode, "bootstrap") {
+					expected = "monitoring evidence"
+				}
+				if err == nil || !strings.Contains(err.Error(), expected) {
 					t.Fatal("wrong page reply never reached the intended refusal", err)
 				}
 				assertUnstartedWorkspace(t, e, r.ID)
@@ -136,7 +155,7 @@ func TestRegisteredOwnerFreshTLSBeginRefusalAndOriginalInterval(t *testing.T) {
 				t.Fatal(err)
 			}
 			a := read()
-			if a.RegisteredOwner == nil || a.RegisteredOwner.PageEpoch != page || !currentRegisteredOwner(a) {
+			if a.RegisteredOwner == nil || a.RegisteredOwner.PageEpoch != page || !currentRegisteredOwner(a) || *a.RegisteredOwner != <-declared {
 				t.Fatal("actual Begin did not persist exact registered identity")
 			}
 			originalStart, originalDeadline, owner := a.Start, a.OriginalDeadline, *a.RegisteredOwner

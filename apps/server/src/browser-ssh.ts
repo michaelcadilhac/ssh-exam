@@ -11,13 +11,15 @@ class BrowserPane extends EventEmitter {
   writableLength = 0;
   private disposed = false;
   private closing?: Promise<void>;
+  readonly outputEpoch?: string;
   constructor(
     public pane: string,
-    private attempt: string,
+    readonly attempt: string,
     private owner: BrowserConnection,
-    public readonly inputEpoch?: string,
+    public inputEpoch?: string,
   ) {
     super();
+    this.outputEpoch = inputEpoch;
   }
   write(data: string) {
     if (this.inputEpoch)
@@ -88,6 +90,19 @@ export class BrowserConnection extends Connection {
   protected override browserCommands = true;
   private commandCancellationSupported = false;
   private framedInputSupported = false;
+  private retainedInputSupported = false;
+  override async prepareMonitoring() {
+    if (!this.retainedMonitoringRequired) return false;
+    if (
+      !this.framedPaneInput ||
+      !this.framedInputSupported ||
+      !this.retainedInputSupported
+    )
+      throw Error(
+        "Loaded browser, WASM and native monitoring versions disagree. Preserve the preparation and load matching versions before Begin; no new clock has started.",
+      );
+    return true;
+  }
   protected override canUseFramedPaneInput() {
     return this.framedInputSupported;
   }
@@ -228,9 +243,11 @@ export class BrowserConnection extends Connection {
       if (typeof m.pane !== "string") return false;
       const pane = this.panes.get(m.pane);
       const opening = this.opening.get(m.pane);
-      const expected = pane?.inputEpoch || opening?.inputEpoch;
-      if ((m.input_epoch || expected) && m.input_epoch !== expected)
-        return true;
+      const expected = m.pane_instance
+        ? pane?.outputEpoch || opening?.inputEpoch
+        : pane?.inputEpoch || opening?.inputEpoch;
+      const received = m.pane_instance || m.input_epoch;
+      if ((received || expected) && received !== expected) return true;
       if (pane instanceof BrowserPane) pane.dispose();
       if (opening) opening.closed = true;
       return true;
@@ -285,6 +302,58 @@ export class BrowserConnection extends Connection {
   }
   async detachPane(pane: string) {
     await this.request("close-pane", { pane });
+  }
+  private epochChanges: Promise<unknown> = Promise.resolve();
+  override changeInputEpochs(attempt: string, epochs: Record<string, string>) {
+    // Serialize retries/completions, and retain the actual channel object across
+    // each await. A reused UI UUID must never inherit an older pane's outcome.
+    const channels = [...this.panes].map(([id, channel]) => {
+      if (
+        !(channel instanceof BrowserPane) ||
+        channel.attempt !== attempt ||
+        !channel.inputEpoch ||
+        !/^[a-f0-9]{64}$/.test(epochs?.[id] || "")
+      )
+        throw Error(
+          "Retained pane input agreement is incomplete. Preserve the panes and retry native Continue with matching versions.",
+        );
+      return { id, channel, next: epochs[id] };
+    });
+    const change = this.epochChanges.then(async () => {
+      const result: Record<string, { instance: string; epoch: string }> = {};
+      for (const { id, channel, next } of channels) {
+        if (!this.alive || this.panes.get(id) !== channel)
+          throw Error(
+            "Terminal changed during continuation; no replacement pane was reauthorized.",
+          );
+        if (channel.inputEpoch !== next) {
+          const previous = channel.inputEpoch;
+          await this.request(
+            "change-input-epoch",
+            {
+              pane: id,
+              previous,
+              next,
+              instance: channel.outputEpoch,
+            },
+            15000,
+          );
+          if (
+            !this.alive ||
+            this.panes.get(id) !== channel ||
+            channel.inputEpoch !== previous
+          )
+            throw Error(
+              "Terminal changed during continuation; preserve the current pane and retry.",
+            );
+          channel.inputEpoch = next;
+        }
+        result[id] = { instance: channel.outputEpoch!, epoch: next };
+      }
+      return result;
+    });
+    this.epochChanges = change.catch(() => {});
+    return change;
   }
   notify(op: string, args: any) {
     if (this.socket?.readyState === 1) {
@@ -344,6 +413,9 @@ export class BrowserConnection extends Connection {
       this.framedInputSupported =
         connected?.framed_input === true &&
         connected?.loaded_pane_input === "v1";
+      this.retainedInputSupported =
+        connected?.pane_epoch_change === true &&
+        connected?.loaded_pane_epoch_change === "v1";
       sshAuthenticated = true;
       this.alive = true;
       const result = await this.command("register", {

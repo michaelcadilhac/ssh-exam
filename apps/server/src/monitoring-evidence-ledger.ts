@@ -3,6 +3,10 @@ import { z } from "zod";
 import { monitoringBootTimeMS } from "./monitoring-clock.js";
 import { FOCUS_GRACE_MS } from "../../../packages/protocol/focus-grace.js";
 import {
+  isCaptureReadinessSnapshot,
+  type CaptureReadinessSnapshot,
+} from "./monitoring-readiness.js";
+import {
   MONITORING_CHALLENGE_WINDOW_MS,
   MONITORING_EVIDENCE_WINDOW_MS,
   monitoringOwner,
@@ -12,9 +16,10 @@ import {
   type MonitoringEvidence,
 } from "../../../packages/protocol/monitoring-evidence.js";
 
-// UNWIRED. No route, frame handler, command, signer or runtime authorization uses
-// this ledger. Future callers must authenticate current page/session ownership,
-// verify the native scope and validate actual JPEG/capture challenges first.
+// Runtime Monitoring supplies authenticated current-page capture challenges and
+// validated JPEG/policy observations; the native authenticated evidence route
+// signs scoped replies. A signed observation is not native work permission.
+// Supervisor authority/input/freeze consumption is a separate required boundary.
 const bindingBrand = Symbol("monitoring-evidence-binding");
 export type MonitoringEvidenceBinding = Readonly<{ [bindingBrand]: true }>;
 type Purpose = "policy" | "screen" | "webcam";
@@ -53,6 +58,7 @@ type Entry = {
   >;
 };
 export class MonitoringEvidenceUnavailable extends Error {
+  readonly statusCode = 409;
   constructor(
     readonly kind:
       | "ownership"
@@ -154,6 +160,69 @@ export class MonitoringEvidenceLedger {
     this.entries.set(e.owner.attempt, e);
     this.bindings.set(binding, e);
     return binding;
+  }
+  // Only after actual signed native ACTIVE ownership has been accepted. Preserve
+  // original server challenge times; promotion cannot mint another15 seconds.
+  seedValidatedBegin(
+    binding: MonitoringEvidenceBinding,
+    snapshot: CaptureReadinessSnapshot,
+    coverage: string,
+  ) {
+    const e = this.entry(binding),
+      now = this.now();
+    if (
+      !isCaptureReadinessSnapshot(snapshot) ||
+      e.sequence !== 0 ||
+      e.policy ||
+      e.frames.size ||
+      !/^[a-f0-9]{64}$/.test(coverage) ||
+      snapshot.attempt !== e.owner.attempt ||
+      snapshot.page !== e.owner.page_epoch ||
+      snapshot.generation !== e.owner.generation ||
+      snapshot.webcam !== e.webcam
+    )
+      return refuse("ownership");
+    if (
+      !readiness.safeParse(snapshot.policy.value).success ||
+      !snapshot.policy.value.fullscreen ||
+      !snapshot.policy.value.visible ||
+      !snapshot.policy.value.focus ||
+      !snapshot.policy.value.keyboard ||
+      !snapshot.policy.value.screen ||
+      (e.webcam && !snapshot.policy.value.webcam)
+    )
+      return refuse("policy-blocked");
+    const required = e.webcam ? ["screen", "webcam"] : ["screen"],
+      oldest = Math.min(
+        snapshot.policy.issued,
+        ...snapshot.frames.map((f) => f.issued),
+      );
+    if (
+      snapshot.frames.length !== required.length ||
+      new Set(snapshot.frames.map((f) => f.source)).size !== required.length ||
+      snapshot.frames.some(
+        (f) => !required.includes(f.source) || !counter(f.sequence),
+      ) ||
+      now < oldest ||
+      now - oldest >= MONITORING_EVIDENCE_WINDOW_MS
+    )
+      return refuse("technical-gap");
+    e.policy = {
+      issued: snapshot.policy.issued,
+      ordinal: snapshot.policy.ordinal,
+    };
+    e.challengeOrdinal = snapshot.policy.ordinal;
+    for (const fact of snapshot.frames) {
+      e.frames.set(fact.source, {
+        issued: fact.issued,
+        ordinal: fact.ordinal,
+        sequence: fact.sequence,
+      });
+      e.challengeOrdinal = Math.max(e.challengeOrdinal, fact.ordinal);
+    }
+    e.sequence = 1;
+    e.coverageEpoch = coverage;
+    e.coverageUntil = oldest + MONITORING_EVIDENCE_WINDOW_MS;
   }
   retire(binding: MonitoringEvidenceBinding) {
     const e = this.entry(binding);
@@ -316,6 +385,55 @@ export class MonitoringEvidenceLedger {
     )
       return refuse("sequence");
     e.frames.set(source, { issued: c.issued, ordinal: c.ordinal, sequence });
+    this.recompute(e, now);
+  }
+  // Runtime authenticated capture path: one challenge precedes both the JPEG
+  // and its policy snapshot. Call only AFTER decoding and current-page checks.
+  // Older positive policy cannot replace a newer observation; any genuine
+  // fullscreen/capture/keyboard loss remains sticky even when delivered late.
+  confirmValidatedCapture(
+    binding: MonitoringEvidenceBinding,
+    challenge: string,
+    source: "screen" | "webcam",
+    sequence: number,
+    raw: unknown,
+  ) {
+    const e = this.entry(binding),
+      now = this.now(),
+      parsed = readiness.safeParse(raw);
+    this.touch(e, now);
+    if (e.blocked) return refuse("policy-blocked");
+    if (!parsed.success || !counter(sequence)) return refuse("challenge");
+    if (
+      !["screen", "webcam"].includes(source) ||
+      (source === "webcam" && !e.webcam)
+    )
+      return refuse("challenge");
+    const c = this.take(e, challenge, source, now),
+      old = e.frames.get(source),
+      r = parsed.data;
+    if (old && (sequence <= old.sequence || c.ordinal <= old.ordinal))
+      return refuse("sequence");
+    if (
+      !r.fullscreen ||
+      !r.visible ||
+      !r.keyboard ||
+      !r.screen ||
+      (e.webcam && !r.webcam)
+    ) {
+      e.blocked = true;
+      this.gap(e);
+      return;
+    }
+    e.frames.set(source, { issued: c.issued, ordinal: c.ordinal, sequence });
+    if (!e.policy || c.ordinal > e.policy.ordinal) {
+      if (!r.focus) e.focusLost ??= now;
+      else {
+        e.focusLost = undefined;
+        e.focusUnverified = false;
+      }
+      e.policy = { issued: c.issued, ordinal: c.ordinal };
+    }
     this.recompute(e, now);
   }
   issueForNativeChallenge(

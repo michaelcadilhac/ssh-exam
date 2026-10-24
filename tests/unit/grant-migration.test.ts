@@ -129,6 +129,9 @@ it.each([false, true])(
           grant_initial,
           grant_work,
           registered_owner,
+          monitoring_mode,
+          retained_hold,
+          monitoring_hold_kind,
           ...kept
         } = store.attempt(attempt);
         expect(kept).toEqual(old);
@@ -137,6 +140,9 @@ it.each([false, true])(
         expect(grant_initial).toBeNull();
         expect(grant_work).toBeNull();
         expect(registered_owner).toBeNull();
+        expect(monitoring_mode).toBe("legacy");
+        expect(retained_hold).toBeNull();
+        expect(monitoring_hold_kind).toBeNull();
         expect(
           db.prepare("SELECT rowid FROM attempt_grants WHERE id=?").get(grant),
         ).toEqual({ rowid: 42 });

@@ -1,6 +1,6 @@
 # Live monitoring runtime integration — current working state
 
-October23,2026. **Uncommitted WIP, not deployed or enabled as native permission.**
+October23,2026. **Guarded local candidate, not deployed or enabled as native permission.**
 The selected public outcome remains actual policy pause → verified retained hold
 → approved Continue. See todo-delivery-audit.md; do not add another independent
 observer/helper subsystem or treat this document as completed implementation.
@@ -38,7 +38,7 @@ or a completed public C3 workflow. No broad suites have been launched for this
 incomplete integration. Logs `/tmp/ssh-exam-live-evidence-*` and
 `/tmp/ssh-exam-monitoring-bootstrap-*`.
 
-## Next actual native integration, within the same public outcome
+## Native integration in progress, within the same public outcome
 
 Reuse the existing ONE attempt supervisor, actual original Unix-socket kernel
 peer, SSH pidfd, arbiter, input adapters and kernel inventory. Native Begin must
@@ -65,6 +65,258 @@ Keep original deadlines, protection/holds, normal finalization and credential
 cleanup. Negative control uncertainty is not misconduct. Automatic C9 recovery
 still requires positively uninterrupted coverage and cannot override policy locks.
 
-Native Begin/context/renewal/independent expiry and the full retained hold/thaw
-path are NOT implemented by the gateway work above. That is the explicit gap;
-do not conceal it with another component-test count or standalone-helper commit.
+The uncommitted native caller now passes the original Begin control socket to
+the existing supervisor, verifies the v3 seed there and joins it only after the
+durable ACTIVE interval. Actual TLS challenges/proofs renew that same supervisor
+in memory. A bounded coordinator bridge caches its outbound credential before
+time starts; the focused test removes its synthetic key file and verifies a
+subsequent accepted proof. Replacement of the supervisor cannot restore authority
+from the old signed seed. Native focused renewal PASS5.520s, log
+/tmp/ssh-exam-monitoring-supervisor-renewal-focus.log.
+
+The actual signed pane issuance/Engine.local/closed user-scope handoff now uses
+a distinct monitored capability. Its input and resize gates consult the live
+supervisor before cached cutoff checks. Revocation discards framed keys/resizes
+while leaving the decoder/terminal alive. The pinned inner PTY peer supplies the
+queue-discard adapter. The first extended fixture omitted the bootstrap fixture's
+synthetic home; the next correctly reached input but caught a real shutdown
+deadlock: the extra slave descriptor prevented output EOF. Closing it after input
+users and before output drain fixes that. Final focused actual-pane/input race
+and legacy framed replacement PASS9.563s, log
+/tmp/ssh-exam-monitored-pane-input-focus-4.log. No broad qualification is claimed.
+
+Native administrator/signed pause now joins its durable LOCKED transaction to
+supervisor stop-assisted freeze/drain/discard outside global state. Actual
+examctl panes supervisor reports pending registered launch units and
+pending/unverified/held status, with actionable help. Focused core10.167s and
+CLI4.613s pass: /tmp/ssh-exam-monitored-pause-cli-focus.log. The pending-launch
+refusal models the actual root registration RPC before any manager starts; it
+does not yet inject a delayed real manager start. Actual handoff registers before
+manager startup and checks again before final durable release.
+
+The signed consume-monitored-continuation path now obtains a supervisor-owned
+pending nonce/new authorization epoch and per-pane packet epochs. It requests a
+fresh authenticated monitoring-continue/v1 proof, preserves the original native
+interval and commits canonical ACTIVE before root re-arm/thaw. The same physical
+shell/SSH remains; partial old packets keep their captured epoch and are discarded.
+First actual native full cycle PASS7.753s:
+/tmp/ssh-exam-monitored-native-continue-focus.log. This includes explicit missing
+approval refusal and an exact retry after successful native commit. The current
+expanded runner tests invalid seeds, repeated holds and stale pause commands:
+/tmp/ssh-exam-monitored-repeat-continue-focus.log PASS9.464s. Current affected
+native/CLI lifecycle focus PASS core32.208s/CLI4.960s:
+/tmp/ssh-exam-monitored-native-lifecycle-final-focus.log; session62350 completed0.
+All native runners have ended. No broad/native-root/browser claim follows.
+
+Canonical ACTIVE/resuming before supervisor commit now has a fresh recovery
+path: the same live supervisor must positively prove the original held context
+and issue a new nonce; the gateway verifies the same current approval/capture,
+and canonical compare-and-swap preserves the original interval. A refusal
+injected at the actual supervisor commit, after durable ACTIVE, reaches this
+boundary before any thaw; fresh recovery passes8.277s. Explicit native pause
+cancels an unexecuted pending transition and restores only the positively held
+identity metadata, requiring a new approval for its new pause generation; it
+never reopens completed work, refunds time or constructs permission from JSON.
+Read-only supervisor/CLI diagnostics expose pending generation and original boot
+expiry without a nonce. Real boot-expiry/fresh recovery PASS19.464s. Its initial
+run reached recovery but reused an expired admission timeout for final EOF; the
+fixture now independently bounds admission and final cleanup. Cancel and expiry
+are included in the final32.208s lifecycle focus above.
+
+Actual root-namespace CLI mutation remains UNQUALIFIED locally: this host denies
+the child user namespace access to the outer supervisor's /proc/PID/exe. The
+first complete-config run correctly refuses at that exact peer-pin boundary;
+the test preserves that refusal/actionable help and confirms the same existing
+native owner can retry its already-held workload. The CLI's separate executable
+needs a root-only NEGATIVE hold handshake, now implemented; every positive
+operation retains strict loaded-agent executable/peer checks. Production scope/
+resource checks stay intact. No alternate root path was substituted. Receipts:
+/tmp/ssh-exam-monitored-actual-cli-pause-focus.log (initial fixture lacked rootfs),
+/tmp/ssh-exam-monitored-actual-cli-pause-focus-2.log (real proc boundary),
+/tmp/ssh-exam-monitored-cli-boundary-continue-focus.log PASS9.678s (refusal only).
+The guarded root guest must still positively qualify actual examctl pause.
+
+Gateway continuation verification uses the existing web-admin authorization
+workflow and binds the existing audit issuance identity, generation, original
+expiry, same page/SSH/boot, current clock revision and fresh challenged capture.
+Consumed, expired, missing and foreign approval/scope refuses without a new clock.
+Retries retain original capture age. Actual signed HTTP/admin approval, JPEG
+consumer and ledger/readiness focus42/3files PASS1.80s; final typecheck passes.
+Log /tmp/ssh-exam-retained-continue-gateway-focus-3.log. The no-SSH fixture keeps
+its real HTTP authentication-gap refusal and seeds held JPEGs through the same
+validated consumer directly. Its initial revision comparison incorrectly ignored
+intentional trigger increments during fixture approval edits; the corrected
+oracle records those increments and uses real audited admin issuance.
+
+The desktop native test explicitly narrows UID inventory to its real owned
+scopes and replaces installed SSH ancestry with a real test-peer pidfd. Go TLS
+proofs simulate gateway capture/approval; the independent gateway test above
+uses real JPEG validation. Neither supplies combined privileged SSH/PAM,
+whole-UID/background/async-writer or browser Continue qualification.
+
+## Joined live expiry and web/browser continuation (current candidate)
+
+The supervisor now exports its original-deadline, owner-bound live cutoff through
+an actual SCM_RIGHTS memfd, not JSON or a disk lease. Its own loop and the existing
+watchdog observe that same atomic cutoff. Expiry revokes permission and runs the
+verified hold; it records a technical hold without fabricating policy misconduct.
+An old timer cannot overwrite a newer verified renewal. Closing/reloading only
+the watchdog's observation does not revoke the live owner. Actual normal expiry,
+stale-disk-lease and renewal/observer checks pass; independent actor death/stall
+and pending-launch failure qualification remain open.
+
+Migration030 records immutable legacy/v1 runtime selection and observational
+pending/unverified/held/resuming status. Existing started attempts remain legacy.
+Native ACTIVE/resuming is not execution confirmation. Accepted signed actual
+commit records continuation consumption but keeps web input LOCKED until the
+same live browser panes acknowledge their fresh per-pane input epochs. A lost
+native/browser/final HTTP reply retries the same operation/clock. Student status
+shows `completing` for an already consumed native outcome awaiting agreement;
+this is not a new approval and does not extend its original acceptance window.
+Consumed approval still refuses fresh SSH reauthentication.
+
+The actual same-page pause callback now preserves only the matching live v1
+connection; page/transport loss still retires it. Approval no longer invents an
+authentication gap for that mode. Challenged capture continues while ACTIVE or
+LOCKED. The legacy heartbeat lease path is bypassed only for v1, whose native
+authority already requires fresh signed evidence. Missing images alone do not
+become a v1 policy violation. Explicit capture/SSH/policy loss stays enforced.
+
+Continue joins HTTP → isolated connection IPC → browser control → actual WASM
+ChangeInputEpoch. Old packets retain their capture-time epoch, exact retries do
+not reset consumed sequences, and every await checks the physical pane identity.
+Output/EOF now also carries an immutable `pane_instance` (the initial input epoch)
+so editor redraws survive input reauthorization without targeting a replacement.
+The read-only paused UI can display that output while keys remain blocked.
+Native/loaded JS/WASM agreement is checked before Begin; unsupported versions
+refuse before requesting a clock. The native default guard STILL refuses v1;
+there is no runtime configuration/environment enable switch.
+
+Current affected application/interface focus:70 tests/9files PASS19.34s;
+types and full app/WASM/server build pass. Full encrypted SSH client races pass
+1.511s. Current actual native Begin/pause/Continue/cancel/expiry focus passes
+51.668s, with the installed-SSH/whole-UID desktop seams described above. Logs:
+`/tmp/ssh-exam-retained-web-joined-{focus,types}.log`,
+`/tmp/ssh-exam-retained-web-joined-build-final.log`,
+`/tmp/ssh-exam-retained-client-race.log`,
+`/tmp/ssh-exam-retained-native-joined-focus.log`.
+Browser qualification is pending; this is not a completed/qualified C3 workflow.
+
+Updated browser focus, explicitly `EXAM_BROWSER_SSH=1`:2 PASS24.1s,
+`/tmp/ssh-exam-retained-capture-browser-focus.log`. It exercises the actual UI
+challenge timeout, technical input block with no incident, fresh capture retry,
+paused editor redraws, `completing` status, same-pane epoch adoption and fresh
+keys. The other case exercises real WASM/encrypted SSH stale-key/replacement
+framing. It does not supply a combined root retained freeze test. Types and
+exact app/WASM/server rebuild pass after the capture correction.
+
+The actual Capture timer RED proves a rejected challenge request emitted
+`screen capture failed` as policy. The new-mode callback now records per-source
+technical input blocking and clears only that local presentation on successful
+capture; native live authority still gates all input. Actual track-ended remains
+policy. No outage grants/refunds/reopens work or reconstructs a native permit.
+Timer/handler focus14 PASS; actual HTTP consumed approval still refuses the
+reauthentication route. Logs `/tmp/ssh-exam-retained-capture-timeout-policy-red.log`,
+`/tmp/ssh-exam-retained-capture-timeout-focus.log` and
+`/tmp/ssh-exam-retained-capture-technical-{build,types}.log`.
+
+Browser failures were retained and distinguished: the first UI locator selected
+two panes (Begin already opened one); the fixture now uses that observed pane.
+The first framing run omitted EXAM_BROWSER_SSH and exercised Node fallback;
+the test now asserts its required fixture mode immediately. The correctly
+configured run then caught a real regression: output preceded server `opened`
+and the new subscriber filter dropped it. Publishing only immutable physical
+context before SSH open fixes early display without enabling input before the
+verified reply. Final positive real-WASM output/resize/input test passes above.
+
+The added worker fixture initially failed to acknowledge the actual fresh-input
+RPC, causing a timeout. It now observes/acknowledges that exact request. The HTTP
+lost-browser-reply regression then exposed missing mandatory signed consumption
+observation and a retry check applied to the wrong route; corrected signatures
+and route-specific checks pass. The fixture asserts the exact browser boundary,
+durable consumption, `completing` status and unchanged original interval before
+retry. Build refusals were local cache/process sandbox restrictions; the same
+build passes with local-test permissions. No executable was missing.
+
+## Intermediate-state review before any broad qualification
+
+- Pre-clock pending authority is nonpermitting, exclusive, cancellable and expires
+  within15s. Only the original actual socket/root caller and current seed may join
+  durable ACTIVE. Supervisor replacement cannot restore it from JSON/old receipts.
+- Registered launches include the pre-manager interval. A pending launch makes
+  hold unverified; no missing scope/row establishes absence. Retirement follows
+  never-started or exact cleanup, not a timeout. Real delayed manager/cancel/death
+  races remain to qualify; do not count the modeled registration as that proof.
+- Durable pending/unverified/held/resuming fields and the resume nonce are
+  observations only. Positive input needs the current live supervisor. Fresh
+  Continue requires its actual held receipt, same original interval, fresh proof
+  and current approval. Pending resume seeds are bounded15s in that actor.
+  The same actor's completed outcome can answer a lost-reply retry unchanged.
+- Native pending resume now has actual inspection/cancel/expiry/fresh-retry tests
+  above. A restarted supervisor still cannot restore a saved nonce as permission.
+  Gateway reconciliation now preserves this uncertain held operation/approval,
+  and actual HTTP/native/browser acknowledgement refusals are retryable. Every
+  final reply still checks generation/page/clock/transport and original deadline.
+- **Open before broad:** repeated original job stops, all-UID inventory and async
+  writers; delayed launches; partial-thaw failure recontainment; recording-fault
+  authority after generation change; explicit clock revision handover; coordinator/
+  owner death and independently enforced live cutoff/loaded-role agreement.
+
+Full independent-failure handling, pending-launch closure qualification, loaded
+native-role agreement, complete all-writer qualification and combined root/browser
+qualification remain unfinished. The default admission guard always refuses new mode;
+only compiled test roles replace it. There is no configuration/environment enable
+switch. Commit validated guarded increments with their unfinished status explicit;
+do not mark the feature complete until the public policy-pause/verified-hold/
+approved-Continue qualification boundary passes. No deployment.
+
+## Known-writer containment during a pending launch
+
+Actual native administrator pause RED now demonstrates the previously registered
+closed launch made the hold unverified while leaving an actual existing shell's
+cgroup unfrozen. The fix completes stop/freeze/drain/discard of positively known
+writers before returning the same unverified pending-launch result. Cancellation
+of the test's positively NEVER-started launcher then permits verified hold and
+two Continue cycles on the same shell memory. Original stop facts remain owned
+by the same pending hold. Focused actual-entry races PASS7.562s; logs
+`/tmp/ssh-exam-retained-pending-known-writer-{red,focus}.log`.
+This is not the delayed real-manager/final-exec closure qualification.
+
+Pre-regression review: migration030 cannot convert a known legacy interval;
+pre-clock pending seeds expire/cancel without work/clock permission. Resume
+intent/held/completing metadata is inspection only. Explicit pending cancellation,
+original boot expiry, fresh same-owner retry, signed actual consumption and
+unchanged deadlines are covered. A superseding page/generation/clock/deadline
+refuses final agreement; reused physical panes reject stale completion. Capture
+verification failures block input technically; only actual track/policy loss
+supplies policy evidence. Unverified hold still refuses thaw; pending operations
+cannot reset or extend the already-started interval. Full independent-failure,
+all-writer/async IO and loaded native roles remain guarded OFF, with no switch.
+Broad checks of this candidate establish regression coverage, not those missing
+privileged boundaries or permission to enable/deploy retained mode.
+
+Current frozen native broad regression PASS: core481.631s and CLI31.996s,
+session27401 completed0, `/tmp/ssh-exam-retained-joined-native-regression.log`.
+This includes native races, owned user-systemd/resource/user-namespace, compiler
+and default-size collection cases. Native release build, native/client vet and
+full client races PASS. Six affected browser-SSH files:27 PASS2.2m,
+`/tmp/ssh-exam-retained-joined-browser-regression.log`; session88238 completed0.
+No current guarded-root, all-UID/final-exec or16/64 capacity result is implied.
+
+Initial full application regression:560 PASS/6 FAIL/2 skipped. Five failures were
+old exact expectations missing the three explicit observational migration fields
+or the new physical-context event. The sixth legacy-policy fixture copied a
+SQLite-only NULL runtime field into native wire metadata; actual legacy native
+omits it, and strict unknown-version refusal was kept. Focused corrected renewal
+8 and other13 checks pass. The sandbox fixture also checks preservation after a
+second reopen; that assertion was explicitly updated and rerun. No runtime
+enforcement or preservation oracle was weakened. Preserve initial log
+`/tmp/ssh-exam-retained-joined-application-regression.log` and focused corrections
+logs. Final full application rerun PASS566/2 conditional skipped in284.82s,
+100 files PASS/1 skipped; session31738 completed0. The TWO conditional root-mapped
+examctl/HTTPS workflows were then enabled separately and both PASS6.93s; the11
+name-filtered tests in that focused run already passed in the full run. All568
+application scenarios are covered across those runs. Logs
+`/tmp/ssh-exam-retained-joined-application-final-regression.log` and
+`/tmp/ssh-exam-retained-joined-management-cli.log`. Final typecheck PASS. All local
+runners ended. Source remains guarded, with the root/16x4 gaps above still open.

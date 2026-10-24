@@ -36,6 +36,8 @@ import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
 import { RecoverySources } from "./recovery-source.js";
 import { AttemptGrants } from "./attempt-grants.js";
+import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
+import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { GrantIssuance } from "./grant-issuance.js";
 import { grantBinding } from "../../../packages/protocol/grants.js";
 import type { ConnectionHandle as Connection } from "./connection-process.js";
@@ -130,8 +132,28 @@ export async function createApp(
   });
   const store = new Store(config.data),
     agent = new Agent(config.agent, store),
-    monitoring = new Monitoring(store, config.terminalRecordingLimitMiB),
+    monitoring = new Monitoring(
+      store,
+      config.terminalRecordingLimitMiB,
+      config.agent.id,
+    ),
     life = new Lifecycle(store, agent, monitoring);
+  monitoring.onLivePolicyLoss = (a) => {
+    // lock persists its incident/generation before its first await. Do not
+    // serialize a bounded evidence reply behind the SSH command/reply path.
+    void life
+      .lock(a.id, "Verified monitoring policy conditions lost")
+      .catch((error) => {
+        app.log.error(
+          { attempt: a.id, errorType: error?.constructor?.name },
+          "Monitoring policy lock could not be recorded",
+        );
+      });
+    if (store.attempt(a.id)?.state === "ACTIVE")
+      throw Error(
+        "Monitoring policy lock was not durably recorded; no evidence available",
+      );
+  };
   const media = new MonitoringMedia(store);
   const purges = new MonitoringPurgeJobs(store, {
     entry: options.purgeWorkerEntry,
@@ -273,8 +295,9 @@ export async function createApp(
     attemptConnections.delete(a.id);
   };
   life.onPaused = (a) => {
+    const retained = retainedConnection(a);
     const c = attemptConnections.get(a.id);
-    if (c) {
+    if (c && !retained) {
       c.onLoss = () => {};
       c.close();
       if (connections.get(`${a.exam}:${a.username}`) === c)
@@ -287,7 +310,7 @@ export async function createApp(
         type: "state",
         attempt: a,
         serverNow: now(),
-        authenticationGap: true,
+        authenticationGap: !retained,
       });
   };
   const busy = new Set<string>();
@@ -324,8 +347,30 @@ export async function createApp(
     await life.cancelPreflight(a.id, PREFLIGHT_EXPIRED_REASON).catch(() => {});
     throw Error(PREFLIGHT_EXPIRED_REASON);
   };
+  const retainedConnection = (a: Attempt) => {
+    if (a.monitoring_mode !== "v1" || !a.registered_owner) return;
+    const conn = attemptConnections.get(a.id);
+    if (!conn?.alive || connections.get(`${a.exam}:${a.username}`) !== conn)
+      return;
+    let owner: ReturnType<typeof monitoringOwner.parse>;
+    try {
+      owner = monitoringOwner.parse(JSON.parse(a.registered_owner));
+    } catch {
+      return;
+    }
+    if (
+      owner.attempt === a.id &&
+      owner.exam === a.exam &&
+      owner.username === a.username &&
+      owner.uid === a.uid &&
+      owner.page_epoch === a.page_hash &&
+      owner.transport_hash === conn.transport
+    )
+      return conn;
+  };
   const authenticationGap = (id: string) => {
     const a = store.attempt(id);
+    if (retainedConnection(a)) return false;
     if (
       ["PREPARING", "LOCKED"].includes(a.state) &&
       !connections.get(`${a.exam}:${a.username}`)?.alive
@@ -455,9 +500,43 @@ export async function createApp(
         String(req.headers["x-exam-signature"] || ""),
       );
       return agent.signTiming(
-        grants.verifyBegin(JSON.parse(payload.toString()), (a) =>
-          monitoring.requireBeginReadiness(a),
+        grants.verifyBegin(JSON.parse(payload.toString()), (a, initial) =>
+          initial
+            ? monitoring.beginBootstrap(a, initial)
+            : monitoring.requireBeginReadiness(a),
         ),
+      );
+    },
+  );
+  app.post(
+    "/api/agent/monitoring-continue",
+    { config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload) || payload.length > 4096)
+        throw Error("Raw signed monitoring continuation required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      return agent.signTiming(
+        monitoring.continueBootstrap(JSON.parse(payload.toString()), agent.id),
+      );
+    },
+  );
+  app.post(
+    "/api/agent/monitoring-evidence",
+    { config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload) || payload.length > 4096)
+        throw Error("Raw signed monitoring challenge required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      return agent.signTiming(
+        monitoring.executionEvidence(JSON.parse(payload.toString())),
       );
     },
   );
@@ -1431,6 +1510,7 @@ export async function createApp(
       }
       for (const c of conn.panes.values()) await c.close();
       conn.panes.clear();
+      const monitored = await conn.prepareMonitoring();
       // Account handoff/pane closure may outlive this page or preparation.
       // Never let the old page's asynchronous Begin start its replacement.
       a = store.attempt(a.id);
@@ -1482,6 +1562,10 @@ export async function createApp(
         ? recoveryPreflight.parse(JSON.parse(a.recovery_preflight))
         : null;
       const initialGrant = a.grant_id ? grants.bindingForAttempt(a) : null;
+      if (monitored && !initialGrant)
+        throw Error(
+          "Retained monitoring requires a saved unified grant. Preserve this preparation and use the reviewed grant migration workflow; no new clock has started.",
+        );
       const beginIntent = initialGrant
         ? grants.begin(
             a,
@@ -1491,18 +1575,21 @@ export async function createApp(
               : undefined,
           )
         : null;
+      const activation = initialGrant
+        ? initialGrant.kind === "PRACTICE"
+          ? "activate-practice-grant-attempt"
+          : initialGrant.kind === "ADDITIONAL"
+            ? "activate-additional-grant-attempt"
+            : "activate-grant-attempt"
+        : recovery
+          ? "activate-recovery-attempt"
+          : currentSettings.template_version
+            ? "activate-versioned-attempt"
+            : "activate-attempt";
       const result = await agent.call(
-        initialGrant
-          ? initialGrant.kind === "PRACTICE"
-            ? "activate-practice-grant-attempt"
-            : initialGrant.kind === "ADDITIONAL"
-              ? "activate-additional-grant-attempt"
-              : "activate-grant-attempt"
-          : recovery
-            ? "activate-recovery-attempt"
-            : currentSettings.template_version
-              ? "activate-versioned-attempt"
-              : "activate-attempt",
+        monitored
+          ? activation.replace("activate-", "activate-monitored-")
+          : activation,
         {
           id: a.id,
           ...(initialGrant || recovery || currentSettings.template_version
@@ -1521,7 +1608,6 @@ export async function createApp(
         life.acceptRemote(result, manifest, a.id);
         return { attempt: store.attempt(a.id), serverNow: now() };
       }
-      life.syncAccess(a.id, result);
       store.db.transaction(() => {
         grants.accept(result, store.attempt(a.id));
         store.db
@@ -1537,6 +1623,7 @@ export async function createApp(
             a.id,
           );
       })();
+      life.syncAccess(a.id, result);
       return { attempt: store.attempt(a.id), serverNow: now() };
     } catch (e) {
       const reason = (e as Error).message.slice(0, 500);
@@ -1752,7 +1839,10 @@ export async function createApp(
       ["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state)
     )
       throw Error("Your exam has ended. It can no longer be continued.");
-    if (a.state !== "LOCKED")
+    if (
+      a.state !== "LOCKED" &&
+      !(a.state === "ACTIVE" && nativeContinuationOutcomeRecorded(a))
+    )
       throw Error("Your exam is not waiting for continuation.");
     const readiness = readinessMessage(req.body, JSON.parse(a.settings).webcam);
     if (readiness) throw Error(readiness);
@@ -1762,9 +1852,10 @@ export async function createApp(
       .get(a.id) as any;
     if (
       !auth ||
-      auth.consumed ||
+      (auth.consumed && !nativeContinuationOutcomeRecorded(a)) ||
       auth.generation !== a.generation ||
-      auth.expires <= now()
+      (auth.expires <= now() &&
+        !(auth.consumed && nativeContinuationOutcomeRecorded(a)))
     )
       throw Error(
         "Instructor authorization is required. Request review and wait for approval before continuing.",
@@ -1780,21 +1871,68 @@ export async function createApp(
       throw Error("Instructor-approved reauthentication required");
     if (JSON.parse(a.settings).webcam && !(req.body as any).webcam)
       throw Error("Camera required");
+    let inputEpochs:
+      | Record<string, { instance: string; epoch: string }>
+      | undefined;
     try {
-      await agent.call("consume-continuation", {
+      const result = await agent.call("consume-continuation", {
         id: a.id,
         generation: a.generation,
       });
+      if (a.monitoring_mode === "v1") {
+        const current = store.attempt(a.id);
+        if (
+          !["LOCKED", "ACTIVE"].includes(current.state) ||
+          current.generation !== a.generation ||
+          current.page_hash !== a.page_hash ||
+          retainedConnection(current) !== conn
+        )
+          throw Error(
+            "The pause or page changed during continuation. Preserve the current panes and inspect fresh status.",
+          );
+        if (
+          !result?.attempt ||
+          result.attempt.state !== "ACTIVE" ||
+          result.attempt.retained_hold ||
+          !result.input_epochs ||
+          result.attempt.generation !== a.generation
+        )
+          throw Error(
+            "Native continuation is still pending. Keep this page open and retry; no new approval or clock is created.",
+          );
+        life.acceptRemote(result.attempt);
+        inputEpochs = await conn.changeInputEpochs(a.id, result.input_epochs);
+        const agreed = store.attempt(a.id);
+        if (
+          agreed.page_hash !== a.page_hash ||
+          agreed.generation !== a.generation ||
+          agreed.clock_revision !== a.clock_revision ||
+          retainedConnection(agreed) !== conn ||
+          life.expireDeadline(a.id)
+        )
+          throw Error(
+            "Page or SSH ownership changed during input agreement. Preserve the current attempt and inspect its status.",
+          );
+      }
     } catch (error) {
-      await life.lock(
-        a.id,
-        "Continuation acknowledgment lost; instructor review required",
-      );
-      await life.reconcile(a.id).catch(() => {});
+      if (a.monitoring_mode !== "v1") {
+        await life.lock(
+          a.id,
+          "Continuation acknowledgment lost; instructor review required",
+        );
+        await life.reconcile(a.id).catch(() => {});
+      }
       throw error;
     }
-    life.confirmContinuation(a.id, a.generation);
-    return { attempt: store.attempt(a.id), serverNow: now() };
+    const agreed = store.attempt(a.id);
+    if (
+      a.monitoring_mode !== "v1" ||
+      agreed.state !== "ACTIVE" ||
+      agreed.generation !== a.generation ||
+      !nativeContinuationOutcomeRecorded(agreed)
+    )
+      life.confirmContinuation(a.id, a.generation);
+    return { attempt: store.attempt(a.id), serverNow: now(), inputEpochs };
   });
   app.post("/api/student/attempts/:id/finish", async (req) => {
     const a = studentAttempt(req);
@@ -2918,7 +3056,7 @@ export async function createApp(
           if (a.state === "ACTIVE") {
             if (
               !conn?.alive ||
-              !healthy(a) ||
+              (a.monitoring_mode !== "v1" && !healthy(a)) ||
               (JSON.parse(a.settings).webcam && !m.ready.webcam)
             ) {
               await life.lock(a.id, "Required SSH/capture health lost");
@@ -2926,7 +3064,7 @@ export async function createApp(
               store.db
                 .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
                 .run(now(), a.id);
-              if (!leases.has(a.id)) {
+              if (a.monitoring_mode !== "v1" && !leases.has(a.id)) {
                 leases.add(a.id);
                 let renewing = a;
                 try {
@@ -3005,6 +3143,7 @@ export async function createApp(
               type: "closed",
               pane: m.pane,
               input_epoch: c.inputEpoch,
+              pane_instance: c.outputEpoch,
             });
             return;
           }
@@ -3032,6 +3171,7 @@ export async function createApp(
                 pane: m.pane,
                 data: bytes.toString("base64"),
                 input_epoch: c.inputEpoch,
+                pane_instance: c.outputEpoch,
               });
           });
           c.on("close", () => {
@@ -3041,6 +3181,7 @@ export async function createApp(
                 type: "closed",
                 pane: m.pane,
                 input_epoch: c.inputEpoch,
+                pane_instance: c.outputEpoch,
               });
           });
           send(ws, {

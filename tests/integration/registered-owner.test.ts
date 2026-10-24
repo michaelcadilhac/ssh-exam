@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { generateKeyPairSync, randomUUID, sign, verify } from "node:crypto";
@@ -9,7 +9,7 @@ import { hash } from "../../apps/server/src/db.js";
 import { Agent } from "../../apps/server/src/agent.js";
 import sharp from "sharp";
 
-async function fixture() {
+async function fixture(webcam = false) {
   const dir = mkdtempSync(tmpdir() + "/registered-owner-"),
     origin = "http://localhost:3000";
   const keys = () =>
@@ -21,8 +21,8 @@ async function fixture() {
     native = keys();
   writeFileSync(dir + "/gateway.key", gateway.privateKey, { mode: 0o600 });
   writeFileSync(dir + "/native.pub", native.publicKey, { mode: 0o600 });
-  const f = await createApp({
-    mode: "development",
+  const config = {
+    mode: "development" as const,
     origin,
     data: dir,
     port: 0,
@@ -34,7 +34,8 @@ async function fixture() {
       signingKey: dir + "/gateway.key",
       callbackPublicKey: dir + "/native.pub",
     },
-  });
+  };
+  const f = await createApp(config);
   const admin = f.store.session("admin", "synthetic-instructor", null),
     headers = {
       origin,
@@ -43,9 +44,9 @@ async function fixture() {
     };
   const post = (url: string, payload: any) =>
     f.app.inject({ method: "POST", url, headers, payload });
-  const authenticated = (url: string, input: any) => {
+  const authenticated = (url: string, input: any, app = f.app) => {
     const payload = Buffer.from(JSON.stringify(input));
-    return f.app.inject({
+    return app.inject({
       method: "POST",
       url,
       headers: {
@@ -85,7 +86,7 @@ async function fixture() {
     template: "v1",
     template_version: "a".repeat(64),
     duration: 600,
-    webcam: false,
+    webcam,
     terminals: 2,
     earliest: Date.now() - 60000,
     latest: Date.now() + 3600000,
@@ -146,6 +147,7 @@ async function fixture() {
   };
   return {
     ...f,
+    config,
     agent: new Agent(
       {
         id: "class",
@@ -164,6 +166,7 @@ async function fixture() {
     grants,
     request,
     authenticated,
+    post,
     async close() {
       await f.app.close();
       rmSync(dir, { recursive: true, force: true });
@@ -401,6 +404,725 @@ it.each([
     }
   },
 );
+
+async function activeEvidenceFixture(
+  webcam = false,
+  preflightSeed = false,
+  retained = false,
+) {
+  const f = await fixture(webcam),
+    owner = {
+      attempt: f.id,
+      exam: "owner",
+      username: "synthetic",
+      uid: 10001,
+      transport_hash: f.transport,
+      boot: f.request.boot,
+      page_epoch: f.page,
+      input_epoch: hash(randomUUID()),
+      generation: 0,
+      clock_revision: 0,
+    };
+  let bootstrapReply: any;
+  if (preflightSeed) {
+    // This fixture has no SSH connection, so seed the actual JPEG consumer
+    // directly; the signed native Begin and later proof HTTP interfaces are real.
+    for (const source of webcam ? ["screen", "webcam"] : ["screen"]) {
+      const a = f.store.attempt(f.id),
+        ticket = f.monitoring.captureChallenge(a, f.page, source);
+      await f.monitoring.challengedFrame(
+        a,
+        {
+          source,
+          seq: 1,
+          captured: Date.now(),
+          monotonic: 1,
+          data: (
+            await sharp({
+              create: {
+                width: 40,
+                height: 30,
+                channels: 3,
+                background: "white",
+              },
+            })
+              .jpeg()
+              .toBuffer()
+          ).toString("base64"),
+          challenge: ticket.challenge,
+          readiness: {
+            fullscreen: true,
+            visible: true,
+            focus: true,
+            keyboard: true,
+            screen: true,
+            webcam,
+          },
+        },
+        f.page,
+      );
+    }
+    const prepared = f.store.attempt(f.id),
+      response = await f.authenticated("/api/agent/grant-begin", {
+        ...f.request,
+        type: "grant-begin/v3",
+        page_epoch: f.page,
+        initial_owner: owner,
+      });
+    expect(response.statusCode, response.body).toBe(200);
+    const frame = response.json(),
+      bytes = Buffer.from(frame.payload, "base64");
+    expect(
+      verify(
+        null,
+        bytes,
+        f.gateway.publicKey,
+        Buffer.from(frame.signature, "base64"),
+      ),
+    ).toBe(true);
+    bootstrapReply = JSON.parse(bytes.toString());
+    expect(bootstrapReply).toMatchObject({
+      type: "grant-begin/v3",
+      bootstrap: { type: "monitoring-bootstrap/v1", owner, sequence: 1 },
+    });
+    expect(f.store.attempt(f.id)).toEqual(prepared);
+    expect(
+      f.store.db
+        .prepare("SELECT status FROM attempt_grants WHERE id=?")
+        .get(f.g.id),
+    ).toEqual({ status: "AVAILABLE" });
+    const premature = await f.authenticated("/api/agent/monitoring-evidence", {
+      type: "monitoring-execution-challenge-v1",
+      agent: "class",
+      nonce: hash(randomUUID()),
+      owner,
+      after_sequence: 0,
+      coverage_epoch: "",
+    });
+    expect(premature.statusCode, premature.body).toBe(409);
+  }
+  const started = Date.now();
+  // This metadata fixture models the gateway's acknowledged start before the
+  // signed native status arrives. An unsolicited new start MUST instead stay
+  // locked as "acknowledgment lost"; do not relax that recovery protection.
+  // HTTP/JPEG/signatures are real here; SSH/kernel admission remains simulated.
+  f.store.db
+    .prepare(
+      "UPDATE attempts SET state='ACTIVE',start=?,deadline=?,original_deadline=? WHERE id=?",
+    )
+    .run(started, started + 600000, started + 600000, f.id);
+  const accepted = await f.authenticated("/api/agent/events", {
+    agent: "class",
+    sequence: 1,
+    attempt: {
+      id: f.id,
+      exam: "owner",
+      username: "synthetic",
+      uid: 10001,
+      state: "ACTIVE",
+      settings: f.request.settings,
+      grant: f.request.grant,
+      grant_begin_intent: f.intent,
+      start: started,
+      deadline: started + 600000,
+      original_deadline: started + 600000,
+      generation: 0,
+      boot: f.request.boot,
+      protected: false,
+      registered_owner: owner,
+      ...(retained
+        ? {
+            monitoring_mode: "v1",
+            browser_ssh: true,
+            terminal_supervised: true,
+          }
+        : {}),
+    },
+  });
+  expect(accepted.statusCode, accepted.body).toBe(200);
+  expect(f.store.attempt(f.id)).toMatchObject({
+    state: "ACTIVE",
+    generation: 0,
+  });
+  const session = f.store.session("student", "synthetic", "owner"),
+    headers = {
+      origin: f.config.origin,
+      cookie: `session=${session.token}`,
+      "x-csrf-token": session.csrf,
+      "x-page-instance": "synthetic original page",
+    },
+    jpeg = (
+      await sharp({
+        create: { width: 40, height: 30, channels: 3, background: "white" },
+      })
+        .jpeg()
+        .toBuffer()
+    ).toString("base64"),
+    ready = {
+      fullscreen: true,
+      visible: true,
+      focus: true,
+      keyboard: true,
+      screen: true,
+      webcam,
+    },
+    challenge = {
+      type: "monitoring-execution-challenge-v1",
+      agent: "class",
+      nonce: hash(randomUUID()),
+      owner,
+      after_sequence: 0,
+      coverage_epoch: "",
+    };
+  const upload = async (
+    policy = ready,
+    source: "screen" | "webcam" = "screen",
+  ) => {
+    const ticket = await f.app.inject({
+      method: "POST",
+      url: `/api/student/attempts/${f.id}/capture-challenges`,
+      headers,
+      payload: { source },
+    });
+    expect(ticket.statusCode, ticket.body).toBe(200);
+    return f.app.inject({
+      method: "POST",
+      url: `/api/student/attempts/${f.id}/frames/challenged`,
+      headers,
+      payload: {
+        source,
+        seq: ticket.json().after_sequence + 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: jpeg,
+        challenge: ticket.json().challenge,
+        readiness: policy,
+      },
+    });
+  };
+  return {
+    ...f,
+    owner,
+    headers,
+    jpeg,
+    ready,
+    challenge,
+    upload,
+    bootstrapReply,
+  };
+}
+
+it("signed pending native Continue remains retryable; confirmed native consumption keeps live evidence available while the reply is lost", async () => {
+  const f = await activeEvidenceFixture(false, false, true);
+  let clock: ReturnType<typeof vi.spyOn> | undefined;
+  try {
+    const original = f.store.attempt(f.id);
+    expect(original.monitoring_mode).toBe("v1");
+    f.store.db
+      .prepare("UPDATE attempts SET state='LOCKED',generation=1 WHERE id=?")
+      .run(f.id);
+    const approval = await f.post(`/api/admin/attempts/${f.id}/authorize`, {
+      generation: 1,
+      revision: f.store.attempt(f.id).continuation_revision,
+      requestID: randomUUID(),
+      reason: "Synthetic reviewed native pending continuation",
+    });
+    expect(approval.statusCode, approval.body).toBe(200);
+    const a = f.store.attempt(f.id),
+      ticket = f.monitoring.captureChallenge(a, f.page, "screen");
+    await f.monitoring.challengedFrame(
+      a,
+      {
+        source: "screen",
+        seq: ticket.after_sequence + 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: f.jpeg,
+        challenge: ticket.challenge,
+        readiness: f.ready,
+      },
+      f.page,
+    );
+    const owner = {
+        ...f.owner,
+        generation: 1,
+        input_epoch: hash("confirmed native continuation epoch"),
+      },
+      bootstrapped = await f.authenticated("/api/agent/monitoring-continue", {
+        type: "monitoring-continue/v1",
+        agent: "class",
+        nonce: hash(randomUUID()),
+        previous_owner: f.owner,
+        owner,
+      });
+    expect(bootstrapped.statusCode, bootstrapped.body).toBe(200);
+    const seed = JSON.parse(
+        Buffer.from(bootstrapped.json().payload, "base64").toString(),
+      ),
+      native = {
+        id: f.id,
+        exam: a.exam,
+        username: a.username,
+        uid: a.uid,
+        state: "ACTIVE",
+        settings: JSON.parse(a.settings),
+        grant: f.request.grant,
+        grant_begin_intent: f.intent,
+        start: a.start,
+        deadline: a.deadline,
+        original_deadline: a.original_deadline,
+        generation: 1,
+        clock_revision: a.clock_revision,
+        boot: f.owner.boot,
+        protected: false,
+        registered_owner: owner,
+        browser_ssh: true,
+        terminal_supervised: true,
+        monitoring_mode: "v1",
+      };
+    const pending = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 2,
+      attempt: { ...native, retained_hold: "resuming" },
+    });
+    expect(pending.statusCode, pending.body).toBe(200);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 1,
+      retained_hold: "resuming",
+      registered_owner: JSON.stringify(f.owner),
+      start: original.start,
+      original_deadline: original.original_deadline,
+    });
+    expect(
+      (
+        f.store.db
+          .prepare("SELECT consumed FROM continuations WHERE attempt=?")
+          .get(f.id) as any
+      ).consumed,
+    ).toBe(0);
+    await f.agent.acceptRegisteredOwnerObservation({
+      ...native,
+      retained_hold: "resuming",
+    });
+    expect(f.store.attempt(f.id).registered_owner).toBe(
+      JSON.stringify(f.owner),
+    );
+    const committed = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 3,
+      attempt: native,
+    });
+    expect(committed.statusCode, committed.body).toBe(200);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 1,
+      retained_hold: null,
+      registered_owner: JSON.stringify(owner),
+    });
+    expect(
+      (
+        f.store.db
+          .prepare("SELECT consumed FROM continuations WHERE attempt=?")
+          .get(f.id) as any
+      ).consumed,
+    ).toBe(1);
+    const proof = await f.authenticated("/api/agent/monitoring-evidence", {
+      ...f.challenge,
+      owner,
+    });
+    expect(proof.statusCode, proof.body).toBe(200);
+    expect(
+      JSON.parse(Buffer.from(proof.json().payload, "base64").toString()),
+    ).toMatchObject({
+      owner,
+      coverage_epoch: seed.bootstrap.coverage_epoch,
+      sequence: 1,
+    });
+    // Approval's acceptance window can expire after native consumption. That
+    // must not invalidate the already committed operation or mint a new window.
+    clock = vi.spyOn(Date, "now").mockReturnValue(approval.json().expires + 1);
+    f.life.confirmContinuation(f.id, 1);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "ACTIVE",
+      generation: 1,
+      start: original.start,
+      deadline: original.deadline,
+      original_deadline: original.original_deadline,
+    });
+  } finally {
+    clock?.mockRestore();
+    await f.close();
+  }
+});
+
+it("authenticated retained Continue requires current unused approval and challenged capture; refusal and retries preserve the original interval", async () => {
+  const f = await activeEvidenceFixture(true);
+  try {
+    // Metadata-only fixture for an already VERIFIED native hold. Kernel/SSH
+    // containment and actual thaw are covered by native qualification, not this HTTP test.
+    f.store.db
+      .prepare("UPDATE attempts SET state='LOCKED',generation=1 WHERE id=?")
+      .run(f.id);
+    const owner = {
+        ...f.owner,
+        generation: 1,
+        input_epoch: hash("new authorized attempt epoch"),
+      },
+      request = {
+        type: "monitoring-continue/v1",
+        agent: "class",
+        nonce: hash(randomUUID()),
+        previous_owner: f.owner,
+        owner,
+      },
+      route = "/api/agent/monitoring-continue";
+    expect((await f.authenticated(route, request)).statusCode).toBe(409);
+    const authorize = async () => {
+      const result = await f.post(`/api/admin/attempts/${f.id}/authorize`, {
+        generation: 1,
+        revision: f.store.attempt(f.id).continuation_revision,
+        requestID: randomUUID(),
+        reason: "Synthetic reviewed retained continuation",
+      });
+      expect(result.statusCode, result.body).toBe(200);
+      return result.json().expires as number;
+    };
+    const expires = await authorize();
+    expect((await f.authenticated(route, request)).statusCode).toBe(409);
+    // No SSH object exists in this HTTP fixture: keep the real authentication
+    // gap refusal, then feed JPEGs through the same validated consumer directly.
+    const gap = await f.upload();
+    expect(gap.statusCode).toBe(400);
+    expect(gap.body).toContain("authorized authentication gap");
+    const uploadHeld = async (source: "screen" | "webcam") => {
+      const a = f.store.attempt(f.id),
+        ticket = f.monitoring.captureChallenge(a, f.page, source);
+      return f.monitoring.challengedFrame(
+        a,
+        {
+          source,
+          seq: ticket.after_sequence + 1,
+          captured: Date.now(),
+          monotonic: 1,
+          data: f.jpeg,
+          challenge: ticket.challenge,
+          readiness: f.ready,
+        },
+        f.page,
+      );
+    };
+    await uploadHeld("screen");
+    expect((await f.authenticated(route, request)).statusCode).toBe(409); // Camera still missing.
+    await uploadHeld("webcam");
+    const before = f.store.attempt(f.id),
+      grant = f.store.db
+        .prepare("SELECT * FROM continuations WHERE attempt=?")
+        .get(f.id),
+      reply = await f.authenticated(route, request);
+    expect(reply.statusCode, reply.body).toBe(200);
+    const raw = Buffer.from(reply.json().payload, "base64"),
+      proof = JSON.parse(raw.toString());
+    expect(
+      verify(
+        null,
+        raw,
+        f.gateway.publicKey,
+        Buffer.from(reply.json().signature, "base64"),
+      ),
+    ).toBe(true);
+    expect(proof).toMatchObject({
+      type: "monitoring-continue/v1",
+      nonce: request.nonce,
+      previous_owner: f.owner,
+      owner,
+      authorization_expires: expires,
+      bootstrap: { owner, sequence: 1 },
+    });
+    expect(proof.capture_valid_for_ms).toBeGreaterThan(0);
+    const retry = await f.authenticated(route, request),
+      repeated = JSON.parse(
+        Buffer.from(retry.json().payload, "base64").toString(),
+      );
+    expect(repeated.bootstrap).toEqual(proof.bootstrap);
+    expect(repeated.capture_valid_for_ms).toBeLessThanOrEqual(
+      proof.capture_valid_for_ms,
+    );
+    expect(f.store.attempt(f.id)).toEqual(before);
+    expect(
+      f.store.db
+        .prepare("SELECT * FROM continuations WHERE attempt=?")
+        .get(f.id),
+    ).toEqual(grant);
+    for (const input of [
+      { ...request, agent: "wrong-agent" },
+      { ...request, owner: { ...owner, generation: 2 } },
+      { ...request, owner: { ...owner, page_epoch: hash("wrong page") } },
+      {
+        ...request,
+        previous_owner: { ...f.owner, transport_hash: hash("wrong SSH") },
+      },
+    ])
+      expect((await f.authenticated(route, input)).statusCode).toBe(409);
+    f.store.db
+      .prepare("UPDATE continuations SET consumed=1 WHERE attempt=?")
+      .run(f.id);
+    expect((await f.authenticated(route, request)).statusCode).toBe(409);
+    f.store.db
+      .prepare("UPDATE continuations SET consumed=0,expires=? WHERE attempt=?")
+      .run(Date.now() - 1, f.id);
+    expect((await f.authenticated(route, request)).statusCode).toBe(409);
+    f.store.db.prepare("DELETE FROM continuations WHERE attempt=?").run(f.id);
+    expect((await f.authenticated(route, request)).statusCode).toBe(409);
+    expect(f.store.attempt(f.id)).toEqual({
+      ...before,
+      continuation_revision: before.continuation_revision + 3,
+    });
+    // Simulate the acknowledged native SAME interval and approval consumption;
+    // original-age capture may seed the new owner, never a new clock or grace.
+    await authorize();
+    const nextOwner = {
+        ...owner,
+        input_epoch: hash("fresh native pending scope after replacement"),
+      },
+      fresh = await f.authenticated(route, {
+        ...request,
+        nonce: hash(randomUUID()),
+        owner: nextOwner,
+      });
+    expect(fresh.statusCode, fresh.body).toBe(200);
+    const nextProof = JSON.parse(
+      Buffer.from(fresh.json().payload, "base64").toString(),
+    );
+    expect(nextProof.bootstrap.coverage_epoch).not.toBe(
+      proof.bootstrap.coverage_epoch,
+    );
+    f.store.db
+      .prepare("UPDATE continuations SET consumed=1 WHERE attempt=?")
+      .run(f.id);
+    f.store.db
+      .prepare(
+        "UPDATE attempts SET state='ACTIVE',registered_owner=? WHERE id=?",
+      )
+      .run(JSON.stringify(nextOwner), f.id);
+    const promoted = await f.authenticated("/api/agent/monitoring-evidence", {
+      ...f.challenge,
+      owner: nextOwner,
+    });
+    expect(promoted.statusCode, promoted.body).toBe(200);
+    const evidence = JSON.parse(
+      Buffer.from(promoted.json().payload, "base64").toString(),
+    );
+    expect(evidence).toMatchObject({
+      owner: nextOwner,
+      coverage_epoch: nextProof.bootstrap.coverage_epoch,
+      sequence: 1,
+    });
+    expect(evidence.age_ms).toBeGreaterThanOrEqual(
+      15000 - nextProof.capture_valid_for_ms,
+    );
+    expect(f.store.attempt(f.id)).toMatchObject({
+      start: before.start,
+      deadline: before.deadline,
+      original_deadline: before.original_deadline,
+    });
+  } finally {
+    await f.close();
+  }
+});
+
+it("versioned Begin bootstrap consumes no clock/grant; only acknowledged native ACTIVE promotes its original capture coverage", async () => {
+  const f = await activeEvidenceFixture(true, true);
+  try {
+    const initial = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      f.challenge,
+    );
+    expect(initial.statusCode, initial.body).toBe(200);
+    const observed = JSON.parse(
+      Buffer.from(initial.json().payload, "base64").toString(),
+    );
+    expect(observed).toMatchObject({
+      owner: f.owner,
+      sequence: 1,
+      coverage_epoch: f.bootstrapReply.bootstrap.coverage_epoch,
+    });
+    expect(observed.age_ms).toBeGreaterThanOrEqual(
+      15000 - f.bootstrapReply.capture_valid_for_ms,
+    );
+    const request = {
+      ...f.challenge,
+      nonce: hash(randomUUID()),
+      after_sequence: 1,
+      coverage_epoch: observed.coverage_epoch,
+    };
+    expect(
+      (await f.authenticated("/api/agent/monitoring-evidence", request))
+        .statusCode,
+    ).toBe(409); // No self-renewal from bootstrap.
+    const screen = await f.upload();
+    expect(screen.statusCode, screen.body).toBe(200);
+    const updated = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      request,
+    );
+    expect(updated.statusCode, updated.body).toBe(200);
+    expect(
+      JSON.parse(Buffer.from(updated.json().payload, "base64").toString()),
+    ).toMatchObject({ coverage_epoch: observed.coverage_epoch, sequence: 2 });
+  } finally {
+    await f.close();
+  }
+});
+
+it("actual challenged JPEG and native authenticated HTTP issue scoped live evidence; legacy images and reply retries never freshen it", async () => {
+  const f = await activeEvidenceFixture();
+  try {
+    const proof = (input = f.challenge) =>
+      f.authenticated("/api/agent/monitoring-evidence", input);
+    expect((await proof()).statusCode).toBe(409);
+    const legacy = await f.app.inject({
+      method: "POST",
+      url: `/api/student/attempts/${f.id}/frames`,
+      headers: f.headers,
+      payload: {
+        source: "screen",
+        seq: 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: f.jpeg,
+      },
+    });
+    expect(legacy.statusCode, legacy.body).toBe(200);
+    expect((await proof()).statusCode).toBe(409);
+    const upload = await f.upload();
+    expect(upload.statusCode, upload.body).toBe(200);
+    const before = f.store.attempt(f.id),
+      signed = await proof();
+    expect(signed.statusCode, signed.body).toBe(200);
+    const frame = signed.json(),
+      payload = Buffer.from(frame.payload, "base64");
+    expect(
+      verify(
+        null,
+        payload,
+        f.gateway.publicKey,
+        Buffer.from(frame.signature, "base64"),
+      ),
+    ).toBe(true);
+    const evidence = JSON.parse(payload.toString());
+    expect(evidence).toMatchObject({
+      type: "monitoring-execution-evidence-v1",
+      audience: "class",
+      owner: f.owner,
+      nonce: f.challenge.nonce,
+      complete: true,
+    });
+    expect(evidence.sequence).toBeGreaterThan(0);
+    expect(evidence.age_ms).toBeGreaterThanOrEqual(0);
+    expect(evidence.age_ms).toBeLessThan(15000);
+    expect((await f.upload()).statusCode).toBe(200);
+    const retry = await proof();
+    expect(retry.statusCode, retry.body).toBe(200);
+    expect(retry.json()).toEqual(frame);
+    expect(f.store.attempt(f.id)).toEqual(before);
+    expect(
+      (
+        await proof({
+          ...f.challenge,
+          owner: { ...f.owner, transport_hash: hash("another transport") },
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(
+      (await proof({ ...f.challenge, agent: "another-agent" })).statusCode,
+    ).toBe(409);
+    const unsigned = await f.app.inject({
+      method: "POST",
+      url: "/api/agent/monitoring-evidence",
+      payload: f.challenge,
+    });
+    expect(unsigned.statusCode).not.toBe(200);
+  } finally {
+    await f.close();
+  }
+});
+
+it("actual native evidence requires each challenged JPEG source saved in a webcam-required grant", async () => {
+  const f = await activeEvidenceFixture(true);
+  try {
+    const screen = await f.upload();
+    expect(screen.statusCode, screen.body).toBe(200);
+    const incomplete = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      f.challenge,
+    );
+    expect(incomplete.statusCode, incomplete.body).toBe(409);
+    const camera = await f.upload(f.ready, "webcam");
+    expect(camera.statusCode, camera.body).toBe(200);
+    const complete = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      f.challenge,
+    );
+    expect(complete.statusCode, complete.body).toBe(200);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "ACTIVE",
+      generation: 0,
+    });
+  } finally {
+    await f.close();
+  }
+});
+
+it("captured genuine policy loss uses durable existing lock policy; restart and later positive images cannot silently restore its evidence", async () => {
+  const f = await activeEvidenceFixture();
+  let reopened: Awaited<ReturnType<typeof createApp>> | undefined;
+  try {
+    expect((await f.upload()).statusCode).toBe(200);
+    expect(
+      (await f.authenticated("/api/agent/monitoring-evidence", f.challenge))
+        .statusCode,
+    ).toBe(200);
+    const before = f.store.attempt(f.id),
+      loss = await f.upload({ ...f.ready, fullscreen: false });
+    expect(loss.statusCode, loss.body).toBe(200);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 1,
+      start: before.start,
+      deadline: before.deadline,
+      original_deadline: before.original_deadline,
+    });
+    // No live SSH exists in this metadata fixture. Current legacy lock policy
+    // correctly refuses an authentication-gap upload; C3 retention is not on.
+    expect((await f.upload()).statusCode).toBe(400);
+    expect(
+      (
+        await f.authenticated("/api/agent/monitoring-evidence", {
+          ...f.challenge,
+          nonce: hash(randomUUID()),
+        })
+      ).statusCode,
+    ).toBe(409);
+    await f.app.close();
+    reopened = await createApp(f.config);
+    expect(reopened.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 1,
+      start: before.start,
+      deadline: before.deadline,
+    });
+    const refused = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      { ...f.challenge, nonce: hash(randomUUID()) },
+      reopened.app,
+    );
+    expect(refused.statusCode, refused.body).toBe(409);
+  } finally {
+    await reopened?.app.close();
+    await f.close();
+  }
+});
 
 it("accepted signed native start records historical ownership, canonical signing fences page confusion, and completion can retain it after page logout", async () => {
   const f = await fixture();

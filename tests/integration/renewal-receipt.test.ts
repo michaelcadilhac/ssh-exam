@@ -204,7 +204,15 @@ it("preserves a fully scoped authenticated native policy pause instead of recove
     probed = false;
   f.h.control.command = async (op, body, frame) => {
     if (op === "renew-receipted-execution-lease") {
-      attempt = { ...f.store.attempt(f.id), transport: frame.transport };
+      // Model the legacy native wire, which omits gateway-only runtime
+      // observations; SQLite NULL is not a native v1 negotiation.
+      const {
+        monitoring_mode,
+        retained_hold,
+        monitoring_hold_kind,
+        ...native
+      } = f.store.attempt(f.id);
+      attempt = { ...native, transport: frame.transport };
       await pending;
       return attempt;
     }

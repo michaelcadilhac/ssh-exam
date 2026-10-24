@@ -171,10 +171,10 @@ func nativePaneRecord(state State, a *Attempt, pane string, source nativePaneSou
 			v.Unsafe = true
 			continue
 		}
-		if (cap.Purpose == framedPanePurpose) != (cap.InputEpoch != "") || (cap.InputEpoch != "" && !monitoringDigest.MatchString(cap.InputEpoch)) {
+		if isFramedPanePurpose(cap.Purpose) != (cap.InputEpoch != "") || (cap.InputEpoch != "" && !monitoringDigest.MatchString(cap.InputEpoch)) {
 			v.Unsafe = true
 		}
-		facts = append(facts, pendingFact{Hash: hash, InputEpoch: cap.InputEpoch, Expires: cap.Expires, Practice: cap.Purpose == "practice", Exam: cap.Purpose == "exam" || cap.Purpose == framedPanePurpose, OwnerMatch: cap.Username == a.Username, TransportMatch: cap.Transport == a.Transport})
+		facts = append(facts, pendingFact{Hash: hash, InputEpoch: cap.InputEpoch, Expires: cap.Expires, Practice: cap.Purpose == "practice", Exam: isTimedPanePurpose(cap.Purpose), OwnerMatch: cap.Username == a.Username, TransportMatch: cap.Transport == a.Transport})
 	}
 	v.Present = len(v.RecordedKinds) > 0 || v.PendingAdmissions > 0
 	if v.Unsafe {

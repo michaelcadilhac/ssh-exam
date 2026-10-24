@@ -37,6 +37,9 @@
   file. After a patch fails, inspect current context before retrying it.
   A truncated tool result is unread evidence: reread the relevant missing span
   before relying on it, especially operational safety prerequisites.
+  When similar routes share checks, anchor edits to the exact enclosing route
+  and verify which callers changed immediately afterward. Do not patch a generic
+  authorization condition by its first textual match.
 - Read an existing helper's signature, serialized fields and state ownership
   before calling it;
   do not infer argument order or invent setter names. Bound individual browser
@@ -44,6 +47,8 @@
   whole workflow timeout. A locator failure is not a product refusal oracle.
   First-grant fixtures use a fresh synthetic exam namespace and authored source;
   never clear history or relax source permissions to fit a prepared legacy base.
+  Verify the requested browser fixture mode through public status before testing
+  a protocol: real WASM checks require EXAM_BROWSER_SSH=1, not the Node fallback.
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.

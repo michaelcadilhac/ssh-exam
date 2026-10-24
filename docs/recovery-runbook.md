@@ -2,6 +2,22 @@
 
 Never edit deadline state or remove account gates to resolve outages. Grant extra time only through audited instructor Reset clock or Extend time actions.
 
+Local retained-monitoring candidate, **disabled/not deployed**: web/CLI interruption
+inspection additionally reports `monitoring_mode`, `retained_hold` and
+`monitoring_hold_kind`. These are observations, not a verified live freeze or
+permission. A viable same-page v1 policy pause keeps SSH; authorize with the
+existing `examctl web interruptions authorize`/web review workflow, then the
+student explicitly chooses Continue. A `completing` notice means the native
+operation was consumed but terminal agreement needs retry on that SAME page;
+it does not require a new approval or add time. Consumed approval does not permit
+fresh SSH sign-in. Unknown/unverified holds require inspection, never metadata
+edits or optimistic thaw. Technical capture verification delays block input and
+retry; a timeout alone is not policy loss. Preserve the original deadline/source/
+history and credential cleanup. Full C3/C9/root qualification remains required;
+there is no supported switch to enable an incomplete mode. Detailed current
+evidence and open boundaries: live-monitoring-runtime.md. Existing installed
+legacy behavior follows the procedures below.
+
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.
 - Attempt connection process failure: only that student loses SSH and is locked; the supervisor

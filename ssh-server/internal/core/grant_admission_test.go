@@ -57,7 +57,21 @@ func initialGrantFixture(t *testing.T, configure ...func(*Settings)) (*Engine, e
 	return e, key, r
 }
 
-func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, handler func(grantBeginReply) (grantBeginReply, int)) *httptest.Server {
+type testMonitoringRequest struct {
+	Type          string          `json:"type"`
+	Agent         string          `json:"agent"`
+	Nonce         string          `json:"nonce"`
+	Owner         monitoringOwner `json:"owner"`
+	AfterSequence uint64          `json:"after_sequence"`
+	CoverageEpoch string          `json:"coverage_epoch"`
+}
+
+type testLiveCallbacks struct {
+	Evidence func(testMonitoringRequest) (monitoringEvidence, int)
+	Continue func(monitoringContinueRequest) (monitoringContinueReply, int)
+}
+
+func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, handler func(grantBeginReply) (grantBeginReply, int), monitoring ...testLiveCallbacks) *httptest.Server {
 	t.Helper()
 	pub, key, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -72,7 +86,9 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 		t.Fatal(err)
 	}
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/agent/grant-begin" || r.Method != "POST" {
+		proofRoute := r.URL.Path == "/api/agent/monitoring-evidence" && len(monitoring) == 1 && monitoring[0].Evidence != nil
+		resumeRoute := r.URL.Path == "/api/agent/monitoring-continue" && len(monitoring) == 1 && monitoring[0].Continue != nil
+		if (r.URL.Path != "/api/agent/grant-begin" && !proofRoute && !resumeRoute) || r.Method != "POST" {
 			t.Error("unexpected grant verification route")
 			w.WriteHeader(404)
 			return
@@ -89,24 +105,76 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 			w.WriteHeader(403)
 			return
 		}
-		var request struct {
-			Type      string        `json:"type"`
-			Agent     string        `json:"agent"`
-			Nonce     string        `json:"nonce"`
-			Attempt   string        `json:"attempt"`
-			Grant     *GrantBinding `json:"grant"`
-			Intent    string        `json:"intent"`
-			Transport string        `json:"transport"`
-			Boot      string        `json:"boot"`
-			Settings  Settings      `json:"settings"`
-			PageEpoch string        `json:"page_epoch,omitempty"`
+		if resumeRoute {
+			var q monitoringContinueRequest
+			if terminalDecode(payload, &q) != nil || q.Type != "monitoring-continue/v1" || q.Agent != "class" || !validMonitoringOwner(q.Owner) || !validMonitoringOwner(q.PreviousOwner) || !monitoringDigest.MatchString(q.Nonce) {
+				t.Error("wrong authenticated continuation scope")
+				w.WriteHeader(400)
+				return
+			}
+			proof, status := monitoring[0].Continue(q)
+			if status != 200 {
+				w.WriteHeader(status)
+				return
+			}
+			data, err := json.Marshal(proof)
+			if err != nil {
+				t.Error(err)
+				w.WriteHeader(500)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(SignedFrame{Payload: base64.StdEncoding.EncodeToString(data), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(gateway, data))})
+			return
 		}
-		if json.Unmarshal(payload, &request) != nil || request.Type != "grant-begin/v2" || request.Agent != "class" || request.Settings.TemplateVersion == "" {
+		if proofRoute {
+			var q testMonitoringRequest
+			if terminalDecode(payload, &q) != nil || q.Type != "monitoring-execution-challenge-v1" || q.Agent != "class" || !validMonitoringOwner(q.Owner) || !monitoringDigest.MatchString(q.Nonce) {
+				t.Error("wrong authenticated monitoring challenge scope")
+				w.WriteHeader(400)
+				return
+			}
+			proof, status := monitoring[0].Evidence(q)
+			if status != 200 {
+				w.WriteHeader(status)
+				return
+			}
+			data, err := json.Marshal(proof)
+			if err != nil {
+				t.Error(err)
+				w.WriteHeader(500)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(SignedFrame{Payload: base64.StdEncoding.EncodeToString(data), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(gateway, data))})
+			return
+		}
+		var request struct {
+			Type         string           `json:"type"`
+			Agent        string           `json:"agent"`
+			Nonce        string           `json:"nonce"`
+			Attempt      string           `json:"attempt"`
+			Grant        *GrantBinding    `json:"grant"`
+			Intent       string           `json:"intent"`
+			Transport    string           `json:"transport"`
+			Boot         string           `json:"boot"`
+			Settings     Settings         `json:"settings"`
+			PageEpoch    string           `json:"page_epoch,omitempty"`
+			InitialOwner *monitoringOwner `json:"initial_owner,omitempty"`
+		}
+		if json.Unmarshal(payload, &request) != nil || (request.Type != "grant-begin/v2" && request.Type != "grant-begin/v3") || (request.Type == "grant-begin/v3") != (request.InitialOwner != nil) || request.Agent != "class" || request.Settings.TemplateVersion == "" {
 			t.Error("wrong fresh verification scope/source")
 			w.WriteHeader(400)
 			return
 		}
-		reply, status := handler(grantBeginReply{Type: "grant-begin/v2", Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, CaptureValidFor: 15000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch})
+		var seed *monitoringBootstrap
+		if request.InitialOwner != nil {
+			if !validMonitoringOwner(*request.InitialOwner) || request.InitialOwner.PageEpoch != request.PageEpoch || request.InitialOwner.TransportHash != request.Transport || request.InitialOwner.Boot != request.Boot {
+				t.Error("provisional owner missing or not bound to authenticated Begin")
+				w.WriteHeader(400)
+				return
+			}
+			seed = &monitoringBootstrap{Type: "monitoring-bootstrap/v1", Owner: *request.InitialOwner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 1}
+		}
+		reply, status := handler(grantBeginReply{Type: request.Type, Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, CaptureValidFor: 15000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch, Bootstrap: seed})
 		if status != 200 {
 			w.WriteHeader(status)
 			return

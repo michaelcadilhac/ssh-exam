@@ -285,7 +285,9 @@ it("does not send optimistic raw resize to a closing or unopened worker incarnat
   ).toBe(false);
   await Promise.resolve();
   expect(request.mock.calls.map(([op]) => op)).toEqual(["open"]);
-  expect(events).toEqual([]);
+  expect(events).toEqual([
+    { type: "pane-context", pane: "same", instance: epoch },
+  ]);
   client.close();
 });
 
@@ -327,7 +329,10 @@ for (const [payload, limit] of [
     expect(
       request.mock.calls.filter(([op]) => op === "input-framed"),
     ).toHaveLength(limit);
-    expect(events).toEqual([{ type: "input-backpressure", pane: "same" }]);
+    expect(events).toEqual([
+      { type: "pane-context", pane: "same", instance: epoch },
+      { type: "input-backpressure", pane: "same" },
+    ]);
     expect(events.some((m) => ["loss", "closed"].includes(m.type))).toBe(false);
     client.terminal({
       type: "input",

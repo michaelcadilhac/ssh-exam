@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -346,7 +347,17 @@ func (e *Engine) prepareActivation(a *Attempt) error {
 // during OS guard checks or ordinary-session termination. Never auto-start from
 // staging completion: only this later, explicit Begin can commit an interval.
 func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent ...string) (any, error) {
+	return e.activatePreparedNative(snapshot, expires, nil, grantIntent...)
+}
+
+func (e *Engine) activatePreparedNative(snapshot *Attempt, expires int64, original *net.UnixConn, grantIntent ...string) (any, error) {
 	page, epoch := "", ""
+	var initialOwner *monitoringOwner
+	if original != nil {
+		if err := terminalAuthorityReadiness(); err != nil {
+			return nil, err
+		}
+	}
 	// Registration is committed only with actual start. Contradictory restored
 	// preparation metadata must refuse before commitStart, since WithState also
 	// persists safety transitions on a returned error.
@@ -367,6 +378,7 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 			if err := registerPageOwner(&probe, page, epoch); err != nil {
 				return nil, err
 			}
+			initialOwner = probe.RegisteredOwner
 		}
 	}
 	if snapshot.Start > 0 {
@@ -408,13 +420,35 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 	if err := e.activationPrepare(snapshot); err != nil {
 		return nil, err
 	}
-	verifiedUntil := int64(0)
-	if snapshot.Grant != nil {
-		var err error
-		verifiedUntil, err = e.verifyGrantBegin(snapshot, intent, page)
+	var pending *terminalAuthorityBegin
+	var verified verifiedGrantBegin
+	if original != nil {
+		if initialOwner == nil {
+			return nil, errRegisteredOwner
+		}
+		pending, err = e.prepareTerminalAuthority(original, snapshot, *initialOwner, intent)
 		if err != nil {
 			return nil, err
 		}
+		defer e.cancelTerminalAuthority(pending)
+	}
+	verifiedUntil := int64(0)
+	if snapshot.Grant != nil {
+		var err error
+		var nonce []string
+		if pending != nil {
+			nonce = []string{pending.Nonce}
+		}
+		verified, err = e.verifyGrantBeginContext(snapshot, intent, page, initialOwner, nonce...)
+		if err != nil {
+			return nil, err
+		}
+		if pending != nil {
+			// The supervisor owns the nonce's ORIGINAL issue time. Charge setup
+			// before the HTTPS request too, and refuse before starting the clock.
+			verified.until = min(verified.until, pending.IssuedBootMS+verified.captureValidFor)
+		}
+		verifiedUntil = verified.until
 	}
 	if snapshot.Workspace != nil && snapshot.Workspace.Source.Kind == "saved" {
 		lock, err := e.recoveryCatalogLock()
@@ -478,6 +512,9 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 			}
 		}
 		commitStart(a, startedAt, uptime(), boot())
+		if pending != nil {
+			a.MonitoringMode = "v1"
+		}
 		if err := registerPageOwner(a, page, epoch); err != nil {
 			return err
 		}
@@ -504,6 +541,11 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 		result = a
 		return nil
 	})
+	if err == nil && pending != nil {
+		if err := e.commitTerminalAuthority(pending, result.(*Attempt), verified); err != nil {
+			return result, fmt.Errorf("original interval committed but live monitoring bootstrap is unconfirmed; inspect the same attempt and supervisor, never restart its clock: %w", err)
+		}
+	}
 	return result, err
 }
 

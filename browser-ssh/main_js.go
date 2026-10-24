@@ -86,7 +86,7 @@ func handle(r request) (any, error) {
 			raw.Close()
 			return nil, err
 		}
-		return map[string]bool{"connected": true, "command_cancel": true, "framed_input": true}, nil
+		return map[string]bool{"connected": true, "command_cancel": true, "framed_input": true, "pane_epoch_change": true}, nil
 	case "answers":
 		var a struct {
 			Round   string   `json:"round"`

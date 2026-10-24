@@ -19,7 +19,7 @@ export class InterruptionManagement {
       .prepare(
         `SELECT id,exam,username,state,generation,
       continuation_revision revision,start,deadline,original_deadline,clock_revision,
-      ended,protected,access_state FROM attempts WHERE id=?`,
+      ended,protected,access_state,monitoring_mode,retained_hold,monitoring_hold_kind FROM attempts WHERE id=?`,
       )
       .get(id) as any;
     if (!a)
@@ -189,12 +189,13 @@ export class InterruptionManagement {
           expires,
         }),
       );
-      this.store.audit(
-        actor,
-        "authorized-authentication-gap",
-        a.id,
-        String(a.generation),
-      );
+      if (a.monitoring_mode !== "v1")
+        this.store.audit(
+          actor,
+          "authorized-authentication-gap",
+          a.id,
+          String(a.generation),
+        );
       const result = {
         id: a.id,
         generation: a.generation,

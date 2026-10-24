@@ -12,7 +12,16 @@ import (
 )
 
 const framedInputHeaderBytes = 68
-const framedPanePurpose = "exam-framed-v1" // Older gates/supervisors refuse, never read framed bytes as raw input.
+const framedPanePurpose = "exam-framed-v1"       // Older gates/supervisors refuse, never read framed bytes as raw input.
+const monitoredPanePurpose = "exam-monitored-v1" // Distinct admission; no legacy raw/framed fallback.
+
+func isFramedPanePurpose(purpose string) bool {
+	return purpose == framedPanePurpose || purpose == monitoredPanePurpose
+}
+func isTimedPanePurpose(purpose string) bool {
+	return purpose == "exam" || isFramedPanePurpose(purpose)
+}
+
 const framedInputMaxData = 32768
 const framedInputMaxSequence uint64 = 9007199254740991
 

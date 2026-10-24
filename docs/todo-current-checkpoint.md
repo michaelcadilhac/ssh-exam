@@ -1,125 +1,69 @@
 # Current local TODO checkpoint
 
 Updated October23,2026. Local development/testing/commits only. **No push,
-deploy, consolidation or production/student mutation.** Guarded volatile csc-sys
-qualification only; busy/uncertain means NO TEST. Stop on a missing command;
-none was missing. C1–C18 are settled. The instructor confirmed **16 simultaneous
-students /64 terminals** as final synthetic capacity acceptance. No pending
-architecture/capacity question; no production/admission policy change.
+deploy, consolidation or production/student mutation.** Guarded disposable
+csc-sys qualification only; busy/uncertain means NO TEST. Stop on missing commands;
+none missing. C1–C18 settled; synthetic capacity target16 students/64 panes.
+No unanswered design/capacity question. Main TODO11/38 is not effort percentage.
 
-## Current milestone
+## Current outcome and validated increment
 
-Read todo-delivery-audit.md FIRST for the reconciled public outcomes and actual
-remaining gaps. The instructor explicitly requested this reassessment after
-another11/38 progress challenge. Do not add another independent prerequisite.
+Policy pause → verified retained hold → approved Continue, same open page/SSH/
+shell/editor, original deadlines. The local commit containing this checkpoint
+joins this guarded runtime through real native/HTTP/IPC/browser/WASM callers;
+it does NOT complete all privileged qualification or enable C3/C16/C9.
+Base b1e8758 audited overlapping TODOs; b5e0ce3 and1163190 are earlier qualified
+pin/history fixes. Old root bundles DO NOT qualify this newer native candidate.
+Use [todo-delivery-audit.md](todo-delivery-audit.md) for six actual outcomes;
+[live-monitoring-runtime.md](live-monitoring-runtime.md) owns detailed evidence.
 
-Actual native/web policy pause → verified retained hold → approved Continue,
-preserving the same authenticated SSH/shell/editor state and original deadlines.
-Required: closed launch/input admission, current root SSH/owner, independently
-enforced live cutoff, all-writer stop-assisted freeze/drain/discard, new per-pane
-input epochs and CLI/web agreement. Exercise real two-pane/background/async/editor
-hold/thaw, original stopped jobs, delayed input/launch, owner/generation/deadline/
-restart races and an unaffected peer. Keep C3/C16 and C9 disabled until complete.
-Current policy pauses still terminate shells. Do not stop after a prototype or
-plan while integrated work remains. See retained-workload-barrier-plan.md.
+- Native fresh v3 Begin and live signed renewals run inside ONE attempt owner;
+  supervisor/watchdog share actual SCM_RIGHTS cutoff, preserving original boot
+  deadlines and independent technical expiry despite stale disk observations.
+- Actual native pause/Continue retains the same tested shell memory, discards
+  old input and retries pending/expired/cancelled operations. Pending launch
+  uncertainty now freezes known writers before returning UNVERIFIED; no all-writer
+  receipt is invented. Actual delayed manager/final exec remains to qualify.
+- Migration030 records legacy/v1 and observational holds. Signed native intent
+  remains web-LOCKED until physical-pane input agreement. Native/browser/final
+  HTTP lost replies retry the same operation/clock; consumed approval still
+  refuses fresh SSH. Status `completing` grants no permission.
+- Physical output/EOF identity survives input epoch changes and early SSH output;
+  before-clock JS/WASM/native disagreement refuses. Challenge timeout is technical
+  input blocking/retry, not policy; real track loss remains policy.
+- **Installed guard always refuses v1; no environment/config enable switch.**
+  Local desktop tests substitute installed SSH ancestry and restrict inventory
+  to owned scopes. Positive root CLI/all-UID/async/failure guarantees remain OPEN.
 
-## Validated local outcomes
+## Verification and current runners
 
-- Fresh authenticated Begin now rejects contradictory whole-grant no-start
-  history before signing or verification publication. Final10 focused checks,
-  full551 application tests/100files291.46s, types and server build PASS. No new
-  durable state, reservation, permission or migration. Details and failed/final
-  receipts: begin-no-start-evidence.md. The local commit containing this checkpoint
-  is that correction; native C3 WIP below is excluded.
-- Runtime9da574a: actual challenged preflight JPEG/readiness and grant-begin/v2
-  native boot-clock/final-commit freshness. Full543 app, native races/resources,
-  all151 browser scenarios in one green15.4m run, builds/static/35 runner checks,
-  NEW guarded root framed-owner10/timed-owner9/worker-isolation12 PASS with
-  preservation. This is initial readiness only, not active authority or retention.
-  Exact artifacts/hashes/evidence: challenged-preflight-capture.md.
-- Fixture-only3d88bdb redirects nine screenshot writers to per-test output.
-  Seven affected browser workflows PASS1.1m, all repository images and qualified
-  client/server bytes unchanged; types pass. Existing screenshots stay untouched.
-- Earlier runtime85a4227 joins framed JS/IPC/WASM/SSH/native PTY input, resize
-  and stale pane replacement fences; d992d3f recovers exact committed original
-  legacy renewal replies. Evidence: framed-pane-input.md and
-  renewal-receipt-recovery.md. Neither enables C3/C16/C9.
+All runners ended. Final full app566 PASS/2 conditional skipped284.82s, then BOTH
+conditional real root-mapped examctl/HTTPS workflows PASS6.93s (all568 covered
+across runs). Six affected browser-SSH files27 PASS2.2m; new timeout/Continue UI
+and real WASM focus2 PASS24.1s. Full native race/resource/userns/compiler/default-
+size PASS core481.631s/CLI31.996s; full encrypted client races PASS1.511s. Types,
+app/WASM/server/native release builds and native/client vet PASS. Initial six
+application fixture failures were preserved/corrected and focused before final
+rerun. See feature document for exact receipts and seams. No new root/capacity
+qualification, deployment or incident-cause claim. Frozen final manifest is
+/tmp/ssh-exam-retained-joined-qualified-source.json.
 
-## Validated native handoff and current C16 integration
+## Exact next action
 
-Real framed handoff now pins the authenticated root SSH monitor from the
-ORIGINAL student socket kernel credentials; one live handle per attempt cohort,
-not restored strings. `examctl panes supervisor` exposes observation only.
-Native final focused race/actual-entry checks PASS5.404s, including positive and
-negative handoff and real process-lifetime checks. The negative test initially
-checked pre-ACK readiness; corrected post-ACK RED reaches the actual SSH-pin
-boundary and proves detailed refusal truncation. A bounded32KiB acknowledgement
-receiver fixes it; no exec/clock change on refusal. This is not a live authority
-seal, input permission, all-writer freeze or completed C3. No partial retention.
+Extend the EXISTING actual native pause test beyond its manually registered
+never-started promise: block the real owned manager/bootstrap start, pause with
+another shell running, then release that exact start and prove no student exec,
+cleanup/retirement and same-shell Continue. Use owned scopes only; never SIGSTOP
+the desktop UID. Then complete original job stops/all-writer/async IO, recording
+fault/clock handover, independent death/stall and loaded-role agreement; extend
+the SAME guarded root retained-policy driver through Continue. Keep mode OFF;
+C9 automatic technical recovery is still open. Do not grow unused helpers.
 
-NEW focused root framed-owner PASS10/session4373 completed0; host/base preservation
-PASS, /var/tmp/ssh-exam-overlay-g0rqzxvn, log
-/tmp/ssh-exam-live-ssh-pin-root-framed.log. Full native race/resource/userns/
-compiler/default-size PASS core421.168s/CLI30.268s; session17110 completed0,
-/tmp/ssh-exam-live-ssh-pin-native-full.log. Builds, vet and35 Python checks PASS.
-All native runners/guests have ended. Detailed state review: framed-ssh-lifetime.md.
-NEW audited17-file60.7MB code-only bundle:
-var/collection-tests/live-ssh-pin-artifacts.gmwga14r; remote
-/var/tmp/ssh-exam-live-ssh-pin-upload.fvLrjA/bundle. Agent SHA256
-7b5b9d6ca5eaa486ebbdc835adb389662dbd7fb7d201e36372cd87cc4b980813.
-Source manifest /tmp/ssh-exam-live-ssh-pin-source.json. No keys/configuration/
-student data/submissions uploaded. These receipts are for this exact native
-source/bundle; future native authority edits need their own focused qualification.
-
-Uncommitted C16 server integration now routes real challenged ACTIVE JPEG/policy
-observations into the existing ledger and serves authenticated purpose-specific
-native evidence. Legacy frames/reply retries do not freshen proof. Genuine policy
-loss uses existing durable lock policy; restart cannot silently clear it. First
-metadata fixture inadvertently modelled lost Begin acknowledgment, correctly
-locking; it now explicitly models an acknowledged interval and retains that
-protection. No live SSH/kernel admission is claimed by these HTTP fixtures.
-Final37 focused route/ledger/readiness and subsequent40 combined-capture checks
-PASS; final webcam HTTP/ledger35 PASS (includes13 metadata/HTTP cases). Types pass
-before the last fixture-only extension. New server source has NOT had broad
-application/browser/native-consumer qualification. Do not commit it as completed
-C16 or enable execution. Existing app551 receipt is for1163190, not this WIP.
-
-The retained-policy RED completed at the intended actual entry:7 prior positive
-assertions then `examctl pause` ends an authenticated pane. Host/base preservation
-PASS; /var/tmp/ssh-exam-overlay-kd094ctn, log
-/tmp/ssh-exam-retained-policy-root-red.log. This is the missing workflow, not a
-fixture error. New driver currently tests freeze-only, not Continue/all-writers.
-
-Validated native pin/refusal is now committed as **b5e0ce3**; Begin history guard
-is1163190. All runners/guests ended. Uncommitted gateway integration additionally
-implements C15v3 nonpermitting preflight bootstrap and original-age ACTIVE
-promotion: final43 focused/4files PASS2.15s and types PASS. No broad launch for
-this incomplete workflow. Exact working fields/callers/limitations/next native
-steps: live-monitoring-runtime.md. **Read it before coding.**
-
-**Exact next action:** connect the ORIGINAL native Begin control socket to a
-nonpermitting supervisor bootstrap before clock, then actual durable ACTIVE →
-existing supervisor arbiter/proof/input/expiry/hold/Continue path. Recording IO
-stays isolated; no private key/global state copy or shared metadata lock across
-network/storage/freeze. No enabled partial mode, component-only commit or stopped
-turn after this plan. Full public workflow remains the completion boundary.
-
-## Remaining approved scope and operational limits
-
-C16: authority/input/live cutoff inside ONE supervisor per user/attempt. C18:
-source grants usable only after durable native retention confirmation; pending
-issuance inspectable/cancellable/retryable, no account/time reservation. Choices
-are approvals, not implementation. Critical C3/C16/C9, saved-source retention/
-migration, legacy retirement reconciliation, manual cleanup/full management and
-installed-role/capacity qualification remain. Main TODO11/38 is not effort%.
-Incident initiating cause unproven. Docker packaging unverified: configured local
-socket absent; do not start daemon or substitute a production context.
-
-Deployment/migration/rollback and temporary canonical/live-upgrade/deferred-
-recovery agent consolidation are proposals ONLY in todo-rollout-plan.md. Preserve
-receipts/nonces/grants/claims/history/holds; drain all independent owners/roles,
-never stop needed PTYs or downgrade incompatible writers. Repair forward on
-uncertainty. No execution authorized.
+Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
+retirement reconciliation, manual secured-workspace cleanup, configuration/full
+CLI journey and combined16/64 installed capacity. No new architecture question.
+Proposed rollout/migration/rollback and temporary three-agent consolidation remain
+in todo-rollout-plan.md ONLY. Never execute them without new authorization.
 
 ## Preserved workspace data
 

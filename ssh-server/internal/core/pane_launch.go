@@ -43,6 +43,17 @@ func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit
 		return false, err
 	}
 	p.closedProof = &proof
+	monitored := p.capability.Purpose == monitoredPanePurpose
+	if monitored {
+		if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "register-launch", Attempt: p.authority.ID, Owner: p.capability.RegisteredOwner, Unit: unit, Proof: &proof}, nil, false); err != nil {
+			return false, errors.Join(err, e.discardUnstartedPane(unit, proof))
+		}
+	}
+	retireLaunch := func() {
+		if monitored {
+			_, _ = e.callTerminalAuthority(terminalAuthorityRequest{Op: "cancel-launch", Attempt: p.authority.ID, Owner: p.capability.RegisteredOwner, Unit: unit, Proof: &proof}, nil, false)
+		}
+	}
 	defer func() {
 		// Close BEFORE killing/waiting/forgetting. Even a delayed manager may
 		// start only the closed root bootstrap, which sees EOF, never a shell.
@@ -53,6 +64,7 @@ func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit
 		}
 		if !started {
 			err = errors.Join(err, e.discardUnstartedPane(unit, proof))
+			retireLaunch()
 			return
 		}
 		if launch.Process != nil {
@@ -65,6 +77,7 @@ func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit
 			err = errors.Join(err, errors.New("startup cleanup unconfirmed; recorded scope retained; inspect examctl panes list ATTEMPT and preserve work"))
 			return
 		}
+		retireLaunch()
 		err = errors.Join(err, e.WithState(func() error {
 			if a := e.state.Attempts[p.capability.ID]; a != nil {
 				removePaneUnit(e.state.PaneInstances, a, unit)
@@ -102,6 +115,11 @@ func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit
 	defer peer.process.close()
 	if err := bridge(peer); err != nil {
 		return true, err
+	}
+	if monitored {
+		if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "launch-ready", Attempt: p.authority.ID, Owner: p.capability.RegisteredOwner, Unit: unit, Proof: &proof}, nil, false); err != nil {
+			return true, err
+		}
 	}
 	err = e.releaseClosedPane(p, name, unit, proof, identify, peer.current, func() error {
 		_, err := control.Write([]byte{1})

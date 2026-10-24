@@ -21,18 +21,29 @@ var errTerminalObservation = errors.New("terminal-supervisor observation unavail
 // Diagnostic metadata only. Neither the root sender nor a live pidfd proves the
 // student's SSH ownership, current monitoring, freeze or execution authority.
 type TerminalSupervisorObservation struct {
-	RegisteredOwner      *monitoringOwner `json:"registered_owner,omitempty"`
-	SSHPeer              string           `json:"ssh_peer,omitempty"`
-	Purpose              string           `json:"purpose"`
-	Attempt              string           `json:"attempt"`
-	Supervisor           string           `json:"supervisor"`
-	PID                  int              `json:"pid"`
-	Boot                 string           `json:"boot"`
-	At                   int64            `json:"at"`
-	AttachedPanes        int              `json:"attached_panes"`
-	AttachedUnits        []string         `json:"attached_units"`
-	ReportedStartedUnits []string         `json:"reported_started_units"`
-	ObservationOnly      bool             `json:"observation_only"`
+	RegisteredOwner      *monitoringOwner           `json:"registered_owner,omitempty"`
+	SSHPeer              string                     `json:"ssh_peer,omitempty"`
+	MonitoringMode       string                     `json:"monitoring_mode,omitempty"`
+	PendingLaunchUnits   []string                   `json:"pending_launch_units,omitempty"`
+	RetainedHold         *terminalHoldView          `json:"retained_hold,omitempty"`
+	PendingResume        *terminalResumeObservation `json:"pending_resume,omitempty"`
+	Purpose              string                     `json:"purpose"`
+	Attempt              string                     `json:"attempt"`
+	Supervisor           string                     `json:"supervisor"`
+	PID                  int                        `json:"pid"`
+	Boot                 string                     `json:"boot"`
+	At                   int64                      `json:"at"`
+	AttachedPanes        int                        `json:"attached_panes"`
+	AttachedUnits        []string                   `json:"attached_units"`
+	ReportedStartedUnits []string                   `json:"reported_started_units"`
+	ObservationOnly      bool                       `json:"observation_only"`
+}
+
+type terminalResumeObservation struct {
+	Generation    int   `json:"generation"`
+	ExpiresBootMS int64 `json:"expires_boot_ms"`
+	Expired       bool  `json:"expired"`
+	ClockUnknown  bool  `json:"clock_unknown"`
 }
 
 func (s *terminalSupervisor) observation() TerminalSupervisorObservation {
@@ -42,6 +53,26 @@ func (s *terminalSupervisor) observation() TerminalSupervisorObservation {
 	if s.registeredOwner != nil {
 		owner := *s.registeredOwner
 		v.RegisteredOwner = &owner
+	}
+	if runtime := s.workAuthority; runtime != nil {
+		v.MonitoringMode = "v1"
+		if p := runtime.resume; p != nil && runtime.resumeNonce != p.Nonce {
+			now, err := monitoringBootMillis()
+			v.PendingResume = &terminalResumeObservation{Generation: p.Owner.Generation, ExpiresBootMS: p.IssuedBootMS + 15000, Expired: err == nil && now >= p.IssuedBootMS+15000, ClockUnknown: err != nil || now < p.IssuedBootMS}
+		}
+		for unit := range runtime.launches {
+			if _, attached := s.requests[unit]; !attached {
+				v.PendingLaunchUnits = append(v.PendingLaunchUnits, unit)
+			}
+		}
+		sort.Strings(v.PendingLaunchUnits)
+		if hold := runtime.hold; hold != nil {
+			v.RetainedHold = &terminalHoldView{Phase: "pending"}
+			if hold.mu.TryLock() {
+				v.RetainedHold.Phase, v.RetainedHold.Error = hold.phase, hold.error
+				hold.mu.Unlock()
+			}
+		}
 	}
 	if s.ssh != nil {
 		if s.ssh.current() {
@@ -167,6 +198,26 @@ func ObserveTerminalSupervisor(state, id string) (TerminalSupervisorObservation,
 		return TerminalSupervisorObservation{}, errTerminalObservation
 	}
 	previous := ""
+	if (result.MonitoringMode != "" && result.MonitoringMode != "v1") || (result.MonitoringMode == "" && (len(result.PendingLaunchUnits) != 0 || result.RetainedHold != nil || result.PendingResume != nil)) || len(result.PendingLaunchUnits) > 4 {
+		return TerminalSupervisorObservation{}, errTerminalObservation
+	}
+	if p := result.PendingResume; p != nil && (p.Generation < 0 || uint64(p.Generation) > monitoringEvidenceMaxSequence || p.ExpiresBootMS <= 0) {
+		return TerminalSupervisorObservation{}, errTerminalObservation
+	}
+	for _, unit := range result.PendingLaunchUnits {
+		_, kind, instance, valid := recordedPaneIdentity(id, unit)
+		if !valid || kind != "scope" || instance == "" || unit <= previous {
+			return TerminalSupervisorObservation{}, errTerminalObservation
+		}
+		previous = unit
+	}
+	if result.RetainedHold != nil {
+		phase := result.RetainedHold.Phase
+		if phase != "pending" && phase != "unverified" && phase != "held" {
+			return TerminalSupervisorObservation{}, errTerminalObservation
+		}
+	}
+	previous = ""
 	if result.RegisteredOwner != nil && (!validMonitoringOwner(*result.RegisteredOwner) || result.RegisteredOwner.Attempt != id || result.RegisteredOwner.Boot != result.Boot) {
 		return TerminalSupervisorObservation{}, errTerminalObservation
 	}

@@ -14,6 +14,81 @@ import (
 
 // Actual Client Open/Input/Resize entry points over encrypted SSH. Native policy
 // and the gate reply are simulated here; this is not freeze/authorization proof.
+func TestRetainedPaneOutputKeepsPhysicalIdentityAcrossInputEpochChange(t *testing.T) {
+	events := make(chan map[string]any, 8)
+	c := cleanupClient(t, func(s ssh.Channel, reqs <-chan *ssh.Request) {
+		defer s.Close()
+		for q := range reqs {
+			if q.Reply(true, nil) != nil {
+				return
+			}
+			if q.Type != "exec" {
+				continue
+			}
+			r := bufio.NewReader(s)
+			if _, err := io.WriteString(s, "EXAM-GATE/1\n"); err != nil {
+				return
+			}
+			if _, err := r.ReadString('\n'); err != nil {
+				return
+			}
+			if _, err := io.WriteString(s, "EXAM-READY {}\n"); err != nil {
+				return
+			}
+			for range 2 {
+				header := make([]byte, inputFrameHeaderBytes)
+				if _, err := io.ReadFull(r, header); err != nil {
+					return
+				}
+				n := binary.BigEndian.Uint32(header[64:68])
+				if n > 1024 {
+					return
+				}
+				data := make([]byte, n)
+				if _, err := io.ReadFull(r, data); err != nil {
+					return
+				}
+				if _, err := s.Write(data); err != nil {
+					return
+				}
+			}
+			return
+		}
+	}, func(value any) {
+		if event, ok := value.(map[string]any); ok && (event["type"] == "output" || event["type"] == "closed") {
+			events <- event
+		}
+	})
+	original, pane, _, _, _ := inputFrameFixture(t)
+	next := strings.Repeat("f", 64)
+	if _, err := c.OpenFramed(pane, "retained-output", original); err != nil {
+		t.Fatal(err)
+	}
+	observe := func(kind, epoch string) {
+		t.Helper()
+		select {
+		case event := <-events:
+			if event["type"] != kind || event["input_epoch"] != epoch || event["pane_instance"] != original {
+				t.Fatalf("physical pane was lost/relabelled at %s: %#v", kind, event)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("no actual SSH %s", kind)
+		}
+	}
+	if err := c.InputFramed(pane, original, 1, "before"); err != nil {
+		t.Fatal(err)
+	}
+	observe("output", original)
+	if err := c.ChangeInputEpoch(pane, original, next); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.InputFramed(pane, next, 1, "after"); err != nil {
+		t.Fatal(err)
+	}
+	observe("output", next)
+	observe("closed", next)
+}
+
 func TestFramedPanePreservesCapturedEpochAndFencesRawInputAndResize(t *testing.T) {
 	type received struct {
 		token string

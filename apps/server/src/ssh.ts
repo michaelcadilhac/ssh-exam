@@ -25,6 +25,7 @@ type CommandExchange = {
 };
 export type PaneInputChannel = ClientChannel & {
   inputEpoch?: string;
+  outputEpoch?: string;
   writeInputFrame?: (input: CapturedPaneInput, data: string) => boolean;
   resizeInputFrame?: (
     input: CapturedPaneInput,
@@ -39,6 +40,7 @@ export class Connection {
   }
   private renewalReceipts = false;
   protected framedPaneInput = false;
+  protected retainedMonitoringRequired = false;
   protected canUseFramedPaneInput() {
     return false;
   }
@@ -47,6 +49,21 @@ export class Connection {
   }
   async secureAccess(_id: string, _exam: string): Promise<void> {
     throw Error("Automatic exam setup requires browser SSH.");
+  }
+  async prepareMonitoring(): Promise<boolean> {
+    if (this.retainedMonitoringRequired)
+      throw Error(
+        "This SSH client cannot start retained monitoring. Use a matching browser client; no clock has started.",
+      );
+    return false;
+  }
+  async changeInputEpochs(
+    _attempt: string,
+    _epochs: Record<string, string>,
+  ): Promise<Record<string, { instance: string; epoch: string }>> {
+    throw Error(
+      "This SSH client cannot continue retained panes. Preserve the attempt and inspect matching browser/agent versions.",
+    );
   }
   jump = new Client();
   class = new Client();
@@ -525,6 +542,7 @@ export class Connection {
       const signed =
         this.browserCommands ||
         signedCommand.op === "issue-framed-owner-channel-admission" ||
+        signedCommand.op === "consume-monitored-continuation" ||
         op === "renew-receipted-execution-lease" ||
         op === "execution-renewal-receipt" ||
         (op === "register" &&
@@ -562,10 +580,22 @@ export class Connection {
         this.renewalReceipts =
           signed && result?.execution_renewal_receipts === "v1";
         this.framedPaneInput = signed && result?.framed_pane_input === "v1";
+        if (
+          result?.retained_monitoring &&
+          (!signed || result.retained_monitoring !== "v1")
+        )
+          throw Error(
+            "Unsupported native retained monitoring agreement; no new exam may begin.",
+          );
+        this.retainedMonitoringRequired =
+          signed && result?.retained_monitoring === "v1";
       }
       if (signed)
         await this.agent.acceptRegisteredOwnerObservation(
-          op === "execution-renewal-receipt" ? result?.attempt : result,
+          op === "execution-renewal-receipt" ||
+            signedCommand.op === "consume-monitored-continuation"
+            ? result?.attempt
+            : result,
         );
       return result;
     });

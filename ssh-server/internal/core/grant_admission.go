@@ -73,35 +73,55 @@ func grantBeginSettings(a *Attempt, r Request, grant bool) error {
 	return nil
 }
 
+type monitoringBootstrap struct {
+	Type          string          `json:"type"`
+	Owner         monitoringOwner `json:"owner"`
+	CoverageEpoch string          `json:"coverage_epoch"`
+	Sequence      uint64          `json:"sequence"`
+}
+
+type verifiedGrantBegin struct {
+	until           int64
+	captureValidFor int64
+	frame           SignedFrame
+	bootstrap       *monitoringBootstrap // Memory-only observation; never restored permission.
+}
+
 type grantBeginReply struct {
-	Type            string        `json:"type"`
-	Audience        string        `json:"audience"`
-	Nonce           string        `json:"nonce"`
-	Expires         int64         `json:"expires"`
-	CaptureValidFor int64         `json:"capture_valid_for_ms"`
-	Attempt         string        `json:"attempt"`
-	Grant           *GrantBinding `json:"grant"`
-	Intent          string        `json:"intent"`
-	Transport       string        `json:"transport"`
-	Boot            string        `json:"boot"`
-	PageEpoch       string        `json:"page_epoch,omitempty"`
+	Type            string               `json:"type"`
+	Audience        string               `json:"audience"`
+	Nonce           string               `json:"nonce"`
+	Expires         int64                `json:"expires"`
+	CaptureValidFor int64                `json:"capture_valid_for_ms"`
+	Attempt         string               `json:"attempt"`
+	Grant           *GrantBinding        `json:"grant"`
+	Intent          string               `json:"intent"`
+	Transport       string               `json:"transport"`
+	Boot            string               `json:"boot"`
+	PageEpoch       string               `json:"page_epoch,omitempty"`
+	Bootstrap       *monitoringBootstrap `json:"bootstrap,omitempty"`
 }
 
 // Runtime Begin only. Existing pinned outbound HTTPS + Ed25519 identities;
 // never a browser relay/offline permit. No state lock is held through network IO.
 func (e *Engine) verifyGrantBegin(a *Attempt, intent, page string) (int64, error) {
+	verified, err := e.verifyGrantBeginContext(a, intent, page, nil)
+	return verified.until, err
+}
+
+func (e *Engine) verifyGrantBeginContext(a *Attempt, intent, page string, initial *monitoringOwner, scopedNonce ...string) (verifiedGrantBegin, error) {
 	if !validGrant(a.Grant) || !attemptID.MatchString(intent) || e.Config.CallbackURL == "" {
-		return 0, errors.New("fresh authenticated outbound grant verification required; configure the fixed gateway route and retry the SAME Begin intent; no interval committed")
+		return verifiedGrantBegin{}, errors.New("fresh authenticated outbound grant verification required; configure the fixed gateway route and retry the SAME Begin intent; no interval committed")
 	}
 	client, err := e.callbackClient()
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	defer client.CloseIdleConnections()
 	client.Timeout = 5 * time.Second
 	key, err := privateKey(e.Config.CallbackKey)
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	defer func() {
 		for i := range key {
@@ -109,74 +129,108 @@ func (e *Engine) verifyGrantBegin(a *Attempt, intent, page string) (int64, error
 		}
 	}()
 	nonce, ownerBoot := Token(), boot()
-	requestBody := map[string]any{"type": "grant-begin/v2", "agent": e.Config.AgentID, "nonce": nonce, "at": Millis(), "attempt": a.ID, "exam": a.Exam, "username": a.Username, "uid": a.UID, "grant": a.Grant, "intent": intent, "transport": a.Transport, "boot": ownerBoot, "settings": a.Settings}
+	if len(scopedNonce) > 1 || (len(scopedNonce) == 1 && !monitoringDigest.MatchString(scopedNonce[0])) {
+		return verifiedGrantBegin{}, errMonitoringScope
+	}
+	if len(scopedNonce) == 1 {
+		nonce = scopedNonce[0]
+	}
+	requestType := "grant-begin/v2"
+	if initial != nil {
+		if !validMonitoringOwner(*initial) || initial.Attempt != a.ID || initial.Exam != a.Exam || initial.Username != a.Username || initial.UID != a.UID || initial.TransportHash != a.Transport || initial.Boot != ownerBoot || initial.PageEpoch != page || initial.Generation != a.Generation || initial.ClockRevision != a.ClockRevision {
+			return verifiedGrantBegin{}, errRegisteredOwner
+		}
+		requestType = "grant-begin/v3"
+	}
+	requestBody := map[string]any{"type": requestType, "agent": e.Config.AgentID, "nonce": nonce, "at": Millis(), "attempt": a.ID, "exam": a.Exam, "username": a.Username, "uid": a.UID, "grant": a.Grant, "intent": intent, "transport": a.Transport, "boot": ownerBoot, "settings": a.Settings}
 	if page != "" {
 		requestBody["page_epoch"] = page
 	}
+	if initial != nil {
+		requestBody["initial_owner"] = initial
+	}
 	payload, err := json.Marshal(requestBody)
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	request, err := http.NewRequest("POST", strings.TrimSuffix(e.Config.CallbackURL, "/")+"/api/agent/grant-begin", bytes.NewReader(payload))
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	request.Header.Set("Content-Type", "application/vnd.ssh-exam-event")
 	request.Header.Set("X-Exam-Signature", base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload)))
 	issuedBoot, err := monitoringBootMillis()
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	response, err := client.Do(request)
 	if err != nil {
-		return 0, fmt.Errorf("fresh grant verification unavailable; inspect original attempt/intent and retry without resetting time: %w", err)
+		return verifiedGrantBegin{}, fmt.Errorf("fresh grant verification unavailable; inspect original attempt/intent and retry without resetting time: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return 0, fmt.Errorf("fresh grant verification refused (HTTP %d); inspect examctl web grants show %s and examctl info %s --read-only; no interval committed by this request", response.StatusCode, a.Grant.ID, a.ID)
+		return verifiedGrantBegin{}, fmt.Errorf("fresh grant verification refused (HTTP %d); inspect examctl web grants show %s and examctl info %s --read-only; no interval committed by this request", response.StatusCode, a.Grant.ID, a.ID)
 	}
 	body, err := io.ReadAll(io.LimitReader(response.Body, 65537))
 	if err != nil || len(body) > 65536 {
-		return 0, errors.New("invalid grant Begin reply size")
+		return verifiedGrantBegin{}, errors.New("invalid grant Begin reply size")
 	}
 	var frame SignedFrame
 	if json.Unmarshal(body, &frame) != nil {
-		return 0, errors.New("invalid signed grant Begin reply")
+		return verifiedGrantBegin{}, errors.New("invalid signed grant Begin reply")
 	}
 	signed, err := base64.StdEncoding.DecodeString(frame.Payload)
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	signature, err := base64.StdEncoding.DecodeString(frame.Signature)
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	pub, err := publicKey(e.Config.GatewayPublicKey)
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	if !ed25519.Verify(pub, signed, signature) || !validReadOnlyJSON(signed) {
-		return 0, errors.New("grant Begin reply signature/encoding rejected")
+		return verifiedGrantBegin{}, errors.New("grant Begin reply signature/encoding rejected")
 	}
 	var reply grantBeginReply
 	decoder := json.NewDecoder(bytes.NewReader(signed))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&reply) != nil || decoder.Decode(new(any)) != io.EOF || reply.Type != "grant-begin/v2" || reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+31000 || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Attempt != a.ID || !sameGrant(reply.Grant, a.Grant) || reply.Intent != intent || reply.Transport != a.Transport || reply.Boot != ownerBoot || reply.PageEpoch != page {
-		return 0, errors.New("fresh grant Begin reply scope/freshness rejected; preserve original intent and inspect status")
+	if decoder.Decode(&reply) != nil || decoder.Decode(new(any)) != io.EOF || reply.Type != requestType || reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+31000 || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Attempt != a.ID || !sameGrant(reply.Grant, a.Grant) || reply.Intent != intent || reply.Transport != a.Transport || reply.Boot != ownerBoot || reply.PageEpoch != page {
+		return verifiedGrantBegin{}, errors.New("fresh grant Begin reply scope/freshness rejected; preserve original intent and inspect status")
+	}
+	if initial == nil && reply.Bootstrap != nil {
+		return verifiedGrantBegin{}, errMonitoringEvidence
+	}
+	if initial != nil {
+		var object map[string]json.RawMessage
+		if json.Unmarshal(signed, &object) != nil {
+			return verifiedGrantBegin{}, errMonitoringEvidence
+		}
+		var bootstrap monitoringBootstrap
+		fields, err := decodeMonitoringObject(object["bootstrap"], &bootstrap, []string{"type", "owner", "coverage_epoch", "sequence"})
+		if err != nil {
+			return verifiedGrantBegin{}, errMonitoringEvidence
+		}
+		if _, err := decodeMonitoringObject(fields["owner"], &bootstrap.Owner, []string{"attempt", "exam", "username", "uid", "transport_hash", "boot", "page_epoch", "input_epoch", "generation", "clock_revision"}); err != nil || bootstrap.Type != "monitoring-bootstrap/v1" || bootstrap.Owner != *initial || !monitoringDigest.MatchString(bootstrap.CoverageEpoch) || bootstrap.Sequence != 1 {
+			return verifiedGrantBegin{}, errMonitoringEvidence
+		}
+		reply.Bootstrap = &bootstrap
 	}
 	// Charge the WHOLE exchange from request issue, conservatively earlier than
 	// the gateway observation. Wall-clock skew cannot extend capture freshness.
 	currentBoot, err := monitoringBootMillis()
 	if err != nil {
-		return 0, err
+		return verifiedGrantBegin{}, err
 	}
 	wallRemaining := reply.Expires - Millis()
 	if wallRemaining <= 0 || issuedBoot > math.MaxInt64-reply.CaptureValidFor || currentBoot > math.MaxInt64-wallRemaining || currentBoot < issuedBoot {
-		return 0, errors.New("fresh preflight capture expired during verification; sample again and retry the SAME Begin intent; no interval committed")
+		return verifiedGrantBegin{}, errors.New("fresh preflight capture expired during verification; sample again and retry the SAME Begin intent; no interval committed")
 	}
 	until := min(issuedBoot+reply.CaptureValidFor, currentBoot+wallRemaining)
 	if currentBoot >= until {
-		return 0, errors.New("fresh preflight capture expired during verification; sample again and retry the SAME Begin intent; no interval committed")
+		return verifiedGrantBegin{}, errors.New("fresh preflight capture expired during verification; sample again and retry the SAME Begin intent; no interval committed")
 	}
-	return until, nil
+	return verifiedGrantBegin{until: until, captureValidFor: reply.CaptureValidFor, frame: frame, bootstrap: reply.Bootstrap}, nil
 }

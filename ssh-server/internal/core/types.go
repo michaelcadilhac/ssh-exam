@@ -83,6 +83,10 @@ type SSHHandoff struct {
 	Consumed       string `json:"consumed,omitempty"`
 }
 type Attempt struct {
+	MonitoringMode              string               `json:"monitoring_mode,omitempty"`
+	RetainedHold                string               `json:"retained_hold,omitempty"` // Observation only; not a restored kernel receipt.
+	MonitoringResumeNonce       string               `json:"monitoring_resume_nonce,omitempty"`
+	MonitoringHoldKind          string               `json:"monitoring_hold_kind,omitempty"`
 	RegisteredOwner             *monitoringOwner     `json:"registered_owner,omitempty"`
 	Grant                       *GrantBinding        `json:"grant,omitempty"`
 	GrantBeginIntent            string               `json:"grant_begin_intent,omitempty"`
@@ -205,6 +209,7 @@ type PaneInstance struct {
 	Cancelled       bool  `json:"cancelled,omitempty"`
 }
 type Engine struct {
+	terminalMonitoring        terminalMonitoringBridge
 	renewalReceiptMu          sync.Mutex
 	renewalReceiptConfirmed   map[string]executionRenewalConfirmation
 	accountMu                 sync.RWMutex

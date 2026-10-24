@@ -36,6 +36,29 @@ func paneGateFrame(epoch string, seq uint64, data string) framedInput {
 	return framedInput{Epoch: epoch, Pane: testInputPane, Sequence: seq, Data: []byte(data)}
 }
 
+func TestPaneInputGateUsesLiveRenewalBeforeItsIdleCachedCutoff(t *testing.T) {
+	g, clock, epoch := paneGateFixture(t)
+	var liveUntil atomic.Int64
+	liveUntil.Store(20000)
+	var current atomic.Bool
+	current.Store(true)
+	g.live = func() (int64, int64, bool) { return liveUntil.Load(), 90000, current.Load() }
+	clock.Store(16001) // Old local cache expired; verified supervisor authority did not.
+	var delivered bytes.Buffer
+	write := func(_ context.Context, data []byte) (int, error) { return delivered.Write(data) }
+	if _, err := g.forward(paneGateFrame(epoch, 1, "current"), write); err != nil || delivered.String() != "current" {
+		t.Fatal("an idle pane invented expiry despite a current verified live renewal", err)
+	}
+	current.Store(false)
+	if _, err := g.forward(paneGateFrame(epoch, 2, "forbidden"), write); err != errPaneInputHeld || delivered.String() != "current" {
+		t.Fatal("revoked root authority admitted more input", err)
+	}
+	current.Store(true)
+	if _, err := g.forward(paneGateFrame(epoch, 3, "forbidden"), write); err != errPaneInputHeld {
+		t.Fatal("a later positive renewal silently reopened the held epoch", err)
+	}
+}
+
 func requirePaneDrain(t *testing.T, d *paneInputDrain) {
 	t.Helper()
 	select {

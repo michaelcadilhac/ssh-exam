@@ -37,7 +37,8 @@ type paneInputDrain struct {
 type paneInputGate struct {
 	mu                  sync.Mutex
 	pane, epoch         string
-	now                 func() (int64, error) // Trusted boot-monotonic milliseconds.
+	now                 func() (int64, error)       // Trusted boot-monotonic milliseconds.
+	live                func() (int64, int64, bool) // Current supervisor authority, never a saved lease.
 	lastNow, until      int64
 	deadline            int64
 	sequence, revision  uint64
@@ -96,6 +97,18 @@ func (g *paneInputGate) clockLocked() (int64, bool) {
 		return 0, false
 	}
 	g.lastNow = now
+	if g.live != nil && !g.held {
+		until, deadline, current := g.live()
+		if !current || deadline != g.deadline || until <= now || until > deadline || until-now > monitoringEvidenceWindowMS {
+			g.revokeLocked()
+			return now, false
+		}
+		// Read the live source BEFORE comparing the cached cutoff. A valid C10
+		// renewal must not be mistaken for expiry merely because this pane was idle.
+		if until > g.until {
+			g.until = until
+		}
+	}
 	return now, true
 }
 

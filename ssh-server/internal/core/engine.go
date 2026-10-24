@@ -179,6 +179,9 @@ func (e *Engine) Call(op string, r Request) (any, error) {
 	}
 	var result any
 	err := e.WithState(func() error { var err error; result, err = e.callLocked(op, r); return err })
+	if a, ok := result.(*Attempt); err == nil && op == "lock-attempt" && ok && a.MonitoringMode == "v1" {
+		return e.finishRetainedPause(r.ID)
+	}
 	if err == nil && op == "activate-attempt" {
 		return e.activatePrepared(result.(*Attempt), r.Expires, r.GrantBeginIntent, r.PageEpoch)
 	}
@@ -275,6 +278,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if r.framedInput && (r.Purpose != "exam" || !currentRegisteredOwner(a) || !a.BrowserSSH || !a.TerminalSupervised || e.hostAccess(a)) {
 				return errors.New("framed input requires a current supervised timed BrowserSSH owner; no raw fallback is authorized; inspect matching native roles and the registered page before reopening this pane")
 			}
+			if a.MonitoringMode == "v1" && !r.framedInput {
+				return errors.New("this attempt requires monitored framed input; update the matching browser/native roles and reopen the pane; no raw fallback")
+			}
 			if r.Username != a.Username || r.Transport != a.Transport || !attemptID.MatchString(r.Pane) {
 				return errors.New("pane identity mismatch")
 			}
@@ -289,7 +295,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: r.Purpose, Transport: r.Transport, Expires: Millis() + 15000})
 				break
 			}
-			if a.State != "ACTIVE" || expired(a) || a.Lease <= Millis() {
+			if a.State != "ACTIVE" || expired(a) || !nativeLeaseMetadataAllowsAdmission(a) {
 				return errors.New("attempt not active")
 			}
 			if len(a.Units) >= a.Settings.Terminals {
@@ -303,12 +309,23 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if r.framedInput {
 				capability.InputEpoch = Token() // Per pane incarnation, never the attempt authorization epoch.
 				capability.Purpose = framedPanePurpose
+				if a.MonitoringMode == "v1" {
+					capability.Purpose = monitoredPanePurpose
+				}
 			}
 			result = e.issue(capability)
 		case "close-pane":
 			result, err = e.closePaneLocked(a, r.Pane)
 			return err
 		case "lock-attempt":
+			if a.MonitoringMode == "v1" && a.State == "ACTIVE" && r.Generation > 0 && r.Generation <= a.Generation {
+				result = a
+				break
+			}
+			if a.MonitoringMode == "v1" && a.State == "LOCKED" && a.MonitoringHoldKind == "technical" {
+				a.Generation++
+				a.MonitoringHoldKind, a.Authorization, a.Reason = "policy", 0, r.Reason
+			}
 			if a.State == "LOCKED" && r.Generation > a.Generation {
 				a.Generation = r.Generation
 				a.Authorization = 0
@@ -323,6 +340,10 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				}
 				a.Reason = r.Reason
 				a.Authorization = 0
+				if a.MonitoringMode == "v1" {
+					a.MonitoringHoldKind = "policy"
+				}
+				a.MonitoringResumeNonce = ""
 				e.Audit(op, a.ID)
 			}
 			if a.State == "LOCKED" {
@@ -341,7 +362,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			a.Lease = Millis() + 15000
 			result = a
 		case "authorize-continuation":
-			if a.State != "LOCKED" || len(a.Units) > 0 || expired(a) || r.Generation != a.Generation || r.Expires > Millis()+300000 || r.Expires > a.Deadline {
+			if a.State != "LOCKED" || (len(a.Units) > 0 && !(a.MonitoringMode == "v1" && a.RetainedHold == "held")) || expired(a) || r.Generation != a.Generation || r.Expires > Millis()+300000 || r.Expires > a.Deadline {
 				return errors.New("stale continuation")
 			}
 			a.Authorization = r.Expires
@@ -359,6 +380,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			e.Audit(op, a.ID)
 			result = a
 		case "consume-continuation":
+			if a.MonitoringMode == "v1" {
+				return errors.New("retained continuation requires its distinct freshly verified monitored workflow; preserve the same page/SSH and original interval; no legacy thaw permitted")
+			}
 			if a.State != "LOCKED" || a.Authorization <= Millis() || a.Generation != r.Generation || expired(a) {
 				return errors.New("continuation expired")
 			}
@@ -646,6 +670,11 @@ func (e *Engine) Tick() error {
 	if recordingErr != nil {
 		log.Printf("timed recording acknowledgement needs recovery: %v", recordingErr)
 	}
+	liveCutoffs, liveErr := e.observeTerminalSharedCutoffs()
+	if liveErr != nil {
+		return liveErr
+	}
+	var retainedPauses []string
 	var jobs []string
 	err := e.WithState(func() error {
 		e.reapClosedPaneStarts()
@@ -740,6 +769,25 @@ func (e *Engine) Tick() error {
 			}
 			// Another attempt's cleanup may have taken time since this state
 			// transaction began. Renewals use their own per-attempt journal.
+			if a.MonitoringMode == "v1" {
+				if fact, known := liveCutoffs[a.ID]; a.State == "ACTIVE" && known && a.RegisteredOwner != nil && *a.RegisteredOwner == fact.owner && fact.view != nil && !fact.view.ExecutionAuthorized {
+					a.State, a.Reason, a.Authorization, a.Lease = "LOCKED", terminalTechnicalHoldReason(fact), 0, 0
+					a.MonitoringHoldKind = "technical"
+					if terminalCutoffPolicyCause(fact) {
+						a.MonitoringHoldKind = "policy"
+					}
+					a.Generation++
+					a.RetainedHold, a.ResumeTransport = "unverified", ""
+					if fact.held {
+						a.RetainedHold, a.ResumeTransport = "held", a.Transport
+					}
+					e.Audit("native-monitoring-hold", a.ID, a.Reason)
+				}
+				if a.State == "LOCKED" && a.RetainedHold != "held" {
+					retainedPauses = append(retainedPauses, a.ID)
+				}
+				continue // Disk leases NEVER decide new-mode live authority or revoke healthy proof.
+			}
 			if err := e.applyExecutionLease(a); err != nil {
 				return err
 			}
@@ -765,6 +813,11 @@ func (e *Engine) Tick() error {
 	})
 	if err != nil {
 		return err
+	}
+	for _, id := range retainedPauses {
+		if _, err := e.finishRetainedPause(id); err != nil {
+			log.Printf("retained native hold confirmation pending: %s: %v", id, err)
+		}
 	}
 	// Workers serialize per attempt, not across students. A hung/failed job
 	// cannot delay another due job or management/admission state reads.

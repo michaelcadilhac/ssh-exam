@@ -58,7 +58,7 @@ it("the loaded JS producer explicitly negotiates framing separately from the WAS
   ).toContainEqual(
     expect.objectContaining({
       type: "browser-result",
-      result: { loaded_pane_input: "v1" },
+      result: { loaded_pane_input: "v1", loaded_pane_epoch_change: "v1" },
     }),
   );
   client.close();
@@ -243,6 +243,158 @@ it("late framed EOF and output cannot affect the gap or a replacement with the s
     data: "fresh",
   });
   expect(events.at(-1)).toMatchObject({ type: "output", input_epoch: fresh });
+  client.close();
+});
+
+it("retained input rotation preserves same-pane output, discards old keys, and never resets a retry's sequence", async () => {
+  const { client, c, events, start } = fixture();
+  const { worker, socket } = await start();
+  const original = "a".repeat(64),
+    next = "b".repeat(64);
+  client.handle({
+    type: "browser-request",
+    id: "open",
+    op: "open",
+    args: { pane: "same", input_epoch: original },
+  });
+  worker.respond({
+    type: "rpc-result",
+    id: worker.requests.at(-1).id,
+    result: {},
+  });
+  await flush();
+  client.setInputEnabled(false);
+  const change = (id: string) =>
+    client.handle({
+      type: "browser-request",
+      id,
+      op: "change-input-epoch",
+      args: { pane: "same", instance: original, previous: original, next },
+    });
+  change("continue");
+  const pending = worker.requests.at(-1);
+  expect(pending.op).toBe("change-input-epoch");
+  // The shell may redraw before the input handshake reply. Its physical pane
+  // survives even though its output carries the newly accepted input epoch.
+  worker.respond({
+    type: "output",
+    pane: "same",
+    pane_instance: original,
+    input_epoch: next,
+    data: "editor-redraw",
+  });
+  expect(events.at(-1)).toMatchObject({
+    type: "output",
+    data: "editor-redraw",
+  });
+  worker.respond({ type: "rpc-result", id: pending.id, result: {} });
+  await flush();
+  client.setInputEnabled(true);
+  client.terminal({
+    type: "input",
+    pane: "same",
+    data: "STALE",
+    input: { epoch: original, sequence: 8 },
+  });
+  client.terminal({
+    type: "input",
+    pane: "same",
+    data: "fresh",
+    input: { epoch: next, sequence: 1 },
+  });
+  await flush();
+  const fresh = worker.requests.at(-1);
+  expect(fresh.op).toBe("input-framed");
+  worker.respond({ type: "rpc-result", id: fresh.id, result: {} });
+  await c.inputChains.get("same");
+  expect(
+    worker.requests
+      .filter((r: any) => r.op === "input-framed")
+      .map((r: any) => r.args),
+  ).toEqual([{ pane: "same", epoch: next, sequence: 1, data: "fresh" }]);
+  change("exact-retry");
+  await flush();
+  expect(
+    worker.requests.filter((r: any) => r.op === "change-input-epoch"),
+  ).toHaveLength(1);
+  client.terminal({
+    type: "input",
+    pane: "same",
+    data: "REPLAY",
+    input: { epoch: next, sequence: 1 },
+  });
+  await flush();
+  expect(
+    worker.requests.filter((r: any) => r.op === "input-framed"),
+  ).toHaveLength(1);
+  worker.respond({
+    type: "closed",
+    pane: "same",
+    pane_instance: original,
+    input_epoch: original,
+  });
+  expect(c.readyPanes.has("same")).toBe(false);
+  expect(
+    socket.send.mock.calls.map(([value]: any[]) => JSON.parse(value)),
+  ).toContainEqual(
+    expect.objectContaining({
+      type: "browser-pane-closed",
+      pane_instance: original,
+    }),
+  );
+  client.close();
+});
+
+it("a retained rotation completing after pane replacement cannot update or close the replacement", async () => {
+  const { client, c, events, start } = fixture();
+  const { worker, socket } = await start();
+  const original = "a".repeat(64),
+    replacement = "c".repeat(64);
+  const open = async (epoch: string) => {
+    client.handle({
+      type: "browser-request",
+      id: epoch,
+      op: "open",
+      args: { pane: "same", input_epoch: epoch },
+    });
+    worker.respond({
+      type: "rpc-result",
+      id: worker.requests.at(-1).id,
+      result: {},
+    });
+    await flush();
+  };
+  await open(original);
+  client.handle({
+    type: "browser-request",
+    id: "old-continue",
+    op: "change-input-epoch",
+    args: {
+      pane: "same",
+      instance: original,
+      previous: original,
+      next: "b".repeat(64),
+    },
+  });
+  const pending = worker.requests.at(-1);
+  client.terminal({ type: "close", pane: "same" });
+  await open(replacement);
+  worker.respond({ type: "rpc-result", id: pending.id, result: {} });
+  await flush();
+  expect(c.nativeInput.get("same").epoch).toBe(replacement);
+  worker.respond({
+    type: "closed",
+    pane: "same",
+    pane_instance: original,
+    input_epoch: replacement,
+  });
+  expect(c.readyPanes.has("same")).toBe(true);
+  expect(events.filter((m) => m.type === "closed")).toEqual([]);
+  expect(
+    socket.send.mock.calls.map(([value]: any[]) => JSON.parse(value)),
+  ).toContainEqual(
+    expect.objectContaining({ id: "old-continue", error: true }),
+  );
   client.close();
 });
 

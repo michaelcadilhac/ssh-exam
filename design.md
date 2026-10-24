@@ -1865,6 +1865,22 @@ checks complete. Local simulated browser tests alone do not qualify privileged i
 
 ### Approved retained-SSH lockout design (October 21; implementation pending)
 
+October23 guarded working candidate now joins native monitored Begin/live
+renewals, supervisor/watchdog shared cutoff, verified retained hold and fresh
+approved Continue to the actual HTTP/IPC/browser/WASM callers. Migration030
+records observational runtime/hold state; existing started attempts remain
+legacy. Native ACTIVE/resuming is pending intent, not permission. An accepted
+native outcome awaiting terminal agreement appears as `completing`; retry keeps
+the same approval/clock, and consumed approval cannot authorize fresh SSH.
+Per-pane input epochs rotate only on the same physical pane; immutable output/
+EOF identity preserves editor redraws across that transition. Mixed loaded
+browser/WASM/native agreement refuses before requesting Begin. The installed
+guard still always refuses retained mode: all-writer, delayed-launch, loaded
+native-role and independent-failure qualification remain incomplete. This is
+local integration under test, not enablement or deployment. Current detailed
+evidence/limitations: docs/live-monitoring-runtime.md. Historical unused-component
+notes below describe earlier stages and do not override that current record.
+
 October23 actual framed handoff additionally pins the authenticated root SSH
 monitor from the original student's Unix socket kernel credentials. Matching
 cohorts share one live pidfd, with no stored identity substituted for it. Root

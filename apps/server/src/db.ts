@@ -54,6 +54,9 @@ export interface Attempt {
   grant_initial: string | null;
   grant_work: string | null;
   registered_owner: string | null;
+  monitoring_mode?: "legacy" | "v1" | null;
+  retained_hold?: "pending" | "unverified" | "held" | "resuming" | null;
+  monitoring_hold_kind?: "policy" | "technical" | null;
 }
 export class Store {
   db: Database.Database;
@@ -201,6 +204,10 @@ export class Store {
     if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=29").get())
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/029.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=30").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/030.sql", "utf8")),
       )();
   }
   audit(actor: string, action: string, target: string, detail = "") {

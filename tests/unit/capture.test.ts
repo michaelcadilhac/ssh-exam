@@ -4,6 +4,7 @@ import { Capture } from "../../apps/web/src/capture.js";
 
 vi.mock("../../apps/web/src/api.js", () => ({ api: vi.fn() }));
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.resetAllMocks();
 });
@@ -38,6 +39,62 @@ function fixture() {
   capture.queues.set("screen", []);
   return { capture, incident, mode, draw };
 }
+it("an active challenged-capture transport timeout is technical; actual track loss remains a policy event", async () => {
+  vi.useFakeTimers();
+  const incident = vi.fn(),
+    health = vi.fn(() => true),
+    track = {
+      readyState: "live",
+      muted: false,
+      getSettings: () => ({ displaySurface: "monitor" }),
+      stop: vi.fn(),
+      onended: undefined as undefined | (() => void),
+    },
+    stream = { getVideoTracks: () => [track], getTracks: () => [track] },
+    video = {
+      videoWidth: 40,
+      videoHeight: 30,
+      play: vi.fn().mockResolvedValue(undefined),
+    };
+  vi.stubGlobal("navigator", {
+    mediaDevices: { getDisplayMedia: vi.fn().mockResolvedValue(stream) },
+  });
+  vi.stubGlobal("document", {
+    createElement: (tag: string) =>
+      tag === "video"
+        ? video
+        : {
+            getContext: () => ({ drawImage: vi.fn() }),
+            toDataURL: () => "data:image/jpeg;base64,synthetic",
+          },
+  });
+  const capture = new Capture(
+    "synthetic",
+    "page",
+    incident,
+    () => ({ ...ready }),
+    () => true,
+    health,
+  );
+  vi.mocked(api).mockResolvedValue({ challenge: "initial", after_sequence: 0 });
+  try {
+    await capture.setup("screen");
+    vi.mocked(api).mockRejectedValueOnce(
+      Error("Synthetic capture challenge timeout"),
+    );
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(incident).not.toHaveBeenCalled();
+    expect(health).toHaveBeenCalledWith("screen", false);
+    vi.mocked(api).mockResolvedValue({ challenge: "fresh", after_sequence: 1 });
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(health).toHaveBeenLastCalledWith("screen", true);
+    track.onended!();
+    expect(incident).toHaveBeenCalledExactlyOnceWith("screen track ended");
+  } finally {
+    capture.stop();
+  }
+});
+
 it("samples only after the challenge and never re-labels buffered legacy frames", async () => {
   const { capture, draw } = fixture();
   capture.queues.get("screen")!.push({ seq: 1, data: "old-buffer" });

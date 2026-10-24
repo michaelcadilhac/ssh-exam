@@ -33,7 +33,8 @@ type monitoringActiveContext struct {
 	CoverageEpoch                      string
 	Sequence                           uint64
 	AuthorityUntilMS, DeadlineUptimeMS int64
-	verified                           *monitoringActiveSeal // Not JSON-restorable. No live verifier exists yet.
+	verified                           *monitoringActiveSeal   // Not JSON-restorable. No live verifier exists yet.
+	cutoff                             *monitoringSharedCutoff // Same live word for authority and independent watchdog.
 }
 
 // A future trusted native verifier must establish exclusive current owner/peer
@@ -128,6 +129,9 @@ func newMonitoringAuthorityWithEntropy(c monitoringActiveContext, clock func() (
 		return nil, errMonitoringScope
 	}
 	var incarnation [32]byte
+	if c.cutoff != nil && (c.cutoff.owner != c.Owner || c.cutoff.deadline != c.DeadlineUptimeMS || c.cutoff.until() != c.AuthorityUntilMS) {
+		return nil, errMonitoringScope
+	}
 	if _, err := io.ReadFull(entropy, incarnation[:]); err != nil {
 		return nil, errMonitoringAuthority
 	}
@@ -148,6 +152,9 @@ func newMonitoringAuthorityWithEntropy(c monitoringActiveContext, clock func() (
 }
 
 func (a *monitoringAuthority) revokeLocked(cause string) {
+	if a.context.cutoff != nil {
+		a.context.cutoff.revoke()
+	}
 	if !a.causes[cause] {
 		a.causes[cause] = true
 		if a.revision < monitoringEvidenceMaxSequence {
@@ -170,6 +177,9 @@ func (a *monitoringAuthority) tickLocked() (int64, bool) {
 	if !a.context.verified.current() {
 		a.revokeLocked("ownership-unknown")
 		return now, false
+	}
+	if a.phase == "active" && a.context.cutoff != nil && a.context.cutoff.until() != a.context.AuthorityUntilMS {
+		a.revokeLocked("technical-expiry")
 	}
 	if now >= a.context.DeadlineUptimeMS {
 		a.revokeLocked("deadline")
@@ -205,6 +215,23 @@ func (a *monitoringAuthority) revokeForVerifiedCause(cause string) (monitoringAu
 	case "policy-condition", "authentication-loss", "operator-pause", "recording-failure":
 	default:
 		return a.viewLocked(), errMonitoringScope
+	}
+	a.revokeLocked(cause)
+	return a.viewLocked(), nil
+}
+
+func (a *monitoringAuthority) revokeForTechnicalCause(cause string) (monitoringAuthorityView, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.tickLocked()
+	if cause != "resume-unverified" && cause != "native-expiry" {
+		return a.viewLocked(), errMonitoringScope
+	}
+	if cause == "native-expiry" {
+		if a.phase == "active" {
+			return a.viewLocked(), errMonitoringAuthority
+		}
+		return a.viewLocked(), nil // Preserve existing technical/policy causes; a stale timer creates none.
 	}
 	a.revokeLocked(cause)
 	return a.viewLocked(), nil
@@ -286,6 +313,10 @@ func (a *monitoringAuthority) accept(p monitoringPermitCandidate) (monitoringCom
 	effectiveUntil := p.UntilUptimeMS
 	if a.phase == "active" {
 		effectiveUntil = max(a.context.AuthorityUntilMS, p.UntilUptimeMS)
+	}
+	if a.context.cutoff != nil && !a.context.cutoff.publish(a.context.AuthorityUntilMS, effectiveUntil) {
+		a.revokeLocked("technical-expiry")
+		return monitoringCommitReceipt{}, errMonitoringAuthority
 	}
 	// Initial prior authority allows only the bounded proof exchange, not work.
 	// Never inherit that bootstrap interval beyond the first verified cutoff.

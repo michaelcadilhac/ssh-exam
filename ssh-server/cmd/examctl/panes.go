@@ -50,6 +50,19 @@ durable Begin/clock/monitoring permission. Missing notice is UNKNOWN, not no-sta
 Optional registered_owner identifies the accepted signed page/transport/boot and
 attempt authorization epoch. Compare info ATTEMPT --read-only and web attempt
 metadata; it is not a live permit, per-pane input epoch or verified freeze receipt.
+For the disabled retained-mode candidate, monitoring_mode identifies the
+runtime owner, pending_launch_units includes registered starts before a manager
+scope exists, and retained_hold reports pending/unverified/held. An unverified
+hold keeps admission revoked: preserve work, inspect the pending launch/recording
+and exact loaded roles, then retry the same pause; never clear tracking or reset
+the clock. A held observation alone never authorizes Continue or restores input.
+pending_resume reports a nonpermitting generation and original boot-clock expiry,
+never its nonce or an execution permit. After a lost Continue reply, retry the
+same page/approval with fresh verification; time keeps running. Expired pending
+verification needs a fresh exchange under the current approval, not restored
+receipt permission or a new allowance. Deliberate native pause cancels an
+unexecuted pending Continue; preserve its original interval and inspect current
+native/web generation before issuing any new approval.
 Optional ssh_peer observes the root SSH monitor pinned from the original student
 socket during a framed handoff. pinned-live is a current pidfd observation only;
 exited/unknown do not allege a student violation. It does not prove full current

@@ -1,4 +1,5 @@
 import type { Attempt, Store } from "./db.js";
+import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
 import {
   continuationStatus,
   type ContinuationStatus,
@@ -37,7 +38,9 @@ export function studentContinuationStatus(
       current.generation !== a.generation
         ? "superseded"
         : current.consumed
-          ? "used"
+          ? nativeContinuationOutcomeRecorded(a)
+            ? "completing"
+            : "used"
           : expires <= at
             ? "expired"
             : "approved";

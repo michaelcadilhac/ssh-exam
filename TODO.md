@@ -100,6 +100,19 @@ new signed start response, preserving the original intent and allowance. Focused
 locally, not deployed; see docs/begin-no-start-evidence.md. This closes no broader
 retained-mode/monitoring investigation.
 
+October23 guarded integration now connects actual native Begin/live renewal/
+pause/Continue to the HTTP → isolated worker → browser/WASM pane epoch workflow.
+Focused native51.668s, affected app70 tests, full SSH-client races, types/build
+and two correctly configured browser workflows pass locally. The latter include
+read-only editor redraws and fresh input after Continue. A reproduced capture
+challenge timeout previously emitted a policy incident; the new-mode candidate
+now blocks input technically, retries fresh capture, and preserves genuine track
+loss enforcement. Its timer regression and actual browser timeout/recovery test
+pass. Retained mode remains disabled by the native guard; complete all-writer,
+delayed-launch, independent failure, loaded-role and combined root/capacity
+qualification remain open. No checkbox is closed and nothing is deployed. Current
+receipts and exact limitations: docs/live-monitoring-runtime.md.
+
 - [ ] **Redesign monitoring liveness and execution authorization; do not turn a
   delayed control exchange into a student violation or destructive lockout.**
   Requested October 21. Initial read-only investigation confirms that the

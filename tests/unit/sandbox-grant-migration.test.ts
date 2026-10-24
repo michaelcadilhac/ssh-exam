@@ -36,6 +36,9 @@ it("027 preserves legacy practice and fences grantless writers across accounts a
     expect(db.prepare("SELECT * FROM attempts WHERE id='old'").get()).toEqual({
       ...(old as object),
       registered_owner: null,
+      monitoring_mode: null,
+      retained_hold: null,
+      monitoring_hold_kind: null,
     });
     expect(
       db.prepare("SELECT version FROM schema_version WHERE version=27").get(),
@@ -81,6 +84,9 @@ it("027 preserves legacy practice and fences grantless writers across accounts a
     expect(db.prepare("SELECT * FROM attempts WHERE id='old'").get()).toEqual({
       ...(old as object),
       registered_owner: null,
+      monitoring_mode: null,
+      retained_hold: null,
+      monitoring_hold_kind: null,
     });
     expect(
       db

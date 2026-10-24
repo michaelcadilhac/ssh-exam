@@ -1,5 +1,17 @@
 # Development retrospective — October 22, 2026
 
+October23 integration follow-up: similar `reauth` and `continue` authorization
+checks caused a patch to affect the wrong route. The actual lost-acknowledgement
+regression exposed it before broad qualification; the repair restores fresh-SSH
+checks and confines consumed-outcome retry to same-page Continue. Future patches
+must include the enclosing route and immediately inspect all affected callers.
+The first WASM regression command also omitted EXAM_BROWSER_SSH=1, testing Node
+fallback instead. The test now checks public fixture status first. Finally, an
+early-output filter dropped SSH bytes arriving before server `opened`; the actual
+encrypted browser workflow caught it, and physical identity now publishes before
+open while input waits for verified acknowledgement. These concrete fixes reduce
+repeat investigations; they do not close the remaining root freeze qualification.
+
 The instructor asked why roughly two days of work had not finished a backlog
 that initially looked small. The expanded TODO then had 11 checked main items
 out of 38. That count is neither the original scope nor a percentage of effort.

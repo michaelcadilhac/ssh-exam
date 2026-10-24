@@ -2664,3 +2664,26 @@ Nine pre-existing working image changes are preserved/unstaged with private
 backups after automatic review rejected their discard; no restoration workaround
 was attempted. This fixture-only change needs no repeated app/native/root suite.
 Continue C3/C16; no deployment, production action or missing command.
+
+## October23: guarded native/web/browser pause and Continue integration
+
+The actual native Begin/live renewal/verified hold/approved Continue caller now
+joins HTTP, isolated worker, browser control and real WASM pane epochs. Same-page
+transport remains viable; original clocks and approval identity survive native/
+browser/final reply loss. Stable physical identity preserves early output and
+editor redraws; stale keys/completions cannot acquire the new input epoch.
+Migration030 is observation only and preserves legacy historical intervals.
+A reproduced challenge-timeout policy false positive now blocks input technically
+in the guarded mode, while actual track loss remains enforced. A pending launch
+now contains known writers before reporting UNVERIFIED. No optimistic all-writer
+claim or new mode enablement. Installed guard stays closed with no override.
+
+Final full application566 PASS/2 conditional skipped284.82s, followed by both
+conditional real examctl/HTTPS cases PASS6.93s. All568 scenarios covered across
+runs. Native race/resource/userns/compiler/default-size core481.631s/CLI31.996s;
+full encrypted client races1.511s; affected browser27 PASS2.2m; builds/types/vet
+pass. Initial fixture failures, real early-output regression and actual timer/
+known-writer REDs are preserved in live-monitoring-runtime.md. Root all-writer/
+async/final-exec/independent failure/clock-role and16/64 qualification remain.
+No TODO closed on component evidence. Local coherent guarded increment only;
+no push/deploy/production/student mutation. Continue actual delayed manager test.

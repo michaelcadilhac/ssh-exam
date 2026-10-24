@@ -58,6 +58,159 @@ async function paused(
   };
 }
 
+test("retained Continue keeps editor output visible while blocked and adopts fresh input only after the response", async ({
+  page,
+}) => {
+  const f = await fixture(page, "NONE", "student", "retained-fixture");
+  Object.assign(f.model.attempt, { monitoring_mode: "v1" });
+  f.model.onMonitoring = async (socket, message) => {
+    if (message.confirmation)
+      socket.send(
+        JSON.stringify({
+          type: "state",
+          confirmation: message.confirmation,
+          ...f.snapshot(),
+        }),
+      );
+  };
+  await begin(page, f);
+  await expect
+    .poll(() => f.model.messages.some((m) => m.type === "open"))
+    .toBe(true);
+  const pane = f.model.messages.find((m) => m.type === "open").pane,
+    original = "a".repeat(64),
+    next = "b".repeat(64);
+  const emit = (message: any) => f.model.socket!.send(JSON.stringify(message));
+  emit({ type: "opened", pane, input: { protocol: "v1", epoch: original } });
+  let captureUnavailable = true;
+  await page.route(
+    "**/api/student/attempts/*/capture-challenges",
+    async (route) => {
+      if (captureUnavailable)
+        return route.fulfill({
+          status: 503,
+          json: { error: "Synthetic challenge transport unavailable" },
+        });
+      return route.fulfill({
+        json: {
+          challenge: "fresh-after-technical-gap",
+          after_sequence: 0,
+          valid_for_ms: 15000,
+        },
+      });
+    },
+  );
+  const delayed = page.getByText(
+    "Monitoring verification delayed · input blocked",
+    { exact: true },
+  );
+  await expect(delayed).toBeVisible({ timeout: 7000 });
+  const inputs = f.model.messages.filter((m) => m.type === "input").length;
+  await page.keyboard.type("NO_INPUT_DURING_TECHNICAL_GAP");
+  expect(f.model.messages.filter((m) => m.type === "input")).toHaveLength(
+    inputs,
+  );
+  expect(f.model.messages.filter((m) => m.type === "incident")).toEqual([]);
+  await expect(page.locator(".lock-overlay")).toHaveCount(0);
+  captureUnavailable = false;
+  await expect(delayed).toHaveCount(0, { timeout: 7000 });
+  Object.assign(f.model.attempt, {
+    state: "LOCKED",
+    generation: 1,
+    continuation_revision: 1,
+  });
+  f.model.state = "LOCKED";
+  f.send();
+  await expect(page.locator(".lock-overlay")).toBeVisible();
+  emit({
+    type: "output",
+    pane,
+    pane_instance: original,
+    input_epoch: next,
+    data: Buffer.from("PRESERVED_EDITOR_REDRAW\r\n").toString("base64"),
+  });
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "PRESERVED_EDITOR_REDRAW",
+  );
+  f.model.status = async (route) => {
+    const serverNow = Date.now();
+    await route.fulfill({
+      json: {
+        ...f.snapshot(),
+        serverNow,
+        continuation: {
+          v: 1,
+          attempt: f.model.attempt.id,
+          generation: 1,
+          revision: 1,
+          state: "completing",
+          expires: serverNow - 1000,
+          observedAt: serverNow,
+          execution: false,
+        },
+      },
+    });
+  };
+  await expect(
+    page.getByRole("heading", { name: "Complete continuation", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator('[data-continuation-state="completing"]'),
+  ).toContainText("Input stays blocked");
+  await expect(
+    page.getByText("Request instructor review", { exact: true }),
+  ).toHaveCount(0);
+  const before = f.model.messages.filter((m) => m.type === "input").length;
+  await page.keyboard.type("MUST_STAY_BLOCKED");
+  expect(f.model.messages.filter((m) => m.type === "input")).toHaveLength(
+    before,
+  );
+  f.model.continuation = async (route) => {
+    Object.assign(f.model.attempt, { state: "ACTIVE" });
+    f.model.state = "ACTIVE";
+    await route.fulfill({
+      json: {
+        ...f.snapshot(),
+        inputEpochs: { [pane]: { instance: original, epoch: next } },
+      },
+    });
+  };
+  await page
+    .getByRole("button", {
+      name: "Continue exam after authorization",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator(".lock-overlay")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      f.model.messages.some(
+        (m) => m.type === "resize" && m.input?.epoch === next,
+      ),
+    )
+    .toBe(true);
+  await page.locator(".xterm-helper-textarea").focus();
+  await page.keyboard.type("fresh");
+  await expect
+    .poll(() => f.model.messages.filter((m) => m.type === "input").length)
+    .toBeGreaterThan(before);
+  expect(
+    f.model.messages
+      .filter((m) => m.type === "input")
+      .slice(before)
+      .every((m) => m.input?.epoch === next),
+  ).toBe(true);
+  emit({
+    type: "closed",
+    pane,
+    pane_instance: "c".repeat(64),
+    input_epoch: next,
+  });
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "PRESERVED_EDITOR_REDRAW",
+  );
+});
+
 for (const width of [1280, 430])
   for (const authenticationGap of [false, true])
     test(`approval updates in place without unlocking or automatic sign-in (${authenticationGap ? "lost" : "retained"} metadata path, ${width}px)`, async ({

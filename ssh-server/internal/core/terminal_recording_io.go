@@ -4,6 +4,7 @@ package core
 // lifetime/recording here and canonical fault decisions in the coordinator.
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -26,28 +27,40 @@ type supervisedRecordingResult struct {
 }
 
 type supervisedRecordingIO struct {
-	inputEpoch           string // Immutable pane-incarnation fence, not monitoring authority.
-	inputSequence        uint64 // Owned only by the input decoder goroutine.
-	resizes              chan windowSize
-	recorder             *terminalRecorder
-	original, master     *os.File
-	originalFD, masterFD int
-	inputEnded           chan struct{}
-	stopInput            chan struct{}
-	inputDone            chan struct{}
-	resizeDone           chan struct{}
-	outputDone           chan struct{}
-	deliveryDone         chan struct{}
-	deliveryOffset       int64
-	stopOnce, endOnce    sync.Once
-	faultOnce            sync.Once
-	mu                   sync.Mutex
-	fault                string
-	faultStage           string
-	forwardUntil         atomic.Int64
-	deliveryComplete     atomic.Bool
-	onFault              func()
+	inputEpoch                      string // Immutable pane-incarnation fence, not monitoring authority.
+	inputSequence                   uint64 // Owned only by the input decoder goroutine.
+	resizes                         chan supervisedResize
+	inputGate, resizeGate           *paneInputGate
+	inputPTY                        *panePTYInput
+	inputSlave                      *os.File
+	inputScope                      atomic.Pointer[supervisedInputScope]
+	currentAuthority                atomic.Pointer[monitoringAuthority]
+	discardedInput, discardedResize atomic.Uint64
+	recorder                        *terminalRecorder
+	original, master                *os.File
+	originalFD, masterFD            int
+	inputEnded                      chan struct{}
+	stopInput                       chan struct{}
+	inputDone                       chan struct{}
+	resizeDone                      chan struct{}
+	outputDone                      chan struct{}
+	deliveryDone                    chan struct{}
+	deliveryOffset                  int64
+	stopOnce, endOnce               sync.Once
+	faultOnce                       sync.Once
+	mu                              sync.Mutex
+	fault                           string
+	faultStage                      string
+	forwardUntil                    atomic.Int64
+	deliveryComplete                atomic.Bool
+	onFault                         func()
 }
+
+type supervisedResize struct {
+	size  windowSize
+	frame framedInput
+}
+type supervisedInputScope struct{ epoch string }
 
 func recordingPTYCopy(f *os.File) (*os.File, error) {
 	if f == nil {
@@ -76,7 +89,7 @@ func recordingPoll(fd int, events int16) error {
 	return err
 }
 
-func newSupervisedRecordingIO(r *terminalRecorder, original, master *os.File, inputEpoch string, onFault func()) (*supervisedRecordingIO, error) {
+func newSupervisedRecordingIO(r *terminalRecorder, original, master *os.File, inputEpoch string, onFault func(), live ...*monitoringAuthority) (*supervisedRecordingIO, error) {
 	if r == nil || onFault == nil || (inputEpoch != "" && !monitoringDigest.MatchString(inputEpoch)) {
 		return nil, errors.New("recording setup incomplete")
 	}
@@ -90,7 +103,7 @@ func newSupervisedRecordingIO(r *terminalRecorder, original, master *os.File, in
 		return nil, err
 	}
 	s := &supervisedRecordingIO{recorder: r, original: input, master: output,
-		inputEpoch: inputEpoch, resizes: make(chan windowSize, 1),
+		inputEpoch: inputEpoch, resizes: make(chan supervisedResize, 1),
 		inputEnded: make(chan struct{}), stopInput: make(chan struct{}),
 		inputDone: make(chan struct{}), resizeDone: make(chan struct{}), outputDone: make(chan struct{}), deliveryDone: make(chan struct{}), deliveryOffset: r.committed.Load(), onFault: onFault}
 	s.originalFD, s.masterFD = int(input.Fd()), int(output.Fd())
@@ -99,6 +112,57 @@ func newSupervisedRecordingIO(r *terminalRecorder, original, master *os.File, in
 		output.Close()
 		return nil, errors.New("recording PTYs cannot be made cancellable")
 	}
+	if len(live) != 0 {
+		if len(live) != 1 || live[0] == nil || inputEpoch == "" {
+			input.Close()
+			output.Close()
+			return nil, errMonitoringScope
+		}
+		authority := live[0]
+		s.currentAuthority.Store(authority)
+		view := authority.check()
+		if !view.ExecutionAuthorized {
+			input.Close()
+			output.Close()
+			return nil, errMonitoringAuthority
+		}
+		s.inputGate, err = newPaneInputGate(r.pane, monitoringBootMillis)
+		if err == nil {
+			s.resizeGate, err = newPaneInputGate(r.pane, monitoringBootMillis)
+		}
+		if err == nil {
+			err = s.inputGate.arm(s.inputGate.revoke(), inputEpoch, view.AuthorityUntilMS, view.DeadlineUptimeMS)
+		}
+		if err == nil {
+			err = s.resizeGate.arm(s.resizeGate.revoke(), inputEpoch, view.AuthorityUntilMS, view.DeadlineUptimeMS)
+		}
+		if err == nil {
+			for _, gate := range []*paneInputGate{s.inputGate, s.resizeGate} {
+				gate.live = func() (int64, int64, bool) {
+					v := s.currentAuthority.Load().check()
+					return v.AuthorityUntilMS, v.DeadlineUptimeMS, v.ExecutionAuthorized
+				}
+			}
+			var fd uintptr
+			var errno syscall.Errno
+			fd, _, errno = unix.Syscall(unix.SYS_IOCTL, uintptr(s.masterFD), uintptr(unix.TIOCGPTPEER), uintptr(unix.O_RDWR|unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NONBLOCK))
+			if errno != 0 {
+				err = errPaneInputPTY
+			} else {
+				s.inputSlave = os.NewFile(fd, "owned-input-peer")
+				s.inputPTY, err = newPanePTYInput(s.inputGate, output, s.inputSlave)
+			}
+		}
+		if err != nil {
+			if s.inputSlave != nil {
+				s.inputSlave.Close()
+			}
+			input.Close()
+			output.Close()
+			return nil, err
+		}
+	}
+	s.inputScope.Store(&supervisedInputScope{epoch: inputEpoch})
 	s.deliveryComplete.Store(true)
 	go s.input()
 	go s.output()
@@ -178,33 +242,45 @@ func (s *supervisedRecordingIO) input() {
 // Legacy cutoff/policy enforcement remains unchanged until that full workflow.
 func (s *supervisedRecordingIO) framedInput() {
 	reader := supervisedFrameReader{s}
+	var previous *supervisedInputScope
 	for {
 		frame, err := readFramedInput(reader)
 		if err != nil {
 			return // No malformed body is reinterpreted as terminal bytes.
 		}
-		if frame.Epoch != s.inputEpoch || frame.Pane != s.recorder.pane || frame.Sequence <= s.inputSequence {
+		scope := s.inputScope.Load()
+		if scope != previous {
+			s.inputSequence, previous = 0, scope
+		}
+		if scope == nil || frame.Epoch != scope.epoch || frame.Pane != s.recorder.pane || frame.Sequence <= s.inputSequence {
 			continue // Captured stale input is discarded, never relabelled.
 		}
 		s.inputSequence = frame.Sequence // Consume before any partial delivery.
 		if frame.Kind == 1 {
 			size := windowSize{Row: uint16(binary.BigEndian.Uint32(frame.Data)), Col: uint16(binary.BigEndian.Uint32(frame.Data[4:]))}
+			resize := supervisedResize{size: size, frame: frame}
 			// Existing resize sampling already coalesces intermediate sizes.
 			// Preserve record-before-apply in its independent storage worker;
 			// the decoder/next key never waits for a recorder's disk lock.
 			select {
-			case s.resizes <- size:
+			case s.resizes <- resize:
 			default:
 				select {
 				case <-s.resizes:
 				default:
 				}
 				select {
-				case s.resizes <- size:
+				case s.resizes <- resize:
 				default:
 				}
 			}
 			continue
+		}
+		if s.inputGate != nil {
+			if _, err := s.inputGate.forward(frame, s.inputPTY.write); err != nil {
+				s.discardedInput.Store(frame.Sequence)
+			}
+			continue // A held gate discards input while keeping the decoder/SSH alive.
 		}
 		for at := 0; at < len(frame.Data); {
 			select {
@@ -373,7 +449,8 @@ func (s *supervisedRecordingIO) resize() {
 			select {
 			case <-s.stopInput:
 				return
-			case size := <-s.resizes:
+			case resize := <-s.resizes:
+				size := resize.size
 				if s.recorder.record(map[string]any{"event": "resize", "rows": size.Row, "cols": size.Col}) != nil {
 					s.failed("resize")
 					return
@@ -382,6 +459,23 @@ func (s *supervisedRecordingIO) resize() {
 				case <-s.stopInput:
 					return // Late storage completion cannot apply a retired resize.
 				default:
+				}
+				if s.resizeGate != nil {
+					frame := resize.frame
+					frame.Kind = 0 // Same captured scope/sequence; apply only inside its gate.
+					_, err := s.resizeGate.forward(frame, func(ctx context.Context, data []byte) (int, error) {
+						if ctx.Err() != nil {
+							return 0, ctx.Err()
+						}
+						if err := ioctl(uintptr(s.masterFD), syscall.TIOCSWINSZ, unsafePointer(&size)); err != nil {
+							return 0, err
+						}
+						return len(data), nil
+					})
+					if err != nil {
+						s.discardedResize.Store(frame.Sequence)
+					}
+					continue
 				}
 				if ioctl(uintptr(s.masterFD), syscall.TIOCSWINSZ, unsafePointer(&size)) != nil {
 					return
@@ -421,6 +515,11 @@ func (s *supervisedRecordingIO) finish() supervisedRecordingResult {
 	})
 	<-s.inputDone
 	<-s.resizeDone
+	// The queue-discard peer is a real slave reference. Close it after its
+	// final input user, before waiting for master EOF/output drain.
+	if s.inputSlave != nil {
+		s.inputSlave.Close()
+	}
 	<-s.outputDone
 	<-s.deliveryDone
 	s.original.Close()

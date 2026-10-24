@@ -12,10 +12,14 @@ import { hosts } from "./hosts.js";
 // Real authenticated SSH channels and HTTP/WebSocket interfaces; the SSH host's
 // shell/native policy are simulated. This is not privileged freezer qualification.
 export async function liveMonitoring(
-  options: { renewalReceipts?: boolean } = {},
+  options: { renewalReceipts?: boolean; ownedAttempt?: boolean } = {},
 ) {
   const h = await hosts({ mfaDelayMs: 10 });
   h.control.command = async (op, body) => {
+    if (options.ownedAttempt && op === "health")
+      return { ready: true, fixture: true, capabilities: [] };
+    if (options.ownedAttempt && op === "prepare-attempt")
+      return { ...body, state: "PREPARING", work_path: "/work" };
     if (op === "register")
       return options.renewalReceipts
         ? { execution_renewal_receipts: "v1" }
@@ -119,23 +123,43 @@ export async function liveMonitoring(
       .find((c) => c.trim().startsWith("session="))!
       .trim()
       .split(";")[0];
-    const id = randomUUID(),
-      page = "p".repeat(64),
-      start = Date.now() - 60000,
+    let id = randomUUID(),
+      page = "p".repeat(64);
+    const start = Date.now() - 60000,
       deadline = Date.now() + 600000;
-    store.db
-      .prepare(
-        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,last_contact,page_hash) VALUES(?,'e','student',10001,'ACTIVE',?,?,?,?,?,?)",
-      )
-      .run(
-        id,
-        JSON.stringify(exam),
-        start,
-        deadline,
-        deadline,
-        Date.now(),
-        hash(page),
-      );
+    if (options.ownedAttempt) {
+      const prepared = await app.inject({
+        method: "POST",
+        url: "/api/student/preflight",
+        headers: {
+          origin: config.origin,
+          cookie,
+          "x-csrf-token": completed.json().csrf,
+        },
+        payload: {},
+      });
+      if (prepared.statusCode !== 200)
+        throw Error("Owned fixture preflight refused: " + prepared.body);
+      ({ id, page } = prepared.json());
+      store.db
+        .prepare(
+          "UPDATE attempts SET state='ACTIVE',start=?,deadline=?,original_deadline=? WHERE id=?",
+        )
+        .run(start, deadline, deadline, id);
+    } else
+      store.db
+        .prepare(
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,last_contact,page_hash) VALUES(?,'e','student',10001,'ACTIVE',?,?,?,?,?,?)",
+        )
+        .run(
+          id,
+          JSON.stringify(exam),
+          start,
+          deadline,
+          deadline,
+          Date.now(),
+          hash(page),
+        );
     const headers = {
       origin: config.origin,
       cookie,

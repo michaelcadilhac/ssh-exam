@@ -190,6 +190,55 @@ func TestTerminalSupervisorChild(t *testing.T) {
 	defer conn.Close()
 	// The owned local fixture has no root sshd. Keep REAL pidfd lifetime and
 	// original socket credentials, replacing only installed root/SSH ancestry.
+	terminalAuthorityReadiness = func() error {
+		// Compiled test role only; production has no environment enable switch.
+		if marker := os.Getenv("EXAM_TEST_REFUSE_RESUME_COMMIT"); marker != "" {
+			if data, err := os.ReadFile(marker); err == nil && string(data) == "refuse-next-commit" {
+				if err := os.WriteFile(marker, []byte("refused-at-supervisor-commit"), 0600); err != nil {
+					return err
+				}
+				return errMonitoringAuthority
+			}
+		}
+		return nil
+	}
+	terminalHoldProcesses = func(uid int, units []string) ([]*uidProcess, error) {
+		// This desktop UID owns unrelated applications. Enumerate ONLY the real
+		// test-owned workload scopes; never stop or signal the whole local UID.
+		groups := map[int]bool{}
+		for _, unit := range units {
+			scope, err := terminalScopeHandle(unit)
+			if err != nil {
+				return nil, err
+			}
+			tree, err := observeRetainedScopeTree(scope)
+			scope.Close()
+			if err != nil {
+				return nil, err
+			}
+			for _, node := range tree {
+				for _, tid := range node.Threads {
+					group, err := terminalThreadGroup(tid, uid)
+					if err != nil {
+						return nil, err
+					}
+					groups[group] = true
+				}
+			}
+		}
+		var result []*uidProcess
+		for pid := range groups {
+			p, err := pinUIDProcess(pid, uid)
+			if err != nil {
+				closeUIDProcesses(result)
+				return nil, err
+			}
+			if p != nil {
+				result = append(result, p)
+			}
+		}
+		return result, nil
+	}
 	terminalSupervisorSSHProcess = func(pid, uid int, transport string) (*monitoringProcessGuard, error) {
 		if marker := os.Getenv("EXAM_TEST_REFUSE_SSH_PIN"); marker != "" {
 			if err := os.WriteFile(marker, []byte("original-socket-ssh-pin-reached"), 0600); err != nil {

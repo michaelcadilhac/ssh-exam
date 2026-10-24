@@ -23,6 +23,8 @@ export type ConnectionHandle = Pick<
   | "supportsAutomaticHandoff"
   | "connect"
   | "secureAccess"
+  | "prepareMonitoring"
+  | "changeInputEpochs"
   | "command"
   | "open"
   | "close"
@@ -43,6 +45,7 @@ const MAX_PACKET = 8 * 1024 * 1024;
 class RemotePane extends EventEmitter {
   readonly ipcInstance = randomUUID();
   inputEpoch?: string;
+  outputEpoch?: string;
   writableLength = 0;
   disposed = false;
   private closing?: Promise<void>;
@@ -434,8 +437,39 @@ export class IsolatedConnection implements ConnectionHandle {
   async secureAccess(id: string, exam: string) {
     await this.rpc("secureAccess", [id, exam]);
   }
+  async prepareMonitoring(): Promise<boolean> {
+    return this.rpc("prepareMonitoring", []);
+  }
   command(op: string, body: any = {}): Promise<any> {
     return this.rpc("command", [op, body]);
+  }
+  async changeInputEpochs(attempt: string, epochs: Record<string, string>) {
+    const channels = [...this.panes].map(
+      ([id, pane]) => [id, pane as unknown as RemotePane] as const,
+    );
+    const instances = Object.fromEntries(
+      channels.map(([id, pane]) => [id, pane.ipcInstance]),
+    );
+    const result = (await this.rpc("changeInputEpochs", [
+      attempt,
+      epochs,
+      instances,
+    ])) as Record<string, { instance: string; epoch: string }>;
+    for (const [id, pane] of channels) {
+      const next = result?.[id];
+      if (
+        !this.alive ||
+        this.panes.get(id) !== (pane as any) ||
+        pane.disposed ||
+        next?.instance !== pane.outputEpoch ||
+        next.epoch !== epochs[id]
+      )
+        throw Error(
+          "Terminal changed during retained continuation; no replacement was reauthorized.",
+        );
+    }
+    for (const [id, pane] of channels) pane.inputEpoch = result[id].epoch;
+    return result;
   }
   async open(attempt: string, pane: string, purpose = "exam") {
     if (this.panes.has(pane)) throw Error("Terminal already opening or open");
@@ -455,6 +489,7 @@ export class IsolatedConnection implements ConnectionHandle {
         )
           throw Error("Invalid native pane input context");
         channel.inputEpoch = result.input_epoch;
+        channel.outputEpoch = result.input_epoch;
       }
       return channel as any;
     } catch (error) {

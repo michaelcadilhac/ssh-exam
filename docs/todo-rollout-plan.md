@@ -11,6 +11,41 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
+The current October23 retained-monitoring integration is a **guarded candidate,
+not an enabled release**. Its installed native admission guard always refuses
+v1; no environment/configuration override is provided. Complete and qualify the
+remaining all-writer/async IO, delayed manager/final-exec, recording-fault/clock
+handover, independent failure, loaded native roles and16/64 capacity boundaries
+before proposing enablement. Passing local regression suites does not satisfy
+those privileged gates. No part of this plan authorizes deployment.
+
+This candidate adds SQLite migration030: existing started attempts are marked
+legacy; v1 runtime and pending/unverified/held/resuming fields are observations
+only. It does not convert active/historical intervals or create a grant/clock.
+Future separately authorized migration must back up schema030, immutable grants/
+claims/intents, continuation/audit history and native workspace/submission/
+consumption/recording/lifetime metadata consistently. First qualify an isolated
+copy with synthetic legacy and new-mode states. Native `grant-begin/v3` and
+`monitoring-continue/v1` need matching loaded gateway, browser JS/WASM, entry,
+coordinator, supervisor and independent watchdog roles; capability strings/new
+files alone do not establish their actual loaded agreement.
+
+An uncertain continuation retains its original attempt/deadline and current
+same-page retry identity. A native-consumed result can finish browser agreement;
+it does not authorize fresh SSH or a new allowance. Never migrate by clearing
+holds, deleting nonces/claims/consumption or restoring a disk observation as live
+permission. Restart requires fresh verification, preserving approved policy.
+
+Rollback must first settle pending launch/Continue outcomes and positively drain
+every new-mode independent owner and needed PTY, alongside canonical,
+live-upgrade and deferred-recovery services described below. Old writers/watchdogs
+do not understand live in-memory cutoffs and may destroy viable sessions or drop
+new state. Do not downgrade or consolidate around them while any needed owner
+remains; keep admission closed and repair forward if compatible rollback cannot
+preserve newer history/clock/protection. The temporary three-agent consolidation
+remains a later, separately authorized, verified-drain operation. Execute none of
+these migration, rollback, service or consolidation actions now.
+
 The challenged-preflight increment requires matching loaded capture JS, gateway
 and native grant-begin/v2 roles. It adds no schema/backfill or persisted permit.
 New pre-start pages must take fresh challenged samples after gateway restart;

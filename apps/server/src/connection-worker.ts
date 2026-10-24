@@ -186,6 +186,24 @@ process.on("message", async (m: any) => {
         case "command":
           result = await connection.command(m.args[0], m.args[1]);
           break;
+        case "prepareMonitoring":
+          result = await connection.prepareMonitoring();
+          break;
+        case "changeInputEpochs": {
+          const [attempt, epochs, instances] = m.args;
+          for (const id of connection.panes.keys())
+            if (!instances?.[id] || paneInstances.get(id) !== instances[id])
+              throw Error(
+                "Terminal instance changed before retained continuation",
+              );
+          result = await connection.changeInputEpochs(attempt, epochs);
+          for (const id of Object.keys(result))
+            if (paneInstances.get(id) !== instances[id])
+              throw Error(
+                "Terminal instance changed during retained continuation",
+              );
+          break;
+        }
         case "open": {
           const [attempt, id, purpose, instance] = m.args;
           const pane = await connection.open(attempt, id, purpose);

@@ -14,24 +14,178 @@ import {
   statSync,
   readdirSync,
 } from "node:fs";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import sharp from "sharp";
 import { Store, hash, now, type Attempt } from "./db.js";
 import { enqueueMonitoringPurge } from "./monitoring-purge-jobs.js";
 import {
   MonitoringChallengeError,
   MonitoringReadiness,
+  type CaptureReadinessSnapshot,
 } from "./monitoring-readiness.js";
+import {
+  MonitoringEvidenceLedger,
+  MonitoringEvidenceUnavailable,
+  type MonitoringEvidenceBinding,
+} from "./monitoring-evidence-ledger.js";
+import {
+  monitoringOwner,
+  nativeMonitoringChallenge,
+  nativeMonitoringContinuation,
+  type MonitoringOwner,
+  type MonitoringBootstrap,
+} from "../../../packages/protocol/monitoring-evidence.js";
+import { monitoringBootTimeMS } from "./monitoring-clock.js";
+import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
 export class Monitoring {
+  // Application wires the existing durable policy-lock workflow. Positive
+  // proof is unavailable without it; an in-memory negative must not disappear
+  // on restart and allow a genuine policy violation to bypass approval.
+  onLivePolicyLoss?: (a: Attempt) => void;
   private readiness = new MonitoringReadiness();
+  private liveLedger: MonitoringEvidenceLedger;
+  private pendingBegins = new Map<
+    string,
+    {
+      bootstrap: MonitoringBootstrap;
+      snapshot: CaptureReadinessSnapshot;
+      intent: string;
+      grant: string;
+      until: number;
+      authorization?: string;
+    }
+  >();
+  private live = new Map<
+    string,
+    {
+      owner: string;
+      settings: string;
+      binding: MonitoringEvidenceBinding;
+      tickets: Map<string, { challenge: string; accepted: boolean }>;
+    }
+  >();
+  private currentLiveOwner(a: Attempt, page: string) {
+    const nativePendingAcknowledgment =
+      a.state === "LOCKED" &&
+      nativeContinuationOutcomeRecorded(a) &&
+      !!this.store.db
+        .prepare(
+          "SELECT 1 FROM continuations WHERE attempt=? AND generation=? AND consumed=1",
+        )
+        .get(a.id, a.generation);
+    if (
+      (a.state !== "ACTIVE" && !nativePendingAcknowledgment) ||
+      !a.registered_owner ||
+      !a.start ||
+      !a.deadline ||
+      !a.original_deadline ||
+      a.protected ||
+      a.checksum ||
+      a.page_hash !== page
+    )
+      return undefined;
+    let raw: unknown;
+    try {
+      raw = JSON.parse(a.registered_owner);
+    } catch {
+      return undefined;
+    }
+    const result = monitoringOwner.safeParse(raw);
+    if (!result.success) return undefined;
+    const owner = result.data;
+    return owner.attempt === a.id &&
+      owner.exam === a.exam &&
+      owner.username === a.username &&
+      owner.uid === a.uid &&
+      owner.page_epoch === page &&
+      owner.generation === a.generation &&
+      owner.clock_revision === a.clock_revision
+      ? owner
+      : undefined;
+  }
+  private liveBinding(a: Attempt, page: string) {
+    const owner = this.currentLiveOwner(a, page);
+    if (!owner) return undefined;
+    const encoded = JSON.stringify(owner),
+      previous = this.live.get(a.id);
+    if (previous?.owner === encoded && previous.settings === a.settings)
+      return previous;
+    // Current native ACTIVE identity comes only from the accepted signed native
+    // outcome in Store. Disk identity starts an EMPTY ledger, never permission.
+    // Retire closed/replaced owners rather than evicting a live owner's facts.
+    for (const [id, entry] of this.live) {
+      const current = this.store.attempt(id);
+      if (
+        !current ||
+        current.settings !== entry.settings ||
+        JSON.stringify(
+          this.currentLiveOwner(current, current.page_hash ?? ""),
+        ) !== entry.owner ||
+        this.store.db
+          .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
+          .get(id)
+      ) {
+        this.liveLedger.retire(entry.binding);
+        this.live.delete(id);
+      }
+    }
+    const entry = {
+      owner: encoded,
+      settings: a.settings,
+      binding: this.liveLedger.registerTrustedOwner(
+        owner,
+        !!JSON.parse(a.settings).webcam,
+      ),
+      tickets: new Map<string, { challenge: string; accepted: boolean }>(),
+    };
+    const pending = this.pendingBegins.get(encoded);
+    if (pending && monitoringBootTimeMS() >= pending.until)
+      this.pendingBegins.delete(encoded);
+    if (
+      pending &&
+      this.pendingBegins.has(encoded) &&
+      pending.intent === a.grant_begin_intent &&
+      pending.grant === a.grant_hash &&
+      pending.snapshot.settings === a.settings &&
+      (!pending.authorization ||
+        pending.authorization === this.continuationIdentity(a, true))
+    ) {
+      try {
+        this.liveLedger.seedValidatedBegin(
+          entry.binding,
+          pending.snapshot,
+          pending.bootstrap.coverage_epoch,
+        );
+      } catch (error) {
+        this.liveLedger.retire(entry.binding);
+        throw error;
+      }
+      for (const [key, value] of this.pendingBegins)
+        if (value.bootstrap.owner.attempt === a.id)
+          this.pendingBegins.delete(key);
+    }
+    this.live.set(a.id, entry);
+    return entry;
+  }
   captureChallenge(a: Attempt, page: string, source: unknown) {
-    this.currentCapture(a, page);
+    a = this.currentCapture(a, page);
     const row = this.store.db
       .prepare(
         "SELECT MAX(seq) seq FROM frames WHERE attempt=? AND source=? AND page_hash=?",
       )
       .get(a.id, source, page) as { seq: number | null };
-    return this.readiness.issue(a, page, source, row.seq ?? 0);
+    const ticket = this.readiness.issue(a, page, source, row.seq ?? 0),
+      live = this.liveBinding(a, page);
+    if (live) {
+      const challenge = this.liveLedger.issueBrowserChallenge(
+        live.binding,
+        ticket.source,
+      );
+      live.tickets.set(ticket.challenge, { challenge, accepted: false });
+      if (live.tickets.size > 32)
+        live.tickets.delete(live.tickets.keys().next().value!);
+    }
+    return ticket;
   }
   challengedFrame(a: Attempt, input: any, page: string) {
     return this.frame(a, input, page, true);
@@ -59,6 +213,199 @@ export class Monitoring {
       throw new MonitoringChallengeError("monitoring_challenge_not_ready");
     return 15000 - evidence.age_ms;
   }
+  beginBootstrap(a: Attempt, owner: MonitoringOwner) {
+    const current = this.currentCapture(a, owner.page_epoch),
+      snapshot = this.readiness.snapshotBeforeStart(current, owner.page_epoch);
+    return this.captureBootstrap(current, owner, snapshot);
+  }
+  private continuationIdentity(a: Attempt, consumed: boolean) {
+    const row = this.store.db
+      .prepare(
+        "SELECT generation,expires,consumed FROM continuations WHERE attempt=?",
+      )
+      .get(a.id) as
+      | { generation: number; expires: number; consumed: number }
+      | undefined;
+    if (
+      !row ||
+      row.generation !== a.generation ||
+      !!row.consumed !== consumed ||
+      (!consumed && row.expires <= now())
+    )
+      return undefined;
+    const issuance = this.store.db
+      .prepare(
+        "SELECT rowid identity FROM audit WHERE target=? AND action IN ('authorize-continuation','automatic-continuation') ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(a.id) as { identity: number } | undefined;
+    if (!issuance) return undefined;
+    return JSON.stringify([row.generation, row.expires, issuance.identity]);
+  }
+  continueBootstrap(input: unknown, agent: string) {
+    const request = nativeMonitoringContinuation.parse(input),
+      a = this.store.attempt(request.owner.attempt);
+    if (
+      !a ||
+      request.agent !== agent ||
+      a.state !== "LOCKED" ||
+      !a.start ||
+      !a.deadline ||
+      a.deadline <= now() ||
+      !a.original_deadline ||
+      a.protected ||
+      a.checksum ||
+      !a.registered_owner ||
+      !this.onLivePolicyLoss
+    )
+      throw new MonitoringEvidenceUnavailable("ownership");
+    const previous = monitoringOwner.parse(JSON.parse(a.registered_owner)),
+      owner = request.owner;
+    if (
+      JSON.stringify(previous) !== JSON.stringify(request.previous_owner) ||
+      owner.attempt !== a.id ||
+      owner.exam !== a.exam ||
+      owner.username !== a.username ||
+      owner.uid !== a.uid ||
+      owner.page_epoch !== a.page_hash ||
+      owner.page_epoch !== previous.page_epoch ||
+      owner.transport_hash !== previous.transport_hash ||
+      owner.boot !== previous.boot ||
+      owner.generation !== a.generation ||
+      owner.generation <= previous.generation ||
+      owner.clock_revision !== a.clock_revision ||
+      owner.input_epoch === previous.input_epoch
+    )
+      throw new MonitoringEvidenceUnavailable("ownership");
+    const authorization = this.continuationIdentity(a, false);
+    if (!authorization)
+      throw new MonitoringEvidenceUnavailable("policy-blocked");
+    const expires = (JSON.parse(authorization) as [number, number])[1],
+      snapshot = this.readiness.snapshotForContinuation(
+        this.currentCapture(a, owner.page_epoch),
+        owner.page_epoch,
+      ),
+      result = this.captureBootstrap(a, owner, snapshot, authorization);
+    return {
+      type: "monitoring-continue/v1",
+      audience: agent,
+      nonce: request.nonce,
+      previous_owner: previous,
+      owner,
+      authorization_expires: expires,
+      expires: Math.min(expires, now() + 30000),
+      capture_valid_for_ms: result.remainingMS,
+      bootstrap: result.bootstrap,
+    };
+  }
+  private captureBootstrap(
+    current: Attempt,
+    owner: MonitoringOwner,
+    snapshot: CaptureReadinessSnapshot,
+    authorization?: string,
+  ) {
+    const encoded = JSON.stringify(owner),
+      now = monitoringBootTimeMS();
+    if (!current.grant_begin_intent || !current.grant_hash)
+      throw new MonitoringEvidenceUnavailable("ownership");
+    for (const [key, pending] of this.pendingBegins)
+      if (now >= pending.until) this.pendingBegins.delete(key);
+    let pending = this.pendingBegins.get(encoded);
+    if (
+      pending &&
+      (pending.intent !== current.grant_begin_intent ||
+        pending.grant !== current.grant_hash ||
+        pending.authorization !== authorization ||
+        pending.snapshot.settings !== current.settings)
+    )
+      throw new MonitoringEvidenceUnavailable("conflict");
+    if (!pending) {
+      if (this.pendingBegins.size >= 512)
+        throw new MonitoringEvidenceUnavailable("capacity");
+      pending = {
+        bootstrap: Object.freeze({
+          type: "monitoring-bootstrap/v1",
+          owner: Object.freeze({ ...owner }),
+          coverage_epoch: randomBytes(32).toString("hex"),
+          sequence: 1,
+        }),
+        snapshot,
+        intent: current.grant_begin_intent,
+        grant: current.grant_hash,
+        until:
+          Math.min(
+            snapshot.policy.issued,
+            ...snapshot.frames.map((f) => f.issued),
+          ) + 15000,
+        authorization,
+      };
+      this.pendingBegins.set(encoded, pending);
+    }
+    const remainingMS = pending.until - now;
+    if (
+      !Number.isSafeInteger(remainingMS) ||
+      remainingMS <= 0 ||
+      remainingMS > 15000
+    )
+      throw new MonitoringEvidenceUnavailable("technical-gap");
+    return { remainingMS, bootstrap: pending.bootstrap };
+  }
+  executionEvidence(input: unknown) {
+    const request = nativeMonitoringChallenge.parse(input),
+      a = this.store.attempt(request.owner.attempt);
+    if (!a || !this.onLivePolicyLoss)
+      throw new MonitoringEvidenceUnavailable("ownership");
+    this.currentCapture(a, request.owner.page_epoch);
+    const entry = this.liveBinding(a, request.owner.page_epoch);
+    if (!entry) throw new MonitoringEvidenceUnavailable("ownership");
+    try {
+      return this.liveLedger.issueForNativeChallenge(entry.binding, request);
+    } catch (error) {
+      if (
+        error instanceof MonitoringEvidenceUnavailable &&
+        error.kind === "policy-blocked"
+      )
+        this.onLivePolicyLoss(a);
+      throw error;
+    }
+  }
+  private confirmCapture(
+    a: Attempt,
+    page: string,
+    input: any,
+    frame: { id: string; hash: string },
+  ) {
+    const observation = this.readiness.confirm(a, page, input, frame),
+      entry = this.live.get(a.id),
+      ticket = entry?.tickets.get(input.challenge);
+    if (
+      entry &&
+      ticket &&
+      !ticket.accepted &&
+      a.settings === entry.settings &&
+      JSON.stringify(this.currentLiveOwner(a, page)) === entry.owner
+    ) {
+      let blocked = false;
+      try {
+        this.liveLedger.confirmValidatedCapture(
+          entry.binding,
+          ticket.challenge,
+          input.source,
+          input.seq,
+          input.readiness,
+        );
+        blocked =
+          this.liveLedger.inspect(entry.binding).state === "policy-blocked";
+      } catch (error) {
+        // Keep the validated JPEG for review even after permission was blocked.
+        // No late/replayed image can replace missing live proof with readiness.
+        if (!(error instanceof MonitoringEvidenceUnavailable)) throw error;
+        blocked = error.kind === "policy-blocked";
+      }
+      ticket.accepted = true; // Exact image retry never refreshes live evidence.
+      if (blocked) this.onLivePolicyLoss?.(a);
+    }
+    return observation;
+  }
   private inflight = 0;
   private instance = randomUUID();
   async frame(a: Attempt, input: any, page: string, challenged = false) {
@@ -74,7 +421,9 @@ export class Monitoring {
   constructor(
     private store: Store,
     private terminalRecordingLimitMiB = 2048,
+    agent = "class",
   ) {
+    this.liveLedger = new MonitoringEvidenceLedger(agent, undefined, 512);
     if (
       !Number.isSafeInteger(terminalRecordingLimitMiB) ||
       terminalRecordingLimitMiB < 1 ||
@@ -156,7 +505,7 @@ export class Monitoring {
           throw new MonitoringChallengeError("monitoring_challenge_conflict");
         return {
           ...previous,
-          monitoring: this.readiness.confirm(current, page, input, previous),
+          monitoring: this.confirmCapture(current, page, input, previous),
         };
       }
       return previous;
@@ -214,7 +563,7 @@ export class Monitoring {
     return challenged
       ? {
           ...result,
-          monitoring: this.readiness.confirm(
+          monitoring: this.confirmCapture(
             this.currentCapture(a, page),
             page,
             input,

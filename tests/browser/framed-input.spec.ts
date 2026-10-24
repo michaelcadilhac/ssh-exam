@@ -78,6 +78,10 @@ test("real WASM keeps captured input epochs across a delayed write and same-pane
     };
   });
   await page.goto("/");
+  expect(
+    (await (await page.request.get("/api/login-test")).json()).browserSSH,
+    "This workflow requires EXAM_BROWSER_SSH=1; Node fallback cannot qualify WASM framing",
+  ).toBe(true);
   await page.getByLabel("Exam ID", { exact: true }).fill("framed-input");
   await page.getByLabel("Enrolled username").fill("framed01");
   await page
@@ -104,15 +108,36 @@ test("real WASM keeps captured input epochs across a delayed write and same-pane
     await page.request.get("/api/fixture/runtime")
   ).json();
   // Actual resize frames show that both loaded WASM and native negotiation ran.
-  await expect
-    .poll(
-      async () =>
-        (
-          await (await page.request.get("/api/fixture/runtime")).json()
-        ).framedInput.accepted.some((f: any) => f.kind === 1),
-      { timeout: 5000 },
-    )
-    .toBe(true);
+  try {
+    await expect
+      .poll(
+        async () =>
+          (
+            await (await page.request.get("/api/fixture/runtime")).json()
+          ).framedInput.accepted.some((f: any) => f.kind === 1),
+        { timeout: 5000 },
+      )
+      .toBe(true);
+  } catch (error) {
+    console.info(
+      "FRAMED_RESIZE_STAGE",
+      JSON.stringify({
+        runtime: await (await page.request.get("/api/fixture/runtime")).json(),
+        probe: await page.evaluate(() => ({
+          operations: (window as any).__framedInputProbe.operations,
+          events: (window as any).__framedInputProbe.events,
+        })),
+      }),
+    );
+    await test.info().attach("framed-resize-stage", {
+      contentType: "application/json",
+      body: JSON.stringify({
+        runtime: await (await page.request.get("/api/fixture/runtime")).json(),
+        probe: await page.evaluate(() => (window as any).__framedInputProbe),
+      }),
+    });
+    throw error;
+  }
   await page.evaluate(() => {
     (window as any).__framedInputProbe.armed = true;
   });

@@ -79,6 +79,13 @@ func (e *Engine) ordinaryAccess(uid int) error {
 	}
 	return nil
 }
+func nativeLeaseMetadataAllowsAdmission(a *Attempt) bool {
+	if a.MonitoringMode == "v1" {
+		return currentRegisteredOwner(a) && a.RetainedHold == ""
+	}
+	return a.Lease > Millis()
+}
+
 func workloadAllowed(a *Attempt, purpose string) error {
 	if a.PreparationPending {
 		return errors.New("preflight checks still pending; no workload admitted; retry preflight after checks settle")
@@ -86,7 +93,7 @@ func workloadAllowed(a *Attempt, purpose string) error {
 	if purpose == "practice" && a.State == "PREPARING" && a.Start == 0 && !preflightExpired(a, Millis()) {
 		return nil
 	}
-	if (purpose == "exam" || purpose == framedPanePurpose) && a.State == "ACTIVE" && !expired(a) && a.Lease > Millis() && a.AccessState == "HELD" {
+	if isTimedPanePurpose(purpose) && a.State == "ACTIVE" && !expired(a) && nativeLeaseMetadataAllowsAdmission(a) && a.AccessState == "HELD" {
 		return nil
 	}
 	return errors.New("workload not admitted; ended, locked or stale channel")

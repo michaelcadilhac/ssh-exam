@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-// Signed H2b/H3 evidence/renewal/thaw remains UNWIRED. The owner schema also
+// The authenticated gateway capture/evidence route uses this contract; native
+// live renewal/thaw consumption remains unintegrated. The owner schema also
 // describes registered identity in the live pane path; identity is NOT native
 // execution authorization and cannot reconstruct a monitoring permit from disk.
 export const MONITORING_EVIDENCE_WINDOW_MS = 15_000;
@@ -49,6 +50,28 @@ export const monitoringEvidence = z
   .strict();
 export type MonitoringOwner = z.infer<typeof monitoringOwner>;
 export type MonitoringEvidence = z.infer<typeof monitoringEvidence>;
+
+// Provisional pre-start observation. It cannot authorize work before native
+// durable ACTIVE commit, exclusive live ownership and kernel peer verification.
+export const monitoringBootstrap = z
+  .object({
+    type: z.literal("monitoring-bootstrap/v1"),
+    owner: monitoringOwner,
+    coverage_epoch: digest,
+    sequence: z.literal(1),
+  })
+  .strict();
+export type MonitoringBootstrap = z.infer<typeof monitoringBootstrap>;
+
+export const nativeMonitoringContinuation = z
+  .object({
+    type: z.literal("monitoring-continue/v1"),
+    agent: name,
+    nonce: digest,
+    previous_owner: monitoringOwner,
+    owner: monitoringOwner,
+  })
+  .strict();
 
 export const nativeMonitoringChallenge = z
   .object({

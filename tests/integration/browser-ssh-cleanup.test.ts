@@ -82,6 +82,98 @@ it("refuses mismatched framed receipts and stale EOF without losing a healthy pa
   expect(closed).toHaveBeenCalledOnce();
   conn.close();
 });
+it("retained continuation rotates only the existing physical channel, with idempotent retry and stable EOF", async () => {
+  const original = "a".repeat(64),
+    next = "b".repeat(64);
+  const { conn, pane, socket, messages } = await setup(original);
+  try {
+    const pending = conn.changeInputEpochs("attempt", { pane: next });
+    await Promise.resolve();
+    const change = messages.at(-1);
+    expect(change).toMatchObject({
+      op: "change-input-epoch",
+      args: {
+        pane: "pane",
+        previous: original,
+        next,
+        instance: original,
+      },
+    });
+    expect(pane.inputEpoch).toBe(original);
+    conn.receive({ type: "browser-result", id: change.id, result: {} });
+    expect(await pending).toEqual({
+      pane: { instance: original, epoch: next },
+    });
+    expect(pane.inputEpoch).toBe(next);
+    expect(pane.outputEpoch).toBe(original);
+    pane.writeInputFrame({ epoch: next, sequence: 1 }, "fresh");
+    expect(() =>
+      pane.writeInputFrame({ epoch: original, sequence: 2 }, "stale"),
+    ).toThrow("Stale native pane input");
+    const requests = messages.filter(
+      (m) => m.type === "browser-request",
+    ).length;
+    await conn.changeInputEpochs("attempt", { pane: next });
+    expect(messages.filter((m) => m.type === "browser-request")).toHaveLength(
+      requests,
+    );
+    conn.receive({
+      type: "browser-pane-closed",
+      pane: "pane",
+      pane_instance: original,
+      input_epoch: original,
+    });
+    expect(conn.panes.size).toBe(0);
+    expect(conn.alive).toBe(true);
+    expect(socket.close).not.toHaveBeenCalled();
+  } finally {
+    conn.close();
+  }
+});
+
+it("a retained native reply cannot reauthorize a replacement pane or a foreign attempt", async () => {
+  const original = "a".repeat(64);
+  const { conn, pane, messages } = await setup(original);
+  try {
+    await expect(async () =>
+      conn.changeInputEpochs("foreign", { pane: "b".repeat(64) }),
+    ).rejects.toThrow("agreement is incomplete");
+    const pending = conn.changeInputEpochs("attempt", { pane: "b".repeat(64) });
+    const refused = expect(pending).rejects.toThrow("Terminal changed");
+    await Promise.resolve();
+    const change = messages.at(-1);
+    pane.dispose();
+    const fresh = await conn.open("attempt", "pane");
+    conn.receive({ type: "browser-result", id: change.id, result: {} });
+    await refused;
+    expect(conn.panes.get("pane")).toBe(fresh);
+    expect(fresh.inputEpoch).toBe(original);
+  } finally {
+    conn.close();
+  }
+});
+
+it("retained Begin refuses mixed loaded browser/WASM versions before requesting a clock", async () => {
+  const { conn, command } = await setup("a".repeat(64));
+  try {
+    expect(await conn.prepareMonitoring()).toBe(false); // Existing legacy roles.
+    const role = conn as any;
+    role.retainedMonitoringRequired = true;
+    await expect(conn.prepareMonitoring()).rejects.toThrow(
+      "no new clock has started",
+    );
+    role.framedPaneInput = role.framedInputSupported = true;
+    await expect(conn.prepareMonitoring()).rejects.toThrow(
+      "no new clock has started",
+    );
+    role.retainedInputSupported = true;
+    expect(await conn.prepareMonitoring()).toBe(true);
+    expect(command).toHaveBeenCalledTimes(1); // Only original pane admission.
+  } finally {
+    conn.close();
+  }
+});
+
 it("a current-owner receipt refusal never exposes the native pane and closes only that channel", async () => {
   const { conn, pane, messages, authority } = await setup();
   pane.dispose();
