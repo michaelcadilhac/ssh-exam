@@ -8,6 +8,17 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October24 retained-recording correction is implemented/tested locally: actual
+faults after approved Continues were incorrectly dismissed as old generations.
+Explicit negative-only association now follows durable authorized Continue;
+refused cancellation preserves associations and remains unverified/retryable.
+Full native races/resources PASS core520.605s/CLI30.752s; fresh guarded root29
+assertions/FULL host preservation PASS, including actual recorder I/O failure and
+pinned supervisor death after Continue. No clock/hold/history changed. Broader
+coordinator/control-death, last-child/partial-thaw/role and combined capture/root
+16/64 acceptance remain open; guard OFF. No deployment or broad checkbox closure.
+See docs/terminal-recording-faults.md for failures, exact artifacts and evidence.
+
 October24 local saved-source milestone: individual reviewed issuance now connects
 web/CLI pending grants to root source-sync, durable archive pins/deletion fences,
 private verified restore and a separate full allowance only at fresh Begin. All574

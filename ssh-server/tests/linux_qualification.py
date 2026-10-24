@@ -284,8 +284,48 @@ def qualify_saved_source_grant(original):
         connection.input(pane,"IFS= read -r saved < /work/retained-editor.txt; printf 'SAVED-%s:END\\n' \"$saved\"\n")
         read_until(pane,('SAVED-'+saved.decode().splitlines()[0]+':END').encode(),timeout=3)
         ok('actual additional saved-work grant restores archived Nano bytes instead of the changed old live folder and starts its separate full ninety-minute interval only at Begin')
-        connection.input(pane,'exit\n');pane.wait(timeout=5)
-        connection.command('close-pane',{'id':id,'pane':pane.native_pane})
+        work_directory=pathlib.Path(config['work'])/id/'work'
+        writer_code="import signal,time\nsignal.signal(signal.SIGHUP,signal.SIG_IGN)\nf=open('/work/owner-death-writer','ab',buffering=0)\nwhile True:\n f.write(b'x');time.sleep(.005)"
+        connection.input(pane,'python3 -c '+shlex.quote(writer_code)+" & writer=$!; printf '%s' \"$writer\" > /work/owner-death.pid; printf 'SAVED-OWNER-WRITER:END\\n'\n")
+        read_until(pane,b'SAVED-OWNER-WRITER:END',timeout=3)
+        writer_file=work_directory/'owner-death-writer'
+        wait_for(lambda:writer_file.exists() and writer_file.stat().st_size>0,timeout=3,interval=.02)
+        root('examctl','pause',id,'--reason','Private saved-work owner-death qualification')
+        paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
+        active=retained_continue(connection,id,paused,active['registered_owner'],[pane],active)
+        size=writer_file.stat().st_size
+        wait_for(lambda:writer_file.stat().st_size>size,timeout=2,interval=.02)
+        owner=json.loads(root('examctl','panes','supervisor',id))
+        assert owner['attached_panes']==1 and owner['registered_owner']==active['registered_owner']
+        scope=next(unit for unit in owner['attached_units'] if pane.native_pane in unit)
+        namespace_pid=(work_directory/'owner-death.pid').read_text()
+        writers=[]
+        for pid in (pathlib.Path('/sys/fs/cgroup/exam.slice')/scope/'cgroup.procs').read_text().split():
+            status=dict(line.split(':',1) for line in (pathlib.Path('/proc')/pid/'status').read_text().splitlines() if ':' in line)
+            if status['NSpid'].split()[-1]==namespace_pid and int(status['Uid'].split()[0])==account.pw_uid:writers.append(int(pid))
+        assert len(writers)==1,'HUP-ignoring writer not positively identified in its real owned scope'
+        writer_handle=os.pidfd_open(writers[0])
+        try:
+            signal.pidfd_send_signal(writer_handle,0)
+            supervisor_handle=os.pidfd_open(owner['pid'])
+            try:
+                supervisor_proc=pathlib.Path('/proc')/str(owner['pid'])
+                assert (supervisor_proc/'cgroup').read_text().strip()=='0::/examterminal.slice/'+owner['supervisor']
+                assert os.path.samefile(supervisor_proc/'exe','/run/ssh-exam-qualification-input/core-qualification.test')
+                signal.pidfd_send_signal(supervisor_handle,0)
+                signal.pidfd_send_signal(supervisor_handle,signal.SIGKILL) # Exact pinned disposable owner only.
+                owner_exit=select.poll();owner_exit.register(supervisor_handle,select.POLLIN)
+                assert owner_exit.poll(3000),'pinned supervisor did not exit after the injected SIGKILL'
+            finally:os.close(supervisor_handle)
+            exited=select.poll();exited.register(writer_handle,select.POLLIN)
+            assert exited.poll(8000),'verified supervisor death left its HUP-ignoring writer alive'
+            pane.wait(timeout=8)
+            wait_for(lambda:info(id)['state']=='LOCKED' and info(id)['reason']=='Class-server terminal recording failure',timeout=8,interval=.05)
+            failed=info(id)
+            assert failed['generation']==active['generation']+1
+            assert all(failed[k]==active[k] for k in ('start','deadline','original_deadline','grant','registered_owner','access_state'))
+            ok('actual supervisor SIGKILL after approved saved-work Continue contains the pinned HUP-ignoring writer and enforces owner loss without changing allowance/hold')
+        finally:os.close(writer_handle)
         root('examctl','stop',id,'--reason','Private synthetic saved grant protected completion')
         wait_for(lambda:info(id)['state']=='COMPLETED' and info(id)['protected'],timeout=45)
         finished,archive,checksum=secure(id)
@@ -610,6 +650,26 @@ if a.framed_owner or a.retained_policy:
                         else:io_baseline=completed
                     finally:
                         for descriptor in fifo_handles:os.close(descriptor)
+
+            # A recorder's immutable identity predates all approved Continues.
+            # Its real failure must still affect this exact current attempt,
+            # never be dismissed merely because its original generation is old.
+            before_fault=info(id)
+            reports=json.loads(root('examctl','panes','reports',id))
+            tracking=next(p for p in reports['pending_captured'] if p['pane']==fresh.native_pane)
+            assert tracking['recording_generation']<before_fault['generation']
+            assert tracking['continued_generation']==before_fault['generation']
+            recording=pathlib.Path(config['state'])/'monitoring'/id/(fresh.native_pane+'.ndjson')
+            metadata=recording.lstat()
+            assert stat.S_ISREG(metadata.st_mode) and metadata.st_mode&0o777==0o600 and metadata.st_uid==0 and metadata.st_nlink==1
+            recording.unlink() # Only this disposable synthetic log; pinned link count becomes zero.
+            connection.input(fresh,"printf 'ACTUAL-CONTINUED-RECORDING-FAULT\\n'\n")
+            wait_for(lambda:info(id)['state']=='LOCKED' and info(id)['reason']=='Class-server terminal recording failure',timeout=8,interval=.05)
+            failed=info(id)
+            assert failed['generation']==before_fault['generation']+1
+            assert all(failed[k]==before_fault[k] for k in ('start','deadline','original_deadline','grant','registered_owner','access_state'))
+            wait_for(lambda:fresh.poll() is not None,timeout=5,interval=.05)
+            ok('actual continued recording fault is enforced through CLI reconciliation with unchanged original clocks/grant/hold; no old-generation false dismissal')
         else:
             wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
             assert info(id)['state']=='LOCKED'

@@ -73,18 +73,35 @@ func (e *Engine) finishRetainedPause(id string) (any, error) {
 		}
 		a.RetainedHold = "unverified"
 		if verified {
-			a.RetainedHold = "held"
-			a.ResumeTransport = a.Transport
 			if result.HeldOwner != nil && *result.HeldOwner != *a.RegisteredOwner {
 				old, held := *a.RegisteredOwner, *result.HeldOwner
 				old.Generation, held.Generation, old.InputEpoch, held.InputEpoch = 0, 0, "", ""
 				if old != held || result.HeldOwner.Generation > a.Generation {
 					return errMonitoringScope
 				}
+				// The supervisor positively retained the previous owner: cancel
+				// the unexecuted Continue's fault association in the same durable
+				// transaction, so a later NEW approval follows the real recorder.
+				// WithState saves on error too: validate ALL records first.
+				continued := make(map[string]PaneInstance, len(a.Units))
+				for _, unit := range a.Units {
+					pane := e.state.PaneInstances[unit]
+					if pane.RecordingContinuedGeneration != a.RegisteredOwner.Generation || pane.RecordingIdentity.Attempt != a.ID ||
+						pane.RecordingIdentity.Unit != unit || pane.Recording != pane.RecordingIdentity.hash() {
+						return errMonitoringScope
+					}
+					pane.RecordingContinuedGeneration = result.HeldOwner.Generation
+					continued[unit] = pane
+				}
+				for unit, pane := range continued {
+					e.state.PaneInstances[unit] = pane
+				}
 				owner := *result.HeldOwner
 				a.RegisteredOwner, a.MonitoringResumeNonce = &owner, ""
 				e.Audit("cancelled-unexecuted-retained-continuation", a.ID)
 			}
+			a.RetainedHold = "held"
+			a.ResumeTransport = a.Transport
 		} else {
 			a.Errors = appendError(a.Errors, errTerminalHold.Error())
 		}

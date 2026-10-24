@@ -17,17 +17,19 @@ const terminalRecordingReportLimit = 32 * 1024
 const terminalRecordingReportEntries = 16
 
 type TerminalRecordingReportView struct {
-	Pane              string `json:"pane"`
-	Unit              string `json:"unit"`
-	Owner             string `json:"owner"`
-	Version           uint64 `json:"version"`
-	At                int64  `json:"at"`
-	Fault             string `json:"fault"`
-	FaultStage        string `json:"fault_stage,omitempty"`
-	Closed            bool   `json:"closed"`
-	RecordingComplete bool   `json:"recording_complete"`
-	CleanupComplete   bool   `json:"cleanup_complete"`
-	DeliveryComplete  bool   `json:"delivery_complete"`
+	Pane                string `json:"pane"`
+	Unit                string `json:"unit"`
+	Owner               string `json:"owner"`
+	Version             uint64 `json:"version"`
+	At                  int64  `json:"at"`
+	Fault               string `json:"fault"`
+	FaultStage          string `json:"fault_stage,omitempty"`
+	Closed              bool   `json:"closed"`
+	RecordingComplete   bool   `json:"recording_complete"`
+	CleanupComplete     bool   `json:"cleanup_complete"`
+	DeliveryComplete    bool   `json:"delivery_complete"`
+	Generation          int    `json:"recording_generation"`
+	ContinuedGeneration int    `json:"continued_generation,omitempty"`
 }
 
 type TerminalRecordingReportsSnapshot struct {
@@ -50,7 +52,7 @@ func ObserveTerminalRecordingReports(state, id string) (TerminalRecordingReports
 			result.CanonicalAvailable = true
 			for unit, proof := range captured.PaneInstances {
 				if proof.Attempt == id && proof.Recording != "" {
-					result.PendingCaptured = append(result.PendingCaptured, TerminalRecordingReportView{Pane: proof.Pane, Unit: unit, Owner: proof.RecordingOwner, Version: proof.RecordingRevision, Closed: proof.RecordingClosed})
+					result.PendingCaptured = append(result.PendingCaptured, TerminalRecordingReportView{Pane: proof.Pane, Unit: unit, Owner: proof.RecordingOwner, Version: proof.RecordingRevision, Closed: proof.RecordingClosed, Generation: proof.RecordingIdentity.Generation, ContinuedGeneration: proof.RecordingContinuedGeneration})
 				}
 			}
 			sort.Slice(result.PendingCaptured, func(i, j int) bool { return result.PendingCaptured[i].Unit < result.PendingCaptured[j].Unit })
@@ -82,7 +84,7 @@ func ObserveTerminalRecordingReports(state, id string) (TerminalRecordingReports
 			result.UnknownEntries++
 			continue
 		}
-		result.Reports = append(result.Reports, TerminalRecordingReportView{Pane: report.Context.Pane, Unit: report.Context.Unit, Owner: report.Owner, Version: report.Version, At: report.At, Fault: report.Fault, FaultStage: report.FaultStage, Closed: report.Closed, RecordingComplete: report.RecordingComplete, CleanupComplete: report.CleanupComplete, DeliveryComplete: report.DeliveryComplete})
+		result.Reports = append(result.Reports, TerminalRecordingReportView{Pane: report.Context.Pane, Unit: report.Context.Unit, Owner: report.Owner, Version: report.Version, At: report.At, Fault: report.Fault, FaultStage: report.FaultStage, Closed: report.Closed, RecordingComplete: report.RecordingComplete, CleanupComplete: report.CleanupComplete, DeliveryComplete: report.DeliveryComplete, Generation: report.Context.Generation})
 	}
 	sort.Slice(result.Reports, func(i, j int) bool { return result.Reports[i].Unit < result.Reports[j].Unit })
 	return result, nil

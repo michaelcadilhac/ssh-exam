@@ -45,7 +45,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "clock-live", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -205,7 +205,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				t.Fatal(err)
 			}
 			testActualSharedCutoffWatch(t, e, a)
-			if mode == "clock-live" {
+			if mode == "clock-live" || mode == "clock-recording-fault" {
 				// The public signed clock operation must use actual live authority,
 				// not the deliberately stale durable lease verified just above.
 				request := resetRequest(a)
@@ -555,6 +555,17 @@ func stageActualMonitoredLaunch(t *testing.T, e *Engine, key ed25519.PrivateKey,
 
 func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKey, a *Attempt, mode string, authorize func(int32)) {
 	t.Helper()
+	reconciled := make(chan struct{}, 1)
+	if strings.Contains(mode, "recording-fault") {
+		e.terminalFailureCheckpoint = func(stage string) {
+			if stage == "after-state" {
+				select {
+				case reconciled <- struct{}{}:
+				default:
+				}
+			}
+		}
+	}
 	// The bootstrap-only fixture deliberately omits the filesystem view. This
 	// pane continuation needs the real synthetic home snapshot as well.
 	account := e.Config.Accounts[a.Username]
@@ -670,7 +681,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	if err != nil {
 		t.Fatal("verified live authority did not admit actual shell input", err)
 	}
-	if mode == "clock-live" {
+	if mode == "clock-live" || mode == "clock-recording-fault" {
 		// Stop only this fixture's producer so the transfer oracle cannot mistake
 		// an unrelated fresh renewal for facts carried by the clock operation.
 		e.stopTerminalMonitoring()
@@ -943,7 +954,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		t.Fatal("administrator pause claimed a hold without actual kernel freeze", err)
 	}
 	inspectCLI("held", 0)
-	if mode == "clock-live" {
+	if mode == "clock-live" || mode == "clock-recording-fault" {
 		request := resetRequest(held)
 		request.ResetID, request.RemainingSeconds, request.ExtendSeconds = ManagementID(), 0, 60
 		clock := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "reset-clock", Username: a.Username, Transport: a.Transport, Body: request}
@@ -993,7 +1004,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		}
 	}
 	heldSequence := uint64(2)
-	if mode == "clock-live" {
+	if mode == "clock-live" || mode == "clock-recording-fault" {
 		heldSequence = 3
 	}
 	write(heldSequence, 0, []byte("finish\n"))
@@ -1078,6 +1089,45 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		}
 	} else if mode == "pending-resume-cancel" {
 		authorize(0)
+		// WithState deliberately persists even when a callback refuses. Put an
+		// invalid SECOND private record after the real pane: cancellation must
+		// not partly roll back the first pane's association, stranding retry.
+		ghost := fmt.Sprintf("exam-%s-%s-%s.scope", a.ID, ManagementID(), ManagementID())
+		if err := e.WithState(func() error {
+			current := e.state.Attempts[a.ID]
+			if len(current.Units) != 1 {
+				return fmt.Errorf("refusal fixture requires exactly one actual pane")
+			}
+			current.Units = append(current.Units, ghost)
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.Admin("pause", a.ID, "private cancellation refusal with inconsistent second pane"); err == nil {
+			t.Fatal("inconsistent cancellation unexpectedly succeeded")
+		}
+		refused, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current := refused.Attempts[a.ID]
+		actual := refused.PaneInstances[current.Units[0]]
+		if actual.RecordingContinuedGeneration != current.RegisteredOwner.Generation {
+			t.Fatal("refused cancellation partially changed an earlier real pane association", actual.RecordingContinuedGeneration, current.RegisteredOwner.Generation)
+		}
+		if current.State != "LOCKED" || current.RetainedHold != "unverified" || current.ResumeTransport != "" {
+			t.Fatal("refused cancellation claimed a canonical hold or resume entitlement", current)
+		}
+		if err := e.WithState(func() error {
+			current := e.state.Attempts[a.ID]
+			if len(current.Units) != 2 || current.Units[1] != ghost {
+				return fmt.Errorf("private inconsistent record changed before fixture repair")
+			}
+			current.Units = current.Units[:1] // Only the injected record; no real scope removed.
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
 		cancelled, err := e.Admin("pause", a.ID, "explicitly cancel unexecuted pending Continue")
 		if err != nil {
 			t.Fatal("explicit pending Continue cancellation did not verify the existing hold", err)
@@ -1131,7 +1181,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	if value, err := e.Command(signedCommand(key, stalePause), a.Username, a.Transport); err != nil || value.(*Attempt).State != "ACTIVE" {
 		t.Fatal("delayed original pause revoked a successfully continued owner", value, err)
 	}
-	if mode == "clock-live" {
+	if mode == "clock-live" || mode == "clock-recording-fault" {
 		request := resetRequest(active)
 		request.ResetID, request.RemainingSeconds, request.ExtendSeconds = ManagementID(), 0, 60
 		clock := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "reset-clock", Username: a.Username, Transport: a.Transport, Body: request}
@@ -1180,6 +1230,77 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	again, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
 	if err != nil || line(again) != line(beforeMemory) {
 		t.Fatal("second hold/Continue lost the same shell memory", again, err)
+	}
+	if strings.Contains(mode, "recording-fault") {
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		before := *state.Attempts[a.ID]
+		found := false
+		for _, proof := range state.PaneInstances {
+			if proof.Attempt == a.ID && proof.Pane == finalID && proof.ReadyAt > 0 && !proof.RecordingClosed {
+				found = proof.RecordingIdentity.Generation < before.Generation
+			}
+		}
+		if !found || before.State != "ACTIVE" || !currentRegisteredOwner(&before) {
+			t.Fatal("fixture did not retain the original recording across actual approved generations", before)
+		}
+		observed, err := ObserveTerminalRecordingReports(e.Config.State, a.ID)
+		if err != nil || !observed.CanonicalAvailable || len(observed.PendingCaptured) != 1 ||
+			observed.PendingCaptured[0].ContinuedGeneration != before.Generation || observed.PendingCaptured[0].Generation >= before.Generation {
+			t.Fatal("operator report does not expose durable original/continued recording generations", observed, err)
+		}
+		if mode == "recording-fault-replacement" {
+			// As in the legacy stale-owner control, replace only this private
+			// fixture's canonical generation. It has no authorized association
+			// to the old recorder, even with otherwise identical account fields.
+			if err := e.WithState(func() error {
+				current := e.state.Attempts[a.ID]
+				current.Generation++
+				owner := *current.RegisteredOwner
+				owner.Generation = current.Generation
+				current.RegisteredOwner = &owner
+				before = *current
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		// Unlink only this synthetic pane's pinned log. Its zero link count
+		// makes the actual capture append fail, before any output is delivered.
+		if err := os.Remove(filepath.Join(e.Config.State, "monitoring", a.ID, finalID+".ndjson")); err != nil {
+			t.Fatal(err)
+		}
+		write(2, 0, []byte("check\n"))
+		select {
+		case <-reconciled:
+		case <-time.After(5 * time.Second):
+			t.Fatal("actual continued recorder fault did not reach canonical reconciliation")
+		}
+		after, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		failed := after.Attempts[a.ID]
+		if mode == "recording-fault-replacement" {
+			if failed.State != "ACTIVE" || failed.Generation != before.Generation || failed.Reason != before.Reason {
+				t.Fatal("retired continued recorder fault locked an unrelated generation", failed)
+			}
+		} else if failed.State != "LOCKED" || failed.Generation != before.Generation+1 || failed.Reason != "Class-server terminal recording failure" {
+			t.Fatal("continued current recorder fault was retired instead of enforced", failed)
+		}
+		if failed.Start != before.Start || failed.Deadline != before.Deadline || failed.OriginalDeadline != before.OriginalDeadline || failed.AccessState != before.AccessState {
+			t.Fatal("recording fault changed the allowance or original account hold", failed)
+		}
+		if err := client.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		var ended map[string]any
+		if err := json.NewDecoder(client).Decode(&ended); err != nil || !strings.Contains(fmt.Sprint(ended["error"]), "no student violation") {
+			t.Fatal("actual continued pane fault did not report an infrastructure error", ended, err)
+		}
+		return
 	}
 	// Explicit close uses the normal terminal EOF cleanup; no test sends a
 	// student-UID-wide signal or pretends input revocation proves writer freeze.

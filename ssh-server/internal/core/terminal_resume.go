@@ -387,6 +387,30 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 		if current.State != a.State || current.Generation != a.Generation || current.RegisteredOwner == nil || *current.RegisteredOwner != *a.RegisteredOwner || current.RetainedHold != a.RetainedHold || current.MonitoringResumeNonce != a.MonitoringResumeNonce || current.ResumeTransport != a.Transport || current.Start != a.Start || current.Deadline != a.Deadline || current.OriginalDeadline != a.OriginalDeadline || current.ClockRevision != a.ClockRevision || !reflect.DeepEqual(current.Units, a.Units) || expired(current) || proof.AuthorizationExpires <= Millis() {
 			return errMonitoringScope
 		}
+		// Keep the immutable recorder/report identity. Only the reviewed,
+		// signed same-pane Continue carries its negative fault association to
+		// the new generation, in the SAME durable transaction as that owner.
+		continued := make(map[string]PaneInstance, len(current.Units))
+		for _, unit := range current.Units {
+			pane := e.state.PaneInstances[unit]
+			identity := pane.RecordingIdentity
+			generation := identity.Generation
+			if pane.RecordingContinuedGeneration != 0 {
+				generation = pane.RecordingContinuedGeneration
+			}
+			if pane.Attempt != current.ID || pane.ReadyAt == 0 || pane.Cancelled || pane.RecordingClosed ||
+				!identity.valid() || identity.Unit != unit || identity.Attempt != current.ID || identity.Pane != pane.Pane ||
+				identity.Username != current.Username || identity.UID != current.UID || identity.Boot != current.Boot ||
+				identity.Start != current.Start || identity.TransportHash != Hash([]byte(current.Transport)) ||
+				pane.Recording != identity.hash() || (generation != p.PreviousOwner.Generation && !(recovering && generation == p.Owner.Generation)) || p.InputEpochs[pane.Pane] == "" {
+				return errMonitoringScope
+			}
+			pane.RecordingContinuedGeneration = p.Owner.Generation
+			continued[unit] = pane
+		}
+		for unit, pane := range continued {
+			e.state.PaneInstances[unit] = pane
+		}
 		owner := p.Owner
 		current.State, current.RetainedHold, current.RegisteredOwner, current.Authorization = "ACTIVE", "resuming", &owner, 0
 		current.MonitoringHoldKind = ""

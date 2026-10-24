@@ -676,3 +676,24 @@ client artifacts. Final43 Python checks, matched build/types/vet pass. The later
 CLI catalog-contention test/control changes no root artifact/runtime contract;
 its final focus supplements the unchanged broad evidence without rerunning it.
 No retained guard enablement or broad liveness completion is claimed.
+
+
+## October24 current recording-fault milestone
+
+Actual retained Begin -> framed pane -> two policy holds/fresh Continues -> real
+capture I/O failure reproduced an ACTIVE-state false negative (RED4.883s). The
+candidate preserves immutable recorder identity and carries only its negative
+fault association in the durable authorized Continue transaction. Verified
+cancellation restores the previous association; no disk field grants work.
+Focused40.726s races pass continued/clock faults, replacement refusal and pending
+cancel/expiry. Existing entry `examctl panes reports` exposes both generations.
+Detailed state review and exact retained failures: terminal-recording-faults.md.
+Final native race/resource/compiler/default-size qualification PASS core520.605s/
+CLI30.752s; fresh root29 assertions and FULL installed/base preservation PASS.
+Actual supervisor death after saved-work Continue now also contains a positively
+identified pinned HUP-ignoring writer and enforces loss without changing allowance.
+Final refusal/repair test corrected partial cancellation under WithState's
+save-on-error semantics. Detailed failures/final artifacts/state review are in
+terminal-recording-faults.md.43 safety/build/vet checks pass; all runners ended.
+Guard OFF; coordinator/control-death, last-child/partial-thaw/role and combined
+real capture/root16/64 remain. No broad liveness completion/deployment is claimed.

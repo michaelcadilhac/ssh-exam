@@ -43,18 +43,25 @@ func (c terminalRecordingContext) valid() bool {
 
 // Called only under WithState. Runtime callers: the current timed gate's
 // recorder, and C12b's bounded scoped-report consumer in this same milestone.
-// A clock extension does not retire the current recorder; another owner,
-// generation or native incarnation does. No missing record means permission.
+// A clock extension or explicit same-pane retained Continue does not retire the
+// current recorder. Unassociated generations/owners/native incarnations do.
+// No missing record or fault association means execution permission.
 func (e *Engine) recordingFaultLocked(context terminalRecordingContext) error {
 	a := e.state.Attempts[context.Attempt]
 	tracked := false
+	generation := context.Generation
 	if a != nil {
 		for _, unit := range a.Units {
 			tracked = tracked || unit == context.Unit
 		}
+		proof := e.state.PaneInstances[context.Unit]
+		if a.MonitoringMode == "v1" && a.TerminalSupervised && a.BrowserSSH && currentRegisteredOwner(a) &&
+			proof.RecordingIdentity == context && proof.Recording == context.hash() && proof.RecordingContinuedGeneration > context.Generation {
+			generation = proof.RecordingContinuedGeneration
+		}
 	}
 	if !tracked || a.State != "ACTIVE" || expired(a) ||
-		a.Generation != context.Generation || Hash([]byte(a.Transport)) != context.TransportHash ||
+		a.Generation != generation || Hash([]byte(a.Transport)) != context.TransportHash ||
 		a.Username != context.Username || a.UID != context.UID || a.Start != context.Start ||
 		a.Boot != context.Boot || e.state.Registrations[a.Transport] != a.Username ||
 		(!paneInstanceReady(e.state, a, context.Unit, boot()) && !paneInstanceClosed(e.state, a, context.Unit, boot())) {

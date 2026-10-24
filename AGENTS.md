@@ -92,6 +92,10 @@
   For absence/no-start receipts, check contradictory durable workspace, submission
   and consumption evidence before the first broad run; a missing canonical row
   alone is not enough. Catching this late requires requalifying native artifacts.
+- Read persistence-helper failure semantics before treating a callback as a
+  transaction. Native WithState saves mutations even on callback error: validate
+  every affected record before applying any batch change, and test refusal plus
+  repair/retry through the real entry before broad qualification.
 - For independent actor protocols, audit every writer of shared admission/cleanup
   proof. Force benign diagnostic writes and real faults while each readiness,
   reply and acknowledgement handshake is blocked, through the actual entry,

@@ -2773,3 +2773,19 @@ environment enable switch exists. Complete editor/background/async-writer, fault
 clock/role agreement and capacity qualification remains required. The compiled
 private-guest test adapter is never an installed operator recovery path. Current
 state review, exact artifacts and limitations: docs/live-monitoring-runtime.md.
+
+
+### Retained recorder continuity (October24 implemented/tested locally)
+
+An explicitly authorized same-pane Continue carries its immutable recorder's
+negative fault association to the new generation in the same durable owner
+transaction. It never rewrites historical recording identity or grants execution.
+Only positive supervisor confirmation can restore the previous association when
+cancelling an unexecuted Continue. Original generation/transport/UID/start/boot,
+exact tracked pane and current registered owner still fence reconciliation;
+unassociated replacement faults remain retired. Existing `examctl panes reports`
+shows original and continued generations. Refusal validates all records before
+applying changes because native WithState saves on callback error. Actual continued
+I/O failure, supervisor death and cancellation/retry pass full native and fresh
+root qualification. Broader retained admission remains disabled pending remaining
+failure/role/capacity boundaries. See docs/terminal-recording-faults.md.

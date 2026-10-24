@@ -262,3 +262,19 @@ and strengthens the same public SSH/CLI regression to twelve Nano cycles. Keep
 that product defect distinct from fixture errors and retain every failed receipt.
 AGENTS.md now makes producer/final-state/selector review explicit; no speculative
 test framework or new runtime subsystem is justified by these corrections.
+
+
+## October24 cancellation refusal follow-up
+
+Review of the retained-recorder correction caught an avoidable persistence
+assumption after the first full/native-root runs: native WithState saves changed
+state even when its callback returns an error. A two-record cancellation loop
+therefore partly reverted the first association before refusing the second.
+The actual Admin/Continue refusal regression reproduces this (RED4.231s).
+Validate all records into a bounded local batch, then mutate, and publish a held
+receipt only after validation. Repair of only the injected synthetic inconsistency
+must allow normal retry. AGENTS records the precise helper behavior so this
+review belongs BEFORE broad tests, avoiding another artifact/guest cycle. The
+original product bug (actual continued recording loss falsely retired) remains
+distinct from this candidate implementation error. No new runtime framework or
+production change is justified; requalify changed artifacts and keep the guard off.

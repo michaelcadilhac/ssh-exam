@@ -107,7 +107,11 @@ C12b local timed-owner candidate adds native terminal_supervised at fresh Begin,
 recording identity/owner/ack fields in pane_instances and private bounded reports/
 report-consumer claims under terminal-supervisors. Preserve these, monitoring
 logs/quotas, lifetime claims, original intervals/holds and pending outcomes through
-backup/restore. No backfill of active legacy attempts. Future authorized rollout
+backup/restore. This includes the retained recorder's explicit
+recording_continued_generation: older writers must not drop it and silently
+exempt a current recorder fault after Continue. Preserve the immutable original
+recording identity too; never infer continuity by backfilling generations.
+No backfill of active legacy attempts. Future authorized rollout
 must qualify the NEW exact loaded agent/watchdog/bootstrap/supervisor/CLI artifact
 under root hardening, real SSH/PAM/cgroups and storage faults. Inventory independent
 timed AND practice owners with all three canonical/temporary agent services before

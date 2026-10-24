@@ -202,6 +202,9 @@ type PaneInstance struct {
 	RecordingAck      string                   `json:"recording_ack,omitempty"`
 	RecordingRevision uint64                   `json:"recording_revision,omitempty"`
 	RecordingClosed   bool                     `json:"recording_closed,omitempty"`
+	// Only a durably authorized retained Continue carries this exact recorder
+	// forward. Negative fault association only; never execution permission.
+	RecordingContinuedGeneration int `json:"recording_continued_generation,omitempty"`
 	// ClosedUntil is a bounded bootstrap observation, never exec permission.
 	// Only the live parent's final transaction can change it to ReadyAt.
 	ClosedUntil     int64 `json:"closed_until,omitempty"`

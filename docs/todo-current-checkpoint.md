@@ -1,94 +1,58 @@
 # Current local TODO checkpoint
 
-Updated October24,2026 (America/Chicago). Local development/tests/commits only.
-NO push/deployment, consolidation, production services/config/student changes.
-csc-sys only guarded disposable qualification; busy/uncertain means NO TEST.
-Instructor explicitly authorized resuming without optional go tool buildid. Do
-not use/install it. Stop for any other missing executable. All design choices
-C1–C18/clock-fact transfer are settled; no unanswered question. Capacity16/64.
-Checklist17/38 represents overlapping requirements, not an effort percentage.
+Updated October24,2026 (America/Chicago). Local development/testing/commits only.
+NO deployment/push, installed configuration/services/student changes or agent
+consolidation. csc-sys only guarded disposable qualification; uncertain/busy means
+NO TEST. Resume without optional `go tool buildid`; stop for any other missing
+executable. All C1–C18/clock-fact decisions settled; capacity16 students/64 panes.
+Checklist17/38 overlaps and is not an effort percentage.
 
-## Validated revision and delivered local workflows
+## Validated milestone
 
-Main50067c3: durable instructor clock revision preserves identical fresh facts,
-all input gates, supervisor/panes and original restrictions. Worktree branch
-source-grant-retention imports it as1063910 and includes process-doc01ee7e4 and
-1a5c968: parent-first positively observed stops/child-first continuation fix the
-actual Bash/Nano job-control race; the real SSH regression now repeats12 cycles.
-This checkpoint accompanies the validated C18 individual saved-source integration:
-reviewed web/CLI issuance -> PENDING_NATIVE -> root source-sync/show -> durable
-archive pins/deletion fence -> private exact-source staging/fresh full allowance
-at Begin -> protected consumer/explicit pin release. No account/time reservation
-from pending grants; no deadline/UID/history/legacy-consumption weakening.
+This checkpoint accompanies the retained-recording fix after main80facce.
+Actual signed Begin -> framed pane -> repeated policy hold/approved Continue ->
+real capture failure now enforces the current attempt rather than dismissing the
+immutable old generation. Durable Continue carries only negative fault association;
+verified cancellation restores it. Refusal validates ALL records before mutation,
+leaves an unverified hold/no entitlement and supports repair/retry. Recorder,
+transport/UID/incarnation/start/history and original clocks/holds remain fixed.
+Existing examctl panes reports exposes original/continued generations.
 
-Full574 app/103 files PASS301.75s; full uncached native race/resource/compiler/
-default-size PASS core509.239s/CLI29.781s;22 rebuilt real-WASM browser checks
-PASS1.8m;43 Python, matching builds/types/vet PASS. Final root27 assertions PASS,
-including12 Nano cycles, six linked-IO pairs, full90-minute saved restore/Begin,
-collection and preserved access/policy HELD. FULL host/base preservation PASS.
-All runners ended. CLI catalog contention/retry PASS1.288s; omitting native flock
-fails its exact signed-CLI oracle. Removing pin fence fails both deletion entries.
+Full FINAL native races/resources/userns/compiler/default-size PASS core520.605s/
+CLI30.752s, /tmp/ssh-exam-continued-recording-final-native.log (55018 completed0).
+Focused five actual cases PASS40.954s; owner-death focus2.290s;43 safety checks,
+matching builds/vet/diff PASS. Fresh ROOT29 assertions PASS, including repeated
+Nano/linked IO, actual continued I/O failure AND pinned supervisor SIGKILL/HUP
+writer pidfd exit after saved-work Continue. Original-deadline restoration,
+protected retake/pin release and FULL installed host/base preservation PASS.
+All runners ended. /tmp/ssh-exam-continued-recording-pidfd-root.log,41994 completed0;
+private /var/tmp/ssh-exam-overlay-jw4pophr. Exact bundle
+continued-recording-pidfd-artifacts.mrf2qe1x,62,746,415bytes; native hashes
+agentcbd8c731202665a8/core9e78bb5c79285eff, remote
+/var/tmp/ssh-exam-continued-recording-pidfd-upload.SneYJE/bundle.
+Detailed full hashes, state review and failed/corrected earlier receipts are in
+terminal-recording-faults.md. Root capture explicitly synthetic. Guard OFF.
+Unchanged application/client/browser evidence remains575 app/23 browser; no new
+native artifact inherits old qualification. No broad-liveness completion/deploy.
 
-Exact qualified bundle saved-source-ordered-artifacts.x8di_ur3,62,304,810bytes;
-agent7e02717a/core664dc348, remote upload.lotHuS/bundle; private root evidence
-/var/tmp/ssh-exam-overlay-b4ffkxx2. Full hashes/receipts and earlier failed runs
-are in grant-workspace-sources.md/live-monitoring-runtime.md. Synthetic root
-capture is explicit; combined real capture/root16/64 remains open. Use the frozen
-qualified bundle for receipts: subsequent commits alter Go VCS metadata, so a
-fresh binary hash alone is not evidence of changed runtime code or qualification.
-Retained admission stays OFF. No deployment/broad liveness completion is claimed.
+## Exact next action / remaining outcomes
 
-## Current bounded milestone / exact next action
+Commit/merge this validated increment locally from source-grant-retention worktree.
+Then qualify the actual monitored pane running the EXISTING dead-main-thread/
+foreground-worker probe through real CLI policy hold/fresh Continue: positively
+observe its worker, stopped counter and preserved private buffer/foreground/peer.
+No new runtime abstraction needed unless an actual failure proves otherwise.
+Remaining coordinator/control death, last-child/partial-thaw/loaded-role and
+combined real capture/root16/64 acceptance stay open; followed by reviewed native
+legacy migration/retirement, manual workspace cleanup and configuration/full CLI
+journey. Delivery audit reconciles overlapping TODOs. Rollout/migration/rollback
+and temporary three-agent consolidation remain proposals in todo-rollout-plan.md.
 
-Validated increments are committed as1a5c968 (job control) and fb3ea65 (C18),
-merged into main8c7e45a; the development branch fast-forwarded to that merge.
-Only documentation conflicts occurred and the resolved ENTIRE tree matched the
-qualified branch before merge commit. Main's10 images remain untouched. The old
-main checkpoint is preserved in the newest path-only stash; recovery40f1fb64
-is also retained. Never stage the worktree node_modules symlink.
+## Preserved work
 
-BULK saved-source milestone is validated, awaiting coherent local commit/merge
-in var/worktrees/source-grant-retention (branch source-grant-retention).
-Existing additional-preview/confirm now accepts complete per-student source maps;
-root CLI --saved-sources FILE derives/validates explicit users from bounded regular
-CSV, verifies signed review sources; matching web fields/review show each source,
-effective camera and fixed allowance/window. Pending count warning is corrected.
-No new native authority/schema, no core/client code change from8c7e45a.
-
-Focused actual HTTP5 PASS2.18s; second-source-loss atomic rollback PASS1.12s;
-compiled root CLI vs REAL gateway/TLS/restart/lost-confirm/wrong-signed-source/
-CSV refusals PASS7.19s; argument-order race PASS1.018s; actual new browser workflow
-PASS5.6s. Full575 app/104 files PASS298.51s (7318 completed0, log
-/tmp/ssh-exam-bulk-saved-application-full.log); full CLI races PASS22.406s (65485
-completed0); build/types/vet PASS. Final23 browser scenarios ALL PASS across eight
-FRESH private fixtures (62231 completed0, ...-browser-isolated.log; outputs
-/tmp/ssh-exam-bulk-browser-isolated-q04h6ung). Prior combined21pass/2 rate-blocked
-run is not a pass: unchanged180/minute instructor and5/minute login budgets were
-shared across unrelated tests. Fresh fixtures preserve ALL limiters. Legacy
-browser actions now bound10s. All runners ended; exact limitations in feature doc.
-
-NEXT commit this bounded validated bulk increment, merge locally preserving main's
-10 dirty images/checkpoint, then resume the CRITICAL retained-monitoring outcome:
-recording/death/last-child/partial-thaw and loaded-role fault qualification followed
-by combined real capture/root16/64. Use live-monitoring-runtime.md and delivery
-audit to inspect existing coverage before adding tests/code. No speculative
-foundation chain, unsupported enablement, production change or deployment.
-Native-core509.239s/root27 remains exact evidence for UNCHANGED boundaries; no new
-artifact is qualified by an old bundle. No unanswered design choice.
-
-After bulk: critical recording/death/last-child/partial-thaw/loaded-role and
-combined capture/root16/64 qualification; reviewed native legacy authority
-migration/retirement; manual secured-workspace cleanup; configuration/full CLI
-journey. Use todo-delivery-audit.md to avoid reimplementing completed work.
-Rollout/migration/rollback and temporary three-agent consolidation remain ONLY
-the proposal in todo-rollout-plan.md; execute NONE.
-
-## Preserved workspace data
-
-Main's10 dirty documentation PNGs are unchanged (all backup hashes verified).
-Original preflight-fifteen-minute-timeout.png:31754bytes SHA256
-144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb,
-backup /tmp/ssh-exam-preserved-preflight-screenshot.png. Nine backups/hashes:
-/tmp/ssh-exam-challenged-screenshots-4zc1qzm_. Automatic review previously refused
-restoration for uncertain ownership; preserve them, never stage or bypass.
-Recovery stash40f1fb64187db13783ea23c0125d66824d65b301 remains; newer WIP is in files.
+Main's10 dirty documentation PNGs remain untouched; worktree node_modules is an
+untracked dependency symlink: never stage it. Original fifteen-minute image
+31754bytes SHA256144029a4ed00609c40b57f14c90ebe8888fede0d0f1cd11acda4cf1ca4b68eeb,
+backup /tmp/ssh-exam-preserved-preflight-screenshot.png. Other9 backups/hashes:
+/tmp/ssh-exam-challenged-screenshots-4zc1qzm_. Preserve all recovery/path-only
+checkpoint stashes, including40f1fb64187db13783ea23c0125d66824d65b301.
