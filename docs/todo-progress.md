@@ -2699,3 +2699,16 @@ controls and private metadata assertions. Combined native races PASS7.469s;
 test-only source changes preserve7ece84d runtime/app/browser qualification.
 Installed-root/all-UID cleanup and final-exec-after-launch-ready remain open.
 No TODO closure, enablement, production action or missing command.
+
+## October23: live final-exec fence across durable pane tracking
+
+Actual native RED caught exec after live revocation despite ACTIVE disk metadata.
+Closed monitored launches now pin/import their own current live cutoff outside
+the state lock and read it before/after persistence. Actual before/after-save
+refusal, exact child/supervisor retirement and original-shell memory/clock recovery
+pass. Mutation of ONLY the second check in a private source copy causes actual
+exec witness failure, proving that boundary's oracle. Final affected native races
+PASS65.464s; release build/vet pass. Unchanged7ece84d app/browser evidence retained;
+its full native receipt does not qualify these newer bytes. Root/all-writer/async/
+clock/failure/loaded roles remain; installed guard stays OFF. No TODO closure or
+production action. Detailed receipts/failures: live-monitoring-runtime.md.

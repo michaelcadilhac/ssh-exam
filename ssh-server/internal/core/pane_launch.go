@@ -121,7 +121,20 @@ func (e *Engine) launchClosedLocalPane(p *paneLaunchAdmission, token, name, unit
 			return true, err
 		}
 	}
-	err = e.releaseClosedPane(p, name, unit, proof, identify, peer.current, func() error {
+	current := peer.current
+	if monitored {
+		cutoff, cutoffErr := e.openTerminalCutoff(&p.authority)
+		if cutoffErr != nil {
+			return true, cutoffErr
+		}
+		defer cutoff.close()
+		current = func() bool {
+			now, clockErr := monitoringBootMillis()
+			live, peerErr := cutoff.peer.live()
+			return clockErr == nil && peerErr == nil && live && now < cutoff.slot.until() && now < cutoff.slot.deadline && peer.current()
+		}
+	}
+	err = e.releaseClosedPane(p, name, unit, proof, identify, current, func() error {
 		_, err := control.Write([]byte{1})
 		if err != nil {
 			return err

@@ -49,25 +49,39 @@ qualification, deployment or incident-cause claim. Frozen final manifest is
 
 ## Current qualification increment and exact next action
 
-The local commit containing this test-only extension adds actual delayed-manager
-mode to the EXISTING native Begin/pause/Continue entry. It blocks a second REAL
-owned system-manager/bootstrap start, pauses with the original shell running,
-then releases the manager. Explicit gate refusal, independently pinned child
-death, unconsumed durable exec witness and retirement pass, followed by original
-shell memory/deadline surviving two Continue cycles. Positive/negative witness
-controls verify exact private ownership/mode/links. Native focused races PASS
-7.469s, /tmp/ssh-exam-retained-actual-delayed-manager-final-focus.log; all runners
-ended. Only two Go TEST files changed since7ece84d, so its unchanged runtime/app/
-browser/build broad evidence still applies. No new root or all-writer claim.
+cf7bb2c validates a real delayed manager/bootstrap across pause (7.469s); only
+test files changed from runtime7ece84d at that point. The current final-exec
+correction: actual revocation AFTER launch-ready let a bootstrap
+consume Code1 despite ACTIVE canonical state. RED durable witness proves it.
+Closed launch now imports a dedicated owner/deadline-bound live cutoff/peer
+OUTSIDE the state lock; both pre/post-save final checks read it directly. No
+Root IPC or disk read joins those checks. Watchdog reuses the same import helper.
+A test-only checkpoint exposes the actual post-save/pre-permit boundary.
 
-NEXT: test actual root-supervisor revocation AFTER launch-ready, at the final
-release transaction, while canonical state still looks ACTIVE. Use the existing
-paneIdentity dependency seam to stop the exact final boundary; a durable consumed-
-permit witness must make accidental execution observable, not a timeout oracle.
-Then complete original job stops/all-writer/async IO, recording fault/clock handover,
-independent death/stall and loaded-role agreement; extend the SAME guarded root
-retained-policy driver through Continue. Keep mode OFF; C9 technical recovery is
-still open. No new design question. Do not add unused helpers.
+Before-exec AND after-save refusal/actual child and supervisor retirement/verified
+original-shell hold/fresh Continue PASS8.639s. Initial fixture compile typo and
+seam-installation race are retained/corrected; test seam setup now joins e.mu.
+A PRIVATE source-copy mutation removing ONLY the second check fails on actual
+consumed-permit witness (not timeout/race); working tree untouched. Receipt:
+var/collection-tests/final-exec-mutation.log; snapshot
+/tmp/ssh-exam-final-exec-mutation.4qacb3it. Code guard remains OFF.
+
+Final affected complete monitored lifecycle/default-closed guard/closed-bootstrap
+races PASS65.464s; session99063 completed0,
+/tmp/ssh-exam-retained-final-exec-native-focus.log. Native release build/vet PASS;
+all runners ended. App/browser/WASM contracts unchanged, so7ece84d's568 app/27
+browser results still apply. Its481.631s full native receipt is OLDER source,
+not qualification of these changed bytes. Current commit contains this bounded
+fix; preserve the original RED, fixture race and mutation evidence in the feature
+document. No new root/capacity qualification or enablement.
+
+NEXT: continue actual original job stops/background and asynchronous writers,
+recording-fault/clock handover, independent owner death/stall and loaded-role
+agreement; extend the SAME guarded root retained-policy driver through Continue.
+Inspect existing qualification role factories/guard before adding fixture code.
+Last child/hold/thaw races and C9 technical recovery remain open. No new design
+question or deployment. Do not rerun unchanged app/browser suites for native-only
+changes; qualify NEW exact native artifacts at coherent boundaries.
 
 Other outcomes: C18 durable saved-source retention/reviewed migration, legacy
 retirement reconciliation, manual secured-workspace cleanup, configuration/full

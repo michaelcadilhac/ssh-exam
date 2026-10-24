@@ -42,11 +42,36 @@ func (e *Engine) terminalCutoffFor(a *Attempt) (*terminalCutoffWatch, error) {
 	if previous != nil {
 		previous.close()
 	}
+	watch, err := e.openTerminalCutoff(a)
+	if err != nil {
+		return nil, err
+	}
+	b.watchMu.Lock()
+	if b.watched == nil {
+		b.watched = map[string]*terminalCutoffWatch{}
+	}
+	if other := b.watched[a.ID]; other != nil {
+		b.watchMu.Unlock()
+		watch.close()
+		return other, nil
+	}
+	b.watched[a.ID] = watch
+	b.watchMu.Unlock()
+	return watch, nil
+}
+
+// Actual callers: watchdog cache and one closed pane launch. Each launch owns
+// its observation until both final exec checks finish; cache retirement cannot
+// close it, and descriptor acquisition never runs under the state transaction.
+func (e *Engine) openTerminalCutoff(a *Attempt) (*terminalCutoffWatch, error) {
+	if a == nil || a.RegisteredOwner == nil || !currentRegisteredOwner(a) {
+		return nil, errMonitoringScope
+	}
 	response, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "live-cutoff", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
 	if err != nil {
 		return nil, err
 	}
-	if response.cutoffFile == nil || response.cutoffPeer == nil || response.Cutoff == nil || response.Cutoff.DeadlineBootMS != int64(a.UptimeDeadline*1000) {
+	if response.cutoffFile == nil || response.cutoffPeer == nil || response.Cutoff == nil || response.Cutoff.Owner != *a.RegisteredOwner || response.Cutoff.DeadlineBootMS != int64(a.UptimeDeadline*1000) {
 		if response.cutoffFile != nil {
 			response.cutoffFile.Close()
 		}
@@ -61,19 +86,7 @@ func (e *Engine) terminalCutoffFor(a *Attempt) (*terminalCutoffWatch, error) {
 		response.cutoffPeer.close()
 		return nil, err
 	}
-	watch := &terminalCutoffWatch{slot: slot, peer: response.cutoffPeer}
-	b.watchMu.Lock()
-	if b.watched == nil {
-		b.watched = map[string]*terminalCutoffWatch{}
-	}
-	if other := b.watched[a.ID]; other != nil {
-		b.watchMu.Unlock()
-		watch.close()
-		return other, nil
-	}
-	b.watched[a.ID] = watch
-	b.watchMu.Unlock()
-	return watch, nil
+	return &terminalCutoffWatch{slot: slot, peer: response.cutoffPeer}, nil
 }
 
 func (e *Engine) observeTerminalSharedCutoffs() (map[string]terminalCutoffFact, error) {

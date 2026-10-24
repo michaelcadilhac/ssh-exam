@@ -236,6 +236,7 @@ type Engine struct {
 	paneSetupCheckpoint       func() error
 	paneStart                 func() error
 	paneBootstrapStart        func(*exec.Cmd, *net.UnixConn, *os.File, string, PaneInstance) (*paneBootstrapPeer, bool, error)
+	paneReleaseCheckpoint     func(string) error      // Test-only durable-tracking/final-exec barrier; never configurable.
 	terminalFailureCheckpoint func(string)            // Test-only recorder fault barriers; never configurable.
 	terminalHandoffCheckpoint func()                  // Test-only actual admission boundary; never configurable.
 	healthProbe               func() (bool, []string) // Test-only dependency seam; never configurable.

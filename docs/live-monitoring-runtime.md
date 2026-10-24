@@ -342,3 +342,39 @@ cleanup's production exam.slice boundary is NOT positively qualified by this
 user-scope test. Actual bootstrap death is independently pinned, not inferred
 from missing canonical metadata. Root/all-UID/async/clock/independent failure and
 final-exec revocation after launch-ready remain open. No enablement/deployment.
+
+## Final exec consults the live authority around durable tracking
+
+A new actual-entry RED proves that supervisor revocation AFTER launch-ready could
+still release student code while canonical metadata remained ACTIVE. The durable
+post-permit witness records real permission consumption, not an inferred timeout.
+A closed monitored launch now owns a separately imported owner/deadline-bound
+shared cutoff plus actual supervisor pidfd. Acquisition is OUTSIDE the state
+transaction; its existing before/after-save final checks consult live cutoff/time/
+peer directly. No new IPC/storage wait enters those checks. Passive observation
+closure cannot revoke a healthy actor. The watchdog reuses the same strict import
+helper; a foreign owner descriptor refuses.
+
+Tests stop at actual final transaction and actual post-save/pre-permit boundaries
+through existing identity and a private test-only persistence checkpoint. Both
+refuse with no consumed witness, actual child/supervisor retirement and verified
+original-shell hold/Continue with preserved memory. The original shell's output
+was not Go memory synchronization for installing new seams; the initial detected
+fixture race is corrected by joining e.mu. The observation caller typo was also
+corrected before executing the cases. These failures remain in their logs.
+
+Final affected full monitored lifecycle/default-closed guard/real closed-bootstrap
+races PASS65.464s; session99063 completed0, log
+/tmp/ssh-exam-retained-final-exec-native-focus.log. Native release build/vet PASS.
+A PRIVATE source-copy mutation disabling ONLY the post-save check fails on actual
+consumed-permit witness, without a race; oracle PASS, working source untouched.
+Receipt var/collection-tests/final-exec-mutation.log; snapshot
+/tmp/ssh-exam-final-exec-mutation.4qacb3it. Original RED and intermediate/final
+focused results are /tmp/ssh-exam-retained-final-exec-*.log.
+
+App/browser/WASM contracts/bytes are unchanged from7ece84d, so their568 application
+and27 affected-browser results still apply. Its481.631s full native run is an
+OLDER source receipt, not full qualification of these new native bytes. Root
+all-writer/async IO, last child/hold/thaw races, explicit clock/fault handover,
+independent failure and loaded-role/capacity qualification remain open. Guard
+OFF; no production action. This correction closes no broader TODO by itself.

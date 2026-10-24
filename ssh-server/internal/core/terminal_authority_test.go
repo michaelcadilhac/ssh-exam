@@ -45,7 +45,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "delayed-manager", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -288,13 +288,16 @@ func testActualSharedCutoffWatch(t *testing.T, e *Engine, a *Attempt) {
 // Return only after the actual gate has registered a closed launcher and reached
 // the real manager-start seam. Finishing releases that manager AFTER pause and
 // requires an explicit gate refusal, actual child death and no consumed permit.
-func stageActualDelayedMonitoredLaunch(t *testing.T, e *Engine, key ed25519.PrivateKey, a *Attempt, pane string) func() {
+func stageActualMonitoredLaunch(t *testing.T, e *Engine, key ed25519.PrivateKey, a *Attempt, pane, barrier string) func() {
 	t.Helper()
 	probe := filepath.Join(t.TempDir(), "late-exec-probe")
 	t.Setenv("EXAM_TEST_BOOTSTRAP_EXEC_PROBE", probe)
 	reached, released := make(chan string, 1), make(chan struct{})
 	var once sync.Once
 	release := func() { once.Do(func() { close(released) }) }
+	// The first shell's output crosses a process boundary, which does not order
+	// Go memory accesses. Join its final state transaction before changing seams.
+	e.mu.Lock()
 	prior := e.paneBootstrapStart
 	type startedChild struct {
 		process *uidProcess
@@ -305,11 +308,13 @@ func stageActualDelayedMonitoredLaunch(t *testing.T, e *Engine, key ed25519.Priv
 		if proof.Pane != pane {
 			return prior(launch, control, exe, unit, proof)
 		}
-		reached <- unit
-		select {
-		case <-released:
-		case <-time.After(5 * time.Second):
-			return nil, false, fmt.Errorf("test manager release missing")
+		if barrier == "manager" {
+			reached <- unit
+			select {
+			case <-released:
+			case <-time.After(5 * time.Second):
+				return nil, false, fmt.Errorf("test manager release missing")
+			}
 		}
 		peer, didStart, err := prior(launch, control, exe, unit, proof)
 		var pinned *uidProcess
@@ -319,7 +324,58 @@ func stageActualDelayedMonitoredLaunch(t *testing.T, e *Engine, key ed25519.Priv
 		started <- startedChild{pinned, err}
 		return peer, didStart, err
 	}
-	t.Cleanup(func() { release(); e.paneBootstrapStart = prior })
+	priorIdentity := e.paneIdentity
+	priorRelease := e.paneReleaseCheckpoint
+	if barrier == "after-save" {
+		e.paneReleaseCheckpoint = func(unit string) error {
+			id, _, _, valid := recordedPaneIdentity(a.ID, unit)
+			if valid && id == pane {
+				reached <- unit
+				select {
+				case <-released:
+				case <-time.After(5 * time.Second):
+					return fmt.Errorf("test saved-tracking release missing")
+				}
+			}
+			if priorRelease != nil {
+				return priorRelease(unit)
+			}
+			return nil
+		}
+	}
+	if barrier == "final-release" {
+		e.paneIdentity = func(pid, uid int) (string, error) {
+			identity, err := priorIdentity(pid, uid)
+			if err != nil {
+				return identity, err
+			}
+			view, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+			if err != nil {
+				return "", err
+			}
+			for _, observed := range view.Panes {
+				id, _, _, valid := recordedPaneIdentity(a.ID, observed.Unit)
+				if valid && id == pane {
+					reached <- observed.Unit
+					select {
+					case <-released:
+					case <-time.After(5 * time.Second):
+						return "", fmt.Errorf("test final release missing")
+					}
+				}
+			}
+			return identity, nil
+		}
+	}
+	e.mu.Unlock()
+	t.Cleanup(func() {
+		release()
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		e.paneBootstrapStart = prior
+		e.paneIdentity = priorIdentity
+		e.paneReleaseCheckpoint = priorRelease
+	})
 	command := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "issue-framed-owner-channel-admission", Username: a.Username, Transport: a.Transport, Body: Request{ID: a.ID, Pane: pane, Purpose: "exam", Username: a.Username, Transport: a.Transport, PageEpoch: a.RegisteredOwner.PageEpoch}}
 	value, err := e.Command(signedCommand(key, command), a.Username, a.Transport)
 	if err != nil {
@@ -380,13 +436,46 @@ func stageActualDelayedMonitoredLaunch(t *testing.T, e *Engine, key ed25519.Priv
 	if _, err := os.Stat(probe); !os.IsNotExist(err) {
 		t.Fatal("bootstrap executed before manager start", err)
 	}
+	if barrier == "after-save" {
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil || state.PaneInstances[unit].ReadyAt == 0 || state.Attempts[a.ID].State != "ACTIVE" {
+			t.Fatal("fixture missed durable tracking before final exec", err)
+		}
+	}
 	return func() {
 		t.Helper()
 		release()
 		_ = client.SetDeadline(time.Now().Add(5 * time.Second))
-		var refused map[string]any
-		if err := json.NewDecoder(client).Decode(&refused); err != nil || refused["error"] == nil {
-			t.Fatal("late manager start lacked an explicit native gate refusal", refused, err)
+		type outcome struct {
+			value map[string]any
+			err   error
+		}
+		replies := make(chan outcome, 1)
+		go func() {
+			var value map[string]any
+			err := json.NewDecoder(client).Decode(&value)
+			replies <- outcome{value, err}
+		}()
+		var reply outcome
+		wait := time.NewTimer(3 * time.Second)
+		defer wait.Stop()
+	waiting:
+		for {
+			select {
+			case reply = <-replies:
+				break waiting
+			case <-wait.C:
+				t.Fatal("exact gate neither refused nor completed; not an absence oracle")
+			case <-time.After(10 * time.Millisecond):
+				if data, err := os.ReadFile(probe); err == nil {
+					t.Fatalf("revoked launch consumed an execution permit: %q", data)
+				} else if !os.IsNotExist(err) {
+					t.Fatal("exec witness unavailable", err)
+				}
+			}
+		}
+		if reply.err != nil || reply.value["error"] == nil {
+			t.Fatal("late launch lacked an explicit native gate refusal", reply.value, reply.err)
 		}
 		select {
 		case <-finished:
@@ -424,6 +513,19 @@ func stageActualDelayedMonitoredLaunch(t *testing.T, e *Engine, key ed25519.Priv
 			if recorded == unit {
 				t.Fatal("positively exited refused startup remained reserved")
 			}
+		}
+		for until := time.Now().Add(2 * time.Second); ; {
+			observed, err := ObserveTerminalSupervisor(e.Config.State, a.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(observed.AttachedUnits) == 1 && len(observed.PendingLaunchUnits) == 0 {
+				break
+			}
+			if time.Now().After(until) {
+				t.Fatal("refused bootstrap left an actual supervisor reservation", observed)
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }
@@ -545,6 +647,42 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	if err != nil {
 		t.Fatal("verified live authority did not admit actual shell input", err)
 	}
+	if mode == "revoked-before-exec" || mode == "revoked-after-save" {
+		barrier := "final-release"
+		if mode == "revoked-after-save" {
+			barrier = "after-save"
+		}
+		finish := stageActualMonitoredLaunch(t, e, key, a, ManagementID(), barrier)
+		revoked, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "revoke", Attempt: a.ID, Owner: *a.RegisteredOwner, Cause: "operator-pause"}, nil, false)
+		if err != nil || revoked.View == nil || revoked.View.ExecutionAuthorized {
+			t.Fatal("actual supervisor revocation missed final exec barrier", revoked, err)
+		}
+		finish()
+		paused, err := e.Admin("pause", a.ID, "synthetic confirmed pause after final-exec refusal")
+		if err != nil || paused.(*Attempt).RetainedHold != "held" {
+			t.Fatal("refused launch prevented verified hold of the original shell", err)
+		}
+		held := paused.(*Attempt)
+		authorize(4)
+		resume := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "consume-monitored-continuation", Username: a.Username, Transport: a.Transport, Body: Request{ID: a.ID, Generation: held.Generation, PageEpoch: a.RegisteredOwner.PageEpoch}}
+		resumed, err := e.Command(signedCommand(key, resume), a.Username, a.Transport)
+		if err != nil {
+			t.Fatal("original shell could not continue after final-exec refusal", err)
+		}
+		capability["input_epoch"] = resumed.(map[string]any)["input_epochs"].(map[string]string)[finalID]
+		write(1, 0, []byte("check\n"))
+		memory, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
+		same := false
+		for _, row := range strings.Split(beforeMemory, "\n") {
+			if strings.HasPrefix(row, "BUFFER:") && strings.Contains(memory, strings.TrimSpace(row)) {
+				same = true
+			}
+		}
+		if err != nil || !same {
+			t.Fatal("final-exec refusal lost original shell memory", memory, err)
+		}
+		return
+	}
 	if mode == "native-live-expiry" {
 		e.stopTerminalMonitoring() // End this synthetic producer; retain the real supervisor/SSH.
 		watch, err := e.terminalCutoffFor(a)
@@ -616,7 +754,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	pendingUnit := "exam-" + a.ID + "-" + pendingPane + "-" + pendingIncarnation + ".scope"
 	var finishDelayed func()
 	if mode == "delayed-manager" {
-		finishDelayed = stageActualDelayedMonitoredLaunch(t, e, key, a, pendingPane)
+		finishDelayed = stageActualMonitoredLaunch(t, e, key, a, pendingPane, "manager")
 	} else {
 		if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "register-launch", Attempt: a.ID, Owner: *a.RegisteredOwner, Unit: pendingUnit, Proof: &pendingProof}, nil, false); err != nil {
 			t.Fatal(err)

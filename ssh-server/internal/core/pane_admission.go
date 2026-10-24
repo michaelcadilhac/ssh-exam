@@ -282,6 +282,11 @@ func (e *Engine) releaseClosedPane(p *paneLaunchAdmission, name, unit string, pr
 		if err := e.save(); err != nil {
 			return err
 		}
+		if e.paneReleaseCheckpoint != nil {
+			if err := e.paneReleaseCheckpoint(unit); err != nil {
+				return err
+			}
+		}
 		if !allowed() {
 			return errPaneBootstrap
 		}
