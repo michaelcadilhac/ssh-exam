@@ -50,6 +50,10 @@ durable Begin/clock/monitoring permission. Missing notice is UNKNOWN, not no-sta
 Optional registered_owner identifies the accepted signed page/transport/boot and
 attempt authorization epoch. Compare info ATTEMPT --read-only and web attempt
 metadata; it is not a live permit, per-pane input epoch or verified freeze receipt.
+Optional ssh_peer observes the root SSH monitor pinned from the original student
+socket during a framed handoff. pinned-live is a current pidfd observation only;
+exited/unknown do not allege a student violation. It does not prove full current
+ownership, monitoring, input permission or a verified retained hold.
 Optional input_epochs lists captured per-pane packet epochs, distinct from the
 attempt authorization epoch. New framed panes also bind them in their versioned
 one-use admissions and signed pane receipts. These strings are NOT live input/

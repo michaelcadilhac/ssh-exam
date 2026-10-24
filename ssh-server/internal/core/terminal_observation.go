@@ -22,6 +22,7 @@ var errTerminalObservation = errors.New("terminal-supervisor observation unavail
 // student's SSH ownership, current monitoring, freeze or execution authority.
 type TerminalSupervisorObservation struct {
 	RegisteredOwner      *monitoringOwner `json:"registered_owner,omitempty"`
+	SSHPeer              string           `json:"ssh_peer,omitempty"`
 	Purpose              string           `json:"purpose"`
 	Attempt              string           `json:"attempt"`
 	Supervisor           string           `json:"supervisor"`
@@ -41,6 +42,15 @@ func (s *terminalSupervisor) observation() TerminalSupervisorObservation {
 	if s.registeredOwner != nil {
 		owner := *s.registeredOwner
 		v.RegisteredOwner = &owner
+	}
+	if s.ssh != nil {
+		if s.ssh.current() {
+			v.SSHPeer = "pinned-live"
+		} else {
+			s.ssh.mu.Lock()
+			v.SSHPeer = s.ssh.status
+			s.ssh.mu.Unlock()
+		}
 	}
 	for unit, reported := range s.panes {
 		v.AttachedUnits = append(v.AttachedUnits, unit)

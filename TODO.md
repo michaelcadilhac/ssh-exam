@@ -994,6 +994,13 @@ the approval is not a production change or a completed investigation.
   docs/browser-input-lifetime.md. No native retention mode is enabled.
 
 - [ ] **Keep the existing SSH connection alive through policy lockouts.**
+  October23 actual framed handoffs now pin the original socket's authenticated
+  root SSH monitor; root CLI exposes current pidfd observation only. Focused
+  races5.404s, full native race/resource core421.168s/CLI30.268s, builds/vet/35
+  Python and NEW guarded real-root framed profile10 pass with preservation.
+  Detailed SSH refusal survives the bounded acknowledgement channel. Implemented/
+  tested locally, not deployed; see docs/framed-ssh-lifetime.md. Current pauses
+  still terminate; live authority/full input-writer hold/Continue remain open.
   When a student leaves fullscreen or another condition locks the attempt, retain
   the authenticated SSH transports for as long as the same page remains open and
   the connections are viable. The student should restore the required conditions

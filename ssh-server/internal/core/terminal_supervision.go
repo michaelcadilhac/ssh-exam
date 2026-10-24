@@ -86,6 +86,11 @@ var terminalSupervisorCommand = func(unit string, files []*os.File) *exec.Cmd {
 var terminalSupervisorGroup = func(unit string) (string, error) { return "0::/examterminal.slice/" + unit + "\n", nil }
 var terminalWorkloadGroup = func(unit string) (string, error) { return "0::/exam.slice/" + unit + "\n", nil }
 
+// Actual framed handoffs pin the authenticated root SSH monitor from the
+// received ORIGINAL student socket's kernel credentials. Never from JSON/disk.
+// Only compiled owned-scope tests replace this root/SSH-ancestry boundary.
+var terminalSupervisorSSHProcess = pinMonitoringSSHProcess
+
 func validateTerminalSlice(data string) error {
 	properties := map[string]string{}
 	for _, line := range strings.Split(data, "\n") {
@@ -441,7 +446,9 @@ func (e *Engine) handoffTerminal(c *net.UnixConn, original, master *os.File, p *
 	if err != nil {
 		return nil, errTerminalSupervisor
 	}
-	var ready [128]byte
+	// Detailed bounded refusals can exceed a successful owner's tiny reply.
+	// Truncation would discard the precise repair guidance before any exec.
+	var ready [terminalSupervisorBytes]byte
 	stage = "recording-owner-ready"
 	n, _, flags, _, err := control.ReadMsgUnix(ready[:], nil)
 	if err != nil || flags&(unix.MSG_TRUNC|unix.MSG_CTRUNC) != 0 || !supervisor.current() {
@@ -564,6 +571,7 @@ func (e *Engine) waitSupervisedPane(p *paneLaunchAdmission, unit string, c *net.
 
 type terminalSupervisor struct {
 	registeredOwner *monitoringOwner
+	ssh             *monitoringProcessGuard
 	id, unit        string
 	state, owner    string
 	mu              sync.Mutex
@@ -674,6 +682,19 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	if err != nil || student.Uid != uint32(r.UID) {
 		return
 	}
+	var ssh *monitoringProcessGuard
+	if r.InputEpoch != "" {
+		ssh, err = terminalSupervisorSSHProcess(int(student.Pid), r.UID, r.RegisteredOwner.TransportHash)
+		if err != nil || ssh == nil {
+			_ = json.NewEncoder(c).Encode(map[string]string{"error": "authenticated root SSH lifetime could not be verified for this framed pane; preserve this attempt and inspect matching native/SSH roles before retrying; no work released"})
+			return
+		}
+		defer func() {
+			if ssh != nil {
+				ssh.close()
+			}
+		}()
+	}
 	for _, f := range owned.files[1:3] {
 		var term syscall.Termios
 		if ioctl(f.Fd(), syscall.TCGETS, unsafe.Pointer(&term)) != nil {
@@ -711,6 +732,16 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 		s.mu.Unlock()
 		return
 	}
+	if ssh != nil {
+		if s.ssh != nil {
+			if !s.ssh.current() || s.ssh.identity != ssh.identity {
+				s.mu.Unlock()
+				return
+			}
+		} else {
+			s.ssh, ssh = ssh, nil
+		}
+	}
 	s.panes[r.Unit] = false // Attached, but no normal startup notice observed yet.
 	if timed {
 		// Enlist the immutable cohort before storage/recorder IO can block.
@@ -726,14 +757,25 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	s.active++
 	s.last = time.Now()
 	s.mu.Unlock()
+	if ssh != nil {
+		ssh.close() // A matching cohort keeps ONE root SSH lifetime handle.
+		ssh = nil
+	}
 	defer func() {
+		var endedSSH *monitoringProcessGuard
 		s.mu.Lock()
 		delete(s.panes, r.Unit)
 		delete(s.timed, r.Unit)
 		delete(s.requests, r.Unit)
 		s.active--
 		s.last = time.Now()
+		if len(s.requests) == 0 {
+			endedSSH, s.ssh = s.ssh, nil
+		}
 		s.mu.Unlock()
+		if endedSSH != nil {
+			endedSSH.close()
+		}
 	}()
 	original, master := owned.files[1], owned.files[2]
 	if timed {
@@ -1001,6 +1043,13 @@ func runTerminalSupervisor(id, unit string, listener *net.UnixListener, control 
 	}
 	s := &terminalSupervisor{id: id, unit: unit, state: init.State, owner: terminalOwnerEpoch(unit, os.Getpid(), start), uid: -1, panes: map[string]bool{}, timed: map[string]*supervisedRecordingIO{}, requests: map[string]terminalSupervisorAttach{}, last: time.Now()}
 	defer func() {
+		s.mu.Lock()
+		ssh := s.ssh
+		s.ssh = nil
+		s.mu.Unlock()
+		if ssh != nil {
+			ssh.close()
+		}
 		if s.storage != nil {
 			s.storage.close()
 		}

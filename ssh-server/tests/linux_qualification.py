@@ -13,12 +13,13 @@ parser.add_argument('--setup-only',action='store_true',help='Focused temporary s
 parser.add_argument('--worker-isolation',action='store_true',help='Real collection-worker death alongside another live SSH PTY; private overlay only')
 parser.add_argument('--timed-owner',action='store_true',help='Real BrowserSSH timed owner, two shells, guest coordinator stop and current-policy pause; private overlay only')
 parser.add_argument('--framed-owner',action='store_true',help='Actual C15 initial-grant Begin and scoped input/resize/replacement; private overlay only')
+parser.add_argument('--retained-policy',action='store_true',help='Candidate C3 real CLI pause must preserve authenticated panes and verify frozen kernel scopes; private overlay only')
 parser.add_argument('--peer',help='Separate synthetic guest account for worker isolation')
 parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
 parser.add_argument('--gateway-key',default='/etc/exam-agent/gateway.key')
 a=parser.parse_args()
-browser_mode=a.timed_owner or a.worker_isolation or a.framed_owner
+browser_mode=a.timed_owner or a.worker_isolation or a.framed_owner or a.retained_policy
 assert os.geteuid()==0, 'Run as root inside the disposable guest'
 config=json.loads(pathlib.Path('/etc/exam-agent/agent.json').read_text())
 guards=json.loads(pathlib.Path(config['guard_report']).read_text())
@@ -99,7 +100,7 @@ class Connection:
         self.transport=self.command('register',{'exam':self.exam})['transport'];id=str(uuid.uuid4())
         body={'id':id,'exam':self.exam,'uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':browser_mode,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}}
         if initial_grant:
-            assert a.framed_owner and temporary and self.username=='examq'
+            assert (a.framed_owner or a.retained_policy) and temporary and self.username=='examq'
             body['settings']['earliest']=int(time.time()*1000)-1000
             # Author a new public synthetic package. The prepared legacy
             # template intentionally has private materials permissions; never
@@ -230,9 +231,9 @@ def normal_access(label):
 
 wait_for(agent_ready,40)
 
-if a.framed_owner:
+if a.framed_owner or a.retained_policy:
     marker=json.loads(pathlib.Path('/run/ssh-exam-qualification-input/run.json').read_text())
-    assert a.username=='examq' and marker['username']=='examq' and marker['profile']=='framed-owner'
+    assert a.username=='examq' and marker['username']=='examq' and marker['profile']==('retained-policy' if a.retained_policy else 'framed-owner')
     assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn' and temporary
     connection=Connection();panes=[]
     try:
@@ -250,6 +251,7 @@ if a.framed_owner:
             assert captured['read_only'] and captured['complete'] and captured['panes'][0]['input_epochs']==[pane.input_epoch]
         owner=json.loads(root('examctl','panes','supervisor',id))
         assert owner['attached_panes']==2 and owner['registered_owner']==original['registered_owner']
+        assert owner.get('ssh_peer')=='pinned-live', 'actual framed handoff did not pin the authenticated root SSH monitor from the original student socket'
         ok('two actual framed SSH shells share one attempt supervisor; signed pane receipts and root CLI agree on distinct input epochs')
         pane=panes[0]
         connection.input(pane,struct.pack('!II',38,113),kind=1)
@@ -290,10 +292,26 @@ if a.framed_owner:
         current=info(id)
         assert all(current[k]==original[k] for k in ('start','deadline','original_deadline','grant','registered_owner')) and current['state']=='ACTIVE'
         ok('same UI UUID replacement receives a fresh native epoch; delayed old exit cannot kill it or its sibling or change time/grants')
-        root('examctl','pause',id,'--reason','Private synthetic current-policy framed pause control')
-        wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
-        assert info(id)['state']=='LOCKED'
-        ok('current policy still terminates framed panes on real pause; no partial retained mode enabled')
+        root('examctl','pause',id,'--reason','Private synthetic retained policy pause acceptance' if a.retained_policy else 'Private synthetic current-policy framed pause control')
+        if a.retained_policy:
+            # First real C3 acceptance boundary, deliberately RED on the legacy
+            # policy. This is not complete Continue/epoch/async-writer coverage.
+            assert all(p.poll() is None for p in (panes[1],fresh)), 'real CLI pause ended an existing authenticated SSH pane'
+            paused=connection.command('inspect-attempt',{'id':id})
+            assert paused['state']=='LOCKED' and paused['transport']==original['transport']
+            assert all(paused[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+            held=json.loads(root('examctl','panes','supervisor',id))
+            assert held['pid']==owner['pid'] and held['attached_panes']==2
+            assert len(paused.get('units',[]))==2 and set(paused['units'])==set(held['attached_units']), 'retained writer ownership was discarded'
+            for scope in held['attached_units']:
+                assert scope.startswith('exam-'+id+'-') and scope.endswith('.scope')
+                events=dict(line.split() for line in (pathlib.Path('/sys/fs/cgroup/exam.slice')/scope/'cgroup.events').read_text().splitlines())
+                assert events.get('frozen')=='1' and events.get('populated')=='1', 'retained hold lacks positive populated kernel freeze'
+            ok('actual CLI pause preserves the same authenticated SSH and two live pane owners with positively frozen kernel scopes; Continue remains unqualified')
+        else:
+            wait_for(lambda:all(pane.poll() is not None for pane in panes),timeout=8,interval=.05)
+            assert info(id)['state']=='LOCKED'
+            ok('current policy still terminates framed panes on real pause; no partial retained mode enabled')
         root('examctl','stop',id,'--reason','Private synthetic framed qualification collection')
         wait_for(lambda:info(id)['state']=='COMPLETED' and info(id)['protected'],timeout=45)
         final,archive,checksum=secure(id)
@@ -305,7 +323,7 @@ if a.framed_owner:
         connection.close()
     wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,original['deadline']/1000-time.time())+30)
     normal_access('original deadline restores ordinary SSH/SFTP after framed qualification without override')
-    print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_lockout':False}),flush=True)
+    print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_freeze_only':a.retained_policy,'retained_lockout':False}),flush=True)
     raise SystemExit(0)
 
 if a.timed_owner:

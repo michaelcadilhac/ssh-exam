@@ -90,6 +90,10 @@ func testFramedSupervisorReplacement(t *testing.T, e *Engine, key ed25519.Privat
 		return ""
 	}
 	fd, pane := int(master.Fd()), cmd.Body.Pane
+	observedSSH, err := ObserveTerminalSupervisor(e.Config.State, cmd.Body.ID)
+	if err != nil || observedSSH.SSHPeer != "pinned-live" {
+		t.Fatal("actual framed handoff did not bind the original socket peer's live kernel process", observedSSH, err)
+	}
 	write(fd, epoch, pane, 1, 0, []byte("check\n"))
 	before := memory(fd)
 	parts := strings.Split(before, ":")

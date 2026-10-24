@@ -271,6 +271,9 @@ def main():
     elif settings.get('profile') == 'framed-owner':
         assert username == 'examq', 'Exact synthetic framed-owner fixture required'
         profiles = (['--framed-owner'],)
+    elif settings.get('profile') == 'retained-policy':
+        assert username == 'examq', 'Exact synthetic retained-policy fixture required'
+        profiles = (['--retained-policy'],)
     else:
         profiles = (['--handoff-only'], ['--setup-only'], [])
     # Commands execute only in the network/PID/mount namespace of this overlay.

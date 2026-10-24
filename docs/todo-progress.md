@@ -3,6 +3,14 @@
 For the current resumable status, see [todo-current-checkpoint.md](todo-current-checkpoint.md).
 The chronological evidence below includes historical then-pending states.
 
+October23 actual framed handoff now pins the original kernel socket peer's
+authenticated root SSH monitor and exposes observation-only native CLI status.
+A corrected post-ACK refusal regression reproduces truncated guidance; the
+bounded receiver preserves it before exec. Focus5.404s, full native race/resources
+core421.168s/CLI30.268s, builds/vet/35 Python and NEW exact guarded framed-owner10
+pass with host/base preservation. No current pause retention/live permission,
+partial C3/C16/C9 enablement or deployment. Details: framed-ssh-lifetime.md.
+
 October23 actual authenticated Begin now refuses contradictory durable interval,
 protected-work, registered-owner or other-claim consumption before signing.
 Corrected negative fixtures positively reach the original erroneous HTTP200;

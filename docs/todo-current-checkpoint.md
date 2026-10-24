@@ -41,7 +41,7 @@ plan while integrated work remains. See retained-workload-barrier-plan.md.
   legacy renewal replies. Evidence: framed-pane-input.md and
   renewal-receipt-recovery.md. Neither enables C3/C16/C9.
 
-## Current uncommitted native work and exact runners
+## Validated native handoff and current C16 integration
 
 Real framed handoff now pins the authenticated root SSH monitor from the
 ORIGINAL student socket kernel credentials; one live handle per attempt cohort,
@@ -53,17 +53,32 @@ boundary and proves detailed refusal truncation. A bounded32KiB acknowledgement
 receiver fixes it; no exec/clock change on refusal. This is not a live authority
 seal, input permission, all-writer freeze or completed C3. No partial retention.
 
-Focused root framed-owner qualification is RUNNING, session4373, log
-/tmp/ssh-exam-live-ssh-pin-root-framed.log. Await/read completion before relying
-on it. NEW audited17-file60.7MB code-only bundle:
+NEW focused root framed-owner PASS10/session4373 completed0; host/base preservation
+PASS, /var/tmp/ssh-exam-overlay-g0rqzxvn, log
+/tmp/ssh-exam-live-ssh-pin-root-framed.log. Full native race/resource/userns/
+compiler/default-size PASS core421.168s/CLI30.268s; session17110 completed0,
+/tmp/ssh-exam-live-ssh-pin-native-full.log. Builds, vet and35 Python checks PASS.
+All native runners/guests have ended. Detailed state review: framed-ssh-lifetime.md.
+NEW audited17-file60.7MB code-only bundle:
 var/collection-tests/live-ssh-pin-artifacts.gmwga14r; remote
 /var/tmp/ssh-exam-live-ssh-pin-upload.fvLrjA/bundle. Agent SHA256
 7b5b9d6ca5eaa486ebbdc835adb389662dbd7fb7d201e36372cd87cc4b980813.
-Source manifest /tmp/ssh-exam-live-ssh-pin-source.json. All builds PASS;17 focused
-Python runner checks PASS. No keys/configuration/student data/submissions uploaded.
-This new candidate inherits NO old native/root qualification. Do not edit its
-relevant source while collecting focused results; review before broad launches.
-No application runner remains active.
+Source manifest /tmp/ssh-exam-live-ssh-pin-source.json. No keys/configuration/
+student data/submissions uploaded. These receipts are for this exact native
+source/bundle; future native authority edits need their own focused qualification.
+
+Uncommitted C16 server integration now routes real challenged ACTIVE JPEG/policy
+observations into the existing ledger and serves authenticated purpose-specific
+native evidence. Legacy frames/reply retries do not freshen proof. Genuine policy
+loss uses existing durable lock policy; restart cannot silently clear it. First
+metadata fixture inadvertently modelled lost Begin acknowledgment, correctly
+locking; it now explicitly models an acknowledged interval and retains that
+protection. No live SSH/kernel admission is claimed by these HTTP fixtures.
+Final37 focused route/ledger/readiness and subsequent40 combined-capture checks
+PASS; final webcam HTTP/ledger35 PASS (includes13 metadata/HTTP cases). Types pass
+before the last fixture-only extension. New server source has NOT had broad
+application/browser/native-consumer qualification. Do not commit it as completed
+C16 or enable execution. Existing app551 receipt is for1163190, not this WIP.
 
 The retained-policy RED completed at the intended actual entry:7 prior positive
 assertions then `examctl pause` ends an authenticated pane. Host/base preservation
@@ -71,11 +86,14 @@ PASS; /var/tmp/ssh-exam-overlay-kd094ctn, log
 /tmp/ssh-exam-retained-policy-root-red.log. This is the missing workflow, not a
 fixture error. New driver currently tests freeze-only, not Continue/all-writers.
 
-**Exact next action:** collect/read focused root result; fix any real refusal.
-Then join the existing live arbiter and input/writer barriers at ACTUAL supervisor/
-Engine pause/continuation/watchdog entry points; do not grow another unused helper
-chain. Recording IO must remain isolated; no global state/key copy or shared lock
-across storage/freeze/RPC. Full combined workflow remains the stopping boundary.
+**Exact next action:** commit the validated native pin/refusal increment only,
+then connect the actual Engine scheduler → supervisor challenge → existing
+authenticated HTTPS → supervisor accept → input/expiry barriers. Fresh pre-start
+bootstrap must be non-restorable and actual ACTIVE/root-owner-bound, with no
+permission or interval invented from disk. Continue through complete native/web
+pause/freeze/approved Continue; do not grow another unused helper chain. Recording
+IO stays isolated; no global state/key copy or shared lock across storage/freeze/
+RPC. Full combined workflow remains the stopping boundary.
 
 ## Remaining approved scope and operational limits
 

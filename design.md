@@ -1865,6 +1865,15 @@ checks complete. Local simulated browser tests alone do not qualify privileged i
 
 ### Approved retained-SSH lockout design (October 21; implementation pending)
 
+October23 actual framed handoff additionally pins the authenticated root SSH
+monitor from the original student's Unix socket kernel credentials. Matching
+cohorts share one live pidfd, with no stored identity substituted for it. Root
+`examctl panes supervisor` exposes optional observation-only `ssh_peer`; detailed
+refusals remain bounded and actionable before exec. Full native races/resources
+and the exact candidate's real-root SSH/CLI/collection/deadline profile pass;
+see docs/framed-ssh-lifetime.md. This supplies a current process lifetime check,
+not full ownership/live permission/freeze. Current policy pause still terminates.
+
 October23 C12b locally implements/tests independent timed recording through the
 actual closed pane gate, with scoped pinned storage/budget and no global Engine
 or signing keys in the owner. Fresh BrowserSSH Begin saves the native lifetime

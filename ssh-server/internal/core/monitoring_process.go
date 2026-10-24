@@ -1,6 +1,6 @@
 package core
 
-// Private, unwired process-lifetime fence. A pidfd is not by itself SSH
+// Process-lifetime fence used by actual framed terminal handoffs. A pidfd is not by itself SSH
 // authentication, current native registration, ACTIVE authority or freeze proof.
 // No factory creates a monitoringActiveSeal from this guard yet.
 

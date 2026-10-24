@@ -188,6 +188,21 @@ func TestTerminalSupervisorChild(t *testing.T) {
 		os.Exit(96)
 	}
 	defer conn.Close()
+	// The owned local fixture has no root sshd. Keep REAL pidfd lifetime and
+	// original socket credentials, replacing only installed root/SSH ancestry.
+	terminalSupervisorSSHProcess = func(pid, uid int, transport string) (*monitoringProcessGuard, error) {
+		if marker := os.Getenv("EXAM_TEST_REFUSE_SSH_PIN"); marker != "" {
+			if err := os.WriteFile(marker, []byte("original-socket-ssh-pin-reached"), 0600); err != nil {
+				return nil, err
+			}
+			return nil, errMonitoringProcess
+		}
+		identity, err := snapshotMonitoringProcess(pid)
+		if err != nil || uid != os.Getuid() || !monitoringDigest.MatchString(transport) || identity.uids != [4]uint32{uint32(uid), uint32(uid), uint32(uid), uint32(uid)} {
+			return nil, errMonitoringProcess
+		}
+		return pinMonitoringProcess(identity)
+	}
 	var observedGroups sync.Map
 	var delayedCleanup sync.Map
 	terminalWorkloadGroup = func(unit string) (string, error) {
@@ -404,6 +419,10 @@ func TestActualFramedPaneRefusesAnOldLoadedEntryBeforeExec(t *testing.T) {
 	testPracticeSupervisorWorkflow(t, "timed-owner-framed-old-entry", nil, nil)
 }
 
+func TestActualFramedPaneRefusesUnverifiedSSHLifetimeBeforeExec(t *testing.T) {
+	testPracticeSupervisorWorkflow(t, "timed-owner-framed-ssh-refusal", nil, nil)
+}
+
 func TestActualTimedAdmissionSurvivesInitialAckAndContainsPrestartFault(t *testing.T) {
 	for _, mode := range []string{"initial-ack", "prestart-fault"} {
 		t.Run(mode, func(t *testing.T) { testPracticeSupervisorWorkflow(t, "timed-owner-"+mode, nil, nil) })
@@ -607,6 +626,9 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	coordinator := exec.CommandContext(ctx, "/usr/bin/systemd-run", "--user", "--scope", "--quiet", "--unit="+coordinatorUnit, "--property=MemoryMax=128M", "--property=MemorySwapMax=0", "--property=TasksMax=64", "--", "/proc/self/fd/5", "-test.run=^TestTerminalCoordinatorChild$", "--", "--terminal-coordinator-test")
 	coordinator.ExtraFiles = []*os.File{read, listenFile, executable}
 	coordinator.Env = append(os.Environ(), "GORACE=atexit_sleep_ms=0", "GOMAXPROCS=2")
+	if mode == "timed-owner-framed-ssh-refusal" {
+		coordinator.Env = append(coordinator.Env, "EXAM_TEST_REFUSE_SSH_PIN="+filepath.Join(e.Config.State, "synthetic-ssh-pin-refusal"))
+	}
 	var diagnostics terminalTestBuffer
 	coordinator.Stdout, coordinator.Stderr = &diagnostics, &diagnostics
 	if err := coordinator.Start(); err != nil {
@@ -685,7 +707,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	}
 	defer master.Close()
 	defer slave.Close()
-	if mode == "timed-owner-framed" {
+	if mode == "timed-owner-framed" || mode == "timed-owner-framed-ssh-refusal" {
 		// The real exam-login entry makes its own outer PTY raw before SCM_RIGHTS.
 		// This direct-gate fixture owns the entire disposable PTY; never restore
 		// through a numeric FD after the local duplicate has been closed below.
@@ -694,7 +716,7 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 		}
 	}
 	localRequest := LocalRequest{Token: issued.(map[string]string)["token"]}
-	if mode == "timed-owner-framed" {
+	if mode == "timed-owner-framed" || mode == "timed-owner-framed-ssh-refusal" {
 		localRequest.InputProtocol = "v1"
 	}
 	frame, _ := json.Marshal(localRequest)
@@ -727,6 +749,31 @@ func testPracticeSupervisorWorkflow(t *testing.T, mode string, healthyReady, fai
 	fd := int(master.Fd())
 	if err := unix.SetNonblock(fd, true); err != nil {
 		t.Fatal(err)
+	}
+	if mode == "timed-owner-framed-ssh-refusal" {
+		var refused map[string]any
+		refusalErr := json.NewDecoder(client).Decode(&refused)
+		marker, err := os.ReadFile(filepath.Join(e.Config.State, "synthetic-ssh-pin-refusal"))
+		if err != nil || string(marker) != "original-socket-ssh-pin-reached" {
+			t.Fatal("refusal did not reach the original received socket's SSH-pin boundary", err)
+		}
+		if refusalErr != nil || !strings.Contains(fmt.Sprint(refused["error"]), "authenticated root SSH lifetime could not be verified") {
+			t.Fatal("actual framed handoff lost its actionable SSH-pin refusal", refused, refusalErr, diagnostics.String())
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := state.Attempts[r.ID]
+		if a.State != "ACTIVE" || a.Start != originalStart || a.Deadline != originalDeadline || a.OriginalDeadline != originalDeadline {
+			t.Fatal("SSH-pin refusal changed the authoritative interval", a)
+		}
+		for _, unit := range a.Units {
+			if proof := state.PaneInstances[unit]; proof.ReadyAt != 0 {
+				t.Fatal("refused SSH lifetime released an exec-ready pane", proof)
+			}
+		}
+		return
 	}
 	if mode == "timed-owner-initial-ack" || mode == "timed-owner-prestart-fault" {
 		barrier := filepath.Join(e.Config.State, "synthetic-handoff")
