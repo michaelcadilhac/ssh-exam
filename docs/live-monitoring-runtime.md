@@ -697,3 +697,33 @@ save-on-error semantics. Detailed failures/final artifacts/state review are in
 terminal-recording-faults.md.43 safety/build/vet checks pass; all runners ended.
 Guard OFF; coordinator/control-death, last-child/partial-thaw/role and combined
 real capture/root16/64 remain. No broad liveness completion/deployment is claimed.
+
+
+## October24 actual dead-main-thread foreground integration
+
+The existing manifested thread-leader probe now runs INSIDE the actual monitored
+framed SSH pane, rather than relying on its separate kernel-only test. Root CLI
+pause positively sees its dead leader Z/live worker T and unchanged counter;
+fresh explicitly approved Continue returns the same acknowledged private buffer,
+resumes writing and preserves foreground input, parent-shell memory and the peer.
+Identity comes from exact scope cgroup.threads, namespace TGID/TID, UID and pinned
+executable; a process pidfd remains live. One bounded cycle respects the probe's
+existing15s self-expiry. No new runtime helper, policy or production enablement.
+
+Fresh root30 assertions PASS, OVERLAY_QUALIFICATION_OK and FULL installed host
+binaries/config/authority and guest-base preservation PASS. Exact code-only bundle
+live-thread-artifacts.8bng0kgz,62,750,247bytes, remote
+/var/tmp/ssh-exam-live-thread-upload.4ZYprw/bundle; evidence
+/var/tmp/ssh-exam-overlay-cpnsxdka, /tmp/ssh-exam-live-thread-root.log,
+64355 completed0.43 Python safety checks/syntax/diff PASS. ONLY the root driver
+and its checksum changed: native agentcbd8c731202665a8/core9e78bb5c79285eff stay
+identical to de8bf3e's qualified source/binaries. Existing full native520.605s/
+CLI30.752s and unchanged575-app/23-browser receipts still apply to unchanged
+surfaces. All runners ended; original-deadline collection/restoration, saved-work
+recovery, after-Continue I/O/owner failure and twelve Nano/six linked-IO controls
+also pass this fresh run. Root capture is still explicitly synthetic.
+
+This qualifies the dead-main-thread foreground boundary through the PUBLIC
+workflow. Coordinator/control death, last-child/partial-thaw/loaded-role and
+combined real capture/root16/64 acceptance remain; guard OFF. No broad liveness
+checkbox, deployment or consolidation is claimed.

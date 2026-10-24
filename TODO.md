@@ -8,6 +8,14 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October24 actual retained-foreground qualification: the existing dead-main-thread
+probe now runs through real framed SSH, CLI hold and fresh Continue. Its positively
+identified worker stops/resumes with the same acknowledged private buffer, parent
+shell/job control and peer. Fresh root30 assertions/FULL host preservation PASS;
+native runtime/artifacts are unchanged. No new helper or broad checkbox closure;
+remaining failure/role/capacity gates and default-closed admission stay in force.
+See docs/live-monitoring-runtime.md.
+
 October24 retained-recording correction is implemented/tested locally: actual
 faults after approved Continues were incorrectly dismissed as old generations.
 Explicit negative-only association now follows durable authorized Continue;

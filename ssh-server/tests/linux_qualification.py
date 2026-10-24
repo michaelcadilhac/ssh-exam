@@ -116,8 +116,9 @@ class Connection:
             for relative,text in (('work/answer.txt','synthetic initial work\n'),('materials/instructions.txt','Private synthetic framing qualification\n')):
                 path=authored/relative;path.write_text(text);path.chmod(0o644)
             if a.retained_policy:
-                probe=authored/'work/asyncio-probe'
-                shutil.copyfile('/run/ssh-exam-qualification-input/asyncio-probe',probe);probe.chmod(0o755)
+                for name in ('asyncio-probe','thread-leader-probe'):
+                    probe=authored/'work'/name
+                    shutil.copyfile(pathlib.Path('/run/ssh-exam-qualification-input')/name,probe);probe.chmod(0o755)
             source=str(authored)
             version=json.loads(root('examctl','templates','validate',source))['info']['hash']
             root('examctl','templates','install','qualification',source,'--expected',version,'--reason','Private synthetic framed grant qualification')
@@ -583,6 +584,52 @@ if a.framed_owner or a.retained_policy:
                 read_until(panes[1],('FRAMED-editor-peer:'+values[1]+':END').encode(),timeout=3)
                 ok('actual Nano unsaved buffer, foreground shell and peer survive refusal/retry and twelve Continue cycles; writer stops/resumes and originally stopped job stays stopped')
             finally:os.close(stopped_handle)
+
+            # The existing manifested probe has a dead main thread and a live
+            # foreground worker. Exercise the ACTUAL monitored hold/Continue,
+            # rather than treating its separate kernel-only test as integration.
+            connection.input(fresh,'/work/thread-leader-probe /work/thread-counter tty\n')
+            reported=read_until(fresh,b'THREAD-TTY ',timeout=3,line=True)
+            row=next(line for line in reported.splitlines() if line.startswith(b'THREAD-TTY ')).split()
+            namespace_leader,namespace_worker=map(int,row[1:])
+            assert namespace_leader!=namespace_worker
+            memory='thread-'+uuid.uuid4().hex[:16]
+            connection.input(fresh,'PUT '+memory+'\n')
+            read_until(fresh,('THREAD-BUFFER 1 '+memory).encode(),timeout=3)
+            scope=next(unit for unit in observation['attached_units'] if fresh.native_pane in unit)
+            directory=pathlib.Path('/sys/fs/cgroup/exam.slice')/scope
+            workers=[]
+            for tid in (directory/'cgroup.threads').read_text().split():
+                try:status=dict(line.split(':',1) for line in (pathlib.Path('/proc')/tid/'status').read_text().splitlines() if ':' in line)
+                except (FileNotFoundError,ProcessLookupError):continue
+                if int(status['Uid'].split()[0])==account.pw_uid and int(status['NSpid'].split()[-1])==namespace_worker and int(status['NStgid'].split()[-1])==namespace_leader:
+                    workers.append((int(status['Tgid']),int(tid)))
+            assert len(workers)==1,'surviving foreground worker not positively identified in its exact scope'
+            leader,worker=workers[0]
+            def task_state(pid):
+                return next(line.split()[1] for line in (pathlib.Path('/proc')/str(pid)/'status').read_text().splitlines() if line.startswith('State:'))
+            wait_for(lambda:task_state(leader)=='Z',timeout=1,interval=.01)
+            assert task_state(worker) not in ('Z','T','t')
+            assert os.path.samefile(pathlib.Path('/proc')/str(worker)/'exe',work/'thread-leader-probe')
+            leader_handle=os.pidfd_open(leader)
+            try:
+                signal.pidfd_send_signal(leader_handle,0)
+                root('examctl','pause',id,'--reason','Private actual dead-leader foreground retention')
+                paused=info(id);assert paused['state']=='LOCKED' and paused['retained_hold']=='held'
+                stable=(work/'thread-counter').stat().st_size;time.sleep(.15)
+                assert (work/'thread-counter').stat().st_size==stable and task_state(worker)=='T' and task_state(leader)=='Z'
+                continued=retained_continue(connection,id,paused,continued['registered_owner'],live,original)
+                connection.input(fresh,'CHECK\n')
+                read_until(fresh,('THREAD-BUFFER 2 '+memory).encode(),timeout=3)
+                signal.pidfd_send_signal(leader_handle,0)
+                wait_for(lambda:(work/'thread-counter').stat().st_size>stable,timeout=2,interval=.01)
+                connection.input(fresh,'EXIT\n');read_until(fresh,b'RETAINED-PROMPT>',timeout=3)
+                connection.input(fresh,"printf 'FRAMED-%s:%s:END\\n' thread-done \"$buffer\"\n")
+                read_until(fresh,('FRAMED-thread-done:'+values[0]+':END').encode(),timeout=3)
+                connection.input(panes[1],"printf 'FRAMED-%s:%s:END\\n' thread-peer \"$buffer\"\n")
+                read_until(panes[1],('FRAMED-thread-peer:'+values[1]+':END').encode(),timeout=3)
+                ok('actual dead-main-thread foreground worker stops through CLI hold and retains its acknowledged private buffer/job control through fresh Continue; peer and shell memory survive')
+            finally:os.close(leader_handle)
 
             for kind,mode,dispatch in (('pipe','basic','normal'),('pipe','basic','forced'),('pipe','sqpoll','normal'),('pipe','sqpoll','forced'),('timer','basic','normal'),('timer','sqpoll','normal')):
                 io_baseline=None

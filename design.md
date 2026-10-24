@@ -2789,3 +2789,10 @@ applying changes because native WithState saves on callback error. Actual contin
 I/O failure, supervisor death and cancellation/retry pass full native and fresh
 root qualification. Broader retained admission remains disabled pending remaining
 failure/role/capacity boundaries. See docs/terminal-recording-faults.md.
+
+
+The October24 actual retained-pane/root CLI workflow also qualifies a dead main
+thread with a surviving foreground worker: positive scope/thread identity and
+stop, frozen counter, same acknowledged private buffer and resumed foreground/
+parent/peer through approved Continue. This adds qualification only; remaining
+failure/role/capacity gates keep admission closed. See live-monitoring-runtime.md.

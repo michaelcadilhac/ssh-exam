@@ -9,7 +9,9 @@ Checklist17/38 overlaps and is not an effort percentage.
 
 ## Validated milestone
 
-This checkpoint accompanies the retained-recording fix after main80facce.
+Main and the isolated source-grant-retention branch are at validated de8bf3e.
+The retained-recording fix is committed/merged locally;10 dirty images verified
+unchanged after the fast-forward. Only the new root driver/checkpoint are WIP.
 Actual signed Begin -> framed pane -> repeated policy hold/approved Continue ->
 real capture failure now enforces the current attempt rather than dismissing the
 immutable old generation. Durable Continue carries only negative fault association;
@@ -37,11 +39,21 @@ native artifact inherits old qualification. No broad-liveness completion/deploy.
 
 ## Exact next action / remaining outcomes
 
-Commit/merge this validated increment locally from source-grant-retention worktree.
-Then qualify the actual monitored pane running the EXISTING dead-main-thread/
-foreground-worker probe through real CLI policy hold/fresh Continue: positively
-observe its worker, stopped counter and preserved private buffer/foreground/peer.
-No new runtime abstraction needed unless an actual failure proves otherwise.
+Fresh dead-main-thread integration is VALIDATED, awaiting local commit/merge:
+root30 assertions/FULL host/base preservation PASS;43 safety/syntax/diff PASS.
+Actual framed foreground worker retains its acknowledged private buffer across
+CLI hold/fresh Continue; positive leader Z/worker T/counter stop, exact cgroup/
+namespace/UID/executable identity, parent/job control and peer all verified.
+64355 completed0, /tmp/ssh-exam-live-thread-root.log; private
+/var/tmp/ssh-exam-overlay-cpnsxdka. Bundle live-thread-artifacts.8bng0kgz,
+62,750,247bytes, remote /var/tmp/ssh-exam-live-thread-upload.4ZYprw/bundle.
+ONLY driver/checksum changes; native artifacts and code remain de8bf3e. No new
+runtime helper/permission; unchanged native520.605s/CLI30.752s/app575/browser23
+receipts cover unchanged surfaces. All runners ended.
+NEXT commit/merge this bounded test/docs increment. Then inspect current actual
+Continue failure recovery and force a partial kernel/input transition through
+that entry, checking verified re-hold, unchanged buffers/deadlines and supported
+fresh retry before implementing any confirmed gap. No speculative protocol tree.
 Remaining coordinator/control death, last-child/partial-thaw/loaded-role and
 combined real capture/root16/64 acceptance stay open; followed by reviewed native
 legacy migration/retirement, manual workspace cleanup and configuration/full CLI
