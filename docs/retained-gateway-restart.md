@@ -188,3 +188,80 @@ initial native coverage alignment. Only then qualify overlapping live renewal an
 refusal at original challenge/authority expiry. Do not cure a blind gap, reset
 focus grace or enable the installed mode. No new native authority component,
 capability or optional management subsystem is required for this next result.
+
+## Reliable policy delivery candidate (local, not broadly qualified yet)
+
+The loaded browser now declares policy-report support before retained Begin or
+restoration. Each genuine local negative gets one immutable report UUID and its
+original generation/reason. Input stays blocked; capture streams stay alive, but
+positive samples are withheld before challenge and after in-flight challenge
+completion until an exact attempt/report/generation receipt arrives. Socket
+retries wait for both current coordination bindings. Legacy reporting is unchanged.
+
+The web hold and policy-report-recorded audit commit in the SAME existing
+Lifecycle transaction before native I/O. The receipt means durable delivery, not
+verified kernel freeze or execution permission. An exact retry returns the old
+receipt without another pause or approval revocation. Conflicting facts, retired
+owner generation and foreign page refuse. A receipt-persistence error rolls back
+hold/history/receipt before any native command; the same report then repairs.
+
+If that committed negative's native pause was rejected before application, a
+replacement gateway may complete ONLY that same one-generation pause through its
+signed, verified original SSH. It rechecks page/owner, interval, clock, generation,
+review revision and actual loss/protection before and after the native command,
+then freshly inspects the signed LOCKED outcome. It does not call Lifecycle.lock
+again or invalidate unused approval. Unknown/different generations still refuse;
+no native permission, grant, clock, reservation or automatic thaw is introduced.
+All provisional restores remain bounded; expiry/protection/late replies close only
+the provisional proxy. The existing native cutoff remains independent throughout.
+
+Valid public RED75540 shows actual replacement gateway ACTIVE/reason null after
+the original fullscreen report was dropped. Earlier browser-red reached an
+unrelated negative keyboard frame; corrected fixtures restore keyboard and lose
+all original negative frames. Protocol-red92211 inspected a projection without
+reason; public-red uses /api/student/exam. Keep these fixture corrections distinct.
+Candidate43checks/4files18140 PASS12.15s; transaction/SSH/session/admin HTTP32773
+PASS1/3.58s. Public report AND lost-first-receipt/approval retry51627 PASS1/17.9s.
+Native-pause RED67518 positively rejects the first native command, observes native
+ACTIVE0 versus web LOCKED1/unused approval, then fails repeated signed rebind.
+Repair87542 PASS1/19.5s includes actual gateway replacement, confirmed same-peer
+pause, unchanged approval, explicit fresh-capture Continue and old partial buffer.
+Types37899 PASS. Native OS policy remains synthetic. Broad qualification next.
+
+After this increment, native coverage continuity still requires a strict cohort
+agreement: matching policy-report support must be verified in fresh signed
+Begin/Continue bootstrap and carried by the native authority's authenticated
+challenge. Only a pristine, freshly observed restarted ledger may align its
+identity/sequence to that live challenge; original native challenge and authority
+cutoffs must reject expiry. No locally observed gap, negative, focus-grace reset
+or historical receipt may become new permission. This contract is next work, not
+implemented/qualified by policy delivery or routing alone. Installed guard OFF.
+
+Pre-broad state review: the new durable audit is a negative delivery receipt,
+atomic with the original web pause, not a pending account reservation or permit.
+No runtime audit-deletion writer exists. Duplicate delivery cannot repeat the
+pause or invalidate scoped approval. UUID/facts conflict, owner-generation and
+page refusal are exercised through the actual authenticated session/admin APIs.
+Timeout/cancel/page loss keeps local input/positive capture blocked; reload loses
+neither the authoritative interval nor the independently enforced native cutoff.
+Ended/protected/deadline checks still fence routing and its narrow pause repair.
+Crash between web commit and native pause is now exercised by rejection before
+native application, real gateway PID replacement, signed original-peer repair,
+fresh LOCKED inspection and preserved approval/explicit Continue. A crash during
+that repair leaves the same durable policy hold, no new generation/allowance, and
+bounded provisional control; stale completion must pass the complete scope check.
+No absence/no-start/consumption proof or new admission state is introduced.
+
+Broad application and affected-browser qualification follows these focused
+receipts, not the earlier pre-repair source. No new native binary/root receipt
+is inferred. The subsequent policy_reports bootstrap/challenge cohort contract
+remains a separate unimplemented native continuity step.
+
+Final policy-delivery qualification: app76237 PASS590/108files308.84s; browser36648
+PASS21composed/4.0m across the actual process fixture, including ALL7restart cases,
+retained control/loss/version refusal, monitoring replies and initial/source/practice
+grant admission. Types89384/build53827/diff PASS. Logs policy-report-{full-app,
+broad-browser,qualified-types,qualified-build}.log. Inputs frozen through completion.
+The prior full163browser+fresh refusal evidence still applies to unchanged legacy
+paths; this run exercises changed retained/capture/admission workflows. No native
+production source or authority schema changed yet; no new root proof is claimed.

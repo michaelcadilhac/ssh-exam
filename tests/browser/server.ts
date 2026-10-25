@@ -50,6 +50,8 @@ const retainedRestartAccounts = {
   retained09: 10039,
   retained10: 10040,
   retained11: 10041,
+  retained12: 10042,
+  retained13: 10043,
 };
 const retainedExams = new Set([
   "retained-control",
@@ -115,6 +117,8 @@ if (relay) {
 }
 const attempts = new Map<string, any>();
 const nativeBeginRequests: string[] = [];
+let refuseRetainedPause: string | undefined;
+const refusedRetainedPauses: string[] = [];
 const archive = Buffer.from("TEST-FIXTURE-ARCHIVE");
 const retainedRegistrations: {
   exam: string;
@@ -835,6 +839,16 @@ h.control.dropReply = (frame) =>
   frame.username === "receipt01" &&
   frame.op.includes("receipted-execution-lease");
 h.control.command = async (op, b, frame) => {
+  const pendingPause = attempts.get(b.id);
+  if (
+    op === "lock-attempt" &&
+    pendingPause?.exam === "retained-restart" &&
+    pendingPause.username === refuseRetainedPause
+  ) {
+    refuseRetainedPause = undefined;
+    refusedRetainedPauses.push(b.id);
+    throw Error("Synthetic native pause rejected before application");
+  }
   if (op === "register") {
     const result = await fixtureCall(op, b);
     if (retainedExams.has(b.exam)) {
@@ -1262,6 +1276,10 @@ store.db
 app.get("/api/fixture/runtime", async () => ({
   retainedRegistrations,
   nativeBeginRequests,
+  refusedRetainedPauses,
+  nativeRetainedAttempts: [...attempts.values()]
+    .filter((a) => a.exam === "retained-restart")
+    .map((a) => ({ id: a.id, state: a.state, generation: a.generation })),
   sshExitReports,
   pendingSSHExitReports: [...pendingSSHExitReports.keys()],
   framedInput: h.control.framed,
@@ -1332,6 +1350,13 @@ app.post("/api/fixture/fault", async (req) => {
 });
 if (gateway) {
   let restarting = false;
+  app.post("/api/fixture/refuse-retained-pause", async (req) => {
+    const { username } = req.body as any;
+    if (!(username in retainedRestartAccounts) || refuseRetainedPause)
+      throw Error("One explicit synthetic retained pause refusal required");
+    refuseRetainedPause = username;
+    return { armed: username };
+  });
   app.post("/api/fixture/retained-inspection-fault", async (req) => {
     const { username, mode } = req.body as any;
     if (

@@ -6,7 +6,7 @@ export class Capture {
   queues = new Map<string, any[]>();
   timer: ReturnType<typeof setInterval> | undefined;
   stopped = false;
-  busy = new Map<string, Promise<void>>();
+  busy = new Map<string, Promise<boolean>>();
   private abort = new AbortController();
   constructor(
     private id: string,
@@ -15,6 +15,7 @@ export class Capture {
     private readiness: () => Record<string, boolean>,
     private preflight: () => boolean,
     private sampleHealth?: (source: string, healthy: boolean) => boolean,
+    private sampleAllowed: () => boolean = () => true,
   ) {}
   async setup(source: "screen" | "webcam") {
     if (this.streams.has(source) && this.healthy(source))
@@ -68,20 +69,24 @@ export class Capture {
     const t = this.streams.get(source)?.getVideoTracks()[0];
     return !!t && t.readyState === "live" && !t.muted;
   }
-  async sample(source: string) {
+  async sample(source: string): Promise<void> {
     if (this.stopped) return;
     const pending = this.busy.get(source);
-    if (pending) return pending;
+    if (pending) {
+      await pending;
+      return;
+    }
     const task = this.sampleOnce(source);
     this.busy.set(source, task);
     try {
-      await task;
-      if (!this.stopped) this.sampleHealth?.(source, true);
+      const verified = await task;
+      if (verified && !this.stopped) this.sampleHealth?.(source, true);
     } finally {
       if (this.busy.get(source) === task) this.busy.delete(source);
     }
   }
   private async sampleOnce(source: string) {
+    if (!this.sampleAllowed()) return false;
     // Obtain the nonce BEFORE sampling. Queued legacy images cannot be
     // relabelled with a fresh nonce or refresh readiness on arrival.
     const challenge = this.preflight()
@@ -92,7 +97,7 @@ export class Capture {
           this.abort.signal,
         )
       : null;
-    if (this.stopped) return;
+    if (this.stopped || !this.sampleAllowed()) return false;
     const video = this.videos.get(source)!;
     if (!video.videoWidth || !video.videoHeight) throw Error("No video frame");
     const scale = Math.min(
@@ -127,7 +132,7 @@ export class Capture {
         this.page,
         this.abort.signal,
       );
-      return;
+      return true;
     }
     const q = this.queues.get(source)!;
     q.push(frame);
@@ -143,6 +148,7 @@ export class Capture {
         break;
       }
     }
+    return true;
   }
   async verifyForBegin(webcam: boolean) {
     const sources = webcam ? ["screen", "webcam"] : ["screen"];

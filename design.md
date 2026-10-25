@@ -2902,6 +2902,17 @@ coverage-ledger continuity and joined actual-root/capacity qualification remain
 open; no blanket technical thaw or installed enablement is provided. See
 docs/retained-gateway-restart.md.
 
+The local policy-delivery candidate gives each retained page's genuine negative
+one immutable report UUID/generation. Positive captures wait for an exact durable
+receipt, while streams and SSH remain alive. Receipt and web hold commit in one
+transaction; repeat delivery acknowledges the original event without revoking an
+unused approval. Conflicting or retired scope refuses. Recovery may complete a
+recorded, one-generation native pause over the signed original peer if its first
+command was rejected; fresh native inspection precedes routing agreement. This
+cannot grant execution, change time or bypass explicit Continue. Full application
+and affected process/WASM browser qualification pass locally. The signed native
+cohort/coverage contract and actual-root join remain open; installed mode is OFF.
+
 
 The local native admission candidate also fences protocol downgrades. An eligible
 account advertised retainedv1 cannot start a NEW interval with the ordinary

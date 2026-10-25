@@ -568,52 +568,91 @@ export async function createApp(
       }
     }, 10000);
     try {
-      const remote = await connection.restoreRetained(owner);
-      if (
-        closingSessions ||
-        retainedRestores.get(a.id) !== pending ||
-        ws.readyState !== WebSocket.OPEN
-      )
-        throw Error("Retained verification ended; preserve the SSH session");
-      const current = store.attempt(a.id);
-      if (
-        retainedRestores.get(a.id) !== pending ||
-        ws.readyState !== WebSocket.OPEN ||
-        !connection.alive ||
-        current.page_hash !== hash(hint.page) ||
-        current.registered_owner !== a.registered_owner ||
-        current.deadline !== a.deadline ||
-        current.clock_revision !== a.clock_revision ||
-        current.generation !== a.generation ||
-        current.continuation_revision !== a.continuation_revision ||
-        remote.generation !== a.generation ||
-        authenticationGap(a.id) ||
-        current.protected ||
-        current.checksum ||
-        !["ACTIVE", "LOCKED"].includes(current.state) ||
-        current.deadline! <= now() ||
-        connections.get(key)?.alive
-      )
-        throw Error("Retained page changed during verification");
+      let remote = await connection.restoreRetained(owner);
+      const currentScope = () => {
+        // Check shutdown before touching Store after each asynchronous operation.
+        if (
+          closingSessions ||
+          retainedRestores.get(a.id) !== pending ||
+          ws.readyState !== WebSocket.OPEN
+        )
+          throw Error("Retained verification ended; preserve the SSH session");
+        const current = store.attempt(a.id);
+        if (
+          !connection.alive ||
+          current.page_hash !== hash(hint.page) ||
+          current.registered_owner !== a.registered_owner ||
+          current.start !== a.start ||
+          current.deadline !== a.deadline ||
+          current.original_deadline !== a.original_deadline ||
+          current.clock_revision !== a.clock_revision ||
+          current.generation !== a.generation ||
+          current.continuation_revision !== a.continuation_revision ||
+          authenticationGap(a.id) ||
+          current.protected ||
+          current.checksum ||
+          !["ACTIVE", "LOCKED"].includes(current.state) ||
+          current.deadline! <= now() ||
+          connections.get(key)?.alive
+        )
+          throw Error("Retained page changed during verification");
+        return current;
+      };
+      const current = currentScope();
+      if (remote.generation !== a.generation) {
+        const recorded = store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE target=? AND action='policy-report-recorded' AND json_valid(detail) AND json_extract(detail,'$.generation')=? AND json_extract(detail,'$.page')=? AND json_extract(detail,'$.reason')=? LIMIT 1",
+          )
+          .get(a.id, owner.generation, owner.page_epoch, current.reason);
+        if (
+          !recorded ||
+          current.state !== "LOCKED" ||
+          !current.reason ||
+          a.generation !== owner.generation + 1 ||
+          remote.state !== "ACTIVE" ||
+          remote.generation !== owner.generation
+        )
+          throw Error(
+            "Native retained generation differs; preserve SSH and inspect the current hold",
+          );
+        // The original scoped negative and web hold committed together, but its
+        // native command did not apply. Complete that SAME pause over the proven
+        // live peer; do not call Lifecycle.lock again or revoke unused approval.
+        await connection.command("lock-attempt", {
+          id: a.id,
+          reason: current.reason,
+          generation: a.generation,
+        });
+        remote = await connection.command("inspect-attempt", { id: a.id });
+        currentScope();
+        const observed = monitoringOwner.parse(remote?.registered_owner);
+        if (
+          remote.state !== "LOCKED" ||
+          remote.generation !== a.generation ||
+          remote.id !== a.id ||
+          remote.exam !== a.exam ||
+          remote.username !== a.username ||
+          remote.uid !== owner.uid ||
+          remote.boot !== owner.boot ||
+          remote.transport !== owner.transport_hash ||
+          remote.monitoring_mode !== "v1" ||
+          remote.browser_ssh !== true ||
+          remote.terminal_supervised !== true ||
+          remote.start !== a.start ||
+          remote.deadline !== a.deadline ||
+          remote.original_deadline !== a.original_deadline ||
+          (remote.clock_revision || 0) !== a.clock_revision ||
+          remote.protected ||
+          remote.checksum ||
+          JSON.stringify(observed) !== JSON.stringify(owner)
+        )
+          throw Error(
+            "Native policy pause remains unconfirmed; preserve SSH and inspect the exact attempt",
+          );
+      }
       life.acceptRemote(remote);
-      const agreed = store.attempt(a.id);
-      if (
-        agreed.page_hash !== hash(hint.page) ||
-        agreed.registered_owner !== current.registered_owner ||
-        agreed.deadline !== current.deadline ||
-        agreed.clock_revision !== current.clock_revision ||
-        agreed.generation !== current.generation ||
-        authenticationGap(a.id) ||
-        agreed.protected ||
-        agreed.checksum ||
-        !["ACTIVE", "LOCKED"].includes(agreed.state) ||
-        agreed.deadline! <= now() ||
-        !connection.alive ||
-        ws.readyState !== WebSocket.OPEN
-      )
-        throw Error(
-          "Native retained scope changed; retry current verification",
-        );
+      currentScope();
       store.audit(
         a.username,
         "retained-control-verified",
@@ -3201,6 +3240,65 @@ export async function createApp(
         if (m.type === "open") openingPane = m.pane;
         const conn = connections.get(`${a.exam}:${a.username}`);
         if (m.type === "incident") {
+          let policyReport:
+            | {
+                report: string;
+                generation: number;
+                page: string;
+                reason: string;
+              }
+            | undefined;
+          if ((m.report === undefined) !== (m.generation === undefined))
+            throw Error(
+              "Policy report needs its original generation and report ID",
+            );
+          if (m.report !== undefined && m.generation !== undefined) {
+            policyReport = {
+              report: m.report,
+              generation: m.generation,
+              page: boundPageHash,
+              reason: m.reason,
+            };
+            const previous = store.db
+              .prepare(
+                "SELECT detail FROM audit WHERE target=? AND action='policy-report-recorded' AND json_valid(detail) AND json_extract(detail,'$.report')=? ORDER BY rowid DESC LIMIT 1",
+              )
+              .get(a.id, m.report) as { detail: string } | undefined;
+            if (previous) {
+              if (previous.detail !== JSON.stringify(policyReport))
+                throw Error(
+                  "Policy report ID belongs to different original facts",
+                );
+              // A lost receipt must not pause again, revoke an existing
+              // approval or change the generation after an approved Continue.
+              send(ws, {
+                type: "incident-recorded",
+                attempt: a.id,
+                report: m.report,
+                generation: m.generation,
+              });
+              send(ws, {
+                type: "state",
+                attempt: a,
+                serverNow: now(),
+                authenticationGap: authenticationGap(a.id),
+              });
+              return;
+            }
+            const owner = a.registered_owner
+              ? monitoringOwner.parse(JSON.parse(a.registered_owner))
+              : undefined;
+            if (
+              a.monitoring_mode !== "v1" ||
+              !owner ||
+              owner.page_epoch !== boundPageHash ||
+              owner.generation !== m.generation ||
+              !["ACTIVE", "LOCKED"].includes(a.state)
+            )
+              throw Error(
+                "Policy report belongs to a retired attempt generation",
+              );
+          }
           app.log.warn(
             {
               attempt: a.id,
@@ -3218,7 +3316,14 @@ export async function createApp(
               a.id,
               JSON.stringify(m.diagnostics),
             );
-          await life.lock(a.id, m.reason);
+          await life.lock(a.id, m.reason, { policyReport });
+          if (policyReport)
+            send(ws, {
+              type: "incident-recorded",
+              attempt: a.id,
+              report: policyReport.report,
+              generation: policyReport.generation,
+            });
           send(ws, {
             type: "state",
             attempt: store.attempt(a.id),

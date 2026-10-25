@@ -239,7 +239,19 @@ export class Lifecycle {
         );
     })();
   }
-  async lock(id: string, reason: string, options: { notify?: boolean } = {}) {
+  async lock(
+    id: string,
+    reason: string,
+    options: {
+      notify?: boolean;
+      policyReport?: {
+        report: string;
+        generation: number;
+        page: string;
+        reason: string;
+      };
+    } = {},
+  ) {
     const a = this.store.attempt(id);
     if (!["ACTIVE", "LOCKED"].includes(a.state)) return;
     const transaction = this.store.db.transaction(() => {
@@ -289,6 +301,15 @@ export class Lifecycle {
           );
       }
       this.store.audit("gateway", "lock", id, reason);
+      // The receipt and web hold commit together before native I/O. A crash
+      // cannot record delivery while losing the corresponding durable hold.
+      if (options.policyReport)
+        this.store.audit(
+          a.username,
+          "policy-report-recorded",
+          id,
+          JSON.stringify(options.policyReport),
+        );
     });
     transaction();
     this.store.audit(

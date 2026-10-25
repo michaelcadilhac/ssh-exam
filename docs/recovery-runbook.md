@@ -28,6 +28,15 @@ does not establish native monitoring continuity or cure a blind gap. Those nativ
 and joined root/capacity gates remain open; do not use this candidate to change the
 installed recovery procedure. Evidence: retained-gateway-restart.md.
 
+The October25 local candidate also retries the SAME genuine policy report until
+its scoped delivery receipt arrives. Positive samples wait for that receipt;
+streams and SSH stay open. Duplicate reports preserve existing approval. A
+recorded pause whose native command was rejected can be completed over the same
+signed peer during control restoration, then the student still uses authorized
+Continue. A delivery receipt is not kernel-freeze proof. Inspect web interruption
+history and native examctl info for unconfirmed holds; never clear audit, approval
+or native state to force recovery. Qualification is local; installed mode stays OFF.
+
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.
 - Attempt connection process failure: only that student loses SSH and is locked; the supervisor

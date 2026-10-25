@@ -314,6 +314,7 @@ export class BrowserSSH {
                 loaded_pane_epoch_change: "v1",
                 loaded_control_retention: "v1",
                 loaded_control_restore: "v1",
+                loaded_policy_reports: "v1",
               };
               this.retainedFeatures = {
                 command_cancel: result?.command_cancel === true,
@@ -323,6 +324,7 @@ export class BrowserSSH {
                 loaded_pane_epoch_change: "v1",
                 loaded_control_retention: "v1",
                 loaded_control_restore: "v1",
+                loaded_policy_reports: "v1",
               };
               return features;
             }

@@ -95,6 +95,7 @@ export class BrowserConnection extends Connection {
   private retainedInputSupported = false;
   private retainedControlSupported = false;
   private retainedRestoreSupported = false;
+  private retainedPolicyReportsSupported = false;
   private retainedTransport = "";
   override async prepareMonitoring() {
     if (!this.retainedMonitoringRequired) return false;
@@ -103,7 +104,8 @@ export class BrowserConnection extends Connection {
       !this.framedInputSupported ||
       !this.retainedInputSupported ||
       !this.retainedControlSupported ||
-      !this.retainedRestoreSupported
+      !this.retainedRestoreSupported ||
+      !this.retainedPolicyReportsSupported
     )
       throw Error(
         "Loaded browser, WASM and native monitoring versions disagree. Preserve the preparation and load matching versions before Begin; no new clock has started.",
@@ -120,6 +122,8 @@ export class BrowserConnection extends Connection {
     this.retainedControlSupported =
       connected?.loaded_control_retention === "v1";
     this.retainedRestoreSupported = connected?.loaded_control_restore === "v1";
+    this.retainedPolicyReportsSupported =
+      connected?.loaded_policy_reports === "v1";
   }
   async restoreRetained(raw: unknown) {
     const owner = monitoringOwner.parse(raw);
@@ -135,6 +139,7 @@ export class BrowserConnection extends Connection {
       !this.retainedInputSupported ||
       !this.retainedControlSupported ||
       !this.retainedRestoreSupported ||
+      !this.retainedPolicyReportsSupported ||
       !Array.isArray(offered.panes) ||
       offered.panes.length > 4
     )

@@ -16,7 +16,7 @@ const ready = {
   screen: true,
   webcam: false,
 };
-function fixture() {
+function fixture(sampleAllowed = () => true) {
   const draw = vi.fn(),
     create = vi.fn(() => ({
       getContext: () => ({ drawImage: draw }),
@@ -31,6 +31,8 @@ function fixture() {
       incident,
       () => ({ ...ready }),
       () => mode.preflight,
+      undefined,
+      sampleAllowed,
     );
   capture.videos.set("screen", {
     videoWidth: 40,
@@ -39,6 +41,54 @@ function fixture() {
   capture.queues.set("screen", []);
   return { capture, incident, mode, draw };
 }
+
+it("an unacknowledged local policy report withholds positive samples without destroying capture", async () => {
+  let acknowledged = false;
+  const { capture, draw } = fixture(() => acknowledged);
+  vi.mocked(api).mockResolvedValue({
+    challenge: "after-report",
+    after_sequence: 0,
+  });
+  try {
+    await capture.sample("screen");
+    expect(api).not.toHaveBeenCalled();
+    expect(draw).not.toHaveBeenCalled();
+    expect(capture.stopped).toBe(false);
+    expect(capture.videos.has("screen")).toBe(true);
+    acknowledged = true;
+    await capture.sample("screen");
+    expect(api).toHaveBeenLastCalledWith(
+      "/student/attempts/synthetic/frames/challenged",
+      expect.objectContaining({ challenge: "after-report", seq: 1 }),
+      "page",
+      expect.any(AbortSignal),
+    );
+  } finally {
+    capture.stop();
+  }
+});
+
+it("a policy report arising during a challenge fences the late positive upload", async () => {
+  let allowed = true,
+    release!: (value: any) => void;
+  const { capture, draw } = fixture(() => allowed);
+  vi.mocked(api).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  const sample = capture.sample("screen");
+  expect(api).toHaveBeenCalledTimes(1);
+  allowed = false;
+  release({ challenge: "before-policy-loss", after_sequence: 0 });
+  await sample;
+  expect(api).toHaveBeenCalledTimes(1);
+  expect(draw).not.toHaveBeenCalled();
+  expect(capture.queues.get("screen")).toEqual([]);
+  expect(capture.stopped).toBe(false);
+  capture.stop();
+});
 it("an active challenged-capture transport timeout is technical; actual track loss remains a policy event", async () => {
   vi.useFakeTimers();
   const incident = vi.fn(),

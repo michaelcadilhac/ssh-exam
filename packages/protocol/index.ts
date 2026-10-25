@@ -112,6 +112,13 @@ export const messageSchema = z.discriminatedUnion("type", [
     v: z.literal(1),
     type: z.literal("incident"),
     reason: z.string().min(1).max(300),
+    report: z.string().uuid().optional(),
+    generation: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .optional(),
     diagnostics: z
       .object({
         acknowledgmentAgeMs: z

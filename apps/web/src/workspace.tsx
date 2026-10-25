@@ -66,6 +66,12 @@ export function Workspace({
     armed = useRef(false),
     keyboard = useRef(false),
     localLocked = useRef(attemptRef.current.state === "LOCKED"),
+    pendingPolicy = useRef<{
+      report: string;
+      generation: number;
+      reason: string;
+      diagnostics: { acknowledgmentAgeMs: number; rejectedSnapshots: number };
+    } | null>(null),
     lastAck = useRef(performance.now()),
     reconnectTimer = useRef<any>(null),
     bound = useRef(false),
@@ -265,6 +271,15 @@ export function Workspace({
     focusLostAt.current = null;
     setFocusSeconds(null);
   };
+  const sendPendingPolicy = () => {
+    if (
+      pendingPolicy.current &&
+      bound.current &&
+      controlReady.current &&
+      online.current
+    )
+      send({ type: "incident", ...pendingPolicy.current });
+  };
   const incident = (reason: string) => {
     if (!armed.current) return;
     clearFocusWarning();
@@ -275,17 +290,22 @@ export function Workspace({
     setRecoveryFeedback(null);
     browserSSH.setInputEnabled(false);
     setMessage(reason);
-    send({
-      type: "incident",
-      reason,
-      diagnostics: {
-        acknowledgmentAgeMs: Math.max(
-          0,
-          Math.round(performance.now() - lastAck.current),
-        ),
-        rejectedSnapshots: rejectedMonitoringSnapshots.current,
-      },
-    });
+    const diagnostics = {
+      acknowledgmentAgeMs: Math.max(
+        0,
+        Math.round(performance.now() - lastAck.current),
+      ),
+      rejectedSnapshots: rejectedMonitoringSnapshots.current,
+    };
+    if (attemptRef.current.monitoring_mode === "v1") {
+      pendingPolicy.current = {
+        report: crypto.randomUUID(),
+        generation: attemptRef.current.generation,
+        reason,
+        diagnostics,
+      };
+      sendPendingPolicy();
+    } else send({ type: "incident", reason, diagnostics });
     void capture.current?.sample("screen");
   };
   const focusChanged = (focused: boolean) => {
@@ -682,6 +702,7 @@ export function Workspace({
         if (!healthy) browserSSH.setInputEnabled(false);
         return true; // Technical verification failure, never policy evidence.
       },
+      () => pendingPolicy.current === null,
     );
     for (const pane of reservation.panes || []) addPane(pane);
     let mounted = true;
@@ -760,6 +781,17 @@ export function Workspace({
       s.onmessage = (e) => {
         if (!mounted || ws.current !== s) return;
         const m = JSON.parse(e.data);
+        if (m.type === "incident-recorded") {
+          const pending = pendingPolicy.current;
+          if (
+            pending &&
+            m.attempt === id &&
+            m.report === pending.report &&
+            m.generation === pending.generation
+          )
+            pendingPolicy.current = null;
+          return;
+        }
         if (m.type === "monitoring-contact") {
           // A page-bound receipt confirms contact, not native execution or
           // readiness. Never apply a snapshot, arm input, bind or thaw here.
@@ -952,6 +984,7 @@ export function Workspace({
         incident("Network recovery grace expired");
       }
       const r = conditions();
+      sendPendingPolicy();
       setScreen(r.screen);
       setCamera(r.webcam);
       if (

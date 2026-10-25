@@ -18,6 +18,15 @@ native evidence continuity and policy-report acknowledgement during outages rema
 open. Installed retained admission stays OFF; no C3/C16 checkbox closure or deploy.
 Evidence and precise seams: docs/retained-gateway-restart.md.
 
+October25 policy-report delivery is implemented/tested locally: scoped retries
+survive gateway replacement and a lost acknowledgement, atomic receipt failure
+rolls back before native I/O, and duplicate delivery preserves unused approval.
+The same verified SSH can complete that original native pause if it was rejected,
+then explicit Continue preserves the private buffer and original interval/grant.
+Full590app checks and21composed real-WASM/process browser scenarios pass. Native
+coverage-cohort continuity, graceful shutdown and joined actual-root/capacity
+qualification remain open; installed retained admission is OFF. No deployment.
+
 October25 attempt/grant/workspace presentation is implemented/tested locally.
 Dashboard history/review and supported CLI list/show expose the applied revision,
 reason, stable attempt number and exact workspace/source lineage; current revisions
