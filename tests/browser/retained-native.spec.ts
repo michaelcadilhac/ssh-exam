@@ -39,14 +39,40 @@ const nativeProbe = z.object({
 let failureAttempt = "";
 const failureStates: unknown[] = [];
 test.afterEach(async ({ page }, info) => {
-  if (!process.env.EXAM_BROWSER_NATIVE_BUNDLE || info.status === "passed" || !failureAttempt) return;
+  if (
+    !process.env.EXAM_BROWSER_NATIVE_BUNDLE ||
+    info.status === "passed" ||
+    !failureAttempt
+  )
+    return;
   try {
-    const response = await page.request.get("/api/fixture/native-state", { params: { attempt: failureAttempt }, timeout: 10000 });
-    await info.attach("native-boundary-state", { body: await response.body(), contentType: "application/json" });
-    await info.attach("student-control-boundary", { body: Buffer.from(JSON.stringify(failureStates)), contentType: "application/json" });
-    const focus = await page.evaluate(() => ({ activeTag: document.activeElement?.tagName, activeClass: document.activeElement?.className, activeLabel: document.activeElement?.getAttribute("aria-label"), visible: document.visibilityState, focused: document.hasFocus(), fullscreen: !!document.fullscreenElement }));
-    await info.attach("browser-input-boundary", { body: Buffer.from(JSON.stringify(focus)), contentType: "application/json" });
-  } catch { /* Preserve the original failure if the independent probe refuses. */ }
+    const response = await page.request.get("/api/fixture/native-state", {
+      params: { attempt: failureAttempt },
+      timeout: 10000,
+    });
+    await info.attach("native-boundary-state", {
+      body: await response.body(),
+      contentType: "application/json",
+    });
+    await info.attach("student-control-boundary", {
+      body: Buffer.from(JSON.stringify(failureStates)),
+      contentType: "application/json",
+    });
+    const focus = await page.evaluate(() => ({
+      activeTag: document.activeElement?.tagName,
+      activeClass: document.activeElement?.className,
+      activeLabel: document.activeElement?.getAttribute("aria-label"),
+      visible: document.visibilityState,
+      focused: document.hasFocus(),
+      fullscreen: !!document.fullscreenElement,
+    }));
+    await info.attach("browser-input-boundary", {
+      body: Buffer.from(JSON.stringify(focus)),
+      contentType: "application/json",
+    });
+  } catch {
+    /* Preserve the original failure if the independent probe refuses. */
+  }
 });
 
 test("actual native kernel hold and explicit Continue preserve the same browser SSH and private buffer through protected finish", async ({
@@ -54,7 +80,8 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   request,
 }) => {
   test.skip(
-    !process.env.EXAM_BROWSER_NATIVE_BUNDLE,
+    !process.env.EXAM_BROWSER_NATIVE_BUNDLE ||
+      process.env.EXAM_BROWSER_NATIVE_STUDENTS === "16",
     "Requires the guarded disposable native guest and private code-only bundle",
   );
   test.setTimeout(150000);
@@ -66,9 +93,18 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     socket.on("framereceived", ({ payload }) => {
       try {
         const message = JSON.parse(String(payload));
-        failureStates.push({ type: message.type, binding: !!message.binding, pane: message.pane, input: message.input, state: message.attempt?.state, generation: message.attempt?.generation });
+        failureStates.push({
+          type: message.type,
+          binding: !!message.binding,
+          pane: message.pane,
+          input: message.input,
+          state: message.attempt?.state,
+          generation: message.attempt?.generation,
+        });
         if (failureStates.length > 32) failureStates.shift();
-      } catch { /* Only bounded public state metadata, no terminal/password data. */ }
+      } catch {
+        /* Only bounded public state metadata, no terminal/password data. */
+      }
     });
   });
   const origin = "https://127.0.0.1:9444";

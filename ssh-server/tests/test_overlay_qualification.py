@@ -19,6 +19,19 @@ guest_spec.loader.exec_module(guest)
 
 
 class OverlayTests(unittest.TestCase):
+    def test_capacity_uses_only_owned_disk_binds_and_bounded_private_resources(self):
+        command = overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'),
+                                             16, {'work': '/srv/exam-workspace/work', 'state': '/var/lib/exam-agent'})
+        for value in ('--property=MemoryMax=3G', '--property=TasksMax=2048', '--property=CPUQuota=200%',
+                      '--private-network', '--read-only', '--volatile=overlay', '--drop-capability=CAP_SYS_TIME',
+                      '--bind=/output/work:/srv/exam-workspace/work', '--bind=/output/state:/var/lib/exam-agent'):
+            self.assertIn(value, command)
+        for storage in ({'work': '/', 'state': '/var/lib/exam-agent'},
+                        {'work': '/srv/exam-workspace/work', 'state': '/etc'},
+                        {'work': '/srv/exam-workspace/../other', 'state': '/var/lib/exam-agent'}):
+            with self.subTest(storage=storage), self.assertRaises(AssertionError):
+                overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'), 16, storage)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

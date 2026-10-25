@@ -19,6 +19,17 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_capacity_account_names_are_finite_synthetic_and_never_arbitrary(self):
+        self.assertEqual(bridge.fixture_accounts(1), ['examq'])
+        names = bridge.fixture_accounts(16)
+        self.assertEqual(len(names), 16)
+        self.assertEqual(len(set(names)), 16)
+        self.assertEqual(names[0], 'examq')
+        self.assertEqual(names[-1], 'examq15')
+        for count in (0, 2, 17):
+            with self.subTest(count=count), self.assertRaises(AssertionError):
+                bridge.fixture_accounts(count)
+
     def test_export_checks_exact_saved_work_and_rejects_missing_or_linked_proofs(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'submission.tar.gz'

@@ -1869,6 +1869,15 @@ Student Finish requires an active retained SSH transport. A disconnected or lock
 
 Migration removes the old `listen/cert/key/ca/client_name` agent API settings and gateway `agent.url/ca/cert/key`. Configure `agent_id`, `gateway_public_key`, `callback_url`, `callback_key` (optional private `callback_ca`) on csc-sys, and matching gateway `agent.id/signingKey/callbackPublicKey`. Remove the old inbound 9443 firewall/tunnel after draining and verifying the new SSH command route. Preserve state/work/protected archives and original account recovery records. Dashboard readiness comes from signed registry/configuration callbacks; preflight rechecks current guards over the student's live SSH. No cached report substitutes for live preflight admission checks.
 
+Local October25 callback compatibility fix: native configuration reports omit
+`accounts` for an empty configured map (`omitempty`), as expected with dynamic
+student accounts. The receiver accepts that as an empty replacement registry,
+including removing prior static exceptions. Explicit malformed maps still
+refuse. Signature verification and replay receipts retain the original signed
+bytes; no queued native event is rewritten or discarded. This prevents a valid
+health report from blocking ordered submission-status delivery. It changes no
+admission, deadline, grant, protected archive or account restriction. Not deployed.
+
 Production signoff requires `sshCommandTransport` and `statusCallbacks`, default false. Native
 health advertises `signed-ssh-control` and `durable-status-callbacks`; gateway preflight checks
 these alongside interval access and all-channel admission. Verify key ownership, signature

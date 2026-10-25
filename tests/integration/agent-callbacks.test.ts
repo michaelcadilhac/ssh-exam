@@ -499,6 +499,108 @@ it("keeps the original deadline immutable and rejects unverified success", async
     await t.close();
   }
 });
+it.each([undefined, {}])(
+  "delivers native empty-registry health and queued completion across restart (%j)",
+  async (accounts) => {
+    const t = await setup();
+    try {
+      const health = {
+        ready: true,
+        capabilities: ["durable-status-callbacks"],
+      };
+      const registry = (sequence: number, values: any) =>
+        t.post(sequence, {
+          attempt: undefined,
+          manifest: undefined,
+          health,
+          accounts: values,
+        });
+      expect((await registry(1, { alice: 1001 })).statusCode).toBe(200);
+      // ReportConfiguration always supplies a map; native accounts,omitempty
+      // omits that field when temporary policy has no static account exceptions.
+      expect((await registry(2, accounts)).statusCode).toBe(200);
+      let agent = new Agent(t.config.agent, t.current().store);
+      expect(await agent.call("health")).toEqual(health);
+      await expect(
+        agent.call("resolve-course-accounts", { usernames: ["alice"] }),
+      ).rejects.toThrow("Account not approved by class server: alice");
+      expect(t.current().store.attempt("a").state).toBe("LOCKED");
+      await t.restart();
+      // A lost acknowledgement retries the ORIGINAL signed body/digest. Older
+      // snapshots cannot restore removed account exceptions after restart.
+      expect((await registry(2, accounts)).statusCode).toBe(200);
+      expect((await registry(1, { alice: 1001 })).statusCode).toBe(200);
+      agent = new Agent(t.config.agent, t.current().store);
+      expect(agent.configurationHealth()).toEqual(health);
+      await expect(
+        agent.call("resolve-course-accounts", { usernames: ["alice"] }),
+      ).rejects.toThrow("not approved");
+      expect((await t.post(3)).statusCode).toBe(200);
+      expect(t.current().store.attempt("a")).toMatchObject({
+        state: "COMPLETED",
+        protected: 1,
+        access_state: "HELD",
+        deadline: 5400100,
+      });
+      expect(
+        t
+          .current()
+          .store.db.prepare(
+            "SELECT sequence FROM agent_events ORDER BY sequence",
+          )
+          .all(),
+      ).toEqual([{ sequence: 1 }, { sequence: 2 }, { sequence: 3 }]);
+      // Semantic equivalence must not permit changing accepted signed bytes.
+      expect(
+        (await registry(2, accounts === undefined ? {} : undefined)).statusCode,
+      ).toBe(400);
+      expect((await t.post(3)).statusCode).toBe(200);
+    } finally {
+      await t.close();
+    }
+  },
+);
+it.each(
+  [
+    null,
+    [],
+    [1001],
+    "alice",
+    1001,
+    { alice: 999 },
+    { alice: 1001.5 },
+    { alice: true },
+  ].map((accounts) => ({ accounts })),
+)(
+  "rejects malformed signed account registries without blocking a repaired retry ($accounts)",
+  async ({ accounts }) => {
+    const t = await setup();
+    try {
+      const post = (values: any) =>
+        t.post(1, {
+          attempt: undefined,
+          manifest: undefined,
+          health: { ready: true },
+          accounts: values,
+        });
+      expect((await post(accounts)).statusCode).toBe(400);
+      expect(
+        t.current().store.db.prepare("SELECT sequence FROM agent_events").all(),
+      ).toEqual([]);
+      expect(
+        t
+          .current()
+          .store.db.prepare("SELECT sequence FROM agent_snapshot")
+          .all(),
+      ).toEqual([]);
+      expect((await post({})).statusCode).toBe(200);
+      expect((await t.post(2)).statusCode).toBe(200);
+      expect(t.current().store.attempt("a").state).toBe("COMPLETED");
+    } finally {
+      await t.close();
+    }
+  },
+);
 it("stores registry callbacks for instructor rosters without a separate connection", async () => {
   const t = await setup();
   try {
@@ -508,7 +610,9 @@ it("stores registry callbacks for instructor rosters without a separate connecti
       retained_enabled: false,
       observed: Date.now(),
       roles: [],
-      issues: ["watchdog loaded configuration mismatch; preserve the current attempt"],
+      issues: [
+        "watchdog loaded configuration mismatch; preserve the current attempt",
+      ],
     };
     expect(
       (
@@ -521,8 +625,14 @@ it("stores registry callbacks for instructor rosters without a separate connecti
       ).statusCode,
     ).toBe(200);
     const agent = new Agent(t.config.agent, t.current().store);
-    expect(await agent.call("health", {})).toEqual({ ready: true, native_roles: nativeRoles });
-    expect(agent.configurationHealth()).toEqual({ ready: true, native_roles: nativeRoles });
+    expect(await agent.call("health", {})).toEqual({
+      ready: true,
+      native_roles: nativeRoles,
+    });
+    expect(agent.configurationHealth()).toEqual({
+      ready: true,
+      native_roles: nativeRoles,
+    });
     expect(
       await agent.call("resolve-course-accounts", { usernames: ["alice"] }),
     ).toEqual({ alice: 1001 });

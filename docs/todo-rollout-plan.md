@@ -23,6 +23,16 @@ remain gates. Component/browser simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
 
+The local empty-registry callback fix is gateway-only and needs no SQL/native
+format/configuration migration. Preserve the original ordered native outbox and
+gateway replay receipts; a matched future authorized gateway install can accept
+the already-signed omitted-field health event on normal retry. Verify an empty
+dynamic-account registry and a subsequent protected completion against a private
+copy before rollout. Rolling back to the rejecting gateway can stall that queue
+again; repair forward rather than deleting events, rewriting signed bodies or
+retrying protected collection. It neither enables retained admission nor changes
+the separate verified-drain/temporary-service consolidation procedure. Unexecuted.
+
 The local provenance UI/CLI increment is metadata-only: no SQL/native format,
 grant/clock/hold migration or additional service. A future authorized rollout
 must install matching gateway/browser assets and test historical versus current

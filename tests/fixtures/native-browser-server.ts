@@ -15,9 +15,11 @@ import { nativeGuest } from "./native-guest.js";
 
 const origin = "https://127.0.0.1:9444";
 const data = mkdtempSync(tmpdir() + "/ssh-exam-browser-native-");
+const students = Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS || "1");
 const guest = await nativeGuest(
   process.env.EXAM_BROWSER_NATIVE_BUNDLE || "",
   data,
+  students,
 );
 let cleanup = async () => {
   await guest.close();
@@ -108,6 +110,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     ready,
     privateGuest: true,
     uid: metadata.uid,
+    students: metadata.students,
     log: data + "/native-root.log",
   };
 });
@@ -118,6 +121,15 @@ app.post("/api/fixture/native-finish", async (req) => {
   const value = await guest.inspect(String((req.body as any).attempt), true);
   await guest.finished();
   return { ...value, preservation: "FULL" };
+});
+app.post("/api/fixture/native-fleet", async (req) => {
+  const body = req.body as any;
+  const value = await guest.inspectMany(body.attempts, body.finish === true);
+  if (body.finish === true) {
+    await guest.finished();
+    return { ...value, preservation: "FULL" };
+  }
+  return value;
 });
 await app.listen({ host: "127.0.0.1", port: 3100 });
 const web = https.createServer(tls, (req, res) =>
@@ -219,7 +231,13 @@ for (const [url, payload] of [
       template_version: metadata.template,
     },
   ],
-  ["/api/admin/exams/native-browser/roster/add", { username: "examq" }],
+  ...metadata.students.map(
+    (student: { username: string }) =>
+      [
+        "/api/admin/exams/native-browser/roster/add",
+        { username: student.username },
+      ] as const,
+  ),
 ] as const) {
   const result = await app.inject({ method: "POST", url, headers, payload });
   if (result.statusCode !== 200)

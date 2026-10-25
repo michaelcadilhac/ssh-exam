@@ -8,6 +8,15 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October25 capacity qualification uncovered a confirmed callback bug: valid native
+health with an omitted empty account map blocked ordered completion updates,
+despite all16 submissions being protected natively. The receiver correction and
+signed replay/restart/malformed-map regressions pass locally; full609 application
+checks/build/types and a fresh actual16/64 workflow pass. All16 now reach web AND
+native protected completion, with healthy peers and FULL host preservation.
+Large/concurrent/fatal-worker and restart-gap acceptance remains. No deployment.
+Details: docs/retained-capacity-qualification.md.
+
 October25 gateway routing now survives actual process replacement locally through
 current-page and signed native owner verification, retaining the same SSH/private
 shell input and interval/grant. Repeated page/transport/clock refusal preserves

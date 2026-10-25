@@ -19,6 +19,17 @@ Verified all-writer freeze, input revocation/discard, current ownership and the
 approved full recovery conditions must pass together before any new mode can be
 enabled. See monitoring-liveness-plan.md and retained-ssh-input-protocol.md.
 
+Local callback correction, not deployed: an empty configured account map in a
+signed native health report is valid for dynamically resolved students. Older
+gateway validation rejected its omitted JSON field and blocked later completion
+updates, although native collection/protection could have succeeded. Compare
+`examctl info ATTEMPT --read-only` with `examctl web attempts show ATTEMPT` before
+interpreting web FINALIZING as collection failure. Use native manifest/export
+verification for the protected artifact. Preserve the durable callback queue;
+do not reset clocks, retry collection or clear state merely to repair web delivery.
+The corrected receiver accepts the original signed pending event on normal retry;
+no native upgrade, queue rewrite or account exception is needed for this fix.
+
 The local private authority/ownership/provisional-publisher increments likewise
 do not enable retained mode or provide a management recovery command. Internal
 worker flags are not operator workflows; do not invoke them or install/start the

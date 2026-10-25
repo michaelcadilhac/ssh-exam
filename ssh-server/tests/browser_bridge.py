@@ -55,6 +55,11 @@ def guest_identity():
     return config
 
 
+def fixture_accounts(count):
+    assert count in (1, 16)
+    return ['examq'] + (['examq%02d' % value for value in range(1, 16)] if count == 16 else [])
+
+
 def line(stream):
     raw = stream.readline(MAX_FRAME + 1)
     if not raw or len(raw) > MAX_FRAME or not raw.endswith(b'\n'):
@@ -132,7 +137,8 @@ class GuestBridge:
         self.config = config
         self.done = threading.Event()
         self.requests = queue.Queue(maxsize=16)
-        self.slots = threading.BoundedSemaphore(32)
+        self.students = private_json(INPUT / 'run.json').get('browser_students', 1)
+        self.slots = threading.BoundedSemaphore(64 if self.students == 16 else 32)
         self.failures = []
 
     def serve(self, name, handler):
@@ -202,6 +208,25 @@ class GuestBridge:
                 result['reply'] = reply
                 completed.set()
 
+    def snapshot(self, attempt_id):
+        assert re.fullmatch(r'[a-f0-9-]{36}', attempt_id)
+        state = private_json(Path(self.config['state']) / 'state.json')
+        attempt = state['attempts'][attempt_id]
+        assert attempt['exam'] == 'native-browser' and attempt['username'] in fixture_accounts(self.students)
+        assert attempt['uid'] == pwd.getpwnam(attempt['username']).pw_uid
+        supervisor, kernel = None, []
+        if attempt.get('terminal_supervised') and attempt['state'] in ('ACTIVE', 'LOCKED'):
+            try:
+                supervisor = json.loads(root_command('examctl', 'panes', 'supervisor', attempt_id))
+            except subprocess.CalledProcessError as error:
+                supervisor = {'unavailable': True, 'exit': error.returncode}
+            for unit in supervisor.get('attached_units', []):
+                events = scope_directory(attempt_id, unit) / 'cgroup.events'
+                kernel.append(dict(unit=unit, **dict(row.split() for row in events.read_text().splitlines())))
+        editor = Path(self.config['work']) / attempt_id / 'work/browser-editor.txt'
+        return {'attempt': attempt, 'supervisor': supervisor, 'kernel': kernel,
+                'editor_exists': editor.exists(), 'private_guest': True}
+
     def inspect(self, client):
         with client.makefile('rwb', buffering=0) as stream:
             request = line(stream)
@@ -210,32 +235,32 @@ class GuestBridge:
                 send(stream, {'aborted': True})
                 self.done.set()
                 return
+            if 'attempts' in request:
+                ids = request['attempts']
+                assert self.students == 16 and len(ids) == 16 and len(set(ids)) == 16
+                snapshots = [self.snapshot(attempt) for attempt in ids]
+                assert {entry['attempt']['username'] for entry in snapshots} == set(fixture_accounts(16))
+                if request.get('finish'):
+                    for entry in snapshots:
+                        attempt = entry['attempt']
+                        assert attempt['state'] == 'COMPLETED' and attempt['protected'] and attempt['checksum']
+                        assert attempt['access_state'] == 'HELD' and attempt['deadline'] == attempt['original_deadline'] > attempt['start']
+                send(stream, {'snapshots': snapshots, 'private_guest': True})
+                if request.get('finish'): self.done.set()
+                return
             assert re.fullmatch(r'[a-f0-9-]{36}', request['attempt'])
-            state = private_json(Path(self.config['state']) / 'state.json')
-            attempt = state['attempts'][request['attempt']]
-            assert attempt['exam'] == 'native-browser' and attempt['username'] == 'examq'
-            assert attempt['uid'] == pwd.getpwnam('examq').pw_uid
-            supervisor, kernel = None, []
-            if attempt.get('terminal_supervised') and attempt['state'] in ('ACTIVE', 'LOCKED'):
-                try:
-                    supervisor = json.loads(root_command('examctl', 'panes', 'supervisor', request['attempt']))
-                except subprocess.CalledProcessError as error:
-                    supervisor = {'unavailable': True, 'exit': error.returncode}
-                for unit in supervisor.get('attached_units', []):
-                    events = scope_directory(request['attempt'], unit) / 'cgroup.events'
-                    kernel.append(dict(unit=unit, **dict(row.split() for row in events.read_text().splitlines())))
+            snapshot = self.snapshot(request['attempt'])
+            attempt = snapshot['attempt']
             if request.get('finish'):
                 assert attempt['state'] == 'COMPLETED' and attempt['protected'] and attempt['checksum']
                 assert attempt['deadline'] == attempt['original_deadline'] > attempt['start']
-            editor = Path(self.config['work']) / request['attempt'] / 'work/browser-editor.txt'
             verified_files = None
             if request.get('finish'):
+                assert self.students == 1
                 exported = OUTPUT / 'browser-submission.tar.gz'
                 root_command('examctl', 'export', request['attempt'], '--output', str(exported))
                 verified_files = verify_fixture_archive(exported)
-            send(stream, {'attempt': attempt, 'supervisor': supervisor, 'kernel': kernel,
-                          'editor_exists': editor.exists(), 'verified_files': verified_files,
-                          'private_guest': True})
+            send(stream, dict(snapshot, verified_files=verified_files))
             if request.get('finish'):
                 self.done.set()
 
@@ -252,7 +277,17 @@ def run_guest(config, prepare_roles):
     crypt.crypt.restype = ctypes.c_char_p
     encoded = crypt.crypt(b'shared-password', ('$6$' + uuid.uuid4().hex[:16] + '$').encode())
     assert encoded and encoded.startswith(b'$6$')
-    root_command('usermod', '--password', encoded.decode(), 'examq')
+    students = private_json(INPUT / 'run.json').get('browser_students', 1)
+    names = fixture_accounts(students)
+    assert not config.get('accounts') and config.get('temporary_account_policy')
+    existing = pwd.getpwall()
+    for number, name in enumerate(names):
+        if number:
+            uid = 29979 + number
+            assert all(account.pw_name != name and account.pw_uid != uid for account in existing)
+            root_command('useradd', '--create-home', '--uid', str(uid), '--shell', '/bin/bash', '--password', encoded.decode(), name)
+        else:
+            root_command('usermod', '--password', encoded.decode(), name)
     ssh_config = Path('/etc/ssh/sshd_config')
     ssh_config.write_text('PasswordAuthentication yes\n' + ssh_config.read_text())
     root_command('sshd', '-t')
@@ -269,6 +304,7 @@ def run_guest(config, prepare_roles):
                  '--reason', 'Private synthetic actual browser/native workflow')
     host_key = Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[1]
     metadata = {'agent': config['agent_id'], 'username': 'examq', 'uid': pwd.getpwnam('examq').pw_uid,
+                'students': [{'username': name, 'uid': pwd.getpwnam(name).pw_uid} for name in names],
                 'callbackPublicKey': Path('/etc/exam-agent/callback.pub').read_text(),
                 'classPins': [hashlib.sha256(base64.b64decode(host_key)).hexdigest()], 'template': version}
     bridge = GuestBridge(config)

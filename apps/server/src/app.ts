@@ -940,12 +940,18 @@ export async function createApp(
           return;
         }
         if (event.health) {
+          // Native ReportConfiguration serializes an empty configured registry
+          // with accounts,omitempty. It replaces the prior snapshot just like
+          // an explicit {}, while the replay receipt hashes the original bytes.
           if (
             typeof event.health.ready !== "boolean" ||
-            !event.accounts ||
-            Object.values(event.accounts).some(
-              (uid: any) => !Number.isSafeInteger(uid) || uid < 1000,
-            )
+            (event.accounts !== undefined &&
+              (event.accounts === null ||
+                typeof event.accounts !== "object" ||
+                Array.isArray(event.accounts) ||
+                Object.values(event.accounts).some(
+                  (uid: any) => !Number.isSafeInteger(uid) || uid < 1000,
+                )))
           )
             throw Error("Invalid agent registry");
           store.db

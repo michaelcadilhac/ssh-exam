@@ -114,13 +114,14 @@ def ensure_guest_idle(guest):
             raise RuntimeError('Guest base has active mounts; qualification refused')
 
 
-def candidate_command(unit, guest, inputs, output):
+def candidate_command(unit, guest, inputs, output, students=1, storage=None):
+    assert students in (1, 16)
     command = [
         'systemd-run', '--quiet', '--wait', '--pipe', '--collect',
         '--service-type=exec', '--unit=' + unit,
-        '--property=Delegate=yes', '--property=MemoryMax=1G',
-        '--property=MemorySwapMax=0', '--property=TasksMax=512',
-        '--property=CPUQuota=50%', '--property=RuntimeMaxSec=900',
+        '--property=Delegate=yes', '--property=MemoryMax=' + ('3G' if students == 16 else '1G'),
+        '--property=MemorySwapMax=0', '--property=TasksMax=' + ('2048' if students == 16 else '512'),
+        '--property=CPUQuota=' + ('200%' if students == 16 else '50%'), '--property=RuntimeMaxSec=900',
         '--property=TimeoutStopSec=10s', '--property=KillMode=control-group',
         '--property=OOMPolicy=kill', '--', 'systemd-nspawn',
         '--directory=' + str(guest), '--machine=' + unit.removesuffix('.service'),
@@ -133,6 +134,12 @@ def candidate_command(unit, guest, inputs, output):
         '--console=pipe', '--bind-ro=' + str(inputs) + ':/run/ssh-exam-qualification-input',
         '--bind=' + str(output) + ':/run/ssh-exam-qualification-output',
     ]
+    if students == 16:
+        assert storage and set(storage) == {'work', 'state'}
+        for name, target in storage.items():
+            assert Path(target).is_absolute() and '..' not in Path(target).parts
+            assert (name == 'work' and str(target).startswith('/srv/exam-workspace/')) or (name == 'state' and str(target) == '/var/lib/exam-agent')
+            command.append('--bind=' + str(output / name) + ':' + str(target))
     for name, (target, _) in FILES.items():
         if target:
             command.append('--bind-ro=' + str(inputs / name) + ':' + target)
@@ -241,10 +248,40 @@ def run_locked(args):
             assert b'PRIVATE' not in public
             (inputs / 'browser-gateway.pub').write_bytes(public)
             marker['driver'] = 'browser'
+        students = getattr(args, 'browser_students', 1)
+        storage = None
+        if students == 16:
+            assert marker.get('driver') == 'browser'
+            assert shutil.disk_usage(stage).free >= 4 * 1024**3, 'Private capacity scratch needs4GiB; no test'
+            memory = dict(row.split(':', 1) for row in Path('/proc/meminfo').read_text().splitlines())
+            assert int(memory['MemAvailable'].split()[0]) >= 4 * 1024**2, 'Private capacity needs4GiB available RAM; no test'
+            storage = {'work': guest_config['work'], 'state': guest_config['state']}
+            for name in storage:
+                (output / name).mkdir(mode=0o700)
+            # Clone ONLY the already-guarded synthetic guest state; never reset
+            # its fences/history or copy production authority. Omit stale Unix
+            # sockets so the new guest's actual agent creates its own endpoints.
+            source = guest / guest_config['state'].lstrip('/')
+            private_directory(source)
+            copied = 0
+            for path in source.rglob('*'):
+                info = path.lstat()
+                assert info.st_uid == 0 and not stat.S_ISLNK(info.st_mode)
+                target = output / 'state' / path.relative_to(source)
+                if stat.S_ISDIR(info.st_mode):
+                    target.mkdir(mode=stat.S_IMODE(info.st_mode))
+                elif stat.S_ISREG(info.st_mode):
+                    assert info.st_nlink == 1
+                    copied += info.st_size
+                    assert copied <= 64 * 1024**2, 'Synthetic baseline state exceeds copy bound'
+                    target.write_bytes(path.read_bytes()); target.chmod(stat.S_IMODE(info.st_mode))
+                else:
+                    assert stat.S_ISSOCK(info.st_mode), 'Unexpected synthetic state entry'
+        marker['browser_students'] = students
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
         (inputs / 'test.service').write_text(UNIT)
-        command = candidate_command(unit, guest, inputs, output)
+        command = candidate_command(unit, guest, inputs, output, students, storage)
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
@@ -317,6 +354,8 @@ if __name__ == '__main__':
     parser.add_argument('--username', default='examq')
     parser.add_argument('--browser-gateway-public-key', type=Path,
                         help='Private browser driver only: PUBLIC signing key; never supply a private key')
+    parser.add_argument('--browser-students', type=int, choices=(1, 16), default=1,
+                        help='Private browser capacity target; sixteen uses only owned disk binds and bounded3GiB/2CPU/2048tasks')
     parser.add_argument('--profile', choices=('loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
