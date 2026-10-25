@@ -85,6 +85,15 @@ func TestGrantWorkflowsAreDiscoverableFromCurrentManagementHelp(t *testing.T) {
 	}
 }
 
+func TestAttemptHelpExplainsHistoricalGrantAndSourceInspection(t *testing.T) {
+	output, code := cliProcess(t, "web", "attempts", "--config", "/missing/configuration", "--help")
+	for _, required := range []string{"APPLIED grant revision/hash", "web grants show GRANT", "web attempts show SOURCE-ATTEMPT", "web grants list EXAM --username USER", "not fresh archive verification"} {
+		if code != 0 || !strings.Contains(output, required) {
+			t.Fatalf("attempt provenance inspection is not discoverable without configuration: %q (%d): %s", required, code, output)
+		}
+	}
+}
+
 func TestInvalidCLIUsagePointsToRelevantHelpBeforeRootOrConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"unknown"}, {"delete"}, {"stop", "ATTEMPT"}, {"cancel-absent", "ATTEMPT", "--reason", "Concrete missing identity"}, {"cancel", "ATTEMPT", "--username", "student", "--reason", "Wrong command account flag"}, {"workspace-prepare"}, {"workspace-repair", "ATTEMPT"}, {"recovery-grants", "unexpected-target"}, {"recovery-grants", "--active"}, {"agent", "shutdown"}, {"info", "one", "two"}, {"list", "--wrong-flag"}, {"info", "id", "--output", "file"}} {
 		output, code := cliProcess(t, args...)

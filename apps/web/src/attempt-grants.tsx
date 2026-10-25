@@ -46,11 +46,13 @@ export function AttemptGrantsDialog({
   username,
   onClose,
   onChanged,
+  initialGrantId,
 }: {
   exam: string;
   username: string;
   onClose: () => void;
   onChanged: () => Promise<void>;
+  initialGrantId?: string;
 }) {
   const [grant, setGrant] = useState<any>(null),
     [loaded, setLoaded] = useState(false),
@@ -63,7 +65,7 @@ export function AttemptGrantsDialog({
       null,
     );
   const alive = useRef(true);
-  const selectedGrant = useRef<string | null>(null),
+  const selectedGrant = useRef<string | null>(initialGrantId ?? null),
     catalogRef = useRef<any[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]),
     [next, setNext] = useState<string | null>(null);
@@ -98,6 +100,10 @@ export function AttemptGrantsDialog({
       ? await api(`/admin/grants/${currentID}`, undefined, undefined, signal)
       : null;
     if (!alive.current) return;
+    if (current && (current.exam !== exam || current.username !== username))
+      throw Error(
+        "Grant belongs to a different exam or student. Preserve the original attempt and inspect its grant linkage.",
+      );
     if (current && !options.some((g: any) => g.id === current.id))
       options.push(current);
     catalogRef.current = options;

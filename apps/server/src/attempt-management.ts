@@ -6,6 +6,7 @@ import {
   clockIntentMetadata,
 } from "../../../packages/protocol/clock-management.js";
 import { matchesDashboardView } from "../../../packages/protocol/admin.js";
+import { AttemptGrants } from "./attempt-grants.js";
 
 // Read bounded current metadata, not page hashes, sessions, interruption/student
 // text, media or unbounded reset history into permanent management outcomes.
@@ -15,13 +16,20 @@ last_contact,substr(reason,1,1000) reason,work_path,export_status,checksum,prote
 completed_at,collected_at,secured_at,policy_state,policy_expires,
 substr(policy_error,1,1500) policy_error,access_state,access_held_at,
 access_released_at,substr(access_override,1,1000) access_override,
-access_checked_at,substr(access_error,1,1500) access_error,functional_test`;
+access_checked_at,substr(access_error,1,1500) access_error,functional_test,
+grant_id,grant_revision,grant_hash,
+(SELECT COUNT(*) FROM attempts earlier WHERE earlier.exam=attempts.exam
+ AND earlier.username=attempts.username AND earlier.rowid<=attempts.rowid) attempt_number`;
 export class AttemptManagement {
+  private grants: AttemptGrants;
   constructor(
     private store: Store,
     private clocks: ClockControl,
     private describe: (a: any) => any,
-  ) {}
+    agent: string,
+  ) {
+    this.grants = new AttemptGrants(store, agent);
+  }
   private project(row: any) {
     if (row.settings.length > 16384)
       throw Error(
@@ -35,6 +43,7 @@ export class AttemptManagement {
         "duration",
         "webcam",
         "template",
+        "template_version",
         "terminals",
         "earliest",
         "latest",
@@ -54,6 +63,7 @@ export class AttemptManagement {
       connected: !!described.connected,
       working: !!described.working,
       terminalCount: Number(described.terminalCount) || 0,
+      grantContext: this.grants.forAttempt(row),
       pendingClockReset: clockIntentMetadata(this.clocks.pending(row.id)),
     };
   }

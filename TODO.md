@@ -8,6 +8,17 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October25 attempt/grant/workspace presentation is implemented/tested locally.
+Dashboard history/review and supported CLI list/show expose the applied revision,
+reason, stable attempt number and exact workspace/source lineage; current revisions
+and unused available/future/closed/pending-native grants are separate. Source links
+require matching account/UID and never claim fresh archive integrity. Final584
+app checks, compiled CLI/TLS/restart, CLI races,47 composed browser scenarios plus
+the separately executed exact-source WASM scenario, build/types and focused
+regressions pass. The mobile menu's queued-scroll and nested-dialog bugs are fixed.
+Native legacy migration and retained-mode root/capacity gaps remain separate;
+nothing is deployed. Evidence and retained fixture failures: docs/attempt-provenance.md.
+
 October24 live native-role agreement is implemented/tested locally. `examctl
 health` challenges the actual loaded agent/watchdog; monitored Begin preserves
 the same staged source/grant/intent and consumes no time on disagreement or
@@ -1144,7 +1155,13 @@ Existing enrollment migration and implementation remain outstanding.
   and how instructors compare/select submissions without assuming a grading policy.
   The general model should express this without inventing a special recovery exam.
 
-- [ ] **Design one coherent web-admin and `examctl` workflow.**
+- [x] **Design one coherent web-admin and `examctl` workflow.**
+  October25 the direct history/review/CLI provenance join is implemented/tested
+  locally alongside the previously qualified reviewed issuance/source/revision/
+  revoke workflows. Historical grant revisions remain immutable; unused grants
+  have separate statuses and source history is scoped by account/UID. CLI numbers
+  stay stable through filters and restart. Legacy native migration remains the
+  separate investigation below; this check does not claim it or deployment.
   Allow an administrator to authorize another attempt, choose its workspace source
   and allowance, inspect pending authorization, and revoke an unused grant through
   either interface. Show all attempts under the same student and exam, with attempt

@@ -5,6 +5,10 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   page,
 }) => {
   test.setTimeout(60000);
+  expect(
+    (await (await page.request.get("/api/login-test")).json()).browserSSH,
+    "This workflow requires EXAM_BROWSER_SSH=1 and the actual browser WASM transport",
+  ).toBe(true);
   let failChallenges = false,
     refusedChallenges = 0,
     starts = 0,

@@ -91,7 +91,7 @@ export function registerAgentManagement(
       new Monitoring(store, config.terminalRecordingLimitMiB),
     );
   const attempts = clocks
-    ? new AttemptManagement(store, clocks, describe)
+    ? new AttemptManagement(store, clocks, describe, config.agent.id)
     : null;
   const clockManagement =
     clocks && attempts ? new ClockManagement(store, clocks, attempts) : null;

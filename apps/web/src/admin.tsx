@@ -8,6 +8,10 @@ import { ExamRetirement, type RetirementAction } from "./exam-retirement.js";
 import { StudentImport } from "./student-import.js";
 import { EnrollmentSetting } from "./enrollment-setting.js";
 import { AttemptGrantsDialog } from "./attempt-grants.js";
+import {
+  AttemptProvenance,
+  type SourceAttemptLink,
+} from "./attempt-provenance.js";
 import { GrantIssuanceDialog } from "./grant-issuance.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
@@ -91,6 +95,7 @@ export function Admin({
   const [alertsError, setAlertsError] = useState("");
   const [templateCatalog, setTemplateCatalog] = useState(false);
   const [grantsFor, setGrantsFor] = useState<string | null>(null);
+  const [grantFocus, setGrantFocus] = useState<string | null>(null);
   const [issuingGrants, setIssuingGrants] = useState<
     "initial" | "additional" | null
   >(null);
@@ -270,6 +275,29 @@ export function Admin({
     selectedRef.current = a;
     setSelected(a);
     void refresh();
+  };
+  const openGrants = (username: string, id?: string) => {
+    setGrantFocus(id ?? null);
+    setGrantsFor(username);
+  };
+  const openSource = async (source: SourceAttemptLink) => {
+    try {
+      const result = await api(
+        `/admin/exams/${encodeURIComponent(source.exam)}/dashboard?review=${encodeURIComponent(source.id)}`,
+      );
+      if (!result.reviewAttempt)
+        throw Error(
+          "Source history is unavailable. Preserve its ID and inspect the native archive.",
+        );
+      if (source.exam !== exam) {
+        setLifecycle("all");
+        query.current = { ...query.current, lifecycle: "all" };
+        chooseExam(source.exam);
+      }
+      openReview(result.reviewAttempt);
+    } catch (e) {
+      onError((e as Error).message);
+    }
   };
   const current = exams.find((e) => e.id === exam),
     students = data?.students || [];
@@ -780,6 +808,37 @@ export function Admin({
                                     Grant requires inspection
                                   </small>
                                 )}
+                                {s.unusedGrants && (
+                                  <small
+                                    className={
+                                      s.unusedGrants.unavailable
+                                        ? "warn"
+                                        : "grant-availability"
+                                    }
+                                  >
+                                    {s.unusedGrants.unavailable
+                                      ? "Grant summary requires inspection"
+                                      : [
+                                          s.unusedGrants.available
+                                            ? `${s.unusedGrants.available} grant${s.unusedGrants.available === 1 ? "" : "s"} available`
+                                            : "",
+                                          s.unusedGrants.future
+                                            ? `${s.unusedGrants.future} with a future Begin window`
+                                            : "",
+                                          s.unusedGrants.pendingNative
+                                            ? `${s.unusedGrants.pendingNative} awaiting source confirmation`
+                                            : "",
+                                          s.unusedGrants.closed
+                                            ? `${s.unusedGrants.closed} unused with closed Begin windows`
+                                            : "",
+                                          s.unusedGrants.more
+                                            ? "More grants to inspect"
+                                            : "",
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" · ")}
+                                  </small>
+                                )}
                                 {!s.enrollment && <small>Not enrolled</small>}
                               </td>
                               <td role="cell" className="student-history-count">
@@ -812,8 +871,7 @@ export function Admin({
                                       {
                                         label: "Attempt grants…",
                                         disabled: stale,
-                                        onSelect: () =>
-                                          setGrantsFor(s.username),
+                                        onSelect: () => openGrants(s.username),
                                       },
                                       {
                                         label: "Remove from exam…",
@@ -862,6 +920,14 @@ export function Admin({
                                       role="cell"
                                     >
                                       <span>Attempt {a.attempt_number}</span>
+                                      <AttemptProvenance
+                                        attempt={a}
+                                        compact
+                                        onGrant={(id) =>
+                                          openGrants(a.username, id)
+                                        }
+                                        onSource={openSource}
+                                      />
                                       {!!a.preflight_started_at && !a.start && (
                                         <time
                                           dateTime={new Date(
@@ -1107,9 +1173,10 @@ export function Admin({
       )}
       {grantsFor && (
         <AttemptGrantsDialog
-          key={`${exam}:${grantsFor}`}
+          key={`${exam}:${grantsFor}:${grantFocus ?? "list"}`}
           exam={exam}
           username={grantsFor}
+          initialGrantId={grantFocus ?? undefined}
           onClose={() => setGrantsFor(null)}
           onChanged={refresh}
         />
@@ -1242,6 +1309,11 @@ export function Admin({
           clock={clock}
           stale={stale}
           onClose={closeReview}
+          onGrant={(id) => {
+            closeReview();
+            openGrants(selected.username, id);
+          }}
+          onSource={openSource}
           onChanged={refresh}
         />
       )}

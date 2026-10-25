@@ -1694,6 +1694,19 @@ Permanent inspection outcomes exclude page/session secrets, student review/media
 and unbounded history. See docs/attempt-clock-management.md and the local test
 record; full management and production qualification remain open.
 
+C1 attempt provenance now shares one read-only historical grant/source projection
+between instructor dashboard/history/review and `examctl web attempts list/show`.
+The attempt's immutable grant ID/revision/hash selects its exact saved settings
+and workspace; current defaults and later unused revisions never replace them.
+Current grant status/revision is labelled separately. Source history links require
+matching username and Unix UID, support another exam and report recorded
+protection/checksum agreement without claiming fresh native integrity. Legacy or
+unavailable linkage preserves the row and gives inspection guidance. Bounded
+unused-grant summaries exclude unresolved/consumed claims and distinguish available,
+future-window, closed-window and pending-native retention. They grant no admission
+or work permission. No durable authority format, deadline, source archive or hold
+changes. See docs/attempt-provenance.md for local qualification; not deployed.
+
 C1f now shares interruption review/authorization through `examctl web interruptions`
 and the administrator interface. Migration 016's conditional monotonic review
 counter fences both generation replacement and changed reasons/student requests

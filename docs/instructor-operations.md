@@ -151,6 +151,20 @@ when the old implementation did not record the actual resume. Do not interpret a
 as proof that the student resumed. Monitoring deletion/60-day expiry also erases this history;
 rows then show **History deleted**, not an assertion that the attempt was uninterrupted.
 
+Local provenance candidate (not deployed): each attempt identifies its applied
+grant revision, authorization reason and workspace source. **Review → Grant and
+workspace** shows its saved allowance/Begin window, materials hash and source
+checksum; later unused-grant revisions are labelled separately. **Inspect grant**
+opens that exact grant's current inspector. **Review source attempt** opens the
+same student's recorded source, including another exam. Missing/inconsistent
+linkage is explicit; it does not establish archive loss or permission to work.
+Student headers separately count unused available, future-window, closed-window
+and source-confirmation-pending grants. A preparation is not another available
+attempt. CLI equivalents are `examctl web attempts list EXAM`, `show ATTEMPT`,
+`examctl web grants show GRANT` and `list EXAM --username USER`. Use fresh request
+IDs for current metadata; native archive verification remains separate. Details
+and local qualification: [attempt-provenance.md](attempt-provenance.md).
+
 Click a student's displayed duration or webcam requirement to edit it in the table.
 Save applies the change; Cancel or Escape discards it and returns focus to the value.
 Use the student's **Actions** menu for enrollment removal. Use an attempt's **More** menu for clock actions. **Review** opens monitoring,

@@ -9,6 +9,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createApp } from "../../apps/server/src/app.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
+import { AttemptGrants } from "../../apps/server/src/attempt-grants.js";
 import { grantExam } from "../fixtures/grant-exam.js";
 
 it("reviews fixed saved-work authority but keeps it unavailable and cancellable until durable native source confirmation", async () => {
@@ -37,6 +38,7 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
   });
   try {
     const settings = grantExam(store, "saved-work"),
+      sourceSettings = grantExam(store, "saved-source-history"),
       source = randomUUID(),
       checksum = "b".repeat(64),
       definitions = new ExamDefinitions(store, "class"),
@@ -62,8 +64,8 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
       )
       .run(
         source,
-        settings.id,
-        JSON.stringify(settings),
+        sourceSettings.id,
+        JSON.stringify(sourceSettings),
         ended - 5400000,
         ended,
         ended,
@@ -154,6 +156,15 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
       work,
       settings: { duration: 5400, webcam: false },
     });
+    const pendingDashboard = await app.inject({
+      url: `/api/admin/exams/${settings.id}/dashboard`,
+      headers,
+    });
+    expect(pendingDashboard.statusCode, pendingDashboard.body).toBe(200);
+    expect(pendingDashboard.json().students[0]).toMatchObject({
+      attempts: [],
+      unusedGrants: { available: 0, pendingNative: 1 },
+    });
     expect(
       store.db
         .prepare(
@@ -229,6 +240,86 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
       (await app.inject({ url: `/api/admin/grants/${id}`, headers })).json()
         .status,
     ).toBe("AVAILABLE");
+    const consumer = randomUUID(),
+      grants = new AttemptGrants(store, "class");
+    store.db.transaction(() => {
+      const current = grants.claim(id, consumer, 10001),
+        binding = grants.binding(current);
+      store.db
+        .prepare(
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,grant_id,grant_revision,grant_hash,grant_kind,grant_issued_order,grant_initial,grant_work) VALUES(?,?,'student',10001,'PREPARING',?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          consumer,
+          settings.id,
+          JSON.stringify(current.settings),
+          current.id,
+          current.revision,
+          current.hash,
+          binding.kind ?? null,
+          current.issuance_order,
+          current.initial_grant ?? null,
+          binding.work ? JSON.stringify(binding.work) : null,
+        );
+    })();
+    const provenance = await app.inject({
+      url: `/api/admin/exams/${settings.id}/dashboard?review=${consumer}`,
+      headers,
+    });
+    expect(provenance.statusCode, provenance.body).toBe(200);
+    expect(provenance.json().reviewAttempt.grantContext).toMatchObject({
+      state: "recorded",
+      id,
+      revision: 1,
+      reason: input.reason,
+      work,
+      source_attempt: {
+        id: source,
+        exam: sourceSettings.id,
+        attempt_number: 1,
+        state: "COMPLETED",
+        recorded_protected: true,
+        checksum_matches: true,
+        available_in_gateway: true,
+      },
+    });
+    expect(provenance.json().students[0].unusedGrants).toMatchObject({
+      available: 0,
+      pendingNative: 0,
+    });
+    expect(store.attempt(source)).toEqual(before);
+    expect(store.attempt(consumer)).toMatchObject({
+      state: "PREPARING",
+      start: null,
+      deadline: null,
+    });
+    // Simulate a mismatched historical Unix identity without altering the
+    // immutable grant binding. Inspection must not expose another UID's row.
+    store.db.prepare("UPDATE attempts SET uid=10002 WHERE id=?").run(source);
+    try {
+      const mismatched = await app.inject({
+        url: `/api/admin/exams/${settings.id}/dashboard?review=${consumer}`,
+        headers,
+      });
+      expect(mismatched.statusCode, mismatched.body).toBe(200);
+      expect(
+        mismatched.json().reviewAttempt.grantContext.source_attempt,
+      ).toEqual({
+        id: source,
+        available_in_gateway: false,
+      });
+    } finally {
+      store.db.prepare("UPDATE attempts SET uid=10001 WHERE id=?").run(source);
+    }
+    expect(store.attempt(source)).toEqual(before);
+    store.db.transaction(() => {
+      store.db
+        .prepare(
+          "UPDATE attempts SET state='CANCELLED_BEFORE_START',ended=? WHERE id=?",
+        )
+        .run(Date.now(), consumer);
+      grants.retire(store.attempt(consumer));
+    })();
     const cancelled = await post(`/api/admin/grants/${id}/revoke`, {
       revision: 1,
       request: randomUUID(),
@@ -254,7 +345,12 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
     expect(store.attempt(source)).toEqual(before);
     expect(
       store.db.prepare("SELECT count(*) n FROM grant_claims").get(),
-    ).toEqual({ n: 0 });
+    ).toEqual({ n: 1 });
+    expect(
+      store.db
+        .prepare("SELECT state FROM grant_claims WHERE attempt=?")
+        .get(consumer),
+    ).toEqual({ state: "CANCELLED" });
   } finally {
     await app.close();
     rmSync(data, { recursive: true, force: true });

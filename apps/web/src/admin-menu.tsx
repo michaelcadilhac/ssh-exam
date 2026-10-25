@@ -42,7 +42,20 @@ export function AdminMenu({
       )
         setOpen(false);
     };
-    const dismiss = () => {
+    const dismiss = (event: Event) => {
+      if (event.type === "scroll") {
+        const current = trigger.current?.getBoundingClientRect();
+        // Opening a menu can follow browser auto-scroll of its trigger. That
+        // queued event is not a later movement of this already-positioned menu.
+        if (
+          current &&
+          current.top === rect.top &&
+          current.left === rect.left &&
+          current.bottom === rect.bottom &&
+          current.right === rect.right
+        )
+          return;
+      }
       setOpen(false);
       if (menu.current?.contains(document.activeElement))
         trigger.current?.focus();

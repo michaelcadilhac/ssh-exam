@@ -16,6 +16,14 @@ CLI/web workflows (initial-grants-cli.md and additional-grants-cli.md). The C14
 sandbox candidate uses those review/inspection paths with fixed practice policy;
 its qualification status is in sandbox-grants.md.
 
+The local attempt-provenance candidate adds the applied historical grant
+revision/hash, issuance reason and workspace source to the existing shared
+`web attempts list/show` projection and dashboard/review. Current grant revisions
+never replace the applied snapshot. Inspect the grant via `web grants show GRANT`
+and linked source via `web attempts show SOURCE-ID`; source metadata does not
+verify current native archive integrity. See [attempt-provenance.md](attempt-provenance.md)
+for qualification and unavailable/legacy behavior. It is not deployed.
+
 The October22 administrator candidate adds named default-deny metadata list/show
 and secret-safe creation through the same agent identity. Shared browser/root
 validation, bounded Argon2 work, scoped strong-verifier intents and no-overwrite

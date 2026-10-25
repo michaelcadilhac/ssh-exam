@@ -6,6 +6,10 @@ import { InterruptionHistory } from "./interruption-history.js";
 import { CaptureTimeline } from "./capture-timeline.js";
 import { Modal } from "./modal.js";
 import {
+  AttemptProvenance,
+  type SourceAttemptLink,
+} from "./attempt-provenance.js";
+import {
   attemptStatus,
   attemptElapsed,
   preflightElapsed,
@@ -204,12 +208,16 @@ export function AdminReview({
   stale,
   onClose,
   onChanged,
+  onGrant,
+  onSource,
 }: {
   attempt: any;
   clock: number;
   stale: boolean;
   onClose: () => void;
   onChanged: () => Promise<void>;
+  onGrant?: (id: string) => void;
+  onSource?: (source: SourceAttemptLink) => void;
 }) {
   const [refreshError, setRefreshError] = useState("");
   const [section, setSection] = useState("Monitoring"),
@@ -432,6 +440,7 @@ export function AdminReview({
         </fieldset>
       )}
       {a.reason && <p className="review-reason">{a.reason}</p>}
+      <AttemptProvenance attempt={a} onGrant={onGrant} onSource={onSource} />
       {(a.access_error || a.policy_error) && (
         <p className="warn" role="alert">
           Server access needs attention: {a.policy_error || a.access_error}

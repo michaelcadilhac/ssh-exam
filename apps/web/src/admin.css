@@ -1198,3 +1198,51 @@
     margin-bottom: 0.25rem;
   }
 }
+
+/* Historical grant metadata belongs to its attempt, separately from live status. */
+.attempt-grant-summary {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #9dafc5;
+}
+.attempt-grant-summary button,
+.grant-provenance button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #91c4ff;
+  text-align: left;
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+}
+.attempt-grant-summary .grant-reason {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 24rem;
+}
+.grant-provenance {
+  padding: 0.8rem 0;
+  border-block: 1px solid #35445b;
+  margin-block: 0.8rem;
+}
+.grant-provenance h3 {
+  margin-top: 0;
+}
+.grant-provenance code {
+  overflow-wrap: anywhere;
+}
+.grant-provenance small {
+  color: #9dafc5;
+}
+.grant-availability {
+  color: #91c4ff;
+}
+@media (max-width: 760px) {
+  .attempt-grant-summary .grant-reason {
+    max-width: 16rem;
+  }
+}

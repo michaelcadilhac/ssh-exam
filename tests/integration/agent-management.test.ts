@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import * as rosterParser from "../../apps/server/src/roster.js";
 import { qualifyClockCLI } from "../fixtures/management-clocks.js";
+import { qualifyProvenanceCLI } from "../fixtures/management-provenance.js";
 import { qualifyInterruptionCLI } from "../fixtures/management-interruptions.js";
 import { qualifyMonitoringCLI } from "../fixtures/management-monitoring.js";
 import { qualifyTemplateCLI } from "../fixtures/management-templates.js";
@@ -1569,6 +1570,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         corruptAdministrator = mode;
       });
       await qualifyClockCLI(f, invoke);
+      await qualifyProvenanceCLI(f, invoke);
       await qualifyInterruptionCLI(f, invoke);
       await qualifyMonitoringCLI(f, invoke, (kind) => {
         corruptImage = kind;
@@ -1955,8 +1957,8 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       );
       expect(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
-        "Management must retain exactly the seven explicitly authored synthetic histories, including both saved sources",
-      ).toEqual({ n: 7 });
+        "Management must retain exactly the nine explicitly authored synthetic histories, including both saved sources and both cancelled grant preparations",
+      ).toEqual({ n: 9 });
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));

@@ -23,6 +23,17 @@ remain gates. Component/browser simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
 
+The local provenance UI/CLI increment is metadata-only: no SQL/native format,
+grant/clock/hold migration or additional service. A future authorized rollout
+must install matching gateway/browser assets and test historical versus current
+grant revisions, source links and unavailable/legacy history with synthetic data
+first. Back up the existing DB/WAL, immutable revisions/claims and native pins/
+protected sources; never backfill invented enrollment-time settings. UI rollback
+may omit this projection but must preserve all authority/history. This increment
+does not qualify a new native release bundle, enable retained mode or justify
+restarting/consolidating canonical/live-upgrade/deferred-recovery owners. Those
+actions still require the separate positive-drain procedure below. Execute none.
+
 The SSH-exit candidate adds optional native `ssh_exited_owner` metadata and uses
 existing signed callback sequencing. No SQL migration, new service or configuration
 switch is required. Legacy attempts emit no new fact. Before ANY later rollout,

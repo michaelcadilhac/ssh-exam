@@ -31,6 +31,14 @@ clock intent; no page hashes/session secrets, student interruption/review text,
 media, terminal payload or unbounded historical reset arrays are cached. Treat
 working/presence as observation, never native execution authorization.
 
+grantContext identifies the APPLIED grant revision/hash, issuance reason and
+workspace source. Later unused-grant revisions do not rewrite this snapshot.
+Recorded source history/protection is metadata, not fresh archive verification.
+Legacy or unavailable linkage is explicit; never infer it from current defaults.
+Inspect the current grant with web grants show GRANT and a source with
+web attempts show SOURCE-ATTEMPT. Unused availability is separate from attempts;
+use web grants list EXAM --username USER, not the attempt state, to inspect it.
+
 Common flags: --config FILE (default /etc/exam-agent/agent.json), --request UUID.
 Use a NEW request ID for fresh reads. Reusing an ID intentionally returns its
 original snapshot. Missing/conflicting/offline results do not imply current state.

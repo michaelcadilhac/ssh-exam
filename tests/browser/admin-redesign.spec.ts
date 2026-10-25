@@ -31,7 +31,7 @@ function makeAttempt(
     ...extra,
   };
 }
-async function fixture(page: Page, large = false) {
+async function fixture(page: Page, large = false, provenance = false) {
   const amy = makeAttempt(1, "amy", "ACTIVE", {
       working: true,
       attempt_number: 2,
@@ -122,6 +122,68 @@ async function fixture(page: Page, large = false) {
       ],
     },
   };
+  const grant = {
+    id: "22222222-2222-4222-8222-222222222222",
+    exam: "alpha",
+    username: "amy",
+    issuance: "ADDITIONAL_TEMPLATE",
+    issuance_order: 2,
+    revision: 2,
+    status: "AVAILABLE",
+    hash: "b".repeat(64),
+    issued_at: Date.now() - 120000,
+    actor: "instructor",
+    reason: "Explicit recovery from the selected protected source",
+    settings: {
+      id: "alpha",
+      duration: 4500,
+      webcam: false,
+      terminals: 4,
+      earliest: Date.now() - 60000,
+      latest: Date.now() + 3600000,
+      template: "sample-exam",
+      template_version: "a".repeat(64),
+      collection_file_mib: 128,
+      collection_total_mib: 512,
+    },
+    work: { kind: "empty" },
+    claims: [],
+    history: [],
+  };
+  const source = makeAttempt(7, "amy", "COMPLETED", {
+    exam: "beta",
+    attempt_number: 1,
+    protected: 1,
+    grantContext: { state: "legacy" },
+  });
+  if (provenance) {
+    amy.grantContext = {
+      ...grant,
+      state: "recorded",
+      revision: 1,
+      hash: "c".repeat(64),
+      current_revision: 2,
+      current_status: "AVAILABLE",
+      revision_reason: grant.reason,
+      settings: { ...grant.settings, duration: 5400 },
+      work: { kind: "saved", attempt: source.id, checksum: "d".repeat(64) },
+      source_attempt: {
+        id: source.id,
+        exam: "beta",
+        attempt_number: 1,
+        state: "COMPLETED",
+        recorded_protected: true,
+        checksum_matches: true,
+        available_in_gateway: true,
+      },
+    };
+    rows[0].unusedGrants = {
+      available: 1,
+      future: 1,
+      closed: 1,
+      pendingNative: 1,
+    };
+  }
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url()),
       path = url.pathname;
@@ -130,6 +192,10 @@ async function fixture(page: Page, large = false) {
     if (path === "/api/session")
       return json({ role: "admin", username: "instructor", csrf: "fixture" });
     if (path === "/api/login-test") return json({ loginOnly: false });
+    if (provenance && path === "/api/admin/exams/alpha/grants")
+      return json({ grants: [], next: null }); // Exact historical selection may be outside the first page.
+    if (provenance && path === `/api/admin/grants/${grant.id}`)
+      return json(grant);
     if (path === "/api/admin/exams")
       return json(
         ["alpha", "beta"].map((id) => ({
@@ -146,8 +212,12 @@ async function fixture(page: Page, large = false) {
       if (state.slow) await new Promise((r) => setTimeout(r, state.slow));
       if (state.failDashboard)
         return json({ error: "Dashboard unavailable" }, 503);
-      const source = path.includes("/beta/") ? [] : state.rows;
-      const filtered = source
+      const roster = path.includes("/beta/")
+        ? provenance
+          ? [{ username: "amy", enrollment: null, attempts: [source] }]
+          : []
+        : state.rows;
+      const filtered = roster
         .map((s) => ({
           ...s,
           attempts: s.attempts.filter((a: any) =>
@@ -167,24 +237,24 @@ async function fixture(page: Page, large = false) {
         students: filtered,
         total: filtered.length,
         reviewAttempt:
-          source
+          roster
             .flatMap((s) => s.attempts)
             .find((a: any) => a.id === url.searchParams.get("review")) || null,
         counts: {
-          students: source.length,
-          working: source.flatMap((s) => s.attempts).filter((a) => a.working)
+          students: roster.length,
+          working: roster.flatMap((s) => s.attempts).filter((a) => a.working)
             .length,
-          attention: source
+          attention: roster
             .flatMap((s) => s.attempts)
             .filter((a) => ["LOCKED", "COLLECTION_FAILED"].includes(a.state))
             .length,
-          active: source
+          active: roster
             .flatMap((s) => s.attempts)
             .filter((a) => a.state === "ACTIVE").length,
-          locked: source
+          locked: roster
             .flatMap((s) => s.attempts)
             .filter((a) => a.state === "LOCKED").length,
-          collected: source
+          collected: roster
             .flatMap((s) => s.attempts)
             .filter((a) => a.protected).length,
         },
@@ -217,7 +287,7 @@ async function fixture(page: Page, large = false) {
       if (state.reviewDelay) await state.reviewDelay;
       if (state.failReview)
         return json({ error: "Monitoring unavailable" }, 503);
-      const a = state.rows
+      const a = [...state.rows, { attempts: [source] }]
         .flatMap((s) => s.attempts)
         .find((a) => path.includes(a.id));
       return json({
@@ -331,6 +401,134 @@ async function fixture(page: Page, large = false) {
   ).toBeVisible();
   return state;
 }
+for (const width of [1280, 430])
+  test(`attempt provenance keeps applied settings and opens the exact grant and cross-exam source at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await fixture(page, false, true);
+    const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
+    await expect(amy).toContainText("1 grant available");
+    await expect(amy).toContainText("1 awaiting source confirmation");
+    await expect(amy).toContainText("1 with a future Begin window");
+    await expect(amy).toContainText("1 unused with closed Begin windows");
+    await amy
+      .getByRole("button", {
+        name: "Inspect grant for amy attempt 2",
+        exact: true,
+      })
+      .click({ timeout: 5000 });
+    const grants = page.getByRole("dialog", {
+      name: "Attempt grants for amy",
+      exact: true,
+    });
+    await expect(grants).toContainText("revision 2");
+    await expect(grants).toContainText("Saved allowance: 75 minutes");
+    await grants
+      .getByRole("button", { name: "Close grants", exact: true })
+      .click({ timeout: 5000 });
+    await amy
+      .getByRole("button", { name: "Review", exact: true })
+      .first()
+      .click({ timeout: 5000 });
+    const review = page.getByRole("dialog", {
+      name: "amy · Attempt 2",
+      exact: true,
+    });
+    const provenance = review.getByRole("region", {
+      name: "Grant and workspace",
+      exact: true,
+    });
+    await expect(provenance).toContainText(
+      "This attempt used revision 1. The grant is now revision 2",
+    );
+    await expect(provenance).toContainText("90 minutes · webcam optional");
+    await expect(provenance).toContainText(
+      "Explicit recovery from the selected protected source",
+    );
+    await expect(provenance).toContainText("Saved work · beta · Attempt 1");
+    await expect(provenance).toContainText("submission recorded secured");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath(`attempt-provenance-${width}.png`),
+      fullPage: true,
+    });
+    await provenance
+      .getByRole("button", {
+        name: "Inspect grant for amy attempt 2",
+        exact: true,
+      })
+      .click({ timeout: 5000 });
+    await expect(grants).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(1);
+    await grants
+      .getByRole("button", { name: "Close grants", exact: true })
+      .click({ timeout: 5000 });
+    await amy
+      .getByRole("button", { name: "Review", exact: true })
+      .first()
+      .click({ timeout: 5000 });
+    await provenance
+      .getByRole("button", {
+        name: "Review saved source attempt 1 for amy",
+        exact: true,
+      })
+      .click({ timeout: 5000 });
+    await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(
+      "beta",
+    );
+    const source = page.getByRole("dialog", {
+      name: "amy · Attempt 1",
+      exact: true,
+    });
+    await expect(source).toContainText(
+      "Legacy attempt · no grant snapshot recorded",
+    );
+    await expect(
+      source.getByRole("region", { name: "Grant and workspace", exact: true }),
+    ).toHaveCount(0);
+  });
+test("unavailable source history stays inspectable without offering a misleading source link", async ({
+  page,
+}) => {
+  const state = await fixture(page, false, true);
+  const applied = state.rows[0].attempts[0].grantContext;
+  applied.source_attempt = {
+    id: applied.work.attempt,
+    available_in_gateway: false,
+  };
+  await page.reload();
+  await page.getByLabel("Selected exam", { exact: true }).selectOption("alpha");
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click({ timeout: 5000 });
+  const provenance = page.getByRole("region", {
+    name: "Grant and workspace",
+    exact: true,
+  });
+  await expect(provenance).toContainText(
+    "Source gateway history is unavailable or differs from this account",
+  );
+  await expect(provenance).toContainText(
+    "this does not establish archive loss",
+  );
+  await expect(provenance).toContainText(applied.work.attempt);
+  await expect(
+    provenance.getByRole("button", { name: /Review saved source/ }),
+  ).toHaveCount(0);
+  await expect(
+    provenance.getByRole("button", {
+      name: "Inspect grant for amy attempt 2",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
 for (const width of [1280, 430])
   test(`compact roster preserves all attempts and fits a ${width}px window`, async ({
     page,
@@ -484,6 +682,30 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
       .first(),
   ).toBeFocused();
 });
+test("row menus ignore queued scroll at the same anchor but dismiss after actual movement", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await fixture(page, true);
+  await page
+    .getByRole("button", { name: "Actions for student amy", exact: true })
+    .click({ timeout: 5000 });
+  const menu = page.getByRole("menu", {
+    name: "Actions for student amy",
+    exact: true,
+  });
+  await expect(menu).toBeVisible();
+  await page.evaluate(() => dispatchEvent(new Event("scroll")));
+  await expect(menu).toBeVisible();
+  await expect(
+    menu.getByRole("menuitem", { name: "Attempt grants…", exact: true }),
+  ).toBeFocused();
+  const previous = await page.evaluate(() => scrollY);
+  await page.evaluate(() => scrollBy(0, 100));
+  await expect.poll(() => page.evaluate(() => scrollY)).not.toBe(previous);
+  await expect(menu).toHaveCount(0);
+});
+
 test("review keeps recovery deliberate, shows incidents and does not call an unverified submission secured", async ({
   page,
 }) => {

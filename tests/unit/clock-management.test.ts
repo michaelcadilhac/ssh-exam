@@ -61,10 +61,15 @@ it("stages shared per-target intents atomically, redacts inspection and retains 
     };
     const life = new Lifecycle(store, agent, new Monitoring(store));
     const clocks = new ClockControl(store, agent, life);
-    const attempts = new AttemptManagement(store, clocks, (row) => ({
-      ...row,
-      connected: false,
-    }));
+    const attempts = new AttemptManagement(
+      store,
+      clocks,
+      (row) => ({
+        ...row,
+        connected: false,
+      }),
+      "class",
+    );
     const management = new ClockManagement(store, clocks, attempts);
     const before = store.attempt(a);
     const targetA = {

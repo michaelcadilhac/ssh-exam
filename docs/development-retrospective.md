@@ -52,6 +52,20 @@ milestone boundaries, not lower safety standards or misleading TODO checkmarks.
 
 ## Operating changes
 
+October25 provenance follow-up: a broad browser command again omitted the WASM
+environment flag despite the written instruction. The runner now defaults its
+private server to real WASM, with explicit0 for fallback qualification, and the
+initial-grant protocol test asserts public mode before admission. Automate this
+precondition rather than relying on another reminder. The new taller roster also
+exposed an Actions-menu failure. An isolated test omitted the preceding completed
+attempt and therefore passed without reproducing the failing layout. Preserve
+the composed setup before crediting a correction. Event diagnostics then proved
+a queued auto-scroll event arrived after menu positioning without moving its
+anchor; an initial focus-only hypothesis was insufficient. The correction ignores
+unchanged-anchor scroll events and retains genuine-scroll dismissal, tested
+through the actual menu and full grant sequence. Failures and final evidence
+belong in attempt-provenance.md; no enforcement or acceptance criteria changed.
+
 October24 browser-fixture follow-up: the static test server serves dist/web;
 one rerun used old browser assets. A server-only close code was also invalid on
 the real browser upstream and Playwright hid its error. Check actual close/bind

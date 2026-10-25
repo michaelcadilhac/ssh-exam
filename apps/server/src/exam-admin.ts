@@ -27,7 +27,8 @@ export function registerExamAdmin(
   principal: (req: any, role: string) => any,
   describe: (a: any) => any,
 ) {
-  const attempts = new AttemptManagement(store, clocks, describe);
+  const attempts = new AttemptManagement(store, clocks, describe, agent.id);
+  const grants = new AttemptGrants(store, agent.id);
   const clockManagement = new ClockManagement(store, clocks, attempts);
   const findExam = (id: string) => {
     const row = store.db
@@ -82,6 +83,7 @@ export function registerExamAdmin(
         .all(req.params.exam) as any[]
     ).map((a) => ({
       ...describe(a),
+      grantContext: grants.forAttempt(a),
       interruptions: interruptionHistory.get(a.id) || [],
       interruptionHistoryDeleted: deletedHistory.has(a.id),
     }));
@@ -106,10 +108,8 @@ export function registerExamAdmin(
       ...(() => {
         try {
           return {
-            grant: new AttemptGrants(store, agent.id).initialFor(
-              req.params.exam,
-              s.username,
-            ),
+            grant: grants.initialFor(req.params.exam, s.username),
+            unusedGrants: grants.unusedSummary(req.params.exam, s.username),
           };
         } catch {
           return { grant: null, grantError: true };

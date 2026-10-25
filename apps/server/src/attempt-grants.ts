@@ -573,6 +573,127 @@ export class AttemptGrants {
       history_next: history.length > 50 ? history[49].revision : null,
     };
   }
+  // Immediate callers: instructor history/review and the shared root CLI
+  // attempts projection. Read the APPLIED revision, never today's defaults or
+  // a later revision issued after an old preparation was cancelled.
+  forAttempt(
+    a: Pick<
+      Attempt,
+      | "id"
+      | "exam"
+      | "username"
+      | "uid"
+      | "grant_id"
+      | "grant_revision"
+      | "grant_hash"
+    >,
+  ) {
+    if (!a.grant_id && !a.grant_revision && !a.grant_hash)
+      return { state: "legacy" as const };
+    try {
+      const current = this.row(a.grant_id!);
+      if (current.exam !== a.exam || current.username !== a.username)
+        throw Error("Grant account differs");
+      const revision = this.store.db
+        .prepare(
+          "SELECT settings,work,hash,actor,reason,at FROM grant_revisions WHERE grant_id=? AND revision=?",
+        )
+        .get(a.grant_id, a.grant_revision) as any;
+      if (
+        !revision ||
+        revision.hash !== a.grant_hash ||
+        revision.settings.length > 16384 ||
+        revision.work.length > 2048
+      )
+        throw Error("Applied grant revision unavailable");
+      const saved = this.view({
+        ...current,
+        settings: revision.settings,
+        work: revision.work,
+        hash: revision.hash,
+        revision: a.grant_revision,
+      });
+      let sourceAttempt;
+      if (saved.work.kind === "saved") {
+        const source = this.store.db
+          .prepare(
+            "SELECT a.id,a.exam,a.username,a.uid,a.state,a.protected,a.checksum,(SELECT COUNT(*) FROM attempts earlier WHERE earlier.exam=a.exam AND earlier.username=a.username AND earlier.rowid<=a.rowid) attempt_number FROM attempts a WHERE a.id=?",
+          )
+          .get(saved.work.attempt) as any;
+        sourceAttempt =
+          source && source.username === a.username && source.uid === a.uid
+            ? {
+                id: source.id,
+                exam: source.exam,
+                attempt_number: source.attempt_number,
+                state: source.state,
+                recorded_protected: !!source.protected,
+                checksum_matches: source.checksum === saved.work.checksum,
+                available_in_gateway: true,
+              }
+            : { id: saved.work.attempt, available_in_gateway: false };
+      }
+      return {
+        state: "recorded" as const,
+        id: saved.id,
+        revision: saved.revision,
+        hash: saved.hash,
+        issuance: saved.issuance,
+        issuance_order: saved.issuance_order,
+        issued_at: saved.issued_at,
+        actor: String(saved.actor).slice(0, 160),
+        reason: String(saved.reason).slice(0, 1000),
+        revision_reason: String(revision.reason).slice(0, 1000),
+        current_revision: current.revision,
+        current_status: current.status,
+        settings: {
+          duration: saved.settings.duration,
+          webcam: saved.settings.webcam,
+          earliest: saved.settings.earliest,
+          latest: saved.settings.latest,
+          template: saved.settings.template,
+          template_version: saved.settings.template_version,
+        },
+        work: saved.work,
+        ...(sourceAttempt ? { source_attempt: sourceAttempt } : {}),
+      };
+    } catch {
+      return {
+        state: "unavailable" as const,
+        message:
+          "Recorded grant linkage is unavailable or inconsistent. Preserve this attempt and inspect web grants/history; current defaults are not historical settings.",
+      };
+    }
+  }
+  unusedSummary(exam: string, username: string) {
+    const result = {
+      available: 0,
+      future: 0,
+      closed: 0,
+      pendingNative: 0,
+      more: false,
+      unavailable: false,
+    };
+    try {
+      const rows = this.store.db
+        .prepare(
+          "SELECT g.rowid issuance_order,g.*,r.settings,r.work,r.hash FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.agent=? AND g.exam=? AND g.username=? AND g.status IN ('AVAILABLE','PENDING_NATIVE') AND NOT EXISTS (SELECT 1 FROM grant_claims c WHERE c.grant_id=g.id AND c.state<>'CANCELLED') ORDER BY g.rowid LIMIT 201",
+        )
+        .all(this.agent, exam, username) as any[];
+      result.more = rows.length > 200;
+      const at = now();
+      for (const row of rows.slice(0, 200)) {
+        const grant = this.view(row);
+        if (grant.status === "PENDING_NATIVE") result.pendingNative++;
+        else if (grant.settings.latest < at) result.closed++;
+        else if (grant.settings.earliest > at) result.future++;
+        else result.available++;
+      }
+    } catch {
+      result.unavailable = true;
+    }
+    return result; // Gateway metadata; native readiness/Begin still verifies.
+  }
   request<T>(
     actor: string,
     request: string | undefined,
