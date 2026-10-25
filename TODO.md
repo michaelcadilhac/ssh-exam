@@ -33,9 +33,21 @@ at Begin/Continue and retained in native challenges. Fresh pristine restarted
 facts can match still-live native coverage/counters without refreshing age; native
 challenge/prior-authority expiry, witnessed gaps and policy loss still refuse.
 Full native race/resource core580.201s/CLI30.674s,594app checks,21composed browser
-workflows,43Python checks, build/types/vet pass. A fresh exact-artifact guarded
-root run and actual-root/browser/capacity join remain open; no C3/C16 closure or
+workflows,43Python checks, build/types/vet pass. Fresh exact0ecfc13 guarded root
+qualification passes42 assertions with FULL host/base preservation (synthetic
+capture/private CLI adapter). Actual-root/browser/capacity join remains open; no C3/C16 closure or
 deployment. Details: docs/monitoring-restart-continuity.md.
+
+October25 proxy failure and graceful gateway shutdown are corrected/tested locally.
+Actual WASM/SSH recovers the same private shell buffer, owner and original interval
+without a false policy lock, generation increment or fresh authentication. A peer
+keeps working; a genuine hold and unused approval survive proxy failure plus
+process replacement and still require explicit Continue. Full594 application
+checks,22 composed affected browser workflows,32 focused interfaces, build/types
+and state review pass. Native binaries remain exact0ecfc13; their fresh root42
+receipt applies separately. Combined actual-root/browser/capacity remains open;
+installed admission stays OFF and nothing is deployed. Evidence:
+docs/retained-gateway-restart.md.
 
 October25 attempt/grant/workspace presentation is implemented/tested locally.
 Dashboard history/review and supported CLI list/show expose the applied revision,
@@ -96,13 +108,13 @@ preservation. Fixture failures/corrections and exact artifacts are retained in
 docs/retained-ssh-exit-feedback.md. No deployment/enablement or broader liveness
 checkbox closure; whole-gateway restart and combined browser/root16/64 remain.
 
-October25 actual retained gateway-child death is qualified locally: two students
-start negotiatedv1 through WASM/SSH; exact SIGKILL retires only the failed child's
-panes, preserves its grant/original interval, gives fresh-SSH/review guidance and
-one contextual alert. The same peer worker accepts input and keeps its interval.
-This is tests/docs only; native OS containment is simulated in the browser and
-separately qualified by root tests. Full-page/native SSH-death feedback, whole-
-gateway restart and combined root16/64 remain. See docs/retained-browser-control.md.
+Earlier October25 child-death qualification exposed a now-superseded behavior:
+proxy SIGKILL closed independently viable SSH and demanded fresh sign-in/review.
+The later proxy-recovery milestone above fixes that false classification and
+preserves the private buffer/interval while the unaffected peer keeps working.
+Browser native containment remains simulated and separately root-qualified; the
+combined browser/kernel16/64 gate remains open. Historical evidence is retained in
+docs/retained-browser-control.md; current contract: retained-gateway-restart.md.
 
 October25 native admission compatibility is implemented/tested locally. Actual
 signed/interface reproductions exposed a legacy-purpose downgrade and an old-

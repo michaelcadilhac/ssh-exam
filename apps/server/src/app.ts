@@ -330,9 +330,10 @@ export async function createApp(
             .get(exam, username) as Attempt | undefined);
       const event = randomUUID();
       const detail = JSON.stringify({ event, ...failure });
+      const retained = isolated.retainedControlObserved;
       store.audit(
         "supervisor",
-        "attempt-worker-failed",
+        retained ? "attempt-control-proxy-failed" : "attempt-worker-failed",
         context?.id || "",
         detail,
       );
@@ -346,6 +347,34 @@ export async function createApp(
         },
         "Attempt connection process failed",
       );
+      if (retained) {
+        // Neither a dead proxy nor its missing memory proves SSH loss. Remove
+        // only its routing references; signed current-page/native rebind must
+        // prove the original owner before any new proxy can serve the attempt.
+        const key = `${exam}:${username}`;
+        if (connections.get(key) === isolated) connections.delete(key);
+        if (owned && attemptConnections.get(owned[0]) === isolated)
+          attemptConnections.delete(owned[0]);
+        const subject = "Exam control proxy failure: " + username;
+        const body = `The browser is retrying exam control on its existing SSH session. Native monitoring and original deadlines remain authoritative. No student policy violation or SSH exit is established by this proxy failure.\nDiagnostic: ${detail}`;
+        if (context)
+          life.notifyAttempt(
+            context,
+            "connection-process",
+            subject,
+            body,
+            event,
+          );
+        else
+          life.alert(
+            subject,
+            [...signInAlertContext(username, exam), body].join("\n"),
+            {
+              coalesce: false,
+            },
+          );
+        return;
+      }
       const reason = context?.start
         ? "Exam connection process failed. Recovery authorization and fresh SSH sign-in are required."
         : "SSH sign-in/preflight process failed. Sign in again; the exam clock has not started.";
@@ -3785,7 +3814,11 @@ export async function createApp(
       clearInterval(t);
     await purges.close();
     for (const a of store.db
-      .prepare("SELECT id FROM attempts WHERE state='ACTIVE'")
+      // The v1 native supervisor owns cutoffs independently. Missing gateway
+      // control during shutdown is not an SSH exit or student policy incident.
+      .prepare(
+        "SELECT id FROM attempts WHERE state='ACTIVE' AND COALESCE(monitoring_mode,'legacy')<>'v1'",
+      )
       .all() as any[])
       await life.lock(a.id, "Gateway shutting down");
     for (const c of connections.values()) c.close();

@@ -127,6 +127,11 @@ export class IsolatedConnection implements ConnectionHandle {
   private child: ChildProcess;
   private stopped = false;
   private failed = false;
+  // Last trusted child negotiation, not a native execution/coverage receipt.
+  private retainedControl = false;
+  get retainedControlObserved() {
+    return this.retainedControl;
+  }
   private sequence = 0;
   private replies = new Map<
     number,
@@ -359,6 +364,8 @@ export class IsolatedConnection implements ConnectionHandle {
     if (m.kind === "reply") {
       this.alive = !!m.alive;
       this.transport = m.transport || "";
+      this.retainedControl =
+        this.browser && this.alive && m.retainedControl === true;
       const pending = this.replies.get(m.id);
       if (!pending) return;
       this.replies.delete(m.id);
@@ -534,6 +541,7 @@ export class IsolatedConnection implements ConnectionHandle {
   private fail(failure: ConnectionFailure) {
     if (this.stopped || this.failed) return;
     this.failed = true;
+    if (this.retainedControl) this.preserveRestoreTransport = true;
     this.close();
     // No exception text, stdout, stderr, request body or terminal content crosses
     // the failure reporting boundary. Report from the surviving supervisor.
@@ -563,6 +571,8 @@ export class IsolatedConnection implements ConnectionHandle {
     this.replies.clear();
     for (const pane of this.panes.values()) {
       try {
+        // Retiring an HTTP mirror is not an EOF on the independent SSH pane.
+        if (this.preserveRestoreTransport) pane.removeAllListeners();
         (pane as any).dispose();
       } catch {
         /* Isolate a teardown listener too. */

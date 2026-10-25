@@ -111,6 +111,18 @@ and the supported reviewed authorization workflow if recovery is needed. Do not
 clear records, release restrictions or reset time to hide an observation failure.
 This candidate is not deployed/enabled. See retained-ssh-exit-feedback.md.
 
+The local retained-control candidate now treats unexpected gateway proxy failure
+as an infrastructure alert, with diagnostic event/attempt context. A browser may
+retry on its existing SSH only after current-page and signed native-owner checks;
+that retry does not authorize input, Continue or extra time. Graceful gateway
+shutdown likewise does not create a retained student policy lock. A real policy
+hold/approval remains in force. Inspect Alerts/interruption review (or the
+corresponding examctl workflows); do not reset clocks or issue another attempt
+merely because a proxy failed. Unknown monitoring coverage still requires explicit
+technical review. Native admission remains OFF pending combined qualification;
+this is local development, not current production behavior. See
+retained-gateway-restart.md and monitoring-restart-continuity.md.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

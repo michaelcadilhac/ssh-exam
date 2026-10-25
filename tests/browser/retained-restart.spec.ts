@@ -62,8 +62,14 @@ async function fixture(page: Page, path: string, data: unknown) {
   return response.json();
 }
 
-async function restart(page: Page, previous: number) {
-  expect((await fixture(page, "gateway-restart", {})).previous).toBe(previous);
+async function restart(
+  page: Page,
+  previous: number,
+  mode: "kill" | "graceful" = "kill",
+) {
+  expect((await fixture(page, "gateway-restart", { mode })).previous).toBe(
+    previous,
+  );
   await expect
     .poll(
       async () => {
@@ -92,6 +98,54 @@ function sameInterval(original: any) {
     ].map((key) => [key, original[key]]),
   );
 }
+
+test("graceful gateway shutdown preserves the original SSH, buffer and interval without a policy hold", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.EXAM_BROWSER_GATEWAY_PROCESS !== "1",
+    "Requires the private process fixture",
+  );
+  test.setTimeout(60000);
+  page.setDefaultTimeout(5000);
+  const original = await begin(page, "retained14"),
+    before = await runtime(page),
+    owner = JSON.parse(original.registered_owner);
+  expect(before.gatewayProcess).toBe(true);
+  expect(before.sshTransports).toContainEqual({
+    transport: owner.transport_hash,
+    username: "retained14",
+    closed: false,
+  });
+  await page.locator(".xterm-helper-textarea").last().focus();
+  await page.keyboard.type("graceful-private-");
+  await expect(page.locator(".xterm-rows")).toContainText("graceful-private-");
+  await restart(page, before.pid, "graceful");
+  const current = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(current).toMatchObject({ ...sameInterval(original), state: "ACTIVE" });
+  await expect(
+    page.getByText("Reconnecting · input blocked", { exact: true }),
+  ).toHaveCount(0, { timeout: 10000 });
+  await expect(
+    page.getByRole("heading", { name: "Instructor review required" }),
+  ).toHaveCount(0);
+  await page.locator(".xterm-helper-textarea").last().focus();
+  await page.keyboard.type("verified");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "Echo: graceful-private-verified",
+  );
+  const final = await runtime(page);
+  expect(final.fixturePID).toBe(before.fixturePID);
+  expect(final.authenticationCalls).toEqual(before.authenticationCalls);
+  expect(final.terminalOpens).toBe(before.terminalOpens);
+  expect(final.sshTransports).toContainEqual({
+    transport: owner.transport_hash,
+    username: "retained14",
+    closed: false,
+  });
+});
 
 async function approve(request: APIRequestContext, id: string) {
   const login = await request.post("/api/admin/login", {
@@ -352,7 +406,7 @@ for (const [mode, username] of [
     expect(after).toMatchObject({ ...sameInterval(original), state: "ACTIVE" });
   });
 
-test("gateway restart preserves a policy hold and its scoped approval on the same SSH", async ({
+test("proxy failure and gateway restart preserve a policy hold and its scoped approval on the same SSH", async ({
   page,
   request,
 }) => {
@@ -403,6 +457,41 @@ test("gateway restart preserves a policy hold and its scoped approval on the sam
   await expect(
     page.getByRole("heading", { name: "Continuation approved", exact: true }),
   ).toBeVisible({ timeout: 10000 });
+  const { serverNow: approvedAt, ...approved } = await (
+    await request.get(`/api/admin/attempts/${original.id}/interruption`)
+  ).json();
+  const proxy = (await runtime(page)).workers.find(
+    (w: any) => w.username === "retained08",
+  );
+  expect(
+    (await fixture(page, "fault", { username: "retained08", fault: "kill" }))
+      .pid,
+  ).toBe(proxy.pid);
+  await expect
+    .poll(
+      async () => {
+        const current = (await runtime(page)).workers.find(
+          (w: any) => w.username === "retained08",
+        );
+        return !!current && current.pid !== proxy.pid;
+      },
+      { timeout: 10000 },
+    )
+    .toBe(true);
+  await expect(
+    page.getByText("Reconnecting · input blocked", { exact: true }),
+  ).toHaveCount(0, { timeout: 10000 });
+  expect(
+    (await (await page.request.get("/api/student/exam")).json()).attempt,
+  ).toMatchObject({ ...sameInterval(paused), state: "LOCKED" });
+  const { serverNow: inspectedAt, ...afterProxy } = await (
+    await request.get(`/api/admin/attempts/${original.id}/interruption`)
+  ).json();
+  expect(inspectedAt).toBeGreaterThanOrEqual(approvedAt);
+  expect(afterProxy).toEqual(approved);
+  await expect(
+    page.getByRole("heading", { name: "Continuation approved", exact: true }),
+  ).toBeVisible();
   await restart(page, before.pid);
   await expect
     .poll(

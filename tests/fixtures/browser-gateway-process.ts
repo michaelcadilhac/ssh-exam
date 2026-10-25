@@ -179,10 +179,11 @@ export function browserGatewayProcess(config: Config, workerEntry: URL) {
     workers: () => call("workers"),
     fault: (username: string, fault: string) =>
       call("fault", { username, fault }),
-    async restart() {
+    async restart(mode: "kill" | "graceful" = "kill") {
       const target = child,
         previous = target.pid;
-      await new Promise<void>((resolve, reject) => {
+      // Subscribe before the shutdown RPC: its reply/disconnect/exit can race.
+      const exit = new Promise<void>((resolve, reject) => {
         const timer = setTimeout(
           () => reject(Error("Owned fixture gateway did not exit")),
           5000,
@@ -191,11 +192,13 @@ export function browserGatewayProcess(config: Config, workerEntry: URL) {
           clearTimeout(timer);
           resolve();
         });
-        if (!target.kill("SIGKILL")) {
+        if (mode === "kill" && !target.kill("SIGKILL")) {
           clearTimeout(timer);
           reject(Error("Owned fixture gateway kill failed"));
         }
       });
+      if (mode === "graceful") await Promise.all([call("shutdown"), exit]);
+      else await exit;
       launch();
       await listen();
       return { previous, current: child.pid };

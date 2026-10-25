@@ -34,19 +34,34 @@ PASS. ALL runners finished. Log prefix /tmp/ssh-exam-native-policy-cohort-.
 State review/limits: monitoring-restart-continuity.md. Initial owner seal and
 clock in HTTP/native-authority bridge are synthetic, not kernel thaw proof.
 
-NEXT: build NEW
-exact artifacts for guarded csc-sys retained-policy qualification (never reuse old
-native hashes). SSH38778 succeeds; no remote test/upload/service change this run.
-Prior bundle source inventory is main var/collection-tests/
-retained-ssh-exit-held-artifacts.5pelefmi (SHA256.json verified before any reuse).
-Only unchanged C probes and overlay_guest.py may be reused after hash verification;
-rebuild all4native binaries/core test and copy current scripts/callbacks/slices.
-The normal installed admission guard remains unconditional OFF. Existing root
-qualification uses a private CLI test adapter; joining the ACTUAL browser Begin
-will need an equally guarded private guest admission adapter, not a production
-switch. Reuse the existing private shared output bind for bounded SSH/callback
-IPC across the guest's private network. Inspect contracts before adding code;
-ONE real-root/browser student workflow precedes16students/64panes/collection.
+Fresh0ecfc13 exact-artifact guarded csc-sys retained-policy qualification PASS42,
+OVERLAY_QUALIFICATION_OK and FULL host/base preservation. Evidence/hashes:
+monitoring-restart-continuity.md. Synthetic capture/private CLI adapter; not the
+joined actual-browser/native Begin. No production service or data changes.
+
+The proxy/graceful-shutdown milestone is implemented/tested locally in this
+commit: preserve only independent SSH/routing hints, no false policy generation,
+no new permission; exact native-owner rebind and original cutoffs still apply.
+Active20750/graceful73481/held-approval29252 focused browser PASS; worker/input/
+cleanup80698 PASS32. Full app1584 PASS594/109files310.86s; composed browser25076
+PASS22/4.2m; types29406/build86321/diff PASS. All runners completed. Initial
+restricted build hit Go-spawn EPERM; escalated local build passes. Failure/state
+review/evidence: retained-gateway-restart.md. Native sources/artifacts unchanged
+from0ecfc13, so its fresh root42 receipt remains applicable separately.
+
+NEXT bounded milestone: ONE actual browser Begin -> policy hold -> supported
+instructor authorization -> explicit Continue on the same SSH/private editor
+buffer -> protected finish in the guarded native guest. Then fault variants and
+16students/64panes/concurrent collection. No production enablement or deployment.
+The existing TestRetainedPolicyAgentGuest already runs actual ServeLocal under
+full private guest guards with native factories; reuse that EXACT private test
+role rather than add an enable switch or a new native shim. Canonical tracked
+ssh-server/tests/overlay_guest.py matches the frozen c0eb9820... artifact. Reuse
+its volatile/private-network/shared-output guard, adding bounded test-only SSH/
+authenticated-HTTPS IPC to the actual local gateway/browser. Public metadata and
+gateway PUBLIC key may cross; private fixture/native keys stay with their owners.
+Inspect actual config/fixture contracts before edits. Keep helpers wired to this
+public test in the same milestone; no unrelated component expansion.
 
 Native continuity stash2b36da2d121da54d1dfc7dd3624cafdebbd241d3 is ALREADY applied
 and retained as backup; do NOT reapply. No new authority process/API is needed.

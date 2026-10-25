@@ -52,6 +52,7 @@ const retainedRestartAccounts = {
   retained11: 10041,
   retained12: 10042,
   retained13: 10043,
+  retained14: 10044,
 };
 const retainedExams = new Set([
   "retained-control",
@@ -1370,13 +1371,16 @@ if (gateway) {
       mode === "none" ? undefined : { username, mode, armedPID: gateway.pid };
     return { mode, armedPID: gateway.pid };
   });
-  app.post("/api/fixture/gateway-restart", async () => {
+  app.post("/api/fixture/gateway-restart", async (req) => {
+    const mode = (req.body as any)?.mode ?? "kill";
+    if (!["kill", "graceful"].includes(mode))
+      throw Error("Explicit private gateway restart mode required");
     if (restarting) throw Error("Owned fixture restart already running");
     restarting = true;
     const previous = gateway.pid;
     setTimeout(() => {
       void gateway
-        .restart()
+        .restart(mode)
         .catch((error) => {
           console.error("Owned fixture gateway restart failed", error);
           void shutdown().finally(() => process.exit(1));

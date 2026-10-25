@@ -1,6 +1,6 @@
 # Native monitoring continuity after gateway restart
 
-October25,2026. Local candidate after03646a5; not deployed or enabled. Installed
+October25,2026. Local native revision0ecfc13; not deployed or enabled. Installed
 retained admission stays unconditional OFF. This is the existing authenticated
 agent HTTPS evidence path, not a new authority process, API or permission source.
 
@@ -88,7 +88,22 @@ scopes, userns, compiler and default-size collection enabled. Full app16423
 PASS594/109files310.98s; browser82775 PASS21composed/4.2m across real WASM/SSH and
 all7actual gateway restart cases. Build64797/vet/diff PASS; Python43 PASS. Logs
 /tmp/ssh-exam-native-policy-cohort-*.log. Inputs frozen through completion. These
-receipts qualify local interfaces, not a new guarded actual-root artifact bundle.
+receipts qualify local interfaces; the separate fresh root receipt follows.
+
+The NEW exact0ecfc13 artifact bundle passes the guarded csc-sys retained-policy
+profile:42 assertions, framed owner/retained lockout/synthetic capture true,
+OVERLAY_QUALIFICATION_OK and FULL live-binary/config/authority/guest-base
+preservation. Private upload /var/tmp/ssh-exam-native-policy-cohort-upload.m7slwcr5;
+root evidence /var/tmp/ssh-exam-overlay-8k4vnff_. Local manifest and runner are in
+var/collection-tests/native-policy-cohort-artifacts.sl3ax3qo on the main checkout;
+log /tmp/ssh-exam-native-policy-cohort-root.log. Agent SHA256
+cccf2a4eea8a00589678e2cc951e69c777a92079d15498d6135b4c5c9e6596f7;
+core test63d1ebb7aefb1c340a2e5388678199defbc445b364f4d23680b993cbf7c76681.
+All15 input files were manifest-verified; only unchanged verified C probes and
+overlay_guest.py were reused. This qualifies actual Root pause/Continue/PTY/
+memory/async-I/O/clock/recording/supervisor/SSH-exit/source-pin behavior with
+synthetic capture and a private CLI admission adapter. It is NOT the combined
+actual-browser/public-native-Begin workflow, capacity acceptance or deployment.
 
 Remaining complete liveness gates: graceful gateway shutdown and isolated proxy
 failure must preserve viable SSH; joined actual-root/browser workflow precedes the

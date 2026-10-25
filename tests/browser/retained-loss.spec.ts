@@ -46,7 +46,7 @@ async function begin(page: Page, username: string) {
 
 // Actual gateway child/WASM/SSH failure. Native OS containment is deliberately
 // simulated here and separately qualified in the guarded root driver.
-test("a killed retained gateway child requests fresh SSH without changing time or interrupting a peer", async ({
+test("a failed retained proxy re-verifies the original SSH and private buffer while a peer keeps working", async ({
   browser,
 }) => {
   test.setTimeout(60000);
@@ -73,6 +73,15 @@ test("a killed retained gateway child requests fresh SSH without changing time o
     ).pid;
     expect(alicePid).not.toBe(bobPid);
     expect(before.panes.filter((p: any) => p.attempt === a.id)).toHaveLength(1);
+    const owner = JSON.parse(a.registered_owner);
+    expect(before.sshTransports).toContainEqual({
+      transport: owner.transport_hash,
+      username: "retained04",
+      closed: false,
+    });
+    await alice.locator(".xterm-helper-textarea").last().focus();
+    await alice.keyboard.type("proxy-private-");
+    await expect(alice.locator(".xterm-rows")).toContainText("proxy-private-");
     const login = await admin.request.post(origin + "/api/admin/login", {
       headers: { origin },
       data: { username: "instructor", password: "fixture-password" },
@@ -85,9 +94,6 @@ test("a killed retained gateway child requests fresh SSH without changing time o
     });
     expect(fault.ok(), await fault.text()).toBe(true);
     expect((await fault.json()).pid).toBe(alicePid);
-    await expect(
-      alice.getByRole("heading", { name: "Instructor review required" }),
-    ).toBeVisible({ timeout: 15000 });
     await expect
       .poll(
         async () =>
@@ -95,30 +101,40 @@ test("a killed retained gateway child requests fresh SSH without changing time o
         { timeout: 10000 },
       )
       .toBe(false);
-    await expect
-      .poll(
-        async () =>
-          (await runtime()).panes.filter((p: any) => p.attempt === a.id),
-        { timeout: 10000 },
-      )
-      .toHaveLength(0);
     const current = (
       await (await alice.request.get("/api/student/exam")).json()
     ).attempt;
     expect(current).toMatchObject({
       id: a.id,
-      state: "LOCKED",
+      state: "ACTIVE",
+      generation: a.generation,
+      clock_revision: a.clock_revision,
+      registered_owner: a.registered_owner,
       start: a.start,
       deadline: a.deadline,
       original_deadline: a.original_deadline,
       grant_id: a.grant_id,
     });
-    expect(current.reason).toContain("connection process failed");
-    await alice
-      .getByRole("button", { name: "Reconnect SSH", exact: true })
-      .click({ timeout: 5000 });
-    await expect(alice.getByRole("alert")).toContainText(
-      "Instructor authorization required",
+    await expect
+      .poll(
+        async () =>
+          (await runtime()).workers.find(
+            (w: any) => w.username === "retained04",
+          )?.pid,
+        { timeout: 10000 },
+      )
+      .toEqual(expect.any(Number));
+    await expect(
+      alice.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toHaveCount(0, { timeout: 10000 });
+    await expect(
+      alice.getByRole("heading", { name: "Instructor review required" }),
+    ).toHaveCount(0);
+    await alice.locator(".xterm-helper-textarea").last().focus();
+    await alice.keyboard.type("recovered");
+    await alice.keyboard.press("Enter");
+    await expect(alice.locator(".xterm-rows")).toContainText(
+      "Echo: proxy-private-recovered",
     );
     await bob.locator(".xterm-helper-textarea").last().focus();
     await bob.keyboard.type("surviving-retained-peer");
@@ -133,6 +149,15 @@ test("a killed retained gateway child requests fresh SSH without changing time o
       final.workers.find((w: any) => w.username === "retained05").pid,
     ).toBe(bobPid);
     expect(final.authenticationCalls).toEqual(before.authenticationCalls);
+    expect(final.sshTransports).toContainEqual({
+      transport: owner.transport_hash,
+      username: "retained04",
+      closed: false,
+    });
+    expect(final.terminalOpens).toBe(before.terminalOpens);
+    expect(
+      final.workers.find((w: any) => w.username === "retained04").pid,
+    ).not.toBe(alicePid);
     expect(
       (await (await bob.request.get("/api/student/exam")).json()).attempt,
     ).toMatchObject({
@@ -144,7 +169,7 @@ test("a killed retained gateway child requests fresh SSH without changing time o
       grant_id: b.grant_id,
     });
     const alerts = final.outbox.filter(
-      (m: any) => m.subject === "Exam connection failure: retained04",
+      (m: any) => m.subject === "Exam control proxy failure: retained04",
     );
     expect(alerts).toHaveLength(1);
     expect(alerts[0].body).toContain(`Attempt: ${a.id}`);

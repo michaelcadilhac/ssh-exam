@@ -5,8 +5,56 @@ Not deployed/enabled. Installed retained admission stays unconditional OFF.
 The genuine-SSH-loss policy dialog remains separate and unanswered.
 Native restart renewal now also passes local native/application/browser checks;
 its precise contract/limits are in monitoring-restart-continuity.md. Fresh
-exact-artifact root, actual-root/browser join and capacity remain unqualified.
+exact0ecfc13 root qualification now passes42 guarded assertions with FULL host/base
+preservation. Actual-root/browser join and capacity remain unqualified.
 The sections below retain the bounded investigations and failure receipts.
+
+## Proxy failure and graceful shutdown candidate
+
+Public entries: an active student's browser control reconnect after exact proxy
+SIGKILL, and the same workspace after actual graceful app.close/process replacement.
+RED76052 and11674 positively reproduced false ACTIVE->LOCKED/generation0->1 while
+the independently owned SSH was viable. Candidate routing keeps that SSH and its
+private shell buffer; no additional channel/authentication or execution authority
+is created. One unaffected peer remains working during proxy failure. Contextual
+failure mail/audit identifies infrastructure, not a proven student violation.
+
+The child reports only loaded retained-control negotiation through bounded IPC.
+The parent retains that last trusted boolean even if Begin's committed reply is
+lost. It permits preserving independent transport, not admission/thaw. Unexpected
+failure disposes only local pane mirrors without false EOF events or a browser
+SSH-close instruction, removes only matching routing maps, and closes control
+sockets. Current-page/native-owner verification is still mandatory to restore
+routing. Legacy failure and intentional logout/finish transport closure remain.
+Graceful shutdown excludes retainedv1 from legacy policy locks, as startup does.
+
+State review: no new durable/intermediate state, account reservation, grant,
+consumption/absence receipt or positive authority. The memory-only negotiation
+cannot reconstruct native authorization after restart. Existing holds/approval,
+generations, protected sources and original/current deadlines are unchanged.
+Stale callbacks cannot revive a stopped proxy; disposal suppresses only false
+mirror-EOF, never a positive native SSH-exit fact. Refused/stale/expired rebind
+keeps input blocked; unknown monitoring gaps still need explicit review. No new
+management operation; existing dashboard/CLI alerts and interruption review apply.
+Focused active proxy20750 PASS19.0s; graceful73481 PASS14.5s; focused worker/input/
+cleanup80698 PASS32/3files17.84s; types94511 pass. Held-approval29252 PASS18.7s:
+actual proxy death then full gateway replacement preserve the exact held state,
+revision and unused authorization, then explicit Continue preserves the buffer.
+Initial84657 failed only because its whole-response equality included changing
+serverNow; corrected after inspecting the public producer, retaining equality of
+EVERY state/authorization field and monotonic response-time assertion. No product
+refusal was inferred from that fixture failure. Final application1584 PASS594/
+109files310.86s; composed actual-WASM/process browser25076 PASS22/4.2m (all8restart
+cases, active proxy+peer, genuine SSH exit, control/loss/capture and grant/source/
+practice). Types29406/build86321/diff PASS. Initial restricted build refused
+Go spawn with EPERM; escalated local build passes, not a missing executable or
+product regression. No frontend source changed; browser used the same previously
+validated assets, and the build reran only after browser completion. Prior full
+browser163 plus separate actual-wire refusal cover unchanged legacy paths; the
+22 affected composed workflows were rerun for this change. No claim of a new full
+all-browser receipt or new native bundle is made.
+Native sources/artifacts remain exact0ecfc13; fresh root42 still
+applies to those unchanged native artifacts, not the simulated browser native OS.
 
 Public entry: the existing student's open retained workspace reconnects its two
 coordination sockets after actual HTTP gateway-process death/restart. Required

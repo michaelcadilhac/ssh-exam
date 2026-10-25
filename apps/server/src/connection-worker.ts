@@ -262,6 +262,9 @@ process.on("message", async (m: any) => {
         result,
         alive: connection.alive,
         transport: connection.transport,
+        retainedControl:
+          connection instanceof BrowserConnection &&
+          connection.canRetainControl,
       });
     } catch (error: any) {
       send({
@@ -279,6 +282,9 @@ process.on("message", async (m: any) => {
         },
         alive: connection?.alive,
         transport: connection?.transport,
+        retainedControl:
+          connection instanceof BrowserConnection &&
+          connection.canRetainControl,
       });
     }
   }

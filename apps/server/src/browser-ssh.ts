@@ -97,6 +97,20 @@ export class BrowserConnection extends Connection {
   private retainedRestoreSupported = false;
   private retainedPolicyReportsSupported = false;
   private retainedTransport = "";
+  // Negotiation permits preserving the browser's independent SSH, never input
+  // or native authority. This also covers a committed Begin whose reply is lost.
+  get canRetainControl() {
+    return (
+      this.alive &&
+      this.retainedMonitoringRequired &&
+      this.framedPaneInput &&
+      this.framedInputSupported &&
+      this.retainedInputSupported &&
+      this.retainedControlSupported &&
+      this.retainedRestoreSupported &&
+      this.retainedPolicyReportsSupported
+    );
+  }
   override async prepareMonitoring() {
     if (!this.retainedMonitoringRequired) return false;
     if (
