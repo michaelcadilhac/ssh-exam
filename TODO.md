@@ -62,6 +62,17 @@ This uses the existing private test role/readiness adapter with real native
 factories and synthetic media/jump. Installed admission is OFF; no C3/C16 closure
 or deployment. Detailed failures/limits: docs/retained-browser-kernel-qualification.md.
 
+October25 actual unsaved-editor retention is qualified locally through the
+joined browser/native workflow: a second real policy freeze preserves Nano memory
+while its target is absent; explicit Continue/save and root examctl export verify
+both exact saved editor/shell files in the protected submission. Two fresh runs
+pass with FULL host/base preservation, same SSH/supervisor/original interval/grant
+and held access; focused6/Python49/types pass. The prior full application/browser/
+native/build evidence applies to unchanged product inputs.16/64 concurrent
+collection/fault acceptance remains; no enablement/deploy or broader checkbox
+closure. First startup-focus observation remains documented, not called a fixed
+product bug. Evidence: docs/retained-browser-kernel-qualification.md.
+
 October25 attempt/grant/workspace presentation is implemented/tested locally.
 Dashboard history/review and supported CLI list/show expose the applied revision,
 reason, stable attempt number and exact workspace/source lineage; current revisions

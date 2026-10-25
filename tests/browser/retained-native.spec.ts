@@ -6,6 +6,7 @@ import { simulatedMedia, ready } from "./transition-fixture.js";
 // supervisor has a separate view; kernel observations are mandatory below.
 const nativeProbe = z.object({
   private_guest: z.literal(true),
+  editor_exists: z.boolean(),
   attempt: z
     .object({
       state: z.string(),
@@ -35,6 +36,19 @@ const nativeProbe = z.object({
   ),
 });
 
+let failureAttempt = "";
+const failureStates: unknown[] = [];
+test.afterEach(async ({ page }, info) => {
+  if (!process.env.EXAM_BROWSER_NATIVE_BUNDLE || info.status === "passed" || !failureAttempt) return;
+  try {
+    const response = await page.request.get("/api/fixture/native-state", { params: { attempt: failureAttempt }, timeout: 10000 });
+    await info.attach("native-boundary-state", { body: await response.body(), contentType: "application/json" });
+    await info.attach("student-control-boundary", { body: Buffer.from(JSON.stringify(failureStates)), contentType: "application/json" });
+    const focus = await page.evaluate(() => ({ activeTag: document.activeElement?.tagName, activeClass: document.activeElement?.className, activeLabel: document.activeElement?.getAttribute("aria-label"), visible: document.visibilityState, focused: document.hasFocus(), fullscreen: !!document.fullscreenElement }));
+    await info.attach("browser-input-boundary", { body: Buffer.from(JSON.stringify(focus)), contentType: "application/json" });
+  } catch { /* Preserve the original failure if the independent probe refuses. */ }
+});
+
 test("actual native kernel hold and explicit Continue preserve the same browser SSH and private buffer through protected finish", async ({
   page,
   request,
@@ -45,6 +59,18 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   );
   test.setTimeout(150000);
   page.setDefaultTimeout(10000);
+  failureAttempt = "";
+  failureStates.length = 0;
+  page.on("websocket", (socket) => {
+    if (new URL(socket.url()).pathname !== "/api/student/session") return;
+    socket.on("framereceived", ({ payload }) => {
+      try {
+        const message = JSON.parse(String(payload));
+        failureStates.push({ type: message.type, binding: !!message.binding, pane: message.pane, input: message.input, state: message.attempt?.state, generation: message.attempt?.generation });
+        if (failureStates.length > 32) failureStates.shift();
+      } catch { /* Only bounded public state metadata, no terminal/password data. */ }
+    });
+  });
   const origin = "https://127.0.0.1:9444";
   expect(
     (await (await request.get("/api/fixture/native-ready")).json())
@@ -76,6 +102,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     .poll(async () => (await current()).state, { timeout: 20000 })
     .toBe("ACTIVE");
   const original = await current();
+  failureAttempt = original.id;
   expect(original).toMatchObject({
     monitoring_mode: "v1",
     grant_id: expect.any(String),
@@ -100,100 +127,130 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   expect(before.attempt.deadline - before.attempt.start).toBe(5400000);
   const pane = page.locator(".xterm-helper-textarea").last();
   await pane.focus();
+  await expect(pane).toBeFocused();
   await page.keyboard.type("printf 'NATIVE-%s-END\\n' 'retained-private-");
   await expect(page.locator(".xterm-rows")).toContainText("retained-private-");
-  await page.evaluate(() => document.exitFullscreen());
-  await expect(page.locator(".lock-overlay")).toBeVisible();
-  await expect
-    .poll(
-      async () => {
-        const held = await native();
-        return {
-          state: held.attempt.state,
-          phase: held.attempt.retained_hold,
-          populatedFrozen:
-            held.kernel.length > 0 &&
-            held.kernel.every(
-              (entry: any) => entry.frozen === "1" && entry.populated === "1",
-            ),
-          ssh: held.supervisor?.ssh_peer,
-          pid: held.supervisor?.pid,
-        };
-      },
-      { timeout: 15000 },
-    )
-    .toEqual({
-      state: "LOCKED",
-      phase: "held",
-      populatedFrozen: true,
-      ssh: "pinned-live",
-      pid: before.supervisor!.pid,
-    });
-  const paused = await current();
   const login = await request.post("/api/admin/login", {
     headers: { origin },
     data: { username: "instructor", password: "fixture-password" },
   });
   expect(login.ok(), await login.text()).toBe(true);
-  const selected = await (
-    await request.get(`/api/admin/attempts/${original.id}/interruption`)
-  ).json();
-  const approval = await request.post(
-    `/api/admin/attempts/${original.id}/authorize`,
-    {
-      headers: { origin, "x-csrf-token": (await login.json()).csrf },
-      data: {
-        generation: selected.generation,
-        revision: selected.revision,
-        requestID: crypto.randomUUID(),
-        reason: "Reviewed private actual native browser interruption",
+  const pauseAndContinue = async () => {
+    await page.evaluate(() => document.exitFullscreen());
+    await expect(page.locator(".lock-overlay")).toBeVisible();
+    await expect
+      .poll(
+        async () => {
+          const held = await native();
+          return {
+            state: held.attempt.state,
+            phase: held.attempt.retained_hold,
+            populatedFrozen:
+              held.kernel.length > 0 &&
+              held.kernel.every(
+                (entry: any) => entry.frozen === "1" && entry.populated === "1",
+              ),
+            ssh: held.supervisor?.ssh_peer,
+            pid: held.supervisor?.pid,
+          };
+        },
+        { timeout: 15000 },
+      )
+      .toEqual({
+        state: "LOCKED",
+        phase: "held",
+        populatedFrozen: true,
+        ssh: "pinned-live",
+        pid: before.supervisor!.pid,
+      });
+    const paused = await current();
+    const selected = await (
+      await request.get(`/api/admin/attempts/${original.id}/interruption`)
+    ).json();
+    const approval = await request.post(
+      `/api/admin/attempts/${original.id}/authorize`,
+      {
+        headers: { origin, "x-csrf-token": (await login.json()).csrf },
+        data: {
+          generation: selected.generation,
+          revision: selected.revision,
+          requestID: crypto.randomUUID(),
+          reason: "Reviewed private actual native browser interruption",
+        },
       },
-    },
-  );
-  expect(approval.ok(), await approval.text()).toBe(true);
-  await expect(
-    page.getByRole("heading", { name: "Continuation approved", exact: true }),
-  ).toBeVisible();
-  expect(
-    (await native()).kernel.every((entry: any) => entry.frozen === "1"),
-  ).toBe(true);
-  await page
-    .getByRole("button", { name: "Restore fullscreen", exact: true })
-    .click();
-  const keyboard = page.getByRole("button", {
-    name: "Restore keyboard lock",
-    exact: true,
-  });
-  if ((await keyboard.getAttribute("aria-pressed")) !== "true")
-    await keyboard.click();
-  const captured = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/frames/challenged") &&
-      response.status() === 200 &&
-      response.request().postDataJSON().readiness?.fullscreen === true,
-    { timeout: 15000 },
-  );
-  await captured;
-  const continued = page.waitForResponse(
-    (response) =>
-      response.url().endsWith(`/attempts/${original.id}/continue`) &&
-      response.request().method() === "POST",
-  );
-  await page
-    .getByRole("button", {
-      name: "Continue exam after authorization",
+    );
+    expect(approval.ok(), await approval.text()).toBe(true);
+    await expect(
+      page.getByRole("heading", { name: "Continuation approved", exact: true }),
+    ).toBeVisible();
+    expect(
+      (await native()).kernel.every((entry: any) => entry.frozen === "1"),
+    ).toBe(true);
+    await page
+      .getByRole("button", { name: "Restore fullscreen", exact: true })
+      .click();
+    const keyboard = page.getByRole("button", {
+      name: "Restore keyboard lock",
       exact: true,
-    })
-    .click();
-  const continuation = await continued;
-  expect(continuation.ok(), await continuation.text()).toBe(true);
-  await expect(page.locator(".lock-overlay")).toHaveCount(0);
+    });
+    if ((await keyboard.getAttribute("aria-pressed")) !== "true")
+      await keyboard.click();
+    const captured = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/frames/challenged") &&
+        response.status() === 200 &&
+        response.request().postDataJSON().readiness?.fullscreen === true,
+      { timeout: 15000 },
+    );
+    await captured;
+    const continued = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/attempts/${original.id}/continue`) &&
+        response.request().method() === "POST",
+    );
+    await page
+      .getByRole("button", {
+        name: "Continue exam after authorization",
+        exact: true,
+      })
+      .click();
+    const continuation = await continued;
+    expect(continuation.ok(), await continuation.text()).toBe(true);
+    await expect(page.locator(".lock-overlay")).toHaveCount(0);
+    return paused;
+  };
+  let paused = await pauseAndContinue();
   await pane.focus();
   await page.keyboard.type("verified'");
   await page.keyboard.press("Enter");
   await expect(page.locator(".xterm-rows")).toContainText(
     "NATIVE-retained-private-verified-END",
   );
+  await page.keyboard.type("nano -I -w /work/browser-editor.txt", {
+    delay: 25,
+  });
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText("GNU nano");
+  await page.keyboard.type("UNSAVED-native-editor", { delay: 25 });
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "UNSAVED-native-editor",
+  );
+  expect((await native()).editor_exists).toBe(false);
+  paused = await pauseAndContinue();
+  await pane.focus();
+  await page.keyboard.press("Control+x");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "Save modified buffer",
+  );
+  await page.keyboard.type("y");
+  await expect(page.locator(".xterm-rows")).toContainText("File Name to Write");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("cat /work/browser-editor.txt", { delay: 25 });
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "UNSAVED-native-editor",
+  );
+  expect((await native()).editor_exists).toBe(true);
   await page.keyboard.type(
     "printf 'SAVED-%s-END\\n' 'actual-native' > /work/browser-proof.txt",
     { delay: 25 },
@@ -212,7 +269,9 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     });
     throw error;
   }
-  await expect(page.getByText(/Recent terminal input was not sent/)).toHaveCount(0);
+  await expect(
+    page.getByText(/Recent terminal input was not sent/),
+  ).toHaveCount(0);
   const after = await native();
   expect(after.supervisor).toMatchObject({
     pid: before.supervisor!.pid,
@@ -255,6 +314,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   expect(await protectedFinish.json()).toMatchObject({
     private_guest: true,
     preservation: "FULL",
+    verified_files: ["browser-editor.txt", "browser-proof.txt"],
     attempt: {
       state: "COMPLETED",
       protected: true,

@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import tarfile
 import unittest
 from unittest import mock
 
@@ -18,6 +19,24 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_export_checks_exact_saved_work_and_rejects_missing_or_linked_proofs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'submission.tar.gz'
+            def write(editor=b'UNSAVED-native-editor\n', linked=False):
+                with tarfile.open(path, 'w:gz') as archive:
+                    for name, value in (('browser-proof.txt', b'SAVED-actual-native-END\n'), ('browser-editor.txt', editor)):
+                        if value is None: continue
+                        header = tarfile.TarInfo(name); header.size = len(value)
+                        if linked and name == 'browser-editor.txt':
+                            header.type = tarfile.SYMTYPE; header.linkname = '/other'; header.size = 0
+                        archive.addfile(header, io.BytesIO(value))
+            write()
+            self.assertEqual(bridge.verify_fixture_archive(path), ['browser-editor.txt', 'browser-proof.txt'])
+            for editor, linked in ((None, False), (b'other\n', False), (b'UNSAVED-native-editor\n', True)):
+                write(editor, linked)
+                with self.subTest(editor=editor, linked=linked), self.assertRaises(AssertionError):
+                    bridge.verify_fixture_archive(path)
+
     def test_optimized_python_refuses_before_any_host_access(self):
         result = subprocess.run([sys.executable, '-O', str(Path(bridge.__file__)), '--host',
                                  '/var/tmp/ssh-exam-overlay-probe', 'metadata'],

@@ -8,7 +8,8 @@ executable (optional go tool buildid remains waived; never use). None missing.
 
 ## Validated revision and current milestone
 
-Main/worktree HEAD d995417. Unexpected isolated proxy failure and graceful gateway
+Main/worktree HEAD30f34d8 (first browser/native join). Prior d995417 fixes
+unexpected isolated proxy failure and graceful gateway
 shutdown preserve independent viable SSH/private buffer rather than inventing a
 policy lock or generation change. Signed same-page/native-owner rebind remains
 mandatory. Exact policy hold/unused approval survive both proxy and gateway death;
@@ -52,6 +53,19 @@ before HTTP drain keep cleanup bounded. Saved root preservation receipts remain
 even if local stdout dies. All previous failed private guests are inactive;
 three fingerprint-matched orphan synthetic SSH key dirs/exact TLS keys removed,
 all logs/unrelated keys retained. Successful fixtures clean credentials normally.
+
+Editor extension is locally validated in this commit: actual unsaved Nano text
+survives a SECOND populated kernel hold/explicit Continue on the same supervisor/
+SSH; actual root examctl export verifies both exact saved files after public
+Finish, original interval/grant/HELD access unchanged. Root47817 and fresh4432
+PASS1/47.7s each, stagesb43nz_wf/b_igt5qf FULL preservation. New exact bundle98odnh09,
+local var/collection-tests/browser-native-artifacts.227v2dip. Focused6/Python49/
+types63955 PASS; no product/default-fixture/native change justifies repeating the
+unchanged full594/22/build/race suites. First33967 had an unclassified startup
+input/focus observation; future failures capture native/control/focus boundaries.
+Do not claim that product issue fixed or silently retry a capacity failure.
+NEXT accepted16students/64panes/concurrent collection and fault acceptance, using
+synthetic peers with the SAME temporary policy/accounts:{}; no explicit exemptions.
 
 ## Decisions and preservation
 

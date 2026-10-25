@@ -1,6 +1,6 @@
 # Actual browser and guarded native guest qualification
 
-October25,2026. ONE real browser/native workflow is locally qualified; editor,
+October25,2026. The real browser/native shell AND unsaved-editor workflow is locally qualified;
 fault/capacity qualification remains. Not deployed/enabled. Native product source and
 the normal unconditional admission guard are unchanged from0ecfc13. The previous
 root42 receipt qualifies its exact native artifacts separately, not this new join.
@@ -122,3 +122,43 @@ claimed or needed for these test-only changes. Review those broad completions,
 commit the coherent first join, then extend actual unsaved Nano/repeated holds
 and accepted16students/64panes/concurrent collection. No C3/C16 checkbox closure,
 production change or agent consolidation follows from the single-student proof.
+
+## Validated editor extension
+
+After that first passed join was committed30f34d8, the SAME public test now opens
+real Nano, types acknowledged unsaved text and positively checks its target is
+absent. A second policy hold must retain the same supervisor/pinned SSH/populated
+frozen kernel scope; authorization alone cannot thaw. Explicit fresh Continue,
+Nano save/exit and normal shell reads must preserve that exact text. Public Finish
+is followed by actual root examctl export to the private output, native archive
+verification and exact regular-file content checks for BOTH editor and shell
+proofs. No archive bytes leave the class-server test environment. Original
+interval/grant/HELD access remain required. This adds only test-driver/probe code;
+no new product admission, state or permission. Source-state/passive existence
+observations are not freeze proof. Export output is a test artifact, not a grant
+or account reservation. Missing/wrong/linked proof refuses; export never overwrites.
+Focused6 transport/scope/optimized-startup/export tests and types57731 PASS.
+A NEW exact bridge bundle/root run is required before crediting this extension.
+
+Editor root47817 PASS1/47.7s and fresh repeat4432 PASS1/47.7s, same frozen NEW
+bundle /var/tmp/ssh-exam-browser-native-upload.98odnh09 (local
+var/collection-tests/browser-native-artifacts.227v2dip). Exact root stages
+b43nz_wf andb_igt5qf both report protected finish, OVERLAY_QUALIFICATION_OK and
+FULL host/config/authority/base preservation. Actual Nano starts with absent
+browser-editor.txt, retains unsaved text across the SECOND policy hold, saves
+that exact text after explicit Continue, and actual root export verifies its
+bytes plus the separate shell proof. Same supervisor/pinned SSH, original
+interval/grant and HELD access stay intact. No archive bytes go to the gateway.
+
+First33967 stopped before reaching Nano: initial typing produced no echo and
+its failure snapshot did not show a focused terminal. Cause was not proven;
+this is not a claimed product fix. The test now positively asserts focus before
+input and captures actual native state, bounded public control metadata and
+browser focus on any future failure. Both subsequent runs pass. Capacity must
+retain this boundary diagnosis, not silently retry or relax enforcement if it
+reappears. Final typed fixture63955, focused6 and full Python49 PASS. Product
+source/default fixtures/native artifacts remain unchanged from the last full
+594app/22composed browser/build/native-race qualifications, so those receipts
+remain applicable; no unchanged broad suite was rerun for private editor probes.
+The native binary hashes remain EXACT0ecfc13. NEXT accepted16/64 and simultaneous
+collection/fault qualification. Installed admission stays OFF; no deploy.

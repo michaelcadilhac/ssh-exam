@@ -19,6 +19,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tarfile
 import threading
 import time
 import uuid
@@ -106,6 +107,24 @@ def scope_directory(attempt, unit):
     assert re.fullmatch(identity, attempt)
     assert re.fullmatch('exam-' + re.escape(attempt) + '-' + identity + '-' + identity + r'\.scope', unit)
     return Path('/sys/fs/cgroup/exam.slice') / unit
+
+
+def verify_fixture_archive(path):
+    expected = {'browser-proof.txt': b'SAVED-actual-native-END\n',
+                'browser-editor.txt': b'UNSAVED-native-editor\n'}
+    found = set()
+    with tarfile.open(path, 'r:gz') as archive:
+        members = archive.getmembers()
+        assert len(members) <= 8193
+        for member in members:
+            if member.name not in expected:
+                continue
+            assert member.name not in found and member.isfile() and member.size <= 1024
+            with archive.extractfile(member) as stream:
+                assert stream.read(1025) == expected[member.name]
+            found.add(member.name)
+    assert found == set(expected), 'Protected export lacks the exact saved browser/editor work'
+    return sorted(found)
 
 
 class GuestBridge:
@@ -208,7 +227,15 @@ class GuestBridge:
             if request.get('finish'):
                 assert attempt['state'] == 'COMPLETED' and attempt['protected'] and attempt['checksum']
                 assert attempt['deadline'] == attempt['original_deadline'] > attempt['start']
-            send(stream, {'attempt': attempt, 'supervisor': supervisor, 'kernel': kernel, 'private_guest': True})
+            editor = Path(self.config['work']) / request['attempt'] / 'work/browser-editor.txt'
+            verified_files = None
+            if request.get('finish'):
+                exported = OUTPUT / 'browser-submission.tar.gz'
+                root_command('examctl', 'export', request['attempt'], '--output', str(exported))
+                verified_files = verify_fixture_archive(exported)
+            send(stream, {'attempt': attempt, 'supervisor': supervisor, 'kernel': kernel,
+                          'editor_exists': editor.exists(), 'verified_files': verified_files,
+                          'private_guest': True})
             if request.get('finish'):
                 self.done.set()
 
