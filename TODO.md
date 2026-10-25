@@ -33,6 +33,16 @@ focus and build/typecheck pass. The approval-feedback item is complete locally;
 SSH-control timers, native combined capture/capacity and broader liveness remain
 open. See docs/retained-browser-control.md. Nothing is deployed or enabled.
 
+October25 fresh-SSH recovery investigation found another confirmed correctness
+bug: signed legacy attach-transport can change a retained attempt's transport
+without rebinding its registered owner. The local candidate now refuses that
+purpose before mutation; focused signed/race and legacy owner/clock regressions
+pass. Full genuine-loss recovery policy is awaiting a new dialog decision:
+explicit saved-work NEW grant with chosen allowance, or remaining original time
+on a new monitored transport. This is not the settled viable-SSH retention choice.
+No replacement workflow or broader investigation is complete. Details:
+docs/retained-transport-recovery-plan.md. Installed mode remains OFF.
+
 October25 retained SSH-exit feedback is implemented/tested locally. Uncooperative
 full-page closure positively ended the registered SSH transport but left its
 native-linked gateway child orphaned. The existing pinned native exit observation

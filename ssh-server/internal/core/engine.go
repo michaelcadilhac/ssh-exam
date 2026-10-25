@@ -369,6 +369,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			e.Audit(op, a.ID)
 			result = a
 		case "attach-transport":
+			if a.MonitoringMode == "v1" {
+				return errors.New("retained recovery requires a distinct freshly verified monitored workflow; legacy transport replacement is not permitted; preserve the original attempt/deadline and inspect examctl info ATTEMPT --read-only and examctl panes supervisor ATTEMPT; no ownership or clock changed")
+			}
 			if a.State != "LOCKED" || expired(a) || a.Authorization <= Millis() || a.Generation != r.Generation || e.state.Registrations[r.Transport] != a.Username || r.Username != a.Username {
 				return errors.New("replacement transport not authorized")
 			}

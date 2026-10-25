@@ -390,3 +390,38 @@ func TestRegisteredOwnerRenewalPreservesIntentionalLockedState(t *testing.T) {
 		t.Fatal("renewal obscured authenticated intentional state as an ownership failure", result, err)
 	}
 }
+
+func TestRetainedLegacyTransportAttachCannotInvalidateRegisteredOwnership(t *testing.T) {
+	e, _, _ := finalFixture(t, "LOCKED", Millis()+5400000)
+	key := commandKeys(t, e)
+	oldTransport, freshTransport := strings.Repeat("a", 64), strings.Repeat("d", 64)
+	var before Attempt
+	if err := e.WithState(func() error {
+		a := e.state.Attempts[finalID]
+		a.Transport, a.BrowserSSH, a.TerminalSupervised = oldTransport, true, true
+		a.MonitoringMode, a.RetainedHold, a.MonitoringHoldKind = "v1", "held", "technical"
+		a.Authorization = Millis() + 20000
+		a.RegisteredOwner = &monitoringOwner{Attempt: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, TransportHash: oldTransport, Boot: boot(), PageEpoch: strings.Repeat("b", 64), InputEpoch: strings.Repeat("c", 64), Generation: a.Generation, ClockRevision: a.ClockRevision}
+		if !currentRegisteredOwner(a) {
+			t.Fatal("fixture lacks a consistent original registered owner", a)
+		}
+		e.state.Registrations[oldTransport], e.state.Registrations[freshTransport] = a.Username, a.Username
+		before = *a
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	cmd := Command{Audience: e.Config.AgentID, Username: before.Username, Transport: freshTransport, Nonce: Token(), Expires: Millis() + 10000, Op: "attach-transport", Body: Request{ID: before.ID, Username: before.Username, Transport: freshTransport, Generation: before.Generation}}
+	_, err := e.Command(signedCommand(key, cmd), before.Username, freshTransport)
+	state, readErr := readStateSnapshot(e.Config.State)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	after := state.Attempts[before.ID]
+	if err == nil || !strings.Contains(err.Error(), "monitored") {
+		t.Fatal("legacy replacement did not refuse before changing retained ownership", err, after.Transport, after.RegisteredOwner, currentRegisteredOwner(after))
+	}
+	if after.Transport != before.Transport || after.ResumeTransport != before.ResumeTransport || !currentRegisteredOwner(after) || after.Start != before.Start || after.Deadline != before.Deadline || after.OriginalDeadline != before.OriginalDeadline || after.Authorization != before.Authorization {
+		t.Fatal("refused replacement changed original owner/approval/interval", after)
+	}
+}

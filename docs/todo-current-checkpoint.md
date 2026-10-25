@@ -3,14 +3,14 @@
 October25,2026. Local development/commits ONLY. No push, deployment, production
 restart/config/student changes or agent consolidation. csc-sys only the guarded
 disposable environment; busy/uncertain means NO TEST. Stop on any missing command
-(optional go tool buildid is waived; do not use it). No design question pending;
-C1–C18/clock settled, capacity16 students/64 panes accepted.18/38 overlapping
+(optional go tool buildid is waived; do not use it). One new genuine-SSH-loss policy question pending (below);
+C1–C18/clock remain settled, capacity16 students/64 panes accepted.18/38 overlapping
 checkboxes is not an effort percentage. Status requests do not pause work.
 
 ## Validated revisions / preserved work
 
-Main/worktree HEADd99ce95; current SSH-exit candidate is fully qualified below and
-ready for local commit. Worktree var/worktrees/source-grant-retention;
+Main/worktree HEADad828f5; SSH-exit feedback below is fully qualified and committed.
+Current WIP is the signed legacy replacement refusal and pending recovery policy. Worktree var/worktrees/source-grant-retention;
 node_modules is a dependency symlink, NEVER stage. Preserve ALL stashes, especially
 40f1fb64187db13783ea23c0125d66824d65b301 and path-only main checkpoint stashes.
 Main's ten original dirty screenshots remain hash-identical. Baseline
@@ -57,14 +57,23 @@ AGENTS/retrospective record the concrete composition preflight. No runner active
 
 ## Exact next actions / finite remaining outcomes
 
-Commit this coherent validated SSH-exit milestone locally and fast-forward main,
-preserving its modified checkpoint in a path-only stash and all original images.
-Then join actual browser/WASM/HTTP with guarded native SSH/callbacks for ONE
-student first; use that integrated path for whole-gateway restart and accepted
-16-student/64-pane/concurrent-collection qualification. Inspect existing runner/
-namespace helpers before adding anything. Keep private network, one bounded owned
-unit, host/base preservation and busy guard; no production endpoints or keys.
-No prototype/helper chain without this immediate integrated caller and test.
+ad828f5 is committed/fast-forwarded; all main screenshots/stashes preserved.
+New signed RED95802 confirms legacy attach corrupts v1 Transport/RegisteredOwner
+consistency. Candidate refuses that purpose before ownership/approval/clock change.
+Focus83773 PASS1.101s and registered-owner/legacy clock34524 PASS9.673s under race;
+CLI28068 PASS17.404s (namespace enabled) and vet8406 PASS. No runner active.
+Native source HAS changed; no new bundle/root qualification yet. Details/status:
+retained-transport-recovery-plan.md. One dialog pending: true SSH loss uses explicit
+NEW saved-work grant (recommended, allowance/window chosen), or new monitored SSH
+on the original unfinished interval (new native transfer protocol required).
+Do not infer the answer or silently change policy. No new grant/refund is automatic.
+
+NEXT validate/commit the bounded safety refusal, then continue independent native
+legacy migration/retirement or dashboard/CLI work while awaiting the answer.
+Resolve source/spec paths and scope one public workflow first. Subsequent joined
+browser/native qualification must use one actual synthetic student before16/64,
+include whole-gateway restart/final recovery, and retain existing isolation/busy/
+preservation guards. No unused helper chain or prototype-only completion.
 
 Then supported native legacy migration/retirement, manual secured workspace
 cleanup, reviewed config/full CLI journey and dashboard grant/source/status join:
