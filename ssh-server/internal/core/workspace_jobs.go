@@ -360,6 +360,17 @@ func (e *Engine) activatePrepared(snapshot *Attempt, expires int64, grantIntent 
 func (e *Engine) activatePreparedNative(snapshot *Attempt, expires int64, original *net.UnixConn, grantIntent ...string) (any, error) {
 	page, epoch := "", ""
 	var initialOwner *monitoringOwner
+	if original == nil && snapshot.Start == 0 && terminalAuthorityReadiness() == nil {
+		account, ok := e.account(snapshot.Username)
+		if !ok || account.UID != snapshot.UID {
+			return nil, errors.New("prepared account identity is unavailable or changed; preserve the original preparation and inspect account policy")
+		}
+		// Match register's existing trusted-host/sandbox-only exemptions. An
+		// eligible client cannot downgrade the advertised protocol before time.
+		if !account.SandboxOnly && !e.hostAccess(&Attempt{Username: snapshot.Username, UID: account.UID}) {
+			return nil, errors.New("retained monitoring requires the matching monitored Begin purpose and original authenticated control socket; preserve this preparation/intent/grant and update matching client/gateway/native roles; no new interval committed")
+		}
+	}
 	if original != nil {
 		if err := terminalAuthorityReadiness(); err != nil {
 			return nil, err

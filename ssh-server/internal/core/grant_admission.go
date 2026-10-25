@@ -76,10 +76,11 @@ func grantBeginSettings(a *Attempt, r Request, grant bool) error {
 }
 
 type monitoringBootstrap struct {
-	Type          string          `json:"type"`
-	Owner         monitoringOwner `json:"owner"`
-	CoverageEpoch string          `json:"coverage_epoch"`
-	Sequence      uint64          `json:"sequence"`
+	Type             string          `json:"type"`
+	ControlRetention string          `json:"control_retention,omitempty"`
+	Owner            monitoringOwner `json:"owner"`
+	CoverageEpoch    string          `json:"coverage_epoch"`
+	Sequence         uint64          `json:"sequence"`
 }
 
 type verifiedGrantBegin struct {
@@ -211,11 +212,11 @@ func (e *Engine) verifyGrantBeginContext(a *Attempt, intent, page string, initia
 			return verifiedGrantBegin{}, errMonitoringEvidence
 		}
 		var bootstrap monitoringBootstrap
-		fields, err := decodeMonitoringObject(object["bootstrap"], &bootstrap, []string{"type", "owner", "coverage_epoch", "sequence"})
+		fields, err := decodeMonitoringObject(object["bootstrap"], &bootstrap, []string{"type", "control_retention", "owner", "coverage_epoch", "sequence"})
 		if err != nil {
 			return verifiedGrantBegin{}, errMonitoringEvidence
 		}
-		if _, err := decodeMonitoringObject(fields["owner"], &bootstrap.Owner, []string{"attempt", "exam", "username", "uid", "transport_hash", "boot", "page_epoch", "input_epoch", "generation", "clock_revision"}); err != nil || bootstrap.Type != "monitoring-bootstrap/v1" || bootstrap.Owner != *initial || !monitoringDigest.MatchString(bootstrap.CoverageEpoch) || bootstrap.Sequence != 1 {
+		if _, err := decodeMonitoringObject(fields["owner"], &bootstrap.Owner, []string{"attempt", "exam", "username", "uid", "transport_hash", "boot", "page_epoch", "input_epoch", "generation", "clock_revision"}); err != nil || bootstrap.Type != "monitoring-bootstrap/v1" || bootstrap.ControlRetention != "v1" || bootstrap.Owner != *initial || !monitoringDigest.MatchString(bootstrap.CoverageEpoch) || bootstrap.Sequence != 1 {
 			return verifiedGrantBegin{}, errMonitoringEvidence
 		}
 		reply.Bootstrap = &bootstrap

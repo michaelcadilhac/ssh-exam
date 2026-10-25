@@ -86,6 +86,18 @@ stage, never an untrusted server error. Native compatibility, uncooperative loss
 restart and combined root/capacity qualification remain open. Details:
 retained-browser-control.md. This local candidate is not deployed or enabled.
 
+The local native compatibility candidate refuses new retained-eligible starts
+through a legacy Begin purpose and requires the matching gateway's signed control
+agreement at Begin and Continue. Preserve the existing preparation, saved source,
+grant and Begin intent. Inspect `examctl info ATTEMPT --read-only`,
+`examctl web grants show GRANT` and matching loaded-role health; correct versions
+before retrying the same intent with fresh verification. A failed preparation or
+proof does not spend the allowance, and an incompatible Continue leaves the work
+held. Do not reset time, reopen history or issue a replacement grant to work around
+a version refusal. Already-started legacy intervals retain their original clock.
+Installed retained admission remains OFF; this is local work only. See
+retained-admission-compatibility.md for qualification and boundaries.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

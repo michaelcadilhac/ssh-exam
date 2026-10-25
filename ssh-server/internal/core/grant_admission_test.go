@@ -172,7 +172,7 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 				w.WriteHeader(400)
 				return
 			}
-			seed = &monitoringBootstrap{Type: "monitoring-bootstrap/v1", Owner: *request.InitialOwner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 1}
+			seed = &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", Owner: *request.InitialOwner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 1}
 		}
 		reply, status := handler(grantBeginReply{Type: request.Type, Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, CaptureValidFor: 15000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch, Bootstrap: seed})
 		if status != 200 {
@@ -197,6 +197,81 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 	}
 	t.Cleanup(server.Close)
 	return server
+}
+
+func TestAdvertisedRetainedMonitoringRefusesLegacyBeginBeforeClock(t *testing.T) {
+	e, key, r := initialGrantFixture(t)
+	previous := terminalAuthorityReadiness
+	terminalAuthorityReadiness = func() error { return nil }
+	t.Cleanup(func() { terminalAuthorityReadiness = previous })
+	register := Command{Audience: e.Config.AgentID, Username: r.Username, Nonce: Token(), Expires: Millis() + 10000, Op: "register"}
+	result, err := e.Command(signedCommand(key, register), r.Username, r.Transport)
+	if err != nil {
+		t.Fatal("eligible signed registration failed before capability observation", err)
+	}
+	features, ok := result.(map[string]any)
+	if !ok || features["retained_monitoring"] != "v1" {
+		t.Fatal("fixture did not actually advertise retained monitoring", result)
+	}
+	var calls atomic.Int32
+	initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
+		calls.Add(1)
+		return reply, 200
+	})
+	before := *assertUnstartedWorkspace(t, e, r.ID)
+	grantBefore, err := json.Marshal(before.Grant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready := filepath.Join(e.Config.Work, r.ID, "workspace-ready", "work")
+	identity, err := os.Stat(ready)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.GrantBeginIntent = "44444444-1234-4234-8234-123456789abc"
+	cmd := preparationCommand(r)
+	cmd.Op, cmd.Nonce = "activate-grant-attempt", Token()
+	_, err = e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+	if err == nil || !strings.Contains(err.Error(), "retained monitoring") {
+		t.Fatal("advertised retained mode did not refuse legacy purpose before start", err, calls.Load())
+	}
+	if calls.Load() != 0 {
+		t.Fatal("legacy purpose reached outbound grant authorization", calls.Load())
+	}
+	after := assertUnstartedWorkspace(t, e, r.ID)
+	current, statErr := os.Stat(ready)
+	grantAfter, marshalErr := json.Marshal(after.Grant)
+	if statErr != nil || marshalErr != nil || !os.SameFile(identity, current) || string(grantBefore) != string(grantAfter) || before.GrantBeginIntent != after.GrantBeginIntent || before.Settings != after.Settings {
+		t.Fatal("refusal changed staged source/settings/intent/grant", statErr)
+	}
+	// Model an existing interval begun before the protocol upgrade. Its exact
+	// retry must remain cached, with no new authorization, clock or conversion.
+	terminalAuthorityReadiness = previous
+	cmd.Nonce = Token()
+	if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
+		t.Fatal("existing legacy baseline could not start under its original policy", err)
+	}
+	state, err := readStateSnapshot(e.Config.State)
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := *state.Attempts[r.ID]
+	if started.Start == 0 || started.Deadline-started.Start != r.Settings.Duration*1000 || calls.Load() != 1 {
+		t.Fatal("legacy baseline did not reach its full actual interval", started, calls.Load())
+	}
+	terminalAuthorityReadiness = func() error { return nil }
+	cmd.Nonce = Token()
+	if _, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport); err != nil {
+		t.Fatal("upgrade rejected already-started legacy cached retry", err)
+	}
+	state, err = readStateSnapshot(e.Config.State)
+	if err != nil || calls.Load() != 1 {
+		t.Fatal("legacy cached retry reauthorized an existing interval", err, calls.Load())
+	}
+	active := state.Attempts[r.ID]
+	if active.Start != started.Start || active.Deadline != started.Deadline || active.OriginalDeadline != started.OriginalDeadline || active.MonitoringMode != started.MonitoringMode {
+		t.Fatal("upgrade changed an already-started legacy interval", active)
+	}
 }
 
 func TestInitialGrantSignedStageFreshTLSBeginAndRestart(t *testing.T) {

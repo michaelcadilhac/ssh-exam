@@ -56,6 +56,7 @@ export type MonitoringEvidence = z.infer<typeof monitoringEvidence>;
 export const monitoringBootstrap = z
   .object({
     type: z.literal("monitoring-bootstrap/v1"),
+    control_retention: z.literal("v1"),
     owner: monitoringOwner,
     coverage_epoch: digest,
     sequence: z.literal(1),

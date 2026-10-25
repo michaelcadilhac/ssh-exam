@@ -33,6 +33,19 @@ focus and build/typecheck pass. The approval-feedback item is complete locally;
 SSH-control timers, native combined capture/capacity and broader liveness remain
 open. See docs/retained-browser-control.md. Nothing is deployed or enabled.
 
+October25 native admission compatibility is implemented/tested locally. Actual
+signed/interface reproductions exposed a legacy-purpose downgrade and an old-
+gateway v3 bootstrap that started time. Both now refuse before new clock/grant/
+workspace publication; matching same-intent repair starts the full allowance.
+Incompatible Continue preserves actual held authority and original deadlines.
+Existing started legacy retries and explicit account exemptions remain supported.
+Focused native/protocol/Python,582 app checks,33 affected browser scenarios,
+build/vet and full native races/resources PASS. The NEW exact bundle passes36
+actual guarded root assertions with FULL host/base preservation; capture there
+is synthetic. See docs/retained-admission-compatibility.md. Uncooperative loss/
+restart and combined real capture/root16/64 remain; installed mode stays OFF.
+Nothing is deployed. This does not close the broader liveness/retention items.
+
 October25 the separate SSH-control timeout correction is implemented/tested
 locally. A17.5s control outage now preserves the authenticated WASM worker, isolated
 child, actual SSH channel/private synthetic-shell command and original interval,

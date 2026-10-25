@@ -70,7 +70,7 @@ func decodeMonitoringContinuation(frame SignedFrame, key ed25519.PublicKey) (mon
 		return result, err
 	}
 	var seed monitoringBootstrap
-	seedFields, err := decodeMonitoringObject(fields["bootstrap"], &seed, []string{"type", "owner", "coverage_epoch", "sequence"})
+	seedFields, err := decodeMonitoringObject(fields["bootstrap"], &seed, []string{"type", "control_retention", "owner", "coverage_epoch", "sequence"})
 	if err != nil {
 		return result, err
 	}
@@ -78,7 +78,7 @@ func decodeMonitoringContinuation(frame SignedFrame, key ed25519.PublicKey) (mon
 		return result, err
 	}
 	result.Bootstrap = &seed
-	if result.Type != "monitoring-continue/v1" || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || result.Expires <= Millis() || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.Owner != result.Owner || seed.Sequence != 1 || !monitoringDigest.MatchString(seed.CoverageEpoch) {
+	if result.Type != "monitoring-continue/v1" || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || result.Expires <= Millis() || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.Owner != result.Owner || seed.Sequence != 1 || !monitoringDigest.MatchString(seed.CoverageEpoch) {
 		return result, errMonitoringEvidence
 	}
 	return result, nil

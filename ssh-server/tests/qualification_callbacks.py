@@ -58,7 +58,7 @@ def fixture_reply(path,data,expected,approval,owners,now):
  def bootstrap(owner):
   encoded=key(owner);coverage=hashlib.sha256(encoded.encode()).hexdigest()
   owners[encoded]=coverage
-  return {'type':'monitoring-bootstrap/v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
+  return {'type':'monitoring-bootstrap/v1','control_retention':'v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
  assert data['agent']==expected['agent']
  transfer=expected.get('clock_transfer')
  if transfer:

@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -95,6 +95,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			}
 			var calls atomic.Int32
 			var resumeMode atomic.Int32
+			var gatewayUpdated atomic.Bool
 			var approvalUntil atomic.Int64
 			var initialOwner atomic.Pointer[monitoringOwner]
 			proofReached := make(chan struct{}, 1)
@@ -110,6 +111,22 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				}
 				if mode == "wrong-bootstrap" {
 					reply.Bootstrap.Owner.InputEpoch = strings.Repeat("d", 64)
+				}
+				if mode == "old-gateway" && !gatewayUpdated.Load() {
+					data, marshalErr := json.Marshal(reply.Bootstrap)
+					var fields map[string]json.RawMessage
+					if marshalErr != nil || json.Unmarshal(data, &fields) != nil {
+						t.Error("old gateway fixture could not decode its signed seed")
+						return reply, 500
+					}
+					delete(fields, "control_retention")
+					data, marshalErr = json.Marshal(fields)
+					var old monitoringBootstrap
+					if marshalErr != nil || json.Unmarshal(data, &old) != nil {
+						t.Error("old gateway fixture could not reproduce its seed")
+						return reply, 500
+					}
+					reply.Bootstrap = &old
 				}
 				owner := reply.Bootstrap.Owner
 				initialOwner.Store(&owner)
@@ -134,7 +151,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 						return monitoringContinueReply{}, 403
 					}
 				}
-				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
+				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
 				switch resumeMode.Load() {
 				case 1:
 					reply.Owner.InputEpoch = Token()
@@ -142,6 +159,8 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 					reply.Expires = Millis() - 1
 				case 3:
 					reply.Bootstrap.CoverageEpoch = "invalid"
+				case 5:
+					reply.Bootstrap.ControlRetention = ""
 				}
 				return reply, 200
 			}})
@@ -164,6 +183,13 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			defer original.Close()
 			cmd.Op, cmd.Nonce = "activate-monitored-grant-attempt", Token()
 			cmd.Body.GrantBeginIntent, cmd.Body.PageEpoch = "44444444-1234-4234-8234-123456789abc", strings.Repeat("b", 64)
+			var stagedIdentity os.FileInfo
+			if mode == "old-gateway" {
+				stagedIdentity, err = os.Stat(filepath.Join(e.Config.Work, r.ID, "workspace-ready", "work"))
+				if err != nil {
+					t.Fatal("missing positive staged source before old-gateway probe", err)
+				}
+			}
 			before := Millis()
 			_, err = e.command(signedCommand(key, cmd), r.Username, r.Transport, 0, original)
 			expectedCalls := int32(1)
@@ -209,6 +235,28 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				}
 				assertUnstartedWorkspace(t, e, r.ID)
 				return
+			}
+			if mode == "old-gateway" {
+				if err == nil || !strings.Contains(err.Error(), "monitoring evidence") {
+					t.Fatal("old gateway control agreement was not refused before clock", err)
+				}
+				unstarted := assertUnstartedWorkspace(t, e, r.ID)
+				current, statErr := os.Stat(filepath.Join(e.Config.Work, r.ID, "workspace-ready", "work"))
+				if statErr != nil || !os.SameFile(stagedIdentity, current) || unstarted.Settings != r.Settings || !sameGrant(unstarted.Grant, r.Grant) || unstarted.Protected || (unstarted.GrantBeginIntent != "" && unstarted.GrantBeginIntent != cmd.Body.GrantBeginIntent) {
+					t.Fatal("old-gateway refusal changed source/settings/grant/intent or protected work", statErr, unstarted)
+				}
+				select {
+				case <-captured:
+				default:
+					t.Fatal("old-gateway fixture missed its signed scoped proof")
+				}
+				gatewayUpdated.Store(true)
+				cmd.Nonce = Token()
+				before = Millis()
+				_, err = e.command(signedCommand(key, cmd), r.Username, r.Transport, 0, original)
+				if calls.Load() != 2 {
+					t.Fatal("same-intent upgraded-gateway retry missed fresh outbound proof", calls.Load(), err)
+				}
 			}
 			if err != nil {
 				t.Fatal("actual monitored native Begin did not commit its live owner", err)
@@ -1094,15 +1142,19 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	if err != nil || still.Attempts[a.ID].State != "LOCKED" || still.Attempts[a.ID].RetainedHold != "held" || still.Attempts[a.ID].Start != a.Start || still.Attempts[a.ID].Deadline != a.Deadline {
 		t.Fatal("refused Continue consumed authority or changed time", err)
 	}
-	for _, mode := range []int32{1, 2, 3} {
+	for _, mode := range []int32{1, 2, 3, 5} {
 		authorize(mode)
 		resume.Nonce = Token()
 		if _, err := e.Command(signedCommand(key, resume), a.Username, a.Transport); err == nil || !strings.Contains(err.Error(), "monitoring evidence") {
-			t.Fatal("wrong-owner/expired/invalid seed reached thaw", mode, err)
+			t.Fatal("wrong-owner/expired/invalid/old-gateway seed reached thaw", mode, err)
 		}
 		state, err := readStateSnapshot(e.Config.State)
-		if err != nil || state.Attempts[a.ID].State != "LOCKED" || state.Attempts[a.ID].Start != a.Start || state.Attempts[a.ID].OriginalDeadline != a.OriginalDeadline {
+		if err != nil || state.Attempts[a.ID].State != "LOCKED" || state.Attempts[a.ID].RetainedHold != "held" || state.Attempts[a.ID].Start != a.Start || state.Attempts[a.ID].Deadline != a.Deadline || state.Attempts[a.ID].OriginalDeadline != a.OriginalDeadline {
 			t.Fatal("invalid continuation changed original state/time", mode, err)
+		}
+		blocked, blockErr := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+		if blockErr != nil || blocked.View == nil || blocked.View.ExecutionAuthorized || blocked.Hold == nil || blocked.Hold.Phase != "held" {
+			t.Fatal("refused continuation released the actual held authority", mode, blocked, blockErr)
 		}
 	}
 	late := encode(heldSequence+2, 0, []byte("finish\n"))

@@ -2875,3 +2875,16 @@ refusal preserves the same preparation/settings/grant and sends no native Begin.
 No database/configuration migration or operator enable switch is added. Old
 gateway/native admission, uncooperative-loss/restart feedback and combined real
 root/capacity qualification remain gates; no installed mode is enabled.
+
+
+The local native admission candidate also fences protocol downgrades. An eligible
+account advertised retainedv1 cannot start a NEW interval with the ordinary
+legacy Begin purpose; existing started legacy retries and explicit trusted-host/
+sandbox-only registration exemptions are unchanged. Authenticated v3 Begin and
+Continue bootstrap proofs must contain signed `control_retention: "v1"`, in
+addition to the existing exact owner, nonce, scope, capture-age and deadline
+checks. The declaration supplies no permission itself. An incompatible proof
+refuses before a clock/consumption/publication or thaw, preserving the same staged
+source and Begin intent for repair and full-allowance retry at actual start.
+There is no new durable authority or configuration switch. The installed retained
+guard stays OFF. Qualification and state review: retained-admission-compatibility.md.
