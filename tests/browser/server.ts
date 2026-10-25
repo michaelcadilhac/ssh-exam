@@ -478,6 +478,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           monitored &&
           (reply.bootstrap?.type !== "monitoring-bootstrap/v1" ||
             reply.bootstrap.control_retention !== "v1" ||
+            reply.bootstrap.policy_reports !== "v1" ||
             !isDeepStrictEqual(reply.bootstrap.owner, initialOwner) ||
             reply.bootstrap.sequence !== 1 ||
             !/^[a-f0-9]{64}$/.test(reply.bootstrap.coverage_epoch || ""))
@@ -648,6 +649,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         reply.expires > reply.authorization_expires ||
         reply.bootstrap?.type !== "monitoring-bootstrap/v1" ||
         reply.bootstrap.control_retention !== "v1" ||
+        reply.bootstrap.policy_reports !== "v1" ||
         !isDeepStrictEqual(reply.bootstrap.owner, owner) ||
         reply.bootstrap.sequence !== 1 ||
         !/^[a-f0-9]{64}$/.test(reply.bootstrap.coverage_epoch || "") ||

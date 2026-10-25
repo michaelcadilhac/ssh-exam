@@ -1,10 +1,11 @@
-# Unwired monitoring-evidence verification candidate (H2b/H3)
+# Monitoring-evidence verifier contract (historical H2b/H3)
 
-October 21, 2026. Internal local development only: **no command, HTTP callback,
-browser route, watchdog, lease journal or thaw transition invokes this candidate**.
-No new management operation, native capability or configuration switch enables
-it. This is a building block for monitoring-liveness-plan.md, not the completed
-false-lockout fix or a claim of preserved buffers/automatic recovery.
+October25 current status: the guarded supervisor runtime invokes this verifier
+through authenticated native challenges and the gateway evidence route. Installed
+retained admission stays OFF. Current integration, exact verification and remaining
+root/browser/capacity gates: monitoring-restart-continuity.md and
+live-monitoring-runtime.md. The original contract below does not imply completed
+technical-hold recovery or deployment.
 
 ## What the verifier establishes
 
@@ -19,8 +20,9 @@ secrets, image bytes, terminal contents or source paths.
 The exact scope is attempt/exam/account/UID, hashed registered SSH transport,
 native boot, opaque page and input epochs, generation and clock revision. These
 must come from a trusted native request snapshot, never browser-supplied identity
-or a caller-invented epoch. The current legacy implementation does not yet supply
-the complete fenced epochs; do not fabricate them or enable the candidate early.
+or a caller-invented epoch. Ordinary legacy attempts do not supply these epochs;
+guarded retained Begin/Continue establishes them through fresh signed agreement.
+Never fabricate them or reconstruct positive authority from disk.
 
 The gateway's positive complete-evidence decision must include a new bounded
 sequence and the **age** of its oldest required fresh component. The native side
@@ -28,7 +30,7 @@ requires the same pending challenge/scope, sequence after its retained watermark
 unexpired existing authority and an unexpired current deadline. Positive parsing
 and signature verification alone do not establish that the gateway actually had
 complete coverage, a current authenticated transport or a verified native freeze.
-Those are mandatory future caller/issuer responsibilities, not assumed facts.
+Those are mandatory live caller/issuer responsibilities, not assumed facts.
 
 ## Freshness without cross-host wall-clock assumptions
 

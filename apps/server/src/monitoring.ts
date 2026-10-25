@@ -342,6 +342,7 @@ export class Monitoring {
         bootstrap: Object.freeze({
           type: "monitoring-bootstrap/v1",
           control_retention: "v1",
+          policy_reports: "v1",
           owner: Object.freeze({ ...owner }),
           coverage_epoch: randomBytes(32).toString("hex"),
           sequence: 1,

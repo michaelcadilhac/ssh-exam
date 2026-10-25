@@ -1,5 +1,13 @@
 # Native monitoring authority: local coordination increment
 
+October25 current status: verified Begin/Continue now calls this authority inside
+the guarded attempt supervisor. Its live cutoff and signed policy-report cohort
+can survive a gateway-only restart through fresh evidence; native actor restart
+does not restore permission from disk. Installed retained admission stays OFF.
+Current qualification and gaps: monitoring-restart-continuity.md and
+live-monitoring-runtime.md. The October22 text below records the earlier private
+design, not current lack of runtime callers.
+
 October 22, 2026. Private, **unused by runtime paths**. No new command, mode,
 capability, lease, watchdog, freeze or recovery transition is enabled. This is
 not the completed critical monitoring fix and is not deployed.

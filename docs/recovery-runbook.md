@@ -37,6 +37,14 @@ Continue. A delivery receipt is not kernel-freeze proof. Inspect web interruptio
 history and native examctl info for unconfirmed holds; never clear audit, approval
 or native state to force recovery. Qualification is local; installed mode stays OFF.
 
+The native continuity candidate additionally requires matching signed policy-report
+bootstrap/challenge versions. A still-authorized native supervisor can accept new
+challenged facts after gateway restart; its original challenge/authorization cutoff
+still refuses expired work. A technical gap cannot be repaired with a reconnect or
+new frame. Preserve the same SSH and inspect the current hold/versions rather than
+altering deadlines, audit or grant state. Exact-artifact privileged and joined
+browser/capacity qualification remain pending; there is no supported enable switch.
+
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.
 - Attempt connection process failure: only that student loses SSH and is locked; the supervisor

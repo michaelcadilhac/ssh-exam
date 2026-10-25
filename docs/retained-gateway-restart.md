@@ -1,8 +1,12 @@
 # Viable SSH across a gateway process restart
 
-October25,2026. Current local investigation/implementation milestone afterf393acc.
+October25,2026. Routing8c41a32 and policy-delivery03646a5 are locally validated.
 Not deployed/enabled. Installed retained admission stays unconditional OFF.
 The genuine-SSH-loss policy dialog remains separate and unanswered.
+Native restart renewal now also passes local native/application/browser checks;
+its precise contract/limits are in monitoring-restart-continuity.md. Fresh
+exact-artifact root, actual-root/browser join and capacity remain unqualified.
+The sections below retain the bounded investigations and failure receipts.
 
 Public entry: the existing student's open retained workspace reconnects its two
 coordination sockets after actual HTTP gateway-process death/restart. Required

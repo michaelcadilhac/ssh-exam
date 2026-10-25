@@ -2911,7 +2911,19 @@ recorded, one-generation native pause over the signed original peer if its first
 command was rejected; fresh native inspection precedes routing agreement. This
 cannot grant execution, change time or bypass explicit Continue. Full application
 and affected process/WASM browser qualification pass locally. The signed native
-cohort/coverage contract and actual-root join remain open; installed mode is OFF.
+cohort contract is described below; the actual-root join remains open and installed
+mode is OFF.
+
+The October25 native continuity contract is now locally qualified. Signed retained
+Begin/Continue bootstrap requires policy_reports:v1, carried in the live supervisor
+context and authenticated monitoring challenge. A pristine restarted evidence
+stream with fresh complete facts can translate its coverage/counter namespace to
+that live context; age and original native challenge/cutoff/deadline remain binding.
+Witnessed gaps, policy negatives, unresolved blur and established foreign namespaces
+refuse. Exact nonce retries retain original proof/age. Nothing positive is restored
+from disk, and expiry cannot reopen work. Ordinary grant v2 and original deadlines/
+holds remain unchanged. Fresh exact-artifact root and joined browser/kernel/capacity
+qualification still precede enablement. See docs/monitoring-restart-continuity.md.
 
 
 The local native admission candidate also fences protocol downgrades. An eligible

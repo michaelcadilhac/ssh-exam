@@ -302,7 +302,7 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 	var reply grantBeginReply
 	d := json.NewDecoder(bytes.NewReader(payload))
 	d.DisallowUnknownFields()
-	if d.Decode(&reply) != nil || reply.Type != "grant-begin/v3" || reply.Audience != p.agent || reply.Nonce != p.begin.Nonce || reply.Attempt != s.id || reply.Intent != p.intent || !sameGrant(reply.Grant, p.grant) || reply.Transport != q.Owner.TransportHash || reply.Boot != q.Owner.Boot || reply.PageEpoch != q.Owner.PageEpoch || reply.Bootstrap == nil || reply.Bootstrap.Type != "monitoring-bootstrap/v1" || reply.Bootstrap.ControlRetention != "v1" || reply.Bootstrap.Owner != q.Owner || reply.Bootstrap.Sequence != 1 || !monitoringDigest.MatchString(reply.Bootstrap.CoverageEpoch) || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Expires <= Millis() {
+	if d.Decode(&reply) != nil || reply.Type != "grant-begin/v3" || reply.Audience != p.agent || reply.Nonce != p.begin.Nonce || reply.Attempt != s.id || reply.Intent != p.intent || !sameGrant(reply.Grant, p.grant) || reply.Transport != q.Owner.TransportHash || reply.Boot != q.Owner.Boot || reply.PageEpoch != q.Owner.PageEpoch || reply.Bootstrap == nil || reply.Bootstrap.Type != "monitoring-bootstrap/v1" || reply.Bootstrap.ControlRetention != "v1" || reply.Bootstrap.PolicyReports != "v1" || reply.Bootstrap.Owner != q.Owner || reply.Bootstrap.Sequence != 1 || !monitoringDigest.MatchString(reply.Bootstrap.CoverageEpoch) || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Expires <= Millis() {
 		return monitoringAuthorityView{}, errMonitoringEvidence
 	}
 	now, err := monitoringBootMillis()
@@ -315,7 +315,7 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 	if cutoff == nil || cutoff.initialize(until, q.DeadlineBootMS) != nil {
 		return monitoringAuthorityView{}, errMonitoringCutoff
 	}
-	context := monitoringActiveContext{Agent: p.agent, Owner: q.Owner, CoverageEpoch: reply.Bootstrap.CoverageEpoch, Sequence: 1, AuthorityUntilMS: until, DeadlineUptimeMS: q.DeadlineBootMS, cutoff: cutoff}
+	context := monitoringActiveContext{Agent: p.agent, PolicyReports: reply.Bootstrap.PolicyReports, Owner: q.Owner, CoverageEpoch: reply.Bootstrap.CoverageEpoch, Sequence: 1, AuthorityUntilMS: until, DeadlineUptimeMS: q.DeadlineBootMS, cutoff: cutoff}
 	context.verified = &monitoringActiveSeal{fingerprint: monitoringContextHash(context), current: func() bool { return r.live.Load() && !p.cancelled.Load() && claim.current() && ssh.current() }}
 	r.authority, err = newMonitoringAuthority(context, monitoringBootMillis)
 	if err != nil {

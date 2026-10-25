@@ -70,7 +70,7 @@ func decodeMonitoringContinuation(frame SignedFrame, key ed25519.PublicKey) (mon
 		return result, err
 	}
 	var seed monitoringBootstrap
-	seedFields, err := decodeMonitoringObject(fields["bootstrap"], &seed, []string{"type", "control_retention", "owner", "coverage_epoch", "sequence"})
+	seedFields, err := decodeMonitoringObject(fields["bootstrap"], &seed, []string{"type", "control_retention", "policy_reports", "owner", "coverage_epoch", "sequence"})
 	if err != nil {
 		return result, err
 	}
@@ -78,7 +78,7 @@ func decodeMonitoringContinuation(frame SignedFrame, key ed25519.PublicKey) (mon
 		return result, err
 	}
 	result.Bootstrap = &seed
-	if result.Type != "monitoring-continue/v1" || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || result.Expires <= Millis() || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.Owner != result.Owner || seed.Sequence != 1 || !monitoringDigest.MatchString(seed.CoverageEpoch) {
+	if result.Type != "monitoring-continue/v1" || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || result.Expires <= Millis() || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.PolicyReports != "v1" || seed.Owner != result.Owner || seed.Sequence != 1 || !monitoringDigest.MatchString(seed.CoverageEpoch) {
 		return result, errMonitoringEvidence
 	}
 	return result, nil
@@ -273,7 +273,7 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 			cutoff.close()
 		}
 	}()
-	c := monitoringActiveContext{Agent: proof.Audience, Owner: p.Owner, CoverageEpoch: proof.Bootstrap.CoverageEpoch, Sequence: 1, AuthorityUntilMS: until, DeadlineUptimeMS: r.deadlineBootMS, cutoff: cutoff}
+	c := monitoringActiveContext{Agent: proof.Audience, PolicyReports: proof.Bootstrap.PolicyReports, Owner: p.Owner, CoverageEpoch: proof.Bootstrap.CoverageEpoch, Sequence: 1, AuthorityUntilMS: until, DeadlineUptimeMS: r.deadlineBootMS, cutoff: cutoff}
 	c.verified = &monitoringActiveSeal{fingerprint: monitoringContextHash(c), current: func() bool { return next.live.Load() && next.peer.current() && next.claim.current() }}
 	next.authority, err = newMonitoringAuthority(c, monitoringBootMillis)
 	if err != nil {

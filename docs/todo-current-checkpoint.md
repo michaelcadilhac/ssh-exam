@@ -16,39 +16,45 @@ diff pass. Native OS policy is simulated; installed retained admission stays OFF
 Evidence/failures/state review: retained-gateway-restart.md. Earlier applied grant/
 source dashboard/CLI workflowf393acc is validated; details: attempt-provenance.md.
 
-## Current validated milestone
+## Current validated milestone and exact next action
 
-Validated locally: scoped local-policy report receipt/retry, positive-capture fences,
-atomic receipt+web hold, duplicate/refusal/repair, and same-peer completion when
-that recorded native pause was rejected. The delivery receipt grants no execution.
-New loaded-policy feature required before retained Begin/restoration. Actual public
-report+lost-first-receipt/unused-approval51627 PASS17.9s;43focused checks18140 PASS;
-atomic failure/retry/session/admin HTTP32773 PASS3.58s. Pending-native-pause RED67518
-then repair87542 PASS19.5s: exact gateway PID replacement, native hold, original
-approval and explicit fresh-capture Continue/private buffer survive. Types89384,
-complete build53827 and diff PASS. No Go production change in this milestone.
+Policy delivery03646a5 is committed on main/worktree: atomic scoped report/hold,
+retry and positive-capture fences, idempotent receipt, native-pause repair and
+approval/Continue/buffer preservation. App590/108 and21composed process/WASM
+browser scenarios pass. Details: retained-gateway-restart.md.
 
-Broad app76237 PASS590/108files308.84s; browser36648 PASS21composed/4.0m including
-all7actual gateway process/WASM/SSH restart cases and changed capture/admission
-entry points. All runners finished; full legacy browser evidence remains8c41a32.
-Logs /tmp/ssh-exam-policy-report-{full-app,broad-browser}.log. State review in feature doc.
+Native continuity in this locally validated commit: signed
+policy_reports:v1 bootstrap/authority/challenge; pristine fresh restart counter/
+coverage alignment; original fact age and native challenge/cutoff stay binding.
+Final focused native13536 PASS16.442s; HTTP88053 PASS38/6files10.53s. Full native
+16468 PASS core580.201s/CLI30.674s with races/scopes/userns/compiler/default-size
+collection. App16423 PASS594/109files310.98s; browser82775 PASS21composed/4.2m
+(all7actual gateway restart cases); Python43, types17649, build64797, vet and diff
+PASS. ALL runners finished. Log prefix /tmp/ssh-exam-native-policy-cohort-.
+State review/limits: monitoring-restart-continuity.md. Initial owner seal and
+clock in HTTP/native-authority bridge are synthetic, not kernel thaw proof.
 
-NEXT after this locally validated policy-delivery commit: restore ONLY
-native continuity stash2b36da2d121da54d1dfc7dd3624cafdebbd241d3
-(never drop). It contains real native-authority bridge + authenticated HTTP actual
-process-restart RED94785 (fresh facts cannot match pinned coverage/sequence).
-Then add strict policy_reports:v1 signed Begin/Continue bootstrap + native challenge
-cohort agreement; only a pristine restarted ledger with fresh complete facts may
-align to that authenticated live native identity/sequence. Preserve original fact
-ages and native challenge/authority cutoffs; no gap repair or focus-grace reset.
-No extra process/authority API is needed. Qualify new contract through existing
-HTTP/native-authority bridge and mixed-version refusal BEFORE a new root bundle.
+NEXT: build NEW
+exact artifacts for guarded csc-sys retained-policy qualification (never reuse old
+native hashes). SSH38778 succeeds; no remote test/upload/service change this run.
+Prior bundle source inventory is main var/collection-tests/
+retained-ssh-exit-held-artifacts.5pelefmi (SHA256.json verified before any reuse).
+Only unchanged C probes and overlay_guest.py may be reused after hash verification;
+rebuild all4native binaries/core test and copy current scripts/callbacks/slices.
+The normal installed admission guard remains unconditional OFF. Existing root
+qualification uses a private CLI test adapter; joining the ACTUAL browser Begin
+will need an equally guarded private guest admission adapter, not a production
+switch. Reuse the existing private shared output bind for bounded SSH/callback
+IPC across the guest's private network. Inspect contracts before adding code;
+ONE real-root/browser student workflow precedes16students/64panes/collection.
 
-Graceful app.close still invokes a policy shutdown lock: separately observed in
-native-red31771, not crash-proof or fixed. Keep that remaining C16 boundary honest.
-Then joined actual-root/browser workflow precedes16student/64pane/concurrent
-collection qualification. Synthetic policy and separate root receipts do not close
-that join. No automatic thaw of unproven gaps or completed-attempt reopening.
+Native continuity stash2b36da2d121da54d1dfc7dd3624cafdebbd241d3 is ALREADY applied
+and retained as backup; do NOT reapply. No new authority process/API is needed.
+Remaining C16 faults: graceful app.close still policy-locks (native-red31771),
+and isolated gateway proxy failure currently closes viable WASM SSH; both need
+public recovery regressions and the existing signed rebind, without asserting
+SSH loss from a coordinator failure. Native expiry/unknown gaps keep technical
+review and preserve viable SSH; no refunds, clock reset or completed reopening.
 
 ## Decisions, native evidence and preserved work
 

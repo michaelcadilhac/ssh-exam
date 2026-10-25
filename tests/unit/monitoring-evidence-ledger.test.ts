@@ -66,6 +66,110 @@ function fixture(webcam = true, limit = 32) {
   };
 }
 
+it("aligns a pristine restarted stream only to a verified policy-report cohort without refreshing facts", () => {
+  const f = fixture();
+  f.full();
+  f.at(250);
+  const request = { ...f.request("e".repeat(64), 9000), policy_reports: "v1" };
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, {
+      ...request,
+      policy_reports: undefined,
+    }),
+  ).toThrow(/technical-gap/);
+  const first = f.ledger.issueForNativeChallenge(f.binding, request);
+  expect(first).toMatchObject({
+    coverage_epoch: request.coverage_epoch,
+    sequence: 9001,
+    age_ms: 250,
+  });
+  f.at(500);
+  // A native watermark beyond all sequences EVER issued here belongs to the
+  // previous gateway. Reindex the same fresh facts, retaining their original age.
+  const later = f.ledger.issueForNativeChallenge(f.binding, {
+    ...request,
+    nonce: nonce(),
+    after_sequence: 9500,
+  });
+  expect(later).toMatchObject({
+    sequence: 9501,
+    age_ms: 500,
+    coverage_epoch: first.coverage_epoch,
+  });
+  expect(f.ledger.issueForNativeChallenge(f.binding, request)).toBe(first);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, {
+      ...request,
+      nonce: nonce(),
+      after_sequence: 9501,
+    }),
+  ).toThrow(/sequence/);
+  const before = f.ledger.inspect(f.binding);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, {
+      ...request,
+      after_sequence: 9600,
+    }),
+  ).toThrow(/conflict/);
+  expect(f.ledger.inspect(f.binding)).toEqual(before);
+});
+
+it("never aligns a witnessed gap, a negative or unknown focus history", () => {
+  for (const mode of ["gap", "negative", "blur"] as const) {
+    const f = fixture();
+    f.full(
+      mode === "negative"
+        ? { ...ready, fullscreen: false }
+        : mode === "blur"
+          ? { ...ready, focus: false }
+          : ready,
+    );
+    if (mode === "gap") {
+      f.at(15000);
+      f.full();
+    }
+    const before = f.ledger.inspect(f.binding);
+    expect(() =>
+      f.ledger.issueForNativeChallenge(f.binding, {
+        ...f.request("e".repeat(64), 9000),
+        policy_reports: "v1",
+      }),
+    ).toThrow(mode === "negative" ? /policy-blocked/ : /technical-gap/);
+    expect(f.ledger.inspect(f.binding)).toEqual(before);
+  }
+});
+
+it("cannot replace an established namespace or partially align an exhausted sequence", () => {
+  const established = fixture();
+  established.full();
+  established.ledger.issueForNativeChallenge(
+    established.binding,
+    established.request(),
+  );
+  expect(() =>
+    established.ledger.issueForNativeChallenge(established.binding, {
+      ...established.request("e".repeat(64), 9000),
+      policy_reports: "v1",
+    }),
+  ).toThrow(/technical-gap/);
+  const f = fixture();
+  f.full();
+  const before = f.ledger.inspect(f.binding);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, {
+      ...f.request("e".repeat(64), Number.MAX_SAFE_INTEGER),
+      policy_reports: "v1",
+    }),
+  ).toThrow(/sequence/);
+  expect(f.ledger.inspect(f.binding)).toEqual(before);
+  expect(
+    f.ledger.issueForNativeChallenge(f.binding, {
+      ...f.request("e".repeat(64), 9000),
+      policy_reports: "v1",
+    }).sequence,
+  ).toBe(9001);
+});
+
 it("carries identical trusted clock facts without refreshing age, cutoff, coverage or sequence", () => {
   const f = fixture();
   f.full();

@@ -1,9 +1,8 @@
 import { z } from "zod";
 
-// The authenticated gateway capture/evidence route uses this contract; native
-// live renewal/thaw consumption remains unintegrated. The owner schema also
-// describes registered identity in the live pane path; identity is NOT native
-// execution authorization and cannot reconstruct a monitoring permit from disk.
+// Authenticated capture/bootstrap/evidence for the guarded native supervisor.
+// Installed retained admission remains disabled. Registered identity alone is
+// not execution authorization and cannot reconstruct a live permit from disk.
 export const MONITORING_EVIDENCE_WINDOW_MS = 15_000;
 export const MONITORING_CHALLENGE_WINDOW_MS = 5_000;
 export const MONITORING_EVIDENCE_MAX_BYTES = 4096;
@@ -57,6 +56,7 @@ export const monitoringBootstrap = z
   .object({
     type: z.literal("monitoring-bootstrap/v1"),
     control_retention: z.literal("v1"),
+    policy_reports: z.literal("v1"),
     owner: monitoringOwner,
     coverage_epoch: digest,
     sequence: z.literal(1),
@@ -82,6 +82,7 @@ export const nativeMonitoringChallenge = z
     owner: monitoringOwner,
     after_sequence: counter,
     coverage_epoch: z.union([digest, z.literal("")]),
+    policy_reports: z.literal("v1").optional(),
   })
   .strict()
   .refine(

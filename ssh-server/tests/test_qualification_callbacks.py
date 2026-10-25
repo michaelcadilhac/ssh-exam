@@ -60,13 +60,21 @@ class CallbackTests(unittest.TestCase):
         seed = self.begin()['bootstrap']
         self.assertEqual(seed['owner'], self.owner)
         self.assertEqual(seed['sequence'], 1)
+        self.assertEqual(seed['policy_reports'], 'v1')
         query = dict(type='monitoring-execution-challenge-v1', agent='private-agent',
                      nonce='e'*64, owner=self.owner, coverage_epoch=seed['coverage_epoch'],
-                     after_sequence=1)
+                     after_sequence=1, policy_reports='v1')
         evidence = reply('/api/agent/monitoring-evidence', query, self.expected, None,
                          self.owners, self.now)
         self.assertEqual(evidence['sequence'], 2)
         self.assertTrue(evidence['complete'])
+        for marker in (None, 'v2'):
+            bad = copy.deepcopy(query)
+            if marker is None: bad.pop('policy_reports')
+            else: bad['policy_reports'] = marker
+            with self.subTest(marker=marker), self.assertRaises(AssertionError):
+                reply('/api/agent/monitoring-evidence', bad, self.expected, None,
+                      self.owners, self.now)
         for field, value in [('exam', 'other'), ('transport_hash', 'f'*64),
                              ('page_epoch', 'f'*64), ('generation', 1)]:
             bad = copy.deepcopy(query); bad['owner'][field] = value
@@ -92,7 +100,7 @@ class CallbackTests(unittest.TestCase):
         owner = {**self.owner, 'clock_revision': 1}
         self.expected['clock_transfer'] = dict(previous_owner=self.owner, owner=owner)
         query = dict(type='monitoring-execution-challenge-v1', agent='private-agent',
-                     nonce='e'*64, owner=owner, coverage_epoch=seed['coverage_epoch'], after_sequence=1)
+                     nonce='e'*64, owner=owner, coverage_epoch=seed['coverage_epoch'], after_sequence=1, policy_reports='v1')
         actual = reply('/api/agent/monitoring-evidence', query, self.expected, None, self.owners, self.now)
         self.assertEqual(actual['coverage_epoch'], seed['coverage_epoch'])
         self.assertEqual(actual['owner'], owner)

@@ -1,11 +1,11 @@
 package core
 
-// UNWIRED H2b/H3 verification primitive. No command, callback handler, watchdog,
-// lease journal or state transition calls this code. Successful verification is
-// NOT permission to work: the eventual caller must atomically recheck native
-// state/ownership, consume the challenge/sequence durably and enforce C3 gates.
-// This verifier requires unexpired prior ACTIVE authority. It is NOT a held
-// recovery/thaw primitive; never fabricate a new AuthorityUntilMS to reuse it.
+// Signed evidence verification for the guarded attempt supervisor. Verification
+// alone is not permission: its live authority rechecks current ownership, nonce,
+// sequence and original cutoffs, then commits in memory independently of optional
+// disk publication. Installed retained admission remains disabled. This verifier
+// requires unexpired prior authority; held recovery/thaw is a separate barrier.
+// Never fabricate a new AuthorityUntilMS to reuse an expired challenge.
 
 import (
 	"bytes"
@@ -42,6 +42,7 @@ type monitoringOwner struct {
 // root caller's immutable request snapshot, never taken from a remote timestamp.
 type monitoringChallenge struct {
 	Agent            string
+	PolicyReports    string
 	Nonce            string
 	Owner            monitoringOwner
 	IssuedUptimeMS   int64
@@ -75,7 +76,7 @@ func validMonitoringOwner(o monitoringOwner) bool {
 	return monitoringUUID.MatchString(o.Attempt) && identifier.MatchString(o.Exam) && identifier.MatchString(o.Username) && o.UID >= 1000 && uint64(o.UID) <= 4294967294 && monitoringDigest.MatchString(o.TransportHash) && monitoringUUID.MatchString(o.Boot) && monitoringDigest.MatchString(o.PageEpoch) && monitoringDigest.MatchString(o.InputEpoch) && o.Generation >= 0 && uint64(o.Generation) <= monitoringEvidenceMaxSequence && o.ClockRevision >= 0 && uint64(o.ClockRevision) <= monitoringEvidenceMaxSequence
 }
 
-var errMonitoringEvidence = errors.New("monitoring evidence signature, ownership, sequence or freshness rejected; no execution permission granted")
+var errMonitoringEvidence = errors.New("monitoring evidence signature, ownership, sequence or freshness rejected; no execution permission granted; inspect current ownership/capture and matching gateway/native versions while preserving this attempt")
 
 func decodeMonitoringObject(payload []byte, out any, keys []string) (map[string]json.RawMessage, error) {
 	d := json.NewDecoder(bytes.NewReader(payload))

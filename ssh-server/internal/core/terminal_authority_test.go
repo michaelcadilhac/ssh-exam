@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "ssh-exited"} {
+	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -118,14 +118,18 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				if mode == "wrong-bootstrap" {
 					reply.Bootstrap.Owner.InputEpoch = strings.Repeat("d", 64)
 				}
-				if mode == "old-gateway" && !gatewayUpdated.Load() {
+				if (mode == "old-gateway" || mode == "old-policy-gateway") && !gatewayUpdated.Load() {
 					data, marshalErr := json.Marshal(reply.Bootstrap)
 					var fields map[string]json.RawMessage
 					if marshalErr != nil || json.Unmarshal(data, &fields) != nil {
 						t.Error("old gateway fixture could not decode its signed seed")
 						return reply, 500
 					}
-					delete(fields, "control_retention")
+					if mode == "old-policy-gateway" {
+						delete(fields, "policy_reports")
+					} else {
+						delete(fields, "control_retention")
+					}
 					data, marshalErr = json.Marshal(fields)
 					var old monitoringBootstrap
 					if marshalErr != nil || json.Unmarshal(data, &old) != nil {
@@ -157,7 +161,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 						return monitoringContinueReply{}, 403
 					}
 				}
-				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
+				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", PolicyReports: "v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
 				switch resumeMode.Load() {
 				case 1:
 					reply.Owner.InputEpoch = Token()
@@ -167,6 +171,10 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 					reply.Bootstrap.CoverageEpoch = "invalid"
 				case 5:
 					reply.Bootstrap.ControlRetention = ""
+				case 6:
+					reply.Bootstrap.PolicyReports = ""
+				case 7:
+					reply.Bootstrap.PolicyReports = "v2"
 				}
 				return reply, 200
 			}})
@@ -190,7 +198,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			cmd.Op, cmd.Nonce = "activate-monitored-grant-attempt", Token()
 			cmd.Body.GrantBeginIntent, cmd.Body.PageEpoch = "44444444-1234-4234-8234-123456789abc", strings.Repeat("b", 64)
 			var stagedIdentity os.FileInfo
-			if mode == "old-gateway" {
+			if mode == "old-gateway" || mode == "old-policy-gateway" {
 				stagedIdentity, err = os.Stat(filepath.Join(e.Config.Work, r.ID, "workspace-ready", "work"))
 				if err != nil {
 					t.Fatal("missing positive staged source before old-gateway probe", err)
@@ -242,7 +250,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				assertUnstartedWorkspace(t, e, r.ID)
 				return
 			}
-			if mode == "old-gateway" {
+			if mode == "old-gateway" || mode == "old-policy-gateway" {
 				if err == nil || !strings.Contains(err.Error(), "monitoring evidence") {
 					t.Fatal("old gateway control agreement was not refused before clock", err)
 				}
@@ -1184,7 +1192,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	if err != nil || still.Attempts[a.ID].State != "LOCKED" || still.Attempts[a.ID].RetainedHold != "held" || still.Attempts[a.ID].Start != a.Start || still.Attempts[a.ID].Deadline != a.Deadline {
 		t.Fatal("refused Continue consumed authority or changed time", err)
 	}
-	for _, mode := range []int32{1, 2, 3, 5} {
+	for _, mode := range []int32{1, 2, 3, 5, 6, 7} {
 		authorize(mode)
 		resume.Nonce = Token()
 		if _, err := e.Command(signedCommand(key, resume), a.Username, a.Transport); err == nil || !strings.Contains(err.Error(), "monitoring evidence") {

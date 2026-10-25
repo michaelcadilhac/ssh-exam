@@ -49,6 +49,8 @@ type Entry = {
     { sequence: number; ordinal: number; issued: number }
   >;
   sequence: number;
+  nativeEstablished: boolean;
+  restartAligned: boolean;
   coverageEpoch?: string;
   coverageUntil?: number;
   gaps: number;
@@ -154,6 +156,8 @@ export class MonitoringEvidenceLedger {
       focusUnverified: false,
       frames: new Map(),
       sequence: 0,
+      nativeEstablished: false,
+      restartAligned: false,
       gaps: 0,
       receipts: new Map(),
     };
@@ -241,6 +245,7 @@ export class MonitoringEvidenceLedger {
       e.challengeOrdinal = Math.max(e.challengeOrdinal, fact.ordinal);
     }
     e.sequence = 1;
+    e.nativeEstablished = true;
     e.coverageEpoch = coverage;
     e.coverageUntil = oldest + MONITORING_EVIDENCE_WINDOW_MS;
   }
@@ -474,8 +479,6 @@ export class MonitoringEvidenceLedger {
       return refuse("ownership");
     if (e.coverageUntil === undefined || !e.coverageEpoch)
       return refuse("technical-gap");
-    if (r.coverage_epoch !== "" && r.coverage_epoch !== e.coverageEpoch)
-      return refuse("technical-gap");
     const request = JSON.stringify(r),
       old = e.receipts.get(r.nonce);
     if (old) {
@@ -490,19 +493,50 @@ export class MonitoringEvidenceLedger {
       if (now - receipt.at >= MONITORING_EVIDENCE_WINDOW_MS)
         e.receipts.delete(id);
     if (e.receipts.size >= 32) return refuse("capacity");
-    if (e.sequence <= r.after_sequence) return refuse("sequence");
+    let sequence = e.sequence,
+      coverage = e.coverageEpoch,
+      aligned = e.restartAligned;
+    if (
+      r.policy_reports === "v1" &&
+      r.coverage_epoch !== "" &&
+      e.gaps === 0 &&
+      e.focusLost === undefined &&
+      (!e.nativeEstablished ||
+        (e.restartAligned &&
+          r.coverage_epoch === coverage &&
+          r.after_sequence > sequence))
+    ) {
+      // The authenticated native challenge carries a cohort verified by signed
+      // Begin/Continue. This EMPTY-incarnation stream has only newly challenged
+      // complete facts, no negative or observed gap. Translate its counter into
+      // the still-live native namespace; neither facts nor cutoff get refreshed.
+      // A later native watermark greater than EVERY sequence issued here came
+      // from the previous gateway (e.g. a late accepted reply), not a new sample.
+      if (r.after_sequence >= Number.MAX_SAFE_INTEGER)
+        return refuse("sequence");
+      sequence = Math.max(sequence, r.after_sequence + 1);
+      coverage = r.coverage_epoch;
+      aligned = true;
+    }
+    if (r.coverage_epoch !== "" && r.coverage_epoch !== coverage)
+      return refuse("technical-gap");
+    if (sequence <= r.after_sequence) return refuse("sequence");
     const proof = monitoringEvidence.parse({
       type: "monitoring-execution-evidence-v1",
       audience: this.agent,
       nonce: r.nonce,
       owner: e.owner,
-      coverage_epoch: e.coverageEpoch,
-      sequence: e.sequence,
+      coverage_epoch: coverage,
+      sequence,
       age_ms: MONITORING_EVIDENCE_WINDOW_MS - Math.floor(e.coverageUntil - now),
       complete: true,
     });
     Object.freeze(proof.owner);
     Object.freeze(proof);
+    e.sequence = sequence;
+    e.coverageEpoch = coverage;
+    e.nativeEstablished = true;
+    e.restartAligned = aligned;
     e.receipts.set(r.nonce, { request, at: now, proof });
     return proof;
   }

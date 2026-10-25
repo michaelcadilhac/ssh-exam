@@ -58,7 +58,7 @@ def fixture_reply(path,data,expected,approval,owners,now):
  def bootstrap(owner):
   encoded=key(owner);coverage=hashlib.sha256(encoded.encode()).hexdigest()
   owners[encoded]=coverage
-  return {'type':'monitoring-bootstrap/v1','control_retention':'v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
+  return {'type':'monitoring-bootstrap/v1','control_retention':'v1','policy_reports':'v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
  assert data['agent']==expected['agent']
  transfer=expected.get('clock_transfer')
  if transfer:
@@ -80,6 +80,7 @@ def fixture_reply(path,data,expected,approval,owners,now):
   return reply
  if path=='/api/agent/monitoring-evidence':
   assert data['type']=='monitoring-execution-challenge-v1'
+  assert data.get('policy_reports')=='v1'
   coverage=owners[key(data['owner'])]
   assert data['coverage_epoch']==coverage and 0<data['after_sequence']<9007199254740991
   return {'type':'monitoring-execution-evidence-v1','audience':data['agent'],'nonce':data['nonce'],

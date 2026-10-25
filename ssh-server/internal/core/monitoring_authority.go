@@ -29,13 +29,14 @@ type monitoringActiveContext struct {
 	Agent                              string
 	Owner                              monitoringOwner
 	CoverageEpoch                      string
+	PolicyReports                      string // Verified by fresh signed Begin/Continue, not disk restoration.
 	Sequence                           uint64
 	AuthorityUntilMS, DeadlineUptimeMS int64
 	verified                           *monitoringActiveSeal   // Not JSON-restorable.
 	cutoff                             *monitoringSharedCutoff // Same live word for authority and independent watchdog.
 }
 
-// A future trusted native verifier must establish exclusive current owner/peer
+// The trusted Begin/Continue verifier must establish exclusive current owner/peer
 // and ACTIVE authority before constructing this one-use context. Its predicate
 // must be nonblocking and return false on uncertainty, not assume cached strings
 // prove liveness. This is a programming fence, NOT a substitute for that verifier.
@@ -48,7 +49,7 @@ type monitoringActiveSeal struct {
 func monitoringContextHash(c monitoringActiveContext) string { b, _ := json.Marshal(c); return Hash(b) }
 
 // Private provisional publication data, not a signed execution receipt. The
-// actual publisher and authenticated bounded worker acknowledgement remain open.
+// bounded publisher observes live acceptance; disk bytes cannot restore authority.
 type monitoringPublication struct {
 	Version          int             `json:"version"`
 	Incarnation      string          `json:"incarnation"`
@@ -71,7 +72,7 @@ type monitoringCommitTicket struct {
 	confirmed       bool // Protected by authority.mu; storage observation only.
 }
 
-// The eventual worker receives a fresh byte slice, never mutable ticket state.
+// The publisher receives a fresh byte slice, never mutable ticket state.
 // Its acknowledgement must hash the bytes actually durably published.
 func (t *monitoringCommitTicket) publicationBytes() ([]byte, string) {
 	b, _ := json.Marshal(t.publication)
@@ -122,7 +123,7 @@ func newMonitoringAuthority(c monitoringActiveContext, clock func() (int64, erro
 // Testable entropy dependency only; never configured from an RPC/environment.
 // An incarnation is generated here, not accepted/restored from a caller/disk.
 func newMonitoringAuthorityWithEntropy(c monitoringActiveContext, clock func() (int64, error), entropy io.Reader) (*monitoringAuthority, error) {
-	if !identifier.MatchString(c.Agent) || !validMonitoringOwner(c.Owner) || clock == nil || entropy == nil || c.verified == nil || c.verified.current == nil || c.verified.fingerprint != monitoringContextHash(c) || c.Sequence > monitoringEvidenceMaxSequence ||
+	if (c.PolicyReports != "" && c.PolicyReports != "v1") || !identifier.MatchString(c.Agent) || !validMonitoringOwner(c.Owner) || clock == nil || entropy == nil || c.verified == nil || c.verified.current == nil || c.verified.fingerprint != monitoringContextHash(c) || c.Sequence > monitoringEvidenceMaxSequence ||
 		(c.CoverageEpoch != "" && !monitoringDigest.MatchString(c.CoverageEpoch)) || (c.CoverageEpoch == "" && c.Sequence != 0) {
 		return nil, errMonitoringScope
 	}
@@ -260,7 +261,7 @@ func (a *monitoringAuthority) challenge() (monitoringChallenge, error) {
 	a.challengeCounter++
 	nonce := Hash([]byte(a.incarnation + "\x00monitoring-challenge-v1\x00" + strconv.FormatUint(a.challengeCounter, 10)))
 	window := min(monitoringChallengeWindowMS, a.context.AuthorityUntilMS-now, a.context.DeadlineUptimeMS-now)
-	c := monitoringChallenge{Agent: a.context.Agent, Nonce: nonce, Owner: a.context.Owner, IssuedUptimeMS: now, ExpiresUptimeMS: now + window, AuthorityUntilMS: a.context.AuthorityUntilMS, DeadlineUptimeMS: a.context.DeadlineUptimeMS, AfterSequence: a.context.Sequence, CoverageEpoch: a.context.CoverageEpoch}
+	c := monitoringChallenge{Agent: a.context.Agent, PolicyReports: a.context.PolicyReports, Nonce: nonce, Owner: a.context.Owner, IssuedUptimeMS: now, ExpiresUptimeMS: now + window, AuthorityUntilMS: a.context.AuthorityUntilMS, DeadlineUptimeMS: a.context.DeadlineUptimeMS, AfterSequence: a.context.Sequence, CoverageEpoch: a.context.CoverageEpoch}
 	a.challenges[nonce] = c
 	return c, nil
 }

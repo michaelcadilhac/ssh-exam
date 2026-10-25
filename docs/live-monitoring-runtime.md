@@ -5,6 +5,14 @@ The selected public outcome remains actual policy pause → verified retained ho
 → approved Continue. See todo-delivery-audit.md; do not add another independent
 observer/helper subsystem or treat this document as completed implementation.
 
+October25 update: gateway process replacement, reliable policy-report receipts,
+rejected-native-pause repair and original-window native renewal now have integrated
+local interfaces/tests. Signed bootstrap requires policy_reports:v1 and carries it
+in native challenges. Details/current receipts: retained-gateway-restart.md and
+monitoring-restart-continuity.md. Earlier paragraphs are historical increments;
+fresh exact-artifact root, actual-root/browser join and16student/64pane capacity
+remain gates. Installed admission stays OFF; no deployment or automatic gap repair.
+
 Current gateway callers are real authenticated `capture-challenges` and validated
 `frames/challenged`, and the native signed `/api/agent/monitoring-evidence` route.
 The existing ledger now accepts combined challenged JPEG/policy snapshots,

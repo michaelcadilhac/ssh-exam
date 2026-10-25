@@ -64,6 +64,7 @@ type testMonitoringRequest struct {
 	Owner         monitoringOwner `json:"owner"`
 	AfterSequence uint64          `json:"after_sequence"`
 	CoverageEpoch string          `json:"coverage_epoch"`
+	PolicyReports string          `json:"policy_reports,omitempty"`
 }
 
 type testLiveCallbacks struct {
@@ -128,7 +129,7 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 		}
 		if proofRoute {
 			var q testMonitoringRequest
-			if terminalDecode(payload, &q) != nil || q.Type != "monitoring-execution-challenge-v1" || q.Agent != "class" || !validMonitoringOwner(q.Owner) || !monitoringDigest.MatchString(q.Nonce) {
+			if terminalDecode(payload, &q) != nil || q.Type != "monitoring-execution-challenge-v1" || q.Agent != "class" || q.PolicyReports != "v1" || !validMonitoringOwner(q.Owner) || !monitoringDigest.MatchString(q.Nonce) {
 				t.Error("wrong authenticated monitoring challenge scope")
 				w.WriteHeader(400)
 				return
@@ -172,7 +173,7 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 				w.WriteHeader(400)
 				return
 			}
-			seed = &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", Owner: *request.InitialOwner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 1}
+			seed = &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", PolicyReports: "v1", Owner: *request.InitialOwner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 1}
 		}
 		reply, status := handler(grantBeginReply{Type: request.Type, Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, CaptureValidFor: 15000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch, Bootstrap: seed})
 		if status != 200 {

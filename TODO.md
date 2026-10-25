@@ -27,6 +27,16 @@ Full590app checks and21composed real-WASM/process browser scenarios pass. Native
 coverage-cohort continuity, graceful shutdown and joined actual-root/capacity
 qualification remain open; installed retained admission is OFF. No deployment.
 
+October25 native gateway-restart renewal is implemented/tested locally through
+the existing authenticated HTTPS path. A signed policy-report cohort is required
+at Begin/Continue and retained in native challenges. Fresh pristine restarted
+facts can match still-live native coverage/counters without refreshing age; native
+challenge/prior-authority expiry, witnessed gaps and policy loss still refuse.
+Full native race/resource core580.201s/CLI30.674s,594app checks,21composed browser
+workflows,43Python checks, build/types/vet pass. A fresh exact-artifact guarded
+root run and actual-root/browser/capacity join remain open; no C3/C16 closure or
+deployment. Details: docs/monitoring-restart-continuity.md.
+
 October25 attempt/grant/workspace presentation is implemented/tested locally.
 Dashboard history/review and supported CLI list/show expose the applied revision,
 reason, stable attempt number and exact workspace/source lineage; current revisions

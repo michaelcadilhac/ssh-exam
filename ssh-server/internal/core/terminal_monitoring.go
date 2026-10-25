@@ -139,7 +139,11 @@ func (e *Engine) refreshTerminalMonitoring(ctx context.Context, id string, owner
 	if c.Owner != owner || c.Agent != e.Config.AgentID {
 		return errMonitoringScope
 	}
-	frame, err := e.exchangeTerminalMonitoring(ctx, "/api/agent/monitoring-evidence", map[string]any{"type": "monitoring-execution-challenge-v1", "agent": c.Agent, "nonce": c.Nonce, "owner": c.Owner, "after_sequence": c.AfterSequence, "coverage_epoch": c.CoverageEpoch})
+	body := map[string]any{"type": "monitoring-execution-challenge-v1", "agent": c.Agent, "nonce": c.Nonce, "owner": c.Owner, "after_sequence": c.AfterSequence, "coverage_epoch": c.CoverageEpoch}
+	if c.PolicyReports != "" {
+		body["policy_reports"] = c.PolicyReports
+	}
+	frame, err := e.exchangeTerminalMonitoring(ctx, "/api/agent/monitoring-evidence", body)
 	if err != nil {
 		return err
 	}
