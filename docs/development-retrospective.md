@@ -52,6 +52,13 @@ milestone boundaries, not lower safety standards or misleading TODO checkmarks.
 
 ## Operating changes
 
+October24 status-report follow-up: the agent ended its turn after a progress/ETA
+report despite remaining authorized work and no blocker. That was another
+execution failure, not a design decision or missing permission. AGENTS now states
+that a status request is steering, not a pause: answer promptly in commentary and
+continue. A completed local increment likewise is not a reason to stop while
+actionable work remains. Keep the current runner/checkpoint accurate across turns.
+
 October23 follow-up: the instructor again challenged several days of work with
 the main count at11/38. The failure persisted: lengthy speculative architecture
 analysis and separately qualified prerequisites still displaced the actual

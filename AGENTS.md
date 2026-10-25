@@ -137,6 +137,9 @@
   Distinguish investigated, awaiting decision, implemented/tested locally and
   deployed. Proposals and unused helpers do not close a TODO investigation or
   establish that a feature works. Checked-item counts are not effort percentages.
+  A progress/ETA request is not a pause: answer promptly in commentary and resume
+  the authorized work. Do not end the turn merely to deliver a status report or
+  after a validated increment while actionable work remains.
 - Keep the current checkpoint concise: current milestone, validated revision,
   verification, open decisions and exact next action. Put detailed evidence in
   the relevant feature document; append historical progress only at meaningful
