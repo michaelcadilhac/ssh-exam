@@ -171,6 +171,10 @@ it("retained Begin refuses mixed loaded browser/WASM versions before requesting 
       "no new clock has started",
     );
     role.retainedControlSupported = true;
+    await expect(conn.prepareMonitoring()).rejects.toThrow(
+      "no new clock has started",
+    );
+    role.retainedRestoreSupported = true;
     expect(await conn.prepareMonitoring()).toBe(true);
     expect(command).toHaveBeenCalledTimes(1); // Only original pane admission.
   } finally {

@@ -33,7 +33,7 @@ function fixture() {
     close: vi.fn(),
     addEventListener: vi.fn(),
   });
-  const start = async () => {
+  const start = async (features = {}) => {
     const socket = control();
     client.begin(socket as any, vi.fn());
     client.handle({
@@ -44,7 +44,7 @@ function fixture() {
     });
     const worker = workers.at(-1),
       request = worker.requests.at(-1);
-    worker.respond({ type: "rpc-result", id: request.id, result: {} });
+    worker.respond({ type: "rpc-result", id: request.id, result: features });
     await flush();
     return { socket, worker };
   };
@@ -62,9 +62,121 @@ it("the loaded JS producer explicitly negotiates framing separately from the WAS
         loaded_pane_input: "v1",
         loaded_pane_epoch_change: "v1",
         loaded_control_retention: "v1",
+        loaded_control_restore: "v1",
       },
     }),
   );
+  client.close();
+});
+const retainedOwner = () => ({
+  attempt: crypto.randomUUID(),
+  exam: "midterm",
+  username: "student",
+  uid: 10001,
+  transport_hash: "a".repeat(64),
+  boot: crypto.randomUUID(),
+  page_epoch: "b".repeat(64),
+  input_epoch: "c".repeat(64),
+  generation: 0,
+  clock_revision: 0,
+});
+it("retained control offers only negotiated routing metadata and never restarts SSH or retains unknown connect fields", async () => {
+  const { client, c, start } = fixture(),
+    owner = retainedOwner();
+  const { socket, worker } = await start({
+    command_cancel: true,
+    framed_input: true,
+    pane_epoch_change: true,
+    privateExtra: "DO-NOT-RETAIN",
+  });
+  client.retainTransport(true, {
+    attempt: owner.attempt,
+    page: "d".repeat(64),
+    owner: JSON.stringify(owner),
+  });
+  socket.send.mockClear();
+  const requests = worker.requests.length;
+  client.handle({
+    type: "browser-request",
+    id: "restore",
+    op: "retained-control",
+    args: { owner, controlToken: "replacement" },
+  });
+  await flush();
+  const result = JSON.parse(socket.send.mock.calls.at(-1)![0]).result;
+  expect(result).toMatchObject({
+    retained_control: "v1",
+    loaded_control_restore: "v1",
+    framed_input: true,
+    panes: [],
+  });
+  expect(result).not.toHaveProperty("privateExtra");
+  expect(worker.requests).toHaveLength(requests);
+  expect(worker.terminate).not.toHaveBeenCalled();
+  expect(c.token).toBe("replacement");
+  client.close();
+  expect(c.retainedContext).toBeUndefined();
+  expect(c.retainedFeatures).toBeUndefined();
+});
+it("a mismatched retained owner refuses before token change and preserves the authenticated worker", async () => {
+  const { client, c, start } = fixture(),
+    owner = retainedOwner();
+  const { socket, worker } = await start();
+  client.retainTransport(true, {
+    attempt: owner.attempt,
+    page: "d".repeat(64),
+    owner: JSON.stringify(owner),
+  });
+  socket.send.mockClear();
+  client.handle({
+    type: "browser-request",
+    id: "wrong",
+    op: "retained-control",
+    args: {
+      owner: { ...owner, transport_hash: "e".repeat(64) },
+      controlToken: "wrong-token",
+    },
+  });
+  await flush();
+  expect(JSON.parse(socket.send.mock.calls.at(-1)![0])).toMatchObject({
+    type: "browser-result",
+    id: "wrong",
+    error: true,
+  });
+  expect(c.token).toBe("test");
+  expect(client.active).toBe(true);
+  expect(worker.terminate).not.toHaveBeenCalled();
+  client.close();
+});
+it("late old-gateway command replies cannot contaminate a restored control socket", async () => {
+  const { client, start } = fixture(),
+    owner = retainedOwner();
+  const { socket, worker } = await start();
+  client.retainTransport(true, {
+    attempt: owner.attempt,
+    page: "d".repeat(64),
+    owner: JSON.stringify(owner),
+  });
+  client.handle({
+    type: "browser-request",
+    id: "old-command",
+    op: "command",
+    args: {},
+  });
+  const old = worker.requests.at(-1);
+  socket.send.mockClear();
+  client.handle({
+    type: "browser-request",
+    id: "restore",
+    op: "retained-control",
+    args: { owner, controlToken: "replacement" },
+  });
+  await flush();
+  worker.respond({ type: "rpc-result", id: old.id, result: { old: true } });
+  await flush();
+  expect(
+    socket.send.mock.calls.map(([value]: any[]) => JSON.parse(value).id),
+  ).toEqual(["restore"]);
   client.close();
 });
 it.each(["error", "loss", "fatal"])(

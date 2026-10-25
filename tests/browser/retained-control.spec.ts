@@ -483,7 +483,9 @@ test("missing loaded JS control agreement refuses actual Begin before native sta
     const response = await route.fetch(),
       body = await response.text();
     const field = /loaded_control_retention:"v1"/g;
-    expect([...body.matchAll(field)]).toHaveLength(1);
+    // Initial connect and retained restoration both declare the loaded feature.
+    // Mutate both producers; the actual authentication wire is the refusal oracle.
+    expect([...body.matchAll(field)]).toHaveLength(2);
     changedProducer++;
     await route.fulfill({
       response,

@@ -2889,6 +2889,19 @@ No database/configuration migration or operator enable switch is added. Old
 gateway/native admission, uncooperative-loss/restart feedback and combined real
 root/capacity qualification remain gates; no installed mode is enabled.
 
+The October25 local gateway-process restart candidate reconstructs only routing
+for still-live browser SSH. Current authenticated page/cookie and an exact signed
+native inspect-attempt owner prove the candidate transport; browser pane hints
+create no channel, capability or execution permission. Provisional refusal closes
+only the new proxy. Scope/deadline/generation are rechecked before installing maps;
+old gateway replies cannot cross the browser's new control-reply epoch. Missing
+gateway memory alone no longer creates a v1 policy violation or SSH-loss claim.
+Actual policy holds and scoped approvals survive this process replacement. Five
+actual-process/WASM/SSH cases pass locally with simulated native policy. Native
+coverage-ledger continuity and joined actual-root/capacity qualification remain
+open; no blanket technical thaw or installed enablement is provided. See
+docs/retained-gateway-restart.md.
+
 
 The local native admission candidate also fences protocol downgrades. An eligible
 account advertised retainedv1 cannot start a NEW interval with the ordinary

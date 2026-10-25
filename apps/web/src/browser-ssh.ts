@@ -1,6 +1,10 @@
 import { terminalInputChunks } from "./terminal-input.js";
 import { socket } from "./api.js";
 import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
+import {
+  monitoringOwner,
+  type MonitoringOwner,
+} from "../../../packages/protocol/monitoring-evidence.js";
 
 export class BrowserSSH {
   private lifecycle = 0;
@@ -19,6 +23,13 @@ export class BrowserSSH {
     { resolve: (v: any) => void; reject: (e: Error) => void }
   >();
   private controlReplies = new Map<string, Promise<any>>();
+  private controlEpoch = 0;
+  private retainedFeatures?: any;
+  private retainedContext?: {
+    attempt: string;
+    page: string;
+    owner: MonitoringOwner;
+  };
   private listeners = new Set<(v: any) => void>();
   private authListener?: (v: any) => void;
   private retry?: ReturnType<typeof setTimeout>;
@@ -49,8 +60,23 @@ export class BrowserSSH {
   get controlConnected() {
     return !this.browserMode || this.controlReady;
   }
-  retainTransport(retained: boolean) {
+  retainTransport(
+    retained: boolean,
+    context?: { attempt: string; page: string; owner: string },
+  ) {
     this.retainedTransport = retained && this.authenticated && this.active;
+    this.retainedContext = undefined;
+    if (!this.retainedTransport || !context) return;
+    try {
+      const owner = monitoringOwner.parse(JSON.parse(context.owner));
+      if (
+        owner.attempt === context.attempt &&
+        /^[a-f0-9]{64}$/.test(context.page)
+      )
+        this.retainedContext = { ...context, owner };
+    } catch {
+      /* Missing metadata never grants a restore context. */
+    }
   }
   setInputEnabled(enabled: boolean) {
     if (this.inputEnabled === enabled) return;
@@ -215,6 +241,10 @@ export class BrowserSSH {
           this.initialize();
           this.token = m.args.controlToken;
         }
+        if (m.op === "retained-control") {
+          ++this.controlEpoch;
+          this.controlReplies.clear();
+        }
         const lifecycle = this.lifecycle;
         const opening = m.op === "open" ? { closed: false } : undefined;
         if (opening) {
@@ -241,19 +271,61 @@ export class BrowserSSH {
           }
         }
         promise = (
-          m.op === "change-input-epoch"
-            ? this.changeInputEpoch(m.args)
-            : this.request(m.op, m.args)
+          m.op === "retained-control"
+            ? Promise.resolve().then(() => {
+                const context = this.retainedContext,
+                  owner = monitoringOwner.parse(m.args.owner);
+                if (
+                  !this.retainedTransport ||
+                  !context ||
+                  !this.retainedFeatures ||
+                  !this.authenticated ||
+                  !this.worker ||
+                  this.openingPanes.size ||
+                  JSON.stringify(owner) !== JSON.stringify(context.owner) ||
+                  typeof m.args.controlToken !== "string" ||
+                  m.args.controlToken.length > 128
+                )
+                  throw Error("Current retained SSH context required");
+                this.setInputEnabled(false);
+                this.token = m.args.controlToken;
+                // Presentation/routing hints only. Native owner/epoch gates
+                // still independently authorize every actual input frame.
+                return {
+                  ...this.retainedFeatures,
+                  retained_control: "v1",
+                  panes: [...this.readyPanes].map((pane) => ({
+                    pane,
+                    input_epoch: this.nativeInput.get(pane)?.epoch,
+                    pane_instance: this.nativeInstances.get(pane),
+                  })),
+                };
+              })
+            : m.op === "change-input-epoch"
+              ? this.changeInputEpoch(m.args)
+              : this.request(m.op, m.args)
         )
           .then((result) => {
             if (this.lifecycle !== lifecycle || this.stopped) return result;
-            if (m.op === "connect")
-              return {
+            if (m.op === "connect") {
+              const features = {
                 ...result,
                 loaded_pane_input: "v1",
                 loaded_pane_epoch_change: "v1",
                 loaded_control_retention: "v1",
+                loaded_control_restore: "v1",
               };
+              this.retainedFeatures = {
+                command_cancel: result?.command_cancel === true,
+                framed_input: result?.framed_input === true,
+                pane_epoch_change: result?.pane_epoch_change === true,
+                loaded_pane_input: "v1",
+                loaded_pane_epoch_change: "v1",
+                loaded_control_retention: "v1",
+                loaded_control_restore: "v1",
+              };
+              return features;
+            }
             if (m.op === "open" && !opening?.closed) {
               this.readyPanes.add(m.args.pane);
               const pending = this.earlyInputs.get(m.args.pane) || [];
@@ -272,9 +344,15 @@ export class BrowserSSH {
           this.controlReplies.delete(this.controlReplies.keys().next().value!);
       }
       const lifecycle = this.lifecycle;
+      const controlEpoch = this.controlEpoch;
       void promise.then(
         (result) => {
-          if (this.lifecycle !== lifecycle || this.stopped) return;
+          if (
+            this.lifecycle !== lifecycle ||
+            this.stopped ||
+            controlEpoch !== this.controlEpoch
+          )
+            return;
           if (m.op === "connect") {
             this.authenticated = true;
             this.controlReady = true;
@@ -283,7 +361,12 @@ export class BrowserSSH {
           this.sendControl({ v: 1, type: "browser-result", id: m.id, result });
         },
         () => {
-          if (this.lifecycle !== lifecycle || this.stopped) return;
+          if (
+            this.lifecycle !== lifecycle ||
+            this.stopped ||
+            controlEpoch !== this.controlEpoch
+          )
+            return;
           this.sendControl({
             v: 1,
             type: "browser-result",
@@ -522,6 +605,14 @@ export class BrowserSSH {
           v: 1,
           type: "browser-bind",
           controlToken: this.token,
+          ...(this.retainedContext
+            ? {
+                retained: {
+                  attempt: this.retainedContext.attempt,
+                  page: this.retainedContext.page,
+                },
+              }
+            : {}),
         }),
       );
     s.onmessage = ({ data }) => {
@@ -555,6 +646,9 @@ export class BrowserSSH {
     this.authenticated = false;
     this.disconnected = 0;
     this.retainedTransport = false;
+    this.retainedContext = undefined;
+    this.retainedFeatures = undefined;
+    ++this.controlEpoch;
     this.token = "";
     this.buffers.clear();
     this.readyPanes.clear();

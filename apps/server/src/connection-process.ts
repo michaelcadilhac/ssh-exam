@@ -155,6 +155,7 @@ export class IsolatedConnection implements ConnectionHandle {
     readonly browser = false,
     socket?: WebSocket,
     workerEntry?: URL,
+    private preserveRestoreTransport = false,
   ) {
     if (running.size >= (config.connectionWorkers ?? 32))
       throw Object.assign(
@@ -246,6 +247,7 @@ export class IsolatedConnection implements ConnectionHandle {
       browser,
       socket: initial,
       controlToken: this.controlToken,
+      preserveTransportOnClose: this.preserveRestoreTransport,
     });
   }
   private addSocket(socket: WebSocket) {
@@ -440,6 +442,38 @@ export class IsolatedConnection implements ConnectionHandle {
   async prepareMonitoring(): Promise<boolean> {
     return this.rpc("prepareMonitoring", []);
   }
+  async restoreRetained(owner: unknown) {
+    if (!this.browser || !this.preserveRestoreTransport)
+      throw Error("Retained restoration proxy required");
+    const result = await this.rpc("restoreRetained", [owner]);
+    if (!Array.isArray(result?.panes) || result.panes.length > 4)
+      throw Error("Invalid retained routing reply");
+    const instances: Record<string, string> = {};
+    for (const hint of result.panes) {
+      if (
+        !/^[a-f0-9-]{36}$/.test(hint?.pane || "") ||
+        this.panes.has(hint.pane) ||
+        !/^[a-f0-9]{64}$/.test(hint.input_epoch || "") ||
+        !/^[a-f0-9]{64}$/.test(hint.pane_instance || "")
+      )
+        throw Error("Invalid retained routing hint");
+      const pane = new RemotePane(hint.pane, this);
+      pane.inputEpoch = hint.input_epoch;
+      pane.outputEpoch = hint.pane_instance;
+      this.panes.set(hint.pane, pane as any);
+      instances[hint.pane] = pane.ipcInstance;
+    }
+    await this.rpc("attachRestoredPanes", [instances]);
+    if (!this.alive)
+      throw Error("Retained SSH changed during routing verification");
+    return result.attempt;
+  }
+  acceptRestoredControl() {
+    if (!this.browser || !this.alive || this.stopped)
+      throw Error("Current retained control required");
+    this.authority.bind(this);
+    this.preserveRestoreTransport = false;
+  }
   command(op: string, body: any = {}): Promise<any> {
     return this.rpc("command", [op, body]);
   }
@@ -536,7 +570,7 @@ export class IsolatedConnection implements ConnectionHandle {
     }
     this.panes.clear();
     for (const socket of this.sockets.values()) {
-      if (socket.readyState === 1) {
+      if (socket.readyState === 1 && !this.preserveRestoreTransport) {
         try {
           socket.send(
             JSON.stringify({
@@ -568,7 +602,17 @@ export class IsolatedBrowserConnection extends IsolatedConnection {
     authority: Agent,
     socket: WebSocket,
     workerEntry?: URL,
+    preserveRestoreTransport = false,
   ) {
-    super(username, exam, config, authority, true, socket, workerEntry);
+    super(
+      username,
+      exam,
+      config,
+      authority,
+      true,
+      socket,
+      workerEntry,
+      preserveRestoreTransport,
+    );
   }
 }

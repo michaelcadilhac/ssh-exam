@@ -8,6 +8,16 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October25 gateway routing now survives actual process replacement locally through
+current-page and signed native owner verification, retaining the same SSH/private
+shell input and interval/grant. Repeated page/transport/clock refusal preserves
+SSH; policy hold and scoped approval survive restart. Full587app checks,163broad
+browser passes plus the corrected loaded-feature refusal separately,5actual
+process-restart browser cases, build and types pass. Routing grants no permission;
+native evidence continuity and policy-report acknowledgement during outages remain
+open. Installed retained admission stays OFF; no C3/C16 checkbox closure or deploy.
+Evidence and precise seams: docs/retained-gateway-restart.md.
+
 October25 attempt/grant/workspace presentation is implemented/tested locally.
 Dashboard history/review and supported CLI list/show expose the applied revision,
 reason, stable attempt number and exact workspace/source lineage; current revisions

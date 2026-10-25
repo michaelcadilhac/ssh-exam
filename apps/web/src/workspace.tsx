@@ -327,8 +327,19 @@ export function Workspace({
   useEffect(() => {
     browserSSH.retainTransport(
       attempt.monitoring_mode === "v1" && !!attempt.start,
+      {
+        attempt: attempt.id,
+        page: reservation.page,
+        owner: attempt.registered_owner,
+      },
     );
-  }, [attempt.monitoring_mode, attempt.start]);
+  }, [
+    attempt.monitoring_mode,
+    attempt.start,
+    attempt.id,
+    attempt.registered_owner,
+    reservation.page,
+  ]);
   useEffect(() => {
     browserSSH.setInputEnabled(!covered && interaction());
   }, [covered, connected, attempt.state]);

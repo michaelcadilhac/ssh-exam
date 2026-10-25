@@ -47,11 +47,38 @@ retained-transport-recovery-plan.md. No automatic refunds/reopening or hold rele
 
 ## Exact next integrated result
 
-Continue the critical SAME-page, viable-SSH gateway-restart workflow. First create
-ONE actual gateway-process restart regression with an independent synthetic SSH
-fixture; observe preserved native transport/private shell buffer, unchanged original
-interval/grant and fresh capture before work. Name the runtime callers/rebind
-integration before adding helpers. A server-memory gap is not proven SSH loss.
+Validated routing increment (local only): actual gateway-process fixture and
+verified same-SSH routing now integrated, with independent synthetic SSH/relay
+and private passive DB inspection. RED5982 proves the false startup lock/auth-gap;
+candidate excludes v1 from those legacy memory-absence locks. Signed native owner,
+current page, deadline/generation and loaded versions gate bounded provisional
+rebind; refusal preserves SSH, and routing hints grant no execution permission.
+Focus74034 PASS54/6files17.92s; fresh types72758/build32834 PASS. Actual gateway PID
+replacement browser16875 PASS5/1.1m, including private shell input, repeated native
+page/transport/clock refusal+repair and policy approval/Continue. State review and
+retained failures: retained-gateway-restart.md. Native OS policy is simulated.
+
+Full app44999 PASS587/107files308.20s. Broad browser33178:163PASS/5expected skips,
+one fixture mutation-count failure; corrected actual-wire refusal76415 PASS1/8.7s.
+That is163composed plus1fresh, not164in one run. Routing types4757/build32834/diff PASS.
+All runners finished. Logs /tmp/ssh-exam-retained-restart-*.log. Feature doc owns
+state review/failures/details. No Go production source change or root qualification.
+
+Next regression work preserved in stash8cf701553752ed700c1e234c5938a09f46789472
+(NEVER drop): private real-native-authority test bridge, authenticated HTTP crash
+regression and2capture fences. Restore after routing commit. RED94785 reproduces
+coverage-identity failure after actual private gateway PID replacement and fresh
+captures. Earlier transaction/graceful-close fixture failures are not that proof.
+Source review also finds lost one-shot policy reports can coexist with later
+positive frames. NEXT public restart/dropped-policy-report regression, scoped
+receipt/retry and positive-sample fences; then overlap-only native ledger alignment
+through existing authenticated challenge. Native old cutoff/sequence/owner still
+gate acceptance; no blind-gap repair, focus-grace reset or blanket technical thaw.
+Full C16/root/16student64pane remain open. No pending operation grants permission.
+
+Continue the critical SAME-page, viable-SSH gateway-restart workflow. Routing is
+now integrated but actual native monitoring continuity is not yet qualified.
+Name runtime callers before new helpers. A server-memory gap is not proven SSH loss.
 Do not assume the pending genuine-loss choice or downgrade to legacy replacement.
 Then qualify the joined real browser/native workflow before16/64 and concurrent
 collection. Separate browser/native mocks do not close that boundary.

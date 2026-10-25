@@ -313,6 +313,77 @@ export async function createApp(
         authenticationGap: !retained,
       });
   };
+  const configureConnection = (
+    isolated: IsolatedConnection,
+    username: string,
+    exam: string,
+  ) => {
+    isolated.onFailure = (failure) => {
+      if (!store.db.open) return;
+      const owned = [...attemptConnections].find(([, c]) => c === isolated);
+      const context = owned
+        ? store.attempt(owned[0])
+        : (store.db
+            .prepare(
+              "SELECT * FROM attempts WHERE exam=? AND username=? AND state IN ('PREPARING','ACTIVATING','ACTIVE','LOCKED') ORDER BY rowid DESC LIMIT 1",
+            )
+            .get(exam, username) as Attempt | undefined);
+      const event = randomUUID();
+      const detail = JSON.stringify({ event, ...failure });
+      store.audit(
+        "supervisor",
+        "attempt-worker-failed",
+        context?.id || "",
+        detail,
+      );
+      app.log.error(
+        {
+          username: username,
+          exam: exam,
+          attempt: context?.id,
+          event,
+          ...failure,
+        },
+        "Attempt connection process failed",
+      );
+      const reason = context?.start
+        ? "Exam connection process failed. Recovery authorization and fresh SSH sign-in are required."
+        : "SSH sign-in/preflight process failed. Sign in again; the exam clock has not started.";
+      const subject = "Exam connection failure: " + username;
+      const body = `${reason}\nDiagnostic: ${detail}`;
+      if (context)
+        life.notifyAttempt(context, "connection-process", subject, body, event);
+      else
+        life.alert(
+          subject,
+          [...signInAlertContext(username, exam), body].join("\n"),
+          { coalesce: false },
+        );
+      if (
+        owned &&
+        ["ACTIVE", "LOCKED"].includes(store.attempt(owned[0]).state)
+      ) {
+        void life.lock(owned[0], reason, { notify: false }).catch(() => {});
+      }
+    };
+    isolated.onLoss = () => {
+      const owned = [...attemptConnections].find(([, c]) => c === isolated);
+      if (owned) void life.lock(owned[0], "SSH transport lost").catch(() => {});
+    };
+    options.onConnection?.(isolated);
+    isolated.onDiagnostic = (host, detail) => {
+      store.audit("gateway", "ssh-diagnostic", host, detail);
+      life.alert(
+        "SSH host-key verification failed",
+        [
+          ...signInAlertContext(username, exam),
+          `Reported SSH host: ${JSON.stringify(host)}`,
+          `Diagnostic: ${JSON.stringify(detail)}`,
+          "The pinned SSH host identity was not verified; sign-in was refused. Verify the host key through trusted institutional administration before changing any pin. Do not bypass verification or reset an existing attempt.",
+        ].join("\n"),
+      );
+    };
+  };
   const busy = new Set<string>();
   const leases = new Set<string>();
   const principal = (req: any, role?: string) => {
@@ -369,6 +440,15 @@ export async function createApp(
       return conn;
   };
   life.onSSHExited = (a, owner) => {
+    const detail = JSON.stringify(owner);
+    if (
+      !store.db
+        .prepare(
+          "SELECT 1 FROM audit WHERE target=? AND action='native-ssh-exited' AND detail=?",
+        )
+        .get(a.id, detail)
+    )
+      store.audit("class-agent", "native-ssh-exited", a.id, detail);
     const conn = retainedConnection(a);
     if (!conn || conn.transport !== owner.transport_hash) return false;
     conn.onLoss = () => {};
@@ -376,17 +456,38 @@ export async function createApp(
     if (connections.get(`${a.exam}:${a.username}`) === conn)
       connections.delete(`${a.exam}:${a.username}`);
     if (attemptConnections.get(a.id) === conn) attemptConnections.delete(a.id);
-    store.audit(
-      "class-agent",
-      "native-ssh-exited",
-      a.id,
-      JSON.stringify(owner),
-    );
     return true;
   };
   const authenticationGap = (id: string) => {
     const a = store.attempt(id);
     if (retainedConnection(a)) return false;
+    if (a.monitoring_mode === "v1" && a.registered_owner) {
+      let owner: ReturnType<typeof monitoringOwner.parse>;
+      try {
+        owner = monitoringOwner.parse(JSON.parse(a.registered_owner));
+      } catch {
+        return false;
+      } // Unknown metadata is not proven SSH loss.
+      if (
+        store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE target=? AND action='native-ssh-exited' AND detail=?",
+          )
+          .get(id, JSON.stringify(owner))
+      )
+        return true;
+      const last = store.db
+        .prepare(
+          "SELECT action FROM audit WHERE target=? AND action IN ('reauthentication-required','authorized-authentication-gap','authentication-gap-ended','attempt-worker-failed','retained-control-verified') ORDER BY rowid DESC LIMIT 1",
+        )
+        .get(id) as any;
+      return (
+        !!last &&
+        !["authentication-gap-ended", "retained-control-verified"].includes(
+          last.action,
+        )
+      );
+    }
     if (
       ["PREPARING", "LOCKED"].includes(a.state) &&
       !connections.get(`${a.exam}:${a.username}`)?.alive
@@ -398,6 +499,142 @@ export async function createApp(
       )
       .get(id) as any;
     return !!last && last.action !== "authentication-gap-ended";
+  };
+  const retainedRestores = new Map<
+    string,
+    { connection: BrowserConnection; socket: WebSocket }
+  >();
+  const restoreRetainedControl = async (
+    ws: WebSocket,
+    session: any,
+    input: any,
+    provisional: (connection: BrowserConnection) => void,
+  ) => {
+    const hint = z
+      .object({
+        attempt: z.string().uuid(),
+        page: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .strict()
+      .parse(input);
+    const a = store.attempt(hint.attempt),
+      key = `${session.exam}:${session.username}`;
+    if (
+      session.role !== "student" ||
+      !a ||
+      a.exam !== session.exam ||
+      a.username !== session.username ||
+      a.page_hash !== hash(hint.page) ||
+      a.monitoring_mode !== "v1" ||
+      !a.registered_owner ||
+      !a.start ||
+      !a.deadline ||
+      a.deadline <= now() ||
+      a.protected ||
+      a.checksum ||
+      !["ACTIVE", "LOCKED"].includes(a.state) ||
+      authenticationGap(a.id) ||
+      connections.get(key)?.alive ||
+      retainedRestores.has(a.id)
+    )
+      throw Error(
+        "Current retained page unavailable; no SSH replacement authorized",
+      );
+    const owner = monitoringOwner.parse(JSON.parse(a.registered_owner));
+    if (
+      owner.attempt !== a.id ||
+      owner.exam !== a.exam ||
+      owner.username !== a.username ||
+      owner.uid !== a.uid ||
+      owner.page_epoch !== a.page_hash
+    )
+      throw Error("Retained owner differs from the current page");
+    const connection = new BrowserConnection(
+      a.username,
+      a.exam,
+      config,
+      agent,
+      ws,
+      options.connectionWorkerEntry,
+      true,
+    );
+    const pending = { connection, socket: ws };
+    retainedRestores.set(a.id, pending);
+    provisional(connection);
+    const timer = setTimeout(() => {
+      if (retainedRestores.get(a.id) === pending) {
+        retainedRestores.delete(a.id);
+        connection.close();
+      }
+    }, 10000);
+    try {
+      const remote = await connection.restoreRetained(owner);
+      if (
+        closingSessions ||
+        retainedRestores.get(a.id) !== pending ||
+        ws.readyState !== WebSocket.OPEN
+      )
+        throw Error("Retained verification ended; preserve the SSH session");
+      const current = store.attempt(a.id);
+      if (
+        retainedRestores.get(a.id) !== pending ||
+        ws.readyState !== WebSocket.OPEN ||
+        !connection.alive ||
+        current.page_hash !== hash(hint.page) ||
+        current.registered_owner !== a.registered_owner ||
+        current.deadline !== a.deadline ||
+        current.clock_revision !== a.clock_revision ||
+        current.generation !== a.generation ||
+        current.continuation_revision !== a.continuation_revision ||
+        remote.generation !== a.generation ||
+        authenticationGap(a.id) ||
+        current.protected ||
+        current.checksum ||
+        !["ACTIVE", "LOCKED"].includes(current.state) ||
+        current.deadline! <= now() ||
+        connections.get(key)?.alive
+      )
+        throw Error("Retained page changed during verification");
+      life.acceptRemote(remote);
+      const agreed = store.attempt(a.id);
+      if (
+        agreed.page_hash !== hash(hint.page) ||
+        agreed.registered_owner !== current.registered_owner ||
+        agreed.deadline !== current.deadline ||
+        agreed.clock_revision !== current.clock_revision ||
+        agreed.generation !== current.generation ||
+        authenticationGap(a.id) ||
+        agreed.protected ||
+        agreed.checksum ||
+        !["ACTIVE", "LOCKED"].includes(agreed.state) ||
+        agreed.deadline! <= now() ||
+        !connection.alive ||
+        ws.readyState !== WebSocket.OPEN
+      )
+        throw Error(
+          "Native retained scope changed; retry current verification",
+        );
+      store.audit(
+        a.username,
+        "retained-control-verified",
+        a.id,
+        JSON.stringify(owner),
+      );
+      configureConnection(connection, a.username, a.exam);
+      connections.set(key, connection);
+      attemptConnections.set(a.id, connection);
+      connection.acceptRestoredControl();
+      return connection;
+    } catch (error) {
+      if (connections.get(key) === connection) connections.delete(key);
+      if (attemptConnections.get(a.id) === connection)
+        attemptConnections.delete(a.id);
+      connection.close(); // Provisional teardown never closes the live SSH.
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      if (retainedRestores.get(a.id) === pending) retainedRestores.delete(a.id);
+    }
   };
   const healthy = (a: Attempt) => {
     const settings = JSON.parse(a.settings);
@@ -2514,11 +2751,8 @@ export async function createApp(
       return;
     }
     if (pathname === "/api/browser/ssh") {
-      const conn = connections.get(`${session.exam}:${session.username}`);
-      if (!(conn instanceof BrowserConnection) || !conn.alive) {
-        ws.close(1008);
-        return;
-      }
+      let conn = connections.get(`${session.exam}:${session.username}`);
+      let restoring = false;
       let bound = false;
       let controls = Promise.resolve();
       let controlQueue = 0,
@@ -2528,6 +2762,25 @@ export async function createApp(
           ? data.reduce((n, b) => n + b.length, 0)
           : data.byteLength;
         if (ws.readyState !== WebSocket.OPEN) return;
+        if (
+          !bound &&
+          restoring &&
+          conn instanceof BrowserConnection &&
+          bytes <= 8 * 1024 * 1024
+        ) {
+          try {
+            const message = JSON.parse(data.toString());
+            // Restoration awaits these exact pending RPCs; putting their
+            // replies behind the bind task would deadlock the control queue.
+            if (message.type === "browser-result") {
+              if (!conn.receive(message)) ws.close(1008);
+              return;
+            }
+          } catch {
+            ws.close(1008);
+            return;
+          }
+        }
         if (++controlQueue > 64 || controlBytes + bytes > 16 * 1024 * 1024) {
           ws.close(1008, "Control queue exceeded");
           return;
@@ -2537,17 +2790,29 @@ export async function createApp(
           try {
             const m = JSON.parse(data.toString());
             if (!bound) {
-              if (
-                m.type !== "browser-bind" ||
-                m.controlToken !== conn.controlToken
-              )
+              if (m.type !== "browser-bind")
                 throw Error("Invalid browser SSH binding");
-              await conn.attach(ws);
+              if (!(conn instanceof BrowserConnection) || !conn.alive) {
+                conn = await restoreRetainedControl(
+                  ws,
+                  session,
+                  m.retained,
+                  (candidate) => {
+                    conn = candidate;
+                    restoring = true;
+                  },
+                );
+              } else {
+                if (m.controlToken !== conn.controlToken)
+                  throw Error("Invalid browser SSH binding");
+                await conn.attach(ws);
+              }
               bound = true;
               send(ws, { type: "browser-bound" });
               return;
             }
-            if (!conn.receive(m)) throw Error("Invalid browser SSH message");
+            if (!(conn instanceof BrowserConnection) || !conn.receive(m))
+              throw Error("Invalid browser SSH message");
           } catch {
             ws.close(1008);
           } finally {
@@ -2764,85 +3029,11 @@ export async function createApp(
                 undefined,
                 options.connectionWorkerEntry,
               );
-          const isolated = p.connection as IsolatedConnection;
-          isolated.onFailure = (failure) => {
-            if (!store.db.open) return;
-            const owned = [...attemptConnections].find(
-              ([, c]) => c === isolated,
-            );
-            const context = owned
-              ? store.attempt(owned[0])
-              : (store.db
-                  .prepare(
-                    "SELECT * FROM attempts WHERE exam=? AND username=? AND state IN ('PREPARING','ACTIVATING','ACTIVE','LOCKED') ORDER BY rowid DESC LIMIT 1",
-                  )
-                  .get(p.exam, p.username) as Attempt | undefined);
-            const event = randomUUID();
-            const detail = JSON.stringify({ event, ...failure });
-            store.audit(
-              "supervisor",
-              "attempt-worker-failed",
-              context?.id || "",
-              detail,
-            );
-            app.log.error(
-              {
-                username: p.username,
-                exam: p.exam,
-                attempt: context?.id,
-                event,
-                ...failure,
-              },
-              "Attempt connection process failed",
-            );
-            const reason = context?.start
-              ? "Exam connection process failed. Recovery authorization and fresh SSH sign-in are required."
-              : "SSH sign-in/preflight process failed. Sign in again; the exam clock has not started.";
-            const subject = "Exam connection failure: " + p.username;
-            const body = `${reason}\nDiagnostic: ${detail}`;
-            if (context)
-              life.notifyAttempt(
-                context,
-                "connection-process",
-                subject,
-                body,
-                event,
-              );
-            else
-              life.alert(
-                subject,
-                [...signInAlertContext(p.username!, p.exam!), body].join("\n"),
-                { coalesce: false },
-              );
-            if (
-              owned &&
-              ["ACTIVE", "LOCKED"].includes(store.attempt(owned[0]).state)
-            ) {
-              void life
-                .lock(owned[0], reason, { notify: false })
-                .catch(() => {});
-            }
-          };
-          isolated.onLoss = () => {
-            const owned = [...attemptConnections].find(
-              ([, c]) => c === isolated,
-            );
-            if (owned)
-              void life.lock(owned[0], "SSH transport lost").catch(() => {});
-          };
-          options.onConnection?.(isolated);
-          p.connection.onDiagnostic = (host, detail) => {
-            store.audit("gateway", "ssh-diagnostic", host, detail);
-            life.alert(
-              "SSH host-key verification failed",
-              [
-                ...signInAlertContext(p.username!, p.exam!),
-                `Reported SSH host: ${JSON.stringify(host)}`,
-                `Diagnostic: ${JSON.stringify(detail)}`,
-                "The pinned SSH host identity was not verified; sign-in was refused. Verify the host key through trusted institutional administration before changing any pin. Do not bypass verification or reset an existing attempt.",
-              ].join("\n"),
-            );
-          };
+          configureConnection(
+            p.connection as IsolatedConnection,
+            m.username,
+            m.exam,
+          );
           const held = store.db
             .prepare(
               "SELECT * FROM attempts WHERE username=? AND state='LOCKED' ORDER BY rowid DESC LIMIT 1",
@@ -3086,7 +3277,7 @@ export async function createApp(
               .run(now(), a.id);
           if (a.state === "ACTIVE") {
             if (
-              !conn?.alive ||
+              (a.monitoring_mode !== "v1" && !conn?.alive) ||
               (a.monitoring_mode !== "v1" && !healthy(a)) ||
               (JSON.parse(a.settings).webcam && !m.ready.webcam)
             ) {
@@ -3344,7 +3535,9 @@ export async function createApp(
     });
   });
   for (const row of store.db
-    .prepare("SELECT id FROM attempts WHERE state='ACTIVE'")
+    .prepare(
+      "SELECT id FROM attempts WHERE state='ACTIVE' AND COALESCE(monitoring_mode,'legacy')<>'v1'",
+    )
     .all() as any[])
     await life.lock(
       row.id,
@@ -3476,6 +3669,8 @@ export async function createApp(
   }
   app.addHook("preClose", async () => {
     closingSessions = true;
+    for (const pending of retainedRestores.values()) pending.connection.close();
+    retainedRestores.clear();
     // Close pending authentication before HTTP shutdown waits for upgraded sockets.
     for (const p of pending.values()) p.connection?.close();
     for (const client of wss.clients) client.terminate();

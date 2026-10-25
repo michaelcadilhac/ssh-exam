@@ -6,7 +6,7 @@ import {
   AgentCommandStateError,
 } from "./agent.js";
 import { BrowserConnection } from "./browser-ssh.js";
-import { Connection } from "./ssh.js";
+import { Connection, type PaneInputChannel } from "./ssh.js";
 
 // Never install a catch-and-continue uncaught-exception handler. A broken attempt
 // exits; only its supervising HTTP process decides how to report and recover it.
@@ -18,6 +18,21 @@ try {
 let connection: Connection;
 let sequence = 0;
 const paneInstances = new Map<string, string>();
+function attachPane(pane: PaneInputChannel, id: string, instance: string) {
+  paneInstances.set(id, instance);
+  pane.on("data", (data: Buffer) =>
+    send({ kind: "pane-data", pane: id, instance, data }),
+  );
+  pane.once("close", () => {
+    if (paneInstances.get(id) === instance) paneInstances.delete(id);
+    send({ kind: "pane-close", pane: id, instance });
+  });
+  pane.pause();
+  if (!connection.panes.has(id)) {
+    if (paneInstances.get(id) === instance) paneInstances.delete(id);
+    send({ kind: "pane-close", pane: id, instance });
+  }
+}
 const answers = new Map<number, (answers: string[]) => void>();
 const authorizations = new Map<
   number,
@@ -105,6 +120,7 @@ process.on("message", async (m: any) => {
           m.config,
           authority,
           socket(m.socket) as any,
+          m.preserveTransportOnClose === true,
         )
       : new Connection(m.username, m.config, authority);
     if (m.browser) Object.assign(connection, { controlToken: m.controlToken });
@@ -189,6 +205,26 @@ process.on("message", async (m: any) => {
         case "prepareMonitoring":
           result = await connection.prepareMonitoring();
           break;
+        case "restoreRetained":
+          if (!(connection instanceof BrowserConnection))
+            throw Error("Retained browser control required");
+          result = await connection.restoreRetained(m.args[0]);
+          break;
+        case "attachRestoredPanes": {
+          const instances = m.args[0] as Record<string, string>;
+          const panes = [...connection.panes];
+          if (
+            Object.keys(instances).length !== panes.length ||
+            panes.some(
+              ([id]) =>
+                !/^[a-f0-9-]{36}$/.test(instances[id] || "") ||
+                paneInstances.has(id),
+            )
+          )
+            throw Error("Retained pane instance changed");
+          for (const [id, pane] of panes) attachPane(pane, id, instances[id]);
+          break;
+        }
         case "changeInputEpochs": {
           const [attempt, epochs, instances] = m.args;
           for (const id of connection.panes.keys())
@@ -207,19 +243,7 @@ process.on("message", async (m: any) => {
         case "open": {
           const [attempt, id, purpose, instance] = m.args;
           const pane = await connection.open(attempt, id, purpose);
-          paneInstances.set(id, instance);
-          pane.on("data", (data: Buffer) =>
-            send({ kind: "pane-data", pane: id, instance, data }),
-          );
-          pane.once("close", () => {
-            if (paneInstances.get(id) === instance) paneInstances.delete(id);
-            send({ kind: "pane-close", pane: id, instance });
-          });
-          pane.pause();
-          if (!connection.panes.has(id)) {
-            if (paneInstances.get(id) === instance) paneInstances.delete(id);
-            send({ kind: "pane-close", pane: id, instance });
-          }
+          attachPane(pane, id, instance);
           result = pane.inputEpoch
             ? { input_protocol: "v1", input_epoch: pane.inputEpoch }
             : undefined;

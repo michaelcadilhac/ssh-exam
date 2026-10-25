@@ -18,6 +18,16 @@ there is no supported switch to enable an incomplete mode. Detailed current
 evidence and open boundaries: live-monitoring-runtime.md. Existing installed
 legacy behavior follows the procedures below.
 
+October25 local gateway-routing candidate, also disabled/not deployed: keep the
+same open page when its SSH remains viable across gateway process replacement.
+Current-page binding and signed native owner verification can reconstruct routing
+without another login, pane, grant or clock. Contradictory page/transport/clock
+proof leaves input blocked while preserving SSH; a real policy hold still needs
+its scoped instructor approval and explicit student Continue. Routing recovery
+does not establish native monitoring continuity or cure a blind gap. Those native
+and joined root/capacity gates remain open; do not use this candidate to change the
+installed recovery procedure. Evidence: retained-gateway-restart.md.
+
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.
 - Attempt connection process failure: only that student loses SSH and is locked; the supervisor

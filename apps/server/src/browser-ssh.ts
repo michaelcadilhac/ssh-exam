@@ -18,9 +18,10 @@ class BrowserPane extends EventEmitter {
     readonly attempt: string,
     private owner: BrowserConnection,
     public inputEpoch?: string,
+    outputEpoch = inputEpoch,
   ) {
     super();
-    this.outputEpoch = inputEpoch;
+    this.outputEpoch = outputEpoch;
   }
   write(data: string) {
     if (this.inputEpoch)
@@ -93,6 +94,7 @@ export class BrowserConnection extends Connection {
   private framedInputSupported = false;
   private retainedInputSupported = false;
   private retainedControlSupported = false;
+  private retainedRestoreSupported = false;
   private retainedTransport = "";
   override async prepareMonitoring() {
     if (!this.retainedMonitoringRequired) return false;
@@ -100,12 +102,108 @@ export class BrowserConnection extends Connection {
       !this.framedPaneInput ||
       !this.framedInputSupported ||
       !this.retainedInputSupported ||
-      !this.retainedControlSupported
+      !this.retainedControlSupported ||
+      !this.retainedRestoreSupported
     )
       throw Error(
         "Loaded browser, WASM and native monitoring versions disagree. Preserve the preparation and load matching versions before Begin; no new clock has started.",
       );
     return true;
+  }
+  private browserFeatures(connected: any) {
+    this.commandCancellationSupported = connected?.command_cancel === true;
+    this.framedInputSupported =
+      connected?.framed_input === true && connected?.loaded_pane_input === "v1";
+    this.retainedInputSupported =
+      connected?.pane_epoch_change === true &&
+      connected?.loaded_pane_epoch_change === "v1";
+    this.retainedControlSupported =
+      connected?.loaded_control_retention === "v1";
+    this.retainedRestoreSupported = connected?.loaded_control_restore === "v1";
+  }
+  async restoreRetained(raw: unknown) {
+    const owner = monitoringOwner.parse(raw);
+    const offered = await this.request(
+      "retained-control",
+      { owner, controlToken: this.controlToken },
+      5000,
+    );
+    this.browserFeatures(offered);
+    if (
+      offered?.retained_control !== "v1" ||
+      !this.framedInputSupported ||
+      !this.retainedInputSupported ||
+      !this.retainedControlSupported ||
+      !this.retainedRestoreSupported ||
+      !Array.isArray(offered.panes) ||
+      offered.panes.length > 4
+    )
+      throw Error(
+        "Matching retained control versions required; preserve the live SSH and original attempt",
+      );
+    // A recorded transport is only a candidate. The signed command's native
+    // peer/registration checks prove that this is the SAME authenticated SSH.
+    this.transport = owner.transport_hash;
+    this.alive = true;
+    const remote = await this.command("inspect-attempt", { id: owner.attempt });
+    const observed = monitoringOwner.parse(remote?.registered_owner);
+    if (
+      remote?.monitoring_mode !== "v1" ||
+      remote.browser_ssh !== true ||
+      remote.terminal_supervised !== true ||
+      !remote.start ||
+      !["ACTIVE", "LOCKED"].includes(remote.state) ||
+      JSON.stringify(observed) !== JSON.stringify(owner) ||
+      remote.id !== owner.attempt ||
+      remote.username !== this.username ||
+      remote.exam !== this.exam ||
+      remote.uid !== owner.uid ||
+      remote.transport !== owner.transport_hash ||
+      remote.boot !== owner.boot ||
+      remote.protected ||
+      remote.checksum ||
+      remote.deadline <= Date.now() ||
+      (remote.clock_revision || 0) !== owner.clock_revision
+    )
+      throw Error(
+        "Current native retained owner differs; preserve SSH and retry current-page verification",
+      );
+    await this.authority.confirmRegisteredPaneOwner(
+      owner.attempt,
+      observed,
+      this.username,
+    );
+    const hints = new Map<
+      string,
+      { pane: string; input_epoch: string; pane_instance: string }
+    >();
+    for (const hint of offered.panes) {
+      if (
+        !/^[a-f0-9-]{36}$/.test(hint?.pane || "") ||
+        hints.has(hint.pane) ||
+        !/^[a-f0-9]{64}$/.test(hint.input_epoch || "") ||
+        !/^[a-f0-9]{64}$/.test(hint.pane_instance || "")
+      )
+        throw Error(
+          "Retained pane routing is incomplete; no channel or capability created",
+        );
+      hints.set(hint.pane, hint);
+    }
+    this.framedPaneInput = true;
+    this.retainedMonitoringRequired = true;
+    this.retainedTransport = owner.transport_hash;
+    for (const hint of hints.values())
+      this.panes.set(
+        hint.pane,
+        new BrowserPane(
+          hint.pane,
+          owner.attempt,
+          this,
+          hint.input_epoch,
+          hint.pane_instance,
+        ) as any,
+      );
+    return { attempt: remote, panes: [...hints.values()] };
   }
   override async command(op: string, body: any = {}) {
     const result = await super.command(op, body);
@@ -201,6 +299,7 @@ export class BrowserConnection extends Connection {
     private settings: Config,
     private authority: Agent,
     ws: WebSocket,
+    private preserveTransportOnClose = false,
   ) {
     super(user, settings, authority);
     this.attach(ws);
@@ -454,15 +553,7 @@ export class BrowserConnection extends Connection {
         class: this.settings.class,
         controlToken: this.controlToken,
       });
-      this.commandCancellationSupported = connected?.command_cancel === true;
-      this.framedInputSupported =
-        connected?.framed_input === true &&
-        connected?.loaded_pane_input === "v1";
-      this.retainedInputSupported =
-        connected?.pane_epoch_change === true &&
-        connected?.loaded_pane_epoch_change === "v1";
-      this.retainedControlSupported =
-        connected?.loaded_control_retention === "v1";
+      this.browserFeatures(connected);
       sshAuthenticated = true;
       this.alive = true;
       const result = await this.command("register", {
@@ -593,7 +684,7 @@ export class BrowserConnection extends Connection {
     this.closed = true;
     clearTimeout(this.detachment);
     this.detachedAt = null;
-    this.notify("close", {});
+    if (!this.preserveTransportOnClose) this.notify("close", {});
     this.alive = false;
     this.authority.unbind(this);
     for (const p of this.pending.values()) {

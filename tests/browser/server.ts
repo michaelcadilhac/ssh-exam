@@ -17,6 +17,7 @@ import { hash } from "../../apps/server/src/db.js";
 import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 import { RosterManagement } from "../../apps/server/src/roster-management.js";
+import { browserGatewayProcess } from "../fixtures/browser-gateway-process.js";
 const h = await hosts({
   classCertificates: process.env.EXAM_BROWSER_SSH === "1",
 });
@@ -43,7 +44,18 @@ const retainedLossAccounts = {
   retained05: 10035,
   retained06: 10036,
 };
-const retainedExams = new Set(["retained-control", "retained-loss"]);
+const retainedRestartAccounts = {
+  retained07: 10037,
+  retained08: 10038,
+  retained09: 10039,
+  retained10: 10040,
+  retained11: 10041,
+};
+const retainedExams = new Set([
+  "retained-control",
+  "retained-loss",
+  "retained-restart",
+]);
 const approvalAccounts = { approval01: 10020 };
 // The sandbox repeat test deliberately leaves a reserved new preflight; expiry
 // qualification must own another account instead of bypassing that reservation.
@@ -108,6 +120,15 @@ const retainedRegistrations: {
   exam: string;
   username: string;
   retained_monitoring: string;
+}[] = [];
+let retainedInspectionFault:
+  | { username: string; mode: string; armedPID: number | undefined }
+  | undefined;
+const retainedInspections: {
+  attempt: string;
+  transport: string;
+  mode: string;
+  gatewayPID: number | undefined;
 }[] = [];
 const retainedContinuations = new Map<
   string,
@@ -208,6 +229,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...framedAccounts,
       ...retainedAccounts,
       ...retainedLossAccounts,
+      ...retainedRestartAccounts,
       ...approvalAccounts,
       ...preflightAccounts,
       ...versionAccounts,
@@ -670,39 +692,45 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
 const workers: IsolatedConnection[] = [];
 const smtpPath = mkdtempSync(tmpdir() + "/exam-fixture-mail-") + "/smtp.sock";
 const mail = await smtpFixture(smtpPath);
-const { app, store } = await createApp(
-  {
-    mode: "development",
-    origin: "http://localhost:3100",
-    data: mkdtempSync(tmpdir() + "/exam-browser-"),
-    port: 3100,
-    jump: h.jump,
-    class: h.class,
-    agent: h.agentConfig,
-    ...(browserMode
-      ? {
-          browserSSH: {
-            relay: "ws://localhost:3101",
-            audience: "fixture-relay",
-          },
-        }
-      : {}),
-    smtp: {
-      socket: smtpPath,
-      from: "exam@example.edu",
-      to: ["instructor@example.edu"],
-    },
-    maintenance: false,
-    preflightIdleMs: 5000,
+const gatewayConfig: Parameters<typeof createApp>[0] = {
+  mode: "development",
+  origin: "http://localhost:3100",
+  data: mkdtempSync(tmpdir() + "/exam-browser-"),
+  port: 3100,
+  jump: h.jump,
+  class: h.class,
+  agent: h.agentConfig,
+  ...(browserMode
+    ? {
+        browserSSH: {
+          relay: "ws://localhost:3101",
+          audience: "fixture-relay",
+        },
+      }
+    : {}),
+  smtp: {
+    socket: smtpPath,
+    from: "exam@example.edu",
+    to: ["instructor@example.edu"],
   },
-  {
-    connectionWorkerEntry: new URL(
-      "../fixtures/faulting-connection-worker.ts",
-      import.meta.url,
-    ),
-    onConnection: (connection) => workers.push(connection),
-  },
+  maintenance: false,
+  preflightIdleMs: 5000,
+};
+const connectionWorkerEntry = new URL(
+  "../fixtures/faulting-connection-worker.ts",
+  import.meta.url,
 );
+const gateway =
+  process.env.EXAM_BROWSER_GATEWAY_PROCESS === "1"
+    ? browserGatewayProcess(gatewayConfig, connectionWorkerEntry)
+    : undefined;
+await gateway?.initialized;
+const { app, store } =
+  gateway ??
+  (await createApp(gatewayConfig, {
+    connectionWorkerEntry,
+    onConnection: (connection) => workers.push(connection),
+  }));
 h.control.command = fixtureCall;
 store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
   "class",
@@ -718,6 +746,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       ...approvalAccounts,
       ...preflightAccounts,
       ...versionAccounts,
+      ...retainedRestartAccounts,
       student01: 10001,
       student02: 10002,
       student03: 10003,
@@ -860,6 +889,34 @@ h.control.command = async (op, b, frame) => {
     };
   }
   const result = await fixtureCall(op, b);
+  if (
+    op === "inspect-attempt" &&
+    result?.exam === "retained-restart" &&
+    gateway
+  ) {
+    const fault = retainedInspectionFault;
+    const mode =
+      fault &&
+      fault.username === result.username &&
+      fault.armedPID !== gateway.pid
+        ? fault.mode
+        : "none";
+    retainedInspections.push({
+      attempt: b.id,
+      transport: frame?.transport || "",
+      mode,
+      gatewayPID: gateway.pid,
+    });
+    if (retainedInspections.length > 96) retainedInspections.shift();
+    if (mode !== "none") {
+      const reply = structuredClone(result);
+      if (mode === "page") reply.registered_owner.page_epoch = "e".repeat(64);
+      else if (mode === "transport")
+        reply.registered_owner.transport_hash = "f".repeat(64);
+      else if (mode === "clock") reply.registered_owner.clock_revision++;
+      return reply;
+    }
+  }
   if (op === "finalize-attempt") setTimeout(() => void postStatus(result), 50);
   return result;
 };
@@ -994,6 +1051,21 @@ definitions.create(
 for (const username of Object.keys(retainedLossAccounts))
   new RosterManagement(store, undefined, "class").add(
     "retained-loss",
+    { username },
+    "fixture-operator",
+  );
+definitions.create(
+  {
+    ...exam,
+    id: "retained-restart",
+    name: "Retained gateway process restart",
+    template_version: versionHash,
+  },
+  "fixture-operator",
+);
+for (const username of Object.keys(retainedRestartAccounts))
+  new RosterManagement(store, undefined, "class").add(
+    "retained-restart",
     { username },
     "fixture-operator",
   );
@@ -1204,17 +1276,31 @@ app.get("/api/fixture/runtime", async () => ({
     ...state,
   })),
   terminalOpens: h.counts.panes,
-  pid: process.pid,
+  pid: gateway?.pid ?? process.pid,
+  fixturePID: process.pid,
+  gatewayProcess: !!gateway,
+  retainedInspections,
+  retainedAttempts: store.db
+    .prepare(
+      "SELECT id,username,state,start,deadline,original_deadline,generation,clock_revision,grant_id,registered_owner FROM attempts WHERE exam='retained-restart'",
+    )
+    .all(),
   activationFailure: store.db
     .prepare(
       "SELECT detail FROM audit WHERE action='activation-failed' ORDER BY rowid DESC LIMIT 1",
     )
     .get(),
   commandFailures: h.control.failures,
-  panes: [...h.activePanes.values()],
-  workers: workers
-    .filter((c) => c.alive)
-    .map((c: any) => ({ username: c.username, pid: c.child.pid })),
+  // Match the JSON HTTP schema; the private epoch callback is not IPC data.
+  panes: [...h.activePanes.values()].map(({ attempt, pane }) => ({
+    attempt,
+    pane,
+  })),
+  workers: gateway
+    ? await gateway.workers()
+    : workers
+        .filter((c) => c.alive)
+        .map((c: any) => ({ username: c.username, pid: c.child.pid })),
   emails: mail.messages,
   outbox: store.db
     .prepare("SELECT subject,body,status,tries FROM outbox")
@@ -1235,6 +1321,7 @@ app.post("/api/fixture/age-preflight", async (req) => {
 });
 app.post("/api/fixture/fault", async (req) => {
   const { username, fault } = req.body as any;
+  if (gateway) return gateway.fault(username, fault);
   const worker = workers.findLast(
     (c) => c.username === username && c.alive,
   ) as any;
@@ -1243,6 +1330,37 @@ app.post("/api/fixture/fault", async (req) => {
   else worker.child.send({ kind: "fixture-fault", fault });
   return { pid: worker.child.pid };
 });
+if (gateway) {
+  let restarting = false;
+  app.post("/api/fixture/retained-inspection-fault", async (req) => {
+    const { username, mode } = req.body as any;
+    if (
+      !(username in retainedRestartAccounts) ||
+      !["none", "page", "transport", "clock"].includes(mode)
+    )
+      throw Error("Explicit synthetic retained inspection mode required");
+    retainedInspectionFault =
+      mode === "none" ? undefined : { username, mode, armedPID: gateway.pid };
+    return { mode, armedPID: gateway.pid };
+  });
+  app.post("/api/fixture/gateway-restart", async () => {
+    if (restarting) throw Error("Owned fixture restart already running");
+    restarting = true;
+    const previous = gateway.pid;
+    setTimeout(() => {
+      void gateway
+        .restart()
+        .catch((error) => {
+          console.error("Owned fixture gateway restart failed", error);
+          void shutdown().finally(() => process.exit(1));
+        })
+        .finally(() => {
+          restarting = false;
+        });
+    }, 50);
+    return { previous };
+  });
+}
 app.post("/api/fixture/ssh-exit-reports", async (req) => {
   holdSSHExitReports = (req.body as any).held === true;
   await deliverSSHExitReports();
