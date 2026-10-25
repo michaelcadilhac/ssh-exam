@@ -325,6 +325,11 @@ export function Workspace({
     ws.current?.readyState === WebSocket.OPEN &&
     ["ACTIVE", "PREPARING"].includes(attemptRef.current.state);
   useEffect(() => {
+    browserSSH.retainTransport(
+      attempt.monitoring_mode === "v1" && !!attempt.start,
+    );
+  }, [attempt.monitoring_mode, attempt.start]);
+  useEffect(() => {
     browserSSH.setInputEnabled(!covered && interaction());
   }, [covered, connected, attempt.state]);
   const addPane = (paneId: string) => {

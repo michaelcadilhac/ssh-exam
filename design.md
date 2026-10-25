@@ -2856,6 +2856,22 @@ deadlines, protected finalization and account restrictions remain authoritative.
 This is an intentional approved liveness-policy change, locally tested only.
 Actual WASM/HTTP/SSH tests cover Begin, policy approval/Continue, private partial
 input and17.5s lost bind replies. Native OS policy in that browser fixture is
-simulated; the distinct browser-SSH control socket and combined root16/64 remain
-separate gates. Installed retained admission stays OFF. See
+simulated; native compatibility and combined root16/64 remain separate gates.
+Installed retained admission stays OFF. See
 docs/retained-browser-control.md.
+
+The distinct browser-SSH control socket now preserves its existing authenticated
+WASM worker and isolated child through a17.5s coordination outage in the local
+candidate. Only a verified signed startedv1 native outcome with matching
+account/attempt/transport/boot/clock can retain the child; transport replacement
+invalidates this observation. New login, reported genuine SSH/worker failure,
+logout and secured cleanup still close the appropriate objects. Retention is
+nonpermitting memory: it cannot re-arm input, restore monitoring from disk, consume
+a grant or change a clock/hold. Fresh control-token and page binding precede input.
+Loaded JavaScript must explicitly advertise control retention alongside existing
+WASM/native agreement before Begin. A missing feature produces fixed, actionable
+pre-start guidance; untrusted native diagnostics remain sanitized. Actual wire
+refusal preserves the same preparation/settings/grant and sends no native Begin.
+No database/configuration migration or operator enable switch is added. Old
+gateway/native admission, uncooperative-loss/restart feedback and combined real
+root/capacity qualification remain gates; no installed mode is enabled.

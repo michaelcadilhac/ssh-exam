@@ -1478,6 +1478,7 @@ export async function createApp(
     if (busy.has(a.id) || life.isBusy(a.id))
       throw Error("Preparation is changing; check status before starting.");
     busy.add(a.id);
+    let checkingMonitoring = false;
     try {
       if (isSandbox(a.exam))
         requireSandboxAgent(a.exam, await conn.command("health"));
@@ -1517,7 +1518,9 @@ export async function createApp(
       }
       for (const c of conn.panes.values()) await c.close();
       conn.panes.clear();
+      checkingMonitoring = true;
       const monitored = await conn.prepareMonitoring();
+      checkingMonitoring = false;
       // Account handoff/pane closure may outlive this page or preparation.
       // Never let the old page's asynchronous Begin start its replacement.
       a = store.attempt(a.id);
@@ -1640,6 +1643,10 @@ export async function createApp(
         "Exam activation failed",
       );
       await life.reconcile(a.id).catch(() => {});
+      if (checkingMonitoring)
+        throw Error(
+          "Monitoring readiness could not be verified. Keep this preflight, check your connection and ask the operator to verify matching browser and server versions before retrying. This request did not start a new exam clock.",
+        );
       throw Error(
         "Exam setup could not be confirmed. Check the current attempt status before retrying; your instructor can review the recorded failure.",
       );

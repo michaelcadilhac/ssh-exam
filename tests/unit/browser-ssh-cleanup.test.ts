@@ -58,11 +58,34 @@ it("the loaded JS producer explicitly negotiates framing separately from the WAS
   ).toContainEqual(
     expect.objectContaining({
       type: "browser-result",
-      result: { loaded_pane_input: "v1", loaded_pane_epoch_change: "v1" },
+      result: {
+        loaded_pane_input: "v1",
+        loaded_pane_epoch_change: "v1",
+        loaded_control_retention: "v1",
+      },
     }),
   );
   client.close();
 });
+it.each(["error", "loss", "fatal"])(
+  "retaining authenticated control never suppresses %s or survives a new login",
+  async (failure) => {
+    const { client, c, events, start } = fixture();
+    const { worker } = await start();
+    client.retainTransport(true);
+    expect(c.retainedTransport).toBe(true);
+    events.length = 0;
+    if (failure === "error") worker.onerror();
+    else worker.respond({ type: failure });
+    expect(events).toEqual([{ type: "loss" }]);
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+    expect(client.active).toBe(false);
+    expect(c.retainedTransport).toBe(false);
+    await start();
+    expect(c.retainedTransport).toBe(false);
+    client.close();
+  },
+);
 it("logout clears workers, control socket, callbacks, reply cache and authentication listener", async () => {
   const { client, c, start } = fixture();
   const { worker, socket } = await start();

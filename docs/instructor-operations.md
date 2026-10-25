@@ -74,6 +74,18 @@ evidence, simulated-native boundary and remaining SSH-control/root capacity gate
 retained-browser-control.md. Do not restart services, reset clocks or issue extra
 attempts merely to clear a technical page reconnect.
 
+The separate local browser-SSH control candidate likewise retains its authenticated
+worker/pane during a coordination outage, with input blocked until fresh binding.
+Original time and native monitoring enforcement continue. This is not a new login,
+grant or permission to work. An older browser producer without the retention
+agreement is refused BEFORE a new native Begin. Keep the existing preflight/grant,
+check the connection and matching browser/server versions, and inspect the original
+interval with `examctl info ATTEMPT --read-only`; do not reset time or reissue a
+grant for this refusal. The public message identifies only the known readiness
+stage, never an untrusted server error. Native compatibility, uncooperative loss/
+restart and combined root/capacity qualification remain open. Details:
+retained-browser-control.md. This local candidate is not deployed or enabled.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

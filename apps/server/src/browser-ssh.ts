@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import type { WebSocket } from "ws";
 import { Connection, type Dialogue } from "./ssh.js";
 import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
+import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { AgentCommandDisconnectedError, type Agent } from "./agent.js";
 import type { Config } from "../../../packages/config/index.js";
 
@@ -91,17 +92,59 @@ export class BrowserConnection extends Connection {
   private commandCancellationSupported = false;
   private framedInputSupported = false;
   private retainedInputSupported = false;
+  private retainedControlSupported = false;
+  private retainedTransport = "";
   override async prepareMonitoring() {
     if (!this.retainedMonitoringRequired) return false;
     if (
       !this.framedPaneInput ||
       !this.framedInputSupported ||
-      !this.retainedInputSupported
+      !this.retainedInputSupported ||
+      !this.retainedControlSupported
     )
       throw Error(
         "Loaded browser, WASM and native monitoring versions disagree. Preserve the preparation and load matching versions before Begin; no new clock has started.",
       );
     return true;
+  }
+  override async command(op: string, body: any = {}) {
+    const result = await super.command(op, body);
+    // The base command has verified the native signed reply and its current
+    // gateway observation. Retaining an existing transport grants no execution
+    // permission and lasts only until explicit loss/secured cleanup closes it.
+    const remote = result?.attempt ?? result;
+    if (
+      this.retainedMonitoringRequired &&
+      this.retainedControlSupported &&
+      remote?.monitoring_mode === "v1" &&
+      remote.start > 0 &&
+      remote.browser_ssh === true &&
+      remote.terminal_supervised === true &&
+      ["ACTIVE", "LOCKED", "FINALIZING", "COLLECTION_FAILED"].includes(
+        remote.state,
+      )
+    ) {
+      const owner = monitoringOwner.safeParse(remote.registered_owner);
+      if (
+        owner.success &&
+        owner.data.attempt === remote.id &&
+        owner.data.exam === this.exam &&
+        owner.data.username === this.username &&
+        owner.data.uid === remote.uid &&
+        owner.data.transport_hash === this.transport &&
+        owner.data.boot === remote.boot &&
+        owner.data.clock_revision === (remote.clock_revision || 0)
+      )
+        this.retainedTransport = owner.data.transport_hash;
+    }
+    return result;
+  }
+  private hasRetainedTransport() {
+    return (
+      this.alive &&
+      !!this.transport &&
+      this.retainedTransport === this.transport
+    );
   }
   protected override canUseFramedPaneInput() {
     return this.framedInputSupported;
@@ -167,6 +210,7 @@ export class BrowserConnection extends Connection {
     // Timer dispatch may be delayed by the event loop. Never let a late bind
     // extend the server's recovery grace merely by clearing an overdue timer.
     if (
+      !this.hasRetainedTransport() &&
       this.detachedAt !== null &&
       performance.now() - this.detachedAt >= 15000
     ) {
@@ -189,6 +233,7 @@ export class BrowserConnection extends Connection {
       else {
         this.detachedAt = performance.now();
         this.detachment = setTimeout(() => {
+          if (this.hasRetainedTransport()) return;
           this.alive = false;
           this.onLoss();
           this.close();
@@ -416,6 +461,8 @@ export class BrowserConnection extends Connection {
       this.retainedInputSupported =
         connected?.pane_epoch_change === true &&
         connected?.loaded_pane_epoch_change === "v1";
+      this.retainedControlSupported =
+        connected?.loaded_control_retention === "v1";
       sshAuthenticated = true;
       this.alive = true;
       const result = await this.command("register", {

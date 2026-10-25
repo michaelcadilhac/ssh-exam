@@ -142,3 +142,132 @@ Frozen11-file local static artifact:
 Indexb5ba25f9, WASMc439446a, client66e1bda9 (full hashes in the manifest).
 All ten original main documentation screenshot hashes remain unchanged. No
 student/production records, deployment, mode enablement or service change.
+
+## Next bounded entry: browser SSH control socket
+
+Actual entries: initial `/api/auth/dialogue` control socket -> authenticated
+`/api/browser/ssh` rebind, with the existing isolated connection child and real
+WASM worker. A separate synthetic retained02 initial grant avoids the first
+case's history. Shared Begin helper has these two immediate test callers only.
+The new fault closes both actual endpoints with valid application codes, rejects
+new control binds for17.5s and positively counts retries while challenged uploads
+continue. Acceptance requires unchanged original interval/generation, Node child
+PID, authenticated physical pane/private partial command, no queued-input replay
+or instructor review, and fresh recovery without credentials. Native OS policy
+remains simulated. No production runtime is edited before the intended RED.
+
+Inspected callers: app uses IsolatedBrowserConnection, not the child class
+directly. Its socket-close IPC reaches BrowserConnection's detachment timer;
+the separate BrowserSSH client reconnect timer can terminate its WASM worker too.
+Any repair must integrate through these actual boundaries, preserve genuine
+worker/SSH failure and deadline/secured cleanup, and must not let metadata or
+contact acknowledgements become native execution authority. Native admission
+stays OFF. Fixture typecheck12392 PASS before launching focused SSH-control RED.
+
+Actual SSH-control RED86240 completes26.1s: the17.5s coordination outage becomes
+LOCKED/"SSH transport lost" before positive buffer recovery. Receipt
+`/tmp/ssh-exam-retained-ssh-control-red.log`. The fault changes only coordination;
+authenticated SSH and the page/capture worker are viable until the destructive
+timers run. This is a new reproduced candidate defect, not the production
+incident's proven initiating cause.
+
+Current bounded repair reuses existing command/IPC ownership. The isolated child
+records transport retention only after a verified signed startedv1 native outcome
+with exact attempt/account/transport/boot/clock ownership; transport replacement
+invalidates that observation. It is nonpermitting memory, not a restored authority
+or pending grant. Browser snapshots may keep an already authenticated WASM worker
+for that startedv1 attempt; new login/worker failure/logout clears it. A loaded
+JS control-retention capability is required alongside existing WASM/native
+agreement before Begin, refusing an old JS client before time starts. Genuine
+worker/SSH loss and explicit secured cleanup remain unconditional. The broader
+old-gateway/native admission compatibility and combined root gates remain open;
+this client check alone does not qualify all mixed versions.
+
+Focused39 component/interface cases61454 PASS679ms, final typecheck59065 PASS.
+They include refusal without the new JS capability before any clock request,
+default legacy cleanup and a positively retained client's genuine worker failure.
+These are not real WASM SSH recovery: fresh build and the actual failing entry
+must pass next before broad qualification. No native code or installed guard
+changed. No production action or new policy/architecture decision is needed.
+
+Real corrected SSH-control entry8129 PASS29.2s (35s runner). Both independent
+negotiated cases then PASS88762/1.1m: session coordination35.5s, SSH control27.7s.
+They preserve original time/generation, physical pane/private command, actual
+authentication counts and positive child PID, with fresh captures and no queued
+input replay. Receipt `/tmp/ssh-exam-retained-controls-combined-focus.log`.
+Final41 component/interface checks49523 PASS810ms, typecheck6085 PASS. Fresh full
+build22332 PASS, static clientC26ycUUk. No native source change.
+
+Pre-broad state review: the new retention observation is private nonpermitting
+memory, established only after the existing verified native signed-command and
+gateway observation path. It is bound to the current transport and cannot survive
+replacement/login or be restored from disk. Pre-start cancellation never receives
+this started-attempt flag; existing preflight expiry/cleanup stays unchanged.
+No new pending row, admission reservation, grant consumption or clock exists.
+The original/current native deadline and monitoring cutoff remain independent;
+retention cannot re-arm input or override a hold. Actual policy approval still
+requires manual Continue and fresh native epochs. Current cookie/control token
+and fresh page bind remain mandatory; local queued input is discarded on loss.
+Explicit logout, reported SSH/worker loss and secured cleanup still close the
+objects. A collection failure keeps the existing started-attempt restriction;
+retaining its object is not new admission or work permission.
+
+Uncooperative full-page loss/native SSH-death feedback, gateway worker/restart
+faults, old-gateway/native admission compatibility and combined real root16/64
+remain qualification gates before enablement. Client-reported genuine loss tests
+and these simulated-native browser cases do not replace them. No new mechanism
+is enabled in the installed native binary. Freeze inputs for broad application
+and affected browser/worker-isolation runs; inspect every completion before edits.
+
+Broad completed:93929 PASS582/105 files303.96s with the actual namespace CLI/TLS
+cases enabled, no skipped cases.40472 PASS32 affected real browser scenarios7.3m,
+including independent-worker exception/rejection/death/hang isolation and legacy
+abandonment. Logs `/tmp/ssh-exam-retained-controls-{full-app,broad-browser}.log`.
+Frozen12-file static artifact retained-controls-browser-artifacts.3c7qrbkl has
+SHA256.json: index07c83247, WASM3e56c186, clientC26ycUUk9787b408. It includes the
+prior cacheable CF2 asset too; current index points toC26. Do not assign old
+WASM/static receipts to the rebuilt artifact. Native exact-artifact evidence is
+unchanged because native source/binaries were not rebuilt.
+
+Final interface strengthening (fixture-only): a third synthetic identity removes
+only the loaded JS retention field from the actual served producer. Capture its
+real connect wire fields, require framing/epoch agreement while retention is
+absent, then assert useful Begin refusal, unchanged PREPARING/settings/grant and
+zero actual native Begin requests. The existing two positive entries must also
+observe that native-start counter, preventing a vacuous zero-only oracle. The
+shared preflight helper has immediate positive/negative callers; no runtime
+subsystem is added. Typecheck57437 PASS before this focused new wire refusal.
+
+The new real wire refusal3638 correctly returns400 but exposes an actionable-help
+defect: Begin's catch replaces the known local readiness failure with generic
+setup uncertainty. It never reaches the native start command. The bounded repair
+tracks only the local prepareMonitoring stage and returns fixed public guidance
+about keeping preflight, connection and matching browser/server versions. It
+asserts only that THIS request did not start a new clock. Native/other diagnostic
+strings remain sanitized; reconciliation, audit and later unknown-start handling
+are unchanged. No new typed IPC/helper/error-propagation mechanism was added.
+
+Actual wire-refusal37826 now PASS4.9s (8.5s runner), proving framing/epoch features
+on the wire, absent retention feature, useful400, same PREPARING/settings/grant,
+null interval/intent and zero native Begin requests. Final build74613/typecheck
+59025 PASS. Every static asset hash matches artifact3c7qrbkl exactly. Only the
+subsequent backend pre-start error branch changed; final positive/negative Begin
+focus and the full application suite requalify it, while unchanged32-browser
+control/worker evidence still applies. Do not rerun native races for this message.
+
+Final focused88870 PASS4/1.3m: legacy immutable-grant Begin6.3s, actual session
+coordination33.9s, SSH control27.7s, missing-JS wire refusal4.5s. Both positive
+cases observe actual native Begin requests, validating the refusal's zero-request
+oracle.27 authenticated grant/Begin HTTP cases31403 PASS161.79s. Receipts
+`/tmp/ssh-exam-retained-controls-{final-begin-browser-focus,begin-http-focus}.log`.
+Fresh final full application qualification is now running for the only changed
+backend error branch. Inputs remain frozen; no native/static/protocol change.
+
+Final full application28557 PASS582/105files302.10s, no skips, with namespace
+CLI/TLS enabled: `/tmp/ssh-exam-retained-controls-final-full-app.log`. Combined
+with final4 browser/27 HTTP focus, prior32 affected browser scenarios and41
+component/interface cases, final build/types and identical static hashes, this
+qualifies the bounded SSH-control/version-diagnostic milestone locally. No runner
+active. No native binary rebuild, configuration/database migration, production
+mutation or enablement. Continue with native admission compatibility before any
+combined root/capacity gate or release eligibility claim.

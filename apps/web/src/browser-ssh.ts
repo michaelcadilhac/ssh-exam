@@ -23,6 +23,7 @@ export class BrowserSSH {
   private authListener?: (v: any) => void;
   private retry?: ReturnType<typeof setTimeout>;
   private disconnected = 0;
+  private retainedTransport = false;
   private buffers = new Map<string, any[]>();
   private readyPanes = new Set<string>();
   private earlyInputs = new Map<
@@ -47,6 +48,9 @@ export class BrowserSSH {
   }
   get controlConnected() {
     return !this.browserMode || this.controlReady;
+  }
+  retainTransport(retained: boolean) {
+    this.retainedTransport = retained && this.authenticated && this.active;
   }
   setInputEnabled(enabled: boolean) {
     if (this.inputEnabled === enabled) return;
@@ -248,6 +252,7 @@ export class BrowserSSH {
                 ...result,
                 loaded_pane_input: "v1",
                 loaded_pane_epoch_change: "v1",
+                loaded_control_retention: "v1",
               };
             if (m.op === "open" && !opening?.closed) {
               this.readyPanes.add(m.args.pane);
@@ -501,7 +506,10 @@ export class BrowserSSH {
   }
   private reconnect() {
     if (this.stopped) return;
-    if (performance.now() - this.disconnected > 15000) {
+    if (
+      !this.retainedTransport &&
+      performance.now() - this.disconnected > 15000
+    ) {
       this.emit({ type: "loss" });
       this.close();
       return;
@@ -520,7 +528,10 @@ export class BrowserSSH {
       if (this.control !== s || this.stopped) return;
       const m = JSON.parse(data);
       if (m.type === "browser-bound") {
-        if (performance.now() - this.disconnected > 15000) {
+        if (
+          !this.retainedTransport &&
+          performance.now() - this.disconnected > 15000
+        ) {
           this.emit({ type: "loss" });
           this.close();
           return;
@@ -543,6 +554,7 @@ export class BrowserSSH {
     this.worker = undefined;
     this.authenticated = false;
     this.disconnected = 0;
+    this.retainedTransport = false;
     this.token = "";
     this.buffers.clear();
     this.readyPanes.clear();

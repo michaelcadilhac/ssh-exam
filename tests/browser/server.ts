@@ -33,7 +33,11 @@ const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
 const receiptAccounts = { receipt01: 10029 };
 const framedAccounts = { framed01: 10030 };
-const retainedAccounts = { retained01: 10031 };
+const retainedAccounts = {
+  retained01: 10031,
+  retained02: 10032,
+  retained03: 10033,
+};
 const approvalAccounts = { approval01: 10020 };
 // The sandbox repeat test deliberately leaves a reserved new preflight; expiry
 // qualification must own another account instead of bypassing that reservation.
@@ -92,6 +96,7 @@ if (relay) {
   });
 }
 const attempts = new Map<string, any>();
+const nativeBeginRequests: string[] = [];
 const archive = Buffer.from("TEST-FIXTURE-ARCHIVE");
 const retainedRegistrations: {
   exam: string;
@@ -316,6 +321,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     case "activate-additional-grant-attempt":
     case "activate-practice-grant-attempt":
     case "activate-attempt":
+      nativeBeginRequests.push(b.id);
       let initialOwner: any;
       if (
         a.settings.template_version &&
@@ -918,11 +924,12 @@ definitions.create(
   },
   "fixture-operator",
 );
-new RosterManagement(store, undefined, "class").add(
-  "retained-control",
-  { username: "retained01" },
-  "fixture-operator",
-);
+for (const username of Object.keys(retainedAccounts))
+  new RosterManagement(store, undefined, "class").add(
+    "retained-control",
+    { username },
+    "fixture-operator",
+  );
 definitions.create(
   {
     ...exam,
@@ -1115,6 +1122,7 @@ store.db
 // Disposable browser-test instrumentation only; never part of the production app.
 app.get("/api/fixture/runtime", async () => ({
   retainedRegistrations,
+  nativeBeginRequests,
   framedInput: h.control.framed,
   renewalReceipts: {
     recovered: recoveredRenewalReceipts,
@@ -1122,6 +1130,7 @@ app.get("/api/fixture/runtime", async () => ({
     maxActiveCommands: h.control.maxActive,
   },
   authenticationCalls: h.authCalls,
+  terminalOpens: h.counts.panes,
   pid: process.pid,
   activationFailure: store.db
     .prepare(

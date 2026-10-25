@@ -1,6 +1,6 @@
 # Current local TODO checkpoint
 
-Updated October24,2026 (America/Chicago). Local work/commits only. NO push,
+Updated October25,2026 (America/Chicago). Local work/commits only. NO push,
 deploy, production services/config/student changes or consolidation. csc-sys only
 for guarded disposable qualification; busy/uncertain means NO TEST. Continue
 without optional go tool buildid; stop for any other missing executable.
@@ -10,7 +10,7 @@ A progress/ETA request is steering, NOT a pause; reply in commentary and continu
 
 ## Validated revision and preserved work
 
-Main and isolated source-grant-retention HEAD25a0817. Qualified held-pane closure
+Main and isolated source-grant-retention HEADee32665. Qualified held-pane closure
 and surviving-buffer Continue, plus previous recorder/partial-transition/
 coordinator recovery: retained-pane-retirement.md, retained-continuation-recovery.md,
 terminal-recording-faults.md. Installed retained admission remains unconditional OFF.
@@ -88,11 +88,48 @@ Initial typecheck's nullable fixture guard is repaired. No runner active. Logs
 var/collection-tests/retained-session-browser-artifacts.f1h624gr/SHA256.json.
 No native source change:25a0817's exact native/root evidence remains applicable.
 
-NEXT commit this validated increment locally, preserving main's screenshots, then
-reproduce distinct browser-SSH control loss through auth/dialogue -> /browser/ssh
+Committed/fast-forwarded locally as ee32665; all ten original screenshot hashes
+remain unchanged. Preserve the new path-only checkpoint stash too. NEXT reproduce
+distinct browser-SSH control loss through auth/dialogue -> /browser/ssh
 with the negotiated fixture. Both client/gateway still contain destructive15s
 recovery timers. Require same worker/authenticated pane/private partial command,
 continuing challenged captures, no approval/re-auth from timeout, blocked input
 and fresh binding; genuine worker/SSH loss and original deadline stay authoritative.
 Do not call session-socket success complete SSH control/root16/64 qualification.
 No design question open; do not stop after commit or this progress checkpoint.
+
+Current WIP: SSH-control RED86240/26.1s is fixed in the local candidate. Actual
+entry8129 PASS29.2s; both negotiated control workflows88762 PASS1.1m. Final41
+interface cases49523 and typecheck6085 PASS; full build22332 PASS. Loaded JS
+retention agreement refuses mixed clients before Begin. Positive signed native
+started-owner/transport observation retains the isolated child; browser keeps
+only its already authenticated worker. No permission or clock is minted.
+Pre-broad state/cleanup review: retained-browser-control.md.
+
+Broad93929 PASS582/105files303.96s with namespace CLI/TLS enabled; browser40472
+PASS32/7.3m including independent-worker faults. Frozen12-file static artifact
+retained-controls-browser-artifacts.3c7qrbkl; new clientC26ycUUk/WASM3e56c186. Do
+not assign prior CF2/c439 receipts to these rebuilt assets. Native not rebuilt.
+
+Actual old-JS wire refusal exposes a generic-message defect:3638 fails only
+useful guidance. Fixed by tracking the known local prepareMonitoring stage,
+without forwarding native diagnostic strings or claiming absence of an old clock.
+37826 PASS4.9s: framing/epoch wire facts present, retention absent, useful400,
+unchanged PREPARING/settings/grant/null interval/intent, zero native Begin calls.
+Final build74613/typecheck59025 PASS; ALL static hashes still match3c7qrbkl.
+Only the backend pre-start error branch changed after the broad runs.
+
+Final focused88870 PASS4/1.3m: actual legacy/grant Begin, both negotiated control
+recoveries and real missing-JS wire refusal. Both positive cases prove native
+Begin counter increments; refusal proves zero.27 authenticated Begin/grant HTTP
+cases31403 PASS161.79s. Final full application28557 PASS582/105files302.10s, no
+skips, with namespace CLI/TLS enabled. No runner active. Logs and state review:
+retained-browser-control.md. Static hashes match3c7qrbkl exactly; native unchanged.
+
+NEXT commit/fast-forward this validated control increment locally, preserving
+main's screenshots/stashes. Then bounded native admission compatibility tests
+ordinary legacy Begin after v1 advertisement and old-gateway v3 acceptance; the
+installed OFF guard is not qualification. Require pre-clock refusal, unchanged
+staging/settings/intent/grant and same-intent full-allowance retry. Inspect actual
+callers and reproduce before editing. Uncooperative loss/worker-restart and
+combined root16/64 remain existing gates. No design question; continue after commit.

@@ -1,5 +1,61 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { simulatedMedia, ready } from "./transition-fixture.js";
+
+async function prepareRetained(page: Page, username: string) {
+  await simulatedMedia(page);
+  await page.goto("/");
+  expect(
+    (await (await page.request.get("/api/login-test")).json()).browserSSH,
+    "Requires EXAM_BROWSER_SSH=1; Node fallback cannot qualify retained WASM",
+  ).toBe(true);
+  await page
+    .getByLabel("Exam ID", { exact: true })
+    .fill("retained-control", { timeout: 5000 });
+  await page.getByLabel("Enrolled username").fill(username, { timeout: 5000 });
+  await page
+    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .click({ timeout: 10000 });
+  await page
+    .getByLabel("Shared SSH password")
+    .fill("shared-password", { timeout: 10000 });
+  await page
+    .getByRole("button", { name: "Respond to this host", exact: true })
+    .click({ timeout: 10000 });
+  await page
+    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .click({ timeout: 10000 });
+  await ready(page);
+}
+
+async function beginRetained(page: Page, username: string) {
+  await prepareRetained(page, username);
+  await page
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click({ timeout: 10000 });
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click({ timeout: 10000 });
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "DISPOSABLE DEVELOPMENT FIXTURE",
+    { timeout: 10000 },
+  );
+  const original = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(original.state).toBe("ACTIVE");
+  expect(
+    original.monitoring_mode,
+    "The real framed fixture must negotiate retainedv1, not merely inject paused page state",
+  ).toBe("v1");
+  const runtime = await (await page.request.get("/api/fixture/runtime")).json();
+  expect(runtime.nativeBeginRequests).toContain(original.id);
+  expect(runtime.retainedRegistrations).toContainEqual({
+    exam: "retained-control",
+    username,
+    retained_monitoring: "v1",
+  });
+  return { original, runtime };
+}
 
 test("negotiated retained WASM Begin preserves its actual transport through policy and control recovery", async ({
   page,
@@ -64,55 +120,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
     )
       uploads++;
   });
-  await simulatedMedia(page);
-  await page.goto("/");
-  expect(
-    (await (await page.request.get("/api/login-test")).json()).browserSSH,
-    "Requires EXAM_BROWSER_SSH=1; Node fallback cannot qualify retained WASM",
-  ).toBe(true);
-  await page
-    .getByLabel("Exam ID", { exact: true })
-    .fill("retained-control", { timeout: 5000 });
-  await page
-    .getByLabel("Enrolled username")
-    .fill("retained01", { timeout: 5000 });
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click({ timeout: 10000 });
-  await page
-    .getByLabel("Shared SSH password")
-    .fill("shared-password", { timeout: 10000 });
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click({ timeout: 10000 });
-  await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
-    .click({ timeout: 10000 });
-  await ready(page);
-  await page
-    .getByRole("button", { name: "Begin exam", exact: true })
-    .click({ timeout: 10000 });
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
-    .click({ timeout: 10000 });
-  await expect(page.locator(".xterm-rows")).toContainText(
-    "DISPOSABLE DEVELOPMENT FIXTURE",
-    { timeout: 10000 },
-  );
-  const original = (await (await page.request.get("/api/student/exam")).json())
-    .attempt;
-  expect(original.state).toBe("ACTIVE");
-  expect(
-    original.monitoring_mode,
-    "The real framed fixture must negotiate retainedv1, not merely inject paused page state",
-  ).toBe("v1");
-  const runtime = await (await page.request.get("/api/fixture/runtime")).json();
-  expect(runtime.retainedRegistrations).toContainEqual({
-    exam: "retained-control",
-    username: "retained01",
-    retained_monitoring: "v1",
-  });
+  const { original, runtime } = await beginRetained(page, "retained01");
   await page.locator(".xterm-helper-textarea").last().focus();
   await page.keyboard.type("retained-buffer-");
   await expect(page.locator(".xterm-rows")).toContainText("retained-buffer-", {
@@ -340,4 +348,226 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   expect(acceptedAfterControl.at(-1).sequence).toBeGreaterThan(
     acceptedBeforeControl.at(-1).sequence,
   );
+});
+
+test("retained WASM SSH control recovery preserves its authenticated worker and partial input", async ({
+  page,
+}) => {
+  test.setTimeout(75000);
+  let denyBindings = false,
+    retries = 0,
+    uploads = 0;
+  let cutControl: (() => Promise<unknown>) | undefined;
+  await page.routeWebSocket("**/api/auth/dialogue", (socket) => {
+    const upstream = socket.connectToServer();
+    cutControl = () =>
+      Promise.all([
+        socket.close({
+          code: 4001,
+          reason: "Synthetic SSH coordination fault",
+        }),
+        upstream.close({
+          code: 4001,
+          reason: "Synthetic SSH coordination fault",
+        }),
+      ]);
+  });
+  await page.routeWebSocket("**/api/browser/ssh", (socket) => {
+    retries++;
+    if (denyBindings) {
+      void socket.close({
+        code: 4002,
+        reason: "Synthetic bounded control outage",
+      });
+      return;
+    }
+    socket.connectToServer();
+  });
+  page.on("response", (response) => {
+    if (
+      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      response.status() === 200
+    )
+      uploads++;
+  });
+  const { original, runtime } = await beginRetained(page, "retained02");
+  const ownPanes = (value: any) =>
+    value.panes.filter((p: any) => p.attempt === original.id);
+  const ownWorker = (value: any) =>
+    value.workers.filter((w: any) => w.username === "retained02");
+  expect(ownPanes(runtime)).toHaveLength(1);
+  expect(ownWorker(runtime)).toHaveLength(1);
+  expect(ownWorker(runtime)[0].pid).toBeGreaterThan(0);
+  expect(runtime.terminalOpens).toBeGreaterThan(0);
+  await page.locator(".xterm-helper-textarea").last().focus();
+  await page.keyboard.type("ssh-control-buffer-");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "ssh-control-buffer-",
+  );
+  const beforeUploads = uploads;
+  denyBindings = true;
+  expect(cutControl).toBeDefined();
+  await cutControl!();
+  const reconnecting = page.getByText("Reconnecting · input blocked", {
+    exact: true,
+  });
+  await expect(reconnecting).toBeVisible({ timeout: 5000 });
+  await expect.poll(() => retries, { timeout: 5000 }).toBeGreaterThan(1);
+  await page
+    .locator(".xterm-helper-textarea")
+    .last()
+    .evaluate((element) => {
+      const input = element as HTMLTextAreaElement;
+      input.value = "DISCARDED_SSH_CONTROL_INPUT";
+      input.dispatchEvent(
+        new InputEvent("input", {
+          bubbles: true,
+          data: "DISCARDED_SSH_CONTROL_INPUT",
+          inputType: "insertText",
+        }),
+      );
+    });
+  await page.waitForTimeout(17500);
+  const delayed = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(
+    delayed.state,
+    `A control timeout must not become ${delayed.reason}`,
+  ).toBe("ACTIVE");
+  expect(delayed).toMatchObject({
+    id: original.id,
+    monitoring_mode: "v1",
+    generation: original.generation,
+    start: original.start,
+    deadline: original.deadline,
+    original_deadline: original.original_deadline,
+  });
+  expect(uploads - beforeUploads).toBeGreaterThanOrEqual(3);
+  const held = await (await page.request.get("/api/fixture/runtime")).json();
+  expect(held.authenticationCalls).toEqual(runtime.authenticationCalls);
+  expect(held.terminalOpens).toBe(runtime.terminalOpens);
+  expect(ownWorker(held)).toEqual(ownWorker(runtime));
+  expect(ownPanes(held)).toEqual(ownPanes(runtime));
+  await expect(
+    page.getByRole("heading", {
+      name: "Instructor review required",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  denyBindings = false;
+  await expect(reconnecting).toHaveCount(0, { timeout: 10000 });
+  await page.locator(".xterm-helper-textarea").last().focus();
+  await page.keyboard.type("fresh");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "Echo: ssh-control-buffer-fresh",
+    { timeout: 5000 },
+  );
+  await expect(page.locator(".xterm-rows")).not.toContainText(
+    "DISCARDED_SSH_CONTROL_INPUT",
+  );
+  const final = await (await page.request.get("/api/fixture/runtime")).json();
+  expect(final.authenticationCalls).toEqual(runtime.authenticationCalls);
+  expect(final.terminalOpens).toBe(runtime.terminalOpens);
+  expect(ownWorker(final)).toEqual(ownWorker(runtime));
+  expect(ownPanes(final)).toEqual(ownPanes(runtime));
+});
+
+test("missing loaded JS control agreement refuses actual Begin before native start or grant consumption", async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  let changedProducer = 0;
+  let features: Record<string, unknown> | undefined;
+  await page.route("**/assets/index-*.js", async (route) => {
+    const response = await route.fetch(),
+      body = await response.text();
+    const field = /loaded_control_retention:"v1"/g;
+    expect([...body.matchAll(field)]).toHaveLength(1);
+    changedProducer++;
+    await route.fulfill({
+      response,
+      body: body.replace(field, "loaded_control_retention:void 0"),
+    });
+  });
+  await page.routeWebSocket("**/api/auth/dialogue", (socket) => {
+    const upstream = socket.connectToServer();
+    socket.onMessage((raw) => {
+      const message = JSON.parse(String(raw));
+      if (
+        message.type === "browser-result" &&
+        message.result?.loaded_pane_input === "v1"
+      ) {
+        features = {
+          framed: message.result.framed_input,
+          pane: message.result.loaded_pane_input,
+          epoch: message.result.pane_epoch_change,
+          loadedEpoch: message.result.loaded_pane_epoch_change,
+          controlPresent: Object.hasOwn(
+            message.result,
+            "loaded_control_retention",
+          ),
+        };
+      }
+      upstream.send(raw);
+    });
+  });
+  await prepareRetained(page, "retained03");
+  expect(changedProducer).toBe(1);
+  expect(features).toEqual({
+    framed: true,
+    pane: "v1",
+    epoch: true,
+    loadedEpoch: "v1",
+    controlPresent: false,
+  });
+  const before = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(before).toMatchObject({
+    state: "PREPARING",
+    start: null,
+    deadline: null,
+    grant_id: expect.any(String),
+    grant_revision: 1,
+    grant_begin_intent: null,
+  });
+  const result = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/attempts/${before.id}/begin`) &&
+      response.request().method() === "POST",
+    { timeout: 10000 },
+  );
+  await page
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click({ timeout: 5000 });
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Begin exam", exact: true })
+    .click({ timeout: 5000 });
+  const refused = await result;
+  expect(refused.status(), await refused.text()).toBe(400);
+  expect((await refused.json()).error).toContain(
+    "matching browser and server versions",
+  );
+  const after = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(after).toMatchObject({
+    id: before.id,
+    state: "PREPARING",
+    start: null,
+    deadline: null,
+    grant_id: before.grant_id,
+    grant_revision: before.grant_revision,
+    grant_begin_intent: null,
+    settings: before.settings,
+  });
+  const runtime = await (await page.request.get("/api/fixture/runtime")).json();
+  expect(
+    runtime.nativeBeginRequests.filter((id: string) => id === before.id),
+  ).toEqual([]);
+  expect(runtime.retainedRegistrations).toContainEqual({
+    exam: "retained-control",
+    username: "retained03",
+    retained_monitoring: "v1",
+  });
 });

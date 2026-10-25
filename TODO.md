@@ -17,8 +17,8 @@ Final native races/resources/default-size PASS core542.378s/CLI28.406s; focused
 protocol/root metadata/Begin refusal+repair, mutation control, build/vet,43 Python
 and13 callback integration tests pass. The observer never becomes an active-
 student heartbeat. See docs/native-loaded-role-agreement.md. Installed retained
-admission remains OFF: distinct browser-SSH control recovery and combined real
-capture/root16/64 qualification remain. Negotiated-v1 session coordination is now
+admission remains OFF: native admission compatibility, uncooperative loss/restart
+and combined real capture/root16/64 qualification remain. Browser coordination is now
 qualified below; its simulated native shell is not the missing combined root
 workflow. No deployment or broad liveness-checkbox closure.
 
@@ -32,6 +32,20 @@ enabled namespace CLI/TLS checks,30 affected browser scenarios, final typed-fixt
 focus and build/typecheck pass. The approval-feedback item is complete locally;
 SSH-control timers, native combined capture/capacity and broader liveness remain
 open. See docs/retained-browser-control.md. Nothing is deployed or enabled.
+
+October25 the separate SSH-control timeout correction is implemented/tested
+locally. A17.5s control outage now preserves the authenticated WASM worker, isolated
+child, actual SSH channel/private synthetic-shell command and original interval,
+while input stays blocked until fresh binding. Retention is nonpermitting memory
+scoped to a verified native started owner/current transport; genuine reported
+loss/logout/secured cleanup still close it. Loaded JS agreement is mandatory before
+Begin; the actual missing-feature wire test gets useful fixed guidance, unchanged
+preparation/settings/grant and zero native Begin requests. Final582 app checks,
+32 affected browser scenarios plus4 final Begin cases,41 focused interfaces,
+27 authenticated grant HTTP checks, types/build pass. Static/native evidence and
+seams are explicit in docs/retained-browser-control.md. Native compatibility,
+uncooperative loss/restart and combined root/capacity remain open; no enablement,
+deployment or broader retention/liveness checkbox closure.
 
 October24 coordinator/re-hold recovery is implemented/tested locally. A lost
 coordinator acknowledgement now completes the same live supervisor intent and
