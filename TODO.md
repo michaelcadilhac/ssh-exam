@@ -33,6 +33,19 @@ focus and build/typecheck pass. The approval-feedback item is complete locally;
 SSH-control timers, native combined capture/capacity and broader liveness remain
 open. See docs/retained-browser-control.md. Nothing is deployed or enabled.
 
+October25 retained SSH-exit feedback is implemented/tested locally. Uncooperative
+full-page closure positively ended the registered SSH transport but left its
+native-linked gateway child orphaned. The existing pinned native exit observation
+now travels through signed status as an exact owner-bound negative fact. Only
+matching current LOCKED status retires the gateway owner; unknown/stale/delayed
+facts preserve viable SSH. Original interval/grant/holds and an existing policy
+cause/generation stay unchanged. Native races/resources,583 app checks,35 composed
+browser scenarios, focused signed HTTP/kernel tests, builds/types/vet and BOTH
+fresh actual-root42 profiles (active and policy-held exit) PASS with FULL host/base
+preservation. Fixture failures/corrections and exact artifacts are retained in
+docs/retained-ssh-exit-feedback.md. No deployment/enablement or broader liveness
+checkbox closure; whole-gateway restart and combined browser/root16/64 remain.
+
 October25 actual retained gateway-child death is qualified locally: two students
 start negotiatedv1 through WASM/SSH; exact SIGKILL retires only the failed child's
 panes, preserves its grant/original interval, gives fresh-SSH/review guidance and

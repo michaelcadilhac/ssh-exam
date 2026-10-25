@@ -55,6 +55,9 @@ export async function hosts(
     command: undefined as
       | undefined
       | ((op: string, body: any, command?: any) => Promise<any>),
+    onSSHTransportClosed: undefined as
+      | undefined
+      | ((transport: string, username: string) => void),
   };
   const key = () =>
     generateKeyPairSync("rsa", {
@@ -68,6 +71,10 @@ export async function hosts(
   const authCalls = { jump: 0, class: 0 };
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const counts = { jump: 0, class: 0, panes: 0 };
+  const sshTransports = new Map<
+    string,
+    { username: string; closed: boolean }
+  >();
   const activePanes = new Map<
     string,
     { attempt: string; pane: string; changeInputEpoch?: (next: string) => void }
@@ -130,6 +137,19 @@ export async function hosts(
     };
     clients.push(client);
     client.on("error", () => {});
+    client.once("ready", () => {
+      sshTransports.set(transportID, {
+        username: authenticatedUsername,
+        closed: false,
+      });
+    });
+    client.once("close", () => {
+      const transport = sshTransports.get(transportID);
+      if (transport) {
+        transport.closed = true;
+        control.onSSHTransportClosed?.(transportID, transport.username);
+      }
+    });
     client.on("authentication", (ctx) => {
       if (ctx.method === "none") {
         ctx.reject([
@@ -626,6 +646,7 @@ export async function hosts(
     },
     class: { host: "127.0.0.1", port: classPort, pins: [pin(classKey)] },
     counts,
+    sshTransports,
     activePanes,
     issueHandoff,
     authCalls,

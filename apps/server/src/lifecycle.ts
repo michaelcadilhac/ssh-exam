@@ -1,5 +1,6 @@
 import { cleanupDiagnostic } from "./cleanup-diagnostic.js";
 import { AttemptGrants } from "./attempt-grants.js";
+import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { PREFLIGHT_TIMEOUT_MS } from "../../../packages/protocol/preflight.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
 import {
@@ -80,6 +81,10 @@ export class Lifecycle {
   onEnd = (_attempt: Attempt) => {};
   onSecured = (_attempt: Attempt) => {};
   onPaused = (_attempt: Attempt) => {};
+  onSSHExited = (
+    _attempt: Attempt,
+    _owner: ReturnType<typeof monitoringOwner.parse>,
+  ) => false;
   onClockChanged = (_attempt: Attempt) => {};
   onPreflightFailure = (_details: Record<string, unknown>) => {};
   constructor(
@@ -507,6 +512,23 @@ export class Lifecycle {
     )
       return;
     new AttemptGrants(this.store, this.agent.id).accept(remote, a);
+    // Negative, owner-bound native observation only. A delayed callback or an
+    // unknown SSH lifetime cannot retire a viable current connection. Do not
+    // create another policy incident through the connection's onLoss callback.
+    const currentOwner = this.store.attempt(id).registered_owner;
+    const exited = monitoringOwner.safeParse(remote.ssh_exited_owner);
+    const registered = monitoringOwner.safeParse(remote.registered_owner);
+    const sshEnded =
+      remote.monitoring_mode === "v1" &&
+      remote.state === "LOCKED" &&
+      (remote.generation || 0) >= a.generation &&
+      exited.success &&
+      registered.success &&
+      currentOwner &&
+      isDeepStrictEqual(exited.data, registered.data) &&
+      isDeepStrictEqual(exited.data, JSON.parse(currentOwner))
+        ? this.onSSHExited(this.store.attempt(id), exited.data)
+        : false;
     if (
       !["RELEASED", "OVERRIDDEN"].includes(a.access_state) ||
       ["RELEASED", "OVERRIDDEN"].includes(remote.access_state)
@@ -703,7 +725,11 @@ export class Lifecycle {
         this.store.db
           .prepare("DELETE FROM continuations WHERE attempt=?")
           .run(id);
-      if (a.state !== "LOCKED" || (remote.generation || 0) > a.generation)
+      if (
+        a.state !== "LOCKED" ||
+        (remote.generation || 0) > a.generation ||
+        sshEnded
+      )
         this.onPaused(this.store.attempt(id));
     }
     if (

@@ -321,3 +321,28 @@ receipt is retained; the private fixture now uses the existing full info workflo
 and acknowledges its reconciliation semantics. Inspect serialized result types
 before writing an interface assertion. No inspection API/framework was added to
 make a faulty fixture pass; broad native tests waited for the corrected root run.
+
+
+October25 SSH-exit qualification repeated a fixture-composition mistake. The new
+browser cases passed alone because they reset the server, but reused students
+from the existing control cases; the combined run refused sign-in before fault
+injection (34 scenarios passed,1 fixture failure). The fix gives the cases a new
+synthetic exam and separate accounts. Compare selected test identities BEFORE a
+broad run; the comparison was actually performed before the corrected rerun.
+Production history and admission rules were preserved.
+
+The new root episode also met a legitimate O_EXCL refusal on its prior expected-
+request file before Begin. That file is a synthetic callback fixture pointer,
+not native grant authority. The correction verifies the prior canonical attempt
+is completed, protected, NORMAL/released with unchanged interval/grant, checks the
+private root-owned regular file, and renames its exact inode to retained fixture
+history before the next episode creates a new pointer. It does not clear native
+state, overwrite a protected submission or relax O_EXCL. Failed root evidence and
+FULL host/base preservation are retained. A new manifest differs ONLY in that
+Python driver; all candidate binary hashes remain identical. Existing application/
+native receipts still apply, while the actual root boundary must pass again.
+
+These failures cost avoidable long reruns. Reusing an existing fixture requires
+checking its lifetime across the ENTIRE selected run, its authentication/CSRF flow
+and its durable publisher files before adding another episode. Adding more private
+helpers or relaxing guards would not solve this process error.

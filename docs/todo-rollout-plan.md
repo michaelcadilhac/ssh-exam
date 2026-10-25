@@ -11,13 +11,41 @@ evidence only; no production cutover/consolidation has been executed.
 
 ## Release scope and gates
 
-The current October23 retained-monitoring integration is a **guarded candidate,
+The current local retained-monitoring integration is a **guarded candidate,
 not an enabled release**. Its installed native admission guard always refuses
-v1; no environment/configuration override is provided. Complete and qualify the
-remaining all-writer/async IO, delayed manager/final-exec, recording-fault/clock
-handover, independent failure, loaded native roles and16/64 capacity boundaries
-before proposing enablement. Passing local regression suites does not satisfy
-those privileged gates. No part of this plan authorizes deployment.
+v1; no environment/configuration override is provided. Separate actual-root
+all-writer/linked-IO, delayed launch/final exec, recording/clock, coordinator and
+supervisor failure, native-role and admission compatibility qualification now
+passes. Owner-bound SSH-exit feedback now passes fresh native/app/browser checks
+and active/policy-held actual-root42 variants, with full host/base preservation.
+Whole-gateway restart and combined browser/root16-student/64-pane qualification
+remain gates. Component/browser simulations do not replace those boundaries.
+Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
+No part of this plan authorizes deployment.
+
+The SSH-exit candidate adds optional native `ssh_exited_owner` metadata and uses
+existing signed callback sequencing. No SQL migration, new service or configuration
+switch is required. Legacy attempts emit no new fact. Before ANY later rollout,
+qualify the complete matched cohort and preserve private consistent gateway/native
+state backups, keys, catalog versions, source pins and protected archives. Do not
+manufacture saved enrollment settings or alter historical clocks during migration.
+
+Rollback must preserve the new native metadata and original intervals. Verify the
+intended reader against a private snapshot before any downgrade; never strip
+fields, delete owner records or restore a pre-start snapshot over a consumed
+attempt to make an older binary run. Prefer a repaired compatible cohort with
+new-mode admission closed until current work is secured/drained. Existing legacy
+attempts remain on their original enforcement path. A status fact never permits
+clock refunds, account release or restoration of execution from disk.
+
+Temporary canonical/live-upgrade/deferred-recovery agent consolidation remains a
+SEPARATE, unexecuted verified-drain procedure below and in
+native-cleanup-isolation-incident.md. Keep needed owners running until all work,
+original deadlines, callbacks and account restoration are resolved. Review exact
+unit/config/executable/state ownership and empty cgroups before retiring temporary
+services; verify the canonical matched role cohort and independent deadlines after
+any future separately authorized cutover. Do not stop a service just to satisfy
+health or a test guard. No consolidation command has been executed here.
 
 The local live-role increment adds no SQL/canonical-attempt migration or new
 configuration field. Its private watchdog-role.lock/socket are observation

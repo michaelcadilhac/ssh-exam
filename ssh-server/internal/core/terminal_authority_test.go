@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway"} {
+	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "ssh-exited"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -54,6 +54,12 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			e, key, r := initialGrantUnpreparedFixture(t)
 			e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return &nativeRoleGuard{}, nil } // Desktop role/group seam; real root profile uses production probing.
 			var stopRole func()
+			var stopSSH func()
+			if mode == "ssh-exited" {
+				guard, stop := testNativeRoleLifetime(t)
+				stopSSH = stop
+				t.Setenv("EXAM_TEST_SSH_PEER_PID", fmt.Sprint(guard.identity.pid))
+			}
 			if mode == "roles-unavailable" {
 				e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return nil, errNativeRoles }
 			}
@@ -338,6 +344,42 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				}
 				resumeMode.Store(mode)
 			})
+			if mode == "ssh-exited" {
+				observed, err := ObserveTerminalSupervisor(e.Config.State, a.ID)
+				if err != nil || observed.SSHPeer != "pinned-live" {
+					t.Fatal("fixture missed positively live SSH owner before exit", observed, err)
+				}
+				stopSSH()
+				for limit := time.Now().Add(5 * time.Second); ; {
+					if err := e.Tick(); err != nil {
+						t.Fatal(err)
+					}
+					state, err := readStateSnapshot(e.Config.State)
+					if err != nil {
+						t.Fatal(err)
+					}
+					ended := state.Attempts[a.ID]
+					if ended.SSHExitedOwner != nil {
+						if ended.RegisteredOwner == nil || *ended.SSHExitedOwner != *ended.RegisteredOwner || ended.State != "LOCKED" || ended.RetainedHold != "held" || ended.MonitoringHoldKind != "technical" || ended.Start != a.Start || ended.Deadline != a.Deadline || ended.OriginalDeadline != a.OriginalDeadline {
+							t.Fatal("positive SSH exit lost exact ownership/hold/original time", ended)
+						}
+						found := false
+						for _, event := range state.Events {
+							if event.Attempt != nil && event.Attempt.ID == a.ID && event.Attempt.SSHExitedOwner != nil && *event.Attempt.SSHExitedOwner == *ended.RegisteredOwner {
+								found = true
+							}
+						}
+						if !found {
+							t.Fatal("positive exit never reached the durable authenticated callback outbox")
+						}
+						break
+					}
+					if time.Now().After(limit) {
+						t.Fatal("actual pinned SSH exit was not reported", ended)
+					}
+					time.Sleep(20 * time.Millisecond)
+				}
+			}
 			e.stopTerminalMonitoring()
 			stop() // Only the exact newly created synthetic supervisor unit.
 			control, owner, err := e.connectTerminalSupervisor(a.ID)

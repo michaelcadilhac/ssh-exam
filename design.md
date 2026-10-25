@@ -2888,3 +2888,18 @@ refuses before a clock/consumption/publication or thaw, preserving the same stag
 source and Begin intent for repair and full-allowance retry at actual start.
 There is no new durable authority or configuration switch. The installed retained
 guard stays OFF. Qualification and state review: retained-admission-compatibility.md.
+
+
+The local retained SSH-exit candidate uses the existing authenticated supervisor
+observation and durable signed status channel for a negative ownership fact.
+Only positive exit of the pinned SSH lifetime, bound to the full current native
+owner and rechecked before save, produces `ssh_exited_owner`. The gateway retires
+only an exact current owner from LOCKED native status at the current clock and
+generation; absent/unknown/malformed/stale facts preserve viable transport. The
+retirement suppresses generic onLoss so it cannot manufacture another violation
+or generation. It grants no work permission and changes no clock, grant, source,
+submission or account hold. Existing read-only info inspects interval/owner and
+supervisor inspection shows current SSH lifetime; full reconciling info includes
+the captured exit fact. No new control API or mode switch is introduced. This candidate remains
+under fresh artifact qualification with installed admission OFF; see
+docs/retained-ssh-exit-feedback.md.

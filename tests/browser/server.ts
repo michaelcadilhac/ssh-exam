@@ -38,6 +38,12 @@ const retainedAccounts = {
   retained02: 10032,
   retained03: 10033,
 };
+const retainedLossAccounts = {
+  retained04: 10034,
+  retained05: 10035,
+  retained06: 10036,
+};
+const retainedExams = new Set(["retained-control", "retained-loss"]);
 const approvalAccounts = { approval01: 10020 };
 // The sandbox repeat test deliberately leaves a reserved new preflight; expiry
 // qualification must own another account instead of bypassing that reservation.
@@ -110,7 +116,7 @@ const retainedContinuations = new Map<
 const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   const monitored = op === "activate-monitored-grant-attempt";
   if (monitored) {
-    if (attempts.get(b.id)?.exam !== "retained-control")
+    if (!retainedExams.has(attempts.get(b.id)?.exam))
       throw Error(
         "Monitored fixture Begin requires its separate synthetic exam",
       );
@@ -201,6 +207,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...receiptAccounts,
       ...framedAccounts,
       ...retainedAccounts,
+      ...retainedLossAccounts,
       ...approvalAccounts,
       ...preflightAccounts,
       ...versionAccounts,
@@ -546,7 +553,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       break;
     case "consume-monitored-continuation": {
       if (
-        a.exam !== "retained-control" ||
+        !retainedExams.has(a.exam) ||
         a.monitoring_mode !== "v1" ||
         !a.registered_owner ||
         b.generation !== a.generation ||
@@ -743,12 +750,55 @@ const postStatus = async (a: any) => {
     "content-type": "application/vnd.ssh-exam-event",
     "x-exam-signature": sign(null, payload, h.callbackKey).toString("base64"),
   };
-  await app.inject({
+  return app.inject({
     method: "POST",
     url: "/api/agent/events",
     headers,
     payload,
   });
+};
+// Synthetic native OS observation only. The production producer polls its
+// pinned SSH lifetime in the existing supervisor; no browser timeout is proof.
+let holdSSHExitReports = false;
+const pendingSSHExitReports = new Map<string, any>();
+const sshExitReports: { transport: string; attempt: string; status: number }[] =
+  [];
+const deliverSSHExitReports = async () => {
+  for (const [transport, a] of pendingSSHExitReports) {
+    if (holdSSHExitReports) return;
+    if (!h.sshTransports.get(transport)?.closed)
+      throw Error("Positive SSH exit required");
+    if (a.state === "ACTIVE") a.generation++;
+    a.state = "LOCKED";
+    a.reason =
+      "Monitoring verification unavailable; technical safety hold, not a student violation";
+    a.retained_hold = "held";
+    a.monitoring_hold_kind = "technical";
+    a.ssh_exited_owner = { ...a.registered_owner };
+    const result = await postStatus(a);
+    sshExitReports.push({
+      transport,
+      attempt: a.id,
+      status: result.statusCode,
+    });
+    if (result.statusCode !== 200)
+      throw Error("Signed native SSH-exit callback refused: " + result.body);
+    pendingSSHExitReports.delete(transport);
+  }
+};
+h.control.onSSHTransportClosed = (transport, username) => {
+  const a = [...attempts.values()].find(
+    (a) =>
+      a.username === username &&
+      a.monitoring_mode === "v1" &&
+      a.registered_owner?.transport_hash === transport &&
+      ["ACTIVE", "LOCKED"].includes(a.state),
+  );
+  if (!a) return;
+  pendingSSHExitReports.set(transport, a);
+  void deliverSSHExitReports().catch((error) =>
+    h.control.failures.push(String(error)),
+  );
 };
 const renewalReceipts = new Map<string, { until: number; attempt: any }>();
 let recoveredRenewalReceipts = 0;
@@ -758,7 +808,7 @@ h.control.dropReply = (frame) =>
 h.control.command = async (op, b, frame) => {
   if (op === "register") {
     const result = await fixtureCall(op, b);
-    if (b.exam === "retained-control") {
+    if (retainedExams.has(b.exam)) {
       retainedRegistrations.push({
         exam: b.exam,
         username: frame?.username || "",
@@ -929,6 +979,21 @@ definitions.create(
 for (const username of Object.keys(retainedAccounts))
   new RosterManagement(store, undefined, "class").add(
     "retained-control",
+    { username },
+    "fixture-operator",
+  );
+definitions.create(
+  {
+    ...exam,
+    id: "retained-loss",
+    name: "Retained transport loss",
+    template_version: versionHash,
+  },
+  "fixture-operator",
+);
+for (const username of Object.keys(retainedLossAccounts))
+  new RosterManagement(store, undefined, "class").add(
+    "retained-loss",
     { username },
     "fixture-operator",
   );
@@ -1125,6 +1190,8 @@ store.db
 app.get("/api/fixture/runtime", async () => ({
   retainedRegistrations,
   nativeBeginRequests,
+  sshExitReports,
+  pendingSSHExitReports: [...pendingSSHExitReports.keys()],
   framedInput: h.control.framed,
   renewalReceipts: {
     recovered: recoveredRenewalReceipts,
@@ -1132,6 +1199,10 @@ app.get("/api/fixture/runtime", async () => ({
     maxActiveCommands: h.control.maxActive,
   },
   authenticationCalls: h.authCalls,
+  sshTransports: [...h.sshTransports].map(([transport, state]) => ({
+    transport,
+    ...state,
+  })),
   terminalOpens: h.counts.panes,
   pid: process.pid,
   activationFailure: store.db
@@ -1172,6 +1243,14 @@ app.post("/api/fixture/fault", async (req) => {
   else worker.child.send({ kind: "fixture-fault", fault });
   return { pid: worker.child.pid };
 });
+app.post("/api/fixture/ssh-exit-reports", async (req) => {
+  holdSSHExitReports = (req.body as any).held === true;
+  await deliverSSHExitReports();
+  return {
+    held: holdSSHExitReports,
+    pending: [...pendingSSHExitReports.keys()],
+  };
+});
 app.post("/api/fixture/mail", async (req) => {
   mail.reject(!!(req.body as any).reject);
   store.db.prepare("UPDATE outbox SET next=0 WHERE status='pending'").run();
@@ -1182,6 +1261,7 @@ let stopping = false;
 async function shutdown() {
   if (stopping) return;
   stopping = true;
+  h.control.onSSHTransportClosed = undefined;
   for (const client of relay?.clients || []) client.terminate();
   await Promise.all([
     app.close(),

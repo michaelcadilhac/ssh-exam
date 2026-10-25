@@ -935,7 +935,60 @@ if a.framed_owner or a.retained_policy:
         connection.close()
     wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,max(original['deadline'],original['original_deadline'])/1000-time.time())+30)
     normal_access('original deadline restores ordinary SSH/SFTP after framed qualification without override')
-    if a.retained_policy:qualify_saved_source_grant(info(id))
+    if a.retained_policy:
+        # Separate real SSH-exit episode, after the source interval's verified
+        # release and before the saved-source owner-death test. Do not weaken
+        # that existing running-writer SIGKILL oracle by pre-holding its owner.
+        # Retire only the test server's prior expected-request pointer. Keep
+        # its exact inode as history; native grant/attempt/submission state is
+        # never removed. No outstanding original interval may be replaced.
+        prior=info(id)
+        assert prior['state']=='COMPLETED' and prior['protected'] and prior['access_state']=='RELEASED' and prior['policy_state']=='NORMAL'
+        assert all(prior[k]==original[k] for k in ('start','deadline','original_deadline','grant'))
+        registry_path=pathlib.Path('/run/qualification-framed-grant.json')
+        descriptor=os.open(registry_path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+        with os.fdopen(descriptor,'r') as registry:
+            registry_stat=os.fstat(registry.fileno())
+            assert stat.S_ISREG(registry_stat.st_mode) and registry_stat.st_nlink==1 and registry_stat.st_uid==0 and stat.S_IMODE(registry_stat.st_mode)==0o600 and registry_stat.st_size<=65536
+            expected=json.load(registry)
+        assert expected['attempt']==id and expected['grant']==prior['grant'] and expected['username']==prior['username']
+        registry_history=registry_path.with_name('qualification-framed-grant-'+id+'.previous.json')
+        assert not registry_history.exists()
+        registry_path.rename(registry_history)
+        assert registry_history.stat().st_ino==registry_stat.st_ino and not registry_path.exists()
+        exited_connection=Connection();exited_panes=[]
+        try:
+            exited_id=exited_connection.start(duration=60,initial_grant=True)
+            exited_original=info(exited_id)
+            exited_pane=exited_connection.pane(exited_id,framed=True);exited_panes.append(exited_pane)
+            exit_ready=uuid.uuid4().hex
+            exited_connection.input(exited_pane,"printf 'SSH-EXIT-%s:END\\n' '"+exit_ready+"'\n")
+            read_until(exited_pane,('SSH-EXIT-'+exit_ready+':END').encode())
+            observed=json.loads(root('examctl','panes','supervisor',exited_id))
+            assert observed['ssh_peer']=='pinned-live' and observed['registered_owner']==exited_original['registered_owner']
+            assert not exited_original.get('ssh_exited_owner')
+            root('examctl','pause',exited_id,'--reason','Private SSH-exit during existing policy hold')
+            paused_exit=info(exited_id)
+            assert paused_exit['state']=='LOCKED' and paused_exit['retained_hold']=='held' and paused_exit['monitoring_hold_kind']=='policy'
+            assert not paused_exit.get('ssh_exited_owner')
+            assert json.loads(root('examctl','panes','supervisor',exited_id))['ssh_peer']=='pinned-live'
+            exited_connection.close() # Exact owned client control socket only.
+            wait_for(lambda:info(exited_id).get('ssh_exited_owner')==exited_original['registered_owner'],timeout=10,interval=.1)
+            exited=info(exited_id)
+            assert all(exited[k]==paused_exit[k] for k in ('state','generation','reason','retained_hold','monitoring_hold_kind'))
+            assert all(exited[k]==exited_original[k] for k in ('start','deadline','original_deadline','grant','registered_owner','access_state'))
+            ok('actual SSH exit during a verified existing policy hold reports exact owner without changing cause/generation, interval, grant or restriction')
+            root('examctl','stop',exited_id,'--reason','Private positive SSH-exit qualification collection')
+            wait_for(lambda:info(exited_id)['state']=='COMPLETED' and info(exited_id)['protected'],timeout=45)
+            secured,_,_=secure(exited_id)
+            assert all(secured[k]==exited_original[k] for k in ('start','deadline','original_deadline','grant'))
+        finally:
+            for exited_pane in exited_panes:
+                if exited_pane.poll() is None:exited_pane.kill();exited_pane.wait(timeout=5)
+            exited_connection.close()
+        wait_for(lambda:info(exited_id)['access_state']=='RELEASED' and info(exited_id)['policy_state']=='NORMAL',timeout=max(0,exited_original['deadline']/1000-time.time())+30)
+        normal_access('SSH-exit collection preserves its original restriction until the deadline and restores ordinary access without override')
+        qualify_saved_source_grant(info(id))
     print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_lockout':a.retained_policy,'synthetic_capture':a.retained_policy}),flush=True)
     raise SystemExit(0)
 

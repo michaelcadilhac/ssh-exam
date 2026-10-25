@@ -88,6 +88,7 @@ type Attempt struct {
 	MonitoringResumeNonce       string               `json:"monitoring_resume_nonce,omitempty"`
 	MonitoringHoldKind          string               `json:"monitoring_hold_kind,omitempty"`
 	RegisteredOwner             *monitoringOwner     `json:"registered_owner,omitempty"`
+	SSHExitedOwner              *monitoringOwner     `json:"ssh_exited_owner,omitempty"` // Negative pinned-lifetime observation only; never work permission.
 	Grant                       *GrantBinding        `json:"grant,omitempty"`
 	GrantBeginIntent            string               `json:"grant_begin_intent,omitempty"`
 	ExpectedRecovery            string               `json:"expected_recovery,omitempty"`

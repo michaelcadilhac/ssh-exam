@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -360,6 +361,13 @@ func TestTerminalSupervisorChild(t *testing.T) {
 				return nil, err
 			}
 			return nil, errMonitoringProcess
+		}
+		if synthetic := os.Getenv("EXAM_TEST_SSH_PEER_PID"); synthetic != "" {
+			var err error
+			pid, err = strconv.Atoi(synthetic)
+			if err != nil || pid <= 1 {
+				return nil, errMonitoringProcess
+			}
 		}
 		identity, err := snapshotMonitoringProcess(pid)
 		if err != nil || uid != os.Getuid() || !monitoringDigest.MatchString(transport) || identity.uids != [4]uint32{uint32(uid), uint32(uid), uint32(uid), uint32(uid)} {

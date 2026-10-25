@@ -47,6 +47,8 @@
   whole workflow timeout. A locator failure is not a product refusal oracle.
   First-grant fixtures use a fresh synthetic exam namespace and authored source;
   never clear history or relax source permissions to fit a prepared legacy base.
+  Before broad browser qualification, compare synthetic exam/account names across
+  the selected files; an isolated focus run can hide reuse of consumed grants.
   Verify the requested browser fixture mode through public status before testing
   a protocol: real WASM checks require EXAM_BROWSER_SSH=1, not the Node fallback.
   Browser fixtures serve dist/web: rebuild after browser source changes before

@@ -1,81 +1,74 @@
 # Current local TODO checkpoint
 
-Updated October25,2026 (America/Chicago). Local work/commits only: NO push,
-deploy, production services/config/student changes or consolidation. csc-sys only
-for guarded disposable qualification; busy/uncertain means NO TEST. Stop on any
-missing executable (optional go tool buildid is explicitly waived; do not use it).
-C1–C18/clock settled; capacity16 students/64 panes; no design question pending.
-Checklist18/38 overlaps, not an effort percentage. Status requests do not pause work.
+October25,2026. Local development/commits ONLY. No push, deployment, production
+restart/config/student changes or agent consolidation. csc-sys only the guarded
+disposable environment; busy/uncertain means NO TEST. Stop on any missing command
+(optional go tool buildid is waived; do not use it). No design question pending;
+C1–C18/clock settled, capacity16 students/64 panes accepted.18/38 overlapping
+checkboxes is not an effort percentage. Status requests do not pause work.
 
-## Validated revision and preserved work
+## Validated revisions / preserved work
 
-Main/worktree HEADbd52857. Working branch/source directory:
-var/worktrees/source-grant-retention. Untracked node_modules is a dependency
-symlink; never stage. Preserve ALL stashes, especially original recovery
-40f1fb64187db13783ea23c0125d66824d65b301 and path-only checkpoint stashes.
-Main's ten original dirty screenshots are workspace data; never stage/restore.
-Hash baseline /tmp/ssh-exam-retained-recording-main-image-hashes.json; fifteen-
-minute backup /tmp/ssh-exam-preserved-preflight-screenshot.png; other9 in
-/tmp/ssh-exam-challenged-screenshots-4zc1qzm_.
+Main/worktree HEADd99ce95; current SSH-exit candidate is fully qualified below and
+ready for local commit. Worktree var/worktrees/source-grant-retention;
+node_modules is a dependency symlink, NEVER stage. Preserve ALL stashes, especially
+40f1fb64187db13783ea23c0125d66824d65b301 and path-only main checkpoint stashes.
+Main's ten original dirty screenshots remain hash-identical. Baseline
+/tmp/ssh-exam-retained-recording-main-image-hashes.json; backups named there and
+in prior preserved checkpoint stashes. Never stage/restore those images.
 
-7190e41 qualifies actual WASM browser/SSH control recovery after17.5s outages,
-private partial input and unchanged authentication/time; incompatible loaded JS
-refuses before native Begin with useful guidance.582 app/32 browser plus final
-4 Begin and27 HTTP checks PASS. Static retained-controls-browser-artifacts.3c7qrbkl;
-full evidence/state review: retained-browser-control.md. Previous native25a0817
-qualifies live loaded roles/temporary-writer refusal, root36/FULL preservation,
-final core542.378s/CLI28.406s. See native-loaded-role-agreement.md. Installed retained
-admission remains unconditional OFF. Older receipts do not qualify new binaries.
+bd52857 qualifies strict native Begin/Continue compatibility/refusal+full-allowance
+repair. d99ce95 qualifies real retained gateway-child death with an unaffected
+peer. Earlier7190e41 qualifies both17.5s control outages without false policy loss.
+Evidence: retained-admission-compatibility.md and retained-browser-control.md.
+Installed retained admission remains unconditional OFF; no production enablement.
 
-## Current bounded milestone: native admission compatibility
+## Just qualified: exact native SSH-exit feedback
 
-Public entries: actual signed eligible registration/Begin, original Unix/TLS
-monitored Begin and authenticated Continue. RED3920/57412 prove an advertisedv1
-legacy-purpose downgrade and old-gateway v3 bootstrap both committed time.
-Candidate rejects new eligible legacy starts (preserving explicit exemptions and
-started legacy cached retries) and requires signed control_retention=v1 at all
-bootstrap/Continue validation. No new authority, reservation or mode enablement.
+Public workflow: uncooperative retained full-page closure -> positive registered
+SSH exit -> existing signed native status -> retire ONLY matching gateway owner.
+Unknown/stale/delayed facts preserve viable SSH. Existing policy cause/generation,
+original clocks/grants/account restrictions and protected submissions stay intact.
+New ssh_exited_owner is negative owner-bound metadata, never restored authority.
+State review and full receipts: retained-ssh-exit-feedback.md.
 
-Focused native78657 PASS11.631s: refusals preserve staged inode/settings/grant/
-intent and no live work/clock; repaired same intent starts full allowance; bad
-Continue leaves actual authority held with original time. Protocol38/6files,
-Python43, types/build and actual WASM browser3/1.2m PASS. Build/vet PASS.
-Pre-broad state review and exact evidence: retained-admission-compatibility.md.
+Native focus54488 PASS9.338s; process30897 PASS1.112s; HTTP37058 PASS15/3files7.05s;
+Python43/syntax, release builds/core/vet, types and WASM/server build PASS. Broad
+native46391 PASS core559.460s/CLI31.637s (races/systemd/userns/compiler/default-size);
+app63806 PASS583/106files317.83s; composed browser70644 PASS35/7.7m. Final isolated
+focus90605 PASS2/22.8s/types61233. Runtime/static inputs unchanged since these runs.
 
-Frozen NEW native bundle retained-admission-artifacts.y809vl2q (15 files,
-63,138,686bytes), agentc4b9d936/core8738ba57. Static12-file bundle
-retained-admission-browser-artifacts.eyhmgxk0 (index07c83247).
-Remote private code-only upload: /var/tmp/ssh-exam-retained-admission-upload.OJdNyn/bundle.
-Guarded runner started; private evidence /var/tmp/ssh-exam-overlay-a3xj27vo.
+Native hash agente0d09895/core463713fb. Frozen original c2gpnnkw; corrected ACTIVE
+exit registry-artifacts.kkjwmrio (63,177,225bytes) root27587 PASS42/FULL preservation,
+private overlay-ejofe83p/uploadTHM1aS. Final policy-held variant
+held-artifacts.5pelefmi (63,177,722bytes), root22480 PASS42/FULL preservation,
+private overlay-uxmi4rzo/uploadCJPrBa. ONLY Python episode differs; native hashes
+identical and verified. Static12-file browser-artifacts.f8vgz613, WASM7f88e54b.
+Full artifact prefixes retained-ssh-exit-; manifests under var/collection-tests.
+Logs /tmp/ssh-exam-retained-ssh-exit-*.log; focused earlier logs retained-loss-*.log.
+Root capture synthetic; this is not combined browser/root16/64 qualification.
 
-All qualification PASS: native23745 core553.604s/CLI35.733s (races/resources/
-namespace/compiler/default-size), app82055 582/105files307.35s, affected browser35502
-33/7.5m, guarded root96209 36 assertions/release CLI and FULL host/base preservation.
-Root capture is synthetic. No runner active. Static/native manifest hashes match.
-Logs /tmp/ssh-exam-retained-admission-{full-native,full-app,affected-browser,root}.log.
-Committed/fast-forwarded locally asbd52857; original ten main screenshots verified
-unchanged. Preserve the new path-only main checkpoint stash too. Current bounded
-milestone: actual retained gateway-child death/browser abandonment/native SSH-death
-feedback. Preserve viable transports on mere latency; require positive loss
-observation, original deadlines and unaffected peers. No runtime change yet.
+Initial root1824 failed BEFORE extra Begin on fixture O_EXCL; preserve log and
+overlay-sd5g3q1u. Corrected private expected-request pointer is archived only after
+canonical protected completion and NORMAL/released original interval. Initial
+browser95569 had34 PASS/1 fixture account collision; new retained-loss exam and
+accounts04–06 are disjoint from controls01–03. Never clear history to fit tests.
+AGENTS/retrospective record the concrete composition preflight. No runner active.
 
-Actual retained gateway-child death test75578 PASS1/16.6s: two actualv1 students,
-exact SIGKILL/pane retirement, useful fresh-SSH/review guidance, unchanged time/grant,
-one contextual alert and same-worker positive peer input. Initial52683/97315 were
-Origin/CSRF fixture refusals BEFORE injection; retained logs. Authenticated fixture
-uses existing instructor/token flow. Types90402/final28265 PASS.
-No runtime/static/native change: prior broad/root evidence still applies. Details:
-retained-browser-control.md. No browser runner active. NEXT commit this bounded
-coverage increment, then reproduce uncooperative full-page/native SSH-death loss
-feedback without using a timeout as evidence. Whole-gateway restart and combined
-root16/64 remain. Do not stop after the commit.
+## Exact next actions / finite remaining outcomes
 
-## Remaining finite outcomes
+Commit this coherent validated SSH-exit milestone locally and fast-forward main,
+preserving its modified checkpoint in a path-only stash and all original images.
+Then join actual browser/WASM/HTTP with guarded native SSH/callbacks for ONE
+student first; use that integrated path for whole-gateway restart and accepted
+16-student/64-pane/concurrent-collection qualification. Inspect existing runner/
+namespace helpers before adding anything. Keep private network, one bounded owned
+unit, host/base preservation and busy guard; no production endpoints or keys.
+No prototype/helper chain without this immediate integrated caller and test.
 
-Uncooperative page/native SSH-death feedback, gateway child/restart faults and
-combined real capture/root16/64 remain gates; inspect existing runtime first.
 Then supported native legacy migration/retirement, manual secured workspace
 cleanup, reviewed config/full CLI journey and dashboard grant/source/status join:
-todo-delivery-audit.md. No reimplementation of already-delivered grant/collection
-workflows. Production-only alert acceptance and temporary three-agent consolidation
-remain unexecuted proposals in todo-rollout-plan.md. No deployment is authorized.
+todo-delivery-audit.md. Production alert acceptance and temporary canonical/live-
+upgrade/deferred-recovery consolidation remain UNEXECUTED proposals in
+todo-rollout-plan.md. Continue after commits; do not stop while actionable work
+remains. No deployment is authorized.

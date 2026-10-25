@@ -770,6 +770,10 @@ func (e *Engine) Tick() error {
 			// Another attempt's cleanup may have taken time since this state
 			// transaction began. Renewals use their own per-attempt journal.
 			if a.MonitoringMode == "v1" {
+				if fact, known := liveCutoffs[a.ID]; known && fact.sshExited && a.RegisteredOwner != nil && *a.RegisteredOwner == fact.owner {
+					owner := fact.owner
+					a.SSHExitedOwner = &owner
+				}
 				if fact, known := liveCutoffs[a.ID]; a.State == "ACTIVE" && known && a.RegisteredOwner != nil && *a.RegisteredOwner == fact.owner && fact.view != nil && !fact.view.ExecutionAuthorized {
 					a.State, a.Reason, a.Authorization, a.Lease = "LOCKED", terminalTechnicalHoldReason(fact), 0, 0
 					a.MonitoringHoldKind = "technical"

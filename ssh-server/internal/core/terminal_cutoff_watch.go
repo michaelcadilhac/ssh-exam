@@ -17,10 +17,11 @@ type terminalCutoffWatch struct {
 func (w *terminalCutoffWatch) close() { w.slot.close(); w.peer.close() }
 
 type terminalCutoffFact struct {
-	owner monitoringOwner
-	view  *monitoringAuthorityView
-	held  bool
-	error error
+	owner     monitoringOwner
+	view      *monitoringAuthorityView
+	held      bool
+	sshExited bool
+	error     error
 }
 
 func (e *Engine) terminalCutoffFor(a *Attempt) (*terminalCutoffWatch, error) {
@@ -102,7 +103,7 @@ func (e *Engine) observeTerminalSharedCutoffs() (map[string]terminalCutoffFact, 
 	var workers sync.WaitGroup
 	slots := make(chan struct{}, 16)
 	for _, a := range state.Attempts {
-		if a.MonitoringMode != "v1" || a.State != "ACTIVE" || a.RetainedHold == "resuming" || a.RegisteredOwner == nil {
+		if a.MonitoringMode != "v1" || (a.State != "ACTIVE" && a.State != "LOCKED") || a.RetainedHold == "resuming" || a.RegisteredOwner == nil {
 			continue
 		}
 		slots <- struct{}{}
@@ -111,8 +112,12 @@ func (e *Engine) observeTerminalSharedCutoffs() (map[string]terminalCutoffFact, 
 			defer workers.Done()
 			defer func() { <-slots }()
 			fact := terminalCutoffFact{owner: *a.RegisteredOwner}
-			watch, err := e.terminalCutoffFor(a)
-			if err == nil {
+			var err error
+			var watch *terminalCutoffWatch
+			if a.State == "ACTIVE" {
+				watch, err = e.terminalCutoffFor(a)
+			}
+			if err == nil && watch != nil {
 				var now int64
 				now, err = monitoringBootMillis()
 				if err == nil {
@@ -122,6 +127,15 @@ func (e *Engine) observeTerminalSharedCutoffs() (map[string]terminalCutoffFact, 
 						err, fact.view = holdErr, reply.View
 						fact.held = holdErr == nil && reply.Hold != nil && reply.Hold.Phase == "held"
 					}
+				}
+			}
+			// Reuse the authenticated supervisor observation already exposed by
+			// examctl. Only a positively exited pinned SSH lifetime can retire
+			// the gateway owner; delays, lost metadata and unknown/closed handles
+			// provide no such evidence. Locked attempts need this observation too.
+			if a.State == "LOCKED" || err != nil || (fact.view != nil && !fact.view.ExecutionAuthorized) {
+				if observed, observeErr := ObserveTerminalSupervisor(e.Config.State, a.ID); observeErr == nil && observed.MonitoringMode == "v1" && observed.Boot == a.RegisteredOwner.Boot && observed.RegisteredOwner != nil && *observed.RegisteredOwner == fact.owner && observed.SSHPeer == "exited" {
+					fact.sshExited = true
 				}
 			}
 			fact.error = err

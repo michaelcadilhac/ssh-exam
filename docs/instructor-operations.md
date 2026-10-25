@@ -98,6 +98,19 @@ a version refusal. Already-started legacy intervals retain their original clock.
 Installed retained admission remains OFF; this is local work only. See
 retained-admission-compatibility.md for qualification and boundaries.
 
+The local retained SSH-exit candidate includes captured `ssh_exited_owner` in
+full `examctl info ATTEMPT` (which may reconcile). Use explicit
+`examctl info ATTEMPT --read-only` for offline interval/registered-owner inspection;
+that reduced snapshot does not include this new field.
+`examctl panes supervisor ATTEMPT` shows the current live/exited/unknown SSH observation. A positive matching native exit
+report retires only that gateway owner and requires the existing authorized fresh
+SSH recovery. Unknown observations or delayed callbacks preserve a viable session;
+they do not establish a student violation or agent outage. Preserve work, the
+original grant/intent and deadlines; use `examctl web interruptions show ATTEMPT`
+and the supported reviewed authorization workflow if recovery is needed. Do not
+clear records, release restrictions or reset time to hide an observation failure.
+This candidate is not deployed/enabled. See retained-ssh-exit-feedback.md.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

@@ -368,6 +368,22 @@ export async function createApp(
     )
       return conn;
   };
+  life.onSSHExited = (a, owner) => {
+    const conn = retainedConnection(a);
+    if (!conn || conn.transport !== owner.transport_hash) return false;
+    conn.onLoss = () => {};
+    conn.close();
+    if (connections.get(`${a.exam}:${a.username}`) === conn)
+      connections.delete(`${a.exam}:${a.username}`);
+    if (attemptConnections.get(a.id) === conn) attemptConnections.delete(a.id);
+    store.audit(
+      "class-agent",
+      "native-ssh-exited",
+      a.id,
+      JSON.stringify(owner),
+    );
+    return true;
+  };
   const authenticationGap = (id: string) => {
     const a = store.attempt(id);
     if (retainedConnection(a)) return false;
