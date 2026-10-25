@@ -52,6 +52,15 @@ milestone boundaries, not lower safety standards or misleading TODO checkmarks.
 
 ## Operating changes
 
+October24 browser-fixture follow-up: the static test server serves dist/web;
+one rerun used old browser assets. A server-only close code was also invalid on
+the real browser upstream and Playwright hid its error. Check actual close/bind
+events and rebuild changed web assets before qualification. Typecheck changed
+fixtures before broad runs: the server build excludes them. These setup mistakes
+cost avoidable reruns; preserve their failures without labeling them product
+regressions. The corrected entry independently reproduced a real timeout-induced
+review demand and now verifies technical blocking/fresh rebind on the same SSH.
+
 October24 status-report follow-up: the agent ended its turn after a progress/ETA
 report despite remaining authorized work and no blocker. That was another
 execution failure, not a design decision or missing permission. AGENTS now states

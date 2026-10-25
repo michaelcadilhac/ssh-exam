@@ -670,6 +670,7 @@ export function Workspace({
     for (const pane of reservation.panes || []) addPane(pane);
     let mounted = true;
     let retryDelay = 1000;
+    let bindingIssuedAt = performance.now();
     let lastAuthenticationGap = false;
     const updateAuthenticationGap = (gap: boolean) => {
       // Polling repeats the same gap every two seconds. Only a transition may
@@ -707,6 +708,20 @@ export function Workspace({
       if (networkLossAt.current === null)
         networkLossAt.current = performance.now();
     };
+    const contactExpired = () => {
+      if (attemptRef.current.monitoring_mode !== "v1") {
+        incident("Network recovery grace expired");
+        return;
+      }
+      // Lost coordination is not policy evidence. Block ingress and obtain a
+      // fresh page bind; the native supervisor independently bounds execution
+      // with verified monitoring. Let each unbound retry receive a reply within
+      // the confirmation's existing lifetime, then obtain a new nonce/socket.
+      if (!bound.current && performance.now() - bindingIssuedAt < 15000) return;
+      if (ws.current?.readyState !== WebSocket.OPEN) return;
+      interrupt();
+      ws.current.close();
+    };
     const connect = () => {
       if (
         !mounted ||
@@ -722,6 +737,7 @@ export function Workspace({
       ws.current = s;
       s.onopen = () => {
         if (!mounted || ws.current !== s) return;
+        bindingIssuedAt = performance.now();
         confirmation.issue(binding);
         send({ type: "bind", attempt: id, page, binding });
       };
@@ -753,6 +769,7 @@ export function Workspace({
             controlReady.current
           ) {
             if (
+              attemptRef.current.monitoring_mode !== "v1" &&
               (performance.now() - lastAck.current >= 15000 ||
                 (networkLossAt.current !== null &&
                   performance.now() - networkLossAt.current >= 15000)) &&
@@ -852,7 +869,10 @@ export function Workspace({
       s.onclose = () => {
         if (!mounted || ws.current !== s) return;
         interrupt();
-        if (performance.now() - lastAck.current > 15000) {
+        if (
+          attemptRef.current.monitoring_mode !== "v1" &&
+          performance.now() - lastAck.current > 15000
+        ) {
           setRecoveryExpired(true);
           if (attemptRef.current.state === "ACTIVE")
             incident("Network recovery grace expired");
@@ -907,6 +927,7 @@ export function Workspace({
     });
     const heartbeat = setInterval(() => {
       if (
+        attemptRef.current.monitoring_mode !== "v1" &&
         networkLossAt.current !== null &&
         performance.now() - networkLossAt.current >= 15000 &&
         attemptRef.current.state === "ACTIVE" &&
@@ -930,8 +951,13 @@ export function Workspace({
         send({ type: "preflight-contact" });
       else if (r.fullscreen && r.visible && r.keyboard && r.screen)
         send({ type: "heartbeat", ready: r });
-      if (armed.current && performance.now() - lastAck.current > 15000)
-        incident("Network recovery grace expired");
+      if (
+        (armed.current ||
+          (attemptRef.current.monitoring_mode === "v1" &&
+            attemptRef.current.state === "LOCKED")) &&
+        performance.now() - lastAck.current > 15000
+      )
+        contactExpired();
       if (
         attemptRef.current.state === "PREPARING" &&
         performance.now() - lastAck.current > 15000
@@ -944,7 +970,7 @@ export function Workspace({
     }, 2000);
     const timer = setInterval(() => {
       if (armed.current && performance.now() - lastAck.current >= 15000)
-        incident("Network recovery grace expired");
+        contactExpired();
       if (focusLostAt.current !== null) {
         if (
           (!armed.current || attemptRef.current.state !== "ACTIVE") &&
@@ -1601,7 +1627,9 @@ export function Workspace({
                   : "Reconnecting"}
               </h1>
               <p>
-                {message || "Terminal input is disabled while reconnecting."}
+                {locked
+                  ? message || "Terminal input is disabled while reconnecting."
+                  : "Terminal input is disabled while reconnecting."}
               </p>
               <b>
                 {remaining(attempt.deadline, clock)} remaining · clock continues

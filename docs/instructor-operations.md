@@ -63,6 +63,17 @@ use the explicit read-only commands below for incident state inspection. Native
 role qualification passes; broader retained-mode browser/capacity gates remain.
 See native-loaded-role-agreement.md. No deployment or mode enablement.
 
+The local negotiated-v1 session-coordination candidate now shows Reconnecting
+with input blocked when page contact/bind replies are delayed. This technical
+state does not request instructor approval or fresh SSH by itself. Fresh binding
+retries preserve the original clock and discard input entered while blocked;
+binding alone is not native work permission. Genuine policy pauses still require
+the scoped authorization/Continue workflow. Existing legacy behavior is unchanged;
+the installed retained-mode guard remains OFF. Actual browser and server-interface
+evidence, simulated-native boundary and remaining SSH-control/root capacity gates:
+retained-browser-control.md. Do not restart services, reset clocks or issue extra
+attempts merely to clear a technical page reconnect.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

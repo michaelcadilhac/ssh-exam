@@ -32,6 +32,55 @@ const inputs = (f: Awaited<ReturnType<typeof fixture>>) =>
     .map((m) => m.data)
     .join("");
 
+test("retained coordination timeout requests one fresh bind without a policy incident or queued input", async ({
+  page,
+}) => {
+  // UI timer/ownership regression, not native containment qualification. The
+  // retained-control spec separately negotiates actual WASM/native-v1 Begin.
+  const f = await fixture(page, "NONE", "student", "retained-contact-timer");
+  Object.assign(f.model.attempt, { monitoring_mode: "v1" });
+  await begin(page, f);
+  await expect(page.locator(".winbox")).toHaveCount(1);
+  await type(page, "before");
+  await expect.poll(() => inputs(f)).toBe("before");
+  const ack = gate();
+  f.model.onMonitoring = async () => {}; // Lose every coordination reply.
+  f.model.onBind = async (socket, binding) => {
+    await ack.promise;
+    socket.send(JSON.stringify({ type: "state", binding, ...f.snapshot() }));
+  };
+  try {
+    await page.clock.install();
+    await page.clock.runFor(15100);
+    const reconnecting = page.getByText("Reconnecting · input blocked", {
+      exact: true,
+    });
+    await expect(reconnecting).toBeVisible();
+    await page.clock.runFor(1500);
+    await expect.poll(() => f.model.bindings.length).toBe(2);
+    await type(page, "discarded");
+    await page.clock.runFor(5000);
+    expect(f.model.bindings).toHaveLength(2);
+    await expect(
+      page.getByRole("heading", { name: "Reconnecting", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "Instructor review required",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    expect(f.model.messages.filter((m) => m.type === "incident")).toEqual([]);
+    expect(inputs(f)).toBe("before");
+    ack.release();
+    await expect(reconnecting).toHaveCount(0);
+    await type(page, "after");
+    await expect.poll(() => inputs(f)).toBe("beforeafter");
+  } finally {
+    ack.release();
+  }
+});
+
 for (const offline of [false, true]) {
   test(`brief ${offline ? "offline event" : "socket loss"} blocks input until a fresh bind acknowledgment without changing screens`, async ({
     page,

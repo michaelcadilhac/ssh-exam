@@ -1,5 +1,15 @@
 # Paused student approval feedback
 
+October24 update: approval feedback is implemented/tested locally, with actual
+negotiated-v1 WASM Begin -> policy approval -> authenticated protocol Continue
+and preserved pane/private partial input, in addition to the existing lost-SSH,
+stale/expired/revoked/new-generation and desktop/narrow cases. All30 affected
+browser checks pass; full application/build/types and actual namespace CLI/TLS
+workflows pass. Details: retained-browser-control.md. Native shell/freeze is
+simulated in that browser fixture; actual root retention and combined capture/
+capacity remain separate requirements. The approval-feedback TODO is complete
+locally, not deployed; broader retention/liveness remain open and disabled.
+
 October22 local candidate; not deployed. This is presentation of the existing
 continuation workflow, not C3 SSH retention or permission to work. Policy pauses
 still use the legacy native disconnect/termination path until the coordinated

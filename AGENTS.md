@@ -49,6 +49,10 @@
   never clear history or relax source permissions to fit a prepared legacy base.
   Verify the requested browser fixture mode through public status before testing
   a protocol: real WASM checks require EXAM_BROWSER_SSH=1, not the Node fallback.
+  Browser fixtures serve dist/web: rebuild after browser source changes before
+  qualification. A test against stale built assets does not verify the edit.
+  Typecheck changed test fixtures before broad qualification; the production
+  server build excludes them and does not catch their type errors.
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.

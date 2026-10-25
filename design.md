@@ -2843,3 +2843,19 @@ monitoring heartbeat or active-student policy trigger. Focused, fresh actual roo
 and final native race/resource qualification pass; the broader retained browser/
 capacity gates still keep installed admission closed. See
 docs/native-loaded-role-agreement.md.
+
+The local negotiated-v1 candidate separates `/api/student/session` coordination
+from native execution permission. Missing or delayed contact/bind replies block
+browser input and request a fresh page binding; they do not create a policy lock,
+instructor-review requirement or SSH authentication loss. Existing one-use15s
+confirmations still expire, so an unbound retry receives a new socket/nonce after
+that interval rather than accepting a stale reply. The server bind and contact
+sweep keep legacy enforcement and defer v1 execution freshness to the independent
+verified native supervisor. Genuine policy/authentication loss, immutable/current
+deadlines, protected finalization and account restrictions remain authoritative.
+This is an intentional approved liveness-policy change, locally tested only.
+Actual WASM/HTTP/SSH tests cover Begin, policy approval/Continue, private partial
+input and17.5s lost bind replies. Native OS policy in that browser fixture is
+simulated; the distinct browser-SSH control socket and combined root16/64 remain
+separate gates. Installed retained admission stays OFF. See
+docs/retained-browser-control.md.

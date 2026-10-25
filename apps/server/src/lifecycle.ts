@@ -1252,7 +1252,11 @@ export class Lifecycle {
         now() - a.focus_lost_at >= FOCUS_GRACE_MS
       )
         await this.lock(a.id, FOCUS_GRACE_REASON);
-      else if (a.state === "ACTIVE" && now() - (a.last_contact || 0) > 15000)
+      else if (
+        a.monitoring_mode !== "v1" &&
+        a.state === "ACTIVE" &&
+        now() - (a.last_contact || 0) > 15000
+      )
         await this.lock(a.id, "Client contact exceeded 15 seconds");
     }
     // There is no disconnected command polling. The agent reports authoritative results.

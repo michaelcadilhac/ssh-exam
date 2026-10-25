@@ -9,6 +9,7 @@ import argon2 from "argon2";
 import { hosts } from "../fixtures/hosts.js";
 import { randomUUID, sign } from "node:crypto";
 import { verify } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { readFileSync } from "node:fs";
 import { WebSocketServer } from "ws";
 import net from "node:net";
@@ -32,6 +33,7 @@ const closureAccounts = { closure01: 10017, closure02: 10018 };
 const monitoringAccounts = { monitoring01: 10019 };
 const receiptAccounts = { receipt01: 10029 };
 const framedAccounts = { framed01: 10030 };
+const retainedAccounts = { retained01: 10031 };
 const approvalAccounts = { approval01: 10020 };
 // The sandbox repeat test deliberately leaves a reserved new preflight; expiry
 // qualification must own another account instead of bypassing that reservation.
@@ -91,7 +93,24 @@ if (relay) {
 }
 const attempts = new Map<string, any>();
 const archive = Buffer.from("TEST-FIXTURE-ARCHIVE");
+const retainedRegistrations: {
+  exam: string;
+  username: string;
+  retained_monitoring: string;
+}[] = [];
+const retainedContinuations = new Map<
+  string,
+  { generation: number; owner: any; input_epochs: Record<string, string> }
+>();
 const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
+  const monitored = op === "activate-monitored-grant-attempt";
+  if (monitored) {
+    if (attempts.get(b.id)?.exam !== "retained-control")
+      throw Error(
+        "Monitored fixture Begin requires its separate synthetic exam",
+      );
+    op = "activate-grant-attempt";
+  }
   if (
     [
       "issue-owner-channel-admission",
@@ -176,6 +195,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...monitoringAccounts,
       ...receiptAccounts,
       ...framedAccounts,
+      ...retainedAccounts,
       ...approvalAccounts,
       ...preflightAccounts,
       ...versionAccounts,
@@ -296,6 +316,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
     case "activate-additional-grant-attempt":
     case "activate-practice-grant-attempt":
     case "activate-attempt":
+      let initialOwner: any;
       if (
         a.settings.template_version &&
         (![
@@ -326,9 +347,22 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           throw Error("Grant-aware Begin and exact binding required");
         const nonce = hash(randomUUID()),
           boot = "77777777-1234-4234-8234-123456789abc";
+        if (monitored)
+          initialOwner = {
+            attempt: a.id,
+            exam: a.exam,
+            username: a.username,
+            uid: a.uid,
+            transport_hash: a.transport,
+            boot,
+            page_epoch: b.page_epoch,
+            input_epoch: hash(randomUUID()),
+            generation: a.generation,
+            clock_revision: a.clock_revision || 0,
+          };
         const payload = Buffer.from(
           JSON.stringify({
-            type: "grant-begin/v2",
+            type: monitored ? "grant-begin/v3" : "grant-begin/v2",
             agent: "class",
             nonce,
             at: Date.now(),
@@ -342,6 +376,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
             boot,
             settings: a.settings,
             ...(b.page_epoch ? { page_epoch: b.page_epoch } : {}),
+            ...(initialOwner ? { initial_owner: initialOwner } : {}),
           }),
         );
         const response = await app.inject({
@@ -386,7 +421,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
             readFileSync(h.agentConfig.signingKey),
             Buffer.from(frame.signature, "base64"),
           ) ||
-          reply.type !== "grant-begin/v2" ||
+          reply.type !== (monitored ? "grant-begin/v3" : "grant-begin/v2") ||
           reply.nonce !== nonce ||
           reply.attempt !== a.id ||
           reply.intent !== b.grant_begin_intent ||
@@ -400,6 +435,14 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           JSON.stringify(reply.grant) !== JSON.stringify(a.grant)
         )
           throw Error("Bad signed browser-fixture Begin response");
+        if (
+          monitored &&
+          (reply.bootstrap?.type !== "monitoring-bootstrap/v1" ||
+            !isDeepStrictEqual(reply.bootstrap.owner, initialOwner) ||
+            reply.bootstrap.sequence !== 1 ||
+            !/^[a-f0-9]{64}$/.test(reply.bootstrap.coverage_epoch || ""))
+        )
+          throw Error("Bad signed browser-fixture monitoring bootstrap");
         a.grant_begin_intent = b.grant_begin_intent;
       }
       if (!a.workspace) throw Error("Private workspace not staged");
@@ -414,8 +457,13 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       a.original_deadline = a.deadline;
       a.clock_revision = 0;
       a.clock_resets = [];
+      if (monitored) {
+        a.monitoring_mode = "v1";
+        a.terminal_supervised = true;
+        a.boot = initialOwner.boot;
+      }
       if (b.page_epoch && a.grant)
-        a.registered_owner = {
+        a.registered_owner = initialOwner || {
           attempt: a.id,
           exam: a.exam,
           username: a.username,
@@ -489,6 +537,103 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       a.transport = b.transport;
       a.resumeTransport = b.transport;
       break;
+    case "consume-monitored-continuation": {
+      if (
+        a.exam !== "retained-control" ||
+        a.monitoring_mode !== "v1" ||
+        !a.registered_owner ||
+        b.generation !== a.generation ||
+        b.page_epoch !== a.registered_owner.page_epoch
+      )
+        throw Error("Retained native fixture owner/generation/page mismatch");
+      const cached = retainedContinuations.get(a.id);
+      if (
+        cached &&
+        a.state === "ACTIVE" &&
+        cached.generation === b.generation &&
+        isDeepStrictEqual(cached.owner, a.registered_owner)
+      )
+        return { attempt: a, input_epochs: cached.input_epochs };
+      if (a.state !== "LOCKED" || a.deadline <= Date.now())
+        throw Error("Retained native fixture is not eligible for continuation");
+      const previous = a.registered_owner,
+        owner = {
+          ...previous,
+          generation: a.generation,
+          input_epoch: hash(randomUUID()),
+        },
+        nonce = hash(randomUUID());
+      const payload = Buffer.from(
+        JSON.stringify({
+          type: "monitoring-continue/v1",
+          agent: "class",
+          nonce,
+          previous_owner: previous,
+          owner,
+        }),
+      );
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/agent/monitoring-continue",
+        headers: {
+          "content-type": "application/vnd.ssh-exam-event",
+          "x-exam-signature": sign(null, payload, h.callbackKey).toString(
+            "base64",
+          ),
+        },
+        payload,
+      });
+      if (response.statusCode !== 200)
+        throw Error(
+          "Fresh browser-fixture continuation refused: " +
+            response.statusCode +
+            " " +
+            response.body,
+        );
+      const frame = response.json(),
+        signed = Buffer.from(frame.payload, "base64"),
+        reply = JSON.parse(signed.toString());
+      if (
+        !verify(
+          null,
+          signed,
+          readFileSync(h.agentConfig.signingKey),
+          Buffer.from(frame.signature, "base64"),
+        ) ||
+        reply.type !== "monitoring-continue/v1" ||
+        reply.nonce !== nonce ||
+        !isDeepStrictEqual(reply.previous_owner, previous) ||
+        !isDeepStrictEqual(reply.owner, owner) ||
+        reply.expires <= Date.now() ||
+        reply.expires > reply.authorization_expires ||
+        reply.bootstrap?.type !== "monitoring-bootstrap/v1" ||
+        !isDeepStrictEqual(reply.bootstrap.owner, owner) ||
+        reply.bootstrap.sequence !== 1 ||
+        !/^[a-f0-9]{64}$/.test(reply.bootstrap.coverage_epoch || "") ||
+        !Number.isSafeInteger(reply.capture_valid_for_ms) ||
+        reply.capture_valid_for_ms <= 0 ||
+        reply.capture_valid_for_ms > 15000
+      )
+        throw Error("Bad signed browser-fixture continuation proof");
+      const panes = [...h.activePanes.values()].filter(
+          (p) => p.attempt === a.id,
+        ),
+        input_epochs: Record<string, string> = {};
+      if (!panes.length || panes.some((p) => !p.changeInputEpoch))
+        throw Error("No retained synthetic native pane to continue");
+      for (const pane of panes) input_epochs[pane.pane] = hash(randomUUID());
+      for (const pane of panes) pane.changeInputEpoch!(input_epochs[pane.pane]);
+      a.registered_owner = owner;
+      a.state = "ACTIVE";
+      a.retained_hold = undefined;
+      a.monitoring_resume_nonce = nonce;
+      retainedContinuations.set(a.id, {
+        generation: a.generation,
+        owner,
+        input_epochs,
+      });
+      return { attempt: a, input_epochs };
+    }
     case "consume-continuation":
       if (!a.authorization) throw Error("Not authorized");
       if (!a.resumeTransport) throw Error("Fresh SSH required");
@@ -605,6 +750,14 @@ h.control.dropReply = (frame) =>
 h.control.command = async (op, b, frame) => {
   if (op === "register") {
     const result = await fixtureCall(op, b);
+    if (b.exam === "retained-control") {
+      retainedRegistrations.push({
+        exam: b.exam,
+        username: frame?.username || "",
+        retained_monitoring: "v1",
+      });
+      return { ...result, framed_pane_input: "v1", retained_monitoring: "v1" };
+    }
     if (b.exam === "framed-input")
       return { ...result, framed_pane_input: "v1" };
     return b.exam === "monitoring-receipt"
@@ -754,6 +907,20 @@ definitions.create(
 new RosterManagement(store, undefined, "class").add(
   "framed-input",
   { username: "framed01" },
+  "fixture-operator",
+);
+definitions.create(
+  {
+    ...exam,
+    id: "retained-control",
+    name: "Negotiated retained browser control",
+    template_version: versionHash,
+  },
+  "fixture-operator",
+);
+new RosterManagement(store, undefined, "class").add(
+  "retained-control",
+  { username: "retained01" },
   "fixture-operator",
 );
 definitions.create(
@@ -947,6 +1114,7 @@ store.db
   .run("temporary-access", "policytest01", null, null, null, 12001);
 // Disposable browser-test instrumentation only; never part of the production app.
 app.get("/api/fixture/runtime", async () => ({
+  retainedRegistrations,
   framedInput: h.control.framed,
   renewalReceipts: {
     recovered: recoveredRenewalReceipts,

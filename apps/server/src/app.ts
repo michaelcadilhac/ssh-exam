@@ -2955,6 +2955,7 @@ export async function createApp(
             throw Error("Existing page owns attempt");
           }
           if (
+            a.monitoring_mode !== "v1" &&
             a.last_contact &&
             now() - a.last_contact > 15000 &&
             a.state === "ACTIVE"

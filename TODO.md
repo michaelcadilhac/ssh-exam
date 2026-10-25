@@ -17,10 +17,21 @@ Final native races/resources/default-size PASS core542.378s/CLI28.406s; focused
 protocol/root metadata/Begin refusal+repair, mutation control, build/vet,43 Python
 and13 callback integration tests pass. The observer never becomes an active-
 student heartbeat. See docs/native-loaded-role-agreement.md. Installed retained
-admission remains OFF: actual negotiated-v1 browser/control recovery and combined
-real capture/root16/64 qualification remain. Existing real WASM approval coverage
-uses legacy registration; the v1 UI case mocks state. Do not count either as the
-missing combined v1 workflow. No deployment or broad checkbox closure.
+admission remains OFF: distinct browser-SSH control recovery and combined real
+capture/root16/64 qualification remain. Negotiated-v1 session coordination is now
+qualified below; its simulated native shell is not the missing combined root
+workflow. No deployment or broad liveness-checkbox closure.
+
+October24 actual negotiated-v1 browser Begin/policy approval/Continue and delayed
+session-bind recovery are implemented/tested locally. A reproduced17.5s missing
+reply no longer becomes an instructor-review demand: input stays blocked, stale
+bindings expire and a fresh nonce recovers the SAME authenticated pane/private
+partial command without replay or clock change. Legacy policy, actual focus loss
+and deadline enforcement remain. Full577 application checks plus the2 separately
+enabled namespace CLI/TLS checks,30 affected browser scenarios, final typed-fixture
+focus and build/typecheck pass. The approval-feedback item is complete locally;
+SSH-control timers, native combined capture/capacity and broader liveness remain
+open. See docs/retained-browser-control.md. Nothing is deployed or enabled.
 
 October24 coordinator/re-hold recovery is implemented/tested locally. A lost
 coordinator acknowledgement now completes the same live supervisor intent and
@@ -1121,10 +1132,10 @@ fresh authentication after actual ownership/transport loss remain intact.
 Coordinated implementation and containment/liveness tests are still outstanding;
 the approval is not a production change or a completed investigation.
 
-- [ ] **Reflect instructor approval immediately on the paused student page.**
-  The status endpoint already returns `authorization`, but the workspace status
-  handler ignores it and continues showing generic instructor-review messaging
-  after approval. Show distinct waiting, approved, expired/revoked and resumed
+- [x] **Reflect instructor approval immediately on the paused student page.**
+  The former workspace status handler ignored the returned `authorization` and
+  continued showing generic instructor-review messaging after approval. Show
+  distinct waiting, approved, expired/revoked and resumed
   states, using the current attempt/generation and server time. Promptly reflect
   instructor approval without a page reload or another review request. Clearly
   list the remaining steps: reconnect SSH only if necessary, restore missing
@@ -1143,7 +1154,14 @@ the approval is not a production change or a completed investigation.
   build/typecheck, all111 expanded browser checks and six desktop/narrow/clock
   follow-up browser cases pass. Retained-path fixtures prove presentation only,
   not actual C3
-  buffers/freeze; this checkbox stays open. See docs/student-continuation-status.md.
+  buffers/freeze; that evidence originally kept this checkbox open. Current
+  October24 negotiated-v1 WASM Begin -> actual web approval -> native-protocol
+  Continue now preserves the authenticated pane and a private partial command,
+  while the existing live/lost paths, stale/expiry/new-generation and narrow-page
+  cases pass the affected30-browser run. This closes approval feedback locally;
+  native OS policy is simulated in that browser fixture. The separate retained
+  SSH, all-writer and combined capacity requirements remain open/disabled. See
+  docs/student-continuation-status.md and docs/retained-browser-control.md.
 
   A separate confirmed browser queue bug is fixed/tested locally: closing a pane
   invalidates unsent input and late errors before a replacement reuses its UI ID.

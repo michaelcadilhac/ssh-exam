@@ -68,7 +68,10 @@ export async function hosts(
   const authCalls = { jump: 0, class: 0 };
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const counts = { jump: 0, class: 0, panes: 0 };
-  const activePanes = new Map<string, { attempt: string; pane: string }>();
+  const activePanes = new Map<
+    string,
+    { attempt: string; pane: string; changeInputEpoch?: (next: string) => void }
+  >();
   const caps = new Map<string, any>();
   const clients: any[] = [];
   let classPort = 0;
@@ -409,8 +412,27 @@ export async function hosts(
                 else {
                   counts.panes++;
                   const key = transportID + ":" + cap.pane;
-                  activePanes.set(key, { attempt: cap.id, pane: cap.pane });
-                  stream.once("close", () => activePanes.delete(key));
+                  const incarnation = {
+                    attempt: cap.id,
+                    pane: cap.pane,
+                    changeInputEpoch(next: string) {
+                      if (
+                        !/^[a-f0-9]{64}$/.test(next) ||
+                        !inputEpoch ||
+                        activePanes.get(key) !== incarnation
+                      )
+                        throw Error(
+                          "Synthetic native pane incarnation changed",
+                        );
+                      inputEpoch = next;
+                      inputSequence = 0;
+                    },
+                  };
+                  activePanes.set(key, incarnation);
+                  stream.once("close", () => {
+                    if (activePanes.get(key) === incarnation)
+                      activePanes.delete(key);
+                  });
                   const result = {
                     attempt: cap.id,
                     pane: cap.pane,
