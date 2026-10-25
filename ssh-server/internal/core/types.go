@@ -239,11 +239,12 @@ type Engine struct {
 	paneSetupCheckpoint       func() error
 	paneStart                 func() error
 	paneBootstrapStart        func(*exec.Cmd, *net.UnixConn, *os.File, string, PaneInstance) (*paneBootstrapPeer, bool, error)
-	paneReleaseCheckpoint     func(string) error      // Test-only durable-tracking/final-exec barrier; never configurable.
-	terminalFailureCheckpoint func(string)            // Test-only recorder fault barriers; never configurable.
-	terminalHandoffCheckpoint func()                  // Test-only actual admission boundary; never configurable.
-	healthProbe               func() (bool, []string) // Test-only dependency seam; never configurable.
-	templateVerify            func(Settings) error    // Test replacement never exposed in config/environment.
+	paneReleaseCheckpoint     func(string) error               // Test-only durable-tracking/final-exec barrier; never configurable.
+	terminalFailureCheckpoint func(string)                     // Test-only recorder fault barriers; never configurable.
+	terminalHandoffCheckpoint func()                           // Test-only actual admission boundary; never configurable.
+	healthProbe               func() (bool, []string)          // Test-only dependency seam; never configurable.
+	nativeRolesProbe          func() (*nativeRoleGuard, error) // Test-only owned-scope seam; never configurable.
+	templateVerify            func(Settings) error             // Test replacement never exposed in config/environment.
 }
 
 // Tests replace this factory in test-only code. There is no configuration or

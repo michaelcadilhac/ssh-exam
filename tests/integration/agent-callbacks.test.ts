@@ -502,17 +502,27 @@ it("keeps the original deadline immutable and rejects unverified success", async
 it("stores registry callbacks for instructor rosters without a separate connection", async () => {
   const t = await setup();
   try {
+    const nativeRoles = {
+      observation_only: true,
+      complete: false,
+      retained_enabled: false,
+      observed: Date.now(),
+      roles: [],
+      issues: ["watchdog loaded configuration mismatch; preserve the current attempt"],
+    };
     expect(
       (
         await t.post(1, {
           attempt: undefined,
           manifest: undefined,
-          health: { ready: true },
+          health: { ready: true, native_roles: nativeRoles },
           accounts: { alice: 1001 },
         })
       ).statusCode,
     ).toBe(200);
     const agent = new Agent(t.config.agent, t.current().store);
+    expect(await agent.call("health", {})).toEqual({ ready: true, native_roles: nativeRoles });
+    expect(agent.configurationHealth()).toEqual({ ready: true, native_roles: nativeRoles });
     expect(
       await agent.call("resolve-course-accounts", { usernames: ["alice"] }),
     ).toEqual({ alice: 1001 });

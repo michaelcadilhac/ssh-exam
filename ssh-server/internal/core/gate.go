@@ -20,10 +20,11 @@ import (
 )
 
 type LocalRequest struct {
-	InputProtocol string       `json:"input_protocol,omitempty"`
-	Token         string       `json:"token"`
-	Ordinary      bool         `json:"ordinary"`
-	Command       *SignedFrame `json:"command,omitempty"`
+	NativeRoleNonce string       `json:"native_role_nonce,omitempty"`
+	InputProtocol   string       `json:"input_protocol,omitempty"`
+	Token           string       `json:"token"`
+	Ordinary        bool         `json:"ordinary"`
+	Command         *SignedFrame `json:"command,omitempty"`
 }
 
 // Only the actual exam-login ready publisher calls this. The private hook lets
@@ -131,6 +132,12 @@ func (e *Engine) local(c *net.UnixConn) {
 	}
 	var r LocalRequest
 	if json.Unmarshal(buf[:n], &r) != nil {
+		return
+	}
+	if r.NativeRoleNonce != "" {
+		if len(descriptors.files) == 0 && flags&(syscall.MSG_TRUNC|syscall.MSG_CTRUNC) == 0 {
+			e.replyNativeRole(c, buf[:n], "agent")
+		}
 		return
 	}
 	if (r.Command != nil || r.Ordinary) && len(descriptors.files) != 0 {

@@ -166,6 +166,24 @@ class Connection:
                 else:
                     descriptor=os.open('/run/qualification-framed-grant.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
                     with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry)
+            if a.retained_policy and not issued:
+                from overlay_guest import guest_watchdog_override, native_role_snapshot
+                receipt_bytes=(base/'workspace-ready/receipt.json').read_bytes()
+                with guest_watchdog_override('/usr/local/sbin/exam-agent'):
+                    mismatch=native_role_snapshot(config)
+                    assert mismatch['agent']['hash']==mismatch['watchdog']['hash'] and mismatch['agent']['exe']!=mismatch['watchdog']['exe']
+                    try:
+                        self.command('activate-monitored-grant-attempt',activation)
+                        raise AssertionError('mixed loaded watchdog consumed the grant/clock')
+                    except RuntimeError as error:
+                        assert 'live native agent/watchdog agreement' in str(error),error
+                    refused=info(id)
+                    assert all(refused.get(k)==staged.get(k) for k in ('start','deadline','original_deadline','grant','grant_begin_intent','workspace','settings','transport'))
+                    assert not (base/'work').exists() and (base/'workspace-ready/work').stat().st_ino==staged_inode
+                    assert (base/'workspace-ready/receipt.json').read_bytes()==receipt_bytes
+                repaired=native_role_snapshot(config)
+                assert repaired['agent']['hash']==repaired['watchdog']['hash'] and repaired['agent']['exe']==repaired['watchdog']['exe']
+                ok('actual signed Begin refuses a positively observed mixed loaded watchdog before clock/grant/work publication; exact source and intent remain retryable after private repair')
             self.command('activate-monitored-additional-grant-attempt' if issued and a.retained_policy else 'activate-monitored-grant-attempt' if a.retained_policy else 'activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
             begun=info(id)
             assert begun['deadline']-begun['start']==duration*1000 and begun['original_deadline']==begun['deadline']

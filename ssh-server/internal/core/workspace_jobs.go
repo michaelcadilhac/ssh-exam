@@ -394,6 +394,15 @@ func (e *Engine) activatePreparedNative(snapshot *Attempt, expires int64, origin
 		}
 		return snapshot, nil
 	}
+	var roles *nativeRoleGuard
+	if original != nil {
+		var err error
+		roles, err = e.prepareNativeRoles()
+		if err != nil {
+			return nil, err
+		}
+		defer roles.close()
+	}
 	intent := ""
 	if snapshot.Grant != nil {
 		if len(grantIntent) < 1 || !attemptID.MatchString(grantIntent[0]) {
@@ -517,6 +526,9 @@ func (e *Engine) activatePreparedNative(snapshot *Attempt, expires int64, origin
 			if a.State != "PREPARING" {
 				return errors.New("preparation expired before actual grant start; no interval committed; confirm cancellation before retry")
 			}
+		}
+		if original != nil && !roles.current() {
+			return errNativeRoles
 		}
 		commitStart(a, startedAt, uptime(), boot())
 		if pending != nil {

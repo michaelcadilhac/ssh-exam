@@ -8,6 +8,20 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October24 live native-role agreement is implemented/tested locally. `examctl
+health` challenges the actual loaded agent/watchdog; monitored Begin preserves
+the same staged source/grant/intent and consumes no time on disagreement or
+process loss. Fresh guarded root36 plus actual release-CLI configuration,
+executable and both temporary-writer cgroup cases pass with FULL preservation.
+Final native races/resources/default-size PASS core542.378s/CLI28.406s; focused
+protocol/root metadata/Begin refusal+repair, mutation control, build/vet,43 Python
+and13 callback integration tests pass. The observer never becomes an active-
+student heartbeat. See docs/native-loaded-role-agreement.md. Installed retained
+admission remains OFF: actual negotiated-v1 browser/control recovery and combined
+real capture/root16/64 qualification remain. Existing real WASM approval coverage
+uses legacy registration; the v1 UI case mocks state. Do not count either as the
+missing combined v1 workflow. No deployment or broad checkbox closure.
+
 October24 coordinator/re-hold recovery is implemented/tested locally. A lost
 coordinator acknowledgement now completes the same live supervisor intent and
 reattaches monitoring, preserving approval, epochs, buffers and original time.
@@ -21,7 +35,7 @@ for its peers. Positive pidfd/pinned-kernel retirement and surviving-epoch resul
 now pass fresh root35/FULL preservation, including cached three-pane preparation;
 final native races/resources/default-size PASS core527.227s/CLI31.847s.
 See docs/retained-pane-retirement.md.
-Loaded-role, remaining control-loss and combined16/64 gates keep admission OFF.
+Remaining negotiated-v1 browser/control-loss and combined16/64 gates keep admission OFF.
 No deployment or broad checkbox closure; prior recovery evidence is in
 docs/retained-continuation-recovery.md.
 

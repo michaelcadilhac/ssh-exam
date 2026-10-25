@@ -48,6 +48,21 @@ and repair the reported condition; never delete state/cgroup paths to clear it.
 Actual guarded-root closure/retry and final native race/resource checks pass.
 See retained-pane-retirement.md. Retained mode remains disabled and undeployed.
 
+The local `examctl health` candidate adds `native_roles`: `observation_only`,
+`observed`, `complete`, named `roles` and actionable `issues`. This separately
+checks the live root agent/watchdog's executable and loaded configuration; it is
+an interval observation, not permission or proof that retained mode is enabled.
+`retained_enabled` remains false. Cached web health keeps the observation's age;
+actual monitored Begin independently rechecks roles before consuming time/grants.
+A mismatch is technical unavailability, never a student violation. Preserve the
+same intent/work and inspect the named role. Do not restart needed services, clear
+lock/socket files or remove temporary PTY owners to make health pass; follow the
+separately authorized verified-drain runbook. Observer failure does not stop the
+watchdog's deadline enforcement. Legacy health initialization behavior is unchanged;
+use the explicit read-only commands below for incident state inspection. Native
+role qualification passes; broader retained-mode browser/capacity gates remain.
+See native-loaded-role-agreement.md. No deployment or mode enablement.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/

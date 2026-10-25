@@ -184,11 +184,19 @@ func testHealthActualCompiledRootCLIWithHeldDependency(t *testing.T, holdNSS boo
 		t.Fatal("health remained blocked after exact release")
 	}
 	var result struct {
-		Ready        bool     `json:"ready"`
-		Capabilities []string `json:"capabilities"`
+		Ready        bool            `json:"ready"`
+		Capabilities []string        `json:"capabilities"`
+		NativeRoles  json.RawMessage `json:"native_roles"`
 	}
 	if json.Unmarshal(output.Bytes(), &result) != nil || result.Ready || len(result.Capabilities) == 0 {
 		t.Fatal("synthetic host incorrectly claimed production readiness", output.String())
+	}
+	if len(result.NativeRoles) == 0 {
+		t.Fatal("actual health CLI omits live native-role agreement and actionable unavailable observation", output.String())
+	}
+	var roles core.NativeRoleObservation
+	if json.Unmarshal(result.NativeRoles, &roles) != nil || !roles.ObservationOnly || roles.Complete || roles.RetainedEnabled || len(roles.Issues) == 0 || len(roles.Roles) != 0 {
+		t.Fatal("actual health CLI promoted an unavailable synthetic cohort into live permission", string(result.NativeRoles))
 	}
 	var saved core.State
 	data, err := os.ReadFile(statePath)

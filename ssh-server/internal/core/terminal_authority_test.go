@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -45,12 +46,24 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
+	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
 			t.Cleanup(func() { terminalAuthorityReadiness = previous })
 			e, key, r := initialGrantUnpreparedFixture(t)
+			e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return &nativeRoleGuard{}, nil } // Desktop role/group seam; real root profile uses production probing.
+			var stopRole func()
+			if mode == "roles-unavailable" {
+				e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return nil, errNativeRoles }
+			}
+			if mode == "roles-exited" {
+				guard, stop := testNativeRoleLifetime(t)
+				stopRole = stop
+				e.nativeRolesProbe = func() (*nativeRoleGuard, error) {
+					return &nativeRoleGuard{peers: []*monitoringProcessGuard{guard}}, nil
+				}
+			}
 			t.Setenv("EXAM_TEST_REFUSE_RESUME_COMMIT", filepath.Join(e.Config.State, "synthetic-resume-commit-refusal"))
 			r.Transport, r.BrowserSSH = strings.Repeat("a", 64), true
 			if err := e.WithState(func() error { e.state.Registrations[r.Transport] = r.Username; return nil }); err != nil {
@@ -74,7 +87,9 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				}
 				_ = exec.CommandContext(ctx, "/usr/bin/systemctl", "--user", "reset-failed", unit).Run()
 			}
-			t.Cleanup(stop)
+			if mode != "roles-unavailable" {
+				t.Cleanup(stop)
+			}
 			if mode == "ssh-pin-refused" {
 				t.Setenv("EXAM_TEST_REFUSE_SSH_PIN", filepath.Join(e.Config.State, "synthetic-ssh-pin-refusal"))
 			}
@@ -86,6 +101,9 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			captured := make(chan grantBeginReply, 1)
 			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
 				calls.Add(1)
+				if stopRole != nil {
+					stopRole()
+				}
 				if reply.Type != "grant-begin/v3" || reply.Bootstrap == nil {
 					t.Error("actual monitored Begin missed scoped TLS bootstrap")
 					return reply, 400
@@ -148,6 +166,32 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			cmd.Body.GrantBeginIntent, cmd.Body.PageEpoch = "44444444-1234-4234-8234-123456789abc", strings.Repeat("b", 64)
 			before := Millis()
 			_, err = e.command(signedCommand(key, cmd), r.Username, r.Transport, 0, original)
+			expectedCalls := int32(1)
+			if mode == "roles-unavailable" || mode == "roles-exited" {
+				wantCalls := int32(0)
+				if mode == "roles-exited" {
+					wantCalls = 1
+				}
+				if !errors.Is(err, errNativeRoles) || calls.Load() != wantCalls {
+					t.Fatal("role refusal missed pre-clock boundary", err, calls.Load())
+				}
+				assertUnstartedWorkspace(t, e, r.ID)
+				if wantCalls == 1 {
+					select {
+					case <-captured:
+					default:
+						t.Fatal("exited-role fixture missed its complete authenticated reply")
+					}
+				}
+				e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return &nativeRoleGuard{}, nil } // Repair only this synthetic role fixture.
+				if mode == "roles-unavailable" {
+					t.Cleanup(stop)
+				}
+				cmd.Nonce = Token()
+				before = Millis()
+				_, err = e.command(signedCommand(key, cmd), r.Username, r.Transport, 0, original)
+				expectedCalls = wantCalls + 1
+			}
 			if mode == "ssh-pin-refused" {
 				marker, markerErr := os.ReadFile(filepath.Join(e.Config.State, "synthetic-ssh-pin-refusal"))
 				if err == nil || markerErr != nil || string(marker) != "original-socket-ssh-pin-reached" || calls.Load() != 0 {
@@ -156,7 +200,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				assertUnstartedWorkspace(t, e, r.ID)
 				return
 			}
-			if calls.Load() != 1 {
+			if calls.Load() != expectedCalls {
 				t.Fatal("fixture missed authenticated native TLS stage", calls.Load(), err)
 			}
 			if mode == "wrong-bootstrap" {

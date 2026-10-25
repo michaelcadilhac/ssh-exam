@@ -875,6 +875,17 @@ func (e *Engine) Cutoff() error {
 	return errors.Join(failures...)
 }
 func (e *Engine) Watch() {
+	stopObserver := make(chan struct{})
+	defer close(stopObserver)
+	go func() {
+		closeObserver, err := e.startWatchdogRoleObserver()
+		if err != nil {
+			log.Printf("live watchdog role observation unavailable; deadline enforcement continues: %v", err)
+			return
+		}
+		<-stopObserver
+		closeObserver()
+	}()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	policy := make(chan struct{}, 1)

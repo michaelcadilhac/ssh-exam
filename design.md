@@ -2828,3 +2828,18 @@ the same nonce/owner/approval age and original interval. Actual root CLI closure
 and surviving-shell/private-buffer Continue pass35 guarded assertions with FULL
 host/base preservation and final native race/resource qualification. Installed
 admission remains closed. See docs/retained-pane-retirement.md.
+
+The local live-role candidate adds root-only challenged observations to the
+existing command socket and a private watchdog observation endpoint. Native health
+reports loaded executable/configuration agreement separately from overall legacy
+readiness; an old cached report is never admission authority. Fresh monitored
+Begin pins the matching running coordinator/watchdog and rechecks their process
+lifetimes before commitStart, refusing disagreement without consuming the grant
+or publishing work. Temporary legacy writers refuse new-mode admission while
+their cgroups remain populated/unverified. The observer has bounded independent
+responders and cannot stop the deadline loop on startup failure. Its lock/socket
+are coordination metadata, never a student claim or work permit. There is no new
+monitoring heartbeat or active-student policy trigger. Focused, fresh actual root
+and final native race/resource qualification pass; the broader retained browser/
+capacity gates still keep installed admission closed. See
+docs/native-loaded-role-agreement.md.

@@ -19,6 +19,18 @@ handover, independent failure, loaded native roles and16/64 capacity boundaries
 before proposing enablement. Passing local regression suites does not satisfy
 those privileged gates. No part of this plan authorizes deployment.
 
+The local live-role increment adds no SQL/canonical-attempt migration or new
+configuration field. Its private watchdog-role.lock/socket are observation
+coordination, never execution permission; do not delete a live owner's endpoint
+to force agreement. A future drained matched-role rollout must qualify actual
+agent/watchdog loaded executable/configuration agreement through fresh health
+and Begin, including older/mismatched roles and same-intent full-allowance retry.
+An older watchdog cannot satisfy this protocol. Do not downgrade one writer
+under active new-mode work or restore a saved health report as permission.
+Temporary-agent consolidation remains the separately authorized positive-drain
+procedure below, unexecuted. See native-loaded-role-agreement.md for current
+local evidence and remaining gates; retained admission is still OFF.
+
 This candidate adds SQLite migration030: existing started attempts are marked
 legacy; v1 runtime and pending/unverified/held/resuming fields are observations
 only. It does not convert active/historical intervals or create a grant/clock.

@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """Candidate checks INSIDE the disposable overlay, never on the class host."""
+from contextlib import contextmanager
+import hashlib
 import json
 import os
 from pathlib import Path
 import pwd
+import re
+import select
 import shutil
+import socket
 import stat
+import struct
 import subprocess
 import tempfile
+import time
 import traceback
+import uuid
 
 INPUT = Path('/run/ssh-exam-qualification-input')
 OUTPUT = Path('/run/ssh-exam-qualification-output')
@@ -137,6 +145,167 @@ def monitoring_owner_command():
             '-test.timeout=60s']
 
 
+def native_role_snapshot(config):
+    """Positive direct protocol/peer stage before using health as the oracle."""
+    result = {}
+    for role, path, unit in (
+            ('agent', config['socket'], 'exam-agent.service'),
+            ('watchdog', str(Path(config['state']) / 'watchdog-role.sock'), 'exam-deadline-watchdog.service')):
+        until = time.monotonic() + 10
+        while True:
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+                    connection.settimeout(2)
+                    connection.connect(path)
+                    pid, uid, gid = struct.unpack('3i', connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
+                    assert pid > 1 and uid == gid == 0
+                    assert Path('/proc/' + str(pid) + '/cgroup').read_text() == '0::/system.slice/' + unit + '\n'
+                    nonce = uuid.uuid4().hex + uuid.uuid4().hex
+                    connection.sendall(json.dumps({'native_role_nonce': nonce}).encode() + b'\n')
+                    data = b''
+                    while True:
+                        chunk = connection.recv(4097 - len(data))
+                        if not chunk:
+                            break
+                        data += chunk
+                        assert len(data) <= 4096
+                    reply = json.loads(data)
+                    assert set(reply) == {'purpose', 'role', 'nonce', 'boot', 'config_hash'}
+                    assert reply['purpose'] == 'native-loaded-role/v1' and reply['role'] == role and reply['nonce'] == nonce
+                    assert reply['boot'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+                    assert len(reply['config_hash']) == 64
+                    executable = Path('/proc/' + str(pid) + '/exe').stat()
+                    result[role] = {'hash': reply['config_hash'], 'exe': (executable.st_dev, executable.st_ino), 'pid': pid}
+                break
+            except (ConnectionError, FileNotFoundError, socket.timeout):
+                if time.monotonic() >= until:
+                    raise
+                time.sleep(.05)
+    return result
+
+
+def restart_guest_watchdog(stage):
+    # Intentionally replacing an idle synthetic service repeatedly must not
+    # exhaust its real start-rate limit. Do not reset/disable that protection.
+    unit = 'exam-deadline-watchdog.service'
+    properties = subprocess.run(['systemctl', 'show', unit,
+                                 '--property=StartLimitIntervalUSec,ExecMainStartTimestampMonotonic'],
+                                capture_output=True, text=True, check=True, timeout=10)
+    values = dict(line.split('=', 1) for line in properties.stdout.splitlines())
+    interval = values['StartLimitIntervalUSec'].replace(' ', '')
+    parts = re.findall(r'([0-9]+(?:\.[0-9]+)?)(min|ms|us|µs|s|h)', interval)
+    assert interval == '0' or ''.join(number + unit for number, unit in parts) == interval, 'Unknown private service start-limit duration'
+    seconds = sum(float(number) * {'us': .000001, 'µs': .000001, 'ms': .001, 's': 1, 'min': 60, 'h': 3600}[unit] for number, unit in parts)
+    assert 0 <= seconds <= 30, 'Private restart fixture requires an explicitly bounded start-rate interval'
+    last = int(values['ExecMainStartTimestampMonotonic']) / 1000000
+    remaining = max(0, seconds + .25 - (time.monotonic() - last)) if last else 0
+    assert remaining <= 30.25
+    if remaining:
+        print('PRIVATE_WATCHDOG_RESTART_SPACING', stage, round(remaining, 3), flush=True)
+        time.sleep(remaining)
+    result = subprocess.run(['systemctl', 'restart', unit], capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        diagnostics = subprocess.run(['systemctl', 'show', unit,
+                                      '--property=Result,ExecMainCode,ExecMainStatus,ActiveState,SubState,NRestarts,StartLimitIntervalUSec,StartLimitBurst'],
+                                     capture_output=True, text=True, timeout=10)
+        print('PRIVATE_WATCHDOG_RESTART_FAILURE', stage, result.stdout[:1024], result.stderr[:2048], diagnostics.stdout[:4096], flush=True)
+        result.check_returncode()
+
+
+@contextmanager
+def guest_watchdog_override(executable, config_path='/etc/exam-agent/agent.json'):
+    """Only this guarded disposable guest, before any exam has started."""
+    assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
+    assert INPUT.is_mount() and OUTPUT.is_mount()
+    marker = json.loads((INPUT / 'run.json').read_text())
+    assert marker['profile'] in ('retained-policy', 'loaded-roles') and marker['username'] == 'examq'
+    config = json.loads(Path('/etc/exam-agent/agent.json').read_text())
+    state = json.loads((Path(config['state']) / 'state.json').read_text())
+    assert all(a['state'] in ('COMPLETED', 'CANCELLED_BEFORE_START') or (a['state'] == 'PREPARING' and not a['start']) for a in state['attempts'].values())
+    assert executable.startswith('/') and config_path.startswith('/') and all(c not in executable + config_path for c in (' ', '\n', '\r'))
+    parent = Path('/etc/systemd/system/exam-deadline-watchdog.service.d')
+    parent.mkdir(mode=0o755, exist_ok=True)
+    override = parent / ('99-private-role-check-' + uuid.uuid4().hex + '.conf')
+    descriptor = os.open(override, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, 'w') as output:
+        identity = os.fstat(output.fileno())
+        output.write('[Service]\nExecStart=\nExecStart=' + executable + ' -config ' + config_path + ' -watchdog\n')
+    try:
+        subprocess.run(['systemctl', 'daemon-reload'], check=True, timeout=15)
+        restart_guest_watchdog('substitute')
+        yield
+    finally:
+        current = override.lstat()
+        assert (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino)
+        override.unlink()  # Exact newly owned private-guest drop-in only.
+        subprocess.run(['systemctl', 'daemon-reload'], check=True, timeout=15)
+        restart_guest_watchdog('restore')
+
+
+def qualify_loaded_role_cli(config):
+    def health(expected, issue=None):
+        output = subprocess.run(['examctl', 'health'], capture_output=True, text=True, check=True, timeout=45)
+        roles = json.loads(output.stdout)['native_roles']
+        assert roles['observation_only'] and not roles['retained_enabled'] and roles['complete'] == expected, roles
+        assert (roles['roles'] == ['agent', 'watchdog'] and not roles['issues']) if expected else (not roles['roles'] and roles['issues'])
+        if issue:
+            assert any(issue in message for message in roles['issues']), roles
+    original = native_role_snapshot(config)
+    assert original['agent']['hash'] == original['watchdog']['hash'] and original['agent']['exe'] == original['watchdog']['exe']
+    health(True)
+    private = Path(tempfile.mkdtemp(prefix='qualification-native-role-', dir='/run'))
+    changed = {**config, 'terminal_recording_limit_mib': 2 if config.get('terminal_recording_limit_mib') == 1 else 1}
+    candidate = private / 'watchdog.json'
+    candidate.write_text(json.dumps(changed)); candidate.chmod(0o600)
+    with guest_watchdog_override('/usr/local/sbin/exam-agent', str(candidate)):
+        mismatch = native_role_snapshot(config)
+        assert mismatch['agent']['exe'] == mismatch['watchdog']['exe'] and mismatch['agent']['hash'] != mismatch['watchdog']['hash']
+        health(False, 'watchdog loaded configuration mismatch')
+    native_role_snapshot(config); health(True)
+    copy = private / 'agent-copy'
+    shutil.copyfile(INPUT / 'exam-agent', copy); copy.chmod(0o700)
+    original_file = Path('/usr/local/sbin/exam-agent').stat()
+    copied_file = copy.stat()
+    assert (copied_file.st_dev, copied_file.st_ino) != (original_file.st_dev, original_file.st_ino)
+    assert hashlib.sha256(copy.read_bytes()).digest() == hashlib.sha256((INPUT / 'exam-agent').read_bytes()).digest()
+    with guest_watchdog_override(str(copy)):
+        mismatch = native_role_snapshot(config)
+        assert mismatch['agent']['hash'] == mismatch['watchdog']['hash'] and mismatch['agent']['exe'] != mismatch['watchdog']['exe']
+        health(False, 'watchdog loaded executable mismatch')
+    native_role_snapshot(config); health(True)
+    # Reserved legacy names are created only in this disposable guest, after
+    # proving neither unit already exists. Never stop an installed/unknown owner.
+    for unit in ('exam-agent-live-upgrade.service', 'exam-agent-deferred-recovery.service'):
+        marker = json.loads((INPUT / 'run.json').read_text())
+        assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn' and INPUT.is_mount() and OUTPUT.is_mount()
+        assert marker['profile'] in ('retained-policy', 'loaded-roles') and marker['username'] == 'examq'
+        existing = subprocess.run(['systemctl', 'show', unit, '--property=LoadState', '--value'], capture_output=True, text=True, timeout=10)
+        assert existing.returncode in (0, 4) and existing.stdout.strip() == 'not-found', 'Refuse to replace an existing legacy owner'
+        subprocess.run(['systemd-run', '--quiet', '--collect', '--service-type=exec', '--unit=' + unit,
+                        '--property=MemoryMax=32M', '--property=MemorySwapMax=0', '--property=TasksMax=8',
+                        '--property=RuntimeMaxSec=60s', '--', '/bin/sleep', '55'], check=True, timeout=10)
+        handle = None
+        try:
+            pid = int(subprocess.run(['systemctl', 'show', unit, '--property=MainPID', '--value'], capture_output=True, text=True, check=True, timeout=10).stdout.strip())
+            assert pid > 1 and Path('/proc/' + str(pid) + '/cgroup').read_text() == '0::/system.slice/' + unit + '\n'
+            directory = Path('/sys/fs/cgroup/system.slice') / unit
+            events = dict(line.split() for line in (directory / 'cgroup.events').read_text().splitlines())
+            assert events['populated'] == '1'
+            handle = os.pidfd_open(pid)
+            lifetime = select.poll(); lifetime.register(handle, select.POLLIN)
+            assert not lifetime.poll(0), 'Legacy refusal fixture lacks a positively live pinned process'
+            health(False, unit + ' still has live/unverified processes')
+            assert not lifetime.poll(0), 'Legacy process exited before the health refusal oracle'
+        finally:
+            subprocess.run(['systemctl', 'stop', unit], check=True, timeout=15)
+            if handle is not None:
+                assert lifetime.poll(2000), 'Owned synthetic legacy process did not positively exit'
+                os.close(handle)
+        native_role_snapshot(config); health(True)
+    print('PASS: actual compiled health observes the loaded cohort, refuses positively observed config/executable mismatch and recovers after private-guest repair; installed retained mode stays disabled', flush=True)
+    print('PASS: actual compiled health refuses both positively populated temporary-writer cgroups and recovers only after the exact newly owned guest processes exit', flush=True)
+
+
 def retained_role_override(role):
     assert role in ('Agent', 'Watchdog'), 'Unknown private test role'
     return ('[Service]\nExecStart=\nExecStart=' + str(INPUT / 'core-qualification.test') +
@@ -152,6 +321,7 @@ def prepare_retained_roles():
     assert INPUT.is_mount() and OUTPUT.is_mount()
     marker = json.loads((INPUT / 'run.json').read_text())
     assert marker['profile'] == 'retained-policy' and marker['username'] == 'examq'
+    qualify_loaded_role_cli(json.loads(Path('/etc/exam-agent/agent.json').read_text()))
     services = ('exam-agent.service', 'exam-deadline-watchdog.service')
     subprocess.run(['systemctl', 'stop', *services], check=True, timeout=45)
     for service, role in zip(services, ('Agent', 'Watchdog')):
@@ -244,7 +414,10 @@ def main():
         print('COMMAND_NOT_FOUND: nano', flush=True)
         return 127
     config = prepare_normal_filesystem(config)
-    if settings.get('profile') == 'monitoring-owner':
+    if settings.get('profile') == 'loaded-roles':
+        qualify_loaded_role_cli(config)
+        profiles = ()
+    elif settings.get('profile') == 'monitoring-owner':
         assert username == 'examq', 'Exact synthetic owner fixture required'
         # Stop only this disposable overlay's agent before the test listens on
         # its gate path. The test refuses to replace an existing socket and
