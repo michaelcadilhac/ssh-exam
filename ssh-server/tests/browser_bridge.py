@@ -15,6 +15,7 @@ import pwd
 import queue
 import re
 import select
+import signal
 import socket
 import stat
 import subprocess
@@ -132,14 +133,39 @@ def verify_fixture_archive(path):
     return sorted(found)
 
 
+def verify_large_fixture_archive(path, work, file_bytes=127 * 1024**2):
+    """Stream exact synthetic large files; neither archive nor answers leave guest."""
+    expected = {'large-%d.bin' % n for n in range(4)}
+    found = set()
+    with tarfile.open(path, 'r|gz') as archive:
+        count = 0
+        for member in archive:
+            count += 1
+            assert count <= 10001
+            if member.name not in expected:
+                continue
+            assert member.name not in found and member.isfile() and member.size == file_bytes
+            source = work / member.name
+            info = source.lstat()
+            assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and info.st_size == member.size
+            with source.open('rb') as original, archive.extractfile(member) as saved:
+                assert hashlib.file_digest(original, 'sha256').digest() == hashlib.file_digest(saved, 'sha256').digest()
+            found.add(member.name)
+    assert found == expected
+    return sorted(found)
+
+
 class GuestBridge:
     def __init__(self, config):
         self.config = config
         self.done = threading.Event()
         self.requests = queue.Queue(maxsize=16)
         self.students = private_json(INPUT / 'run.json').get('browser_students', 1)
+        self.large = private_json(INPUT / 'run.json').get('browser_large', False)
         self.slots = threading.BoundedSemaphore(64 if self.students == 16 else 32)
         self.failures = []
+        self.collection_operation = None
+        self.collection_lock = threading.Lock()
 
     def serve(self, name, handler):
         server = socket.socket(socket.AF_UNIX)
@@ -182,7 +208,7 @@ class GuestBridge:
     def ssh(self, client):
         with socket.create_connection(('127.0.0.1', 22), timeout=5) as upstream:
             upstream.settimeout(5)
-            copy_streams(client, upstream)
+            copy_streams(client, upstream, timeout=900 if self.large else 600)
 
     def http(self, client):
         with client.makefile('rwb', buffering=0) as stream:
@@ -227,9 +253,114 @@ class GuestBridge:
         return {'attempt': attempt, 'supervisor': supervisor, 'kernel': kernel,
                 'editor_exists': editor.exists(), 'private_guest': True}
 
+    def collectors(self, ids):
+        result = []
+        pools = set()
+        for process in Path('/proc').iterdir():
+            if not process.name.isdigit() or int(process.name) < 2:
+                continue
+            try:
+                if process.stat().st_uid != 0 or (process / 'cmdline').read_bytes().split(b'\0')[-2:] != [b'--collection-worker', b'']:
+                    continue
+                group = (process / 'cgroup').read_text().strip()
+                for attempt in ids:
+                    match = re.fullmatch(r'0::(/[^\n]+)/(exam-collection-' + re.escape(attempt) + r'-[a-f0-9]{12}\.service)', group)
+                    if not match:
+                        continue
+                    pool_name, unit = match.groups()
+                    assert pool_name.endswith('/exam-collection.slice') and '..' not in Path(pool_name).parts
+                    pool = Path('/sys/fs/cgroup' + pool_name)
+                    if pool_name not in pools:
+                        assert root_command('systemctl', 'show', 'exam-collection.slice', '--property=ControlGroup', '--value').strip() == pool_name
+                        assert 0 < int((pool / 'memory.max').read_text().strip()) <= 512 * 1024**2
+                        assert (pool / 'memory.swap.max').read_text().strip() == '0'
+                        assert 2 <= int((pool / 'pids.max').read_text().strip()) <= 96
+                        pools.add(pool_name)
+                    cgroup = pool / unit
+                    assert (cgroup / 'memory.max').read_text().strip() == str(256 * 1024**2)
+                    assert (cgroup / 'memory.swap.max').read_text().strip() == '0'
+                    assert (cgroup / 'pids.max').read_text().strip() == '32'
+                    writing = False
+                    for fd in (process / 'fd').iterdir():
+                        target = Path(os.readlink(fd))
+                        if (target.name == 'submission.tar.gz' and target.parent.parent == Path(self.config['state']) / 'submissions'
+                                and re.fullmatch(r'\.' + re.escape(attempt) + r'\.collect-[A-Za-z0-9]+', target.parent.name)):
+                            flags = dict(row.split(':', 1) for row in (process / 'fdinfo' / fd.name).read_text().splitlines())
+                            info = target.lstat()
+                            writing = writing or ((int(flags['flags'].strip(), 8) & os.O_ACCMODE) != os.O_RDONLY
+                                                  and stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1 and info.st_size > 0)
+                    result.append({'attempt': attempt, 'unit': unit, 'pid': int(process.name), 'writing': writing})
+            except (FileNotFoundError, ProcessLookupError):
+                continue
+        # systemd creates an inactive slice lazily. Zero observed workers means
+        # pending, never proof of resources; a live pool path comes from BOTH
+        # the pinned candidate's kernel cgroup and systemd's ControlGroup.
+        return result
+
+    def collection(self, request):
+        assert self.large and self.students == 16
+        ids = request['attempts']
+        assert isinstance(ids, list) and len(ids) == 2 and len(set(ids)) == 2
+        snapshots = [self.snapshot(attempt) for attempt in ids]
+        assert [entry['attempt']['username'] for entry in snapshots] == ['examq', 'examq01']
+        action = request['action']
+        if action == 'observe':
+            return {'workers': self.collectors(ids), 'operation': self.collection_operation}
+        if action == 'kill':
+            assert self.collection_operation is None
+            workers = self.collectors(ids)
+            assert len(workers) == 2 and {w['attempt'] for w in workers} == set(ids) and all(w['writing'] for w in workers)
+            assert all(entry['attempt']['state'] == 'FINALIZING' and not entry['attempt']['protected'] for entry in snapshots)
+            target = next(worker for worker in workers if worker['attempt'] == ids[0])
+            pinned = os.pidfd_open(target['pid'])
+            try:
+                assert target in self.collectors(ids)
+                signal.pidfd_send_signal(pinned, signal.SIGKILL)
+            finally:
+                os.close(pinned)
+            self.collection_operation = {'status': 'killed', 'workers': workers}
+            return self.collection_operation
+        assert action == 'retry-verify'
+        with self.collection_lock:
+            assert self.collection_operation and self.collection_operation['status'] in ('killed', 'pending', 'complete', 'failed')
+            if self.collection_operation['status'] != 'killed':
+                return self.collection_operation
+            assert snapshots[0]['attempt']['state'] == 'COLLECTION_FAILED'
+            operation = {'status': 'pending', 'workers': self.collection_operation['workers']}
+            self.collection_operation = operation
+        def retry_verify():
+            try:
+                log = OUTPUT / 'large-collection-retry.log'
+                with log.open('xb') as stream:
+                    os.chmod(log, 0o600)
+                    subprocess.run(['examctl', 'retry', ids[0], '--reason', 'Private qualification retries the exact killed large collector'],
+                                   stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=135)
+                until = time.monotonic() + 135
+                while True:
+                    state = private_json(Path(self.config['state']) / 'state.json')
+                    if all(state['attempts'][attempt]['state'] == 'COMPLETED' and state['attempts'][attempt]['protected'] for attempt in ids):
+                        break
+                    assert time.monotonic() < until, 'Large collection retry did not complete'
+                    time.sleep(.25)
+                verified = {}
+                for attempt in ids:
+                    exported = OUTPUT / ('large-' + attempt + '.tar.gz')
+                    subprocess.run(['examctl', 'export', attempt, '--output', str(exported)], check=True,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=135)
+                    verified[attempt] = verify_large_fixture_archive(exported, Path(self.config['work']) / attempt / 'work')
+                operation.update(status='complete', verified=verified)
+            except Exception as error:
+                self.failures.append('Large collection retry/verification: ' + str(error))
+                operation.update(status='failed', error=type(error).__name__)
+        threading.Thread(target=retry_verify, daemon=True).start()
+        return operation
+
     def inspect(self, client):
         with client.makefile('rwb', buffering=0) as stream:
             request = line(stream)
+            if 'collection' in request:
+                send(stream, self.collection(request['collection']))
+                return
             if request == {'abort': True}:
                 self.failures.append('Local browser test aborted')
                 send(stream, {'aborted': True})
@@ -331,7 +462,7 @@ def run_guest(config, prepare_roles):
                 raise
             time.sleep(.5)
     print('BROWSER_NATIVE_SOURCE_SYNCED', flush=True)
-    if not bridge.done.wait(540):
+    if not bridge.done.wait(780 if bridge.large else 540):
         raise TimeoutError('Actual browser/native qualification did not finish')
     if bridge.failures:
         raise RuntimeError(bridge.failures[0])
@@ -363,7 +494,7 @@ def host_bridge(stage, mode):
         client.settimeout(6)
         client.connect(str(target))
         # Stdio uses separate fds. Do not buffer or interpret SSH bytes.
-        deadline = time.monotonic() + (600 if mode == 'ssh' else 8)
+        deadline = time.monotonic() + ((900 if marker.get('browser_large') else 600) if mode == 'ssh' else 8)
         while time.monotonic() < deadline:
             ready, _, _ = select.select((sys.stdin.buffer, client), (), (), .5)
             for source in ready:

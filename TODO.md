@@ -14,7 +14,11 @@ despite all16 submissions being protected natively. The receiver correction and
 signed replay/restart/malformed-map regressions pass locally; full609 application
 checks/build/types and a fresh actual16/64 workflow pass. All16 now reach web AND
 native protected completion, with healthy peers and FULL host preservation.
-Large/concurrent/fatal-worker and restart-gap acceptance remains. No deployment.
+Large/concurrent/fatal-worker acceptance now also passes the actual16/64 joined
+workflow: two508MiB targets, exact collector SIGKILL, healthy14 peers, supported
+retry and all eight large files verified through protected exports. All16 finish
+protected/HELD with original timing/generation. Restart-gap and broader release
+gates remain. No deployment.
 Details: docs/retained-capacity-qualification.md.
 
 October25 gateway routing now survives actual process replacement locally through
@@ -1782,7 +1786,20 @@ the approval is not a production change or a completed investigation.
   Check that obsolete incident helper processes have exited; do not use broad
   process-name killing. Review documentation that still refers to only two gates.
 
-- [ ] **Isolate collection failure from the shared agent and other students.**
+- [x] **Isolate collection failure from the shared agent and other students.**
+  October25 implemented/tested locally through the actual16-browser/64-terminal
+  native-kernel workflow: two508MiB sources, BOTH actual bounded collectors
+  positively writing, pidfd SIGKILL only to the target, target-only failed hold,
+  healthy peer input/owners/generations/clocks during and after, supported root
+  examctl retry/export and exact verification of all eight127MiB files. All16
+  public/native submissions finish protected/HELD; FULL host/base preservation and
+  inactive owned test unit independently checked. A fresh current-binary root
+  isolation profile separately passes12 assertions, unchanged shared agent/
+  watchdog PIDs,25 healthy signed renewals and original-deadline restoration.
+  This closes
+  local crash isolation, not the broader stress/release gates or the historical
+  production crash's unproven initiating cause. Native binaries remain0ecfc13;
+  no deployment/admission enablement. See docs/retained-capacity-qualification.md.
   October23 current-candidate BrowserSSH qualification passes12 real guarded
   guest assertions with two independently scoped timed recording owners. Exact
   collector pidfd SIGKILL fails only its target; the healthy peer keeps the same
@@ -1792,7 +1809,9 @@ the approval is not a production change or a completed investigation.
   unchanged; only fixture protocol/mode coverage is expanded. See
   docs/timed-owner-guest-qualification.md. This does not establish the initiating
   production crash cause or complete the remaining broad capacity/namespace/
-  saved-source fault matrix; the investigation checkbox remains open. No deployment.
+  saved-source fault matrix. That earlier narrow run left this item open; the
+  October25 joined workflow above closes local isolation. Broader stress/release
+  and the initiating historical cause remain separate. No deployment.
   October22 local verification follow-up closes a missing aggregate zero-swap
   readiness check; individual workers and the supplied pool already disabled
   swap. Exact-property missing/nonzero refusal is tested through actual CLI and

@@ -18,8 +18,10 @@ all-writer/linked-IO, delayed launch/final exec, recording/clock, coordinator an
 supervisor failure, native-role and admission compatibility qualification now
 passes. Owner-bound SSH-exit feedback now passes fresh native/app/browser checks
 and active/policy-held actual-root42 variants, with full host/base preservation.
-Whole-gateway restart and combined browser/root16-student/64-pane qualification
-remain gates. Component/browser simulations do not replace those boundaries.
+Actual joined browser/root16-student/64-pane and two508MiB/fatal-worker/retry/
+protected-export qualification now pass locally, with a separate current-binary
+shared-process/original-deadline root12 receipt. Actual whole-gateway/coordinator
+restart and complete coverage/gap fault qualification remain gates. Component/browser simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
 

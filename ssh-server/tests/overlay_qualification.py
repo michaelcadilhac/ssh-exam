@@ -249,10 +249,12 @@ def run_locked(args):
             (inputs / 'browser-gateway.pub').write_bytes(public)
             marker['driver'] = 'browser'
         students = getattr(args, 'browser_students', 1)
+        large = getattr(args, 'browser_large', False)
+        assert not large or students == 16
         storage = None
         if students == 16:
             assert marker.get('driver') == 'browser'
-            assert shutil.disk_usage(stage).free >= 4 * 1024**3, 'Private capacity scratch needs4GiB; no test'
+            assert shutil.disk_usage(stage).free >= (5 if large else 4) * 1024**3, 'Private capacity scratch unavailable; no test'
             memory = dict(row.split(':', 1) for row in Path('/proc/meminfo').read_text().splitlines())
             assert int(memory['MemAvailable'].split()[0]) >= 4 * 1024**2, 'Private capacity needs4GiB available RAM; no test'
             storage = {'work': guest_config['work'], 'state': guest_config['state']}
@@ -278,9 +280,10 @@ def run_locked(args):
                 else:
                     assert stat.S_ISSOCK(info.st_mode), 'Unexpected synthetic state entry'
         marker['browser_students'] = students
+        marker['browser_large'] = large
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
-        (inputs / 'test.service').write_text(UNIT)
+        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=840') if large else UNIT)
         command = candidate_command(unit, guest, inputs, output, students, storage)
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
@@ -356,6 +359,7 @@ if __name__ == '__main__':
                         help='Private browser driver only: PUBLIC signing key; never supply a private key')
     parser.add_argument('--browser-students', type=int, choices=(1, 16), default=1,
                         help='Private browser capacity target; sixteen uses only owned disk binds and bounded3GiB/2CPU/2048tasks')
+    parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--profile', choices=('loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)

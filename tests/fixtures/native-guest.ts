@@ -90,9 +90,16 @@ const remote = (args: string[], detached = false) =>
     { stdio: ["pipe", "pipe", "pipe"], detached },
   );
 
-export async function nativeGuest(bundle: string, local: string, students = 1) {
+export async function nativeGuest(
+  bundle: string,
+  local: string,
+  students = 1,
+  large = false,
+) {
   if (![1, 16].includes(students))
     throw Error("Private native capacity must be1or16");
+  if (large && students !== 16)
+    throw Error("Large private workload requires16students");
   if (
     !/^\/var\/tmp\/ssh-exam-browser-native-upload\.[A-Za-z0-9_]+$/.test(bundle)
   )
@@ -225,6 +232,7 @@ export async function nativeGuest(bundle: string, local: string, students = 1) {
             keyfile,
             "--browser-students",
             String(students),
+            ...(large ? ["--browser-large"] : []),
           ],
           true,
         ),
@@ -357,6 +365,19 @@ export async function nativeGuest(bundle: string, local: string, students = 1) {
         await collect(
           bridge("inspect"),
           JSON.stringify({ attempts, finish }) + "\n",
+        ),
+      );
+    },
+    async collection(
+      attempts: string[],
+      action: "observe" | "kill" | "retry-verify",
+    ) {
+      if (!large || attempts.length !== 2 || new Set(attempts).size !== 2)
+        throw Error("Exact private large pair required");
+      return JSON.parse(
+        await collect(
+          bridge("inspect"),
+          JSON.stringify({ collection: { attempts, action } }) + "\n",
         ),
       );
     },

@@ -3,12 +3,14 @@ import base64
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import socket
 import subprocess
 import sys
 import tempfile
 import threading
+import types
 import tarfile
 import unittest
 from unittest import mock
@@ -19,6 +21,99 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_observer_checks_nested_kernel_pool_against_systemd_and_all_resource_bounds(self):
+        attempt = 'aaaaaaaa-1234-4234-8234-123456789abc'
+        unit = 'exam-collection-' + attempt + '-123456abcdef.service'
+        pool_name = '/exam.slice/exam-collection.slice'
+        fixture = object.__new__(bridge.GuestBridge)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); process = root / 'process'; process.mkdir()
+            (process / 'cmdline').write_bytes(b'/private/core-qualification.test\0--collection-worker\0')
+            (process / 'cgroup').write_text('0::' + pool_name + '/' + unit + '\n')
+            for name in ('fd', 'fdinfo'): (process / name).mkdir()
+            fixture.config = {'state': str(root / 'state')}
+            archive = root / 'state/submissions' / ('.' + attempt + '.collect-123') / 'submission.tar.gz'
+            archive.parent.mkdir(parents=True); archive.write_bytes(b'writing')
+            (process / 'fd/7').symlink_to(archive)
+            (process / 'fdinfo/7').write_text('flags:\t0100001\n')
+            pool = root / 'kernel'; (pool / unit).mkdir(parents=True)
+            for target, memory, tasks in ((pool, 512, 96), (pool / unit, 256, 32)):
+                (target / 'memory.max').write_text(str(memory * 1024**2))
+                (target / 'memory.swap.max').write_text('0')
+                (target / 'pids.max').write_text(str(tasks))
+            class Process:
+                name = '987654'
+                def stat(self): return types.SimpleNamespace(st_uid=0)
+                def __truediv__(self, name): return process / name
+            def path(value):
+                if value == '/proc': return types.SimpleNamespace(iterdir=lambda: iter([Process()]))
+                if value == '/sys/fs/cgroup' + pool_name: return pool
+                return Path(value)
+            real_lstat = os.lstat
+            owner = 0
+            def lstat(value, *args, **kwargs):
+                result = real_lstat(value, *args, **kwargs)
+                if Path(value) == archive:
+                    values = list(result); values[4] = owner; return os.stat_result(values)
+                return result
+            with mock.patch.object(bridge, 'Path', side_effect=path), mock.patch.object(bridge.os, 'lstat', side_effect=lstat), mock.patch.object(bridge, 'root_command', return_value=pool_name + '\n') as command:
+                self.assertEqual(fixture.collectors([attempt]), [{'attempt': attempt, 'unit': unit, 'pid': 987654, 'writing': True}])
+                command.assert_called_once_with('systemctl', 'show', 'exam-collection.slice', '--property=ControlGroup', '--value')
+                owner = 2000
+                self.assertFalse(fixture.collectors([attempt])[0]['writing'])
+                owner = 0
+                command.return_value = '/wrong/exam-collection.slice'
+                with self.assertRaises(AssertionError): fixture.collectors([attempt])
+                command.return_value = pool_name
+                (pool / 'memory.swap.max').write_text('1')
+                with self.assertRaises(AssertionError): fixture.collectors([attempt])
+
+    def test_observer_waits_for_real_collectors_before_reading_lazy_pool_cgroup(self):
+        fixture = object.__new__(bridge.GuestBridge)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); processes = root / 'proc'; processes.mkdir()
+            def path(value):
+                if value == '/proc': return processes
+                if value == '/sys/fs/cgroup/exam-collection.slice': return root / 'not-created-yet'
+                return Path(value)
+            with mock.patch.object(bridge, 'Path', side_effect=path):
+                self.assertEqual(fixture.collectors(['aaaaaaaa-1234-4234-8234-123456789abc']), [])
+
+    def test_worker_fault_refuses_unqualified_active_protected_or_nonwriting_targets_before_signal(self):
+        fixture = object.__new__(bridge.GuestBridge)
+        fixture.large = True; fixture.students = 16; fixture.collection_operation = None
+        ids = ['aaaaaaaa-1234-4234-8234-123456789abc', 'bbbbbbbb-1234-4234-8234-123456789abc']
+        for state, protected, writing in (('ACTIVE', False, True), ('FINALIZING', True, True), ('FINALIZING', False, False)):
+            with self.subTest(state=state, protected=protected, writing=writing):
+                fixture.snapshot = lambda attempt: {'attempt': {'username': 'examq' if attempt == ids[0] else 'examq01', 'state': state, 'protected': protected}}
+                fixture.collectors = lambda attempts: [{'attempt': attempt, 'pid': 123, 'unit': 'fixture', 'writing': writing} for attempt in attempts]
+                with mock.patch.object(bridge.os, 'pidfd_open') as pin, mock.patch.object(bridge.signal, 'pidfd_send_signal') as send:
+                    with self.assertRaises(AssertionError): fixture.collection({'action': 'kill', 'attempts': ids})
+                    pin.assert_not_called(); send.assert_not_called()
+        fixture.large = False
+        with mock.patch.object(fixture, 'snapshot') as snapshot, self.assertRaises(AssertionError):
+            fixture.collection({'action': 'kill', 'attempts': ids})
+        snapshot.assert_not_called()
+
+    def test_large_export_stream_compares_all_bytes_and_refuses_wrong_missing_linked_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); work = root / 'work'; work.mkdir()
+            path = root / 'export.tar.gz'
+            for n in range(4): (work / ('large-%d.bin' % n)).write_bytes(b'abc')
+            def write(missing=False, wrong=False, linked=False):
+                with tarfile.open(path, 'w:gz') as archive:
+                    for n in range(3 if missing else 4):
+                        value = b'xyz' if wrong and n == 1 else b'abc'
+                        header = tarfile.TarInfo('large-%d.bin' % n); header.size = len(value)
+                        if linked and n == 1: header.type = tarfile.SYMTYPE; header.linkname = '/other'; header.size = 0
+                        archive.addfile(header, io.BytesIO(value))
+            write()
+            self.assertEqual(bridge.verify_large_fixture_archive(path, work, 3), ['large-%d.bin' % n for n in range(4)])
+            for missing, wrong, linked in ((True, False, False), (False, True, False), (False, False, True)):
+                write(missing, wrong, linked)
+                with self.subTest(missing=missing, wrong=wrong, linked=linked), self.assertRaises(AssertionError):
+                    bridge.verify_large_fixture_archive(path, work, 3)
+
     def test_capacity_account_names_are_finite_synthetic_and_never_arbitrary(self):
         self.assertEqual(bridge.fixture_accounts(1), ['examq'])
         names = bridge.fixture_accounts(16)

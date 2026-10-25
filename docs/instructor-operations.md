@@ -30,6 +30,16 @@ do not reset clocks, retry collection or clear state merely to repair web delive
 The corrected receiver accepts the original signed pending event on normal retry;
 no native upgrade, queue rewrite or account exception is needed for this fix.
 
+Local collection crash isolation is now qualified through16 actual synthetic
+students/64 SSH panes with two508MiB targets. A killed worker affects its target;
+repair with supported `examctl retry ATTEMPT --reason 'Concrete repair performed'`
+and verify protection/export before interpreting recovery as complete. Successful
+retry preserves the historical error, original timing and account hold; never
+clear errors or override access just to make status look clean. Other students'
+sessions must remain independent. This is local qualification, not deployment or
+proof of the initiating historical crash cause. Full evidence and remaining
+capacity/restart limits: retained-capacity-qualification.md.
+
 The local private authority/ownership/provisional-publisher increments likewise
 do not enable retained mode or provide a management recovery command. Internal
 worker flags are not operator workflows; do not invoke them or install/start the

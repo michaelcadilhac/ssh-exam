@@ -141,3 +141,130 @@ live renewal/callback/cutoff observations. Course compiler/debugger sizing and
 actual gateway/coordinator-gap cases remain separate finite acceptance checks;
 do not close them from this small-file baseline. No new runtime abstraction is
 needed for the planned fixture-only controls.
+
+## Large/fatal-worker extension: inputs and state review
+
+WIP after97e5bc6. EXAM_BROWSER_NATIVE_LARGE=1 requires the same16-user profile.
+The first pair creates four127MiB random-block files each through real student
+Python (508MiB plus ordinary proof/template files, below the saved512MiB limit).
+Both actual worker processes must have writable, nonempty collection archives
+open; exact private cgroup names and real256MiB/no-swap/32task controls plus the
+512MiB/no-swap/96task pool are inspected before a pidfd-pinned target SIGKILL.
+Active/protected/nonwriting or wrong-roster targets refuse before pin/signal.
+The target must become COLLECTION_FAILED/HELD on the original interval; supported
+root examctl retry runs asynchronously, then actual root examctl export and
+streamed SHA256 comparison verify all eight large files against saved work.
+The14 peers execute during and after the full compression/retry/export interval,
+retain generation/supervisor/SSH/clock, and must have no public LOCKED transition.
+Playwright-observed contact and public-state reply timings are saved separately under the existing
+5s privileged-workload acceptance budget. These heartbeat replies are NOT native
+v1 renewal acknowledgements or execution permission; do not claim that metric.
+
+Only fixture lifetimes grow: long mode780s browser/bridge completion,840s guest
+oneshot,900s owned unit/SSH bridge. Native120s worker/130s parent, resource limits,
+monitoring freshness and actual90-minute attempt intervals stay unchanged.
+Long-mode disk scratch requires5GiB; same3GiB/2CPU/2048task owned cap/4GiB host
+available-RAM guard. No production resource or account exception changes.
+
+The private operation record is test-only process memory, never a durable
+reservation or permit. Observe is read-only; kill requires both real writers and
+unprotected FINALIZING; retry is single-dispatch with explicit pending/complete/
+failed status. Every subprocess has a finite timeout; failed/stale/duplicate
+operations cannot silently change target, replay a signal or claim verification.
+Guest/parent crash or abort drains only the exact private outer unit, preserving
+host/student/base state. Actual native protected archives/history/holds remain
+authoritative; no archive/work/orphan deletion or state reset is performed.
+Heavy retry/export/hash work is outside the bridge inspection handler and all
+native global transactions. Installed retained admission remains OFF.
+
+Focused private bridge9 PASS0.075s (byte corruption/missing/link refusals and
+pre-signal phase/qualification refusals); fixture types38814 PASS after an
+explicit callback annotation corrected TS7006. New exact manifest/root run still
+required; no large/fault capacity pass or deployment is claimed. Existing609 app/
+build/native receipts apply only to unchanged product inputs.
+
+First long run91710 FAILS7.1m before SIGKILL at the initial observer call: the
+fixture assumes a root-level collection cgroup and reads memory.max before
+observing a worker. HTTP returns bridge_error/FileNotFoundError; the case correctly
+does not count an undefined workers array as proof. Both508MiB sources and real
+Finish requests were reached, but no overlap/kill/retry/export acceptance follows.
+Root stage6niljyb6 independently reports result1/FULL files+authority preservation
+and exact unitc0ea033ba8654d4fb43942bd410946fc inactive. Native14 peers remain
+ACTIVE/generation0/no errors at abort; web14 LOCKED reasons are exactly Page
+closing or reloading from finally closing the browser contexts, not an inferred
+collector-induced pause. Two private HTTP queue-Full observations are retained
+in the root log; no production liveness fix or capacity pass is inferred.
+
+Focused lazy-pool observer regression reproduces FileNotFoundError before the
+fixture correction. Observation now enumerates actual workers FIRST; zero workers
+is honest pending, then every positive worker still requires ALL original pool/
+worker limits and the writable archive. Kill still requires two positively
+observed real writers. Focused10 PASS0.103s and full Python54 PASS0.102s. There
+is no native/product or policy change. New frozen bundle/fresh root run required;
+the failed bundlejcq143l8 is not qualification for corrected observer inputs.
+
+Further review catches the root-level-path assumption BEFORE another long run.
+The observer now compares each actual worker's kernel cgroup with systemd's
+ControlGroup for exam-collection.slice, deriving both pool and worker paths from
+that positive agreement. It does not guess how systemd nests dashed slice names.
+A focused nested /exam.slice/exam-collection.slice regression requires real
+resource-file values, rejects mismatched systemd identity and nonzero pool swap,
+and checks nonroot archive ownership never counts as a writer. Its initial local
+fixture incorrectly expected a user-owned tempfile to satisfy the root-owned
+archive check; only the simulated owner metadata is corrected, with a separate
+nonroot refusal. A missing test import is corrected too; no product guard changes.
+Final focused11 PASS0.082s and full Python55 PASS0.108s. Prepared yc5ebznd/3p7rycov
+was NOT run and is superseded; only the next exact bundle can qualify this probe.
+
+## Actual large/fatal-worker result: qualified locally
+
+Corrected exact bundlefnwvqu0t (local browser-native-artifacts._r1_pi9m) passes
+99669:1/10.1m,10.2m overall. It joins16 real student browsers/64 real monitored SSH
+panes to the native kernel, creates two508MiB saved datasets, positively observes
+BOTH bounded collectors writing, pidfd-kills only the first target, observes its
+COLLECTION_FAILED/HELD state, and invokes supported root examctl retry. Root
+examctl export plus streamed SHA256 compares ALL eight127MiB files with saved
+work. The14 peers execute both during and after retry/export on their original
+supervisors/SSH/generations/intervals/grants. All16 then reach public AND native
+COMPLETED/protected/HELD; no public LOCKED transition occurs during the case.
+
+Read-only live observation confirms original writing PIDs18076/18080 in distinct
+target units (suffixese7cd39d95a9f/31c1e38d33f4), then a separate retry/verification
+worker20367. A first additional manual observer used stdin EOF incorrectly and
+got no reply; it performed no signal/retry. Corrected observation keeps input open
+until the reply. Its inspect.sock BrokenPipe log belongs to that manual probe,
+not a product fault. The existing case's protocol already kept input open.
+
+Final root stageptuxrjcw independently reports result0, files_unchanged=true,
+authority_unchanged=true, exact unit34444febabed4404860f1c0da742c2fc inactive.
+All16 native generations are0. Both verified exports are regular root-owned0600,
+single-link files:532724881/532724788 bytes. Only the deliberately killed target
+retains its historical worker-exit error; it is not erased by successful retry.
+The earlier root isolation profile separately checks unchanged shared agent/
+watchdog PIDs on its own frozen artifacts; this capacity case checks the14
+attempt supervisors and real input. Do not invent a new coordinator-PID
+measurement for this case. Fresh worker-isolation profile41918 now passes12
+assertions on the current exact0ecfc13 binaries: shared agent/watchdog PIDs remain
+unchanged, healthy real PTY/new-pane admission and25 signed timed/legacy-native
+renewals survive (maximum81.971ms), retry verifies all target bytes, and both
+synthetic accounts restore only after their unchanged original deadlines.
+Root stagey7tux04f independently reports result0/FULL files+authority preservation
+and exact unit3e5d69a7e36c4fd098f44253874afa9a inactive. This is a separate narrow
+profile, not a newly invented v1-renewal measurement for the16/64 case.
+
+Saved capacity-metrics.json has1103 contact and1103 public-state samples across
+14 peers: maximum Playwright-observed contact59.277ms and public-state65.623ms,
+both under the unchanged5s workload criterion. This measures public replies,
+NOT native v1 renewal/cutoff latency. The private HTTP transport logs23 bounded
+queue-Full refusals under load; original signed retries still finish and all
+peer/work/protection checks pass. Do not claim absence of callback pressure or
+use these contact timings as execution permission. Physical camera/institutional
+MFA and genuine blind-gap/coordinator/gateway fault acceptance remain separate.
+
+Final focused11/Python55/types95130 PASS. Product/native/build inputs are unchanged
+since validated97e5bc6/0ecfc13:609 application checks/build and native race/resource/
+root42 receipts still apply separately. No redundant whole-suite rebuild/rerun or
+new-native-binary qualification is claimed. Installed retained admission remains
+OFF. This completes the local collection crash-isolation implementation workflow;
+the historical production crash's initiating cause remains unproven. Broader
+stress, course/storage review, retained-mode release gates and deployment remain.

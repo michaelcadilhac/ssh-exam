@@ -16,10 +16,12 @@ import { nativeGuest } from "./native-guest.js";
 const origin = "https://127.0.0.1:9444";
 const data = mkdtempSync(tmpdir() + "/ssh-exam-browser-native-");
 const students = Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS || "1");
+const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
 const guest = await nativeGuest(
   process.env.EXAM_BROWSER_NATIVE_BUNDLE || "",
   data,
   students,
+  large,
 );
 let cleanup = async () => {
   await guest.close();
@@ -111,6 +113,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     privateGuest: true,
     uid: metadata.uid,
     students: metadata.students,
+    large,
     log: data + "/native-root.log",
   };
 });
@@ -130,6 +133,10 @@ app.post("/api/fixture/native-fleet", async (req) => {
     return { ...value, preservation: "FULL" };
   }
   return value;
+});
+app.post("/api/fixture/native-collection", async (req) => {
+  const body = req.body as any;
+  return guest.collection(body.attempts, body.action);
 });
 await app.listen({ host: "127.0.0.1", port: 3100 });
 const web = https.createServer(tls, (req, res) =>

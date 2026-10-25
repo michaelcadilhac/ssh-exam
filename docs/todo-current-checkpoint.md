@@ -2,83 +2,84 @@
 
 October25,2026. Local development/tests/commits ONLY. NO push/deploy, production
 restart/config/student changes or temporary-service consolidation. csc-sys only
-agreed guarded disposable qualification; busy/uncertain means NO TEST. Stop on a
-missing executable (optional go tool buildid remains waived; never use). None missing.
-19/38 main checkboxes checked; overlapping requirements, not an effort percentage.
+the agreed guarded disposable environment; busy/uncertain means NO TEST. Stop on
+a missing executable (optional go tool buildid is waived; never use). None missing.
+20/38 main checkboxes checked; overlapping requirements, not an effort percentage.
+Collection crash isolation is closed locally; broader stress/release gates remain.
 
-## Current milestone and validated inputs
+## Validated revision and current increment
 
-Main/worktree HEADbfcc81e before the pending capacity/callback commit. Current
-validated increment: actual16students/64panes small-file baseline PLUS a confirmed
-signed-health callback bug fix. Valid empty configured accounts are omitted by
-native omitempty; the old receiver rejected them, blocking ordered completion
-updates. Receiver now accepts the original signed event as an empty replacement
-registry, rejects malformed maps, preserves raw digest/replay and stale ordering.
-No native binary, permission, clock, grant or account restriction changes.
+Validated code parent97e5bc6 fixes a
+valid omitted-empty-registry signed health callback blocking ordered completion
+updates. Focused28, full609 application/110files317.15s, build/types and fresh
+actual16-student/64-pane small-file workflow PASS. All16 web/native protected
+completion, same SSH/interval/grant and FULL host/base preservation. Root stagetbrh4t0m.
 
-Focused28 PASS1.82s (actual pre-fix reproduction, restart/lost acknowledgement/
-conflicting replay/malformed repair/protected completion). Full application97579
-PASS609/110files317.15s; types26605/build63854 PASS. Fresh actual browser/kernel
-capacity58210 PASS1/7.6m:16 independent native supervisors/64 populated live scopes,
-all pane outputs, saved work for16,14 peers keep input after a pair finishes,
-all16 web AND native protected COMPLETED/HELD with original SSH/interval/grant.
-Exact private bundle4yth5t3f, local browser-native-artifacts._3t4a5qr.
-Root stagetbrh4t0m result0/FULL preservation independently reread; exact owned unit
-c3002e0806a348a4a3c6bc41cee452d8 inactive. Local log
-/tmp/ssh-exam-native-capacity-third.log. No active runners after completion.
-The first two capacity failures and full state/scope review remain documented in
-retained-capacity-qualification.md; do not erase or call them passes.
+Current large increment PASS99669:1/10.1m,10.2m overall. Actual16 browsers/64 SSH
+panes, two508MiB sources, TWO bounded native collectors positively writing,
+exact pidfd SIGKILL to one target, target-only COLLECTION_FAILED/HELD, supported
+root examctl retry/export and SHA256 comparison of all eight127MiB files.14 peers
+execute during AND after retry/export on unchanged supervisors/SSH/generations/
+intervals/grants. All16 public/native COMPLETED/protected/HELD and generation0;
+all15 nontarget attempts have no native errors; all16 original90-minute intervals
+remain. Target's historical worker error is preserved after success.
 
-Native product source/binaries remain EXACT0ecfc13. Full race/resource
-core580.201s/CLI30.674s and fresh guarded root42/FULL preservation still apply
-separately. Native Python51/script manifest unchanged. Prior22 composed browser
-receipts apply to unchanged frontend/control inputs; the new actual16/64 case
-qualifies the changed health/status delivery. Installed retained admission remains
-unconditional OFF; no enablement/deployment claim.
+Exact bundle /var/tmp/ssh-exam-browser-native-upload.fnwvqu0t, local
+var/collection-tests/browser-native-artifacts._r1_pi9m. Root stageptuxrjcw result0,
+FULL files+authority preservation independently reread, exact unit34444febabed4404860f1c0da742c2fc
+inactive. Log /tmp/ssh-exam-native-capacity-large-second.log; local metadata/log
+/tmp/ssh-exam-browser-native-boL3M1. Saved metrics:1103 contact+1103 public-state
+replies from14 peers, maxima59.277/65.623ms. These are NOT native renewal latency
+or permission.23 private HTTP queue-Full refusals recover; no no-pressure claim.
 
-Prior bfcc81e actual unsaved Nano/second populated policy hold/explicit Continue/
-verified root protected export passes twice (47.7s each), same SSH/supervisor/
-original interval/grant/HELD access. Prior d995417 preserves viable SSH/private
-buffers through isolated proxy failure and graceful gateway shutdown; actual
-process replacement and scoped approval remain verified. Exact evidence:
-retained-browser-kernel-qualification.md, retained-gateway-restart.md and
-monitoring-restart-continuity.md. Provenance UI/CLI is validated in
-attempt-provenance.md.
+Final bridge11/Python55/types95130 PASS; source/native/build inputs unchanged
+since97e5bc6/0ecfc13. Earlier609 app/build and full native race/resource
+core580.201s/CLI30.674s plus root42 apply separately. No new native artifact,
+mode enablement or deployment. Installed retained admission remains OFF.
+Detailed failed probes, state review and exact evidence: retained-capacity-qualification.md.
+First long91710 fails in the fixture observer, not the product; stage6niljyb6
+FULL/inactive. Corrected observer derives kernel paths from systemd ControlGroup,
+requires strict resources/two real writing collectors/root-owned open archives.
 
-## Exact next action
+Fresh current-binary root profile41918 PASS12: shared agent/watchdog PIDs remain
+unchanged, real kill/retry/healthy PTY/new-pane and25 signed timed/legacy-native
+renewals survive (maximum81.971ms). Both accounts restore ONLY after original
+deadlines. Stagey7tux04f result0/FULL and exact unit3e5d69a7e36c4fd098f44253874afa9a
+inactive independently reread. Log /tmp/ssh-exam-current-worker-isolation-root.log.
+All runners completed. NEXT commit this coherent validated local increment.
+Original screenshot hashes and successful fixture private-key cleanup verified.
 
-Commit this validated coherent capacity/callback increment locally, preserving
-original workspace data; then extend the SAME real student Finish workflow with
-two disk-backed large targets and14 monitored peers. Observe simultaneous real
-bounded collectors before exact pidfd worker SIGKILL, retain target failure/hold,
-prove healthy peer input/owners/generations/intervals and supported root retry/
-verified protected bytes. Do not infer overlap from clicks or broaden an unused
-helper chain. State/acceptance boundary: retained-capacity-qualification.md.
-Actual gateway/coordinator loss and strict complete-coverage/gap cases follow;
-installed mode remains OFF until the complete acceptance matrix passes.
+## Next integrated result
 
-Other finite local outcomes afterward: reviewed native legacy migration/definition
-retirement; manual secured-workspace cleanup without grace; reviewed configuration/
-full CLI journey; course workload/limits acceptance. Use todo-delivery-audit.md to
-reconcile existing workflows rather than reimplementing them. Production alert
-acceptance and canonical/live-upgrade/deferred-recovery consolidation are separate
-UNEXECUTED proposals in todo-rollout-plan.md.
+After this local commit, qualify actual gateway process replacement through the
+SAME existing one-student browser/native shell/Nano/hold/Continue/export case.
+Reuse the existing browserGatewayProcess adapter, preserving jump/relay/native
+owners in the parent and matching TLS origin. Read the concrete callers first;
+no new unused helper chain. Then actual coordinator/full-coverage/gap cases.
+Prior bfcc81e Nano/second hold/export and d995417 viable-SSH proxy/graceful shutdown
+remain qualified separately; retained-browser-kernel-qualification.md,
+retained-gateway-restart.md and monitoring-restart-continuity.md give exact scope.
+
+Other finite outcomes: reviewed native legacy migration/definition retirement;
+manual secured-workspace cleanup without grace; reviewed configuration/full CLI
+journey; course/storage/limits review. Use todo-delivery-audit.md to reconcile
+working capabilities. Production alert acceptance and canonical/live-upgrade/
+deferred-recovery consolidation remain UNEXECUTED in todo-rollout-plan.md.
 
 ## Decisions and preservation
 
-Genuine-SSH-loss dialog remains unanswered: reviewed NEW saved-work grant with
-chosen allowance/finite window (recommended), or original unfinished interval
-with new native ownership transfer. Do not infer an answer. All C1–C18/clock
-choices settled; accepted capacity is16students/64panes. Automatic technical
-recovery needs uninterrupted authorized coverage across the ENTIRE interruption;
-fresh facts cannot cure an unknown gap. Preserve viable SSH and explicit technical
-review when unproven; no refund/reset/completed reopening.
+Genuine-SSH-loss choice remains unanswered in the question dialog (re-presented
+this session): NEW reviewed saved-work grant with chosen allowance/finite window
+(recommended), or a new native ownership-transfer protocol for fresh SSH on the
+original unfinished countdown. Do not infer a reply. C1–C18/clock choices settled;
+accepted capacity16students/64panes. Automatic technical recovery requires complete
+uninterrupted authorized coverage of the ENTIRE interruption. Fresh facts cannot
+cure a blind gap; preserve viable SSH/explicit review, no refunds/reopening.
 
 WT var/worktrees/source-grant-retention; untracked node_modules symlink NEVER stage.
-Preserve ALL stashes, especially40f1fb64187db13783ea23c0125d66824d65b301 and path-only
+Preserve ALL stashes, particularly40f1fb64187db13783ea23c0125d66824d65b301 and path-only
 main checkpoint backups.8cf701553752ed700c1e234c5938a09f46789472 and
 2b36da2d121da54d1dfc7dd3624cafdebbd241d3 are ALREADY APPLIED; never reapply.
-Main's ten original dirty screenshots retain baseline hashes, verified this
-milestone; /tmp/ssh-exam-retained-recording-main-image-hashes.json. Never stage or
-restore those images. Successful private fixtures clean their synthetic keys;
-retain logs and unrelated credentials. Local commits need no instructor approval.
+Main's ten original dirty screenshots retain baseline hashes; verify before the
+next commit/fast-forward. Baseline /tmp/ssh-exam-retained-recording-main-image-hashes.json.
+Never stage/restore images. Local commits need no instructor approval.
