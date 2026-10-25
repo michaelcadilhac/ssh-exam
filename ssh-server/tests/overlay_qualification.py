@@ -38,6 +38,7 @@ FILES = {
     'examterminal.slice': ('/etc/systemd/system/examterminal.slice', 0o644),
     'linux_qualification.py': (None, 0o600),
     'overlay_guest.py': (None, 0o600),
+    'browser_bridge.py': ('/root/browser_bridge.py', 0o600),
     'core-qualification.test': (None, 0o755),
     'asyncio-probe': (None, 0o755),
     'thread-leader-probe': (None, 0o755),
@@ -232,7 +233,16 @@ def run_locked(args):
             target = inputs / name
             target.write_bytes(source_bytes[name])
             target.chmod(mode)
-        (inputs / 'run.json').write_text(json.dumps({'username': args.username, 'unit': unit, 'profile': args.profile}))
+        marker = {'username': args.username, 'unit': unit, 'profile': args.profile}
+        if getattr(args, 'browser_gateway_public_key', None):
+            assert args.profile == 'retained-policy' and args.username == 'examq'
+            public = args.browser_gateway_public_key.read_bytes()
+            assert len(public) <= 256 and public.startswith(b'-----BEGIN PUBLIC KEY-----\n')
+            assert b'PRIVATE' not in public
+            (inputs / 'browser-gateway.pub').write_bytes(public)
+            marker['driver'] = 'browser'
+        (inputs / 'run.json').write_text(json.dumps(marker))
+        (inputs / 'run.json').chmod(0o600)
         (inputs / 'test.service').write_text(UNIT)
         command = candidate_command(unit, guest, inputs, output)
         print('Private test evidence: ' + str(stage), flush=True)
@@ -268,6 +278,20 @@ def run_locked(args):
             subprocess.run(['systemctl', 'stop', unit], timeout=30, check=False,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             process.wait(timeout=30)
+        # Keep read-only preservation evidence even when the local fixture dies
+        # or a failed run closes stdout before the diagnostic log is printed.
+        same_authority = False
+        try:
+            same_authority = authority(config) == baseline
+        except RuntimeError:
+            pass  # A new real exam means no unchanged-authority claim.
+        receipt = {'unit': unit, 'profile': args.profile,
+                   'files_unchanged': digest(host_paths + guest_paths) == preserved,
+                   'authority_unchanged': same_authority}
+        if (stage / 'output').is_dir():
+            fd = os.open(stage / 'output/preservation.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, 'w') as stream:
+                json.dump(receipt, stream); stream.flush(); os.fsync(stream.fileno())
         # Preserve bounded logs/results for diagnosis; discard candidate binaries
         # only with an explicit later artifact cleanup, not on a failed test.
         print('Private test evidence: ' + str(stage), flush=True)
@@ -291,6 +315,8 @@ if __name__ == '__main__':
     parser.add_argument('--guest', type=Path, required=True)
     parser.add_argument('--bundle', type=Path, required=True)
     parser.add_argument('--username', default='examq')
+    parser.add_argument('--browser-gateway-public-key', type=Path,
+                        help='Private browser driver only: PUBLIC signing key; never supply a private key')
     parser.add_argument('--profile', choices=('loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)

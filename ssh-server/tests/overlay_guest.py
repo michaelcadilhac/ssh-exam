@@ -313,7 +313,7 @@ def retained_role_override(role):
             'Environment=EXAM_RETAINED_POLICY_GUEST=1\n')
 
 
-def prepare_retained_roles():
+def prepare_retained_roles(qualify_roles=True):
     # Called only AFTER main's complete private-container/mount/config guards.
     # TestMain dispatches the actual native role functions/factories. No desktop
     # ancestry, UID inventory, cgroup, filesystem or cleanup substitute is used.
@@ -321,7 +321,8 @@ def prepare_retained_roles():
     assert INPUT.is_mount() and OUTPUT.is_mount()
     marker = json.loads((INPUT / 'run.json').read_text())
     assert marker['profile'] == 'retained-policy' and marker['username'] == 'examq'
-    qualify_loaded_role_cli(json.loads(Path('/etc/exam-agent/agent.json').read_text()))
+    if qualify_roles:
+        qualify_loaded_role_cli(json.loads(Path('/etc/exam-agent/agent.json').read_text()))
     services = ('exam-agent.service', 'exam-deadline-watchdog.service')
     subprocess.run(['systemctl', 'stop', *services], check=True, timeout=45)
     for service, role in zip(services, ('Agent', 'Watchdog')):
@@ -414,6 +415,9 @@ def main():
         print('COMMAND_NOT_FOUND: nano', flush=True)
         return 127
     config = prepare_normal_filesystem(config)
+    if settings.get('driver') == 'browser':
+        from browser_bridge import run_guest
+        return run_guest(config, prepare_retained_roles)
     if settings.get('profile') == 'loaded-roles':
         qualify_loaded_role_cli(config)
         profiles = ()

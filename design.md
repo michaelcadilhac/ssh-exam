@@ -2927,6 +2927,16 @@ with FULL preservation; capture/private admission are synthetic adapters. Joined
 actual-browser/kernel/capacity qualification still precedes enablement. See docs/monitoring-restart-continuity.md.
 
 
+The first joined browser/native public workflow is now locally qualified in the
+strict disposable guest: actual WASM/sshd/PAM and signed root CLI source sync,
+native Begin, same pinned supervisor with populated kernel-frozen workload,
+approval without thaw, fresh explicit Continue/private shell buffer and protected
+finish preserve the original interval/grant/access hold. This uses the existing
+guarded private test role/readiness adapter and actual native factories; media
+and the jump MFA are synthetic. It is not release admission enablement, actual
+unsaved-editor/capacity/fault qualification or production deployment. See
+docs/retained-browser-kernel-qualification.md; the installed guard remains OFF.
+
 The local native admission candidate also fences protocol downgrades. An eligible
 account advertised retainedv1 cannot start a NEW interval with the ordinary
 legacy Begin purpose; existing started legacy retries and explicit trusted-host/

@@ -52,6 +52,17 @@ milestone boundaries, not lower safety standards or misleading TODO checkmarks.
 
 ## Operating changes
 
+October25 joined-interface follow-up: three avoidable fixture assumptions (a
+nonexistent relay-ticket field, invented cgroup suffix and object instead of a
+serialized hold string) wasted privileged reruns. The actual producers are now
+read first, and native probes have a typed runtime schema. Wrapper-process exit
+also left private guests alive; exec-node, owned process groups, bounded abort
+before HTTP drain and an independently saved preservation receipt replace that
+assumption. The full actual browser/native Begin/hold/Continue/protection path now
+passes; its exact evidence and remaining editor/capacity scope are in
+retained-browser-kernel-qualification.md. Do not grow another prerequisite chain
+or treat this single-student result as capacity/enablement.
+
 October25 provenance follow-up: a broad browser command again omitted the WASM
 environment flag despite the written instruction. The runner now defaults its
 private server to real WASM, with explicit0 for fallback qualification, and the

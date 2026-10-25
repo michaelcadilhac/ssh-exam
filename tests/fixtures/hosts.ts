@@ -17,8 +17,13 @@ export async function hosts(
     mfaDelayMs?: number;
     classKeyboard?: boolean;
     jumpPasswordPrompt?: string;
+    // Test-only actual native guest endpoint. The jump still authenticates and
+    // forwards only this exact class target; no arbitrary proxy is introduced.
+    forwardClass?: { host: string; port: number; pins: string[] };
   } = {},
 ) {
+  if (options.forwardClass && options.forwardClass.host !== "127.0.0.1")
+    throw Error("Private native fixture must forward only loopback");
   const password = options.password ?? "shared-password";
   const signing = generateKeyPairSync("ed25519", {
     privateKeyEncoding: { format: "pem", type: "pkcs8" },
@@ -585,12 +590,16 @@ export async function hosts(
     });
     client.on("ready", () =>
       client.on("tcpip", (accept, reject, info) => {
-        if (info.destIP !== "127.0.0.1" || info.destPort !== classPort) {
+        const target = options.forwardClass ?? {
+          host: "127.0.0.1",
+          port: classPort,
+        };
+        if (info.destIP !== target.host || info.destPort !== target.port) {
           reject();
           return;
         }
         const stream = accept();
-        const sock = net.connect(classPort, "127.0.0.1");
+        const sock = net.connect(target.port, target.host);
         sock.on("error", () => stream.destroy());
         sock.pipe(stream).pipe(sock);
       }),
@@ -644,7 +653,11 @@ export async function hosts(
       port: (jumpServer.address() as net.AddressInfo).port,
       pins: [pin(jumpKey)],
     },
-    class: { host: "127.0.0.1", port: classPort, pins: [pin(classKey)] },
+    class: options.forwardClass ?? {
+      host: "127.0.0.1",
+      port: classPort,
+      pins: [pin(classKey)],
+    },
     counts,
     sshTransports,
     activePanes,

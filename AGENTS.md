@@ -58,6 +58,11 @@
   qualification. A test against stale built assets does not verify the edit.
   Typecheck changed test fixtures before broad qualification; the production
   server build excludes them and does not catch their type errors.
+  Before a privileged cross-language interface run, read the actual wire producer
+  and validate native probe JSON with a typed schema. Do not invent ticket fields,
+  cgroup naming formats or object shapes from similarly named internal views.
+  Use an exact owned test-runner process and verify its cleanup receipt; wrapper
+  process exit alone does not prove a remote disposable guest has stopped.
 - Prioritize confirmed correctness/alerting defects and the critical liveness
   workflow. Maintain a short dependency-ordered plan with observable acceptance
   criteria. Distinguish necessary safety dependencies from optional enhancements.

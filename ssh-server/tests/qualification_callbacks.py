@@ -127,6 +127,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
    raw=self.rfile.read(size)
    agent.verify(base64.b64decode(self.headers['X-Exam-Signature']),raw)
    data=json.loads(raw);assert data['agent']==config['agent_id']
+   marker=Path('/run/ssh-exam-qualification-input/run.json')
+   if marker.is_file() and private_registry(marker).get('driver')=='browser':
+    from browser_bridge import forward_http
+    status,body=forward_http(self.path,self.headers,raw)
+    self.send_response(status);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+    return
    result={'ok':True}
    if self.path=='/api/agent/management':
     expected=private_registry('/run/qualification-saved-source-grant.json')

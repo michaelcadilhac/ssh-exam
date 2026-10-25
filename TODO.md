@@ -49,6 +49,19 @@ receipt applies separately. Combined actual-root/browser/capacity remains open;
 installed admission stays OFF and nothing is deployed. Evidence:
 docs/retained-gateway-restart.md.
 
+October25 the first actual browser/native-kernel workflow is qualified locally:
+real browser WASM SSH into the guarded guest, authenticated root CLI exact-source
+registration, full90-minute Begin, positively populated frozen cgroup on policy
+loss, authorization without thaw, explicit fresh Continue on the same pinned SSH/
+private shell buffer, saved work and protected finish with original interval/grant
+and account hold. Final exact bundle passes1/37.5s with FULL host/base/authority
+preservation; Python48, focused29 interfaces, full594 application checks and22
+composed affected browser workflows pass. Unsaved-editor/repeated-hold, fault
+and16/64 capacity remain.
+This uses the existing private test role/readiness adapter with real native
+factories and synthetic media/jump. Installed admission is OFF; no C3/C16 closure
+or deployment. Detailed failures/limits: docs/retained-browser-kernel-qualification.md.
+
 October25 attempt/grant/workspace presentation is implemented/tested locally.
 Dashboard history/review and supported CLI list/show expose the applied revision,
 reason, stable attempt number and exact workspace/source lineage; current revisions

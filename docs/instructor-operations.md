@@ -123,6 +123,15 @@ technical review. Native admission remains OFF pending combined qualification;
 this is local development, not current production behavior. See
 retained-gateway-restart.md and monitoring-restart-continuity.md.
 
+Developer qualification now joins actual browser SSH/challenged JPEGs to the
+guarded native guest through Begin, verified populated kernel freeze, instructor
+authorization/explicit Continue and protected finish on the same private shell.
+The supported root CLI source-sync uses its real authenticated HTTPS path. Media
+and jump MFA are synthetic; the native test role/readiness adapter is private.
+This is one-student local evidence, not permission to enable retained admission
+or install these test drivers. Unsaved-editor/fault/capacity gates remain. See
+retained-browser-kernel-qualification.md for the exact command/artifacts and scope.
+
 The local pending diagnostic CLI adds `examctl list --read-only` and
 `examctl info ATTEMPT --read-only`; use `--state DIR` if configuration/keys are
 unavailable. These explicitly avoid initialization, reconciliation, permission/
