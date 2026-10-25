@@ -33,6 +33,14 @@ focus and build/typecheck pass. The approval-feedback item is complete locally;
 SSH-control timers, native combined capture/capacity and broader liveness remain
 open. See docs/retained-browser-control.md. Nothing is deployed or enabled.
 
+October25 actual retained gateway-child death is qualified locally: two students
+start negotiatedv1 through WASM/SSH; exact SIGKILL retires only the failed child's
+panes, preserves its grant/original interval, gives fresh-SSH/review guidance and
+one contextual alert. The same peer worker accepts input and keeps its interval.
+This is tests/docs only; native OS containment is simulated in the browser and
+separately qualified by root tests. Full-page/native SSH-death feedback, whole-
+gateway restart and combined root16/64 remain. See docs/retained-browser-control.md.
+
 October25 native admission compatibility is implemented/tested locally. Actual
 signed/interface reproductions exposed a legacy-purpose downgrade and an old-
 gateway v3 bootstrap that started time. Both now refuse before new clock/grant/

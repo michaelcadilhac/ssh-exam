@@ -9,7 +9,7 @@ Checklist18/38 overlaps, not an effort percentage. Status requests do not pause 
 
 ## Validated revision and preserved work
 
-Main/worktree HEAD7190e41. Working branch/source directory:
+Main/worktree HEADbd52857. Working branch/source directory:
 var/worktrees/source-grant-retention. Untracked node_modules is a dependency
 symlink; never stage. Preserve ALL stashes, especially original recovery
 40f1fb64187db13783ea23c0125d66824d65b301 and path-only checkpoint stashes.
@@ -53,10 +53,22 @@ namespace/compiler/default-size), app82055 582/105files307.35s, affected browser
 33/7.5m, guarded root96209 36 assertions/release CLI and FULL host/base preservation.
 Root capture is synthetic. No runner active. Static/native manifest hashes match.
 Logs /tmp/ssh-exam-retained-admission-{full-native,full-app,affected-browser,root}.log.
-NEXT commit this coherent validated milestone locally, then reproduce actual
-retained browser abandonment/native SSH-death and gateway-child loss feedback.
-Preserve viable transports on mere latency; require positive loss observation,
-original deadlines and unaffected peers. Do not stop after the commit.
+Committed/fast-forwarded locally asbd52857; original ten main screenshots verified
+unchanged. Preserve the new path-only main checkpoint stash too. Current bounded
+milestone: actual retained gateway-child death/browser abandonment/native SSH-death
+feedback. Preserve viable transports on mere latency; require positive loss
+observation, original deadlines and unaffected peers. No runtime change yet.
+
+Actual retained gateway-child death test75578 PASS1/16.6s: two actualv1 students,
+exact SIGKILL/pane retirement, useful fresh-SSH/review guidance, unchanged time/grant,
+one contextual alert and same-worker positive peer input. Initial52683/97315 were
+Origin/CSRF fixture refusals BEFORE injection; retained logs. Authenticated fixture
+uses existing instructor/token flow. Types90402/final28265 PASS.
+No runtime/static/native change: prior broad/root evidence still applies. Details:
+retained-browser-control.md. No browser runner active. NEXT commit this bounded
+coverage increment, then reproduce uncooperative full-page/native SSH-death loss
+feedback without using a timeout as evidence. Whole-gateway restart and combined
+root16/64 remain. Do not stop after the commit.
 
 ## Remaining finite outcomes
 

@@ -271,3 +271,29 @@ qualifies the bounded SSH-control/version-diagnostic milestone locally. No runne
 active. No native binary rebuild, configuration/database migration, production
 mutation or enablement. Continue with native admission compatibility before any
 combined root/capacity gate or release eligibility claim.
+
+
+## Actual retained gateway-child death (October25)
+
+`tests/browser/retained-loss.spec.ts` starts TWO students through actual retainedv1
+WASM/SSH/HTTP Begin, positively observes their distinct gateway PIDs and panes,
+then SIGKILLs only one exact child through the existing authenticated instructor
+fault fixture. The failed child's panes retire; the page demands fresh SSH and
+instructor authorization, with identical start/deadline/original deadline/grant.
+The other student's same worker accepts a positive terminal command and retains
+its interval. No automatic SSH authentication occurs; exactly one contextual
+connection-failure alert is recorded without credentials or agent-outage claims.
+
+Authenticated focus75578 PASS1/16.6s (scenario13.1s). Initial52683 and97315 stopped
+at Origin and CSRF validation BEFORE fault injection; these are fixture setup
+failures, not product failures. The corrected fixture uses the existing isolated
+instructor login/token flow and positively verifies the exact killed PID. Logs
+/tmp/ssh-exam-retained-loss-child-{focus,corrected,authenticated}.log. Types90402
+PASS; final authenticated-fixture typecheck28265 PASS.
+
+This increment changes tests/docs only. bd52857's full582 application/33-browser,
+native race/resource/build and exact-artifact guarded-root evidence still applies
+to unchanged runtime/static/native inputs. Native OS containment is simulated in
+this browser test, separately tested by root qualification. It covers actual
+child death, not uncooperative full-page closure, a whole gateway restart, or
+combined real browser/root16/64. Installed retained admission stays OFF.
