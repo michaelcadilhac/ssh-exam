@@ -1,7 +1,7 @@
 # Current local TODO checkpoint
 
-October26,2026. Validated main feature47a64f8 plus rule clarificationbc2cbf9
-(equivalent isolated commitca5ee23).27/38 checked locally, not effort/readiness.
+October26,2026. Validated main codebe4994c (C8), including clarified missing-package rule.
+27/38 checked locally, not effort/readiness; C8 closes part of broad management.
 No deployment/push/service/config/student changes. No delegation authorized.
 Preserve original ten main screenshots and all stashes; expected hashes in
 /tmp/ssh-exam-retained-recording-main-image-hashes.json.
@@ -37,13 +37,19 @@ No active runner/guest. Initial direct-Vitest run interrupted because it skipped
 native-clock pretest; owned runner1295751 only, exit130. Build existing addon and
 focused interfaces passed, then full npm test passed. AGENTS records the fix.
 
-Exact next action: commit validated coherent C8 locally after final diff/hash
-check; align the isolated branch to identical-tree mainbc2cbf9 without touching
-work/index, integrate main preserving screenshots. Then continue C4 manual verified
-workspace cleanup/no grace. Existing C4 approval permits conservative deferral
-when the same UID has active work; no new policy question is needed. Read actual
-worker/proc/namespace helpers before implementation; deliver supported dry-run and
-reviewed exact cleanup, not another unused scanner. Configuration/help/operator
+Codebe4994ca0232243a29005027f43b6ccdfc320560 committed/integrated main. Clean-
+commit actual root CLI/TLS rerun PASS7.55s; log clean-commit-cli.log. Source/asset
+hashes match full qualification. No new execution-cohort/csc qualification claimed.
+
+Exact next action: finish this documentation receipt commit/integrate, create
+isolated workspace-cleanup-delivery worktree from main and continue C4 manual
+verified cleanup/no grace. C4 approval already permits conservative same-UID
+active-work deferral; no new policy question. Native MountTopology is unwired;
+read actual worker/proc/thread/UID/hold helpers before coding. Deliver supported
+CLI dry-run then reviewed exact cleanup with bounded independent worker, fresh
+archive/use proof, safe quarantine/crash/retry and preservation of all clocks/
+account holds/sources/history. See workspace-retention.md113-208 for approvals and
+acceptance. Do not add another unused scanner chain. Configuration/help/operator
 journey and remaining migration acceptance audit follow. No new decision pending.
 Do not stop at plan or commit while actionable local work remains.
 

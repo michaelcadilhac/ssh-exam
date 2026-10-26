@@ -150,3 +150,9 @@ docker-build,container,browser,student-browser,ui-review}.log. Rollout and rollb
 remain proposals in todo-rollout-plan.md; include033 acknowledgements/history
 fences in consistent backups. No production migration, cleanup or consolidation
 has occurred. Manual workspace cleanup/configuration/help/journey work remains.
+
+Validated code commit be4994ca0232243a29005027f43b6ccdfc320560 is integrated
+locally into main. A subsequent actual root CLI/TLS run from the clean committed
+worktree passes7.55s (12 unrelated cases intentionally unselected), log
+/tmp/ssh-exam-native-reconciliation-clean-commit-cli.log. No source/asset change
+from the full qualification manifest. Original main screenshot edits preserved.
