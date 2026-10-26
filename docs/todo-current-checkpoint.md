@@ -77,7 +77,29 @@ All333 native inputs match frozen manifest immediately after completion; subsequ
 README-only documentation is not a runtime change.25 skips are child entrypoints
 or root-guest/installed-toolchain cases, not claimed host-root qualification.
 Build/vet PASS; types/Python80 PASS. No active runner/remote guest.
-No new artifact/upload. Prepared, NOT executed, exact worktree builder/uploader:
+Native workflow committed286acd9 (branch only; main/release still1477e69).
+Exact clean build94093 PASS, local MAIN legacy-revocation-artifacts.8eegzvz6;
+source sibling .source.json pins286acd97502010b71e801e84f6556f8d5a7acd36,
+VCSmodified=false. Agent49b0a7e101151d8d7cf6f949ae33237e781635912fdd7e13c4dd96c3d2faa421;
+core125b205cb1e1f4c77c90a2960b6097ef713f936267b22839987a934062bec234.
+All18 code-only files/63,687,566bytes audited; NO keys/config/env/student data.
+Shipping ELF CLI help and real/effective-root refusal smoke PASS.
+
+User explicitly approved EXACT bundle/destination in the dialog reply. Upload86118
+PASS; all18 files verified at /var/tmp/ssh-exam-browser-native-upload.revocation286acd9_835ac9c4d31d43da.
+The initial automatic-review rejection is resolved by this consent; do not ask
+again for this unchanged payload. Digest8a01d37836260f5d351471ebfe19e12515d3ce122a131919aaec67a5eb78cb56.
+Guarded root52816 PASS43, /tmp/ssh-exam-revocation-root.log, retained-policy profile.
+Guest3xpz5gxp/unit99a51ef0fe9e4c9db7eb578013414e8b independently exit0/files-base-
+authority-preserved/inactive. Actual cancellation/delayed-old refusal→NEW saved
+source/zero-clock staging/full90min Begin/protected export/hold passed. Synthetic
+capture/test-role adapter remains explicit; PUBLIC web path is next.
+Then FF native implementation into main/release (preserve screenshots) and run the
+UPDATED actual PUBLIC C7 browser spec with this exact new bundle; it now asserts
+cancellation before NEW20-minute grant availability/Begin/export. Current native
+bundle must not be rebuilt for documentation-only updates. No deploy/consolidation.
+Pointers /tmp/ssh-exam-revocation-{local-build,remote-bundle,upload-target,upload-digest}.
+Prepared worktree builder/uploader:
 /tmp/ssh-exam-build-revocation-evidence.py and /tmp/ssh-exam-upload-revocation-evidence.py.
 They select THIS worktree, legacy-revocation-artifacts prefix and separate
 /tmp/ssh-exam-revocation-{local-build,remote-bundle} pointers; original helpers
@@ -88,14 +110,14 @@ First Python restricted run failed11 socket permissions (runner exited); allowed
 80 PASS. First extended CLI cleanup reserialized equivalent state; corrected raw
 byte restore, failures retained. No missing executable. No active remote guest.
 
-NEXT: make coherent local CLI implementation
-commit with truthful pending root gate; build exact committed candidate from THIS
-native worktree (the old /tmp/ssh-exam-build-watchdog-evidence.py hardcodes release
-worktree, so do NOT use it unchanged). Audit/freeze/upload new code-only test bundle
-and run joined guarded root qualification, then actual public-role browser check.
-Never attribute076 artifact evidence to new native bytes. No migration/retirement
-TODO closure from initial cancellation alone. General cleanup/config/help outcomes
-follow; no consequential design question remains. No production action.
+NEXT: FF this validated native branch into main/release while preserving original
+screenshots; run UPDATED public C7 using exact approved remote bundle with
+EXAM_BROWSER_NATIVE_RELEASE=1 and EXAM_BROWSER_NATIVE_SSH_RECOVERY=1. Native root
+proof passed; public C7 remains before closing this workflow. No production action. C8 native definition
+reconciliation, manual verified cleanup/no grace, full configuration/help/operator
+journey remain independent open outcomes. Do not invent cross-store migration:
+operational documentation describes additional PTY listeners, not proof of separate
+authority stores; future cutover inventories exact configs/state/owners first.
 
 Preserve ten original main screenshot edits and ALL stashes. Hash dict
 /tmp/ssh-exam-retained-recording-main-image-hashes.json verified after c27 FF and

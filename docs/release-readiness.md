@@ -191,3 +191,13 @@ Maximum observed public contact30.56ms/state37.89ms (not native permission).
 Earlier failures remain retained; the original incident and first sign-in trigger
 are unproven. Release gate remaining: native unused legacy cancellation/replacement
 compatibility, plus separately authorized drain/live acceptance before deployment.
+
+
+Native CLI cancellation candidate286acd9 now passes full native races/resources/
+namespace/compiler/default-size, CLI/Python/types/build/vet and a fresh exact-
+artifact guarded root43 workflow (legacy-recovery-migration.md). Agent49b0a7e1,
+core125b205c; old076 artifact receipts are not attributed to these new bytes.
+Actual root cancellation→NEW saved-source/full90min/protected export passes with
+independent host/base/authority preservation and inactive exact unit. Updated
+PUBLIC web20-minute source-replacement qualification remains before clearing the
+focused compatibility gate. No deployment or temporary-service consolidation.

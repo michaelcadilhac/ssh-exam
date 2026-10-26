@@ -1,7 +1,8 @@
 # Reviewed native legacy recovery migration
 
 October26,2026. Partial local candidate in the isolated legacy-recovery-revocation
-worktree; not committed, fully qualified, complete or deployed.
+worktree, committed286acd9 and locally validated; PUBLIC web qualification and
+broader migration remain incomplete. Not deployed.
 Baseline076a5c1 now aligns catalog uncertainty with Begin's UID fence. Public
 retained release1641c8b is independently qualified; this management migration is
 not a new prerequisite for retained SSH.
@@ -203,3 +204,24 @@ Next milestone boundary: commit this locally validated CLI/workflow increment,
 build its exact immutable binaries, then qualify BOTH guarded root90-minute and
 PUBLIC web20-minute saved-source replacements. Do not mark that integration or
 migration complete before those interfaces run. No new production authorization.
+
+
+Exact committed native candidate286acd9 is frozen at MAIN
+var/collection-tests/legacy-revocation-artifacts.8eegzvz6 (sibling .source.json).
+Agent49b0a7e101151d8d7cf6f949ae33237e781635912fdd7e13c4dd96c3d2faa421;
+core125b205cb1e1f4c77c90a2960b6097ef713f936267b22839987a934062bec234.
+Build records VCS286acd9/modified=false.18 files/63,687,566bytes were audited code-
+only; user explicitly approved their exact digest/private destination after tool
+review rejected reuse of the earlier bundle's consent. Upload86118 verifies all
+files at /var/tmp/ssh-exam-browser-native-upload.revocation286acd9_835ac9c4d31d43da.
+No keys/config/env/student data/submissions crossed that boundary.
+
+Guarded root52816 PASS43. Actual CLI cancellation/exact retry and delayed signed
+old preflight/prepare refusal consume no clock/reservation; separate NEW saved
+source availability, zero-clock staging/full chosen90min Begin, exact archived
+Nano bytes, protected completion, pin retirement and independent account hold pass.
+Existing actual writer/SSH/editor/linked-IO/clock/fault controls also pass. Guest
+3xpz5gxp/unit99a51ef0fe9e4c9db7eb578013414e8b independently exit0, files/base/host
+attempt authority unchanged and inactive. Capture/test-role adapter is explicit;
+this is not yet the updated PUBLIC browser workflow. Logs:
+/tmp/ssh-exam-revocation-{artifact-build,upload,root}.log. No production action.
