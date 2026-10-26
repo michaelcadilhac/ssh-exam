@@ -21,6 +21,14 @@ are in docs/retained-release-qualification.md. Earlier dated implementation note
 below are historical; this contract supersedes their disabled/incomplete status.
 Production retains its installed cohort until separately authorized drained rollout.
 
+The capture-input recovery correction also refreshes the browser ingress gate from
+live verified conditions after a healthy sample; it cannot depend solely on a
+React effect observing a transient failure. Coalesced failed/healthy renders must
+not leave input disabled indefinitely. Native permission, local locks, age bounds,
+pane epochs and discarded-input semantics remain unchanged. Focused real-WASM
+regression evidence and remaining package gates: docs/capture-input-recovery.md
+and docs/release-readiness.md. Nothing is deployed.
+
 Legacy saved-work catalog inspection now matches Begin's exam/UID/start fence
 independently of an earlier username when the one-use marker is absent. Such a
 committed interval is uncertain, never proof that a grant is unused or consumed.

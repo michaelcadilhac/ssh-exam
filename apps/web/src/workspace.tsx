@@ -726,7 +726,12 @@ export function Workspace({
         if (healthy) captureFailures.current.delete(source);
         else captureFailures.current.add(source);
         setCaptureDelayed(captureFailures.current.size !== 0);
-        if (!healthy) browserSSH.setInputEnabled(false);
+        // React may coalesce failed/healthy samples back to the same rendered
+        // state. Refresh the ingress gate from live facts too; otherwise its
+        // immediate failure revocation can survive recovery indefinitely.
+        browserSSH.setInputEnabled(
+          healthy && !coveredRef.current && interaction(),
+        );
         return true; // Technical verification failure, never policy evidence.
       },
       () => pendingPolicy.current === null,

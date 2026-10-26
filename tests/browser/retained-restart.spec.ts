@@ -99,6 +99,105 @@ function sameInterval(original: any) {
   );
 }
 
+test("capture recovery restores terminal input when React coalesces the failed and healthy samples", async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  page.setDefaultTimeout(5000);
+  // Delay only React's null MessageChannel task, not capture, sockets, worker
+  // messages or browser timers. This makes the otherwise load-dependent pair of
+  // health updates deterministic without granting any execution authority.
+  await page.addInitScript(() => {
+    const gate = { hold: false, delayed: 0, pending: [] as MessagePort[] };
+    (window as any).__renderDeliveryGate = gate;
+    const Original = window.MessageChannel;
+    window.MessageChannel = class extends Original {
+      constructor() {
+        super();
+        this.port1.addEventListener("message", (event) => {
+          if (!gate.hold || event.data !== null) return;
+          event.stopImmediatePropagation();
+          gate.delayed++;
+          gate.pending.push(this.port1);
+        });
+      }
+    };
+  });
+  let failNext = false;
+  await page.route("**/capture-challenges", async (route) => {
+    if (failNext && route.request().postDataJSON().source === "screen") {
+      failNext = false;
+      await route.fulfill({
+        status: 503,
+        json: { error: "Synthetic verification delay" },
+      });
+    } else await route.continue();
+  });
+  const original = await begin(page, "retained15"),
+    before = await runtime(page);
+  await page.locator(".xterm-helper-textarea").last().focus();
+  await page.keyboard.type("coalesced-private-");
+  await expect(page.locator(".xterm-rows")).toContainText("coalesced-private-");
+  const failed = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/capture-challenges") &&
+      response.status() === 503,
+  );
+  await page.evaluate(() => {
+    (window as any).__renderDeliveryGate.hold = true;
+  });
+  failNext = true;
+  try {
+    await (await failed).finished();
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as any).__renderDeliveryGate.delayed),
+      )
+      .toBeGreaterThan(0);
+    const recovered = await page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/frames/challenged") &&
+        response.status() === 200 &&
+        response.request().postDataJSON().source === "screen",
+      { timeout: 7000 }, // Capture's actual sampling interval is five seconds.
+    );
+    await recovered.finished();
+    // Let fetch.json()/sampleHealth finish while rendering is still held.
+    await page.evaluate(
+      () => new Promise((resolve) => setTimeout(resolve, 25)),
+    );
+    await expect(
+      page.getByText("Monitoring verification delayed · input blocked", {
+        exact: true,
+      }),
+    ).toHaveCount(0);
+  } finally {
+    await page.evaluate(() => {
+      const gate = (window as any).__renderDeliveryGate;
+      gate.hold = false;
+      for (const port of gate.pending.splice(0))
+        port.dispatchEvent(new MessageEvent("message", { data: null }));
+    });
+  }
+  await expect(
+    page.getByText("Monitoring verification delayed · input blocked", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page.locator(".xterm-helper-textarea").last().focus();
+  await page.keyboard.type("recovered");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "Echo: coalesced-private-recovered",
+  );
+  expect(
+    (await (await page.request.get("/api/student/exam")).json()).attempt,
+  ).toMatchObject({ ...sameInterval(original), state: "ACTIVE" });
+  const after = await runtime(page);
+  expect(after.authenticationCalls).toEqual(before.authenticationCalls);
+  expect(after.terminalOpens).toBe(before.terminalOpens);
+});
+
 test("graceful gateway shutdown preserves the original SSH, buffer and interval without a policy hold", async ({
   page,
 }) => {

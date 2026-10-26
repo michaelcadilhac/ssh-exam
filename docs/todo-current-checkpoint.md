@@ -1,58 +1,107 @@
 # Current local TODO checkpoint
 
-October26,2026. Local development/testing/commits only. NO push/deploy/production
-restart/config/student change or consolidation. csc-sys ONLY guarded disposable
-qualification; busy/uncertain = NO TEST. No open policy question; all approvals
-remain in TODO.md/todo-design-decisions.md. Accepted capacity16students/64panes.
-No required executable is missing. Rule e2188d7 stops for genuine missing required
-executables, not malformed/negative synthetic output. Optional buildid waived.
+October26,2026. Last shared baseline076a5c1;26/38 overlapping local boxes checked, NOT a
+production-readiness percentage. Latest user asks readiness/bringing system online
+with main bugs fixed, then started LOCAL Docker. Production answer is NO-GO:
+packaged class test has unresolved failures and native legacy cancellation is not
+fully implemented. No new production/deployment authorization. NO push/deploy/
+production restart/config/student changes or consolidation. csc-sys ONLY guarded
+disposable tests; busy/uncertain = NO TEST. No missing required executable.
+Rule e2188d7 distinguishes real missing dependencies from synthetic error text.
+Never use optional go tool buildid. go version -m on WASM was unsupported, not an
+absent executable; raw embedded versions are proven below. No agents spawned.
 
-## Validated milestone: public retained release
+## Stable baseline and exact release artifacts
 
-This tree completes the local release after e72caa7;26/38 main boxes checked
-(overlap, not effort%). Native agent50236794379fc10a748de54a944dfa8c06df060935efd5462eb1e01cb13a93d7;
-corec2e41a3555010930c46e246138921fb47f5d839504a918368eaddb9a6fb45521.
-MAIN immutable public-release-operational-artifacts.t5nkh28w.source.json matches
-ALL current source inputs; remote private upload.h0ftegdj contains exact binaries.
-No active runner. Detailed positive/failed receipts: retained-release-qualification.md.
+1641c8b completes native/public retained release under development WASM:621app,
+full native races/resources,42kernel,16x4,19affected browser.076a5c1 corrects catalog
+UID uncertainty (actual CLI/refused Begin/restart/affected races/fullCLI/build/vet).
+Original incident cause remains unproven. Main original ten screenshots and ALL
+stashes preserved; hashes /tmp/ssh-exam-retained-recording-main-image-hashes.json.
+Never stage node_modules symlink in worktree. The new capture-input correction
+is validated in this increment; see docs/capture-input-recovery.md.
 
-Local admission is linked to matching native-loaded-role/v2 plus complete live
-ownership/monitoring/input/writer barriers. Repeated signed pause/cancel clears
-paired resume-kind+nonce. Full621app/110files319.55s, native races/resources ALONE
-core592.305s/CLI19.830s,55Python, build/vet/types,42 new-core root adapter cases
-and19 final affected browser cases PASS. Actual PUBLIC-role dual holds/Nano/export,
-C7 genuine-loss/new grant/full chosen allowance, automatic recovery versus real
-capture gap, blocked command, coordinator continuity, clock retry, gateway process
-replacement and16students/64panes recovery/protected finish pass. All exact guests
-independently result0/files+authority preserved/inactive; temporary keys absent.
-Original incident cause remains unproven; historical failures remain documented.
-Production still uses its installed cohort. NO deployment/enablement/consolidation.
+Release worktree: var/worktrees/source-grant-retention (same-named branch).
+Final native MAIN watchdog-evidence-artifacts.e__dgx3t / remote upload.o_vr6blr:
+agent e2ba4219e09d2a67bd356bc751293d0e1fc9ea01ab780b8fa77e4a29f1b8b735;
+core b5422a526042a24df8f229f4503bf6d79e4979309f6560bd955f05638d0bec6f.
+Exact root22728 PASS42 and public21756 PASS40.3s/49.9s; all exact guests preserved/
+inactive/keys absent.14 synthetic history migrations PASS. Detailed receipts:
+release-readiness.md (current), retained-release-qualification.md (earlier).
 
-## Current increment and exact next action
+LOCAL Docker29.9.1 explicit unix:///var/run/docker.sock only. Image
+ssh-exam-release-test:076a5c1 = sha256:a99bb895ef66868a486cae42612929fbe6d67bd929261bb67d0703e4d3a50da5.
+Container31746 final smoke PASS UID10001/read-only/no-network/native clock/schema
+24→32/exact original row/no invented grants/all assets; owned fixture container/
+image/keys removed. tests/container-release-smoke.py is new validated WIP. First
+smoke failed host-vs-image WASM equality, correctly: host embeds1.27.3-X:nodwarf5,
+image1.27.2, sizes9032371 vs9031994. Cleanup wording oracle also failed although
+container was removed; structured exact-ID absence replaces wording. Old exact
+fixture image removed after identification; failures retained, not erased.
 
-Public release baseline is1641c8b on main/worktree; no runners active. The catalog
-UID/username discrepancy is now fixed/tested locally in this tree. Actual CLI and
-staged saved-work/refused Begin/restart RED→three-repeat PASS; corrected fixtures
-preserve exact state/grant/source bytes, no live work/clock/marker publication.
-Affected native recovery/catalog/metadata races17.818s, fullCLI/TLS/root-namespace
-races18.753s, build/vet/diff checks pass. Details/failures: legacy-recovery-dependencies.md.
-No new native release image is claimed for this read-only metadata correction.
+Packaged web MAIN release-076-web-artifacts.4_a05yiy has image/hash source.json and
+previous-qualified-web backup. dist/web/ssh in release worktree now serves image
+WASM1bea6f8ef01e81532d5fa8a7064047f93fd2fc729391bad6fe109b51193b3e40.
+JS/CSS/runtimeJS equal prior qualified hashes. DO NOT run npm build and overwrite
+these bytes mid-qualification. Packaged public86939 PASS35s/44.2s, clean receipts.
 
-Commit this validated increment locally, then continue reviewed legacy migration.
-Next public entry: proposed `examctl recovery-grants` reviewed retirement of ONLY
-unused native legacy authority, preserving its original JSON/history and fencing
-stale legacy preparation/Begin. Inspect implementation before choosing names.
-Use existing reviewed NEW unified issuance/source-sync for any replacement; no
-JSON deletion/starter fallback or clearing native-unreconciled flags. Before
-mutating, review consumed/uncertain/pending starts, contradictory durable workspace/
-submission/consumption evidence, exact source retention, crash/retry/cancel and
-CLI/web status synchronization. A proposal is not completed migration. After that,
-manual verified cleanup/no grace and full configuration/help/operator journey remain
-(todo-delivery-audit.md). Do not stop at this commit or add unused helper chains.
+## Current blocker and exact next action (NO active runner)
 
-Production-only alert acceptance/temporary three-service consolidation remain
-UNEXECUTED. Migration/deployment/rollback/consolidation proposal: todo-rollout-plan.md.
-Main ten ORIGINAL dirty screenshots have unchanged hashes in
-/tmp/ssh-exam-retained-recording-main-image-hashes.json. Preserve ALL stashes;
-never reapply old checkpoint pointers. Active worktree var/worktrees/source-grant-retention,
-branch source-grant-retention; untracked node_modules symlink NEVER stage.
+Packaged43333 class FAIL7.6m at16th sign-in, before password; WS opened/no reply,
+UI connection closed/no new clock;15 peers ACTIVE. Guest5kzudps5/unit2bc9f39b82774add85672bbd6b4c0173
+independently result1/preserved/inactive, localH0Z4HW key absent. Cause UNCLASSIFIED.
+Short14937 auth-only probe PASS16/55.3s with real packaged WASM/simulated SSH hosts:
+16worker-ready/0fatal/0clock. Types PASS. Private bounded observers and changed
+capacity diagnostics pinned by MAIN release-076-bootstrap-diagnostics.sources.json.
+Observed91223 full class FAIL8.1m AFTER all16/64 freeze/recovery: examq01 command
+has no echo; all16 ACTIVE, affected native generation2 (extra technical hold/
+recovery), SSH live/scopes populated+unfrozen. Bootstrap ready/HTTP200/finished.
+Guest6vg0ph48/unit2c0b9b04a5ca40e88ee201989f808004 independently result1/preserved/
+inactive; localPBBbeG key absent. Actual failure artifacts under
+/tmp/ssh-exam-release-076-capacity-observed; NO error-context.md exists there.
+Do NOT claim the signup failure fixed or guess file paths. Do NOT launch another
+9-minute class run without focused classification/regression.
+
+Confirmed/fixed: actual real-WASM regression holds only React's null scheduler
+deliveries during one503 screen challenge and a successful challenged upload.
+Original code leaves fresh terminal keys disabled forever; healthy callback now
+reevaluates the existing live gating facts. No native/epoch/queue/policy/deadline
+change. Focused RED→GREEN,19units, types/build and ALL20 affected browsers PASS3.5m.
+Receipts: /tmp/ssh-exam-input-recovery-{red-oracle,green,units,browsers}.log.
+First selector matched no tests; first fixture wait equalled the5s sampling
+interval and timed out; neither is counted. Both failures retained. Details:
+docs/capture-input-recovery.md. This does not prove the prior native failure's
+cause or fix the separate sign-in failure.
+NEXT: commit this coherent local fix, build a new LOCAL Docker image, verify its
+exact assets/startup smoke, then rerun observed native16/64 automatic-recovery/
+protected-finish qualification with unchanged exact076 native bundle. Freeze all
+runner inputs and keep shipped WASM selected. Inspect independent teardown result
+and key absence. No production action. Legacy work remains separate below.
+
+## Independent approved compatibility work (isolated; NOT qualified)
+
+User approved TWO actions: cancel old unused permission, then create replacement;
+student waits if replacement fails. No joined handoff. New isolated worktree
+var/worktrees/legacy-recovery-revocation, branch same, base076a5c1. Native changes
+there do NOT affect release test inputs. Added strict purpose/original-base64/
+receipt revocation envelope preserving exact old bytes,16KiB original/32KiB envelope,
+CLI revoke-preview/revoke/help, conservative private initialized state/catalog/
+UID/start/workspace/submission proof, audit-before-atomic publication outside state
+transaction, exact lost-reply result; legacy reconcile/Begin refusal and explicit
+NEW valid grant source path. No new student RPC, clock, deletion or account release.
+Actual root-mapped CLI RED exit2 → focused17176 PASS1.328s. ONLY happy CLI tested;
+no broad/crash/negative/old-reader/native joined qualification yet. No commit.
+Before broad: add meaningful consumed/uncertain/prepared/pending/orphan/no-start
+contradiction/stale/audit/publication/crash/restart/new-source tests; review code.
+Known review fixes still needed: hash sorted Blockers into preview token; check
+revoked original identity matches attempt before allowing valid NEW grant path;
+repair both directory fsyncs on uncertain-result retry. initialized marker is
+opaque nonempty (actual native marker is prose, not literal1). Avoid custom JSON
+Marshaler on embedded RecoveryPreparation; authoritative encoder is separate.
+Detailed finite plan: docs/legacy-recovery-migration.md in release worktree.
+
+All release docs/harness/private observers WIP uncommitted. No production touch.
+Remaining cleanup/general CLI work can wait for focused release; native unused
+legacy migration cannot be handwaved away because new monitored Begin requires a
+saved grant. Future drain/backup/matched cohort/live SSH-MFA-media/alerts smoke and
+three-service consolidation are PROPOSALS ONLY (todo-rollout-plan.md).

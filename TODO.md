@@ -1,5 +1,13 @@
 # Deferred work
 
+October26 packaged-release qualification is currently NO-GO: an earlier16th-login
+failure remains unclassified, and a later run lost terminal input after recovery.
+A deterministic real-WASM regression now reproduces a client input gate left
+disabled when React coalesces failed/healthy capture updates. The focused fix
+passes; broader/class requalification and native legacy-permission cancellation
+remain open. See docs/release-readiness.md and docs/capture-input-recovery.md.
+Earlier passing development-artifact results below do not qualify new packages.
+
 October26 current local release status: the retained-SSH/liveness workflow is
 implemented and qualified through PUBLIC executables, not deployed. Policy holds
 preserve viable same-page SSH/shells/editor buffers through verified input/writer
