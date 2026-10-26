@@ -65,10 +65,9 @@ October25 follow-up investigation (NOT completed migration): current native
 recoveryReference explicitly refuses an initial unified grant while a legacy
 saved-work record exists. Deleting the JSON is unsafe: absence can select starter
 initialization. A supported reviewed retirement/replacement must preserve the
-original record/consumption history and make old admissions fail closed. Before
-adding a mutator, reproduce the identity boundary too: Begin fences prior starts
-by exam/UID, whereas the catalog's no-marker view currently also matches username.
-An unused label alone must not authorize retirement or clear C8's native fence.
+original record/consumption history and make old admissions fail closed. The catalog identity discrepancy below is now reproduced/fixed locally; reviewed
+migration remains open. An unused label alone must not authorize retirement or
+clear C8's native fence.
 The exact transition, crash/retry proof and CLI/web integration remain to implement
 and qualify after the current liveness increment; this proposal closes no TODO.
 
@@ -87,3 +86,37 @@ preserving catalogs and consumed markers. No schema conversion or deletion is pa
 of installation. Older code lacks these dependency/lock checks; do not downgrade
 while saved-work authorizations exist or resume its source-deletion workflow.
 See todo-rollout-plan.md for all services, backups and repair-forward constraints.
+
+## October26 catalog identity correction (implemented/tested locally)
+
+`examctl recovery-grants --exam EXAM` now uses the same exam/UID/committed-start
+fence as native Begin when a consumption marker is absent. An interval since grant
+issuance under the same UID but an earlier username is `uncertain`, never `unused`.
+This is conservative inspection consistency, not authorization to retire/reissue
+or a declaration of matching consumption. Marker-bound `consumed` still requires
+its complete existing identity/interval/source proof. Other exams/UIDs, starts
+before issuance and genuinely unstarted preparations retain their prior labels.
+
+The actual root-user-namespace CLI and privately staged saved-work/Begin/restart
+regression both reproduce the old `unused` result. Begin already correctly refuses
+`already started`; it remains refused without live workspace publication, new
+clock/marker, history/source/grant mutation, both before and after restart.
+The first synthetic fixture omitted the prior interval's account hold, so normal
+state loading added it; that failure is retained and corrected by supplying the
+real existing hold, without relaxing byte-preservation assertions. Its unstarted
+control also now has zero deadlines/PREPARING, rather than impossible history.
+
+Corrected-fixture RED is limited to the two intended catalog assertions. Focused
+three-repeat races pass core1.090s/CLI1.826s. Affected recovery/catalog/metadata/
+consumption races pass17.818s, full native CLI/root-namespace/TLS races18.753s;
+build/vet/diff checks pass. Receipts: /tmp/ssh-exam-catalog-uid-{red,
+red-corrected-fixture,focus,core,cli,build,vet}.log. All runners completed.
+
+No new state, worker, management mutation, account reservation or execution permit
+is added. Inspection stays read-only; both unused and uncertain dependencies
+already block source deletion. Current source changes only that bounded metadata
+predicate. Release1641c8b's full621app/browser/42kernel/16x4 evidence continues to
+cover its unchanged runtime contracts; those immutable binaries are not claimed
+to contain this later catalog fix. No redundant app/browser/root-capacity run or
+new native artifact qualification is claimed. Migration/revocation/retirement
+still needs supported reviewed workflows; do not delete JSON/markers as a repair.

@@ -189,10 +189,11 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 				}
 			}
 			// A persisted interval can consume a legacy grant even if the process
-			// died before writing its one-use marker. Never call that unused.
+			// died before writing its one-use marker. Match Begin's exam/UID fence:
+			// a renamed account does not make that committed interval unused.
 			if view.ConsumedBy == "" {
 				for _, a := range state.Attempts {
-					if a.Exam == r.Exam && a.Username == r.Username && a.UID == r.UID && a.Start >= r.CreatedAt {
+					if a.Exam == r.Exam && a.UID == r.UID && a.Start >= r.CreatedAt {
 						view.Disposition = "uncertain"
 						break
 					}

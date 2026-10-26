@@ -73,6 +73,64 @@ func TestRecoveryCatalogInspectionIsReadOnlyAndLabelsMetadata(t *testing.T) {
 	}
 }
 
+func TestRecoveryCatalogRenamedUIDAgreesWithBeginFence(t *testing.T) {
+	e, a, r := recoveryCatalogFixture(t)
+	if err := e.WithState(func() error {
+		a.PreflightStartedAt = Millis()
+		e.state.Attempts[a.ID] = a
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Call("prepare-workspace", Request{ID: a.ID}); err != nil {
+		t.Fatal("positive saved-work staging failed", err)
+	}
+	if err := e.WithState(func() error {
+		e.state.Attempts[retryRecoveryID] = &Attempt{ID: retryRecoveryID, Exam: r.Exam, Username: "former-name", UID: r.UID,
+			State: "COMPLETED", Start: r.CreatedAt + 1, Deadline: r.CreatedAt + 1 + r.Duration*1000,
+			OriginalDeadline: r.CreatedAt + 1 + r.Duration*1000, Settings: Settings{ID: r.Exam, Duration: r.Duration},
+			AccessState: "HELD", AccessHeldAt: r.CreatedAt + 1}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{filepath.Join(e.Config.State, "state.json"), filepath.Join(e.Config.State, recoveryName(a)),
+		filepath.Join(e.Config.State, "submissions", r.SourceAttempt, "submission.tar.gz")}
+	before := make([][]byte, len(paths))
+	for i, path := range paths {
+		var err error
+		before[i], err = os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for range 2 {
+		rows, err := e.RecoveryGrants(r.Exam)
+		if err != nil || len(rows) != 1 || rows[0].Disposition != "uncertain" || rows[0].ConsumedBy != "" {
+			t.Errorf("renamed same-UID committed interval must not appear unused: %+v / %v", rows, err)
+		}
+		if _, err := e.Call("activate-attempt", Request{ID: a.ID}); err == nil || !strings.Contains(err.Error(), "already started") {
+			t.Fatal("Begin did not reach the existing committed-UID refusal", err)
+		}
+		for i, path := range paths {
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(before[i], after) {
+				t.Fatal("inspection/refused Begin changed history, grant or source", path, err)
+			}
+		}
+		if _, err := os.Stat(filepath.Join(e.Config.State, recoveryName(a)+".consumed")); !os.IsNotExist(err) {
+			t.Fatal("refusal published consumption", err)
+		}
+		if _, err := os.Stat(filepath.Join(e.Config.Work, a.ID, "work")); !os.IsNotExist(err) {
+			t.Fatal("refusal published live work", err)
+		}
+		e, err = New(e.Config)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestCompletedRecoveryConsumptionClosesDependencyWithoutCascadingHistory(t *testing.T) {
 	e, a, r := recoveryCatalogFixture(t)
 	if err := e.WithState(func() error { a.PreflightStartedAt = Millis(); e.state.Attempts[a.ID] = a; return nil }); err != nil {

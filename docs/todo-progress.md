@@ -2725,3 +2725,11 @@ preserved/inactive and TLS keys removed. Detailed failed/passing evidence lives
 in retained-release-qualification.md. Original incident cause remains unproven.
 Five overlapping local implementation/qualification boxes close (26/38); no
 production acceptance, migration, cleanup or consolidation is claimed complete.
+
+October26 legacy catalog correctness is implemented/tested locally: a renamed
+same-UID committed interval is uncertain, consistent with Begin's existing
+refusal. Actual root-mapped CLI controls and native saved-work/refused Begin/
+restart preserve exact history/source/grant bytes and publish no clock/marker.
+Focused RED→three-repeat PASS, affected races17.818s/fullCLI18.753s/build/vet pass.
+Detailed fixture correction, scope and preserved failures: legacy-recovery-
+dependencies.md.26/38 unchanged; no migration, source release or deployment.

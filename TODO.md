@@ -15,6 +15,12 @@ The original incident's initiating cause remains unproven. Historical progress
 paragraphs below describe earlier stages; they do not override this status.
 No deployment, production change or temporary-service consolidation occurred.
 
+The next native migration prerequisite is also fixed/tested locally: the legacy
+catalog reports `uncertain` for a same-exam/UID committed start after a username
+change, matching Begin's existing refusal. Actual CLI/admission/restart regressions
+and affected races/build/vet pass. No grant is retired or reissued by that fix;
+legacy migration and C8 remain open (docs/legacy-recovery-dependencies.md).
+
 Current delivery audit and bounded public-workflow acceptance:
 [docs/todo-delivery-audit.md](docs/todo-delivery-audit.md). The main checkboxes
 overlap; component/test counts do not establish completion. The retained SSH

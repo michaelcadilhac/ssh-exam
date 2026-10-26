@@ -84,6 +84,46 @@ func TestRecoveryCatalogCLIInRootUserNamespace(t *testing.T) {
 	if code != 0 || strings.TrimSpace(out) != "[]" {
 		t.Fatal("CLI exam filter failed", code, out)
 	}
+	// Catalog uncertainty must use the same exam/UID/committed-start fence as
+	// native Begin, even when the account's earlier name differs.
+	const priorID = "33333333-1234-4234-8234-123456789abc"
+	for _, test := range []struct {
+		name, exam, username, disposition string
+		uid                               int
+		start                             int64
+	}{
+		{"same-account", r.Exam, r.Username, "uncertain", r.UID, r.CreatedAt},
+		{"renamed-account", r.Exam, "former-name", "uncertain", r.UID, r.CreatedAt},
+		{"other-uid", r.Exam, r.Username, "unused", r.UID + 1, r.CreatedAt},
+		{"other-exam", "other", r.Username, "unused", r.UID, r.CreatedAt},
+		{"before-issuance", r.Exam, r.Username, "unused", r.UID, r.CreatedAt - 1},
+		{"unstarted", r.Exam, r.Username, "unused", r.UID, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			state.Attempts[priorID] = &core.Attempt{ID: priorID, Exam: test.exam, Username: test.username, UID: test.uid,
+				State: "COMPLETED", Start: test.start, Deadline: test.start + r.Duration*1000, OriginalDeadline: test.start + r.Duration*1000}
+			if test.start == 0 {
+				state.Attempts[priorID].State = "PREPARING"
+				state.Attempts[priorID].Deadline, state.Attempts[priorID].OriginalDeadline = 0, 0
+			}
+			writeJSON(statePath, state)
+			before, err := os.ReadFile(statePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			out, code := invoke("recovery-grants", "--exam", r.Exam)
+			var rows []core.RecoveryGrantView
+			if code != 0 || json.Unmarshal([]byte(out), &rows) != nil || len(rows) != 1 || rows[0].Disposition != test.disposition || rows[0].ConsumedBy != "" || !rows[0].SourceRecordedProtected {
+				t.Error("actual CLI disagrees with committed UID fence", code, out)
+			}
+			after, err := os.ReadFile(statePath)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("CLI inspection changed original intervals or source history", err)
+			}
+		})
+	}
+	delete(state.Attempts, priorID)
+	writeJSON(statePath, state)
 	out, code = invoke("delete", source, "--reason", "Synthetic held-source retention refusal")
 	if code != 1 || !strings.Contains(out, "account restriction") || !strings.Contains(out, "recovery-grants") || !strings.Contains(out, "Original deadline") {
 		t.Fatal("actual destructive refusal lacks guidance", code, out)

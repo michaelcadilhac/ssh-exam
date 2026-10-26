@@ -21,6 +21,11 @@ are in docs/retained-release-qualification.md. Earlier dated implementation note
 below are historical; this contract supersedes their disabled/incomplete status.
 Production retains its installed cohort until separately authorized drained rollout.
 
+Legacy saved-work catalog inspection now matches Begin's exam/UID/start fence
+independently of an earlier username when the one-use marker is absent. Such a
+committed interval is uncertain, never proof that a grant is unused or consumed.
+This changes no start/consumption/retirement authority; migration remains separate.
+
 ## 1. Instructions to the implementing agent
 
 Build the application described here. This is an implementation specification, not a request for a design mockup. Implement the student application, instructor dashboard, SSH connection manager, monitoring, protected submission collection, class-server enforcement, and deployment assets.

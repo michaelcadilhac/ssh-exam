@@ -28,18 +28,27 @@ independently result0/files+authority preserved/inactive; temporary keys absent.
 Original incident cause remains unproven; historical failures remain documented.
 Production still uses its installed cohort. NO deployment/enablement/consolidation.
 
-## Exact next bounded milestone; keep working
+## Current increment and exact next action
 
-Entry: root `examctl recovery-grants --exam EXAM`. Reproduce no-marker catalog
-labeling unused after username changes despite a same-exam/UID committed interval;
-Begin already fences that interval by UID. Expect uncertain, preserve every
-interval/catalog/source/marker, and keep unrelated UID/exam controls unused.
-Add actual root-user-namespace CLI plus native admission/read-only regressions;
-fix conservatively, run affected native/CLI races/build/vet, document and commit.
-Then implement reviewed native legacy migration/definition retirement; never
-remove JSON to force starter fallback or clear web native-unreconciled flags.
-Continue manual verified workspace cleanup/no grace, configuration/help/operator
-journey (todo-delivery-audit.md). Stop only for a genuine blocker, not this commit.
+Public release baseline is1641c8b on main/worktree; no runners active. The catalog
+UID/username discrepancy is now fixed/tested locally in this tree. Actual CLI and
+staged saved-work/refused Begin/restart RED→three-repeat PASS; corrected fixtures
+preserve exact state/grant/source bytes, no live work/clock/marker publication.
+Affected native recovery/catalog/metadata races17.818s, fullCLI/TLS/root-namespace
+races18.753s, build/vet/diff checks pass. Details/failures: legacy-recovery-dependencies.md.
+No new native release image is claimed for this read-only metadata correction.
+
+Commit this validated increment locally, then continue reviewed legacy migration.
+Next public entry: proposed `examctl recovery-grants` reviewed retirement of ONLY
+unused native legacy authority, preserving its original JSON/history and fencing
+stale legacy preparation/Begin. Inspect implementation before choosing names.
+Use existing reviewed NEW unified issuance/source-sync for any replacement; no
+JSON deletion/starter fallback or clearing native-unreconciled flags. Before
+mutating, review consumed/uncertain/pending starts, contradictory durable workspace/
+submission/consumption evidence, exact source retention, crash/retry/cancel and
+CLI/web status synchronization. A proposal is not completed migration. After that,
+manual verified cleanup/no grace and full configuration/help/operator journey remain
+(todo-delivery-audit.md). Do not stop at this commit or add unused helper chains.
 
 Production-only alert acceptance/temporary three-service consolidation remain
 UNEXECUTED. Migration/deployment/rollback/consolidation proposal: todo-rollout-plan.md.
