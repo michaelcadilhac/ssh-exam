@@ -34,6 +34,8 @@ func webHelp(out io.Writer) {
        sudo examctl web exams create EXAM --template NAME --earliest RFC3339 --latest RFC3339 [SETTINGS]
        sudo examctl web exams update EXAM --revision HASH SETTINGS
        sudo examctl web exams retire-preview EXAM --action delete|archive|unarchive
+       sudo examctl web exams native-review EXAM --out NEW-PRIVATE-FILE
+       sudo examctl web exams reconcile-native EXAM --action delete|archive --revision HASH --review HASH --evidence FILE --reason TEXT
        sudo examctl web exams delete EXAM --revision HASH --review HASH --reason TEXT
        sudo examctl web exams archive EXAM --revision HASH --review HASH --reason TEXT
        sudo examctl web exams unarchive EXAM --revision HASH --review HASH --reason TEXT
@@ -44,6 +46,21 @@ verified outbound HTTPS. No browser login, separate token or inbound agent API.
 The gateway must explicitly authorize the named exams.list/show/create/update operations in the agent's
 managementOperations allowlist; the default is no management authorization.
 Retirement separately requires exams.retire-preview/delete/archive/unarchive.
+Legacy retirement additionally needs exams.native-reconcile explicitly authorized.
+First inspect retire-preview, then run native-review --out NEW-PRIVATE-FILE as root.
+native-review is offline; reconcile-native requires the authenticated gateway.
+It observes initialized native state/catalogs/folders without changing accounts,
+clocks, permissions, protected bytes or lifecycle. Unused/uncertain/live authority
+refuses: inspect native info/recovery-grants; explicitly cancel only confirmed unused
+legacy permissions. Quiesce old manual native writers; never clear files/flags.
+Within ten minutes submit reconcile-native with that exact private evidence file,
+action/revision/review and reason. Keep the file and SAME --request/arguments for
+a lost-reply retry. Reconciliation is metadata, not retirement or archive integrity
+verification. Then obtain a NEW retire-preview before confirmation (the review
+changed). Web administration uses the same acknowledgement. Any web dependency or
+definition change requires fresh reconciliation. Native-only history forbids delete.
+--out FILE creates evidence exclusively with mode0600; never overwrites an old file.
+--evidence FILE reads an existing root-owned0600 regular file, at most1MiB.
 Delete only unused definitions. Archive history and preserve grants, attempts,
 submissions, original deadlines, holds and audit. No physical work/submission
 deletion or service action. Live/unused authority refuses archive until explicitly
@@ -200,6 +217,8 @@ func webMain(args []string) int {
 	action := flags.String("action", "", "retirement preview action")
 	review := flags.String("review", "", "reviewed retirement dependency digest")
 	lifecycle := flags.String("lifecycle", "active", "definition list visibility")
+	out := flags.String("out", "", "new private native evidence file")
+	evidence := flags.String("evidence", "", "existing private native evidence file")
 	if err := flags.Parse(ordered(args)); err != nil {
 		fmt.Fprintln(os.Stderr, "Run examctl web help")
 		return 2
@@ -218,11 +237,50 @@ func webMain(args []string) int {
 	var body any
 	visited := map[string]bool{}
 	flags.Visit(func(f *flag.Flag) { visited[f.Name] = true })
+	if (visited["out"] || visited["evidence"]) && words[1] != "native-review" && words[1] != "reconcile-native" {
+		return usage("--out/--evidence apply only to native-review/reconcile-native")
+	}
 	mutatingFlag := false
 	for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
 		mutatingFlag = mutatingFlag || visited[key]
 	}
 	switch words[1] {
+	case "native-review", "reconcile-native":
+		if len(words) != 3 || !id.MatchString(words[2]) {
+			return usage("native reconciliation requires exactly one exam ID")
+		}
+		allowed := map[string]bool{"config": true}
+		if words[1] == "native-review" {
+			allowed["out"] = true
+		} else {
+			for _, key := range []string{"request", "action", "revision", "review", "reason", "evidence"} {
+				allowed[key] = true
+			}
+		}
+		for key := range visited {
+			if !allowed[key] {
+				return usage("unexpected flag for native reconciliation: --" + key)
+			}
+		}
+		if words[1] == "native-review" {
+			if *out == "" {
+				return usage("native-review requires --out NEW-PRIVATE-FILE")
+			}
+			return nativeRetirementReview(*config, words[2], *out)
+		}
+		if *evidence == "" || (*action != "delete" && *action != "archive") || !catalogHash.MatchString(*revision) || !catalogHash.MatchString(*review) || len(strings.TrimSpace(*reason)) < 8 || len(*reason) > 1000 {
+			return usage("reconcile-native requires --evidence FILE, --action delete|archive, exact --revision/--review and --reason 8..1000 bytes")
+		}
+		if os.Getuid() != 0 || os.Geteuid() != 0 {
+			fmt.Fprintln(os.Stderr, "Run examctl as root on the class server; see web help")
+			return 1
+		}
+		r, err := nativeRetirementFile(*evidence)
+		if err != nil || r.Exam != words[2] {
+			fmt.Fprintln(os.Stderr, "No reconciliation: evidence unavailable or wrong exam; regenerate native-review:", err)
+			return 1
+		}
+		operation, body = "exams.native-reconcile", map[string]any{"id": words[2], "action": *action, "revision": *revision, "review": *review, "reason": strings.TrimSpace(*reason), "evidence": r}
 	case "list":
 		if mutatingFlag || visited["action"] || visited["review"] {
 			return usage("setting/revision/reason flags apply only to create/update")
@@ -378,6 +436,9 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		fmt.Fprintln(os.Stderr, "For the same intent, repeat the same command/arguments with --request", request)
+		if operation == "exams.native-reconcile" {
+			fmt.Fprintln(os.Stderr, "A confirmed signed refusal is cached: after repair obtain a NEW retire-preview and use a NEW --request. For a lost/unverified reply retry SAME evidence/arguments/request first.")
+		}
 		return 1
 	}
 	// Verify nested resource scope before ANY private output/file creation. A

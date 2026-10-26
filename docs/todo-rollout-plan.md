@@ -8,6 +8,14 @@ independent exit0/preservation/inactive-unit proof and frozen sources/assets.
 Current evidence and remaining gates: release-readiness.md and
 legacy-recovery-migration.md. No production action is authorized or executed.
 
+The later C8 metadata candidate is also implemented/tested LOCALLY:033 and root
+native-review/reconcile-native support reviewed retirement of positively closed
+legacy definitions without changing the native format or student execution path.
+622 app checks, full CLI/affected native races,11 affected browsers, real-WASM
+capture/input recovery and packaged schema24→33 startup pass. Exact scope/artifact
+receipt: native-exam-reconciliation.md. This is not installed native qualification
+of a new execution cohort. Earlier dated pending C8 notes below are historical.
+
 The approved old-permission migration is TWO reviewed actions. First cancel only
 a positively unused native permission using recovery-grants revoke-preview/revoke;
 then separately issue NEW authority with exact verified source, chosen allowance,
@@ -23,9 +31,10 @@ Back up the canonical cancellation envelopes AND their audit/original raw record
 all consumption/source-pin records and protected archives. Old readers deliberately
 refuse the envelope. Never unwrap it to bare old JSON, delete it or restore a pre-
 cancellation snapshot to make a downgrade run: that could revive old permission.
-Prefer compatible forward repair with admissions unavailable. Legacy definition
-retirement remains fenced until its supported native reconciliation is complete;
-do not clear lifecycle flags or source expectations manually. Manual workspace
+Prefer compatible forward repair with admissions unavailable. Production legacy
+definition retirement remains fenced until the supported033/CLI cohort is installed
+and each exact exam's native/web review is completed; do not clear lifecycle flags
+or source expectations manually. Manual workspace
 cleanup remains a separate unimplemented gate, not a rollout cleanup shortcut.
 
 Current October26 local release qualification is COMPLETE (not deployed):
@@ -36,7 +45,7 @@ are in retained-release-qualification.md. Earlier disabled/pending gate notes
 below are historical. The remaining management migrations/cleanup are separate;
 none authorizes installing/restarting/consolidating services.
 
-Before a future separately authorized cutover, back up consistent schema032 DB/
+Before a future separately authorized cutover, back up consistent schema033 DB/
 WAL, keys, immutable grants/claims/intents/audit, native intervals/owners, legacy
 catalog/consumption, source pins, recordings and protected archives. Test private
 copies first. Positively drain active work, preflights, pending Begin/Continue/
@@ -49,7 +58,7 @@ restoration and alert delivery before opening new admissions. Do not rewrite
 historical attempts or invent enrollment-time settings during migration.
 
 Rollback likewise requires a complete drain and compatible matched readers;
-preserve schema032/provenance, original intervals/holds and all consumption/pins.
+preserve schema033/provenance/native acknowledgements, original intervals/holds and all consumption/pins.
 An old gateway cannot safely consume pending automatic C9 authorizations. Prefer
 repair forward, keeping admission unavailable until fresh live verification; never
 strip metadata, clear one-use fences or restore a pre-start snapshot as a rollback.
@@ -281,8 +290,13 @@ C8 adds028 lifecycle metadata, per-instance/settings epochs, tombstones,
 successful retirement intents and SQL writer fences. Back up these with the
 definitions, grants/claims, attempts, source expectations and audit consistently.
 Migration marks EVERY existing definition native-unreconciled; do not clear flags
-or delete legacy grant JSON to enable retirement. Supported native reconciliation
-is still pending. New tracked definitions alone have the reviewed workflow.
+or delete legacy grant JSON to enable retirement.033 now adds supported native
+terminal acknowledgements, exact lifecycle/web graph fences and monotonic native
+history protection. Preserve exam_native_reconciliations and definition/management
+request/audit ledgers in backups. It backfills no permission, history or clock.
+Use native-review/reconcile-native then a fresh retire-preview for each legacy
+exam; missing/inconsistent/live authority refuses. Both new tracked definitions
+and positively reconciled legacy definitions have the reviewed local workflow.
 Require matched gateway/CLI writers and an explicitly authorized drained migration;
 current open forms must reload their new revision. Old gateway readers can hide
 archived-state meaning or ignore lifecycle guards: do not downgrade over newer

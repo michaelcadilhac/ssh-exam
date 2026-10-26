@@ -10,6 +10,7 @@ export const managementOperations = [
   "exams.create",
   "exams.update",
   "exams.retire-preview",
+  "exams.native-reconcile",
   "exams.delete",
   "exams.archive",
   "exams.unarchive",
@@ -107,6 +108,70 @@ export const examRetirementRequest = examRetirementPreviewRequest
     revision: z.string().regex(/^[a-f0-9]{64}$/),
     review: z.string().regex(/^[a-f0-9]{64}$/),
     reason: z.string().trim().min(8).max(1000),
+  })
+  .strict();
+const retirementNativeAttempt = z
+  .object({
+    id: z.string().uuid(),
+    username: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    uid: z.number().int().min(1000).max(2147483647),
+    state: z.enum(["COMPLETED", "CANCELLED_BEFORE_START"]),
+    start: z.number().int().nonnegative().safe(),
+    deadline: z.number().int().nonnegative().safe(),
+    original_deadline: z.number().int().nonnegative().safe(),
+    protected: z.boolean(),
+    checksum: z.string().max(64),
+    access_state: z.enum(["", "RELEASED", "OVERRIDDEN"]),
+  })
+  .strict()
+  .refine((a) =>
+    a.state === "COMPLETED"
+      ? a.start > 0 &&
+        a.deadline > a.start &&
+        a.original_deadline > a.start &&
+        a.protected &&
+        /^[a-f0-9]{64}$/.test(a.checksum) &&
+        a.access_state !== ""
+      : a.start === 0 &&
+        a.deadline === 0 &&
+        a.original_deadline === 0 &&
+        !a.protected &&
+        a.checksum === "",
+  );
+export const examNativeEvidence = z
+  .object({
+    version: z.literal(1),
+    agent: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    exam: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    observed_at: z.number().int().positive().safe(),
+    state_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    attempts: z.array(retirementNativeAttempt).max(1000),
+    permissions: z
+      .array(
+        z
+          .object({
+            username: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+            uid: z.number().int().min(1000).max(2147483647),
+            source_attempt: z.string().uuid(),
+            checksum: z.string().regex(/^[a-f0-9]{64}$/),
+            disposition: z.enum(["revoked", "consumed"]),
+          })
+          .strict(),
+      )
+      .max(1000),
+    released_retentions: z.number().int().min(0).max(1000),
+  })
+  .strict()
+  .refine(
+    (e) =>
+      new Set(e.attempts.map((a) => a.id)).size === e.attempts.length &&
+      new Set(e.permissions.map((p) => p.username)).size ===
+        e.permissions.length,
+  );
+export const examNativeReconcileRequest = examRetirementRequest
+  .extend({
+    action: z.enum(["delete", "archive"]),
+    evidence: examNativeEvidence,
   })
   .strict();
 export const examUpdateRequest = z

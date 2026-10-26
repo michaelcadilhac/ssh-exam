@@ -42,9 +42,19 @@ receipt; old readers fail closed. Consumed/uncertain/prepared/pending authority 
 contradictory durable work/submissions refuse cancellation. Cancellation never
 starts time, deletes a source, releases an account or reopens anything. New saved
 authority still requires its own durable native retention before availability and
-fresh verification at Begin. Native CLI/crash/race checks pass; joined exact-
-artifact qualification and broader migration remain pending. Not deployed; see
+fresh verification at Begin. Native CLI/crash/race checks and joined exact286acd9
+root/public/C7/16x4 qualification pass locally. Production conversion remains
+separate. Not deployed; see
 docs/legacy-recovery-migration.md.
+
+Legacy definition retirement now has supported root native-review/reconcile-native
+management over existing authenticated agent authorization, then shared web/CLI
+dependency confirmation.033 retains028's legacy flag, stores the exact graph-bound
+terminal acknowledgement, preserves source expectations and rejects lost/changed
+native history. Live/unused/uncertain authority and incomplete original intervals
+refuse. Native-only history forces archive; deletion never cascades. No account,
+clock, grant, source or protected byte changes. Evidence/limitations:
+docs/native-exam-reconciliation.md. Implemented/tested locally, not deployed.
 
 ## 1. Instructions to the implementing agent
 

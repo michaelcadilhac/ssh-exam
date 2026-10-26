@@ -73,7 +73,8 @@ const hash = b => createHash('sha256').update(b).digest('hex');
   assert.equal(actual.monitoring_mode, 'legacy');
   for (const key of ['registered_owner','retained_hold','monitoring_hold_kind','native_resume_kind','native_resume_nonce'])
     assert.equal(actual[key], null, key);
-  assert.equal(db.prepare('SELECT max(version) AS v FROM schema_version').get().v, 32);
+  assert.equal(db.prepare('SELECT max(version) AS v FROM schema_version').get().v, 33);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM exam_native_reconciliations').get().n, 0);
   assert.deepEqual(db.pragma('foreign_key_check'), []);
   assert.equal(db.prepare('SELECT count(*) AS n FROM attempts').get().n, 1);
   assert.equal(db.prepare('SELECT count(*) AS n FROM attempt_grants').get().n, 0);
@@ -97,7 +98,7 @@ const hash = b => createHash('sha256').update(b).digest('hex');
     if (path.endsWith('.wasm')) assert.deepEqual([...bytes.subarray(0,4)], [0,97,115,109]);
     assets[path] = hash(bytes);
   }
-  console.log(JSON.stringify({uid:process.getuid(), productionMaintenance:true, schema:32,
+  console.log(JSON.stringify({uid:process.getuid(), productionMaintenance:true, schema:33,
     historicalAttemptPreserved:true, noInventedGrants:true, nativeBootClock:true, assets}));
 })().catch(error => { console.error(error); process.exit(1); });
 '''

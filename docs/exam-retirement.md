@@ -1,7 +1,7 @@
 # Reviewed exam definition retirement
 
-October23 implemented/tested locally for lifecycle-tracked definitions; legacy
-retirement remains blocked pending native reconciliation. No deployment,
+October26 implemented/tested locally for lifecycle-tracked definitions and legacy
+definitions with positively reconciled native dependencies. No deployment,
 student-record migration, physical cleanup or service action.
 
 Administration → select an exam → **Exam actions** offers **Delete unused exam**,
@@ -12,6 +12,7 @@ dependency revisions shown. Current/archived/all visibility never deletes histor
 The same shared service supports root management over the existing authenticated
 agent identity. Explicitly authorize exams.retire-preview/delete/archive/unarchive
 in gateway managementOperations for the needed capabilities; default deny remains.
+Legacy reconciliation separately requires `exams.native-reconcile`.
 
 ```sh
 sudo examctl web exams retire-preview old-exam --action archive
@@ -30,18 +31,46 @@ Never silently refresh a review and reapply an uncertain mutation. Changed setti
 or dependencies require explicit review and a new intent. Browser retries preserve
 their original UUID; Refresh review is explicit and failed refresh disables submit.
 
-Retirement is currently supported for definitions created under028 lifecycle
-tracking. Migration marks every pre-existing definition as native-unreconciled;
-delete/archive refuse until a supported native reconciliation workflow supplies
-positive dependency proof. There is no manual flag-clearing workflow. This closes
-the operational documentation's gateway-only absence gap without assuming legacy
-root JSON grants are absent. Full legacy retirement remains part of C18 migration.
+Migration028 marks pre-existing definitions native-unreconciled.033 preserves that
+flag and adds a separate acknowledgement bound to the exact lifecycle instance,
+revision and web dependency graph. To retire one of these definitions:
+
+```sh
+sudo examctl web exams retire-preview old-exam --action archive
+sudo examctl web exams native-review old-exam --out /var/tmp/old-exam-native-review.json
+sudo examctl web exams reconcile-native old-exam --action archive --revision DEFINITION-HASH --review REVIEW-HASH --evidence /var/tmp/old-exam-native-review.json --reason 'Review terminal native dependencies' --request REQUEST-UUID
+sudo examctl web exams retire-preview old-exam --action archive
+```
+
+The first preview identifies the exact revision/review. The offline native check
+requires initialized private state and complete bounded catalogs/folder inventories.
+Resolve confirmed unused permissions through recovery-grants revoke-preview/revoke
+first; consumed/uncertain/prepared permissions must never be erased or reopened.
+The evidence file is newly created0600, bounded1MiB, and uploadable for ten minutes.
+It contains private metadata, not protected file contents or fresh archive hashes.
+Quiesce legacy manual writers; arbitrary concurrent root edits are not supported.
+
+Reconciliation accepts only closed/protected/released native history and positive
+cleaned-up/restored no-start receipts. Missing original intervals, orphan/published
+work, pending/retained source authority and mismatched web history/source expectations
+refuse. No clock/hold/source/grant/history is edited. Past diagnostic errors and
+collector epoch IDs remain historical metadata; current policy/access errors block.
+
+Reconciliation changes the dependency review, so refresh retire-preview and review
+its native status/counts before a separate archive/delete confirmation. Web Exam
+actions uses the same acknowledgement. Any later definition/web dependency change
+requires a new acknowledgement; previously acknowledged native history cannot
+disappear from a later report. Native-only history always forbids deletion.
+There is no manual flag-clearing workflow. A known signed refusal is cached:
+after repair use a NEW review/request. A lost/unverified reply retries SAME file,
+arguments/request first, even after observation expiry or gateway restart.
 
 Deletion requires zero known roster, attempt, grant/claim, import/grant review,
 recovery-allowance/source or grant-mode dependencies. It never cascades records,
 protected bytes, request history or audit. Native catalogs/workspaces/submissions
-are separate authorities and are never deleted or declared absent by this web
-definition operation. Operators must inspect native inventory before a future
+are separate authorities and are never deleted by this web operation. It cannot
+independently establish native absence; the supported bound root acknowledgement
+supplies that proof. Operators must inspect native inventory before a future
 cutover; absence of a gateway definition is not native release or cleanup proof.
 
 Archive refuses unfinished, unprotected or unreleased work, unused grants,
@@ -55,6 +84,8 @@ monitoring and cleanup remain available. A historical definition with unexpected
 unfinished work remains visible in the default management catalog for inspection.
 Unarchive only changes visibility/writer availability: it does not reopen attempts,
 restore consumed grants, alter saved settings, extend windows or reset clocks.
+It invalidates the old retirement acknowledgement and requires fresh reconciliation
+before a later retirement. Native history and receipts remain preserved.
 
 ## State review before broad qualification
 

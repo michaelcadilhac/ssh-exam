@@ -8,7 +8,7 @@ import (
 
 func TestDefinitionRetirementIsDiscoverableBeforeRootOrConfiguration(t *testing.T) {
 	out, code := cliProcess(t, "help", "web")
-	for _, want := range []string{"exams retire-preview EXAM", "exams delete EXAM", "exams archive EXAM", "exams unarchive EXAM", "--review", "preserve"} {
+	for _, want := range []string{"exams retire-preview EXAM", "exams native-review EXAM", "exams reconcile-native EXAM", "--evidence", "exams delete EXAM", "exams archive EXAM", "exams unarchive EXAM", "--review", "preserve"} {
 		if code != 0 || !strings.Contains(out, want) {
 			t.Fatal("definition retirement workflow is undiscoverable", want, code, out)
 		}
@@ -47,7 +47,7 @@ func TestRetirementFlagsReachAuthorityOnlyAfterValidSyntax(t *testing.T) {
 }
 
 func retirementFixture() map[string]any {
-	return map[string]any{"id": "midterm", "action": "archive", "revision": strings.Repeat("a", 64), "review": strings.Repeat("b", 64), "lifecycle": "active", "exam": examReplyFixture()["exam"], "counts": map[string]any{"enrollments": 1, "attempts": 1, "grants": 0, "claims": 0, "rosterPreviews": 0, "grantPreviews": 0, "allowanceEdits": 0, "recoverySources": 0, "modes": 0}, "allowed": true, "blockers": []string{}, "preserves": []string{"attempts and submissions"}}
+	return map[string]any{"id": "midterm", "action": "archive", "revision": strings.Repeat("a", 64), "review": strings.Repeat("b", 64), "lifecycle": "active", "exam": examReplyFixture()["exam"], "counts": map[string]any{"enrollments": 1, "attempts": 1, "grants": 0, "claims": 0, "rosterPreviews": 0, "grantPreviews": 0, "allowanceEdits": 0, "recoverySources": 0, "modes": 0}, "native": map[string]any{"status": "not-required", "evidence": nil, "attempts": 0, "permissions": 0, "released_retentions": 0, "has_history": false}, "allowed": true, "blockers": []string{}, "preserves": []string{"attempts and submissions"}}
 }
 
 func TestRetirementSignedResultMustMatchReviewedScopeBeforeOutput(t *testing.T) {
@@ -62,7 +62,7 @@ func TestRetirementSignedResultMustMatchReviewedScopeBeforeOutput(t *testing.T) 
 	if err := validateRetirementResult("exams.retire-preview", body, encode(retirementFixture())); err != nil {
 		t.Fatal(err)
 	}
-	for _, mode := range []string{"target", "action", "nested-target", "private", "missing-count", "negative-count", "overflow", "contradiction", "null-counts", "null-exam", "bad-review"} {
+	for _, mode := range []string{"target", "action", "nested-target", "private", "missing-count", "negative-count", "overflow", "contradiction", "null-counts", "null-exam", "bad-review", "native-missing", "native-required", "native-overflow", "native-history", "native-private"} {
 		t.Run(mode, func(t *testing.T) {
 			r := retirementFixture()
 			switch mode {
@@ -88,6 +88,16 @@ func TestRetirementSignedResultMustMatchReviewedScopeBeforeOutput(t *testing.T) 
 				r["exam"] = nil
 			case "bad-review":
 				r["review"] = "latest"
+			case "native-missing":
+				delete(r, "native")
+			case "native-required":
+				r["native"].(map[string]any)["status"] = "required"
+			case "native-overflow":
+				r["native"].(map[string]any)["attempts"] = 1001
+			case "native-history":
+				r["native"].(map[string]any)["attempts"] = 1
+			case "native-private":
+				r["native"].(map[string]any)["private"] = "PRIVATE"
 			}
 			if validateRetirementResult("exams.retire-preview", body, encode(r)) == nil {
 				t.Fatal("unsafe retirement reply accepted")

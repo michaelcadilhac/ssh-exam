@@ -988,11 +988,18 @@ An administrator should be able to discover and finish a workflow using
   history, preserving attempts/submissions. No cascade deletion or silent grant
   cancellation. October23 local candidate now supplies matching reviewed preview/
   delete/archive/unarchive, lifecycle visibility, audit/retry/ABA fences and
-  archived-writer refusal.028 conservatively blocks retirement of ALL pre-existing
-  definitions until supported native dependency reconciliation; absence of web
-  records cannot prove legacy native grants absent. Known saved-work references
-  and consumption without closed-attempt proof also refuse. Full legacy retirement
-  remains unfinished. Current qualification/state review: docs/exam-retirement.md.
+  archived-writer refusal. October26 now adds supported root native-review/
+  reconcile-native, authenticated explicit authorization,033 graph/lifecycle-bound
+  acknowledgements and shared browser/CLI status/retirement.028's legacy flag stays
+  intact. Native-only history forces archive; unknown/live/unused/uncertain or
+  unprotected/unreleased authority refuses. Source expectations, original intervals,
+  holds, cancellation/consumption receipts and all protected bytes are preserved.
+  Same-file/request retry, restart/ABA, history-loss detection, actual root CLI/TLS,
+  native races,622 application checks,11 affected browsers plus real-WASM input
+  recovery and isolated schema24→33 startup pass LOCALLY. Nothing deployed.
+  C8's legacy-retirement workflow is now implemented/tested locally; this broad
+  command-coverage item still includes cleanup/configuration/help/journey gaps.
+  Evidence/state review: docs/native-exam-reconciliation.md and exam-retirement.md.
   Inventory every web-admin action and setting, native operation and current
   incident-script workflow. Map each to a supported CLI command; record and fill
   all gaps. Include bulk operations and inspection of confirmed versus pending

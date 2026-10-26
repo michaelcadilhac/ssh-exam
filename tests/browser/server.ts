@@ -993,6 +993,56 @@ definitions.create(
   "fixture-operator",
 );
 const retirementHistoryStart = Date.now() - 10800000;
+// Synthetic terminal evidence for presentation/shared-service qualification.
+// Real root CLI/TLS observation/refusal is qualified separately; this fixture
+// does not assert host-root, account restoration or archive verification.
+for (const id of ["retirement-legacy-required", "retirement-legacy-native"]) {
+  definitions.create(
+    { ...exam, id, name: "Synthetic legacy native retirement" },
+    "fixture-operator",
+  );
+  store.db
+    .prepare("UPDATE exam_lifecycle SET legacy_unreconciled=1 WHERE exam=?")
+    .run(id);
+}
+const nativeRetirementReview = definitions.retirementPreview(
+  "retirement-legacy-native",
+  { action: "archive" },
+);
+definitions.reconcileNative(
+  {
+    id: "retirement-legacy-native",
+    action: "archive",
+    revision: nativeRetirementReview.revision,
+    review: nativeRetirementReview.review,
+    reason: "Synthetic acknowledged terminal native history for browser review",
+    evidence: {
+      version: 1,
+      agent: "class",
+      exam: "retirement-legacy-native",
+      observed_at: Date.now(),
+      state_hash: "c".repeat(64),
+      attempts: [
+        {
+          id: "dddddddd-1234-4234-8234-123456789abc",
+          username: "nativehistory",
+          uid: 10051,
+          state: "COMPLETED",
+          start: retirementHistoryStart,
+          deadline: retirementHistoryStart + 5400000,
+          original_deadline: retirementHistoryStart + 5400000,
+          protected: true,
+          checksum: "d".repeat(64),
+          access_state: "RELEASED",
+        },
+      ],
+      permissions: [],
+      released_retentions: 0,
+    },
+  },
+  "agent:class:root",
+  randomUUID(),
+);
 store.db
   .prepare(
     "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,access_state,checksum) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",

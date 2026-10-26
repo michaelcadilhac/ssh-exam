@@ -89,6 +89,9 @@ func (r examDefinitionReply) valid() bool {
 // saved settings to this operator's intent. Refuse BEFORE any stdout/file output.
 // This is metadata validation, not native source availability or work permission.
 func validateExamResult(operation string, body any, raw json.RawMessage) error {
+	if operation == "exams.native-reconcile" {
+		return validateNativeReconciliationResult(operation, body, raw)
+	}
 	if !strings.HasPrefix(operation, "exams.") {
 		return nil
 	}

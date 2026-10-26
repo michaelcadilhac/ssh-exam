@@ -1,5 +1,17 @@
 # Main-bug release readiness
 
+Latest October26 C8 management increment (LOCAL ONLY): legacy native-review/
+reconcile-native033 and shared CLI/browser retirement now pass622 application
+checks, full CLI/affected native races,11 affected browsers, the real-WASM capture
+recovery regression and isolated production-image schema24→33 startup preserving
+the original HELD history. New image5bdf4d902ea93fa3e6c89c3d51b9a52a74808045f3309ff3607bf3344398e027;
+pinned WASM unchanged1bea6f8e. See native-exam-reconciliation.md for complete hashes,
+scope and retained fixture/setup failures.27/38 overlapping boxes checked; C8
+closes a workflow within broader unchecked management requirements. No deployment.
+The current qualified execution artifact remains native286acd9/browserc27 with
+the newer local033 management image/CLI source qualification recorded separately.
+Earlier dated native076 hashes below are historical, not new-artifact proof.
+
 October26,2026. Current browser c27eac0/native076a5c1; **release candidate, no production go-ahead**.
 Nothing deployed/restarted; no production configuration/student records changed.
 The instructor asked to prioritize bringing the system back online with the main
@@ -70,7 +82,8 @@ qualification is not attributed to these new bytes.
    todo-rollout-plan.md/native-cleanup-isolation-incident.md procedure. This is
    a proposal, not an executed cleanup.
 
-Rollback needs the same drain and compatible matched readers. Preserve schema032,
+Rollback needs the same drain and compatible matched readers. Preserve schema033,
+native reconciliation/history fences and request ledgers alongside
 automatic-authorization provenance, consumed grants, original intervals/holds and
 protected work; never restore a pre-start snapshot or strip fields to make an old
 reader run. Older gateway signers cannot safely handle pending C9 automatic rows.

@@ -633,10 +633,11 @@ it("actual migration marks pre-existing definitions uncertain instead of treatin
   const f = await fixture();
   try {
     const old = await f.create("old-native-unknown");
-    // Reconstruct only this synthetic database's pre028 schema, then let the
-    // actual Store upgrade/restart apply028. No production database is opened.
+    // Reconstruct this synthetic database's pre028 lifecycle/reconciliation
+    // schema, then let actual Store startup apply028 and033. Other unrelated
+    // migrations stay intact; the container smoke separately upgrades24->33.
     f.store.db.exec(
-      "DROP TRIGGER exam_lifecycle_created; DROP TRIGGER exam_lifecycle_deleted; DROP TRIGGER exam_lifecycle_settings_changed; DROP TRIGGER archived_definition_settings; DROP TRIGGER archived_definition_enrollment; DROP TRIGGER archived_definition_grant; DROP TRIGGER archived_definition_attempt; DROP TRIGGER archived_definition_grant_reactivation; DROP TRIGGER unused_definition_only; DROP TABLE exam_lifecycle; DELETE FROM schema_version WHERE version=28;",
+      "DROP TRIGGER exam_lifecycle_created; DROP TRIGGER exam_lifecycle_deleted; DROP TRIGGER exam_lifecycle_settings_changed; DROP TRIGGER archived_definition_settings; DROP TRIGGER archived_definition_enrollment; DROP TRIGGER archived_definition_grant; DROP TRIGGER archived_definition_attempt; DROP TRIGGER archived_definition_grant_reactivation; DROP TRIGGER unused_definition_only; DROP TABLE exam_lifecycle; DROP TABLE exam_native_reconciliations; DELETE FROM schema_version WHERE version IN (28,33);",
     );
     await f.restart();
     for (const action of ["delete", "archive"]) {
@@ -645,9 +646,10 @@ it("actual migration marks pre-existing definitions uncertain instead of treatin
       expect(review.json()).toMatchObject({
         allowed: false,
         counts: { attempts: 0, grants: 0 },
+        native: { status: "required", evidence: null, has_history: false },
       });
       expect(review.json().blockers.join(" ")).toContain(
-        "Legacy native authority has not been reconciled",
+        "web exams native-review",
       );
       expect((await f.confirm(old.id, review.json())).statusCode).toBe(409);
     }

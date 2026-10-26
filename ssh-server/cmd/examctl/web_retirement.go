@@ -40,11 +40,12 @@ func validateRetirementResult(operation string, body any, raw json.RawMessage) e
 			Lifecycle string            `json:"lifecycle"`
 			Exam      examReplySettings `json:"exam"`
 			Counts    map[string]int64  `json:"counts"`
+			Native    json.RawMessage   `json:"native"`
 			Allowed   bool              `json:"allowed"`
 			Blockers  []string          `json:"blockers"`
 			Preserves []string          `json:"preserves"`
 		}
-		if catalogDecode(raw, &r, []string{"id", "action", "revision", "review", "lifecycle", "exam", "counts", "allowed", "blockers", "preserves"}) != nil || r.ID != b.ID || r.Action != b.Action || !catalogHash.MatchString(r.Revision) || !catalogHash.MatchString(r.Review) || (r.Lifecycle != "active" && r.Lifecycle != "archived") || !r.Exam.valid() || r.Exam.ID != b.ID || r.Allowed != (len(r.Blockers) == 0) || len(r.Blockers) > 50 || len(r.Counts) != 9 || len(r.Preserves) > 10 {
+		if catalogDecode(raw, &r, []string{"id", "action", "revision", "review", "lifecycle", "exam", "counts", "native", "allowed", "blockers", "preserves"}) != nil || r.ID != b.ID || r.Action != b.Action || !catalogHash.MatchString(r.Revision) || !catalogHash.MatchString(r.Review) || (r.Lifecycle != "active" && r.Lifecycle != "archived") || !r.Exam.valid() || r.Exam.ID != b.ID || r.Allowed != (len(r.Blockers) == 0) || len(r.Blockers) > 50 || len(r.Counts) != 9 || len(r.Preserves) > 10 || !validNativeRetirementSummary(r.Native, b.Action, r.Allowed) {
 			return bad
 		}
 		for _, key := range []string{"enrollments", "attempts", "grants", "claims", "rosterPreviews", "grantPreviews", "allowanceEdits", "recoverySources", "modes"} {
@@ -89,4 +90,31 @@ func validateRetirementResult(operation string, body any, raw json.RawMessage) e
 		}
 	}
 	return nil
+}
+
+func validNativeRetirementSummary(raw json.RawMessage, action string, allowed bool) bool {
+	var r struct {
+		Status      string          `json:"status"`
+		Evidence    json.RawMessage `json:"evidence"`
+		Attempts    int64           `json:"attempts"`
+		Permissions int64           `json:"permissions"`
+		Released    int64           `json:"released_retentions"`
+		History     bool            `json:"has_history"`
+	}
+	if catalogDecode(raw, &r, []string{"status", "attempts", "permissions", "released_retentions", "has_history"}) != nil || len(r.Evidence) == 0 {
+		return false
+	}
+	for _, count := range []int64{r.Attempts, r.Permissions, r.Released} {
+		if count < 0 || count > 1000 || count > 0 && !r.History {
+			return false
+		}
+	}
+	if (r.Status == "required" || r.Status == "stale") && action != "unarchive" && allowed {
+		return false
+	}
+	if r.Status == "not-required" || r.Status == "required" {
+		return bytes.Equal(bytes.TrimSpace(r.Evidence), []byte("null")) && r.Attempts == 0 && r.Permissions == 0 && r.Released == 0 && !r.History
+	}
+	var digest string
+	return (r.Status == "verified" || r.Status == "stale") && json.Unmarshal(r.Evidence, &digest) == nil && catalogHash.MatchString(digest)
 }

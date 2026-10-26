@@ -134,6 +134,13 @@
   routine testing. Do not waste a full suite on known-denied listeners. Separate
   permission failures from product regressions and stop only the exact owned test
   runner before retrying; never terminate unrelated processes or services.
+- Use `npm test` for application suites so its native-clock pretest runs in the
+  current worktree. Direct Vitest is allowed only after explicitly building and
+  verifying that worktree's clock addon. A sibling worktree's generated artifacts
+  do not supply it. If widespread monitoring/preflight refusals coincide with a
+  missing addon, stop only the owned runner, build the existing prerequisite and
+  verify a focused real interface before rerunning the broad suite. Never add a
+  clock fallback or relax enforcement to make the tests pass.
 - Do not weaken acceptance criteria or production enforcement to obtain a pass.
   A failed test fixture must be distinguished from a product defect; retain the
   failure and explain the correction. Never infer new-artifact qualification

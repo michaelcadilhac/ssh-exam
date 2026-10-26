@@ -128,6 +128,24 @@ export function ExamRetirement({
                 <dd>
                   {review.counts.rosterPreviews + review.counts.grantPreviews}
                 </dd>
+                {review.native && review.native.status !== "not-required" && (
+                  <>
+                    <dt>Class-server check</dt>
+                    <dd>
+                      {(
+                        {
+                          required: "Required",
+                          stale: "Needs refresh",
+                          verified: "Verified for this review",
+                        } as Record<string, string>
+                      )[review.native.status] || "Unavailable"}
+                    </dd>
+                    <dt>Native attempt records</dt>
+                    <dd>{review.native.attempts}</dd>
+                    <dt>Legacy permission records</dt>
+                    <dd>{review.native.permissions}</dd>
+                  </>
+                )}
               </dl>
               {!review.allowed && (
                 <div role="alert">

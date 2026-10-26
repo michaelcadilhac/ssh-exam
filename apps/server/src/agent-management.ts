@@ -9,6 +9,7 @@ import {
   examUpdateRequest,
   examRetirementPreviewRequest,
   examRetirementRequest,
+  examNativeReconcileRequest,
   studentManagement,
   studentListRequest,
 } from "../../../packages/protocol/management.js";
@@ -414,6 +415,16 @@ export function registerAgentManagement(
                     b.revision,
                     actor,
                     b.reason,
+                  ),
+                };
+              } else if (r.operation === "exams.native-reconcile") {
+                return {
+                  ok: true,
+                  status: 200,
+                  result: definitions.reconcileNative(
+                    examNativeReconcileRequest.parse(r.body),
+                    actor,
+                    r.request,
                   ),
                 };
               } else if (r.operation === "exams.retire-preview") {

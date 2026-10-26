@@ -217,6 +217,63 @@ test("archive and restoration retain real historical attempts and disable new-au
   ).toBe(original.deadline);
 });
 
+test("legacy retirement exposes native review status and archives native-only history without enabling deletion", async ({
+  page,
+}) => {
+  await admin(page);
+  await page
+    .getByLabel("Selected exam")
+    .selectOption("retirement-legacy-required");
+  let dialog = await open(page, "Delete unused exam");
+  await expect(dialog.getByText("Required", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("alert")).toContainText("native-review");
+  await expect(
+    dialog.getByRole("button", {
+      name: "Delete unused definition",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page
+    .getByLabel("Selected exam")
+    .selectOption("retirement-legacy-native");
+  dialog = await open(page, "Delete unused exam");
+  await expect(
+    dialog.getByText("Verified for this review", { exact: true }),
+  ).toBeVisible();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "native permission history",
+  );
+  await expect(
+    dialog.getByRole("button", {
+      name: "Delete unused definition",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  dialog = await open(page, "Archive exam");
+  await expect(
+    dialog.getByText("Verified for this review", { exact: true }),
+  ).toBeVisible();
+  await dialog
+    .getByLabel("Reason", { exact: true })
+    .fill("Archive native-only protected history without removing records");
+  await page.screenshot({
+    path: test.info().outputPath("native-retirement-review.png"),
+  });
+  await dialog
+    .getByRole("button", { name: "Archive definition", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByLabel("Exam visibility").selectOption("archived");
+  await page
+    .getByLabel("Selected exam")
+    .selectOption("retirement-legacy-native");
+  await expect(
+    page.getByRole("button", { name: "Exam settings", exact: true }),
+  ).toBeDisabled();
+});
+
 test("unused grants block archive without silently cancelling or consuming them", async ({
   page,
 }) => {

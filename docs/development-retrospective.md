@@ -1,5 +1,16 @@
 # Development retrospective — October 22, 2026
 
+October26 worktree setup follow-up: a repository-relative Prettier executable was
+absent in a new worktree although the package was installed in the main workspace.
+The instructor clarified that only an actually missing package requiring their
+installation should stop work; AGENTS now records this. Later, invoking Vitest
+directly bypassed npm's native-clock pretest. Fail-closed monitoring correctly
+refused the missing worktree addon, wasting a broad run. The exact owned runner
+was stopped; the existing build prerequisite and focused real interfaces passed,
+then the full622 checks passed through npm test. Use the supported lifecycle and
+verify per-worktree generated prerequisites. Detailed failure/evidence belongs in
+native-exam-reconciliation.md; no clock fallback or weaker acceptance was added.
+
 October23 integration follow-up: similar `reauth` and `continue` authorization
 checks caused a patch to affect the wrong route. The actual lost-acknowledgement
 regression exposed it before broad qualification; the repair restores fresh-SSH

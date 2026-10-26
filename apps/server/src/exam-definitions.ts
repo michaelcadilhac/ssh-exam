@@ -10,10 +10,27 @@ import {
 } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
+import {
+  examNativeEvidence,
+  examNativeReconcileRequest,
+} from "../../../packages/protocol/management.js";
 
 const idSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const revisionSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const reasonSchema = z.string().trim().min(8).max(1000);
+function canonicalNative(value: unknown): string {
+  const sort = (v: any): any =>
+    Array.isArray(v)
+      ? v.map(sort)
+      : v && typeof v === "object"
+        ? Object.fromEntries(
+            Object.keys(v)
+              .sort()
+              .map((k) => [k, sort(v[k])]),
+          )
+        : v;
+  return JSON.stringify(sort(value));
+}
 const failure = (message: string, statusCode: number): never => {
   throw Object.assign(Error(message), { statusCode });
 };
@@ -144,6 +161,81 @@ export class ExamDefinitions {
       next: rows.length > limit ? page.at(-1)!.id : null,
     };
   }
+  private retirementGraph(id: string) {
+    const enrollments = this.store.db
+      .prepare(
+        "SELECT username,uid,duration,webcam FROM enrollments WHERE exam=? ORDER BY username",
+      )
+      .all(id) as any[];
+    const attempts = this.store.db
+      .prepare(
+        "SELECT id,username,uid,state,start,deadline,original_deadline,protected,access_state,checksum,generation,clock_revision,grant_id FROM attempts WHERE exam=? ORDER BY id",
+      )
+      .all(id) as any[];
+    const grants = this.store.db
+      .prepare(
+        "SELECT g.id,g.username,g.revision,g.status,r.hash FROM attempt_grants g LEFT JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.exam=? ORDER BY g.id",
+      )
+      .all(id) as any[];
+    if (
+      grants.some(
+        (g) =>
+          !/^[a-f0-9]{64}$/.test(g.hash ?? "") ||
+          !["AVAILABLE", "PENDING_NATIVE", "CONSUMED", "REVOKED"].includes(
+            g.status,
+          ),
+      )
+    )
+      return failure(
+        "Grant history is inconsistent; preserve records and repair matching grant revisions before definition retirement",
+        409,
+      );
+    const claims = this.store.db
+      .prepare(
+        "SELECT c.attempt,c.grant_id,c.revision,c.hash,c.uid,c.state FROM grant_claims c JOIN attempt_grants g ON g.id=c.grant_id WHERE g.exam=? ORDER BY c.attempt",
+      )
+      .all(id) as any[];
+    const rosterPreviews = this.store.db
+      .prepare(
+        "SELECT id,created,consumed FROM previews WHERE exam=? ORDER BY id",
+      )
+      .all(id);
+    const grantPreviews = this.store.db
+      .prepare(
+        "SELECT id,revision,status,expires FROM grant_issuance_previews WHERE json_extract(snapshot,'$.exam')=? ORDER BY id",
+      )
+      .all(id);
+    const allowanceEdits = this.store.db
+      .prepare(
+        "SELECT revision,username,duration FROM recovery_allowance_edits WHERE exam=? ORDER BY revision",
+      )
+      .all(id);
+    const recoverySources = this.store.db
+      .prepare(
+        "SELECT agent,username,uid,source_attempt,checksum FROM recovery_grant_sources WHERE exam=? ORDER BY agent,username",
+      )
+      .all(id) as {
+      agent: string;
+      username: string;
+      uid: number;
+      source_attempt: string;
+      checksum: string;
+    }[];
+    const modes = this.store.db
+      .prepare("SELECT activated_at FROM grant_exam_modes WHERE exam=?")
+      .all(id);
+    return {
+      enrollments,
+      attempts,
+      grants,
+      claims,
+      rosterPreviews,
+      grantPreviews,
+      allowanceEdits,
+      recoverySources,
+      modes,
+    };
+  }
   retirementPreview(id: string, input: unknown) {
     idSchema.parse(id);
     const { action } = z
@@ -152,80 +244,65 @@ export class ExamDefinitions {
       .parse(input);
     return this.store.db.transaction(() => {
       const definition = this.show(id);
-      const enrollments = this.store.db
+      const graph = this.retirementGraph(id);
+      const { enrollments, attempts, grants, claims, recoverySources } = graph;
+      const dependencyHash = hash(
+        JSON.stringify({ revision: definition.revision, graph }),
+      );
+      const acknowledgement = this.store.db
         .prepare(
-          "SELECT username,uid,duration,webcam FROM enrollments WHERE exam=? ORDER BY username",
+          "SELECT agent,dependency_hash,evidence_hash,evidence,has_history FROM exam_native_reconciliations WHERE exam=?",
         )
-        .all(id) as any[];
-      const attempts = this.store.db
-        .prepare(
-          "SELECT id,username,state,start,deadline,original_deadline,protected,access_state,checksum,generation,clock_revision,grant_id FROM attempts WHERE exam=? ORDER BY id",
-        )
-        .all(id) as any[];
-      const grants = this.store.db
-        .prepare(
-          "SELECT g.id,g.username,g.revision,g.status,r.hash FROM attempt_grants g LEFT JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.exam=? ORDER BY g.id",
-        )
-        .all(id) as any[];
+        .get(id) as any;
+      const recordedNative = acknowledgement
+        ? examNativeEvidence.parse(JSON.parse(acknowledgement.evidence))
+        : null;
       if (
-        grants.some(
-          (g) =>
-            !/^[a-f0-9]{64}$/.test(g.hash ?? "") ||
-            !["AVAILABLE", "PENDING_NATIVE", "CONSUMED", "REVOKED"].includes(
-              g.status,
-            ),
-        )
+        recordedNative &&
+        (hash(canonicalNative(recordedNative)) !==
+          acknowledgement.evidence_hash ||
+          recordedNative.exam !== id ||
+          recordedNative.agent !== acknowledgement.agent ||
+          ![0, 1].includes(acknowledgement.has_history) ||
+          (!acknowledgement.has_history &&
+            (recordedNative.attempts.length > 0 ||
+              recordedNative.permissions.length > 0 ||
+              recordedNative.released_retentions > 0)))
       )
         return failure(
-          "Grant history is inconsistent; preserve records and repair matching grant revisions before definition retirement",
+          "Native acknowledgement integrity is inconsistent; preserve evidence/audit and repair before retirement",
           409,
         );
-      const claims = this.store.db
-        .prepare(
-          "SELECT c.attempt,c.grant_id,c.revision,c.hash,c.uid,c.state FROM grant_claims c JOIN attempt_grants g ON g.id=c.grant_id WHERE g.exam=? ORDER BY c.attempt",
-        )
-        .all(id) as any[];
-      const rosterPreviews = this.store.db
-        .prepare(
-          "SELECT id,created,consumed FROM previews WHERE exam=? ORDER BY id",
-        )
-        .all(id);
-      const grantPreviews = this.store.db
-        .prepare(
-          "SELECT id,revision,status,expires FROM grant_issuance_previews WHERE json_extract(snapshot,'$.exam')=? ORDER BY id",
-        )
-        .all(id);
-      const allowanceEdits = this.store.db
-        .prepare(
-          "SELECT revision,username,duration FROM recovery_allowance_edits WHERE exam=? ORDER BY revision",
-        )
-        .all(id);
-      const recoverySources = this.store.db
-        .prepare(
-          "SELECT agent,username,uid,source_attempt,checksum FROM recovery_grant_sources WHERE exam=? ORDER BY agent,username",
-        )
-        .all(id);
-      const modes = this.store.db
-        .prepare("SELECT activated_at FROM grant_exam_modes WHERE exam=?")
-        .all(id);
-      const graph = {
-        enrollments,
-        attempts,
-        grants,
-        claims,
-        rosterPreviews,
-        grantPreviews,
-        allowanceEdits,
-        recoverySources,
-        modes,
+      const native =
+        acknowledgement?.agent === this.agent &&
+        acknowledgement.dependency_hash === dependencyHash
+          ? recordedNative
+          : null;
+      const nativeSummary = {
+        status: native
+          ? "verified"
+          : recordedNative
+            ? "stale"
+            : this.record(id).legacy_unreconciled
+              ? "required"
+              : "not-required",
+        evidence: acknowledgement?.evidence_hash ?? null,
+        attempts: recordedNative?.attempts.length ?? 0,
+        permissions: recordedNative?.permissions.length ?? 0,
+        released_retentions: recordedNative?.released_retentions ?? 0,
+        has_history: acknowledgement?.has_history === 1,
       };
       const counts = Object.fromEntries(
         Object.entries(graph).map(([key, value]) => [key, value.length]),
       );
       const blockers: string[] = [];
-      if (action !== "unarchive" && this.record(id).legacy_unreconciled)
+      if (
+        action !== "unarchive" &&
+        (this.record(id).legacy_unreconciled || acknowledgement) &&
+        !native
+      )
         blockers.push(
-          "Legacy native authority has not been reconciled; inspect examctl recovery-grants and native attempts and retain this definition until supported migration verifies its dependencies. Never clear lifecycle flags or native grant files to force retirement.",
+          "Legacy native authority needs a current acknowledgement: inspect recovery-grants/native attempts, use web exams native-review then reconcile-native with this exact review. Never clear lifecycle flags or native grant files.",
         );
       if (isSandbox(id))
         blockers.push(
@@ -233,10 +310,11 @@ export class ExamDefinitions {
         );
       if (
         action === "delete" &&
-        Object.values(counts).some((value) => value > 0)
+        (Object.values(counts).some((value) => value > 0) ||
+          acknowledgement?.has_history === 1)
       )
         blockers.push(
-          "Definition has roster, grant, preparation or attempt history; use reviewed archive. No history or protected data may be cascaded.",
+          "Definition has roster, grant, preparation, attempt or native permission history; use reviewed archive. No history or protected data may be cascaded.",
         );
       if (action === "archive") {
         if (definition.lifecycle !== "active")
@@ -274,7 +352,7 @@ export class ExamDefinitions {
           blockers.push(
             "Consumed grant has no verified closed attempt; inspect web grants/attempts and reconcile the uncertain native outcome before archive. Never infer completion from consumption alone.",
           );
-        if (recoverySources.length)
+        if (recoverySources.length && !native)
           blockers.push(
             "Native saved-work authority has no verified terminal disposition in this catalog; inspect examctl recovery-grants and retain the definition until supported native reconciliation. Do not remove source expectations to force archive.",
           );
@@ -306,10 +384,17 @@ export class ExamDefinitions {
         lifecycle: definition.lifecycle,
         exam: definition.exam,
         counts,
+        native: nativeSummary,
         allowed: !blockers.length,
         blockers,
         review: hash(
-          JSON.stringify({ id, action, revision: definition.revision, graph }),
+          JSON.stringify({
+            id,
+            action,
+            revision: definition.revision,
+            graph,
+            native: nativeSummary,
+          }),
         ),
         preserves: [
           "grants and revisions",
@@ -320,6 +405,151 @@ export class ExamDefinitions {
         ],
       };
     })();
+  }
+  reconcileNative(input: unknown, actor: string, request: string) {
+    const body = examNativeReconcileRequest.parse(input);
+    return this.withRequest(
+      actor,
+      request,
+      { operation: "native-reconciliation", ...body },
+      () => {
+        const current = this.retirementPreview(body.id, {
+          action: body.action,
+        });
+        const evidence = body.evidence;
+        if (
+          current.revision !== body.revision ||
+          current.review !== body.review
+        )
+          return failure(
+            "Web dependencies changed; inspect a NEW retire-preview and native-review before submitting a new reconciliation intent",
+            409,
+          );
+        if (
+          evidence.agent !== this.agent ||
+          evidence.exam !== body.id ||
+          evidence.observed_at > now() + 1000 ||
+          now() - evidence.observed_at > 600000
+        )
+          return failure(
+            "Native evidence has wrong agent/exam or is older than ten minutes; regenerate native-review and use a new request after review",
+            409,
+          );
+        const graph = this.retirementGraph(body.id);
+        const previous = this.store.db
+          .prepare(
+            "SELECT evidence FROM exam_native_reconciliations WHERE exam=?",
+          )
+          .get(body.id) as { evidence: string } | undefined;
+        if (previous) {
+          const known = examNativeEvidence.parse(JSON.parse(previous.evidence));
+          if (
+            known.attempts.some(
+              (a) =>
+                !evidence.attempts.some(
+                  (n) => canonicalNative(n) === canonicalNative(a),
+                ),
+            ) ||
+            known.permissions.some(
+              (p) =>
+                !evidence.permissions.some(
+                  (n) => canonicalNative(n) === canonicalNative(p),
+                ),
+            ) ||
+            evidence.released_retentions < known.released_retentions
+          )
+            return failure(
+              "Previously acknowledged native history is missing or changed; preserve both evidence files and repair matching native state/catalog before a NEW reconciliation intent. History cannot be removed to permit deletion.",
+              409,
+            );
+        }
+        for (const attempt of graph.attempts) {
+          const native = evidence.attempts.find((a) => a.id === attempt.id);
+          if (
+            !native ||
+            native.username !== attempt.username ||
+            native.uid !== attempt.uid ||
+            native.state !== attempt.state ||
+            native.start !== (attempt.start ?? 0) ||
+            native.deadline !== (attempt.deadline ?? 0) ||
+            native.original_deadline !== (attempt.original_deadline ?? 0) ||
+            native.protected !== !!attempt.protected ||
+            (native.state === "CANCELLED_BEFORE_START"
+              ? !["UNKNOWN", "", "RELEASED", "OVERRIDDEN"].includes(
+                  attempt.access_state,
+                )
+              : native.access_state !== attempt.access_state) ||
+            native.checksum !== (attempt.checksum ?? "")
+          )
+            return failure(
+              "Web attempt lacks matching closed native identity/interval/protection/access history; preserve all records and inspect web attempts show plus native info --read-only",
+              409,
+            );
+        }
+        for (const source of graph.recoverySources) {
+          if (
+            source.agent !== this.agent ||
+            !evidence.permissions.some(
+              (p) =>
+                p.username === source.username &&
+                p.uid === source.uid &&
+                p.source_attempt === source.source_attempt &&
+                p.checksum === source.checksum,
+            )
+          )
+            return failure(
+              "A legacy saved-source expectation lacks matching terminal native permission; preserve it and inspect recovery-grants, never delete source expectations to force retirement",
+              409,
+            );
+        }
+        const dependencyHash = hash(
+          JSON.stringify({ revision: current.revision, graph }),
+        );
+        const serialized = JSON.stringify(evidence),
+          evidenceHash = hash(canonicalNative(evidence));
+        const lifecycle = this.record(body.id);
+        this.store.db
+          .prepare(
+            "INSERT INTO exam_native_reconciliations VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(exam) DO UPDATE SET agent=excluded.agent,dependency_hash=excluded.dependency_hash,evidence_hash=excluded.evidence_hash,evidence=excluded.evidence,acknowledged_at=excluded.acknowledged_at,instance=excluded.instance,version=excluded.version,has_history=max(exam_native_reconciliations.has_history,excluded.has_history)",
+          )
+          .run(
+            body.id,
+            this.agent,
+            dependencyHash,
+            evidenceHash,
+            serialized,
+            now(),
+            lifecycle.instance,
+            lifecycle.version,
+            Number(
+              evidence.attempts.length > 0 ||
+                evidence.permissions.length > 0 ||
+                evidence.released_retentions > 0,
+            ),
+          );
+        const result = {
+          id: body.id,
+          revision: current.revision,
+          evidence: evidenceHash,
+          review: this.retirementPreview(body.id, { action: body.action })
+            .review,
+          attempts: evidence.attempts.length,
+          permissions: evidence.permissions.length,
+          released_retentions: evidence.released_retentions,
+        };
+        this.store.audit(
+          actor,
+          "reconcile-native-exam",
+          body.id,
+          JSON.stringify({
+            reason: body.reason,
+            reviewed: body.review,
+            ...result,
+          }),
+        );
+        return result;
+      },
+    );
   }
   retire(id: string, input: unknown, actor: string, request?: string) {
     const body = z
@@ -380,6 +610,7 @@ export class ExamDefinitions {
               reason: body.reason,
               review: body.review,
               counts: current.counts,
+              native: current.native,
               before: current.exam,
               ...result,
             }),

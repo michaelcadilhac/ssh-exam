@@ -6,6 +6,7 @@ import { qualifyInterruptionCLI } from "../fixtures/management-interruptions.js"
 import { qualifyMonitoringCLI } from "../fixtures/management-monitoring.js";
 import { qualifyTemplateCLI } from "../fixtures/management-templates.js";
 import { qualifyAdministratorCLI } from "../fixtures/management-administrators.js";
+import { qualifyNativeRetirementCLI } from "../fixtures/management-native-retirement.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import { MonitoringManagement } from "../../apps/server/src/monitoring-management.js";
 import sharp from "sharp";
@@ -520,6 +521,273 @@ it("requires explicit root-agent management purpose, audience, freshness, pinned
   }
 });
 
+it("binds native reconciliation to terminal web history, exact source identity, current review and atomic audit", async () => {
+  const f = await setup();
+  try {
+    f.config.agent.managementOperations = [
+      "exams.retire-preview",
+      "exams.native-reconcile",
+    ];
+    const exam = "native-ack",
+      id = randomUUID(),
+      start = Date.now() - 1200000;
+    const settings = {
+      id: exam,
+      name: "Synthetic legacy reconciliation",
+      template: "v1",
+      duration: 600,
+      webcam: false,
+      terminals: 2,
+      earliest: start,
+      latest: start + 600000,
+    };
+    f.current.store.db
+      .prepare("INSERT INTO exams VALUES(?,?)")
+      .run(exam, JSON.stringify(settings));
+    f.current.store.db
+      .prepare("UPDATE exam_lifecycle SET legacy_unreconciled=1 WHERE exam=?")
+      .run(exam);
+    f.current.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,access_state,checksum) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        exam,
+        "synthetic",
+        29999,
+        "COMPLETED",
+        JSON.stringify(settings),
+        start,
+        start + 600000,
+        start + 600000,
+        1,
+        "RELEASED",
+        "a".repeat(64),
+      );
+    const original = f.current.store.attempt(id);
+    const call = async (operation: string, body: any, request = randomUUID()) =>
+      f.unpack(await f.post(f.request({ operation, body, request })));
+    const reviewReply = await call("exams.retire-preview", {
+      id: exam,
+      action: "archive",
+    });
+    expect(reviewReply.ok, JSON.stringify(reviewReply)).toBe(true);
+    const review = reviewReply.result;
+    expect(review.allowed).toBe(false);
+    const evidence = {
+      version: 1,
+      agent: "class",
+      exam,
+      observed_at: Date.now(),
+      state_hash: "b".repeat(64),
+      attempts: [
+        {
+          id,
+          username: "synthetic",
+          uid: 29999,
+          state: "COMPLETED",
+          start,
+          deadline: start + 600000,
+          original_deadline: start + 600000,
+          protected: true,
+          checksum: "a".repeat(64),
+          access_state: "RELEASED",
+        },
+      ],
+      permissions: [],
+      released_retentions: 0,
+    };
+    const body = {
+      id: exam,
+      action: "archive",
+      revision: review.revision,
+      review: review.review,
+      reason: "Reviewed matching immutable native history",
+      evidence,
+    };
+    for (const kind of [
+      "missing",
+      "clock",
+      "account",
+      "checksum",
+      "held",
+      "duplicate",
+      "agent",
+      "exam",
+      "future",
+      "expired",
+      "extra",
+    ]) {
+      const invalid = structuredClone(body);
+      switch (kind) {
+        case "missing":
+          invalid.evidence.attempts = [];
+          break;
+        case "clock":
+          invalid.evidence.attempts[0].original_deadline++;
+          break;
+        case "account":
+          invalid.evidence.attempts[0].uid++;
+          break;
+        case "checksum":
+          invalid.evidence.attempts[0].checksum = "c".repeat(64);
+          break;
+        case "held":
+          invalid.evidence.attempts[0].access_state = "HELD";
+          break;
+        case "duplicate":
+          invalid.evidence.attempts.push({ ...invalid.evidence.attempts[0] });
+          break;
+        case "agent":
+          invalid.evidence.agent = "elsewhere";
+          break;
+        case "exam":
+          invalid.evidence.exam = "elsewhere";
+          break;
+        case "future":
+          invalid.evidence.observed_at = Date.now() + 10000;
+          break;
+        case "expired":
+          invalid.evidence.observed_at = Date.now() - 600001;
+          break;
+        case "extra":
+          (invalid.evidence as any).permission = true;
+          break;
+      }
+      const refused = await call("exams.native-reconcile", invalid);
+      expect(refused.ok, kind).toBe(false);
+      expect(
+        f.current.store.db
+          .prepare("SELECT * FROM exam_native_reconciliations WHERE exam=?")
+          .get(exam),
+        kind,
+      ).toBeUndefined();
+      expect(f.current.store.attempt(id), kind).toEqual(original);
+    }
+    const request = randomUUID();
+    f.current.store.db.exec(
+      "CREATE TRIGGER synthetic_native_audit_failure BEFORE INSERT ON audit WHEN NEW.action='reconcile-native-exam' BEGIN SELECT RAISE(ABORT,'synthetic native audit unavailable'); END",
+    );
+    const failed = await call("exams.native-reconcile", body, request);
+    expect(failed.ok).toBe(false);
+    expect(failed.error).toContain("synthetic native audit unavailable");
+    expect(
+      f.current.store.db
+        .prepare("SELECT * FROM exam_native_reconciliations WHERE exam=?")
+        .get(exam),
+    ).toBeUndefined();
+    expect(
+      f.current.store.db
+        .prepare("SELECT * FROM exam_definition_requests WHERE request=?")
+        .get(request),
+    ).toBeUndefined();
+    f.current.store.db.exec("DROP TRIGGER synthetic_native_audit_failure");
+    // Named management caches authenticated refusals as well as successes.
+    // Repair then uses a new intent; an uncertain/lost reply retries the old one.
+    expect(await call("exams.native-reconcile", body, request)).toMatchObject({
+      ok: false,
+      error: failed.error,
+    });
+    const acceptedRequest = randomUUID();
+    const accepted = await call(
+      "exams.native-reconcile",
+      body,
+      acceptedRequest,
+    );
+    expect(accepted.ok, JSON.stringify(accepted)).toBe(true);
+    expect(
+      (await call("exams.retire-preview", { id: exam, action: "archive" }))
+        .result.allowed,
+    ).toBe(true);
+    await f.restart();
+    expect(
+      (await call("exams.native-reconcile", body, acceptedRequest)).result,
+    ).toEqual(accepted.result);
+    // A changed definition invalidates the acknowledgement, even if all native
+    // terminal records are unchanged. It does not undo the history fence.
+    f.current.store.db
+      .prepare("UPDATE exams SET config=? WHERE id=?")
+      .run(
+        JSON.stringify({ ...settings, name: "Changed current defaults" }),
+        exam,
+      );
+    expect(
+      (await call("exams.retire-preview", { id: exam, action: "archive" }))
+        .result.allowed,
+    ).toBe(false);
+    expect((await call("exams.native-reconcile", body)).ok).toBe(false);
+    expect(f.current.store.attempt(id)).toEqual(original);
+    // Web no-start projections use NULL and UNKNOWN. Positive native cancellation
+    // uses zero intervals and its verified restored policy; normalize only that
+    // representation, without rewriting either side or treating a HELD row as clear.
+    const cancelledExam = "native-cancelled",
+      cancelledID = randomUUID();
+    f.current.store.db
+      .prepare("INSERT INTO exams VALUES(?,?)")
+      .run(cancelledExam, JSON.stringify({ ...settings, id: cancelledExam }));
+    f.current.store.db
+      .prepare("UPDATE exam_lifecycle SET legacy_unreconciled=1 WHERE exam=?")
+      .run(cancelledExam);
+    f.current.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings) VALUES(?,?,?,?,?,?)",
+      )
+      .run(
+        cancelledID,
+        cancelledExam,
+        "synthetic",
+        29999,
+        "CANCELLED_BEFORE_START",
+        JSON.stringify({ ...settings, id: cancelledExam }),
+      );
+    const cancellation = f.current.store.attempt(cancelledID);
+    const cancelReview = (
+      await call("exams.retire-preview", {
+        id: cancelledExam,
+        action: "archive",
+      })
+    ).result;
+    const cancelEvidence = {
+      ...evidence,
+      exam: cancelledExam,
+      attempts: [
+        {
+          id: cancelledID,
+          username: "synthetic",
+          uid: 29999,
+          state: "CANCELLED_BEFORE_START",
+          start: 0,
+          deadline: 0,
+          original_deadline: 0,
+          protected: false,
+          checksum: "",
+          access_state: "",
+        },
+      ],
+    };
+    const cancelReply = await call("exams.native-reconcile", {
+      ...body,
+      id: cancelledExam,
+      revision: cancelReview.revision,
+      review: cancelReview.review,
+      evidence: cancelEvidence,
+    });
+    expect(cancelReply.ok, JSON.stringify(cancelReply)).toBe(true);
+    expect(
+      (
+        await call("exams.retire-preview", {
+          id: cancelledExam,
+          action: "archive",
+        })
+      ).result.allowed,
+    ).toBe(true);
+    expect(f.current.store.attempt(cancelledID)).toEqual(cancellation);
+  } finally {
+    await f.close();
+  }
+});
+
 it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
   "runs actual root-mapped examctl against the real gateway through local TLS, including replay-safe restart retry",
   async () => {
@@ -555,6 +823,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       let corruptCatalog: string | null = null;
       let corruptImage: string | null = null;
       let corruptRetirement: "drop" | "scope" | null = null;
+      let corruptNativeRetirement: "drop" | "scope" | null = null;
       let corruptAdministrator: "drop" | "scope" | "refusal" | null = null;
       let corruptSavedSelection: "swap" | "drop-confirm" | null = null;
       server = https.createServer(
@@ -577,6 +846,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                     corruptImage ||
                     corruptAdministrator ||
                     corruptRetirement ||
+                    corruptNativeRetirement ||
                     corruptSavedSelection) &&
                   req.url === "/api/agent/management"
                 ) {
@@ -604,6 +874,20 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                         payload.result.rows[1].work,
                         payload.result.rows[0].work,
                       ];
+                    changed = true;
+                  }
+                  if (
+                    corruptNativeRetirement &&
+                    payload.operation === "exams.native-reconcile" &&
+                    payload.ok
+                  ) {
+                    if (corruptNativeRetirement === "drop") {
+                      res.destroy();
+                      return;
+                    }
+                    payload.result.id = "elsewhere";
+                    payload.result.private =
+                      "PRIVATE-NATIVE-EVIDENCE-MUST-NOT-PRINT";
                     changed = true;
                   }
                   if (
@@ -1959,6 +2243,16 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
         "Management must retain exactly the nine explicitly authored synthetic histories, including both saved sources and both cancelled grant preparations",
       ).toEqual({ n: 9 });
+      await qualifyNativeRetirementCLI(
+        f,
+        binary,
+        configPath,
+        creation,
+        run,
+        (mode) => {
+          corruptNativeRetirement = mode;
+        },
+      );
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));
