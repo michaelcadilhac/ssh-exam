@@ -9,8 +9,15 @@
   production configuration/student records, or interrupt exams.
   Store generated browser screenshots in per-test output; preserve existing
   documentation images as workspace data.
-- Stop immediately if an executable/command is not found. Do not silently install
-  it or substitute another command to continue the task.
+- Stop work when a required development/test executable is genuinely absent from
+  its intended execution environment, including one invoked by a fixture. Verify
+  the intended command and its executable path/PATH before classifying the failure;
+  do not silently install it or substitute another tool.
+  A `command not found` string in expected negative-test output, a mock, or a
+  synthetic student's malformed/corrupted command is not itself a missing
+  dependency. Compare intended and received input and check the intended executable
+  read-only. If it exists, preserve the failure and continue diagnosing/fixing the
+  test or product. Do not stop the overall task solely on that output string.
 - csc-sys is authorized only for the agreed guarded, disposable qualification
   environment. Preserve the host installation and student data. A busy/uncertain
   guard means no test, not permission to clear records or relax the guard.

@@ -397,3 +397,14 @@ Before another long composition, enumerate ALL runner/transport/guest lifetimes
 and calculate the paced end-to-end runtime. A timeout in any wrapper is not a
 product refusal or proof of a student violation. This was another avoidable fixture
 composition error; existing instructions already required reviewing that lifetime.
+
+October26 development also stopped unnecessarily on a synthetic shell's
+`rintf: command not found`. The test intended `printf`, lost its initial character,
+and the same shell successfully ran the following printf. The output was useful
+evidence of input loss, not a missing development dependency. Treating a diagnostic
+string as the stop condition interrupted the investigation and left cleanup
+verification pending. On resumption the exact guest was confirmed inactive with
+host files/authority preserved. The user clarified the rule: verify the intended
+executable in its actual environment; stop for a genuinely missing required tool,
+and continue diagnosis for expected negative output or corrupted synthetic input.
+Do not hide such failures, install a misspelled command or weaken the regression.
