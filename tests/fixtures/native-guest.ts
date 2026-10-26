@@ -368,6 +368,19 @@ export async function nativeGuest(
         ),
       );
     },
+    async gate(attempt: string, action: "start" | "status" | "restore") {
+      if (students !== 1)
+        throw Error("Private gate fault requires one synthetic attempt");
+      const value = JSON.parse(
+        await collect(
+          bridge("inspect"),
+          JSON.stringify({ attempt, gate: action }) + "\n",
+        ),
+      );
+      if (value.bridge_error)
+        throw Error("Private gate observation refused: " + value.bridge_error);
+      return value;
+    },
     async collection(
       attempts: string[],
       action: "observe" | "kill" | "retry-verify",

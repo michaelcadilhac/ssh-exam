@@ -9,67 +9,40 @@ not an effort percentage. Collection crash isolation is closed locally.
 
 ## Validated revisions and current increment
 
-Main/worktree HEADeb5e5f0 before the pending test-only native/gateway commit.
-Native binaries/source remain EXACT0ecfc13; product gateway97e5bc6. No new native
-build, authority/config/schema, deployment or mode switch. Installed retained
-admission stays unconditional OFF.
+The latest validated signed-command-stall increment builds on a46f229.
+Native binaries/source remain EXACT0ecfc13;
+product gateway97e5bc6. No new native build, authority/config/schema, deployment or
+mode switch. Installed retained admission stays unconditional OFF.
 
-Current milestone: actual gateway process replacement joined to the real browser/
-SSH/native kernel passes. Active SIGKILL preserves the same native supervisor/
-SSH/generation0/unfrozen scope/private half-typed shell line. Graceful replacement
-and a second SIGKILL during two scoped approved policy holds keep ALL populated
-native scopes frozen and preserve actual unsaved Nano. Restored conditions/fresh
-explicit Continue still required. Root export verifies both exact saved files;
-original full90-minute interval/grant/access hold remain.
+Current workflow PASS: real New-terminal signed request stalls17.5s; independent
+verified evidence/foreground input/background writer/SSH/supervisor/clock/grant
+remain healthy. Exact error reply is closed, fresh native pane admitted, actual
+close/Nano/policy hold/explicit Continue/protected export complete.97801 PASS1/
+1.1m (1.2m overall). Rooti66b8xmg result0/FULL files+authority preservation and
+unitcb54211c87bd487a8365fe78cf724d4c inactive independently verified. TLS key absent.
+Exact driver bundlendpqc1sq/local xpkhtvbu; native unchanged. Focused14/Python58/
+types17338 PASS. Prior609app/build/full native-race and composed22 browser receipts
+apply separately to unchanged inputs. All runners completed. Failure/state review,
+two preserved fixture failures and exact receipts: retained-native-command-stall.md.
 
-Clean87893 PASS1/55.5s (1.1m overall), root stagei_ti2545 result0/FULL files+
-authority preservation and exact unitde21cffd366f4b5aa3ea03101019bd61 inactive
-independently reread. Exact TLS/synthetic SSH key dir removed normally. Default
-native27008 PASS1/40.5s (47.5s overall), root3gtrnfa_ result0/FULL/unit078245da56c54ee8935e76b0bc1f49e2
-inactive/key cleanup. Affected shared-adapter browser46815 PASS22/4.2m. Types23290
-PASS. Native exact bundlefnwvqu0t (local browser-native-artifacts._r1_pi9m) is
-unchanged; earlier609 app/build/full native-race/resource/root42 receipts apply
-separately to unchanged product inputs. ALL runners completed.
-
-Failure/state review: retained-gateway-restart.md. First4312 lacked input-ready
-boundaries; second80804 wrongly demanded an active heartbeat while policy-held.
-Corrected oracle uses NEW socket binding/correlated reply/fresh capture/input-ready
-UI while active, versus scoped approval/positive kernel freeze while held. Failure
-JSONs persist; second evidence /tmp/ssh-exam-native-gateway-second-evidence.3xpubdx2.
-Third11511 core case passes50.3s but teardown group-SIGTERM races child shutdown;
-rootkib1hisd FULL/inactive. Only fingerprint-matched orphan synthetic keys/exact
-TLS key cleaned. Native child now has opt-in dedicated group/signal0 proof; parent
-keeps IPC/shutdown ownership and finally cleans keys. Existing callers default
-unchanged. The clean fourth/default/shared22 validate that correction.
-
-Prior eb5e5f0: actual16 browsers/64 native SSH panes/two508MiB targets; positively
-observed BOTH writing collectors, exact pidfd target SIGKILL, target-only failed
-hold, supported root retry/export, all eight127MiB files compare exactly.14 peers
-retain input/supervisors/SSH/generations/intervals/grants during and after. All16
-public/native protected COMPLETED/HELD/gen0; all15 nontargets error-free and all16
-original90-minute intervals unchanged. Rootptuxrjcw FULL/inactive; case99669
-PASS10.1m. Fresh current-binary root41918 PASS12, unchanged shared agent/watchdog
-PIDs,25 signed timed/legacy-native renewals max81.971ms, original-deadline access
-restoration; rooty7tux04f FULL/inactive. Bridge11/Python55/types PASS. Public-contact
-maxima59.277/65.623ms are NOT native v1 renewal latency/permission;23 bounded
-private HTTP queue-Full refusals recover. Detailed limitations/failures/artifacts:
-retained-capacity-qualification.md. Prior97e5bc6 empty-registry callback fix has
-focused28/full609app/build/types and actual16/64 baseline receipts.
+Prior a46f229 actual gateway replacement passes active and approved-held shell/
+Nano/export plus default/shared22 and clean teardown (retained-gateway-restart.md).
+Prior eb5e5f0 actual16/64/two508MiB/fatal-worker/retry/export completes all16 with
+original timing/protected HELD and14 healthy peers; separate current-binary root12
+preserves shared PIDs/deadline restoration (retained-capacity-qualification.md).
+Prior97e5bc6 fixed valid empty-registry health blocking ordered native completions;
+focused28/full609app/build/types/actual16-64 baseline pass. Collection isolation is
+closed locally; original incident cause is still unproven.
 
 ## Exact next action
 
-Commit this validated coherent native/gateway increment locally, fast-forward
-main while preserving original screenshots, then qualify the ACTUAL signed native
-command-socket stall while evidence verification remains healthy. Inspect the
-concrete producer first: terminal_monitoring.go runs the evidence bridge in the
-coordinator, using the supervisor socket independently of Config.Socket. A whole
-coordinator stop also stops that bridge, so do not mislabel it a command-only
-fault. Private bounded gate interposition can stall a real New-terminal request
-while existing shell/background writer/fresh evidence/owner remain healthy.
-Require positive accepted-request boundary, no policy/generation/SSH/buffer loss,
-original clock and verified writer behavior; restore only exact owned socket
-identity. Then actual coordinator loss and strict complete-coverage/gap cases.
-No unused helper chain or extra permission inferred from contact replies.
+Qualify actual coordinator loss and strict complete-coverage/gap behavior through the student/
+native interfaces. Inspect actual producers: terminal_monitoring.go runs the
+evidence bridge IN the coordinator, directly to the supervisor independently of
+Config.Socket. Whole coordinator stop also stops that bridge. Require verified
+safe hold when authorization expires, preserved viable SSH/private buffers,
+unchanged clocks and no false student violation or optimistic gap-repair thaw.
+No unused helper chain or permission inferred from contact replies.
 
 Other finite local outcomes: reviewed native legacy migration/definition retirement;
 manual secured-workspace cleanup without grace; reviewed configuration/full CLI

@@ -28,8 +28,12 @@ buffers and original interval/grant. Populated kernel scopes remain frozen until
 explicit fresh Continue; protected export verifies both exact files. Clean/default
 root cases and22 composed scenarios pass, with FULL preservation/inactive units
 and temporary keys removed. Native binaries remain0ecfc13; installed admission
-stays OFF. Command/coordinator stalls and complete coverage/gap fault acceptance
-remain. No deployment. Evidence: docs/retained-gateway-restart.md.
+stays OFF. A separate actual17.5s signed-command socket stall now passes with
+healthy independent evidence, continuous foreground/background work, unchanged
+native ownership/clock, fresh-pane recovery and editor/hold/protected export.
+Whole coordinator loss and complete coverage/gap fault acceptance remain. No
+deployment. Evidence: docs/retained-gateway-restart.md and
+docs/retained-native-command-stall.md.
 
 October25 gateway routing now survives actual process replacement locally through
 current-page and signed native owner verification, retaining the same SSH/private

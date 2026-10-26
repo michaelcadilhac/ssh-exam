@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import types
 import tarfile
 import unittest
@@ -21,6 +22,60 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_abort_always_completes_even_when_owned_gate_restore_refuses(self):
+        fixture = object.__new__(bridge.GuestBridge)
+        fixture.gate_fault = types.SimpleNamespace(cancel=mock.Mock(side_effect=AssertionError('changed socket')))
+        fixture.failures = []; fixture.done = threading.Event()
+        server, client = socket.socketpair()
+        try:
+            server.settimeout(1); client.settimeout(1)
+            client.sendall(b'{"abort":true}\n')
+            fixture.inspect(server)
+            self.assertTrue(fixture.done.is_set())
+            with client.makefile('rb') as stream: self.assertEqual(bridge.line(stream), {'aborted': True})
+            self.assertEqual(fixture.failures, ['Private gate restoration failed; preserve exact sockets', 'Local browser test aborted'])
+        finally: server.close(); client.close()
+
+    def test_gate_stall_accepts_actual_request_without_reply_and_restores_original_listener(self):
+        with tempfile.TemporaryDirectory() as directory, socket.socket(socket.AF_UNIX) as original:
+            path = Path(directory) / 'gate.sock'
+            original.bind(str(path)); original.listen(1); original.settimeout(1); path.chmod(0o600)
+            identity = (path.stat().st_dev, path.stat().st_ino)
+            fault = bridge.GateStall(path, .5)
+            try:
+                with socket.socket(socket.AF_UNIX) as client:
+                    client.settimeout(.05); client.connect(str(path)); client.sendall(b'{"signed":"original"}\n')
+                    until = time.monotonic() + 1
+                    while not fault.status()['accepted'] and time.monotonic() < until: time.sleep(.005)
+                    self.assertEqual(fault.status()['accepted'], 1)
+                    with self.assertRaises(socket.timeout): client.recv(1)
+                fault.thread.join(timeout=2)
+                self.assertEqual(fault.status()['phase'], 'restored')
+                self.assertEqual((path.stat().st_dev, path.stat().st_ino), identity)
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+                with socket.socket(socket.AF_UNIX) as client:
+                    client.settimeout(1); client.connect(str(path)); client.sendall(b'after-stall')
+                    peer, _ = original.accept()
+                    with peer:
+                        peer.settimeout(1); self.assertEqual(peer.recv(32), b'after-stall')
+            finally: fault.cancel()
+
+    def test_gate_cancel_is_bounded_and_does_not_replace_a_changed_socket(self):
+        with tempfile.TemporaryDirectory() as directory, socket.socket(socket.AF_UNIX) as original:
+            path = Path(directory) / 'gate.sock'
+            original.bind(str(path)); original.listen(1)
+            fault = bridge.GateStall(path, 10)
+            fault.cancel(); self.assertEqual(fault.status()['phase'], 'restored')
+            fault = bridge.GateStall(path, 10)
+            path.unlink()
+            with socket.socket(socket.AF_UNIX) as replacement:
+                replacement.bind(str(path)); replacement.listen(1)
+                identity = (path.stat().st_dev, path.stat().st_ino)
+                with self.assertRaisesRegex(AssertionError, 'restore failed'): fault.cancel()
+                self.assertEqual(fault.status()['phase'], 'failed')
+                self.assertEqual((path.stat().st_dev, path.stat().st_ino), identity)
+                self.assertTrue(fault.held.exists())
+
     def test_observer_checks_nested_kernel_pool_against_systemd_and_all_resource_bounds(self):
         attempt = 'aaaaaaaa-1234-4234-8234-123456789abc'
         unit = 'exam-collection-' + attempt + '-123456abcdef.service'

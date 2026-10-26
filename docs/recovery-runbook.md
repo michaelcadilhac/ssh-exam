@@ -28,6 +28,15 @@ does not establish native monitoring continuity or cure a blind gap. Those nativ
 and joined root/capacity gates remain open; do not use this candidate to change the
 installed recovery procedure. Evidence: retained-gateway-restart.md.
 
+Local command-lane qualification now also stalls a real signed New-terminal
+request for17.5s while the coordinator's independent authenticated evidence path
+remains healthy. Existing native SSH/input/background work continue with the same
+deadline/owner; a new-pane operational error can be closed and retried after the
+command path returns. A command timeout alone is not a student violation. This
+does not establish that monitoring survives a stopped coordinator or justify
+thaw after a blind gap; those gates remain open and installed admission stays
+OFF. Exact synthetic evidence: retained-native-command-stall.md.
+
 The October25 local candidate also retries the SAME genuine policy report until
 its scoped delivery receipt arrives. Positive samples wait for that receipt;
 streams and SSH stay open. Duplicate reports preserve existing approval. A

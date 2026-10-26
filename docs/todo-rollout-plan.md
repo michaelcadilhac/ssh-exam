@@ -22,8 +22,11 @@ Actual joined browser/root16-student/64-pane and two508MiB/fatal-worker/retry/
 protected-export qualification now pass locally, with a separate current-binary
 shared-process/original-deadline root12 receipt. Actual native/gateway process
 replacement now passes active and approved/held shell/Nano/export plus clean
-teardown. Command/coordinator stalls and complete coverage/gap qualification
-remain gates. Component/browser simulations do not replace those boundaries.
+teardown. An actual signed-command socket stall now also passes while the
+independent evidence bridge remains healthy, including native writer/input,
+original owner/clock and subsequent pane/editor/hold/export. Whole coordinator
+loss and complete coverage/gap qualification remain gates. Component/browser
+simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
 

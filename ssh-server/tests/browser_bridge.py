@@ -155,6 +155,74 @@ def verify_large_fixture_archive(path, work, file_bytes=127 * 1024**2):
     return sorted(found)
 
 
+class GateStall:
+    """Private one-shot socket fault, with exact inode restore and finite expiry."""
+    def __init__(self, path, seconds=17.5):
+        self.path = path
+        original = path.lstat()
+        assert stat.S_ISSOCK(original.st_mode) and original.st_uid == os.geteuid()
+        self.original = (original.st_dev, original.st_ino)
+        self.held = path.with_name(path.name + '.qualification-' + uuid.uuid4().hex)
+        assert not self.held.exists()
+        self.phase, self.accepted, self.error = 'starting', 0, None
+        self.stop = threading.Event()
+        self.lock = threading.Lock()
+        self.server = socket.socket(socket.AF_UNIX)
+        os.rename(path, self.held)
+        try:
+            self.server.bind(str(path))
+            info = path.lstat(); self.fault = (info.st_dev, info.st_ino)
+            path.chmod(stat.S_IMODE(original.st_mode))
+            self.server.listen(32); self.server.settimeout(.1)
+        except Exception:
+            self.server.close()
+            if hasattr(self, 'fault') and path.exists():
+                current = path.lstat()
+                if (current.st_dev, current.st_ino) == self.fault: path.unlink()
+            if not path.exists(): os.rename(self.held, path)
+            raise
+        self.phase = 'blocked'
+        self.thread = threading.Thread(target=self.run, args=(seconds,), daemon=True)
+        self.thread.start()
+
+    def status(self):
+        with self.lock:
+            return {'phase': self.phase, 'accepted': self.accepted, 'error': self.error}
+
+    def run(self, seconds):
+        clients = []
+        try:
+            until = time.monotonic() + seconds
+            while not self.stop.is_set() and time.monotonic() < until:
+                try: client, _ = self.server.accept()
+                except socket.timeout: continue
+                except OSError:
+                    if self.stop.is_set(): break
+                    raise
+                if len(clients) >= 32: client.close(); continue
+                clients.append(client)
+                with self.lock: self.accepted += 1
+                # Do not read or reply: the actual signed command remains at
+                # the real native socket boundary while evidence IO stays live.
+            self.server.close()
+            current, held = self.path.lstat(), self.held.lstat()
+            assert (current.st_dev, current.st_ino) == self.fault, 'Gate path changed; preserve both sockets'
+            assert (held.st_dev, held.st_ino) == self.original, 'Original gate changed; preserve both sockets'
+            self.path.unlink()
+            os.rename(self.held, self.path)
+            with self.lock: self.phase = 'restored'
+        except Exception as error:
+            with self.lock: self.phase, self.error = 'failed', type(error).__name__
+        finally:
+            self.server.close()
+            for client in clients: client.close()
+
+    def cancel(self):
+        self.stop.set(); self.server.close(); self.thread.join(timeout=3)
+        assert not self.thread.is_alive(), 'Owned gate fault did not settle'
+        assert self.status()['phase'] == 'restored', 'Owned gate restore failed; preserve private evidence'
+
+
 class GuestBridge:
     def __init__(self, config):
         self.config = config
@@ -166,6 +234,9 @@ class GuestBridge:
         self.failures = []
         self.collection_operation = None
         self.collection_lock = threading.Lock()
+        self.gate_fault = None
+        self.evidence_replies = 0
+        self.evidence_lock = threading.Lock()
 
     def serve(self, name, handler):
         server = socket.socket(socket.AF_UNIX)
@@ -218,6 +289,8 @@ class GuestBridge:
             self.requests.put_nowait((request, completed, result))
             if not completed.wait(5):
                 raise TimeoutError('Private gateway reply unavailable')
+            if request['path'] == '/api/agent/monitoring-evidence' and result['reply']['status'] == 200:
+                with self.evidence_lock: self.evidence_replies += 1
             send(stream, result['reply'])
 
     def gateway(self, client):
@@ -250,8 +323,18 @@ class GuestBridge:
                 events = scope_directory(attempt_id, unit) / 'cgroup.events'
                 kernel.append(dict(unit=unit, **dict(row.split() for row in events.read_text().splitlines())))
         editor = Path(self.config['work']) / attempt_id / 'work/browser-editor.txt'
+        writer = Path(self.config['work']) / attempt_id / 'work/control-stall-proof'
+        written = 0
+        try:
+            fd = os.open(writer, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(fd, 'rb') as stream:
+                info = os.fstat(stream.fileno())
+                assert stat.S_ISREG(info.st_mode) and info.st_uid == attempt['uid'] and info.st_nlink == 1 and info.st_size <= 65536
+                raw = stream.read(65537); assert raw == b'x' * len(raw) and len(raw) <= 65536
+                written = len(raw)
+        except FileNotFoundError: pass
         return {'attempt': attempt, 'supervisor': supervisor, 'kernel': kernel,
-                'editor_exists': editor.exists(), 'private_guest': True}
+                'editor_exists': editor.exists(), 'writer_bytes': written, 'private_guest': True}
 
     def collectors(self, ids):
         result = []
@@ -358,13 +441,28 @@ class GuestBridge:
     def inspect(self, client):
         with client.makefile('rwb', buffering=0) as stream:
             request = line(stream)
+            if 'gate' in request:
+                assert self.students == 1 and request['gate'] in ('start', 'status', 'restore')
+                attempt = self.snapshot(request['attempt'])['attempt']
+                assert attempt['username'] == 'examq' and attempt['state'] == 'ACTIVE'
+                if request['gate'] == 'start':
+                    assert self.gate_fault is None
+                    self.gate_fault = GateStall(Path(self.config['socket']))
+                assert self.gate_fault is not None
+                if request['gate'] == 'restore': self.gate_fault.cancel()
+                with self.evidence_lock: replies = self.evidence_replies
+                send(stream, dict(self.gate_fault.status(), evidence_replies=replies))
+                return
             if 'collection' in request:
                 send(stream, self.collection(request['collection']))
                 return
             if request == {'abort': True}:
+                if self.gate_fault is not None:
+                    try: self.gate_fault.cancel()
+                    except AssertionError: self.failures.append('Private gate restoration failed; preserve exact sockets')
                 self.failures.append('Local browser test aborted')
-                send(stream, {'aborted': True})
-                self.done.set()
+                try: send(stream, {'aborted': True})
+                finally: self.done.set()
                 return
             if 'attempts' in request:
                 ids = request['attempts']
@@ -464,6 +562,7 @@ def run_guest(config, prepare_roles):
     print('BROWSER_NATIVE_SOURCE_SYNCED', flush=True)
     if not bridge.done.wait(780 if bridge.large else 540):
         raise TimeoutError('Actual browser/native qualification did not finish')
+    if bridge.gate_fault is not None: bridge.gate_fault.cancel()
     if bridge.failures:
         raise RuntimeError(bridge.failures[0])
     print('BROWSER_NATIVE_PROTECTED_FINISH_OK', flush=True)

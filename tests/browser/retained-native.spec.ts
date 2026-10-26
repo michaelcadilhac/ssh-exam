@@ -8,6 +8,7 @@ import { simulatedMedia, ready } from "./transition-fixture.js";
 const nativeProbe = z.object({
   private_guest: z.literal(true),
   editor_exists: z.boolean(),
+  writer_bytes: z.number().int().nonnegative(),
   attempt: z
     .object({
       state: z.string(),
@@ -71,6 +72,12 @@ test.afterEach(async ({ page }, info) => {
       visible: document.visibilityState,
       focused: document.hasFocus(),
       fullscreen: !!document.fullscreenElement,
+      terminals: [...document.querySelectorAll(".xterm-helper-textarea")].map(
+        (element) => ({
+          connected: element.isConnected,
+          inert: !!element.closest("[inert]"),
+        }),
+      ),
     }));
     await diagnostic("browser-input-boundary", focus);
   } catch {
@@ -92,10 +99,13 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   failureAttempt = "";
   failureStates.length = 0;
   const processMode = process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1";
+  const stallMode = process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1";
   let bindingConnection = 0,
     confirmationConnection = 0,
     connections = 0,
     uploads = 0;
+  let lastOpenRequest = "";
+  const paneReplies = new Map<string, "opened" | "error">();
   page.on("response", (response) => {
     if (
       response.url().endsWith("/frames/challenged") &&
@@ -106,9 +116,21 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   page.on("websocket", (socket) => {
     if (new URL(socket.url()).pathname !== "/api/student/session") return;
     const connection = ++connections;
+    socket.on("framesent", ({ payload }) => {
+      try {
+        const message = JSON.parse(String(payload));
+        if (message.type === "open" && typeof message.pane === "string")
+          lastOpenRequest = message.pane;
+      } catch {}
+    });
     socket.on("framereceived", ({ payload }) => {
       try {
         const message = JSON.parse(String(payload));
+        if (
+          (message.type === "opened" || message.type === "error") &&
+          typeof message.pane === "string"
+        )
+          paneReplies.set(message.pane, message.type);
         if (message.binding) bindingConnection = connection;
         if (
           message.type === "state" &&
@@ -188,8 +210,15 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   const before = await native();
   expect(before.supervisor?.ssh_peer).toBe("pinned-live");
   expect(before.attempt.deadline - before.attempt.start).toBe(5400000);
-  const pane = page.locator(".xterm-helper-textarea").last();
-  await pane.focus();
+  const pane = page.locator(".xterm-helper-textarea").first();
+  // Begin replaces preflight panes and removes the covering modal separately
+  // from the native start. Use the student's actionable terminal surface;
+  // HTMLElement.focus() can silently target an inert or retiring preflight pane.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "New terminal", exact: true }),
+  ).toBeEnabled();
+  await page.locator(".xterm-screen").first().click();
   await expect(pane).toBeFocused();
   await page.keyboard.type("printf 'NATIVE-%s-END\\n' 'retained-private-");
   await expect(page.locator(".xterm-rows")).toContainText("retained-private-");
@@ -410,6 +439,154 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
       ? "NATIVE-retained-private-gateway-verified-END"
       : "NATIVE-retained-private-verified-END",
   );
+  if (stallMode) {
+    const gate = async (action: "start" | "status" | "restore") => {
+      const result = await request.post("/api/fixture/native-gate", {
+        headers: { origin, "x-csrf-token": (await login.json()).csrf },
+        data: { attempt: original.id, action },
+        timeout: 10000,
+      });
+      expect(result.ok(), await result.text()).toBe(true);
+      return z
+        .object({
+          phase: z.enum(["blocked", "restored", "failed"]),
+          accepted: z.number().int().nonnegative(),
+          evidence_replies: z.number().int().nonnegative(),
+          error: z.string().nullable(),
+        })
+        .parse(await result.json());
+    };
+    await pane.focus();
+    await expect(pane).toBeFocused();
+    await page.keyboard.type(
+      "(while :; do printf x >> /work/control-stall-proof; sleep 0.2; done) & stall_writer=$!; printf 'WRITER-%s\\n' READY",
+      { delay: 25 },
+    );
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".xterm-rows").first()).toContainText(
+      "WRITER-READY",
+    );
+    await expect
+      .poll(async () => (await native()).writer_bytes, { timeout: 5000 })
+      .toBeGreaterThan(2);
+    const initial = await native(),
+      started = await gate("start");
+    expect(started.phase).toBe("blocked");
+    const previousOpen = lastOpenRequest;
+    await page
+      .getByRole("button", { name: "New terminal", exact: true })
+      .click();
+    await expect
+      .poll(() => lastOpenRequest, { timeout: 5000 })
+      .not.toBe(previousOpen);
+    const stalledPane = lastOpenRequest;
+    await expect
+      .poll(async () => (await gate("status")).accepted, { timeout: 5000 })
+      .toBeGreaterThan(0);
+    let samples = 0,
+      written = initial.writer_bytes;
+    const until = performance.now() + 25000;
+    while (true) {
+      const status = await gate("status"),
+        observed = await native();
+      expect(observed.attempt).toMatchObject({
+        state: "ACTIVE",
+        generation: initial.attempt.generation,
+        start: initial.attempt.start,
+        deadline: initial.attempt.deadline,
+        original_deadline: initial.attempt.original_deadline,
+        transport: initial.attempt.transport,
+        grant: initial.attempt.grant,
+      });
+      expect(observed.supervisor).toMatchObject({
+        pid: initial.supervisor!.pid,
+        ssh_peer: "pinned-live",
+      });
+      expect(
+        observed.kernel.length > 0 &&
+          observed.kernel.every(
+            (unit) => unit.frozen === "0" && unit.populated === "1",
+          ),
+      ).toBe(true);
+      expect(status.phase, JSON.stringify(status)).not.toBe("failed");
+      if (status.phase === "restored") break;
+      expect(performance.now()).toBeLessThan(until);
+      await expect
+        .poll(async () => (await native()).writer_bytes, { timeout: 1500 })
+        .toBeGreaterThan(written);
+      written = (await native()).writer_bytes;
+      samples++;
+      if (samples === 2) {
+        await pane.focus();
+        await expect(pane).toBeFocused();
+        await page.keyboard.type("printf 'DURING-%s\\n' STALL", { delay: 25 });
+        await page.keyboard.press("Enter");
+        await expect(page.locator(".xterm-rows").first()).toContainText(
+          "DURING-STALL",
+          { timeout: 5000 },
+        );
+      }
+    }
+    expect(samples).toBeGreaterThanOrEqual(3);
+    const restored = await gate("status");
+    expect(restored.evidence_replies).toBeGreaterThan(
+      started.evidence_replies + 3,
+    );
+    await expect
+      .poll(() => paneReplies.has(stalledPane), { timeout: 15000 })
+      .toBe(true);
+    const openingError = page.getByRole("dialog", {
+      name: "Terminal error",
+      exact: true,
+    });
+    if (paneReplies.get(stalledPane) === "error") {
+      await expect(openingError).toBeVisible();
+      await expect(openingError).toContainText("Browser SSH operation failed");
+      await openingError
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
+    }
+    await expect(openingError).toHaveCount(0);
+    // Prove the restored real gate permits a fresh signed admission, rather
+    // than treating disappearance of the operational error as recovery.
+    if ((await native()).supervisor?.attached_panes === 1) {
+      await page
+        .getByRole("button", { name: "New terminal", exact: true })
+        .click();
+    }
+    await expect
+      .poll(async () => (await native()).supervisor?.attached_panes, {
+        timeout: 15000,
+      })
+      .toBe(2);
+    await pane.focus();
+    await expect(pane).toBeFocused();
+    await page.keyboard.type(
+      'kill "$stall_writer"; wait "$stall_writer" 2>/dev/null; printf \'WRITER-%s\\n\' STOPPED',
+      { delay: 25 },
+    );
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".xterm-rows").first()).toContainText(
+      "WRITER-STOPPED",
+    );
+    // The original signed request may finish or refuse after restoration. Close
+    // only its synthetic extra pane through the actual student close workflow.
+    const extra = page.getByRole("button", { name: /^Close Terminal [2-4]$/ });
+    if (await extra.count()) {
+      await extra.last().click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Close terminal", exact: true })
+        .click();
+    }
+    await expect
+      .poll(async () => (await native()).supervisor?.attached_panes, {
+        timeout: 15000,
+      })
+      .toBe(1);
+    await pane.focus();
+    await expect(pane).toBeFocused();
+  }
   await page.keyboard.type("nano -I -w /work/browser-editor.txt", {
     delay: 25,
   });

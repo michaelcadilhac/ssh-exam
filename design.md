@@ -2912,9 +2912,13 @@ native/gateway process replacement are qualified locally. Active SIGKILL and
 granted policy-held graceful/SIGKILL replacements preserve the pinned native
 supervisor/SSH, half-typed shell and unsaved Nano; holds remain populated/frozen
 until fresh explicit Continue, then protected export verifies exact saved files.
-Original clocks/grants/holds and cleanup are retained. Command/coordinator stalls
-and strict coverage/gap acceptance remain; no blanket technical thaw or installed
-enablement is provided. See
+Original clocks/grants/holds and cleanup are retained. A real17.5s signed-command
+socket stall now separately passes with fresh independent native evidence,
+foreground input/background writes, unchanged supervisor/SSH/clock/grant and
+subsequent operational-error handling/fresh pane admission/editor hold/export.
+The coordinator continues running in that case; whole coordinator loss and strict
+coverage/gap acceptance remain. No blanket technical thaw or installed enablement
+is provided. See docs/retained-native-command-stall.md and
 docs/retained-gateway-restart.md.
 
 The local policy-delivery candidate gives each retained page's genuine negative
