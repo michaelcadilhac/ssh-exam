@@ -46,6 +46,72 @@ refer to a complete audited exact artifact; previous286 approval covers only it.
 Detailed cleanup protocol is not final merely because this plan exists. The
 worker/usage lifetime barrier and crash-state layout remain under investigation.
 
+## C4b integrated observation, October26 (local; not cleanup qualification)
+
+`sudo examctl workspaces dry-run ATTEMPT` now reaches a separate root-only worker
+under the existing collection slice/resource bounds and two heavy-work slots.
+It holds the attempt job and account workflow fences, reads initialized private
+authority, respects retention/state/same-account unfinished blockers, verifies
+the full protected archive, inventories exact workspace objects, and observes
+pinned process lifetimes, all threads, mount source roots, cwd/root, fd/mapping
+identities and inotify watches. It repeats tree/attempt/hold identity checks.
+Unknown, oversized, opaque or changing observations refuse. No signal, account
+change, interval/grant/source mutation, background operation or deletion exists.
+
+`usage_observed` means that bounded observation completed; `snapshot_clear` means
+it found no blocker/reference. **eligible remains false.** A sequential /proc
+observation cannot by itself fence future/in-flight references. The required
+deletion lifetime barrier, complete asynchronous/reference qualification and
+durable quarantine/retry protocol remain C4c work. This is a usable diagnostic
+increment, not a claim that the complete C4 investigation or TODO is finished.
+Do not extend another unused scanner chain: qualify the actual cleanup barrier
+and public reviewed/retry journey next, or report a concrete unresolved boundary.
+
+State review before broad qualification: no new durable job/intermediate state,
+account reservation or execution permission. OS-owned locks release on worker
+exit; resource/runtime exhaustion produces no queued action or eligibility.
+Restart needs a new inspection; an old report never authorizes deletion. Scope/
+nonce/ID, contradictory/missing/oversized replies and root executable ownership
+are checked before reporting. Private --workspace-inspection-worker exists only
+in examctl, never a student/native RPC. Installed cgroup/PAM/host-root boundaries
+remain unqualified for these new artifacts.
+
+Focused actual compiled CLI checks pass: real quiet/unrelated watch, foreign
+open/cwd/mmap/watch references, same-device directory/file binds in a FOREIGN
+mount namespace, chroot-hidden bind, detached namespace FD and bind-held namespace
+handle; retention hold then explicit release; corrupt archive checksum then
+repair/retry; missing resource profile, worker death, oversized/wrong-scope reply.
+Authoritative JSON and saved answer remain unchanged. Only the system-manager
+interface is mocked inside a disposable user/mount/PID namespace; its PID1 dies
+on timeout and namespace handshakes have independent bounds. Focused final3.311s;
+three namespace/protocol repeats6.516s; parser/inventory race1.027s. Broad next.
+
+Retained failures: unrelated-watch initially watched the target's outer UUID
+folder, so correctly counted as use; moved that fixture outside the target.
+Old blanket inotify refusal was reproduced; exact watches now correlate internal
+kernel s_dev encoding to stat device/inode, permitting unrelated watches. A plain
+chroot first produced an already-refused empty mount table; a mounted chroot
+then reproduced an actual false-clear observation (RED1.141s). Different or
+changing process root views now refuse, with three repeats5.977s. A bind-held
+nsfs handle was already refused by the strict mount-root parser; corrected that
+test oracle, without relaxing parsing. Initial state-byte comparison captured
+pre-normalization fixture JSON; baseline now follows completed metadata setup.
+Hold refusal oracle now uses the actual existing message. Failure logs remain
+under /tmp/ssh-exam-workspace-*.log; no failure is counted as successful coverage.
+
+Inotify format/encoding references: Linux
+[fdinfo producer](https://github.com/torvalds/linux/blob/master/fs/notify/fdinfo.c)
+and [kernel device encoding](https://github.com/torvalds/linux/blob/master/include/linux/kdev_t.h).
+Opaque io_uring/fanotify containers and unrepresented namespace handles refuse;
+do not signal unrelated services or interpret missing details as no-use evidence.
+
+Broad boundary qualification PASS: full native CLI races20.858s; affected native
+workspace/source/snapshot/catalog races14.954s; separate CGO-disabled build and
+vet, diff check. Web/application/ordinary native execution are unchanged, so C8's
+622 app/11 affected browsers/real-WASM and image evidence remains applicable to
+those unchanged surfaces. No new installed resource/host-root proof is inferred.
+No active runner, guest, production action or workspace deletion.
+
 Metadata correction: native producer-based default/custom directory regressions
 RED0.046s and actual root-mapped CLI RED0.031s reproduced the wrong host-path
 comparison. Focused GREEN under race core1.095s/CLI1.633s verifies recorded_directory

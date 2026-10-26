@@ -1,6 +1,6 @@
 # Current local TODO checkpoint
 
-October26,2026. Validated main codebe4994c (C8), including clarified missing-package rule.
+October26,2026. Validated main8e14594 (C8 plus C4a metadata), including clarified missing-package rule.
 27/38 checked locally, not effort/readiness; C8 closes part of broad management.
 No deployment/push/service/config/student changes. No delegation authorized.
 Preserve original ten main screenshots and all stashes; expected hashes in
@@ -41,28 +41,33 @@ Codebe4994ca0232243a29005027f43b6ccdfc320560 committed/integrated main. Clean-
 commit actual root CLI/TLS rerun PASS7.55s; log clean-commit-cli.log. Source/asset
 hashes match full qualification. No new execution-cohort/csc qualification claimed.
 
-Active worktree/branch now workspace-cleanup-delivery, from1802fcd. Confirmed
-C4a metadata bug: native WorkPath is exam-visible /work, not private host target.
-Producer/native RED0.046s and actual root CLI RED0.031s; correction separately
-returns recorded_directory and canonical UUID path, preserves historical defaults,
-rejects malformed paths and leaves eligible/archive_verified=false. Focused races
-core1.095s/CLI1.633s, broad workspace/hold/snapshot1.672s/full CLI16.472s, build/vet
-PASS. No application/student runtime changes; C8 evidence applies unchanged.
+Active worktree/branch workspace-cleanup-delivery. Main8e14594 includes validated
+C4a recorded-directory correction (detailed workspace-cleanup-delivery.md).
+C4b public root workspaces dry-run is now implemented/tested locally: separate
+bounded worker, initialized authority/attempt/account fences, fresh archive,
+object/thread/process/foreign mount/fd/cwd/root/maps/watch observation. Explicit
+usage_observed/snapshot_clear diagnostics; eligible stays false because sequential
+/proc snapshots are not the destructive lifetime barrier. No signals, account/
+clock/grant/source changes, durable job or deletion. No new policy question.
 
-Exact next action: commit/integrate this validated metadata correction locally,
-then implement C4 dry-run and explicit cleanup end to end. Plan/approvals in
-workspace-cleanup-delivery.md and workspace-retention.md. Existing mount helper is
-unwired; worker resource/profile, proc lifetime/thread and mount helper signatures
-have now been read. Root CLI workspaces currently initializes Engine for old
-metadata commands; new heavy read-only inspection should use a bounded independent
-worker with validated initialized state, current archive/hold/use proof, no signals
-or account changes. Preserve existing collection reply/size/control semantics;
-new diagnostic report must be scoped and bounded. Follow with exact-inode private
-quarantine/durable audit+retry, source-pin/no-start inventory integration and real
-namespace/crash/healthy-peer/saved-restore qualification. Do not stop at a helper.
-No new policy decision: same-UID active work can conservatively defer cleanup;
-no waiting solely for old access deadline. Future config/help/journey and remaining
-migration acceptance audit stay open. No active runner or guest.
+Focused actual compiled CLI namespace/reference/protocol repeats6.516s, final
+hold/archive-corruption/repair3.311s, parsers1.027s PASS. Full CLI races20.858s;
+affected workspace/source/snapshot/catalog races14.954s; build/vet/diff PASS.
+Real private namespaces and protected bundles; ONLY manager resource interface
+mocked. New host-root/cgroup/PAM qualification is not claimed. Chroot-hidden
+mount false-clear reproduced/fixed; nsfs/opaque/incomplete views refuse. Failure
+receipts and pre-broad state review in workspace-cleanup-delivery.md. No runner.
+No web/application/ordinary agent execution changes: C8's unchanged622/11+WASM
+and image evidence still applies to those surfaces, not these new native artifacts.
+
+Next: commit/integrate this coherent diagnostic workflow; reconcile C17/C18 and
+unified migration acceptance against actual newer exact286/C8 receipts before
+reimplementing stale pending prose. C4c remains real engineering: lifetime barrier,
+reviewed exact-inode quarantine, durable retry/inspection/cancel, source-pin and
+no-start inventory integration, crash/healthy-peer/saved-restore qualification.
+Do not treat snapshot_clear as delete permission or extend unused scanner chains.
+Configuration activation/help/operator journey also remain open. All actionable
+local work continues; production-only consolidation/alert acceptance stay deferred.
 
 ## Prior release and production boundary
 

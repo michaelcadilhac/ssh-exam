@@ -61,6 +61,9 @@ func main() {
 	if core.CollectionWorkerMain(os.Args[1:]) {
 		return
 	}
+	if core.WorkspaceInspectionWorkerMain(os.Args[1:]) {
+		return
+	}
 	if args, ok := webArguments(os.Args[1:]); ok {
 		os.Exit(webMain(args))
 	}

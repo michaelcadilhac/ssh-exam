@@ -1,8 +1,8 @@
 package core
 
-// INTERNAL, UNWIRED topology observations for C4b. A relationship list is NEVER
-// no-use proof, eligibility or permission to delete. No namespace/process scan,
-// state/hold/archive transition, command, syscall mount or removal happens here.
+// Internal topology observations used by the root CLI's isolated workspace
+// dry-run worker. A relationship list is NEVER no-use proof, eligibility or
+// permission to delete. No state/hold/archive transition or removal happens here.
 import (
 	"bufio"
 	"bytes"

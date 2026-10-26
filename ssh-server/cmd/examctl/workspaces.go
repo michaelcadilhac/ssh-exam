@@ -15,10 +15,11 @@ import (
 func workspacesHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl workspaces list [--exam EXAM --limit N --after ATTEMPT]
        sudo examctl workspaces show ATTEMPT
+       sudo examctl workspaces dry-run ATTEMPT
        sudo examctl workspaces hold ATTEMPT --revision N --reason TEXT
        sudo examctl workspaces release-hold ATTEMPT --revision N --reason TEXT
 
-Local root-only workspace retention metadata, using the native attempt/job lock.
+Local root-only workspace retention inspection, using the native attempt/job lock.
 Offline from the gateway; no new network/API or student credentials. --config
 FILE defaults to /etc/exam-agent/agent.json. Help needs no root/configuration.
 
@@ -33,8 +34,17 @@ path is the separate private host UUID folder; never use recorded_directory as a
 host cleanup target. Future directory defaults do not rewrite historical attempts.
 
 IMPORTANT: candidate=true is only an absence of obvious metadata blockers.
-eligible=false and archive_verified=false are intentional: fresh archive,
-termination, other-namespace mounts and process-use proof are NOT implemented.
+show/list intentionally leave eligible=false and archive_verified=false: metadata
+does not verify archives, other-namespace mounts or current process references.
+dry-run performs fresh protected archive and bounded process/thread/namespace/
+mount/cwd/root/fd/mapping inspection in a separate resource-limited worker. It
+never signals a process or releases account/retention holds. Unknown/unreadable/
+opaque/changing kernel observations refuse no-use proof. Same-account live work
+can defer cleanup; never interrupt another exam to make verification succeed.
+usage_observed=true means the bounded scan completed. snapshot_clear=true means
+it found no reference or blocker at observation; it is not a lifetime barrier.
+eligible remains false until the complete destructive barrier is qualified.
+It requires the installed bounded collection slice; failures are NOT queued.
 NO WORKSPACE DELETION COMMAND IS ENABLED. An archive filename/checksum or expired
 account hold is not proof that an old workspace may safely be removed.
 
@@ -58,11 +68,12 @@ revision before retrying. Pending collection/initialization fences may refuse.
 Examples:
   sudo examctl workspaces list --exam midterm --limit 50
   sudo examctl workspaces show ATTEMPT
+  sudo examctl workspaces dry-run ATTEMPT
   sudo examctl info ATTEMPT
   sudo examctl workspaces hold ATTEMPT --revision 0 --reason 'Retain workspace for investigation'
   sudo examctl workspaces release-hold ATTEMPT --revision 1 --reason 'Investigation complete; independent proof still required'
 
-Exit status: 0 metadata/control result (never deletion eligibility),
+Exit status: 0 inspection/control result (never a deletion permit),
 1 operational refusal/failure, 2 invalid syntax. No production action is implied.`)
 }
 
@@ -89,7 +100,7 @@ func workspacesMain(args []string) int {
 		return 0
 	}
 	if len(w) < 2 || w[0] != "workspaces" {
-		return usage("choose list/show/hold/release-hold")
+		return usage("choose list/show/dry-run/hold/release-hold")
 	}
 	seen := map[string]bool{}
 	flags.Visit(func(f *flag.Flag) { seen[f.Name] = true })
@@ -100,13 +111,13 @@ func workspacesMain(args []string) int {
 		if len(w) != 2 || *limit < 1 || *limit > 200 || (*exam != "" && !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(*exam)) || (*after != "" && !ref.MatchString(*after)) || seen["revision"] || seen["reason"] {
 			return usage("list needs only optional exam/limit/after filters")
 		}
-	case "show", "hold", "release-hold":
+	case "show", "dry-run", "hold", "release-hold":
 		if len(w) != 3 || !ref.MatchString(w[2]) || seen["exam"] || seen["limit"] || seen["after"] {
 			return usage("select exactly one attempt UUID, without list filters")
 		}
-		if w[1] == "show" {
+		if w[1] == "show" || w[1] == "dry-run" {
 			if seen["reason"] || seen["revision"] {
-				return usage("show is inspection, without control flags")
+				return usage("show/dry-run are inspection, without control flags")
 			}
 		} else {
 			var err error
@@ -116,7 +127,7 @@ func workspacesMain(args []string) int {
 			}
 		}
 	default:
-		return usage("workspace deletion is not enabled; choose list/show/hold/release-hold")
+		return usage("workspace deletion is not enabled; choose list/show/dry-run/hold/release-hold")
 	}
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "Workspace controls require real/effective root; run sudo examctl with identical arguments. Help is available without privilege.")
@@ -126,6 +137,19 @@ func workspacesMain(args []string) int {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot load root configuration %q: %v; use --config FILE and examctl help workspaces\n", *config, err)
 		return 1
+	}
+	if w[1] == "dry-run" {
+		result, err := core.InspectWorkspaceCleanup(c, w[2])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, "No cleanup or queued operation. Preserve work/archives/holds; inspect workspaces show and native info, then retry dry-run.")
+			return 1
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+			fmt.Fprintln(os.Stderr, "Inspection output failed; no deletion permit:", err)
+			return 1
+		}
+		return 0
 	}
 	e, err := core.New(c)
 	if err != nil {

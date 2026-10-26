@@ -2370,6 +2370,15 @@ work and monitoring do not change. This is partial local implementation, not
 proof that any folder can be deleted. See docs/workspace-retention.md for tested
 boundaries and the remaining cross-namespace/process-use/crash-cleanup work.
 
+October26 root `workspaces dry-run` now runs archive/reference observation in a
+bounded independent worker under attempt/account fences. Exact object identities,
+all-thread proc views, foreign mount sources and fd/cwd/root/mappings/watches are
+observed; incomplete/chroot-limited/opaque/oversized views refuse. `snapshot_clear`
+is a diagnostic, never a deletion permit: eligible remains false pending the
+complete cleanup lifetime barrier and durable quarantine/retry qualification.
+No signal, interval/account/grant/source change or deletion occurs. Actual compiled
+CLI/private namespace regressions and limitations: workspace-cleanup-delivery.md.
+
 ### Approved collection limits and crash isolation (October 21; partial local implementation)
 
 Use configurable per-exam defaults of 128 MiB per regular file and 512 MiB total

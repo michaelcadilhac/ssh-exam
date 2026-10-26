@@ -1873,6 +1873,15 @@ the approval is not a production change or a completed investigation.
 ## Maintenance and further validation
 
 - [ ] **Define and implement private workspace cleanup after secured collection.**
+  October26 integrated root `workspaces dry-run` now performs bounded independent
+  archive/kernel-reference observation with useful CLI help and scoped replies.
+  Actual compiled CLI/private namespace tests catch foreign fd/cwd/map/watch,
+  directory/file mounts, chroot-hidden mounts and retained namespace handles;
+  hold/archive repair and worker/protocol refusals preserve authority and bytes.
+  `snapshot_clear` is diagnostic; eligible remains false. Sequential observations
+  are not the required destructive lifetime barrier. Quarantine/retry, complete
+  reference qualification and cleanup remain open; no deletion is enabled.
+  Evidence/state review: docs/workspace-cleanup-delivery.md. Not deployed.
   October22 C4b0 implements/tests an internal bounded mountinfo/source-root
   relationship prerequisite, including actual private-namespace same-device
   directory/file aliases and escaped paths; a wrong mountpoint-only mutant fails
