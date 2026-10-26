@@ -83,16 +83,29 @@ class BrowserBridgeTests(unittest.TestCase):
         # core.ManagementResult is the CLI output, not the signed HTTPS reply.
         reply={'request':'33333333-1234-4234-8234-123456789abc',
                'confirmed':True,'operation':'grants.show','result':selected}
-        with mock.patch.object(bridge,'private_json',return_value={'browser_students':1}), \
-             mock.patch.object(bridge,'root_command',return_value=json.dumps(reply)) as command:
+        # This unit isolates the public CLI envelope, not root/filesystem proof.
+        # Actual record creation/cancellation belongs to the guarded joined case.
+        original=json.dumps({'exam':'native-browser','username':'examq','duration':3600}).encode()
+        revoked={'disposition':'revoked','duration':3600,'source_attempt':attempt}
+        cancel=('examctl','recovery-grants','revoke','native-browser','examq','--review','a'*64,'--reason','Reviewed synthetic cancellation')
+        def result(*args):
+            if args==('examctl','web','grants','show',grant):return json.dumps(reply)
+            if args==cancel:return json.dumps(revoked)
+            return '{}'
+        with mock.patch.object(bridge,'private_json',return_value={'browser_students':1}) as private, \
+             mock.patch.object(bridge,'root_command',side_effect=result) as command:
             fixture=bridge.GuestBridge({});fixture.snapshot=lambda _: {'attempt':a}
             fixture.recovery_source=attempt
             fixture.recovery_before={key:a[key] for key in ('start','deadline','original_deadline','grant','uid')}
             fixture.recovery_checksum='f'*64
-            fixture.ssh_recovery({'attempt':attempt,'ssh_recovery':'source-sync','grant':grant})
+            fixture.recovery_cancellation=dict(grant=grant,original=original,path=Path('/private/mock-legacy.json'),args=cancel)
+            private.return_value={'purpose':'legacy-recovery-revoked/v1','original':base64.b64encode(original).decode()}
+            synced=fixture.ssh_recovery({'attempt':attempt,'ssh_recovery':'source-sync','grant':grant})
+            self.assertEqual(synced['legacy_revoked'],revoked)
             self.assertEqual(fixture.recovery_grant,grant)
             self.assertEqual(command.call_args_list,[
                 mock.call('examctl','web','grants','show',grant),
+                mock.call(*cancel),mock.call(*cancel),
                 mock.call('examctl','web','grants','source-sync',grant,'--revision','1')])
 
     def test_c7_operator_refuses_unproven_loss_and_unsecured_release_before_public_cli(self):

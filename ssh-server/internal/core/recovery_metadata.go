@@ -48,6 +48,20 @@ func recoveryMetadataFile(root *os.File, name string, limit int64) ([]byte, erro
 // JSON value, duplicate keys or unknown authority fields to mean different things
 // to the two consumers. Errors do not echo malformed private data.
 func decodeRecoveryMetadata(b []byte) (*RecoveryPreparation, error) {
+	if len(b) > recoveryMetadataMaxBytes || !utf8.Valid(b) || !validReadOnlyJSON(b) {
+		return nil, errRecoveryMetadata
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(b, &fields) != nil {
+		return nil, errRecoveryMetadata
+	}
+	if _, envelope := fields["purpose"]; envelope {
+		return decodeRevokedRecovery(b)
+	}
+	return decodeLegacyRecoveryMetadata(b)
+}
+
+func decodeLegacyRecoveryMetadata(b []byte) (*RecoveryPreparation, error) {
 	if len(b) > 16384 || !utf8.Valid(b) || !validReadOnlyJSON(b) {
 		return nil, errRecoveryMetadata
 	}

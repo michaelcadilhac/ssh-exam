@@ -446,6 +446,47 @@ def qualify_saved_source_grant(original):
         finally:pathlib.Path(name).unlink(missing_ok=True)
     old=info(original['id'])
     assert old['state']=='COMPLETED' and old['protected'] and old['access_state']=='RELEASED'
+    # Historical fixture authority, created ONLY in this guarded overlay. The
+    # supported workflow must cancel it before the separate NEW grant can stage.
+    legacy_parent=pathlib.Path(config['state'])/'recovery-preparations'
+    legacy_directory=legacy_parent/old['exam']
+    for directory in (legacy_parent,legacy_directory):
+        directory.mkdir(mode=0o700,exist_ok=True)
+        identity=directory.lstat();assert stat.S_ISDIR(identity.st_mode) and identity.st_uid==0 and stat.S_IMODE(identity.st_mode)==0o700
+    legacy_path=legacy_directory/(a.username+'.json')
+    legacy={'exam':old['exam'],'username':a.username,'uid':account.pw_uid,'duration':3600,'source_attempt':old['id'],
+            'checksum':old['checksum'],'created_at':int(time.time()*1000),'reason':'Private synthetic unused permission before replacement'}
+    legacy_bytes=json.dumps(legacy,separators=(',',':')).encode()
+    descriptor=os.open(legacy_path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(descriptor,'wb') as output:output.write(legacy_bytes);output.flush();os.fsync(output.fileno())
+    descriptor=os.open(legacy_directory,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(descriptor)
+    finally:os.close(descriptor)
+    preview=json.loads(root('examctl','recovery-grants','revoke-preview',old['exam'],a.username))
+    assert preview['eligible'] and preview['blockers']==[] and preview['grant_hash']==hashlib.sha256(legacy_bytes).hexdigest()
+    cancel=['examctl','recovery-grants','revoke',old['exam'],a.username,'--review',preview['review'],'--reason','Cancel synthetic unused permission before separate reviewed replacement']
+    cancelled=root(*cancel);assert root(*cancel)==cancelled
+    cancelled=json.loads(cancelled)
+    assert cancelled['disposition']=='revoked' and cancelled['duration']==3600 and cancelled['source_attempt']==old['id']
+    envelope=json.loads(legacy_path.read_bytes())
+    assert envelope['purpose']=='legacy-recovery-revoked/v1' and base64.b64decode(envelope['original'],validate=True)==legacy_bytes
+    legacy_connection=Connection()
+    try:
+        legacy_connection.exam=old['exam']
+        legacy_connection.transport=legacy_connection.command('register',{'exam':old['exam']})['transport']
+        refused_id=str(uuid.uuid4())
+        body={'id':refused_id,'exam':old['exam'],'username':a.username,'uid':account.pw_uid,'transport':legacy_connection.transport,
+              'settings':dict(old['settings'],id=old['exam'],duration=3600,earliest=int(time.time()*1000)-1000,latest=int(time.time()*1000)+600000),
+              'expected_recovery':hashlib.sha256(legacy_bytes).hexdigest()}
+        for op in ('reconcile-recovery-allowance','prepare-recovery-attempt'):
+            try:legacy_connection.command(op,body);raise AssertionError('cancelled old permission still admitted preflight')
+            except RuntimeError as error:assert 'cancelled' in str(error),error
+        recorded=json.loads((pathlib.Path(config['state'])/'state.json').read_bytes())
+        assert refused_id not in recorded['attempts'] and not (pathlib.Path(config['work'])/refused_id).exists()
+        assert not pathlib.Path(str(legacy_path)+'.consumed').exists() and not pathlib.Path(str(legacy_path)+'.pending').exists()
+    finally:legacy_connection.close()
+    assert all(info(old['id'])[key]==old[key] for key in ('start','deadline','original_deadline','grant','checksum','protected','access_state'))
+    ok('actual root reviewed cancellation preserves exact old60-minute permission/source/history; exact retry is stable and delayed signed old preflight/prepare consumes no clock or account reservation')
     # Legacy-shaped guest settings omit id; the real gateway's issued snapshot
     # includes the exam id. Author that complete new snapshot, not a weaker plan.
     settings=dict(old['settings'],id=old['exam'],duration=5400,earliest=int(time.time()*1000)-1000,latest=int(time.time()*1000)+600000)
@@ -474,11 +515,13 @@ def qualify_saved_source_grant(original):
         assert active['grant']==grant and active['workspace']['source']==dict(kind='saved',**plan['source'])
         assert active['workspace']['recovery_hash']==pin['retention_hash']
         assert (pathlib.Path(config['work'])/id/'work/retained-editor.txt').read_bytes()==saved
+        rows=json.loads(root('examctl','recovery-grants','--exam',old['exam']))
+        assert len(rows)==1 and rows[0]['disposition']=='revoked' and rows[0]['revocation']==cancelled['revocation']
         assert all(info(old['id'])[key]==old[key] for key in ('start','deadline','original_deadline','grant','checksum','protected'))
         pane=connection.pane(id,framed=True)
         connection.input(pane,"IFS= read -r saved < /work/retained-editor.txt; printf 'SAVED-%s:END\\n' \"$saved\"\n")
         read_until(pane,('SAVED-'+saved.decode().splitlines()[0]+':END').encode(),timeout=3)
-        ok('actual additional saved-work grant restores archived Nano bytes instead of the changed old live folder and starts its separate full ninety-minute interval only at Begin')
+        ok('separate NEW saved-work grant after cancellation restores protected Nano bytes instead of stale live work and starts its chosen full ninety-minute interval only at Begin')
         work_directory=pathlib.Path(config['work'])/id/'work'
         writer_code="import signal,time\nsignal.signal(signal.SIGHUP,signal.SIG_IGN)\nf=open('/work/owner-death-writer','ab',buffering=0)\nwhile True:\n f.write(b'x');time.sleep(.005)"
         connection.input(pane,'python3 -c '+shlex.quote(writer_code)+" & writer=$!; printf '%s' \"$writer\" > /work/owner-death.pid; printf 'SAVED-OWNER-WRITER:END\\n'\n")

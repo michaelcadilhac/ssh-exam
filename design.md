@@ -34,6 +34,18 @@ independently of an earlier username when the one-use marker is absent. Such a
 committed interval is uncertain, never proof that a grant is unused or consumed.
 This changes no start/consumption/retirement authority; migration remains separate.
 
+The approved legacy replacement policy is implemented locally as two explicit
+actions: root reviews/cancels a confirmed unused native permission, then separately
+issues a NEW grant with chosen files/settings/allowance/finite Begin window. A
+strict canonical envelope preserves exact original JSON and the cancellation
+receipt; old readers fail closed. Consumed/uncertain/prepared/pending authority and
+contradictory durable work/submissions refuse cancellation. Cancellation never
+starts time, deletes a source, releases an account or reopens anything. New saved
+authority still requires its own durable native retention before availability and
+fresh verification at Begin. Native CLI/crash/race checks pass; joined exact-
+artifact qualification and broader migration remain pending. Not deployed; see
+docs/legacy-recovery-migration.md.
+
 ## 1. Instructions to the implementing agent
 
 Build the application described here. This is an implementation specification, not a request for a design mockup. Implement the student application, instructor dashboard, SSH connection manager, monitoring, protected submission collection, class-server enforcement, and deployment assets.

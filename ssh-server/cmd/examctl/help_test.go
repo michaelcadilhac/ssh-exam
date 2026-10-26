@@ -59,6 +59,30 @@ func TestEverySupportedCommandHasDiscoverableProcessHelp(t *testing.T) {
 	}
 }
 
+func TestLegacyRecoveryCancellationIsDiscoverableAndValidatesBeforeConfiguration(t *testing.T) {
+	for _, args := range [][]string{{"help"}, {"help", "recovery-grants"}, {"recovery-grants", "help"}, {"recovery-grants", "revoke", "--config", "/missing/configuration", "--help"}} {
+		output, code := cliProcess(t, args...)
+		for _, required := range []string{"revoke-preview", "revoke", "NEW"} {
+			if code != 0 || !strings.Contains(output, required) {
+				t.Fatal("legacy cancellation hidden from public help", args, code, required, output)
+			}
+		}
+	}
+	for _, args := range [][]string{
+		{"recovery-grants", "revoke-preview", "../bad", "student"},
+		{"recovery-grants", "revoke-preview", "retake", "student", "--review", strings.Repeat("a", 64)},
+		{"recovery-grants", "revoke", "retake", "student", "--review", strings.Repeat("a", 64)},
+		{"recovery-grants", "revoke", "retake", "student", "--review", "not-a-hash", "--reason", "Explicit synthetic reason"},
+		{"recovery-grants", "--exam", "../bad"},
+	} {
+		args = append([]string{"--config", "/missing/configuration"}, args...)
+		output, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(output, "help") || strings.Contains(output, "Cannot load") {
+			t.Fatal("invalid cancellation syntax reached configuration/root", args, code, output)
+		}
+	}
+}
+
 func TestGrantWorkflowsAreDiscoverableFromCurrentManagementHelp(t *testing.T) {
 	for _, entry := range []struct {
 		name string

@@ -1,6 +1,6 @@
 # Current local TODO checkpoint
 
-October26,2026. Main/release branch c27eac0;26/38 overlapping local boxes checked,
+October26,2026. Main/release branch1477e69 (runtime c27eac0);26/38 overlapping local boxes checked,
 NOT a readiness percentage. No deploy/push/production restart/config/student edits
 or service consolidation authorized. csc-sys ONLY guarded disposable tests;
 busy/uncertain means no test. No required executable missing. Rule e2188d7 separates
@@ -42,7 +42,7 @@ acceptance. Full proposal/rollback/consolidation: todo-rollout-plan.md; do not r
 
 User approved cancel old UNUSED permission first, then separately issue NEW saved-
 work permission. Worktree var/worktrees/legacy-recovery-revocation (base076a5c1),
-branch same; uncommitted native changes there do NOT affect release artifacts.
+branch same, updated to1477e69; uncommitted native changes there do NOT affect release artifacts.
 CLI recovery-grants revoke-preview/revoke/list and help; strict fail-closed envelope
 preserving exact old JSON, bounded private no-start/catalog/UID/files proof,
 returning audit before atomic publication, both-directory sync and exact retry.
@@ -57,14 +57,45 @@ One CLI fixture cleanup reserialized equivalent state; fixed to restore exact
 bytes, retained both logs. Strict base64 RED→fixed; fuzz has valid envelope seed.
 Details/state review/receipts: docs/legacy-recovery-migration.md.
 
-NEXT: commit validated packaging/diagnostic docs in release branch and FF main;
-then continue the isolated native milestone. Finish current focused checks and
-actual old preflight/Begin refusal→NEW saved-source/full allowance/protected export.
-Before freezing new native artifacts, review ALL pending/absence contradictions;
-then affected/full native races/CLI/build and fresh guarded-root qualification.
-Do not imply cancellation alone closes migration or legacy definition retirement.
-No consequential design question remains. General cleanup/config/help outcomes
-follow the focused release; don't add an unrelated prerequisite chain.
+Current focused native15980 PASS1.306s; CLI --json compatibility28782 PASS1.687s,
+CLI/help5632 PASS2.235s, types PASS. Drivers now integrate real CLI old60min
+cancellation/exact retry into BOTH the private root NEW90-minute source case and
+the actual public C7 web NEW20-minute source case. Public C7 asserts the returned
+native revocation and original hold. Python80 final-fixed PASS5.960s; its existing
+mock-envelope unit was updated explicitly as a mock (not root proof). Parent
+recovery-preparations/EXAM directories are each explicitly created/asserted0700;
+no chmod of unknown existing data. Actual guest execution remains pending.
+
+Full native7230 completed: CLI PASS24.048s, core582.003s FAIL solely concurrent
+512MiB legacy renewal3.9908s over unchanged3s disk-IO bound. Both archives/31
+renewals otherwise pass. Focused isolated3003 PASS39.018s; max renewal2.035s,
+inspection2.263s. Failure cause unclassified; no production fix/budget weakening.
+Final full native25088 PASS: CLI19.828s/core577.997s, zero failures; package
+serialization (-p=1), actual two-worker concurrency/criteria unchanged. Concurrent
+case maxrenewal2.467s/inspection2.170s. Full log /tmp/ssh-exam-revocation-native-final.jsonl.
+All333 native inputs match frozen manifest immediately after completion; subsequent
+README-only documentation is not a runtime change.25 skips are child entrypoints
+or root-guest/installed-toolchain cases, not claimed host-root qualification.
+Build/vet PASS; types/Python80 PASS. No active runner/remote guest.
+No new artifact/upload. Prepared, NOT executed, exact worktree builder/uploader:
+/tmp/ssh-exam-build-revocation-evidence.py and /tmp/ssh-exam-upload-revocation-evidence.py.
+They select THIS worktree, legacy-revocation-artifacts prefix and separate
+/tmp/ssh-exam-revocation-{local-build,remote-bundle} pointers; original helpers
+preserved. Build only AFTER committing the validated coherent CLI increment so
+VCS metadata/immutable artifacts identify that actual native commit.
+
+First Python restricted run failed11 socket permissions (runner exited); allowed
+80 PASS. First extended CLI cleanup reserialized equivalent state; corrected raw
+byte restore, failures retained. No missing executable. No active remote guest.
+
+NEXT: make coherent local CLI implementation
+commit with truthful pending root gate; build exact committed candidate from THIS
+native worktree (the old /tmp/ssh-exam-build-watchdog-evidence.py hardcodes release
+worktree, so do NOT use it unchanged). Audit/freeze/upload new code-only test bundle
+and run joined guarded root qualification, then actual public-role browser check.
+Never attribute076 artifact evidence to new native bytes. No migration/retirement
+TODO closure from initial cancellation alone. General cleanup/config/help outcomes
+follow; no consequential design question remains. No production action.
 
 Preserve ten original main screenshot edits and ALL stashes. Hash dict
 /tmp/ssh-exam-retained-recording-main-image-hashes.json verified after c27 FF and

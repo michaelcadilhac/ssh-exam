@@ -364,6 +364,41 @@ staging and original intervals. Native private catalog directories must be real
 permission proof. New unified issuance and declared expected-source compatibility
 remain separate open work. See docs/recovery-metadata-safety.md.
 
+### Cancel an unused old recovery permission before replacement
+
+Local candidate, not deployed: use root on the class server to review and cancel
+only an unused native legacy permission. These commands do not initialize/reconcile
+native state, start time, delete files, terminate sessions or release an account.
+Use a matching native cohort; preserve all old records and quiesce ad hoc writers.
+
+```sh
+sudo examctl recovery-grants --exam EXAM
+sudo examctl recovery-grants revoke-preview EXAM USER
+sudo examctl recovery-grants revoke EXAM USER --review PREVIEW-HASH --reason 'Cancel unused permission before reviewed replacement'
+sudo examctl recovery-grants --exam EXAM
+sudo examctl web grants help
+```
+
+Preview reports blockers and the exact review hash. Consumed/uncertain history,
+pending allowance edits, unresolved preparations, contradictory work/submission
+evidence or unavailable private authority refuse cancellation. Repair the reported
+problem and explicitly review again; never erase a marker or invent history.
+Cancellation is permanent. A versioned envelope preserves the exact original JSON
+and an audited receipt. Older readers refuse it, rather than choosing starter files.
+After an uncertain/lost reply, inspect and retry the SAME target/hash/reason; the
+stored receipt is stable. Conflicting later evidence still refuses a clean result.
+
+Then separately review NEW saved-work authority with `web grants additional-preview`
+(also supported when the legacy enrollment has no initial grant), `issue-show` and
+`issue-confirm`. Select the exact protected attempt/checksum, allowance and finite
+Begin window; the window may be outside the exam default. Webcam policy is preserved
+unless explicitly overridden. The new grant stays PENDING_NATIVE until `source-sync`
+durably verifies/pins its archive. Failure leaves the student waiting: no old
+permission reopens, no starter fallback occurs and no clock starts. Existing account
+holds remain separate; only actual Begin consumes the complete new allowance.
+Native definition reconciliation/complete migration remains open. See
+docs/legacy-recovery-migration.md for qualification and rollback limits.
+
 Host work: /srv/exam-workspace/work/<opaque-attempt>/work, shown as the trusted agent
 `exam_directory` setting (default /work). Provision that directory in the read-only rootfs. Only saved files are
 collected. Students do not submit, upload or archive anything. The optional Finish exam button and

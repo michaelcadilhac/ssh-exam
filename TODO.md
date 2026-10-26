@@ -1,5 +1,14 @@
 # Deferred work
 
+October26 native legacy cancellation is implemented/tested locally through actual
+root-mapped `recovery-grants revoke-preview/revoke`, conservative refusal states,
+stable retry and five actual process-crash boundaries. Final complete native
+race/resource/namespace/compiler/default-size suite passes; build/vet/types and80
+Python checks pass. Joined fresh-artifact root/public cancellation→NEW saved-work
+Begin/export qualification is still pending. This does not complete migration,
+definition reconciliation, deployment or any account/data cleanup. Current finite
+scope and evidence: docs/legacy-recovery-migration.md.
+
 October26 packaged candidate c27eac0 now passes startup/migration/all-asset checks,
 20 affected browsers and the actual16-student/64-terminal freeze/recovery/protected
 finish workflow. Its reproduced capture input-gate bug is fixed locally: React

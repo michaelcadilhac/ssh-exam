@@ -76,6 +76,9 @@ func TestRecoveryCatalogCLIInRootUserNamespace(t *testing.T) {
 	if code != 0 || json.Unmarshal([]byte(out), &rows) != nil || len(rows) != 1 || rows[0].Disposition != "unused" || rows[0].SourceAttempt != source || !rows[0].SourceRecordedProtected {
 		t.Fatal("actual catalog workflow failed", code, out)
 	}
+	if jsonOutput, code := invoke("recovery-grants", "--json", "--exam", "retake"); code != 0 || jsonOutput != out {
+		t.Fatal("existing JSON inspection flag changed behavior", code, jsonOutput)
+	}
 	after, _ := os.ReadFile(statePath)
 	if !bytes.Equal(before, after) {
 		t.Fatal("CLI inspection rewrote authoritative history")
@@ -189,5 +192,126 @@ func TestRecoveryCatalogCLIInRootUserNamespace(t *testing.T) {
 		if !bytes.Equal(stateBefore, stateAfter) || !bytes.Equal(malformed, metadataAfter) {
 			t.Fatal("refused catalog CLI rewrote authority or malformed metadata")
 		}
+	}
+	// Cancel only this unused old permission; no source/history/clock mutation.
+	writeJSON(grantPath, r)
+	stateBeforeRevoke, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, code = invoke("recovery-grants", "revoke-preview", r.Exam, r.Username)
+	var preview struct {
+		Eligible bool   `json:"eligible"`
+		Review   string `json:"review"`
+	}
+	if code != 0 || json.Unmarshal([]byte(out), &preview) != nil || !preview.Eligible || len(preview.Review) != 64 {
+		t.Fatal("actual CLI has no safe reviewed unused-permission cancellation", code, out)
+	}
+	for _, kind := range []string{"consumed", "pending", "prepared", "renamed-start", "orphan-work", "published-work", "submission", "audit"} {
+		t.Run("revoke-refuses-"+kind, func(t *testing.T) {
+			var remove string
+			switch kind {
+			case "consumed":
+				remove = grantPath + ".consumed"
+				if err := os.WriteFile(remove, []byte(absent), 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "pending":
+				remove = grantPath + ".pending"
+				pending := r
+				pending.AllowanceRevision = &core.RecoveryAllowanceEdit{Revision: 1, Duration: r.Duration, Actor: "synthetic instructor", At: core.Millis()}
+				writeJSON(remove, pending)
+			case "prepared", "renamed-start":
+				candidate := *changed.Attempts[absent]
+				candidate.State = "PREPARING"
+				if kind == "renamed-start" {
+					candidate.Username, candidate.State, candidate.Start = "former-name", "COMPLETED", r.CreatedAt
+					candidate.Deadline, candidate.OriginalDeadline = r.CreatedAt+5400000, r.CreatedAt+5400000
+				}
+				copy := changed
+				copy.Attempts = map[string]*core.Attempt{source: changed.Attempts[source], absent: &candidate}
+				writeJSON(statePath, copy)
+			case "orphan-work", "published-work", "submission":
+				remove = filepath.Join(c.Work, priorID)
+				if kind == "published-work" {
+					remove = filepath.Join(c.Work, absent)
+				}
+				if kind == "submission" {
+					remove = filepath.Join(c.State, "submissions", absent)
+				}
+				if err := os.MkdirAll(remove, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "published-work" {
+					if err := os.Mkdir(filepath.Join(remove, "work"), 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+			case "audit":
+				if err := os.Chmod(filepath.Join(c.State, "audit.ndjson"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			defer func() {
+				if remove != "" {
+					if err := os.RemoveAll(remove); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := os.WriteFile(statePath, stateBeforeRevoke, 0600); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "audit" {
+					if err := os.Chmod(filepath.Join(c.State, "audit.ndjson"), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}()
+			before, err := os.ReadFile(statePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			metadataBefore, err := os.ReadFile(grantPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if kind != "audit" {
+				out, code := invoke("recovery-grants", "revoke-preview", r.Exam, r.Username)
+				var blocked core.RecoveryRevocationPreview
+				if code != 0 || json.Unmarshal([]byte(out), &blocked) != nil || blocked.Eligible || len(blocked.Blockers) == 0 {
+					t.Fatal("refusal preview is not actionable", code, out)
+				}
+			}
+			out, code := invoke("recovery-grants", "revoke", r.Exam, r.Username, "--review", preview.Review, "--reason", "Refuse unsafe synthetic cancellation")
+			if code != 1 {
+				t.Fatal("actual CLI cancelled blocked permission", code, out)
+			}
+			after, err := os.ReadFile(statePath)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("refusal changed native history", err)
+			}
+			metadataAfter, err := os.ReadFile(grantPath)
+			if err != nil || !bytes.Equal(metadataBefore, metadataAfter) {
+				t.Fatal("refusal rewrote old permission", err)
+			}
+		})
+	}
+	args := []string{"recovery-grants", "revoke", r.Exam, r.Username, "--review", preview.Review, "--reason", "Cancel unused synthetic permission before reviewed replacement"}
+	out, code = invoke(args...)
+	var revoked core.RecoveryGrantView
+	if code != 0 || json.Unmarshal([]byte(out), &revoked) != nil || revoked.Disposition != "revoked" || revoked.SourceAttempt != r.SourceAttempt || revoked.Duration != r.Duration || revoked.CreatedAt != r.CreatedAt {
+		t.Fatal("actual CLI did not preserve cancelled permission history", code, out)
+	}
+	first := out
+	out, code = invoke(args...)
+	if code != 0 || out != first {
+		t.Fatal("lost-reply retry changed the cancellation receipt", code, out)
+	}
+	stateAfterRevoke, err := os.ReadFile(statePath)
+	if err != nil || !bytes.Equal(stateBeforeRevoke, stateAfterRevoke) {
+		t.Fatal("cancelling permission changed attempts, clocks or source holds", err)
+	}
+	if _, err := os.Stat(grantPath + ".consumed"); !os.IsNotExist(err) {
+		t.Fatal("permission cancellation consumed an attempt", err)
 	}
 }

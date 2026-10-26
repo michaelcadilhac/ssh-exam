@@ -56,6 +56,12 @@ func FuzzDecodeRecoveryMetadata(f *testing.F) {
 	r := RecoveryPreparation{Exam: "retake", Username: "student", UID: 20001, Duration: 5400, SourceAttempt: finalID, Checksum: strings.Repeat("a", 64), CreatedAt: 1234, Reason: "Explicit synthetic saved work allowance"}
 	seed, _ := json.Marshal(r)
 	f.Add(seed)
+	r.Revocation = &RecoveryRevocation{Version: 1, OriginalHash: Hash(seed), Review: strings.Repeat("b", 64), At: 1235, Reason: "Cancel unused synthetic permission", original: seed}
+	if revoked, err := encodeRecoveryMetadata(&r); err == nil {
+		f.Add(revoked)
+	} else {
+		f.Fatal(err)
+	}
 	f.Add([]byte(`{"exam":"retake","exam":"retake"}`))
 	f.Add([]byte(`{"private":"must not enter errors"}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
@@ -66,7 +72,7 @@ func FuzzDecodeRecoveryMetadata(f *testing.F) {
 			}
 			return
 		}
-		canonical, err := json.Marshal(decoded)
+		canonical, err := encodeRecoveryMetadata(decoded)
 		if err != nil {
 			t.Fatal(err)
 		}

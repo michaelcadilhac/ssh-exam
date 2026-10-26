@@ -100,7 +100,7 @@ func (e *Engine) reconcileRecoveryAllowance(r Request, expires int64) (any, erro
 		}
 		defer root.Close()
 		name := r.Username + ".json"
-		b, err := recoveryMetadataFile(root, name, 16384)
+		b, err := recoveryMetadataFile(root, name, recoveryMetadataMaxBytes)
 		if os.IsNotExist(err) {
 			for _, suffix := range []string{".consumed", ".pending"} {
 				if _, err := recoveryMetadataFile(root, name+suffix, 16384); !os.IsNotExist(err) {
@@ -115,6 +115,9 @@ func (e *Engine) reconcileRecoveryAllowance(r Request, expires int64) (any, erro
 		grant, err := decodeRecoveryMetadata(b)
 		if err != nil {
 			return errRecoveryMetadata
+		}
+		if grant.Revocation != nil {
+			return errors.New("old saved-work permission was cancelled; use reviewed NEW grant issuance, not allowance revision or old preflight; preserve its source/history and inspect examctl recovery-grants")
 		}
 		for _, a := range e.state.Attempts {
 			if a.Exam == r.Exam && a.UID == r.UID && (a.State == "PREPARING" || a.Start >= grant.CreatedAt) {

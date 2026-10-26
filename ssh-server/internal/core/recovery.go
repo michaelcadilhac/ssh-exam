@@ -29,6 +29,7 @@ type RecoveryPreparation struct {
 	CreatedAt         int64                  `json:"created_at"`
 	Reason            string                 `json:"reason"`
 	AllowanceRevision *RecoveryAllowanceEdit `json:"allowance_revision,omitempty"`
+	Revocation        *RecoveryRevocation    `json:"revocation,omitempty"`
 }
 
 type RecoveryAllowanceEdit struct {
@@ -76,7 +77,7 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 		return nil, recoveryMetadataRefusal(a)
 	}
 	defer root.Close()
-	b, err := recoveryMetadataFile(root, a.Username+".json", 16384)
+	b, err := recoveryMetadataFile(root, a.Username+".json", recoveryMetadataMaxBytes)
 	if os.IsNotExist(err) {
 		for _, suffix := range []string{".consumed", ".pending"} {
 			if _, markerErr := recoveryMetadataFile(root, a.Username+".json"+suffix, 16384); !os.IsNotExist(markerErr) {
@@ -94,6 +95,26 @@ func (e *Engine) recoveryReference(a *Attempt) (*RecoveryPreparation, error) {
 	r, err := decodeRecoveryMetadata(b)
 	if err != nil {
 		return nil, recoveryMetadataRefusal(a)
+	}
+	if r.Revocation != nil {
+		if r.Exam != a.Exam || r.Username != a.Username || r.UID != a.UID {
+			return nil, recoveryMetadataRefusal(a)
+		}
+		for _, suffix := range []string{".consumed", ".pending"} {
+			if _, err := recoveryMetadataFile(root, a.Username+".json"+suffix, 16384); !os.IsNotExist(err) {
+				return nil, recoveryMetadataRefusal(a)
+			}
+		}
+		for _, other := range e.state.Attempts {
+			if other.Exam == r.Exam && other.UID == r.UID && other.Start >= r.CreatedAt &&
+				!(validGrant(other.Grant) && other.Start >= r.Revocation.At) {
+				return nil, recoveryMetadataRefusal(a)
+			}
+		}
+		if a.ExpectedRecovery == "" && validGrant(a.Grant) {
+			return nil, nil // Only the explicit NEW unified source may initialize work.
+		}
+		return nil, errors.New("old saved-work permission was cancelled; ask the instructor to issue a reviewed NEW grant with explicit files, allowance and Begin window; no old Begin or starter fallback is authorized")
 	}
 	if a.Grant != nil {
 		return nil, errors.New("explicit initial template grant conflicts with legacy saved-work authorization; preserve both authorities and source/history for reviewed migration; no fallback authorized")

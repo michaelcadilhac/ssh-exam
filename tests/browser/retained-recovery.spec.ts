@@ -272,7 +272,18 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
       claims: [],
     });
     // Issuance and native retention neither start time nor release the old hold.
-    await operator(original.id, "source-sync", grant);
+    const synchronized = await operator(original.id, "source-sync", grant);
+    expect(synchronized.legacy_revoked).toMatchObject({
+      disposition: "revoked",
+      exam: "native-browser",
+      username: "examq",
+      duration: 3600,
+      source_attempt: original.id,
+      revocation: {
+        version: 1,
+        original_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      },
+    });
     expect(await grantInfo(grant)).toMatchObject({
       status: "AVAILABLE",
       claims: [],

@@ -159,3 +159,47 @@ run affected/full native-race/CLI/build checks and fresh guarded exact-artifact
 qualification. Native dependency acknowledgement for legacy definition retirement
 and the complete web migration remain separate open acceptance; no TODO closure
 is implied by this initial cancellation workflow.
+
+
+Current broad qualification: focused current native review/crash/parser1.306s and
+CLI/help2.235s pass;80 Python safety checks pass5.966s after using the required
+local-listener permission (the first restricted run's11 socket errors are retained).
+Full native race/resource/namespace/compiler/default-size run is active. Its CLI
+package passes24.048s, but the two512MiB collection benchmark observes one legacy
+renewal3.9908s over the unchanged3s disk-IO bound; both collections/31 renewals
+otherwise succeed. Cause unclassified, not blamed on cancellation or discarded.
+Finish/inspect the runner, then focus that case alone before advancing. The new
+guarded driver joins actual cancellation of a synthetic60-minute permission to
+the existing separate NEW saved-source/full90-minute Begin/protected export case;
+no root execution/new native artifact is claimed yet.
+
+
+The first full native run completed: CLI24.048s PASS; core582.003s has only the
+recorded legacy-IO benchmark failure. Its isolated unchanged-bound repeat passes
+39.018s (renewal2.035s/inspection2.263s). A final complete package-serialized repeat
+is running; native source inputs are frozen. Current CLI --json compatibility and
+help pass1.687s; types and80 Python checks pass after explicitly updating the
+existing mocked source-envelope test. Actual guest proof still remains. Both the
+root driver and existing PUBLIC C7 browser workflow now include cancellation of
+an exact synthetic60-minute old permission before their separate NEW saved-source
+availability/staging/Begin/export workflows. Native parent directory modes are
+asserted individually; no existing permissions are repaired. Root artifact/upload
+has not occurred yet. This extends existing integrated callers, not a new runtime
+protocol or a deployed capability.
+
+
+Final complete native repeat PASS: CLI19.828s/core577.997s, zero failures. Packages
+run serially; the actual simultaneous two512MiB workers and all original acceptance
+bounds remain. Its maximum renewal2.467s/inspection2.170s pass. All333 frozen native
+inputs match after completion; README documentation added afterward changes no
+runtime.25 skips are root-guest/installed-environment or child entrypoints; those
+are not claimed as host-root qualification. Build/vet/types/Python80 pass. The
+original3.9908s benchmark failure remains retained and its initiating storage
+variation is not proven. Logs: /tmp/ssh-exam-revocation-native-final.jsonl,
+revocation-concurrent-repeat.log, revocation-build.log, revocation-vet.log,
+revocation-types.log and revocation-python-final-fixed.log in /tmp/ssh-exam-*.
+
+Next milestone boundary: commit this locally validated CLI/workflow increment,
+build its exact immutable binaries, then qualify BOTH guarded root90-minute and
+PUBLIC web20-minute saved-source replacements. Do not mark that integration or
+migration complete before those interfaces run. No new production authorization.

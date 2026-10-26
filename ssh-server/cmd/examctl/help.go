@@ -124,6 +124,10 @@ func printHelp(w io.Writer, topic string) bool {
 		workspacesHelp(w)
 		return true
 	}
+	if topic == "recovery-grants" {
+		recoveryGrantsHelp(w)
+		return true
+	}
 	if topic == "interruptions" {
 		webInterruptionsHelp(w)
 		return true
@@ -210,7 +214,7 @@ Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
 	if topic == "" {
 		fmt.Fprintln(w, "Offline native configuration/candidate checks: config show/validate; use examctl config help. No configuration apply or service action.")
 		fmt.Fprintln(w, "Immutable local templates: templates validate/install/list/show/verify/jobs/clean; templates sync records a signed gateway source attestation, not a grant. Use examctl templates help and web templates help.")
-		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM] (offline inspection, not unified grant issuance).")
+		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM], revoke-preview and reviewed revoke; use examctl recovery-grants help. Cancel first, then separately issue a NEW grant with web grants; no clock or source deletion.")
 		fmt.Fprintln(w, "Workspace retention metadata/holds: workspaces list/show/hold/release-hold; use examctl help workspaces (no deletion enabled).")
 		fmt.Fprintln(w, "Native targeted panes: panes list/show/close, panes supervisor and panes reports; offline snapshots/recording receipts, bounded root-owner Unix observations and durably audited revision-fenced closure. Use examctl help panes; clocks/holds/other panes are preserved.")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")

@@ -20,6 +20,7 @@ type RecoveryGrantView struct {
 	Disposition              string                 `json:"disposition"`
 	ConsumerState            string                 `json:"consumer_state,omitempty"`
 	SourceRecordedProtected  bool                   `json:"source_recorded_protected"`
+	metadataBytes            int64
 }
 
 func (e *Engine) recoveryCatalogLock() (*os.File, error) {
@@ -133,7 +134,7 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 				return nil, errors.New("legacy authorization record limit exceeded; preserve catalog for migration")
 			}
 			rel := filepath.Join(exam.Name(), name)
-			b, err := catalogFile(root, rel, 16384)
+			b, err := catalogFile(root, rel, recoveryMetadataMaxBytes)
 			if err != nil {
 				return nil, fmt.Errorf("legacy authorization %s/%s: %w", exam.Name(), username, err)
 			}
@@ -149,7 +150,14 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 				return nil, fmt.Errorf("legacy authorization %s/%s identity/allowance invalid; preserve catalog before deletion", exam.Name(), username)
 			}
 			view := RecoveryGrantView{RecoveryPreparation: *r, Disposition: "unused"}
+			view.metadataBytes = int64(len(b))
+			if r.Revocation != nil {
+				view.Disposition = "revoked"
+			}
 			if files[name+".pending"] {
+				if r.Revocation != nil {
+					return nil, errors.New("cancelled legacy permission has contradictory pending metadata; preserve catalog and repair consistent history")
+				}
 				b, err := catalogFile(root, rel+".pending", 16384)
 				if err != nil {
 					return nil, errRecoveryMetadata
@@ -163,6 +171,7 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 					return nil, errRecoveryMetadata
 				}
 				view.PendingAllowanceRevision = pending.AllowanceRevision
+				view.metadataBytes += int64(len(b))
 			}
 			if prior := state.Attempts[r.SourceAttempt]; prior != nil {
 				view.SourceRecordedProtected = prior.Protected && prior.State == "COMPLETED" && prior.Username == r.Username && prior.UID == r.UID && prior.Checksum == r.Checksum
@@ -183,7 +192,7 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 					if a.Workspace != nil {
 						matches = matches && a.Workspace.Source.Kind == "saved" && a.Workspace.Source.Attempt == r.SourceAttempt && a.Workspace.Source.Checksum == r.Checksum && a.Workspace.RecoveryHash == recoveryReferenceHash(r)
 					}
-					if matches {
+					if matches && r.Revocation == nil {
 						view.Disposition = "consumed"
 					}
 				}
@@ -193,6 +202,9 @@ func (e *Engine) readRecoveryCatalog(state State) ([]RecoveryGrantView, error) {
 			// a renamed account does not make that committed interval unused.
 			if view.ConsumedBy == "" {
 				for _, a := range state.Attempts {
+					if r.Revocation != nil && validGrant(a.Grant) && a.Start >= r.Revocation.At {
+						continue // A separate verified NEW grant may start after cancellation.
+					}
 					if a.Exam == r.Exam && a.UID == r.UID && a.Start >= r.CreatedAt {
 						view.Disposition = "uncertain"
 						break
@@ -252,6 +264,9 @@ func (e *Engine) checkSubmissionDependencies(source *Attempt) error {
 	for _, r := range rows {
 		if r.SourceAttempt != source.ID {
 			continue
+		}
+		if r.Disposition == "revoked" {
+			continue // Other pins, unfinished work and normal retention still apply.
 		}
 		consumer := e.state.Attempts[r.ConsumedBy]
 		if r.Disposition != "consumed" || consumer == nil || consumer.State != "COMPLETED" {

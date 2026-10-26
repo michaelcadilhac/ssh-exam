@@ -389,6 +389,7 @@ class GuestBridge:
         self.recovery_before = None
         self.recovery_checksum = None
         self.recovery_grant = None
+        self.recovery_cancellation = None
         self.evidence_replies = 0
         self.evidence_lock = threading.Lock()
         self.inspection_context = threading.local()
@@ -704,9 +705,43 @@ class GuestBridge:
             assert selected['exam'] == 'native-browser' and selected['username'] == 'examq' and selected['revision'] == 1
             assert selected['settings']['duration'] == 1200
             assert selected['work'] == {'kind':'saved','attempt':attempt_id,'checksum':self.recovery_checksum}
+            # Author historical fixture metadata only inside this private guest,
+            # then use the actual root cancellation before the separate NEW pin.
+            # Keep the exact reviewed intent for a private transport retry.
+            if self.recovery_cancellation is None:
+                parent = Path(self.config['state']) / 'recovery-preparations'
+                directory = parent / 'native-browser'
+                for path in (parent, directory):
+                    path.mkdir(mode=0o700, exist_ok=True)
+                    info = path.lstat()
+                    assert stat.S_ISDIR(info.st_mode) and info.st_uid == 0 and stat.S_IMODE(info.st_mode) == 0o700
+                path = directory / 'examq.json'
+                legacy = {'exam':'native-browser','username':'examq','uid':source['uid'],'duration':3600,
+                          'source_attempt':attempt_id,'checksum':self.recovery_checksum,
+                          'created_at':int(time.time()*1000),'reason':'Private synthetic unused permission before explicit replacement'}
+                original = json.dumps(legacy, separators=(',', ':')).encode()
+                descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                with os.fdopen(descriptor, 'wb') as output:
+                    output.write(original); output.flush(); os.fsync(output.fileno())
+                descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+                try: os.fsync(descriptor)
+                finally: os.close(descriptor)
+                preview = json.loads(root_command('examctl','recovery-grants','revoke-preview','native-browser','examq'))
+                assert preview['eligible'] and preview['blockers'] == [] and preview['grant_hash'] == hashlib.sha256(original).hexdigest()
+                args = ('examctl','recovery-grants','revoke','native-browser','examq','--review',preview['review'],
+                        '--reason','Cancel unused synthetic permission before separate reviewed replacement')
+                self.recovery_cancellation = dict(grant=grant, original=original, path=path, args=args)
+            cancellation = self.recovery_cancellation
+            assert cancellation['grant'] == grant
+            receipt = root_command(*cancellation['args'])
+            assert root_command(*cancellation['args']) == receipt
+            revoked = json.loads(receipt)
+            envelope = private_json(cancellation['path'])
+            assert revoked['disposition'] == 'revoked' and revoked['duration'] == 3600 and revoked['source_attempt'] == attempt_id
+            assert envelope['purpose'] == 'legacy-recovery-revoked/v1' and base64.b64decode(envelope['original'],validate=True) == cancellation['original']
             root_command('examctl', 'web', 'grants', 'source-sync', grant, '--revision', '1')
             self.recovery_grant = grant
-            return self.snapshot(attempt_id)
+            return dict(self.snapshot(attempt_id), legacy_revoked=revoked)
         assert self.recovery_grant and action == 'release'
         assert source['deadline'] > int(time.time()*1000), 'This case must exercise explicit EARLY disposition'
         root_command('examctl', 'override-access', attempt_id, '--reason', 'Private C7 instructor separately approves early access disposition')
