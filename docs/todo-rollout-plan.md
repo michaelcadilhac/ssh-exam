@@ -27,10 +27,45 @@ independent evidence bridge remains healthy, including native writer/input,
 original owner/clock and subsequent pane/editor/hold/export. Whole coordinator
 outage now passes verified technical freeze, retained SSH/Nano/writers, no thaw
 from fresh captures alone and reviewed Continue/protected export. Continuous
-coordinator-loss availability and complete coverage/gap qualification remain
-gates. Component/browser simulations do not replace those boundaries.
+coordinator-loss availability now also passes on the new watchdog cohort below;
+automatic technical-hold recovery and complete coverage/gap release qualification
+remain gates. Component/browser simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
+
+The newer watchdog-evidence candidate changes the native Watch runtime and must
+use the newly qualified native cohort, not the earlier0ecfc13 binaries. It reuses
+existing authenticated outbound trust with no new service, SQL/native schema,
+credential or configuration migration. The supervisor's live permission is never
+reconstructed from state on restart; require fresh verification. New-image native
+and root checks pass, with normal16/64 and large/crash/retry/export requalification
+also passing after the gateway Begin-ordering fix. Before any separately
+authorized rollout, retain the closed installed admission guard until ALL release
+gates pass, drain every canonical/live-upgrade/deferred-recovery owner and back up
+existing authority/catalogs/protected sources. Downgrading the watchdog restores
+the coordinator-only availability dependency; do not remove holds or audit to
+conceal it. Repair forward with matching verified roles. Consolidation below
+remains a proposal, unexecuted. Evidence: watchdog-monitoring-evidence.md.
+
+The callback scheduler correction is part of a NEW native cohort5489ad6/13b9faa;
+the preceding73d24b6 qualification does not qualify it. No native/SQL format,
+credential or configuration migration is required. Preserve pending signed
+events, original sequence/replay receipts and protected manifests. Healthy passes
+stay prompt; only failures back off. Do not clear a backlog or recollect to roll
+back a scheduler. A later authorized matched-role install still requires all
+fresh native/root/capacity gates and the verified drain below. No service action
+or consolidation is authorized/executed here.
+
+The gateway Begin-ordering correction is transient coordination only, with no
+additional SQL/native/configuration migration. Its in-flight marker is forgotten
+on restart; uncertain starts still reconcile against the native original interval.
+Preserve consumed grants, callback receipts and real policy locks on rollback.
+An older gateway can recreate false pauses when prompt callbacks overtake its
+Begin reply, so prefer the corrected matching gateway rather than slowing status
+delivery or changing clocks. This does not establish compatibility of older
+binaries with the other newer grant/retention/monitoring formats in this plan.
+Current full612app/build/types and actual16/64 large receipts are in
+begin-callback-ordering.md. No installation or service consolidation is executed.
 
 The local empty-registry callback fix is gateway-only and needs no SQL/native
 format/configuration migration. Preserve the original ordered native outbox and

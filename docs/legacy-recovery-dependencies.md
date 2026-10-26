@@ -61,6 +61,17 @@ not permission to create new authorities through ad hoc edits during this work.
 Gateway retirement cannot infer complete native grant migration from this CLI
 view alone; C8 stays disabled until authoritative migration/synchronization.
 
+October25 follow-up investigation (NOT completed migration): current native
+recoveryReference explicitly refuses an initial unified grant while a legacy
+saved-work record exists. Deleting the JSON is unsafe: absence can select starter
+initialization. A supported reviewed retirement/replacement must preserve the
+original record/consumption history and make old admissions fail closed. Before
+adding a mutator, reproduce the identity boundary too: Begin fences prior starts
+by exam/UID, whereas the catalog's no-marker view currently also matches username.
+An unused label alone must not authorize retirement or clear C8's native fence.
+The exact transition, crash/retry proof and CLI/web integration remain to implement
+and qualify after the current liveness increment; this proposal closes no TODO.
+
 ## Verification and rollout
 
 Tests exercise native/administrator deletion refusals, corrupt/unsafe/uncertain

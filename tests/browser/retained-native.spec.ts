@@ -102,6 +102,9 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   const stallMode = process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1";
   const coordinatorMode =
     process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE === "1";
+  const continuityMode =
+    process.env.EXAM_BROWSER_NATIVE_COORDINATOR_CONTINUITY === "1";
+  expect(continuityMode && !coordinatorMode).toBe(false);
   expect(stallMode && coordinatorMode).toBe(false);
   let coordinatorHeldBytes = 0;
   let bindingConnection = 0,
@@ -353,6 +356,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
         pid: before.supervisor!.pid,
       });
     const paused = await current();
+    if (coordinatorMode) coordinatorHeldBytes = (await native()).writer_bytes;
     const selected = await (
       await request.get(`/api/admin/attempts/${original.id}/interruption`)
     ).json();
@@ -624,118 +628,177 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     const coordinator = async (action: "start" | "status" | "restore") => {
       const result = await request.post("/api/fixture/native-coordinator", {
         headers: { origin, "x-csrf-token": (await login.json()).csrf },
-        data: { attempt: original.id, action },
+        data: { attempt: original.id, action, allProofPaths: !continuityMode },
         timeout: 10000,
       });
       expect(result.ok(), await result.text()).toBe(true);
-      return z
+      const value = z
         .object({
           phase: z.enum(["stopping", "offline", "restored", "failed"]),
           before: z.number().int().positive(),
           after: z.number().int().positive().nullable(),
           watchdog: z.number().int().positive(),
+          watchdog_after: z.number().int().positive().nullable(),
+          all_proof_paths: z.boolean(),
           error: z.string().nullable(),
         })
         .parse(await result.json());
+      expect(value.phase, JSON.stringify(value)).not.toBe("failed");
+      return value;
     };
     const initial = await native(),
       started = await coordinator("start");
     expect(started.phase).not.toBe("failed");
+    expect(started.all_proof_paths).toBe(!continuityMode);
     await expect
       .poll(async () => (await coordinator("status")).phase, { timeout: 10000 })
       .toBe("offline");
-    await expect
-      .poll(
-        async () => {
-          const observed = await native();
-          return {
-            state: observed.attempt.state,
-            phase: observed.attempt.retained_hold,
-            kind: observed.attempt.monitoring_hold_kind,
-            frozen:
-              observed.kernel.length > 0 &&
-              observed.kernel.every(
-                (unit) => unit.populated === "1" && unit.frozen === "1",
-              ),
-          };
-        },
-        { timeout: 25000 },
-      )
-      .toEqual({
-        state: "LOCKED",
-        phase: "held",
-        kind: "technical",
-        frozen: true,
-      });
-    const held = await native();
-    coordinatorHeldBytes = held.writer_bytes;
-    expect(held.attempt).toMatchObject({
-      generation: initial.attempt.generation + 1,
-      start: initial.attempt.start,
-      deadline: initial.attempt.deadline,
-      original_deadline: initial.attempt.original_deadline,
-      transport: initial.attempt.transport,
-      grant: initial.attempt.grant,
-    });
-    expect(held.attempt.reason).toContain(
-      "technical safety hold, not a student violation",
-    );
-    expect(held.supervisor).toMatchObject({
-      pid: initial.supervisor!.pid,
-      ssh_peer: "pinned-live",
-      attached_panes: 1,
-    });
-    expect(held.editor_exists).toBe(false);
-    const sampled = performance.now();
-    await expect
-      .poll(
-        async () => {
-          const observed = await native();
-          expect(observed.writer_bytes).toBe(held.writer_bytes);
-          expect(
+    if (continuityMode) {
+      const uploadsBefore = uploads;
+      let samples = 0,
+        written = initial.writer_bytes;
+      const until = performance.now() + 35000;
+      while ((await coordinator("status")).phase !== "restored") {
+        expect(performance.now()).toBeLessThan(until);
+        const observed = await native();
+        expect(observed.attempt).toMatchObject({
+          state: "ACTIVE",
+          generation: initial.attempt.generation,
+          start: initial.attempt.start,
+          deadline: initial.attempt.deadline,
+          original_deadline: initial.attempt.original_deadline,
+          transport: initial.attempt.transport,
+          grant: initial.attempt.grant,
+        });
+        expect(observed.supervisor).toMatchObject({
+          pid: initial.supervisor!.pid,
+          ssh_peer: "pinned-live",
+        });
+        expect(
+          observed.kernel.length > 0 &&
             observed.kernel.every(
-              (unit) => unit.frozen === "1" && unit.populated === "1",
+              (unit) => unit.populated === "1" && unit.frozen === "0",
             ),
-          ).toBe(true);
-          return performance.now() - sampled >= 3000;
-        },
-        { timeout: 5000 },
-      )
-      .toBe(true);
-    await expect
-      .poll(async () => (await coordinator("status")).phase, { timeout: 45000 })
-      .toBe("restored");
-    const restored = await coordinator("status");
-    expect(restored.after).not.toBe(started.before);
-    expect(restored.watchdog).toBe(started.watchdog);
-    expect(restored.error).toBeNull();
-    const afterRestoreUploads = uploads;
-    await expect
-      .poll(() => uploads, { timeout: 15000 })
-      .toBeGreaterThan(afterRestoreUploads);
-    const unprovenGap = await native();
-    expect(unprovenGap.attempt).toMatchObject({
-      state: "LOCKED",
-      retained_hold: "held",
-      monitoring_hold_kind: "technical",
-      generation: held.attempt.generation,
-    });
-    expect(unprovenGap.writer_bytes).toBe(held.writer_bytes);
-    expect(unprovenGap.supervisor).toMatchObject({
-      pid: initial.supervisor!.pid,
-      ssh_peer: "pinned-live",
-    });
-    expect(
-      unprovenGap.kernel.length > 0 &&
-        unprovenGap.kernel.every(
-          (unit) => unit.frozen === "1" && unit.populated === "1",
-        ),
-    ).toBe(true);
-    await expect
-      .poll(async () => (await current()).state, { timeout: 15000 })
-      .toBe("LOCKED");
+        ).toBe(true);
+        await expect
+          .poll(async () => (await native()).writer_bytes, { timeout: 1500 })
+          .toBeGreaterThan(written);
+        written = (await native()).writer_bytes;
+        samples++;
+      }
+      expect(samples).toBeGreaterThanOrEqual(3);
+      expect(uploads).toBeGreaterThan(uploadsBefore);
+      const restored = await coordinator("status");
+      expect(restored.after).not.toBe(started.before);
+      expect(restored.watchdog).toBe(started.watchdog);
+      expect(restored.watchdog_after).toBe(started.watchdog);
+      expect(restored.error).toBeNull();
+    } else {
+      await expect
+        .poll(
+          async () => {
+            const observed = await native();
+            return {
+              frozen:
+                observed.kernel.length > 0 &&
+                observed.kernel.every(
+                  (unit) => unit.populated === "1" && unit.frozen === "1",
+                ),
+            };
+          },
+          { timeout: 18000 },
+        )
+        .toEqual({
+          frozen: true,
+        });
+      expect((await coordinator("status")).phase).toBe("offline");
+      const held = await native();
+      coordinatorHeldBytes = held.writer_bytes;
+      expect(held.attempt).toMatchObject({
+        start: initial.attempt.start,
+        deadline: initial.attempt.deadline,
+        original_deadline: initial.attempt.original_deadline,
+        transport: initial.attempt.transport,
+        grant: initial.attempt.grant,
+      });
+      expect(held.supervisor).toMatchObject({
+        pid: initial.supervisor!.pid,
+        ssh_peer: "pinned-live",
+        attached_panes: 1,
+      });
+      expect(held.editor_exists).toBe(false);
+      const sampled = performance.now();
+      await expect
+        .poll(
+          async () => {
+            const observed = await native();
+            expect(observed.writer_bytes).toBe(held.writer_bytes);
+            expect(
+              observed.kernel.every(
+                (unit) => unit.frozen === "1" && unit.populated === "1",
+              ),
+            ).toBe(true);
+            return performance.now() - sampled >= 3000;
+          },
+          { timeout: 5000 },
+        )
+        .toBe(true);
+      await expect
+        .poll(async () => (await coordinator("status")).phase, {
+          timeout: 45000,
+        })
+        .toBe("restored");
+      const restored = await coordinator("status");
+      expect(restored.after).not.toBe(started.before);
+      expect(restored.watchdog).toBe(started.watchdog);
+      expect(restored.watchdog_after).not.toBe(started.watchdog);
+      expect(restored.error).toBeNull();
+      await expect
+        .poll(
+          async () => {
+            const observed = await native();
+            return {
+              state: observed.attempt.state,
+              phase: observed.attempt.retained_hold,
+              kind: observed.attempt.monitoring_hold_kind,
+            };
+          },
+          { timeout: 10000 },
+        )
+        .toEqual({ state: "LOCKED", phase: "held", kind: "technical" });
+      const afterRestoreUploads = uploads;
+      await expect
+        .poll(() => uploads, { timeout: 15000 })
+        .toBeGreaterThan(afterRestoreUploads);
+      const unprovenGap = await native();
+      expect(unprovenGap.attempt).toMatchObject({
+        state: "LOCKED",
+        retained_hold: "held",
+        monitoring_hold_kind: "technical",
+        generation: initial.attempt.generation + 1,
+      });
+      expect(unprovenGap.attempt.reason).toContain(
+        "technical safety hold, not a student violation",
+      );
+      expect(unprovenGap.writer_bytes).toBe(held.writer_bytes);
+      expect(unprovenGap.supervisor).toMatchObject({
+        pid: initial.supervisor!.pid,
+        ssh_peer: "pinned-live",
+      });
+      expect(
+        unprovenGap.kernel.length > 0 &&
+          unprovenGap.kernel.every(
+            (unit) => unit.frozen === "1" && unit.populated === "1",
+          ),
+      ).toBe(true);
+      await expect
+        .poll(async () => (await current()).state, { timeout: 15000 })
+        .toBe("LOCKED");
+    }
   }
-  paused = await pauseAndContinue(coordinatorMode ? "technical" : "policy");
+  paused = await pauseAndContinue(
+    coordinatorMode && !continuityMode ? "technical" : "policy",
+  );
   await pane.focus();
   await page.keyboard.press("Control+x");
   await expect(page.locator(".xterm-rows")).toContainText(

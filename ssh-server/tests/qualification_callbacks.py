@@ -130,7 +130,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
    marker=Path('/run/ssh-exam-qualification-input/run.json')
    if marker.is_file() and private_registry(marker).get('driver')=='browser':
     from browser_bridge import forward_http
-    status,body=forward_http(self.path,self.headers,raw)
+    try:status,body=forward_http(self.path,self.headers,raw)
+    except Exception as error: # Authentication has already succeeded above.
+     print('BROWSER_CALLBACK_TRANSPORT_REFUSAL '+type(error).__name__,flush=True)
+     status,body=503,b'{"error":"Private qualification callback transport unavailable"}'
     self.send_response(status);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
     return
    result={'ok':True}

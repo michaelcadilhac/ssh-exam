@@ -1,10 +1,16 @@
 """Pure synthetic callback contracts; real signatures/kernel are guest checks."""
 import ast
+import base64
 import copy
 import hashlib
+import http.server
+import io
 import json
 from pathlib import Path
+import sys
+import types
 import unittest
+from unittest import mock
 
 
 # Load ONLY this fixture's pure reply function, never its root startup/server.
@@ -19,6 +25,33 @@ source_reply = namespace['source_fixture_reply']
 
 
 class CallbackTests(unittest.TestCase):
+    def test_browser_forwarding_failure_is_operational_not_signature_refusal(self):
+        # Load only the handler definition, never root startup or the TLS server.
+        scope={'http':http,'base64':base64,'json':json,'Path':Path,
+               'config':{'agent_id':'private-agent'},
+               'private_registry':lambda path:{'driver':'browser'}}
+        exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n,ast.ClassDef)
+                                     and n.name=='Handler'],type_ignores=[]),str(source),'exec'),scope)
+        raw=b'{"agent":"private-agent"}'
+        for invalid_signature in (False,True):
+            verifier=mock.Mock(side_effect=ValueError('private-signature-detail') if invalid_signature else None)
+            scope['agent']=types.SimpleNamespace(verify=verifier)
+            forward=mock.Mock(side_effect=RuntimeError('private-forwarding-detail'))
+            handler=types.SimpleNamespace(path='/api/agent/grant-begin',
+                headers={'Content-Length':str(len(raw)),'X-Exam-Signature':base64.b64encode(b'signature').decode()},
+                rfile=io.BytesIO(raw),wfile=io.BytesIO(),send_response=mock.Mock(),
+                send_header=mock.Mock(),end_headers=mock.Mock(),send_error=mock.Mock())
+            with mock.patch.object(Path,'is_file',return_value=True), \
+                 mock.patch.dict(sys.modules,{'browser_bridge':types.SimpleNamespace(forward_http=forward)}):
+                scope['Handler'].do_POST(handler)
+            verifier.assert_called_once_with(b'signature',raw)
+            if invalid_signature:
+                handler.send_error.assert_called_once_with(403);forward.assert_not_called()
+            else:
+                handler.send_response.assert_called_once_with(503);handler.send_error.assert_not_called()
+                forward.assert_called_once_with(handler.path,handler.headers,raw)
+                self.assertEqual(json.loads(handler.wfile.getvalue()),{'error':'Private qualification callback transport unavailable'})
+
     def test_source_management_requires_exact_plan_and_already_published_pin(self):
         plan=dict(version=1,agent='private-agent',grant=dict(id='one-grant',revision=1,hash='a'*64),
                   exam='retake',username='examq',uid=20001,settings={'duration':5400},

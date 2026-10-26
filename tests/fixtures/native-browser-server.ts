@@ -1,5 +1,11 @@
 // Actual gateway/browser against the guarded csc-sys native guest. Test-only.
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { createPublicKey, verify } from "node:crypto";
@@ -168,7 +174,11 @@ app.post("/api/fixture/native-coordinator", async (req) => {
   if (process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE !== "1")
     throw Error("Private coordinator fault not selected");
   const body = req.body as any;
-  return guest.coordinator(body.attempt, body.action);
+  return guest.coordinator(
+    body.attempt,
+    body.action,
+    body.allProofPaths === true,
+  );
 });
 app.post("/api/fixture/native-gate", async (req) => {
   if (process.env.EXAM_BROWSER_NATIVE_GATE_STALL !== "1")
@@ -263,13 +273,37 @@ const listenWeb = () =>
 if (!gateway) await listenWeb();
 const relayServer = https.createServer(tls),
   relay = new WebSocketServer({ server: relayServer });
+let relaySequence = 0,
+  relayRecords = 0;
+const relayDiagnostic = (record: object) => {
+  if (relayRecords++ >= 128) return;
+  appendFileSync(data + "/relay-lifecycle.jsonl", JSON.stringify(record) + "\n", {
+    mode: 0o600,
+  });
+};
 relay.on("connection", (ws, req) => {
+  const id = ++relaySequence,
+    started = performance.now();
+  let phase = "origin",
+    upstreamBytes = 0;
+  const record = (event: string, code?: string | number) =>
+    relayDiagnostic({
+      id,
+      event,
+      phase,
+      code,
+      upstreamBytes,
+      ageMs: Math.round(performance.now() - started),
+    });
+  ws.once("close", (code) => record("websocket-close", code));
+  ws.once("error", () => record("websocket-error"));
   if (req.headers.origin !== origin) {
     ws.close(1008);
     return;
   }
   ws.once("message", (raw) => {
     try {
+      phase = "ticket";
       const frame = JSON.parse(String(raw)),
         bytes = Buffer.from(frame.payload, "base64"),
         ticket = JSON.parse(String(bytes));
@@ -286,18 +320,30 @@ relay.on("connection", (ws, req) => {
         )
       )
         throw Error("Invalid private relay ticket");
-      const upstream = net.connect(h.jump.port, h.jump.host, () =>
-        ws.send('{"ready":true}'),
-      );
+      phase = "jump-connect";
+      const upstream = net.connect(h.jump.port, h.jump.host, () => {
+        phase = "forwarding";
+        ws.send('{"ready":true}');
+      });
       ws.on("message", (bytes, binary) => {
         if (!binary) ws.close(1008);
         else upstream.write(bytes as Buffer);
       });
-      upstream.on("data", (bytes) => ws.send(bytes, { binary: true }));
-      upstream.on("error", () => ws.close());
-      upstream.on("close", () => ws.close());
+      upstream.on("data", (bytes) => {
+        upstreamBytes += bytes.length;
+        ws.send(bytes, { binary: true });
+      });
+      upstream.on("error", (error: NodeJS.ErrnoException) => {
+        record("upstream-error", error.code);
+        ws.close();
+      });
+      upstream.on("close", () => {
+        record("upstream-close");
+        ws.close();
+      });
       ws.on("close", () => upstream.destroy());
     } catch {
+      record("relay-refusal");
       ws.close(1008);
     }
   });

@@ -16,6 +16,9 @@ vi.mock("../../apps/server/src/monitoring-clock.js", () => ({
 
 it.each([
   "ordinary",
+  "callback-before-ack",
+  "callback-before-lost-ack",
+  "callback-before-policy-lock",
   "reviewed-legacy",
   "reviewed-old-native",
   "additional-after-completed",
@@ -47,7 +50,10 @@ it.each([
     captureClock.now = 10000;
     const additional = scenario.startsWith("additional-"),
       allowance = additional ? 5400 : 7200;
-    let priorHistory: any;
+    let priorHistory: any,
+      startedRemote: any,
+      callbacksBeforeReply = 0,
+      lostReplyInjected = false;
     const h = await hosts(),
       data = mkdtempSync(tmpdir() + "/grant-begin-");
     const config = {
@@ -291,6 +297,44 @@ it.each([
           access_state: "HELD",
           work_path: "/work",
         });
+        if (scenario.startsWith("callback-before-")) {
+          startedRemote = { ...a };
+          const callback = async (sequence: number, attempt = startedRemote) => {
+            const payload = Buffer.from(
+              JSON.stringify({ agent: "class", sequence, at: Date.now(), attempt }),
+            );
+            const response = await app.inject({
+              method: "POST",
+              url: "/api/agent/events",
+              headers: {
+                "content-type": "application/vnd.ssh-exam-event",
+                "x-exam-signature": sign(null, payload, h.callbackKey).toString(
+                  "base64",
+                ),
+              },
+              payload,
+            });
+            expect(response.statusCode, response.body).toBe(200);
+            callbacksBeforeReply++;
+          };
+          // The signed status reaches the real callback entry BEFORE the
+          // original SSH activation reply. Repeated status is not a lost reply.
+          await callback(1);
+          await callback(2);
+          if (scenario === "callback-before-lost-ack") {
+            lostReplyInjected = true;
+            throw Error("Synthetic activation reply lost after signed callback");
+          }
+          if (scenario === "callback-before-policy-lock") {
+            Object.assign(a, {
+              state: "LOCKED",
+              generation: 1,
+              reason: "Fullscreen lost",
+            });
+            await callback(3, { ...a });
+          }
+          return startedRemote;
+        }
         return { ...a };
       }
       if (op === "lock-attempt") {
@@ -1009,6 +1053,44 @@ it.each([
       }
       const actual = Date.now(),
         active = await begin();
+      if (scenario.startsWith("callback-before-")) {
+        const row = store.attempt(id);
+        expect(callbacksBeforeReply).toBe(
+          scenario === "callback-before-policy-lock" ? 3 : 2,
+        );
+        expect(row).toMatchObject({
+          state: scenario === "callback-before-ack" ? "ACTIVE" : "LOCKED",
+          generation: scenario === "callback-before-ack" ? 0 : 1,
+          start: startedRemote.start,
+          deadline: startedRemote.deadline,
+          original_deadline: startedRemote.original_deadline,
+          access_state: "HELD",
+        });
+        if (scenario === "callback-before-ack") expect(row.reason).toBeNull();
+        if (scenario === "callback-before-policy-lock") {
+          expect(row.reason).toBe("Fullscreen lost");
+          expect(active.statusCode).toBe(400); // Genuine legacy pause closes its SSH.
+          return;
+        }
+        if (scenario === "callback-before-lost-ack") {
+          expect(lostReplyInjected).toBe(true);
+          expect(active.statusCode).toBe(400);
+          expect(row.reason).toBe("Activation acknowledgment lost");
+          const retried = await begin();
+          expect(retried.json().attempt).toMatchObject({
+            state: "LOCKED",
+            start: row.start,
+            deadline: row.deadline,
+          });
+          expect(
+            operations.filter((op) => op === "activate-grant-attempt"),
+          ).toHaveLength(1);
+          expect(
+            store.db.prepare("SELECT status FROM attempt_grants WHERE id=?").get(issued.id),
+          ).toEqual({ status: "CONSUMED" });
+          return;
+        }
+      }
       expect(active.statusCode, active.body).toBe(200);
       expect(store.attempt(id).start!).toBeGreaterThanOrEqual(actual);
       expect(store.attempt(id).deadline! - store.attempt(id).start!).toBe(

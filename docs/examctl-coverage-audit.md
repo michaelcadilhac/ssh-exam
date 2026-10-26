@@ -47,13 +47,19 @@ Incident JSON editing/transfer scripts remain unsupported management substitutes
 
 ## Necessary remaining integration gates
 
-- **C16 / retained authority:** complete timed ownership, input/loaded-role
-  agreement, all-writer stop-assisted freeze and technical-hold recovery. Keep
-  retained mode disabled until real end-to-end qualification; current lockouts
-  still disconnect. This is not completed by existing private primitives.
-- **C18 / saved-source authority:** durable native retention confirmation before
-  usability is approved October23. Integration remains necessary: native deletion
-  cannot yet see unused gateway saved-work references. No offline JSON writer bypass.
+- **C16 / retained authority:** timed ownership, input/loaded-role agreement and
+  verified stop-assisted hold/Continue now have actual CLI/PAM/cgroup/SSH/editor
+  workflow evidence, including protected export. Gateway replacement and collection
+  crash isolation have joined browser/native evidence. The newest independent
+  watchdog proof/callback-scheduler image is under fresh capacity qualification;
+  complete strict coverage/ownership acceptance and keep installed admission OFF.
+  Do not reimplement the working writer barrier or claim that guard is released.
+- **C18 / saved-source authority:** new saved-work grants already require durable
+  native source retention before usability. Native deletion observes those pins;
+  reviewed per-student bulk web/CLI issuance, staging and full new allowance at
+  actual Begin are implemented/tested locally. The newest root profile still
+  verifies those workflows. General native legacy migration remains C8 below;
+  it is not a reason to repeat the delivered C18 protocol. No offline JSON bypass.
 - **C8 / legacy retirement:** shared reviewed retirement now exists for newly
   lifecycle-tracked definitions, preserving all history.028 blocks ALL pre-existing
   definitions until supported native dependency reconciliation; missing web rows

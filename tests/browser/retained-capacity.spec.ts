@@ -75,6 +75,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
   expect(login.ok(), await login.text()).toBe(true);
   const headers = { origin, "x-csrf-token": (await login.json()).csrf };
   let measuring = false;
+  let signInEvents: { event: string; path: string; type?: string }[] = [];
   const fleet: {
     context: BrowserContext;
     page: Page;
@@ -141,8 +142,29 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
         timing = { contacts: 0, states: 0, maxContactMs: 0, maxStateMs: 0 };
       page.setDefaultTimeout(10000);
       await simulatedMedia(page);
+      const events: typeof signInEvents = [];
+      signInEvents = events;
       page.on("websocket", (socket) => {
-        if (new URL(socket.url()).pathname !== "/api/student/session") return;
+        const path = new URL(socket.url()).pathname;
+        const note = (event: string, type?: unknown) => {
+          if (events.length >= 64) return;
+          events.push({
+            event,
+            path,
+            ...(typeof type === "string" && /^[a-z-]{1,40}$/.test(type)
+              ? { type }
+              : {}),
+          });
+        };
+        note("opened");
+        socket.once("close", () => note("closed"));
+        socket.once("socketerror", () => note("socket-error"));
+        socket.on("framereceived", ({ payload }) => {
+          try {
+            note("reply", JSON.parse(String(payload)).type);
+          } catch {}
+        });
+        if (path !== "/api/student/session") return;
         socket.on("framesent", ({ payload }) => {
           try {
             const message = JSON.parse(String(payload));
@@ -243,6 +265,29 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
           `CAPACITY-${student.username}-${pane}-END`,
         );
       }
+      // Check each real native boundary while the class grows. A per-student
+      // refusal should not be hidden until all sixty-four panes have opened.
+      const probe = await request.get("/api/fixture/native-state", {
+        params: { attempt: entry.id },
+        timeout: 10000,
+      });
+      expect(probe.ok(), await probe.text()).toBe(true);
+      const observed = snapshot.parse(await probe.json());
+      expect(observed.attempt).toMatchObject({
+        id: entry.id,
+        state: "ACTIVE",
+        generation: 0,
+      });
+      expect(observed.supervisor).toMatchObject({
+        ssh_peer: "pinned-live",
+        attached_panes: 4,
+      });
+      expect(observed.kernel.length).toBe(4);
+      expect(
+        observed.kernel.every(
+          (unit) => unit.populated === "1" && unit.frozen === "0",
+        ),
+      ).toBe(true);
     }
     const before = await inspect();
     measuring = true;
@@ -467,12 +512,10 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
       ),
       { mode: 0o600 },
     );
-    await test
-      .info()
-      .attach("capacity-metrics", {
-        path: metrics,
-        contentType: "application/json",
-      });
+    await test.info().attach("capacity-metrics", {
+      path: metrics,
+      contentType: "application/json",
+    });
     expect(completed.preservation).toBe("FULL");
     expect(
       completed.snapshots.every(
@@ -483,10 +526,44 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
       ),
     ).toBe(true);
   } catch (error) {
+    await mkdir(test.info().outputDir, { recursive: true });
+    const failure = test.info().outputPath("capacity-failure.json");
+    const publicStates = await Promise.all(
+      fleet.map(async (entry) => {
+        try {
+          const response = await entry.page.request.get("/api/student/exam", {
+            timeout: 3000,
+          });
+          const value = (await response.json()).attempt;
+          return {
+            username: entry.username,
+            state: value?.state,
+            generation: value?.generation,
+          };
+        } catch {
+          return { username: entry.username, unavailable: true };
+        }
+      }),
+    );
+    await writeFile(
+      failure,
+      JSON.stringify({
+        error: String(error).slice(0, 1200),
+        signInEvents,
+        publicStates,
+      }),
+      { mode: 0o600 },
+    );
+    await test.info().attach("capacity-failure", {
+      path: failure,
+      contentType: "application/json",
+    });
     if (fleet.length === 16) {
       try {
+        const path = test.info().outputPath("native-fleet-failure.json");
+        await writeFile(path, JSON.stringify(await inspect()), { mode: 0o600 });
         await test.info().attach("native-fleet-failure", {
-          body: Buffer.from(JSON.stringify(await inspect())),
+          path,
           contentType: "application/json",
         });
       } catch {}

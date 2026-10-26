@@ -2925,6 +2925,42 @@ enablement is provided. See docs/retained-coordinator-loss.md,
 docs/retained-native-command-stall.md and
 docs/retained-gateway-restart.md.
 
+The subsequent local native candidate mirrors the existing authenticated evidence
+bridge in the independent watchdog. Its separate bounded observer selects only
+current ACTIVE same-boot owners from canonical state; that row supplies a challenge
+destination, never positive execution authority. The live attempt supervisor still
+requires complete fresh signed evidence, ownership and uninterrupted coverage.
+Actual coordinator-only loss preserves ACTIVE work and the original SSH/editor/
+clock; loss of BOTH proof roles produces verified technical containment before
+either returns. Restart/fresh captures cannot erase that gap, so reviewed Continue
+remains necessary. New-image native/root and normal16-student/64-terminal checks
+pass, including large/fatal-collection requalification after the gateway Begin fix;
+remaining strict coverage/automatic technical recovery is incomplete. No schema, credential,
+policy timeout or enablement switch changes. Installed admission stays OFF. See
+docs/watchdog-monitoring-evidence.md.
+
+The subsequent local callback scheduler correction keeps healthy/idle status
+delivery prompt instead of growing failure backoff on every pass. A single
+bounded result channel preserves one in-flight delivery; success resets the
+delay, errors retry with a1–30s exponential bound. Existing20-event batches,
+durable signed ordering, HTTP200 acknowledgements and no idle HTTP remain.
+This changes operational retry cadence only: collection, original deadlines,
+account holds and live monitoring permission are unchanged. An actual watchdog/
+signed-TLS regression reproduces the old stale batch and passes locally. Fresh
+native/root, coordinator-continuity, both-proof-gap and normal16/64 qualification
+pass; the large/fatal-collection repeat also passes. Installed retained
+admission stays OFF.
+
+The local gateway Begin correction distinguishes a signed ACTIVE status received
+while its original activation request is still in flight from an actually lost
+reply. It does not prematurely pause or increment the generation. The verified
+command response still commits Begin; actual command failure clears the transient
+marker before conservative reconciliation. Real policy/terminal callbacks remain
+effective, and a stale reply cannot overwrite them. No durable state, deadline,
+grant, timeout or execution permission changes. Focused public-interface tests,
+full612 application checks/build/types and actual16/64 large/crash/retry/export
+qualification pass. See docs/begin-callback-ordering.md.
+
 The local policy-delivery candidate gives each retained page's genuine negative
 one immutable report UUID/generation. Positive captures wait for an exact durable
 receipt, while streams and SSH remain alive. Receipt and web hold commit in one

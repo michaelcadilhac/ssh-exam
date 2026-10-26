@@ -1923,6 +1923,7 @@ export async function createApp(
           : currentSettings.template_version
             ? "activate-versioned-attempt"
             : "activate-attempt";
+      life.activationPending.add(a.id);
       const result = await agent.call(
         monitored
           ? activation.replace("activate-", "activate-monitored-")
@@ -1963,6 +1964,7 @@ export async function createApp(
       life.syncAccess(a.id, result);
       return { attempt: store.attempt(a.id), serverNow: now() };
     } catch (e) {
+      life.activationPending.delete(a.id);
       const reason = (e as Error).message.slice(0, 500);
       store.audit("gateway", "activation-failed", a.id, reason);
       app.log.warn(
@@ -1978,6 +1980,7 @@ export async function createApp(
         "Exam setup could not be confirmed. Check the current attempt status before retrying; your instructor can review the recorded failure.",
       );
     } finally {
+      life.activationPending.delete(a.id);
       busy.delete(a.id);
     }
   });

@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited"} {
+	for _, mode := range []string{"current", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -321,6 +321,53 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			}
 			if err := os.WriteFile(e.Config.CallbackKey, credential, 0600); err != nil {
 				t.Fatal(err)
+			}
+			if mode == "watchdog-mirror" {
+				mirror := &Engine{Config: e.Config}
+				stopMirror, mirrorDone := make(chan struct{}), make(chan struct{})
+				go func() {
+					defer close(mirrorDone)
+					mirror.watchTerminalMonitoring(stopMirror)
+				}()
+				t.Cleanup(func() {
+					close(stopMirror)
+					select {
+					case <-mirrorDone:
+					case <-time.After(3 * time.Second):
+						t.Error("owned watchdog evidence observer did not stop")
+					}
+					mirror.stopTerminalMonitoring()
+				})
+				for until := time.Now().Add(time.Second); !mirror.terminalMonitoring.ready.Load(); {
+					if time.Now().After(until) {
+						t.Fatal("watchdog did not cache its authenticated callback client")
+					}
+					time.Sleep(5 * time.Millisecond)
+				}
+				e.stopTerminalMonitoring() // No coordinator network worker remains.
+				if err := os.Remove(e.Config.CallbackKey); err != nil {
+					t.Fatal(err)
+				}
+				prior, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+				if err != nil || prior.View == nil || !prior.View.ExecutionAuthorized {
+					t.Fatal("fixture missed live authority before independent takeover", prior, err)
+				}
+				for until := time.Now().Add(4 * time.Second); ; {
+					live, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+					if err != nil || live.View == nil || !live.View.ExecutionAuthorized {
+						t.Fatal("watchdog takeover lost the actual supervisor authority", live, err)
+					}
+					if live.View.Sequence > prior.View.Sequence {
+						break
+					}
+					if time.Now().After(until) {
+						t.Fatal("watchdog failed fresh authenticated renewal without coordinator or credential disk read", live.View)
+					}
+					time.Sleep(10 * time.Millisecond)
+				}
+				if err := os.WriteFile(e.Config.CallbackKey, credential, 0600); err != nil {
+					t.Fatal(err)
+				}
 			}
 			testActualSharedCutoffWatch(t, e, a)
 			if mode == "clock-live" || mode == "clock-recording-fault" {

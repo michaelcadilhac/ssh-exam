@@ -46,6 +46,30 @@ original deadline; protected export verifies the saved editor buffer. This is
 local qualification, not continuous availability through coordinator loss or a
 production recovery change. Evidence: retained-coordinator-loss.md.
 
+A newer local native candidate also supplies freshly challenged evidence through
+the existing watchdog, so a coordinator-only outage can preserve ACTIVE work when
+complete current ownership/coverage remain verifiable. Native/root qualification
+passes; class-capacity requalification is incomplete and installed admission stays
+OFF. If BOTH proof paths disappear, the attempt supervisor still freezes work;
+their restart and fresh captures alone do not authorize thaw. Use the existing
+interruption inspection/authorization and same-page Continue, preserving the
+original deadline. Do not restart installed roles or clear state to try this
+candidate. Exact boundaries: watchdog-monitoring-evidence.md.
+
+Local callback-scheduler fix, not deployed: healthy status batches no longer grow
+the failure retry interval. Only actual delivery errors back off (1–30s); queued
+status remains durable and ordered. If native collection is protected while the
+web view is stale, preserve both records and inspect native/web status. Never
+recollect, remove callback records, reset clocks or release account holds merely
+to update the web view. Qualification: watchdog-monitoring-evidence.md.
+
+Local Begin-ordering fix, not deployed: native ACTIVE status may legitimately
+arrive before the original Begin command reply. The candidate no longer calls
+that a lost acknowledgement while the request is in flight. An actual failed
+reply still reconciles the existing UUID and original interval safely; real policy
+locks remain effective. Inspect web/native status, never delete the attempt or
+reissue time solely to repair response ordering. See begin-callback-ordering.md.
+
 The October25 local candidate also retries the SAME genuine policy report until
 its scoped delivery receipt arrives. Positive samples wait for that receipt;
 streams and SSH stay open. Duplicate reports preserve existing approval. A

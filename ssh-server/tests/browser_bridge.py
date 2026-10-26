@@ -23,6 +23,7 @@ import sys
 import tarfile
 import threading
 import time
+import traceback
 import uuid
 
 if not __debug__:
@@ -33,13 +34,22 @@ OUTPUT = Path('/run/ssh-exam-qualification-output')
 MAX_FRAME = 1024 * 1024
 
 
-def private_json(path):
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    with os.fdopen(fd, 'rb') as stream:
-        info = os.fstat(stream.fileno())
-        assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1
-        assert info.st_size <= MAX_FRAME
-        return json.loads(stream.read(MAX_FRAME + 1))
+def private_json(path, *, atomic_snapshot=False):
+    # state.json is replaced atomically by the native writer. An opened old
+    # inode can therefore have zero links before fstat. Retry that exact benign
+    # race only for explicitly mutable snapshots; never accept an unlinked,
+    # hard-linked, foreign-owned or oversized file as the observation.
+    for _ in range(3):
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, 'rb') as stream:
+            info = os.fstat(stream.fileno())
+            assert stat.S_ISREG(info.st_mode) and info.st_uid == 0
+            assert info.st_size <= MAX_FRAME
+            if atomic_snapshot and info.st_nlink == 0:
+                continue
+            assert info.st_nlink == 1
+            return json.loads(stream.read(MAX_FRAME + 1))
+    raise RuntimeError('Private state snapshot kept changing; retry inspection')
 
 
 def guest_identity():
@@ -97,6 +107,8 @@ def forward_http(path, headers, raw):
         with client.makefile('rwb', buffering=0) as stream:
             send(stream, {'path': path, 'headers': dict(headers), 'body': base64.b64encode(raw).decode()})
             result = line(stream)
+            if result.get('bridge_error'):
+                raise RuntimeError('Private callback transport refused before HTTP reply')
             body = base64.b64decode(result['body'], validate=True)
             assert 100 <= result['status'] <= 599 and len(body) <= 524288
             return result['status'], body
@@ -224,12 +236,14 @@ class GateStall:
 
 
 class CoordinatorOutage:
-    """Stop only the guarded guest's coordinator, then restore it unconditionally."""
-    def __init__(self, seconds=22.5):
+    """Bounded loss of selected proof roles in the guarded guest ONLY."""
+    def __init__(self, seconds=22.5, all_proof_paths=False):
+        assert type(all_proof_paths) is bool
         guest_identity()
         self.before = self.identity('exam-agent.service', 'Agent')
         self.watchdog = self.identity('exam-deadline-watchdog.service', 'Watchdog')
         self.phase, self.after, self.error = 'stopping', None, None
+        self.all_proof_paths, self.watchdog_after = all_proof_paths, None
         self.stop = threading.Event()
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, args=(seconds,), daemon=True)
@@ -239,38 +253,61 @@ class CoordinatorOutage:
     def identity(unit, role):
         assert (unit, role) in (('exam-agent.service', 'Agent'), ('exam-deadline-watchdog.service', 'Watchdog'))
         pid = int(root_command('systemctl', 'show', unit, '--property=MainPID', '--value').strip())
-        assert pid > 1
+        assert pid > 1, 'Owned role MainPID is not ready'
         process = Path('/proc') / str(pid)
-        assert process.stat().st_uid == 0
-        assert (process / 'exe').resolve() == INPUT / 'core-qualification.test'
-        assert ('-test.run=^TestRetainedPolicy' + role + 'Guest$').encode() in (process / 'cmdline').read_bytes().split(b'\0')
-        assert any(row.endswith('/' + unit) for row in (process / 'cgroup').read_text().splitlines())
+        assert process.stat().st_uid == 0, 'Owned role UID mismatch'
+        assert (process / 'exe').resolve() == INPUT / 'core-qualification.test', 'Owned role executable is not ready'
+        assert ('-test.run=^TestRetainedPolicy' + role + 'Guest$').encode() in (process / 'cmdline').read_bytes().split(b'\0'), 'Owned role argument is not ready'
+        assert any(row.endswith('/' + unit) for row in (process / 'cgroup').read_text().splitlines()), 'Owned role cgroup mismatch'
+        return pid
+
+    @classmethod
+    def restored_identity(cls, unit, role):
+        # Type=simple can acknowledge its fork before exec/argv is observable.
+        until = time.monotonic() + 2
+        while True:
+            try: pid = cls.identity(unit, role); break
+            except (AssertionError, FileNotFoundError):
+                if time.monotonic() >= until: raise
+                time.sleep(.01)
+        assert root_command('systemctl', 'show', unit, '--property=NRestarts', '--value').strip() == '0', 'Owned role crashed/restarted unexpectedly'
         return pid
 
     def status(self):
         with self.lock:
             return {'phase': self.phase, 'before': self.before, 'after': self.after,
-                    'watchdog': self.watchdog, 'error': self.error}
+                    'watchdog': self.watchdog, 'watchdog_after': self.watchdog_after,
+                    'all_proof_paths': self.all_proof_paths, 'error': self.error}
 
     def run(self, seconds):
         error = None
+        stage = 'stopping-owned-roles'
         try:
-            root_command('systemctl', 'stop', 'exam-agent.service')
+            units = ('exam-agent.service', 'exam-deadline-watchdog.service') if self.all_proof_paths else ('exam-agent.service',)
+            root_command('systemctl', 'stop', *units)
             assert root_command('systemctl', 'show', 'exam-agent.service', '--property=MainPID', '--value').strip() == '0'
-            assert self.identity('exam-deadline-watchdog.service', 'Watchdog') == self.watchdog
+            if self.all_proof_paths:
+                assert root_command('systemctl', 'show', 'exam-deadline-watchdog.service', '--property=MainPID', '--value').strip() == '0'
+            else:
+                assert self.identity('exam-deadline-watchdog.service', 'Watchdog') == self.watchdog
             with self.lock: self.phase = 'offline'
             self.stop.wait(seconds)
         except Exception as failure:
-            error = type(failure).__name__
+            error = stage + ':' + type(failure).__name__ + ':' + str(failure)[:160]
         finally:
             try:
+                stage = 'starting-owned-roles'
+                if self.all_proof_paths: root_command('systemctl', 'start', 'exam-deadline-watchdog.service')
                 root_command('systemctl', 'start', 'exam-agent.service')
-                after = self.identity('exam-agent.service', 'Agent')
+                stage = 'verifying-coordinator'
+                after = self.restored_identity('exam-agent.service', 'Agent')
                 assert after != self.before, 'Coordinator was not replaced'
-                assert self.identity('exam-deadline-watchdog.service', 'Watchdog') == self.watchdog
-                with self.lock: self.after = after
+                stage = 'verifying-watchdog'
+                watchdog = self.restored_identity('exam-deadline-watchdog.service', 'Watchdog')
+                assert (watchdog != self.watchdog) if self.all_proof_paths else (watchdog == self.watchdog)
+                with self.lock: self.after, self.watchdog_after = after, watchdog
             except Exception as failure:
-                error = type(failure).__name__
+                error = stage + ':' + type(failure).__name__ + ':' + str(failure)[:160]
             with self.lock: self.phase, self.error = ('failed' if error else 'restored'), error
 
     def cancel(self):
@@ -283,10 +320,13 @@ class GuestBridge:
     def __init__(self, config):
         self.config = config
         self.done = threading.Event()
-        self.requests = queue.Queue(maxsize=16)
         self.students = private_json(INPUT / 'run.json').get('browser_students', 1)
         self.large = private_json(INPUT / 'run.json').get('browser_large', False)
-        self.slots = threading.BoundedSemaphore(64 if self.students == 16 else 32)
+        # The16-student fixture carries32 simultaneous native proof requests,
+        # plus16 SSH links,16 bounded relay workers and inspection/Begin traffic.
+        # These private transport bounds do not change native authority limits.
+        self.requests = queue.Queue(maxsize=48 if self.students == 16 else 16)
+        self.slots = threading.BoundedSemaphore(96 if self.students == 16 else 32)
         self.failures = []
         self.collection_operation = None
         self.collection_lock = threading.Lock()
@@ -295,12 +335,13 @@ class GuestBridge:
         self.coordinator_attempt = None
         self.evidence_replies = 0
         self.evidence_lock = threading.Lock()
+        self.inspection_context = threading.local()
 
     def serve(self, name, handler):
         server = socket.socket(socket.AF_UNIX)
         server.bind(str(OUTPUT / name))
         os.chmod(OUTPUT / name, 0o600)
-        server.listen(16)
+        server.listen(64 if self.students == 16 else 16)
         server.settimeout(.5)
         def accept():
             try:
@@ -318,6 +359,25 @@ class GuestBridge:
                             handler(client)
                         except (OSError, ValueError, AssertionError, RuntimeError, queue.Full, subprocess.SubprocessError) as error:
                             print('BROWSER_BRIDGE_REFUSAL ' + name + ':' + type(error).__name__, flush=True)
+                            if name == 'inspect.sock':
+                                # Preserve the failing CODE boundary before the
+                                # browser receives refusal and closes its panes.
+                                # No exception message, locals, credentials,
+                                # account names or unrelated history is recorded.
+                                receipt = {'stage': name, 'error': type(error).__name__,
+                                           'trace': ''.join(traceback.format_tb(error.__traceback__, limit=8))}
+                                receipt['context'] = getattr(self.inspection_context, 'current', {})
+                                try:
+                                    state = private_json(Path(self.config['state']) / 'state.json', atomic_snapshot=True)
+                                    rows = [a for a in state['attempts'].values() if a.get('exam') == 'native-browser' and a.get('state') in ('PREPARING', 'ACTIVE', 'LOCKED')]
+                                    receipt['synthetic_states'] = {kind: sum(a['state'] == kind for a in rows) for kind in ('PREPARING', 'ACTIVE', 'LOCKED')}
+                                    receipt['synthetic_holds'] = {kind: sum((a.get('monitoring_hold_kind') or 'unset') == kind for a in rows) for kind in ('unset', 'technical', 'policy')}
+                                except (OSError, ValueError, KeyError, AssertionError, RuntimeError):
+                                    receipt['state_unavailable'] = True
+                                try:
+                                    fd = os.open(OUTPUT / 'inspect-refusal.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                                    with os.fdopen(fd, 'w') as output: json.dump(receipt, output)
+                                except OSError: pass # Never replace first evidence or hide the RPC refusal.
                             # Retain the refusal stage without exception text,
                             # terminal bytes or credentials. SSH uses plain EOF.
                             if name != 'ssh.sock':
@@ -332,7 +392,9 @@ class GuestBridge:
                     threading.Thread(target=run, daemon=True).start()
             finally:
                 server.close()
-        threading.Thread(target=accept, daemon=True).start()
+        thread = threading.Thread(target=accept, daemon=True)
+        thread.start()
+        return thread
 
     def ssh(self, client):
         with socket.create_connection(('127.0.0.1', 22), timeout=5) as upstream:
@@ -352,32 +414,40 @@ class GuestBridge:
             send(stream, result['reply'])
 
     def gateway(self, client):
-        # One bounded connection per request, reused by a fixed local worker pool.
+        # Four bounded host links, one outstanding request/reply per link. Keep
+        # the authenticated SSH transport instead of launching it for each proof.
         with client.makefile('rwb', buffering=0) as stream:
-            try:
-                request, completed, result = self.requests.get(timeout=4)
-            except queue.Empty:
-                send(stream, {'idle': True})
-                return
-            send(stream, request)
-            reply = line(stream)
-            if not completed.is_set():
-                result['reply'] = reply
-                completed.set()
+            while not self.done.is_set():
+                try:
+                    request, completed, result = self.requests.get(timeout=4)
+                except queue.Empty:
+                    if self.done.is_set(): return
+                    send(stream, {'idle': True})
+                    continue
+                send(stream, request)
+                reply = line(stream)
+                if not completed.is_set():
+                    result['reply'] = reply
+                    completed.set()
 
     def snapshot(self, attempt_id):
         assert re.fullmatch(r'[a-f0-9-]{36}', attempt_id)
-        state = private_json(Path(self.config['state']) / 'state.json')
+        self.inspection_context.current = {'attempt': attempt_id}
+        state = private_json(Path(self.config['state']) / 'state.json', atomic_snapshot=True)
         attempt = state['attempts'][attempt_id]
         assert attempt['exam'] == 'native-browser' and attempt['username'] in fixture_accounts(self.students)
-        assert attempt['uid'] == pwd.getpwnam(attempt['username']).pw_uid
+        expected_uid = pwd.getpwnam(attempt['username']).pw_uid
+        self.inspection_context.current.update(recorded_uid=attempt['uid'], expected_uid=expected_uid)
+        assert attempt['uid'] == expected_uid
         supervisor, kernel = None, []
         if attempt.get('terminal_supervised') and attempt['state'] in ('ACTIVE', 'LOCKED'):
             try:
                 supervisor = json.loads(root_command('examctl', 'panes', 'supervisor', attempt_id))
             except subprocess.CalledProcessError as error:
                 supervisor = {'unavailable': True, 'exit': error.returncode}
-            for unit in supervisor.get('attached_units', []):
+            observed_units = supervisor.get('attached_units', [])
+            self.inspection_context.current.update(unit_count=len(observed_units), unit_hashes=[hashlib.sha256(unit.encode()).hexdigest() for unit in observed_units[:8]])
+            for unit in observed_units:
                 events = scope_directory(attempt_id, unit) / 'cgroup.events'
                 kernel.append(dict(unit=unit, **dict(row.split() for row in events.read_text().splitlines())))
         editor = Path(self.config['work']) / attempt_id / 'work/browser-editor.txt'
@@ -478,7 +548,7 @@ class GuestBridge:
                                    stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=135)
                 until = time.monotonic() + 135
                 while True:
-                    state = private_json(Path(self.config['state']) / 'state.json')
+                    state = private_json(Path(self.config['state']) / 'state.json', atomic_snapshot=True)
                     if all(state['attempts'][attempt]['state'] == 'COMPLETED' and state['attempts'][attempt]['protected'] for attempt in ids):
                         break
                     assert time.monotonic() < until, 'Large collection retry did not complete'
@@ -505,7 +575,9 @@ class GuestBridge:
                     attempt = self.snapshot(request['attempt'])['attempt']
                     assert attempt['username'] == 'examq' and attempt['state'] == 'ACTIVE'
                     assert self.coordinator_fault is None and self.gate_fault is None
-                    self.coordinator_fault = CoordinatorOutage()
+                    both = request.get('all_proof_paths', False)
+                    assert type(both) is bool
+                    self.coordinator_fault = CoordinatorOutage(all_proof_paths=both)
                     self.coordinator_attempt = request['attempt']
                 assert self.coordinator_fault is not None and self.coordinator_attempt == request['attempt']
                 if request['coordinator'] == 'restore': self.coordinator_fault.cancel()
@@ -636,7 +708,12 @@ def run_guest(config, prepare_roles):
     if not bridge.done.wait(780 if bridge.large else 540):
         raise TimeoutError('Actual browser/native qualification did not finish')
     if bridge.gate_fault is not None: bridge.gate_fault.cancel()
-    if bridge.coordinator_fault is not None: bridge.coordinator_fault.cancel()
+    if bridge.coordinator_fault is not None:
+        receipt = OUTPUT / 'coordinator-fault.json'
+        with receipt.open('x') as stream:
+            os.chmod(receipt, 0o600)
+            json.dump(bridge.coordinator_fault.status(), stream)
+        bridge.coordinator_fault.cancel()
     if bridge.failures:
         raise RuntimeError(bridge.failures[0])
     print('BROWSER_NATIVE_PROTECTED_FINISH_OK', flush=True)
@@ -667,7 +744,7 @@ def host_bridge(stage, mode):
         client.settimeout(6)
         client.connect(str(target))
         # Stdio uses separate fds. Do not buffer or interpret SSH bytes.
-        deadline = time.monotonic() + ((900 if marker.get('browser_large') else 600) if mode == 'ssh' else 8)
+        deadline = time.monotonic() + ((900 if marker.get('browser_large') else 600) if mode in ('ssh', 'gateway') else 8)
         while time.monotonic() < deadline:
             ready, _, _ = select.select((sys.stdin.buffer, client), (), (), .5)
             for source in ready:

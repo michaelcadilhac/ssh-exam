@@ -8,6 +8,15 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October25 a further confirmed Begin race is reproduced/fixed in focused local
+interfaces: signed ACTIVE callbacks arriving before the original activation reply
+were falsely classified as a lost acknowledgement, causing a pause/generation
+change. The fix distinguishes the current in-flight Begin without suppressing
+real locks or failed-reply reconciliation. Three signed-callback/student-HTTP/SSH
+regressions, full612 application checks/build/types and actual16/64 large/crash/
+retry/export qualification pass. All16 finish protected/original90min/HELD/gen0.
+No clock, allowance, hold or production change. See docs/begin-callback-ordering.md.
+
 October25 capacity qualification uncovered a confirmed callback bug: valid native
 health with an omitted empty account map blocked ordered completion updates,
 despite all16 submissions being protected natively. The receiver correction and
@@ -38,6 +47,31 @@ command-stall run passes on that new exact driver too. Continuous availability
 through coordinator loss and complete coverage/gap acceptance remain. No deployment.
 Evidence: docs/retained-gateway-restart.md, docs/retained-native-command-stall.md
 and docs/retained-coordinator-loss.md.
+
+The next native candidate now supplies the existing authenticated evidence path
+from the watchdog as well as the coordinator. Newly built actual-root cases
+preserve ACTIVE work/SSH/editor buffers through coordinator-only loss; loss of
+BOTH proof roles positively freezes before restoration, retains a technical hold
+despite fresh captures, then recovers through reviewed Continue. Full native
+races/builds and42 root workflows pass on the new native image. After reproduced
+private relay fixes and the status-scheduler correction below, normal16/64
+requalification now passes with all16 protected in web/native, no unexpected
+holds/errors and unchanged clocks/generations. The same-image large/fatal-worker
+repeat also passes after the gateway Begin-ordering fix above; eight127MiB files
+verify through protected exports with14 healthy peers. Earlier failures remain
+recorded. No broad liveness/retained-SSH
+checkbox is closed. Installed admission stays OFF and nothing is deployed.
+Exact scope/failures: docs/watchdog-monitoring-evidence.md.
+
+Requalification also reproduced a native status-delivery bug: healthy/idle callback
+passes incorrectly increased retry backoff, up to32s between bounded20-event
+batches. The actual watchdog/signed-TLS regression fails20/21 after idle, then
+passes with healthy delivery kept prompt and1–30s backoff restricted to errors.
+Protected collection, deadlines and the acceptance wait are unchanged. Fresh
+scheduler binaries pass full native races/build/vet, guarded-root42 cases,
+coordinator-continuity, both-proof-gap and normal16/64 qualification. The
+large/fatal-worker repeat now also passes with the gateway Begin-ordering fix.
+Earlier-image receipts do not qualify this latest change. No deployment.
 
 October25 gateway routing now survives actual process replacement locally through
 current-page and signed native owner verification, retaining the same SSH/private

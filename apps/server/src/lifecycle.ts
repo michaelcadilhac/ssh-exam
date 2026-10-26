@@ -78,6 +78,9 @@ function unexpectedOmissions(manifest: {
 export class Lifecycle {
   alerts: Alerts;
   private busy = new Set<string>();
+  // The student Begin route owns this bounded in-flight dispatch. It is neither
+  // a durable start nor execution authority; restart/failure uses reconciliation.
+  readonly activationPending = new Set<string>();
   onEnd = (_attempt: Attempt) => {};
   onSecured = (_attempt: Attempt) => {};
   onPaused = (_attempt: Attempt) => {};
@@ -580,7 +583,14 @@ export class Lifecycle {
           String(a.generation),
         );
     }
-    if (remote.start && a.start === null) {
+    if (
+      remote.start &&
+      a.start === null &&
+      !(
+        this.activationPending.has(id) &&
+        ["ACTIVE", "ACTIVATING"].includes(remote.state)
+      )
+    ) {
       this.store.db
         .prepare(
           "UPDATE attempts SET start=?,deadline=?,original_deadline=?,clock_revision=?,clock_resets=?,work_path=? WHERE id=?",

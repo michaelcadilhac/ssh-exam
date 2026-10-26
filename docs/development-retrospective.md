@@ -371,3 +371,17 @@ These failures cost avoidable long reruns. Reusing an existing fixture requires
 checking its lifetime across the ENTIRE selected run, its authentication/CSRF flow
 and its durable publisher files before adding another episode. Adding more private
 helpers or relaxing guards would not solve this process error.
+
+October25 independent-watchdog qualification repeated that pattern in the test
+transport. A sealed-file reader rejected an opened state inode unlinked by normal
+atomic replacement; the HTTP wrapper hid its refusal behind a schema error. New
+code-location receipts and a real open/replace regression exposed it. Two proof
+roles then exceeded the fixture's old16-entry queue; a direct32-request Unix burst
+proves that boundary. Increasing SSH workers before measuring the transport was
+unjustified and the next run lost a tunnel whose stderr had been discarded. Its
+cause remains unknown. Restore bounded churn, retain exact exit diagnostics and
+isolate a further failure before another broad run. Read ALL error adapters as
+well as successful wire producers before qualification. Existing AGENTS already
+requires those steps; adding more instructions is no substitute for following
+them. These are private-fixture corrections, not evidence that the production
+incident is explained or that the broader liveness feature is complete.

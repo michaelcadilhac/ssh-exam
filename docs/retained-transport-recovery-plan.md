@@ -1,6 +1,6 @@
 # Retained mode after genuine SSH loss
 
-October25,2026. Investigation and pending policy decision, NOT a delivered
+October25,2026. Investigation under the already-approved C7 policy, NOT a delivered
 replacement workflow. Baseline ad828f5; local work only, no deployment. Installed
 retained admission stays OFF.
 
@@ -23,7 +23,7 @@ Logs retained-replacement-{legacy,owner}-focus.log. This is a refusal safety fix
 not implementation of fresh-transport recovery. Native source has changed: do
 not attribute ad828f5's frozen binary/root receipts to a rebuilt candidate.
 
-## Why the complete flow needs a choice
+## Approved recovery and remaining workflow
 
 The existing gateway Continue selects consume-monitored-continuation for v1.
 Native resumeMonitored requires the original registered page and supervisor's
@@ -31,31 +31,30 @@ existing held ownership. The legacy claim changes the page and transport without
 a monitored ownership transition. Merely reusing that path would either refuse
 or leave inconsistent identity; it must never downgrade to an unmonitored thaw.
 
-One policy dialog is pending; it asks about GENUINE transport loss, not latency:
+The repeated policy dialog was unnecessary. C7 already authorizes securing the
+original work and issuing a reviewed NEW saved-work grant with an allowance and
+finite Begin window chosen by the instructor. In the clarification the instructor
+correctly observed that this can also choose the old remaining allowance. New
+time begins only at actual Begin; the old interval/restriction/history remains.
+No automatic refund, reopening or account-hold release. Use existing CLI/web
+issuance, durable source retention and protected-copy semantics; do not add a
+second original-attempt ownership-transfer protocol as an unrequested prerequisite.
 
-- Recommended, consistent with the approved crash-recovery grant model: secure
-  the original work and issue an explicitly reviewed NEW saved-work grant with
-  the instructor's chosen allowance and finite Begin window. Preserve the old
-  interval/restriction/history. No automatic refund or reopening. Existing
-  CLI/web issuance, source pin and protected-copy semantics provide this model.
-- Alternatively support remaining time on the original unfinished attempt using
-  NEW authenticated SSH, current scoped approval and fresh native verification.
-  Preserve its current deadline and consumed grant. This needs a distinct native
-  ownership-transfer protocol and failure/retry qualification; old terminal
-  buffers may be lost. Completed/protected attempts never reopen.
-
-Neither approval is inferred from elapsed time. Both choices continue to preserve
-viable SSH through mere control outages. A whole-gateway restart while the actual
+Approval is never inferred from elapsed time. Preserve viable SSH through mere
+control outages. A whole-gateway restart while the actual
 SSH transport is still alive is a separate same-session recovery case: fresh
 signed scope verification is required; no cached disk metadata is permission.
 
-## Immediate plan while awaiting the decision
+## Integrated acceptance still required
 
-Finish the narrow refusal increment and preserve its reproduction/legacy tests.
-Do independent already-approved TODO work while the question remains pending.
-Do not implement either consequential policy by default or call this investigation
-complete. The native legacy migration/retirement and dashboard/CLI work are
-independent; scope the next one from todo-delivery-audit.md and actual code.
+The narrow inconsistent-identity refusal is implemented; preserve its regression
+and legacy behavior. Join actual genuine SSH-loss containment, original work
+protection and existing reviewed saved-work issuance/Begin through supported
+web AND CLI guidance. Do not offer an original-attempt reconnect that native v1
+deliberately refuses. A saved archive may be required before a new source grant
+becomes usable; failed collection remains inspectable/retryable, never starter
+fallback. This is integration of approved policy, not a pending design decision.
+It does not itself close ownership/cleanup or the broader liveness investigation.
 
 For the eventual combined qualification, join existing real WASM/HTTP/SSH/native
 interfaces for ONE synthetic student before scaling to16/64. Preserve the current

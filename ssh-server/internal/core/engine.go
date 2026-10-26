@@ -884,6 +884,7 @@ func (e *Engine) Cutoff() error {
 func (e *Engine) Watch() {
 	stopObserver := make(chan struct{})
 	defer close(stopObserver)
+	go e.watchTerminalMonitoring(stopObserver)
 	go func() {
 		closeObserver, err := e.startWatchdogRoleObserver()
 		if err != nil {
@@ -898,7 +899,8 @@ func (e *Engine) Watch() {
 	policy := make(chan struct{}, 1)
 	running := make(chan struct{}, 1)
 	timing := make(chan struct{}, 1)
-	delivery := make(chan struct{}, 1)
+	delivery := make(chan error, 1)
+	deliveryRunning := false
 	nextDelivery := time.Time{}
 	backoff := time.Second
 	for range ticker.C {
@@ -923,22 +925,23 @@ func (e *Engine) Watch() {
 			}()
 		default:
 		}
-		if !time.Now().Before(nextDelivery) {
-			select {
-			case delivery <- struct{}{}:
-				go func() {
-					defer func() { <-delivery }()
-					if err := e.DeliverCallbacks(); err != nil {
-						log.Printf("agent callback delivery pending: %v", err)
-					}
-				}()
-				// Delivery is attempted only for pending data; no idle HTTP request is made.
+		select {
+		case err := <-delivery:
+			deliveryRunning = false
+			if err != nil {
+				log.Printf("agent callback delivery pending: %v", err)
 				nextDelivery = time.Now().Add(backoff)
-				if backoff < 30*time.Second {
-					backoff *= 2
-				}
-			default:
+				backoff = min(backoff*2, 30*time.Second)
+			} else {
+				// Healthy/idle passes never slow newly queued status. Each pass
+				// remains bounded at20 events; idle makes no HTTP request.
+				nextDelivery, backoff = time.Time{}, time.Second
 			}
+		default:
+		}
+		if !deliveryRunning && !time.Now().Before(nextDelivery) {
+			deliveryRunning = true
+			go func() { delivery <- e.DeliverCallbacks() }()
 		}
 		if err := e.Cutoff(); err != nil {
 			log.Printf("independent deadline cutoff failed: %v", err)

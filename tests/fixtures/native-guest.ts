@@ -11,16 +11,18 @@ type NativeBridgeRequest = {
   headers: Record<string, string>;
   body: string;
 };
-// Runtime caller below: one private SSH link carries one request/idle record,
-// optionally followed by an explicit refusal. Pipe chunks are NOT JSON frames.
+// Runtime caller below reuses a private SSH link, with one request/reply in flight.
+// Pipe chunks are NOT JSON frames. Default one-shot mode retains its strict oracle.
 export function readNativeBridgeRequest(
   stream: Readable,
-  request: (value: NativeBridgeRequest) => void,
+  request: (value: NativeBridgeRequest) => void | Promise<void>,
   refused: () => void,
+  persistent = false,
 ) {
   const decoder = new StringDecoder("utf8");
   let raw = "",
     seen = false,
+    pending = false,
     stopped = false;
   const fail = () => {
     if (!stopped) {
@@ -46,7 +48,7 @@ export function readNativeBridgeRequest(
         fail();
         return;
       }
-      if (value?.bridge_error || seen) {
+      if (value?.bridge_error || (seen && !persistent) || pending) {
         fail();
         return;
       }
@@ -65,7 +67,14 @@ export function readNativeBridgeRequest(
         fail();
         return;
       }
-      request(value);
+      pending = persistent;
+      try {
+        Promise.resolve(request(value)).then(() => {
+          pending = false;
+        }, fail);
+      } catch {
+        fail();
+      }
     }
   });
   stream.once("end", () => {
@@ -106,6 +115,8 @@ export async function nativeGuest(
     throw Error("An exact private native-browser test bundle is required");
   let stage = "",
     stopping = false,
+    hostTunnelExits = 0,
+    gatewayFailures = 0,
     runner: ChildProcess | undefined;
   const processes = new Set<ChildProcess>();
   const logfile = local + "/native-root.log";
@@ -181,12 +192,28 @@ export async function nativeGuest(
       return;
     }
     const child = bridge("ssh");
+    let errors = "",
+      socketClosed = false;
     socket.pipe(child.stdin!);
     child.stdout!.pipe(socket);
-    child.stderr!.on("data", () => {});
+    child.stderr!.on("data", (data) => {
+      errors = (errors + String(data)).slice(-2048);
+    });
     child.on("error", () => socket.destroy());
-    child.once("close", () => socket.destroy());
-    socket.once("close", () => child.kill("SIGTERM"));
+    child.once("close", (code, signal) => {
+      if (!stopping && !socketClosed && hostTunnelExits++ < 32)
+        appendFileSync(
+          local + "/host-ssh-bridge-failures.jsonl",
+          JSON.stringify({ stage: "host-tunnel-exit", code, signal, errors }) +
+            "\n",
+          { mode: 0o600 },
+        );
+      socket.destroy();
+    });
+    socket.once("close", () => {
+      socketClosed = true;
+      child.kill("SIGTERM");
+    });
     socket.on("error", () => {});
   });
   await new Promise<void>((resolve, reject) => {
@@ -284,57 +311,72 @@ export async function nativeGuest(
           const child = bridge("gateway");
           const controller = new AbortController();
           child.once("close", () => controller.abort());
-          child.stderr!.on("data", () => {});
+          let errors = "";
+          child.stderr!.on("data", (data) => {
+            errors = (errors + String(data)).slice(-2048);
+          });
+          child.once("close", (code, signal) => {
+            if (!stopping && code !== 0 && gatewayFailures++ < 32)
+              appendFileSync(
+                local + "/gateway-bridge-failures.jsonl",
+                JSON.stringify({
+                  stage: "gateway-host-tunnel-exit",
+                  code,
+                  signal,
+                  errors,
+                }) + "\n",
+                { mode: 0o600 },
+              );
+          });
           readNativeBridgeRequest(
             child.stdout!,
-            (request) => {
-              void (async () => {
-                try {
-                  if (!/^\/api\/agent\/[a-z-]+$/.test(request.path))
-                    throw Error("Invalid private callback path");
-                  const headers = new Headers(request.headers);
-                  headers.delete("connection");
-                  headers.delete("host");
-                  headers.delete("content-length");
-                  const response = await fetch(
-                    "http://127.0.0.1:3100" + request.path,
-                    {
-                      method: "POST",
-                      headers,
-                      body: Buffer.from(request.body, "base64"),
-                      signal: AbortSignal.any([
-                        controller.signal,
-                        AbortSignal.timeout(2500),
-                      ]),
-                    },
+            async (request) => {
+              try {
+                if (!/^\/api\/agent\/[a-z-]+$/.test(request.path))
+                  throw Error("Invalid private callback path");
+                const headers = new Headers(request.headers);
+                headers.delete("connection");
+                headers.delete("host");
+                headers.delete("content-length");
+                const response = await fetch(
+                  "http://127.0.0.1:3100" + request.path,
+                  {
+                    method: "POST",
+                    headers,
+                    body: Buffer.from(request.body, "base64"),
+                    signal: AbortSignal.any([
+                      controller.signal,
+                      AbortSignal.timeout(2500),
+                    ]),
+                  },
+                );
+                const body = Buffer.from(await response.arrayBuffer());
+                if (body.length > 524288)
+                  throw Error("Private callback reply exceeds bound");
+                if (!controller.signal.aborted)
+                  child.stdin!.write(
+                    JSON.stringify({
+                      status: response.status,
+                      body: body.toString("base64"),
+                    }) + "\n",
                   );
-                  const body = Buffer.from(await response.arrayBuffer());
-                  if (body.length > 524288)
-                    throw Error("Private callback reply exceeds bound");
-                  if (!controller.signal.aborted)
-                    child.stdin!.write(
-                      JSON.stringify({
-                        status: response.status,
-                        body: body.toString("base64"),
-                      }) + "\n",
-                    );
-                } catch {
-                  if (!controller.signal.aborted)
-                    child.stdin!.write(
-                      JSON.stringify({
-                        status: 503,
-                        body: Buffer.from(
-                          '{"error":"Private gateway unavailable"}',
-                        ).toString("base64"),
-                      }) + "\n",
-                    );
-                }
-              })();
+              } catch {
+                if (!controller.signal.aborted)
+                  child.stdin!.write(
+                    JSON.stringify({
+                      status: 503,
+                      body: Buffer.from(
+                        '{"error":"Private gateway unavailable"}',
+                      ).toString("base64"),
+                    }) + "\n",
+                  );
+              }
             },
             () => {
               controller.abort();
               child.kill("SIGTERM");
             },
+            true,
           );
           await new Promise((resolve) => {
             child.once("error", resolve);
@@ -344,15 +386,22 @@ export async function nativeGuest(
             await new Promise((resolve) => setTimeout(resolve, 25));
         }
       };
+      // Keep host SSH process churn bounded. The guest queue accommodates both
+      // proof bursts; adding per-request SSH workers is not proof of throughput.
       for (let i = 0; i < 4; i++) void worker();
     },
     async inspect(attempt: string, finish = false) {
-      return JSON.parse(
+      const value = JSON.parse(
         await collect(
           bridge("inspect"),
           JSON.stringify({ attempt, finish }) + "\n",
         ),
       );
+      if (value.bridge_error)
+        throw Error(
+          `Private attempt observation refused at ${value.stage}: ${value.bridge_error}; inspect the owned guest's inspect-refusal.json`,
+        );
+      return value;
     },
     async inspectMany(attempts: string[], finish = false) {
       if (
@@ -361,20 +410,33 @@ export async function nativeGuest(
         new Set(attempts).size !== 16
       )
         throw Error("Exact private16-attempt fleet required");
-      return JSON.parse(
+      const value = JSON.parse(
         await collect(
           bridge("inspect"),
           JSON.stringify({ attempts, finish }) + "\n",
         ),
       );
+      if (value.bridge_error)
+        throw Error(
+          `Private fleet observation refused at ${value.stage}: ${value.bridge_error}; inspect the owned guest's inspect-refusal.json`,
+        );
+      return value;
     },
-    async coordinator(attempt: string, action: "start" | "status" | "restore") {
+    async coordinator(
+      attempt: string,
+      action: "start" | "status" | "restore",
+      allProofPaths = false,
+    ) {
       if (students !== 1)
         throw Error("Private coordinator fault requires one synthetic attempt");
       const value = JSON.parse(
         await collect(
           bridge("inspect"),
-          JSON.stringify({ attempt, coordinator: action }) + "\n",
+          JSON.stringify({
+            attempt,
+            coordinator: action,
+            all_proof_paths: allProofPaths,
+          }) + "\n",
         ),
       );
       if (value.bridge_error)

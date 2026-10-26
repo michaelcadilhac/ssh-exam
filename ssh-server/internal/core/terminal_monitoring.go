@@ -1,8 +1,8 @@
 package core
 
-// Existing coordinator only: authenticated outbound evidence and a bounded
-// coalesced bridge. No private key, configuration or global Engine enters the
-// attempt supervisor. This is NOT the independent shared cutoff/writer barrier.
+// Existing coordinator/watchdog: authenticated outbound evidence and bounded
+// coalesced bridges. No private key, configuration or global Engine enters the
+// attempt supervisor. Its live authority still owns the cutoff/writer barrier.
 
 import (
 	"bytes"
@@ -12,7 +12,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -38,6 +40,63 @@ type terminalMonitoringBridge struct {
 type terminalMonitoringTarget struct {
 	owner          monitoringOwner
 	deadlineBootMS int64
+}
+
+// Actual Watch caller: discover identities outside its deadline/policy/state
+// work. A saved owner selects a challenge target; only the live supervisor and
+// freshly signed complete evidence can establish any execution permission.
+func (e *Engine) watchTerminalMonitoring(stop <-chan struct{}) {
+	// Cache the existing role's credential before later disk stalls/removal.
+	// Failure cannot block the independent cutoff loop or grant permission.
+	_ = e.prepareTerminalMonitoring()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	nextLog := time.Time{}
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			if err := e.syncTerminalMonitoringTargets(); err != nil && !time.Now().Before(nextLog) {
+				log.Printf("watchdog monitoring bridge unavailable; existing live cutoffs remain authoritative: %v", err)
+				nextLog = time.Now().Add(30 * time.Second)
+			}
+		}
+	}
+}
+
+func (e *Engine) syncTerminalMonitoringTargets() error {
+	state, err := readStateSnapshot(e.Config.State)
+	if os.IsNotExist(err) {
+		return nil // Absence never constructs authority or retires a live peer.
+	}
+	if err != nil {
+		return err
+	}
+	wanted := map[string]terminalMonitoringTarget{}
+	for id, a := range state.Attempts {
+		if a == nil || a.ID != id || a.State != "ACTIVE" || a.MonitoringMode != "v1" || a.RetainedHold != "" || a.Start <= 0 || !currentRegisteredOwner(a) || expired(a) {
+			continue
+		}
+		wanted[id] = terminalMonitoringTarget{owner: *a.RegisteredOwner, deadlineBootMS: int64(a.UptimeDeadline * 1000)}
+	}
+	if len(wanted) > 0 {
+		if err := e.prepareTerminalMonitoring(); err != nil {
+			return err
+		}
+	}
+	b := &e.terminalMonitoring
+	b.mu.Lock()
+	for id := range b.targets {
+		if _, current := wanted[id]; !current {
+			delete(b.targets, id)
+		}
+	}
+	b.mu.Unlock()
+	for id, target := range wanted {
+		e.registerTerminalMonitoring(id, target.owner, target.deadlineBootMS)
+	}
+	return nil
 }
 
 func (e *Engine) prepareTerminalMonitoring() error {

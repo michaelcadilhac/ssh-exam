@@ -277,6 +277,37 @@ an ongoing containment/monitoring outage or creating student-violation emails.
 
 ## Future rollout, migration and rollback proposal
 
+October25 finite remaining integration, under the already-approved C9 policy:
+the native authority currently makes expiry sticky, and the gateway's live-owner
+projection excludes an ordinary technical LOCKED attempt. Thus complete monitoring
+facts cannot yet authorize automatic recovery after a verified technical hold.
+This is a concrete runtime gap, not a new policy question or another authority
+process to build. Current coordinator-only continuity and both-path safe-gap tests
+qualify narrower outcomes; the installed admission guard remains OFF.
+
+The next bounded student outcome is: complete challenged monitoring and the same
+authenticated SSH survive a delayed proof path; native cutoff positively freezes
+writers/input; fresh authenticated verification of the ENTIRE uninterrupted
+monitoring history restores the same shells automatically at the original
+deadline. Reuse the existing attempt supervisor and verified hold/Continue barrier.
+Preserve observation age, coverage identity, owner/clock/source and input-epoch
+fences; do not manufacture new facts from metadata. Keep the original live
+monitoring observations through a purely technical hold without permitting work.
+Any actual policy loss, unknown/gapped history, changed owner, supervisor restart,
+deadline/completion, recording fault or failed containment retains the appropriate
+hold/review or C7 new-attempt workflow. A successful current capture cannot erase
+any such earlier fault. No refunds, reopening, credential replay or new process.
+
+Acceptance must first reproduce the missing recovery through actual student
+Begin/held panes and signed native exchanges, then exercise automatic resume versus
+an intentionally missing coverage interval, genuine negative, stale/replayed reply,
+clock/deadline and restart/cancellation races. Both safety and availability must
+reach the student UI and existing examctl/web inspection. Complete the state/
+crash/expiry/stale-completion review before rebuilding native artifacts; focused
+completion precedes risk-appropriate full qualification. This is the next milestone
+after the current watchdog/callback/Begin-ordering candidate, not permission to
+keep extending that candidate indefinitely.
+
 No deployment is authorized. Before a separately authorized maintenance window,
 finish H1–H5 and operator/design docs, back up native/gateway state and protected
 archive identities, and validate a versioned capability handshake across browser,
