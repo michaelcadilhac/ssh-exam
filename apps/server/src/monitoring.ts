@@ -32,6 +32,9 @@ import {
   monitoringOwner,
   nativeMonitoringChallenge,
   nativeMonitoringContinuation,
+  nativeTechnicalContinuation,
+  nativeTechnicalPoll,
+  nativeTechnicalResult,
   type MonitoringOwner,
   type MonitoringBootstrap,
 } from "../../../packages/protocol/monitoring-evidence.js";
@@ -62,8 +65,171 @@ export class Monitoring {
       settings: string;
       binding: MonitoringEvidenceBinding;
       tickets: Map<string, { challenge: string; accepted: boolean }>;
+      technicalAcceptedNonce: string | undefined;
     }
   >();
+  private technicalProposals = new Map<
+    string,
+    {
+      request: string;
+      settings: string;
+      grant: string | null;
+      intent: string | null;
+      authorization: string;
+      until: number;
+      deadline: number;
+      reply: {
+        type: "monitoring-technical-continue/v1";
+        audience: string;
+        nonce: string;
+        previous_owner: MonitoringOwner;
+        owner: MonitoringOwner;
+        authorization_expires: number;
+        expires: number;
+        capture_valid_for_ms: number;
+        bootstrap: Omit<MonitoringBootstrap, "sequence"> & { sequence: number };
+      };
+    }
+  >();
+  private technicalRequests = new Map<
+    string,
+    {
+      a: Attempt;
+      nonce: string;
+      started: number;
+      resolve: (value: any) => void;
+      cancel: () => void;
+    }
+  >();
+  requestTechnicalRecovery(a: Attempt) {
+    if (this.technicalRequests.has(a.id) || this.technicalRequests.size >= 512)
+      throw new MonitoringEvidenceUnavailable("capacity");
+    let cancel!: () => void;
+    const nonce = randomBytes(32).toString("hex");
+    const promise = new Promise<any>((resolve, reject) => {
+      const timer = setTimeout(() => cancel(), 8000);
+      const finish = () => {
+        clearTimeout(timer);
+        if (this.technicalRequests.get(a.id)?.nonce === nonce)
+          this.technicalRequests.delete(a.id);
+      };
+      cancel = () => {
+        finish();
+        reject(new MonitoringEvidenceUnavailable("technical-gap"));
+      };
+      this.technicalRequests.set(a.id, {
+        a,
+        nonce,
+        started: monitoringBootTimeMS(),
+        cancel,
+        resolve: (value) => {
+          finish();
+          resolve(value);
+        },
+      });
+    });
+    return { promise, cancel };
+  }
+  closeTechnicalRecovery() {
+    for (const pending of this.technicalRequests.values()) pending.cancel();
+  }
+  private currentTechnicalRequest(id: string) {
+    const pending = this.technicalRequests.get(id),
+      a = this.store.attempt(id);
+    if (
+      !pending ||
+      !a ||
+      !["LOCKED", "ACTIVE"].includes(a.state) ||
+      a.generation !== pending.a.generation ||
+      a.page_hash !== pending.a.page_hash ||
+      a.clock_revision !== pending.a.clock_revision ||
+      a.settings !== pending.a.settings ||
+      a.protected ||
+      a.checksum ||
+      a.start !== pending.a.start ||
+      a.original_deadline !== pending.a.original_deadline ||
+      a.grant_hash !== pending.a.grant_hash ||
+      a.grant_begin_intent !== pending.a.grant_begin_intent ||
+      !a.deadline ||
+      a.deadline <= now() ||
+      a.deadline !== pending.a.deadline ||
+      monitoringBootTimeMS() - pending.started >= 8000
+    )
+      throw new MonitoringEvidenceUnavailable("ownership");
+    return { pending, a };
+  }
+  pollTechnicalRecovery(input: unknown, agent: string) {
+    const request = nativeTechnicalPoll.parse(input),
+      { a, pending } = this.currentTechnicalRequest(request.owner.attempt);
+    if (
+      request.agent !== agent ||
+      request.generation !== a.generation ||
+      request.owner.generation > a.generation ||
+      request.owner.clock_revision !== a.clock_revision ||
+      request.owner.page_epoch !== a.page_hash ||
+      request.owner.exam !== a.exam ||
+      request.owner.username !== a.username ||
+      request.owner.uid !== a.uid
+    )
+      throw new MonitoringEvidenceUnavailable("ownership");
+    return {
+      type: "monitoring-technical-poll/v1",
+      audience: agent,
+      nonce: request.nonce,
+      request_nonce: pending.nonce,
+    };
+  }
+  completeTechnicalRecovery(input: unknown, agent: string) {
+    const request = nativeTechnicalResult.parse(input),
+      result = request.result,
+      { pending, a } = this.currentTechnicalRequest(result.attempt.id),
+      proposal = this.technicalProposals.get(
+        result.attempt.monitoring_resume_nonce,
+      ),
+      entry = this.live.get(a.id),
+      evidence = entry && this.liveLedger.inspect(entry.binding);
+    if (
+      request.agent !== agent ||
+      request.request_nonce !== pending.nonce ||
+      !proposal ||
+      proposal.settings !== a.settings ||
+      proposal.grant !== a.grant_hash ||
+      proposal.intent !== a.grant_begin_intent ||
+      (JSON.stringify(proposal.reply.previous_owner) !==
+        pending.a.registered_owner &&
+        !(
+          JSON.stringify(proposal.reply.owner) === pending.a.registered_owner &&
+          pending.a.native_resume_kind === "technical" &&
+          pending.a.native_resume_nonce ===
+            result.attempt.monitoring_resume_nonce
+        )) ||
+      JSON.stringify(result.attempt.registered_owner) !==
+        JSON.stringify(proposal.reply.owner) ||
+      proposal.reply.owner.generation !== a.generation ||
+      proposal.reply.owner.clock_revision !== a.clock_revision ||
+      !evidence ||
+      evidence.state !== "fresh" ||
+      evidence.gaps !== 0 ||
+      evidence.coverageEpoch !== proposal.reply.bootstrap.coverage_epoch ||
+      monitoringBootTimeMS() - pending.started >= result.monitoring_remaining_ms
+    )
+      throw new MonitoringEvidenceUnavailable("technical-gap");
+    pending.resolve(result);
+    return {
+      type: "monitoring-technical-result/v1",
+      audience: agent,
+      request_nonce: pending.nonce,
+    };
+  }
+  technicalCandidate(a: Attempt) {
+    return (
+      a.monitoring_mode === "v1" &&
+      a.state === "LOCKED" &&
+      (a.monitoring_hold_kind === "technical" ||
+        (a.native_resume_kind === "technical" &&
+          nativeContinuationOutcomeRecorded(a)))
+    );
+  }
   private currentLiveOwner(a: Attempt, page: string) {
     const nativePendingAcknowledgment =
       a.state === "LOCKED" &&
@@ -74,7 +240,9 @@ export class Monitoring {
         )
         .get(a.id, a.generation);
     if (
-      (a.state !== "ACTIVE" && !nativePendingAcknowledgment) ||
+      (a.state !== "ACTIVE" &&
+        !nativePendingAcknowledgment &&
+        !this.technicalCandidate(a)) ||
       !a.registered_owner ||
       !a.start ||
       !a.deadline ||
@@ -92,13 +260,33 @@ export class Monitoring {
     }
     const result = monitoringOwner.safeParse(raw);
     if (!result.success) return undefined;
-    const owner = result.data;
+    let owner = result.data;
+    const observed = this.live.get(a.id),
+      accepted =
+        observed?.technicalAcceptedNonce &&
+        this.technicalProposals.get(observed.technicalAcceptedNonce);
+    if (
+      this.technicalCandidate(a) &&
+      observed?.settings === a.settings &&
+      accepted &&
+      accepted.settings === a.settings &&
+      accepted.grant === a.grant_hash &&
+      accepted.intent === a.grant_begin_intent &&
+      observed.owner === JSON.stringify(accepted.reply.owner) &&
+      JSON.stringify(owner) === JSON.stringify(accepted.reply.previous_owner)
+    ) {
+      // An authenticated live held-actor witness already accepted this seed.
+      // Keep observing that owner while canonical completion is still pending;
+      // this projection conveys no execution permission or new sample age.
+      owner = accepted.reply.owner;
+    }
     return owner.attempt === a.id &&
       owner.exam === a.exam &&
       owner.username === a.username &&
       owner.uid === a.uid &&
       owner.page_epoch === page &&
-      owner.generation === a.generation &&
+      (owner.generation === a.generation ||
+        (this.technicalCandidate(a) && owner.generation < a.generation)) &&
       owner.clock_revision === a.clock_revision
       ? owner
       : undefined;
@@ -108,8 +296,56 @@ export class Monitoring {
     if (!owner) return undefined;
     const encoded = JSON.stringify(owner),
       previous = this.live.get(a.id);
-    if (previous?.owner === encoded && previous.settings === a.settings)
+    const pendingReview = this.pendingBegins.get(encoded),
+      reviewedReady =
+        !!pendingReview?.authorization &&
+        a.native_resume_kind === "reviewed" &&
+        nativeContinuationOutcomeRecorded(a) &&
+        pendingReview.authorization === this.continuationIdentity(a, true) &&
+        pendingReview.intent === a.grant_begin_intent &&
+        pendingReview.grant === a.grant_hash &&
+        pendingReview.snapshot.settings === a.settings &&
+        monitoringBootTimeMS() < pendingReview.until;
+    if (
+      previous?.owner === encoded &&
+      previous.settings === a.settings &&
+      !reviewedReady
+    )
       return previous;
+    if (
+      previous?.owner === encoded &&
+      previous.settings === a.settings &&
+      reviewedReady
+    ) {
+      // Explicit reviewed native completion installs its fresh cohort even if a
+      // partial C9 commit had already made this same held owner observable.
+      this.liveLedger.retire(previous.binding);
+      this.live.delete(a.id);
+    }
+    const technical =
+      a.native_resume_nonce &&
+      this.technicalProposals.get(a.native_resume_nonce);
+    if (
+      previous &&
+      previous.settings === a.settings &&
+      !this.pendingBegins.has(encoded) &&
+      a.native_resume_kind === "technical" &&
+      technical &&
+      technical.settings === a.settings &&
+      technical.grant === a.grant_hash &&
+      technical.intent === a.grant_begin_intent &&
+      JSON.stringify(technical.reply.owner) === encoded &&
+      previous.owner === JSON.stringify(technical.reply.previous_owner)
+    ) {
+      this.liveLedger.transferTechnicalOwner(previous.binding, owner, {
+        nonce: technical.reply.nonce,
+        sequence: technical.reply.bootstrap.sequence,
+        coverage: technical.reply.bootstrap.coverage_epoch,
+      });
+      previous.owner = encoded;
+      previous.technicalAcceptedNonce = technical.reply.nonce;
+      return previous;
+    }
     if (previous && previous.settings === a.settings) {
       const prior = monitoringOwner.safeParse(JSON.parse(previous.owner));
       if (
@@ -154,6 +390,7 @@ export class Monitoring {
         !!JSON.parse(a.settings).webcam,
       ),
       tickets: new Map<string, { challenge: string; accepted: boolean }>(),
+      technicalAcceptedNonce: undefined as string | undefined,
     };
     const pending = this.pendingBegins.get(encoded);
     if (pending && monitoringBootTimeMS() >= pending.until)
@@ -294,7 +531,7 @@ export class Monitoring {
     )
       throw new MonitoringEvidenceUnavailable("ownership");
     const authorization = this.continuationIdentity(a, false);
-    if (!authorization)
+    if (!authorization || this.isTechnicalAuthorization(a.id))
       throw new MonitoringEvidenceUnavailable("policy-blocked");
     const expires = (JSON.parse(authorization) as [number, number])[1],
       snapshot = this.readiness.snapshotForContinuation(
@@ -313,6 +550,184 @@ export class Monitoring {
       capture_valid_for_ms: result.remainingMS,
       bootstrap: result.bootstrap,
     };
+  }
+  private isTechnicalAuthorization(id: string) {
+    const issuance = this.store.db
+      .prepare(
+        "SELECT action,detail FROM audit WHERE target=? AND action IN ('authorize-continuation','automatic-continuation') ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(id) as { action: string; detail: string } | undefined;
+    if (issuance?.action !== "automatic-continuation") return false;
+    try {
+      return JSON.parse(issuance.detail).purpose === "technical-continuity/v1";
+    } catch {
+      return false;
+    }
+  }
+  continueTechnicalBootstrap(input: unknown, agent: string) {
+    const request = nativeTechnicalContinuation.parse(input),
+      a = this.store.attempt(request.owner.attempt),
+      owner = request.owner,
+      previous = request.previous_owner,
+      encoded = JSON.stringify(owner),
+      old = JSON.stringify(previous),
+      witnessOwner = JSON.stringify(request.continuity.owner);
+    if (
+      !a ||
+      request.agent !== agent ||
+      !this.onLivePolicyLoss ||
+      !["LOCKED", "ACTIVE"].includes(a.state) ||
+      !a.start ||
+      !a.deadline ||
+      a.deadline <= now() ||
+      !a.original_deadline ||
+      a.protected ||
+      a.checksum ||
+      !a.registered_owner ||
+      !a.grant_hash ||
+      !a.grant_begin_intent ||
+      owner.attempt !== a.id ||
+      owner.exam !== a.exam ||
+      owner.username !== a.username ||
+      owner.uid !== a.uid ||
+      owner.page_epoch !== a.page_hash ||
+      owner.generation !== a.generation ||
+      owner.generation <= previous.generation ||
+      owner.clock_revision !== a.clock_revision ||
+      owner.input_epoch === previous.input_epoch ||
+      JSON.stringify({
+        ...owner,
+        generation: previous.generation,
+        input_epoch: previous.input_epoch,
+        clock_revision: previous.clock_revision,
+      }) !== old ||
+      previous.clock_revision > owner.clock_revision ||
+      (witnessOwner !== old && witnessOwner !== encoded) ||
+      (a.registered_owner !== old &&
+        !(
+          a.registered_owner === encoded &&
+          a.native_resume_kind === "technical" &&
+          a.native_resume_nonce === request.nonce
+        )) ||
+      (a.registered_owner === old && a.monitoring_hold_kind !== "technical")
+    )
+      throw new MonitoringEvidenceUnavailable("ownership");
+    const clock = monitoringBootTimeMS();
+    for (const [nonce, proposal] of this.technicalProposals)
+      if (proposal.deadline <= now()) this.technicalProposals.delete(nonce);
+    const cached = this.technicalProposals.get(request.nonce);
+    const requestIdentity = JSON.stringify({
+      ...request,
+      continuity: undefined,
+    });
+    if (
+      cached &&
+      (cached.request !== requestIdentity ||
+        cached.settings !== a.settings ||
+        cached.grant !== a.grant_hash ||
+        cached.intent !== a.grant_begin_intent)
+    )
+      throw new MonitoringEvidenceUnavailable("conflict");
+    let entry = this.liveBinding(a, owner.page_epoch);
+    const accepted = this.technicalProposals.get(
+      request.continuity.last_accepted_nonce,
+    );
+    // A committed owner observed directly by the live supervisor can arrive
+    // before its canonical callback. Only our exact signed proposal bridges it.
+    if (
+      entry &&
+      witnessOwner === encoded &&
+      (entry.owner === old || entry.owner === encoded) &&
+      accepted &&
+      accepted.settings === a.settings &&
+      accepted.grant === a.grant_hash &&
+      accepted.intent === a.grant_begin_intent &&
+      JSON.stringify(accepted.reply.owner) === encoded &&
+      request.continuity.after_sequence === accepted.reply.bootstrap.sequence &&
+      request.continuity.coverage_epoch ===
+        accepted.reply.bootstrap.coverage_epoch
+    ) {
+      this.liveLedger.transferTechnicalOwner(entry.binding, owner, {
+        nonce: accepted.reply.nonce,
+        sequence: accepted.reply.bootstrap.sequence,
+        coverage: accepted.reply.bootstrap.coverage_epoch,
+      });
+      entry.owner = encoded;
+      entry.technicalAcceptedNonce = accepted.reply.nonce;
+    }
+    if (!entry) throw new MonitoringEvidenceUnavailable("ownership");
+    const evidence = this.liveLedger.technicalSnapshot(
+      entry.binding,
+      request.continuity,
+    );
+    if (cached) {
+      if (
+        clock >= cached.until ||
+        cached.reply.authorization_expires <= now() ||
+        cached.authorization !==
+          this.continuationIdentity(
+            a,
+            a.native_resume_nonce === request.nonce && !a.retained_hold,
+          )
+      )
+        throw new MonitoringEvidenceUnavailable("technical-gap");
+      return cached.reply; // Never refresh a nonce's original capture age/cutoff.
+    }
+    if (this.technicalProposals.size >= 512)
+      throw new MonitoringEvidenceUnavailable("capacity");
+    let authorization = this.continuationIdentity(a, false);
+    if (!authorization) {
+      const expires = Math.min(a.deadline, now() + 30000);
+      this.store.db.transaction(() => {
+        this.store.db
+          .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
+          .run(a.id, a.generation, expires);
+        this.store.interruptions.authorize(a, "monitoring", expires, true);
+        this.store.audit(
+          "monitoring",
+          "automatic-continuation",
+          a.id,
+          JSON.stringify({
+            purpose: "technical-continuity/v1",
+            nonce: request.nonce,
+            generation: a.generation,
+          }),
+        );
+      })();
+      authorization = this.continuationIdentity(a, false);
+    }
+    if (!authorization)
+      throw new MonitoringEvidenceUnavailable("policy-blocked");
+    const expires = (JSON.parse(authorization) as [number, number])[1];
+    const reply = {
+      type: "monitoring-technical-continue/v1" as const,
+      audience: agent,
+      nonce: request.nonce,
+      previous_owner: previous,
+      owner,
+      authorization_expires: expires,
+      expires: Math.min(expires, now() + 30000),
+      capture_valid_for_ms: evidence.remainingMS,
+      bootstrap: {
+        type: "monitoring-bootstrap/v1" as const,
+        control_retention: "v1" as const,
+        policy_reports: "v1" as const,
+        owner,
+        coverage_epoch: evidence.coverageEpoch,
+        sequence: evidence.sequence,
+      },
+    };
+    this.technicalProposals.set(request.nonce, {
+      request: requestIdentity,
+      authorization,
+      settings: a.settings,
+      grant: a.grant_hash,
+      intent: a.grant_begin_intent,
+      until: clock + evidence.remainingMS,
+      deadline: a.deadline,
+      reply,
+    });
+    return reply;
   }
   private captureBootstrap(
     current: Attempt,

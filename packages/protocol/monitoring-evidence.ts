@@ -74,6 +74,61 @@ export const nativeMonitoringContinuation = z
   })
   .strict();
 
+// A distinct purpose cannot consume a reviewed approval without proving the
+// original live monitoring stream. The nonce is a native memory acceptance
+// anchor, not a permission restored from storage.
+export const nativeTechnicalContinuation = nativeMonitoringContinuation
+  .extend({
+    type: z.literal("monitoring-technical-continue/v1"),
+    continuity: z
+      .object({
+        owner: monitoringOwner,
+        coverage_epoch: digest,
+        after_sequence: counter,
+        last_accepted_nonce: z.union([digest, z.literal("")]),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const nativeTechnicalPoll = z
+  .object({
+    type: z.literal("monitoring-technical-poll/v1"),
+    agent: name,
+    nonce: digest,
+    generation: counter,
+    owner: monitoringOwner,
+  })
+  .strict();
+export const nativeTechnicalResult = z
+  .object({
+    type: z.literal("monitoring-technical-result/v1"),
+    agent: name,
+    request_nonce: digest,
+    result: z
+      .object({
+        attempt: z
+          .object({
+            id: uuid,
+            state: z.literal("ACTIVE"),
+            monitoring_mode: z.literal("v1"),
+            monitoring_resume_kind: z.literal("technical"),
+            monitoring_resume_nonce: digest,
+            registered_owner: monitoringOwner,
+            retained_hold: z.literal("").optional(),
+          })
+          .passthrough(),
+        input_epochs: z.record(z.string(), digest),
+        monitoring_remaining_ms: z
+          .number()
+          .int()
+          .positive()
+          .max(MONITORING_EVIDENCE_WINDOW_MS),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const nativeMonitoringChallenge = z
   .object({
     type: z.literal("monitoring-execution-challenge-v1"),

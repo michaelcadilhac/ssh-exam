@@ -6,6 +6,7 @@ import { formatDuration } from "../../../packages/protocol/time.js";
 import {
   observeNativeMonitoring,
   nativeContinuationOutcomeRecorded,
+  retiredNativeMonitoringObservation,
 } from "./native-monitoring-state.js";
 import {
   FOCUS_GRACE_MS,
@@ -361,7 +362,11 @@ export class Lifecycle {
           );
       });
   }
-  confirmContinuation(id: string, generation: number) {
+  confirmContinuation(
+    id: string,
+    generation: number,
+    automaticTechnical = false,
+  ) {
     this.store.db.transaction(() => {
       const a = this.store.attempt(id),
         at = now();
@@ -391,8 +396,10 @@ export class Lifecycle {
       this.alerts.resolve(id, "pause-confirmation");
       this.store.interruptions.resume(a, at);
       this.store.audit(
-        a.username,
-        "resume-continuation",
+        automaticTechnical ? "monitoring" : a.username,
+        automaticTechnical
+          ? "resume-technical-continuation"
+          : "resume-continuation",
         id,
         String(generation),
       );
@@ -536,6 +543,12 @@ export class Lifecycle {
     )
       return;
     new AttemptGrants(this.store, this.agent.id).accept(remote, a);
+    if (retiredNativeMonitoringObservation(this.store.attempt(id), remote)) {
+      // Validate the signed observation's shape, then acknowledge it without
+      // replacing a newer owner, hold, approval or ACTIVE student outcome.
+      observeNativeMonitoring(this.store, this.store.attempt(id), remote);
+      return;
+    }
     // Negative, owner-bound native observation only. A delayed callback or an
     // unknown SSH lifetime cannot retire a viable current connection. Do not
     // create another policy incident through the connection's onLoss callback.

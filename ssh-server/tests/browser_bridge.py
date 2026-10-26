@@ -237,13 +237,15 @@ class GateStall:
 
 class CoordinatorOutage:
     """Bounded loss of selected proof roles in the guarded guest ONLY."""
-    def __init__(self, seconds=22.5, all_proof_paths=False):
-        assert type(all_proof_paths) is bool
+    def __init__(self, seconds=22.5, all_proof_paths=False, transport_only=False):
+        assert type(all_proof_paths) is bool and type(transport_only) is bool
+        assert not transport_only or all_proof_paths
         guest_identity()
         self.before = self.identity('exam-agent.service', 'Agent')
         self.watchdog = self.identity('exam-deadline-watchdog.service', 'Watchdog')
         self.phase, self.after, self.error = 'stopping', None, None
         self.all_proof_paths, self.watchdog_after = all_proof_paths, None
+        self.transport_only = transport_only
         self.stop = threading.Event()
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, args=(seconds,), daemon=True)
@@ -280,6 +282,17 @@ class CoordinatorOutage:
                     'all_proof_paths': self.all_proof_paths, 'error': self.error}
 
     def run(self, seconds):
+        if self.transport_only:
+            try:
+                with self.lock: self.phase = 'offline'
+                self.stop.wait(seconds)
+                after = self.restored_identity('exam-agent.service', 'Agent')
+                watchdog = self.restored_identity('exam-deadline-watchdog.service', 'Watchdog')
+                assert after == self.before and watchdog == self.watchdog, 'Proof-transport fault changed an owned role'
+                with self.lock: self.after, self.watchdog_after, self.phase = after, watchdog, 'restored'
+            except Exception as error:
+                with self.lock: self.phase, self.error = 'failed', type(error).__name__
+            return
         error = None
         stage = 'stopping-owned-roles'
         try:
@@ -316,6 +329,24 @@ class CoordinatorOutage:
         assert self.status()['phase'] == 'restored', 'Owned coordinator restore failed; preserve private evidence'
 
 
+def verify_fixture_clock(attempt):
+    """Private browser acceptance: original90min or ONE explicit90min reset."""
+    start, original = attempt['start'], attempt['original_deadline']
+    assert attempt['access_state'] == 'HELD' and original - start == 5400000
+    resets = attempt.get('clock_resets', [])
+    if not resets:
+        assert attempt.get('clock_revision', 0) == 0 and attempt['deadline'] == original
+        return
+    assert len(resets) == 1 and attempt.get('clock_revision') == 1
+    reset = resets[0]
+    assert reset['revision'] == 1 and reset['actor'] == 'instructor'
+    assert re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', reset['id'])
+    assert reset['remaining_seconds'] == 5400 and reset.get('extend_seconds', 0) == 0
+    assert reset['previous_deadline'] == original and start <= reset['requested_at'] < original
+    assert reset['applied_at'] >= start and reset['requested_at'] <= reset['applied_at'] + 1000
+    assert attempt['deadline'] == reset['deadline'] == reset['requested_at'] + 5400000 > original
+
+
 class GuestBridge:
     def __init__(self, config):
         self.config = config
@@ -333,6 +364,8 @@ class GuestBridge:
         self.gate_fault = None
         self.coordinator_fault = None
         self.coordinator_attempt = None
+        self.coordinator_attempts = None
+        self.transition_attempt = None
         self.evidence_replies = 0
         self.evidence_lock = threading.Lock()
         self.inspection_context = threading.local()
@@ -399,12 +432,17 @@ class GuestBridge:
     def ssh(self, client):
         with socket.create_connection(('127.0.0.1', 22), timeout=5) as upstream:
             upstream.settimeout(5)
-            copy_streams(client, upstream, timeout=900 if self.large else 600)
+            copy_streams(client, upstream, timeout=900 if self.students == 16 else 600)
 
     def http(self, client):
         with client.makefile('rwb', buffering=0) as stream:
             request = line(stream)
             assert request['path'].startswith('/api/agent/')
+            fault = getattr(self, 'coordinator_fault', None)
+            if fault is not None and fault.transport_only and fault.status()['phase'] == 'offline' and request['path'] in (
+                    '/api/agent/monitoring-evidence', '/api/agent/monitoring-continue', '/api/agent/monitoring-technical'):
+                send(stream, {'status':503, 'headers':{}, 'body':base64.b64encode(b'Private proof-transport outage').decode()})
+                return
             completed, result = threading.Event(), {}
             self.requests.put_nowait((request, completed, result))
             if not completed.wait(5):
@@ -569,6 +607,46 @@ class GuestBridge:
     def inspect(self, client):
         with client.makefile('rwb', buffering=0) as stream:
             request = line(stream)
+            if 'transition' in request:
+                assert self.students == 1 and request['transition'] in ('start', 'status')
+                snapshot = self.snapshot(request['attempt'])
+                attempt = snapshot['attempt']
+                assert attempt['exam'] == 'native-browser' and attempt['username'] == 'examq'
+                marker = Path(self.config['state']) / 'qualification-resume-transition'
+                observed = Path(str(marker) + '.observed')
+                if request['transition'] == 'start':
+                    assert self.transition_attempt is None and self.coordinator_attempt == request['attempt']
+                    assert self.coordinator_fault.all_proof_paths and self.coordinator_fault.status()['phase'] == 'offline'
+                    assert snapshot['kernel'] and all(row['frozen'] == '1' and row['populated'] == '1' for row in snapshot['kernel'])
+                    assert snapshot['supervisor']['ssh_peer'] == 'pinned-live'
+                    assert not any(p.exists() or p.is_symlink() for p in (marker, observed, Path(str(marker)+'.release'), Path(str(marker)+'.timed-out')))
+                    descriptor = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                    with os.fdopen(descriptor, 'w') as output:
+                        json.dump({'attempt':request['attempt'], 'stage':'process-continued', 'block':False}, output)
+                        output.flush(); os.fsync(output.fileno())
+                    self.transition_attempt = request['attempt']
+                assert self.transition_attempt == request['attempt']
+                reached = observed.exists()
+                if reached:
+                    value = private_json(observed)
+                    assert value == {'attempt':request['attempt'], 'stage':'process-continued', 'block':False}
+                nonces = set()
+                audit = Path(self.config['state']) / 'audit.ndjson'
+                if audit.exists():
+                    descriptor = os.open(audit, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                    with os.fdopen(descriptor, 'rb') as stream_audit:
+                        info = os.fstat(stream_audit.fileno())
+                        assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1 and info.st_mode & 0o077 == 0
+                        data = stream_audit.read(1024*1024+1)
+                    assert len(data) <= 1024*1024
+                    # A concurrent append's incomplete last line is no receipt.
+                    for row in data.rsplit(b'\n', 1)[0].splitlines():
+                        record = json.loads(row)
+                        if record.get('action') == 'technical-continuation-verified' and record.get('attempt') == request['attempt']:
+                            assert re.fullmatch(r'[a-f0-9]{64}', record['nonce'])
+                            nonces.add(record['nonce'])
+                send(stream, {'observed':reached, 'verified_nonce_count':len(nonces), 'stage':'process-continued'})
+                return
             if 'coordinator' in request:
                 assert self.students == 1 and request['coordinator'] in ('start', 'status', 'restore')
                 if request['coordinator'] == 'start':
@@ -577,7 +655,9 @@ class GuestBridge:
                     assert self.coordinator_fault is None and self.gate_fault is None
                     both = request.get('all_proof_paths', False)
                     assert type(both) is bool
-                    self.coordinator_fault = CoordinatorOutage(all_proof_paths=both)
+                    transport = request.get('transport_only', False)
+                    assert type(transport) is bool and (not transport or both)
+                    self.coordinator_fault = CoordinatorOutage(all_proof_paths=both, transport_only=transport)
                     self.coordinator_attempt = request['attempt']
                 assert self.coordinator_fault is not None and self.coordinator_attempt == request['attempt']
                 if request['coordinator'] == 'restore': self.coordinator_fault.cancel()
@@ -586,11 +666,19 @@ class GuestBridge:
             if 'gate' in request:
                 assert self.students == 1 and request['gate'] in ('start', 'status', 'restore')
                 attempt = self.snapshot(request['attempt'])['attempt']
-                assert attempt['username'] == 'examq' and attempt['state'] == 'ACTIVE'
+                technical = request.get('technical_recovery', False)
+                assert type(technical) is bool and attempt['username'] == 'examq'
                 if request['gate'] == 'start':
-                    assert self.gate_fault is None and self.coordinator_fault is None
+                    assert self.gate_fault is None
+                    if technical:
+                        assert self.coordinator_attempt == request['attempt'] and self.coordinator_fault is not None
+                        assert self.coordinator_fault.all_proof_paths and self.coordinator_fault.transport_only and self.coordinator_fault.status()['phase'] == 'offline'
+                        assert attempt['state'] == 'LOCKED' and attempt.get('retained_hold') == 'held' and attempt.get('monitoring_hold_kind') == 'technical'
+                    else:
+                        assert self.coordinator_fault is None and attempt['state'] == 'ACTIVE'
+                    self.gate_attempt = request['attempt']
                     self.gate_fault = GateStall(Path(self.config['socket']))
-                assert self.gate_fault is not None
+                assert self.gate_fault is not None and self.gate_attempt == request['attempt']
                 if request['gate'] == 'restore': self.gate_fault.cancel()
                 with self.evidence_lock: replies = self.evidence_replies
                 send(stream, dict(self.gate_fault.status(), evidence_replies=replies))
@@ -614,11 +702,29 @@ class GuestBridge:
                 assert self.students == 16 and len(ids) == 16 and len(set(ids)) == 16
                 snapshots = [self.snapshot(attempt) for attempt in ids]
                 assert {entry['attempt']['username'] for entry in snapshots} == set(fixture_accounts(16))
+                if 'recovery' in request:
+                    assert not self.large and not request.get('finish')
+                    assert request['recovery'] in ('start', 'status', 'restore')
+                    if request['recovery'] == 'start':
+                        assert self.coordinator_fault is None and self.gate_fault is None
+                        assert all(entry['attempt']['state'] == 'ACTIVE' and
+                                   entry['supervisor']['ssh_peer'] == 'pinned-live' and
+                                   entry['supervisor']['attached_panes'] == 4 and
+                                   len(entry['kernel']) == 4 and all(row['populated'] == '1' and row['frozen'] == '0' for row in entry['kernel'])
+                                   for entry in snapshots)
+                        self.coordinator_attempts = frozenset(ids)
+                        # Transport-only: no service stop/restart.35s permits
+                        # independent observation of all64 physically held panes.
+                        self.coordinator_fault = CoordinatorOutage(seconds=35, all_proof_paths=True, transport_only=True)
+                    assert self.coordinator_fault is not None and self.coordinator_attempts == frozenset(ids)
+                    if request['recovery'] == 'restore': self.coordinator_fault.cancel()
+                    send(stream, self.coordinator_fault.status())
+                    return
                 if request.get('finish'):
                     for entry in snapshots:
                         attempt = entry['attempt']
                         assert attempt['state'] == 'COMPLETED' and attempt['protected'] and attempt['checksum']
-                        assert attempt['access_state'] == 'HELD' and attempt['deadline'] == attempt['original_deadline'] > attempt['start']
+                        verify_fixture_clock(attempt)
                 send(stream, {'snapshots': snapshots, 'private_guest': True})
                 if request.get('finish'): self.done.set()
                 return
@@ -627,7 +733,7 @@ class GuestBridge:
             attempt = snapshot['attempt']
             if request.get('finish'):
                 assert attempt['state'] == 'COMPLETED' and attempt['protected'] and attempt['checksum']
-                assert attempt['deadline'] == attempt['original_deadline'] > attempt['start']
+                verify_fixture_clock(attempt)
             verified_files = None
             if request.get('finish'):
                 assert self.students == 1
@@ -705,7 +811,7 @@ def run_guest(config, prepare_roles):
                 raise
             time.sleep(.5)
     print('BROWSER_NATIVE_SOURCE_SYNCED', flush=True)
-    if not bridge.done.wait(780 if bridge.large else 540):
+    if not bridge.done.wait(780 if bridge.students == 16 else 540):
         raise TimeoutError('Actual browser/native qualification did not finish')
     if bridge.gate_fault is not None: bridge.gate_fault.cancel()
     if bridge.coordinator_fault is not None:
@@ -744,7 +850,7 @@ def host_bridge(stage, mode):
         client.settimeout(6)
         client.connect(str(target))
         # Stdio uses separate fds. Do not buffer or interpret SSH bytes.
-        deadline = time.monotonic() + ((900 if marker.get('browser_large') else 600) if mode in ('ssh', 'gateway') else 8)
+        deadline = time.monotonic() + ((900 if marker.get('browser_students') == 16 else 600) if mode in ('ssh', 'gateway') else 8)
         while time.monotonic() < deadline:
             ready, _, _ = select.select((sys.stdin.buffer, client), (), (), .5)
             for source in ready:

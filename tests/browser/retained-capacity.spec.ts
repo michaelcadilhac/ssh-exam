@@ -57,12 +57,15 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
     "Requires the exact guarded16-student native capacity fixture",
   );
   const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
-  test.setTimeout(large ? 780000 : 480000);
+  const recovery = process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1";
+  expect(large && recovery).toBe(false);
+  test.setTimeout(large ? 780000 : recovery ? 660000 : 480000);
   const metadata = await (
     await request.get("/api/fixture/native-ready")
   ).json();
   expect(metadata.privateGuest).toBe(true);
   expect(metadata.large).toBe(large);
+  expect(metadata.capacityRecovery).toBe(recovery);
   const students = z
     .array(z.object({ username: z.string(), uid: z.number().int().min(1000) }))
     .length(16)
@@ -75,6 +78,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
   expect(login.ok(), await login.text()).toBe(true);
   const headers = { origin, "x-csrf-token": (await login.json()).csrf };
   let measuring = false;
+  let recovering = false;
   let signInEvents: { event: string; path: string; type?: string }[] = [];
   const fleet: {
     context: BrowserContext;
@@ -184,7 +188,11 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
             const message = JSON.parse(String(payload));
             if (message.type === "opened" && message.input?.protocol === "v1")
               opened.add(message.pane);
-            if (message.type === "state" && message.attempt?.state === "LOCKED")
+            if (
+              !recovering &&
+              message.type === "state" &&
+              message.attempt?.state === "LOCKED"
+            )
               unexpectedLocks.push({
                 state: message.attempt.state,
                 generation: message.attempt.generation,
@@ -261,7 +269,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
         await command(
           entry,
           pane,
-          `printf 'CAPACITY-%s-%s-END\\n' '${student.username}' '${pane}'`,
+          `capacity_buffer='${student.username}-${pane}'; printf 'CAPACITY-%s-END\\n' "$capacity_buffer"`,
           `CAPACITY-${student.username}-${pane}-END`,
         );
       }
@@ -289,7 +297,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
         ),
       ).toBe(true);
     }
-    const before = await inspect();
+    let before = await inspect();
     measuring = true;
     expect(
       new Set(
@@ -317,6 +325,125 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
         `printf 'FLEET-%s-END\\n' '${entry.username}' | tee /work/fleet-proof.txt`,
         `FLEET-${entry.username}-END`,
       );
+    }
+    if (recovery) {
+      const evidence = async (entry: (typeof fleet)[number]) => {
+        const response = await request.get("/api/fixture/native-evidence", {
+          params: { attempt: entry.id },
+          timeout: 5000,
+        });
+        expect(response.ok(), await response.text()).toBe(true);
+        return z
+          .object({
+            state: z.literal("fresh"),
+            coverageEpoch: z.string().regex(/^[a-f0-9]{64}$/),
+            sequence: z.number().int().positive(),
+            gaps: z.literal(0),
+            remainingMS: z.number().positive(),
+          })
+          .parse(await response.json());
+      };
+      const original = before;
+      const coverage = await Promise.all(fleet.map(evidence));
+      const fault = async (action: "start" | "status") => {
+        const response = await request.post("/api/fixture/native-fleet", {
+          headers,
+          data: { attempts: fleet.map((entry) => entry.id), recovery: action },
+          timeout: 30000,
+        });
+        expect(response.ok(), await response.text()).toBe(true);
+        return response.json();
+      };
+      recovering = true;
+      const started = await fault("start");
+      expect(started.error).toBeNull();
+      // Positively observe all64 populated kernel scopes held before restoring
+      // proof transport. A browser overlay alone is not a freeze oracle.
+      await expect
+        .poll(
+          async () => {
+            const held = await inspect();
+            return held.snapshots.filter(
+              (entry: z.infer<typeof snapshot>) =>
+                entry.attempt.state === "LOCKED" &&
+                entry.attempt.monitoring_hold_kind === "technical" &&
+                entry.attempt.retained_hold === "held" &&
+                entry.supervisor?.ssh_peer === "pinned-live" &&
+                entry.kernel.length === 4 &&
+                entry.kernel.every(
+                  (unit) => unit.frozen === "1" && unit.populated === "1",
+                ),
+            ).length;
+          },
+          { timeout: 28000 },
+        )
+        .toBe(16);
+      expect((await fault("status")).phase).toBe("offline");
+      const heldCoverage = await Promise.all(fleet.map(evidence));
+      for (let i = 0; i < fleet.length; i++) {
+        expect(heldCoverage[i].coverageEpoch).toBe(coverage[i].coverageEpoch);
+        expect(heldCoverage[i].sequence).toBeGreaterThan(coverage[i].sequence);
+      }
+      await expect
+        .poll(async () => (await fault("status")).phase, {
+          timeout: 40000,
+        })
+        .toBe("restored");
+      const restored = await fault("status");
+      expect(restored.error).toBeNull();
+      expect(restored.after).toBe(started.before);
+      expect(restored.watchdog_after).toBe(started.watchdog);
+      await expect
+        .poll(
+          async () => {
+            const active = await inspect();
+            return active.snapshots.filter(
+              (entry: z.infer<typeof snapshot>) =>
+                entry.attempt.state === "ACTIVE" &&
+                entry.attempt.monitoring_resume_kind === "technical" &&
+                entry.supervisor?.ssh_peer === "pinned-live" &&
+                entry.kernel.length === 4 &&
+                entry.kernel.every(
+                  (unit) => unit.frozen === "0" && unit.populated === "1",
+                ),
+            ).length;
+          },
+          { timeout: 30000 },
+        )
+        .toBe(16);
+      before = await inspect();
+      for (const old of original.snapshots) {
+        const current = before.snapshots.find(
+          (entry: z.infer<typeof snapshot>) =>
+            entry.attempt.id === old.attempt.id,
+        )!;
+        expect(current.attempt).toMatchObject({
+          start: old.attempt.start,
+          deadline: old.attempt.deadline,
+          original_deadline: old.attempt.original_deadline,
+          transport: old.attempt.transport,
+          grant: old.attempt.grant,
+          generation: old.attempt.generation + 1,
+          access_state: "HELD",
+        });
+        expect(current.supervisor).toMatchObject({
+          pid: old.supervisor!.pid,
+          attached_panes: 4,
+        });
+      }
+      // Exercise browser epoch agreement and every original shell's memory,
+      // rather than treating native ACTIVE metadata as proof of usable input.
+      for (const entry of fleet) {
+        for (let pane = 0; pane < 4; pane++) {
+          await command(
+            entry,
+            pane,
+            `printf 'RECOVERED-%s-END\\n' "$capacity_buffer"`,
+            `RECOVERED-${entry.username}-${pane}-END`,
+          );
+        }
+      }
+      recovering = false;
     }
     if (large) {
       for (const entry of fleet.slice(0, 2)) {

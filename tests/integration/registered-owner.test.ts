@@ -612,6 +612,469 @@ async function activeEvidenceFixture(
   };
 }
 
+it("partial technical recovery retries the exact accepted prior seed while preserving continuous capture and original time", async () => {
+  const f = await activeEvidenceFixture(false, true, true);
+  try {
+    expect((await f.upload()).statusCode).toBe(200);
+    const first = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      f.challenge,
+    );
+    expect(first.statusCode, first.body).toBe(200);
+    const evidence = JSON.parse(
+        Buffer.from(first.json().payload, "base64").toString(),
+      ),
+      original = f.store.attempt(f.id);
+    f.store.db
+      .prepare(
+        "UPDATE attempts SET state='LOCKED',generation=1,retained_hold='held',monitoring_hold_kind='technical' WHERE id=?",
+      )
+      .run(f.id);
+    const owner = {
+        ...f.owner,
+        generation: 1,
+        input_epoch: hash("partial technical scope"),
+      },
+      route = "/api/agent/monitoring-continue",
+      request = {
+        type: "monitoring-technical-continue/v1",
+        agent: "class",
+        nonce: hash(randomUUID()),
+        previous_owner: f.owner,
+        owner,
+        continuity: {
+          owner: f.owner,
+          coverage_epoch: evidence.coverage_epoch,
+          after_sequence: evidence.sequence,
+          last_accepted_nonce: evidence.nonce,
+        },
+      };
+    const signed = await f.authenticated(route, request);
+    expect(signed.statusCode, signed.body).toBe(200);
+    let seed = JSON.parse(
+        Buffer.from(signed.json().payload, "base64").toString(),
+      ),
+      acceptedNonce = request.nonce;
+    // Model the authenticated live actor AFTER a partial commit/rehold. Native
+    // kernel transitions have separate qualification; JPEGs/signatures are real.
+    for (let retry = 0; retry < 2; retry++) {
+      const next = {
+        ...request,
+        nonce: hash(randomUUID()),
+        continuity: {
+          owner,
+          coverage_epoch: seed.bootstrap.coverage_epoch,
+          after_sequence: seed.bootstrap.sequence,
+          last_accepted_nonce: acceptedNonce,
+        },
+      };
+      const bad = await f.authenticated(route, {
+        ...next,
+        continuity: {
+          ...next.continuity,
+          last_accepted_nonce: hash("not accepted"),
+        },
+      });
+      expect(bad.statusCode, bad.body).toBe(409);
+      const resumed = await f.authenticated(route, next);
+      expect(resumed.statusCode, resumed.body).toBe(200);
+      const reply = JSON.parse(
+        Buffer.from(resumed.json().payload, "base64").toString(),
+      );
+      expect(reply.bootstrap.coverage_epoch).toBe(evidence.coverage_epoch);
+      expect(reply.capture_valid_for_ms).toBeGreaterThan(0);
+      expect(reply.capture_valid_for_ms).toBeLessThanOrEqual(15000);
+      // Canonical outcome has not completed yet: new real capture must retain
+      // the positively witnessed held owner instead of retiring its live ledger.
+      const a = f.store.attempt(f.id),
+        ticket = f.monitoring.captureChallenge(a, f.page, "screen");
+      await f.monitoring.challengedFrame(
+        a,
+        {
+          source: "screen",
+          seq: ticket.after_sequence + 1,
+          captured: Date.now(),
+          monotonic: 1,
+          data: f.jpeg,
+          challenge: ticket.challenge,
+          readiness: f.ready,
+        },
+        f.page,
+      );
+      const sameNonce = await f.authenticated(route, next);
+      expect(sameNonce.statusCode, sameNonce.body).toBe(200);
+      expect(
+        JSON.parse(Buffer.from(sameNonce.json().payload, "base64").toString()),
+      ).toEqual(reply);
+      seed = reply;
+      acceptedNonce = next.nonce;
+    }
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 1,
+      start: original.start,
+      deadline: original.deadline,
+      original_deadline: original.original_deadline,
+      registered_owner: JSON.stringify(f.owner),
+    });
+    expect(
+      f.store.db
+        .prepare("SELECT consumed FROM continuations WHERE attempt=?")
+        .get(f.id),
+    ).toEqual({ consumed: 0 });
+    const reviewed = await f.post(`/api/admin/attempts/${f.id}/authorize`, {
+      generation: 1,
+      revision: f.store.attempt(f.id).continuation_revision,
+      requestID: randomUUID(),
+      reason: "Synthetic reviewed recovery after partial technical commit",
+    });
+    expect(reviewed.statusCode, reviewed.body).toBe(200);
+    const reviewRequest = {
+      type: "monitoring-continue/v1",
+      agent: "class",
+      nonce: hash(randomUUID()),
+      previous_owner: f.owner,
+      owner,
+    };
+    const reviewProof = await f.authenticated(route, reviewRequest);
+    expect(reviewProof.statusCode, reviewProof.body).toBe(200);
+    const reviewSeed = JSON.parse(
+      Buffer.from(reviewProof.json().payload, "base64").toString(),
+    );
+    expect(reviewSeed.bootstrap.coverage_epoch).not.toBe(
+      evidence.coverage_epoch,
+    );
+    const renewal = {
+      ...f.challenge,
+      owner,
+      coverage_epoch: reviewSeed.bootstrap.coverage_epoch,
+      after_sequence: 1,
+    };
+    expect(
+      (await f.authenticated("/api/agent/monitoring-evidence", renewal))
+        .statusCode,
+    ).toBe(409);
+    const native = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 2,
+      attempt: {
+        id: f.id,
+        exam: original.exam,
+        username: original.username,
+        uid: original.uid,
+        state: "ACTIVE",
+        settings: JSON.parse(original.settings),
+        grant: f.request.grant,
+        grant_begin_intent: f.intent,
+        start: original.start,
+        deadline: original.deadline,
+        original_deadline: original.original_deadline,
+        generation: 1,
+        clock_revision: 0,
+        boot: owner.boot,
+        protected: false,
+        registered_owner: owner,
+        browser_ssh: true,
+        terminal_supervised: true,
+        monitoring_mode: "v1",
+        monitoring_resume_kind: "reviewed",
+        monitoring_resume_nonce: reviewRequest.nonce,
+      },
+    });
+    expect(native.statusCode, native.body).toBe(200);
+    const current = f.store.attempt(f.id),
+      ticket = f.monitoring.captureChallenge(current, f.page, "screen");
+    await f.monitoring.challengedFrame(
+      current,
+      {
+        source: "screen",
+        seq: ticket.after_sequence + 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: f.jpeg,
+        challenge: ticket.challenge,
+        readiness: f.ready,
+      },
+      f.page,
+    );
+    const renewed = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      renewal,
+    );
+    expect(renewed.statusCode, renewed.body).toBe(200);
+    expect(
+      JSON.parse(Buffer.from(renewed.json().payload, "base64").toString())
+        .coverage_epoch,
+    ).toBe(reviewSeed.bootstrap.coverage_epoch);
+  } finally {
+    await f.close();
+  }
+});
+
+it("signed technical continuation proves the original live stream and cannot turn its automatic authorization into reviewed approval", async () => {
+  const f = await activeEvidenceFixture(false, true, true);
+  try {
+    expect((await f.upload()).statusCode).toBe(200);
+    const initial = await f.authenticated(
+      "/api/agent/monitoring-evidence",
+      f.challenge,
+    );
+    expect(initial.statusCode, initial.body).toBe(200);
+    const evidence = JSON.parse(
+        Buffer.from(initial.json().payload, "base64").toString(),
+      ),
+      original = f.store.attempt(f.id);
+    f.store.db
+      .prepare(
+        "UPDATE attempts SET state='LOCKED',generation=1,retained_hold='held',monitoring_hold_kind='technical' WHERE id=?",
+      )
+      .run(f.id);
+    // Real challenged JPEG consumer; this metadata fixture has no SSH runtime.
+    const held = f.store.attempt(f.id),
+      ticket = f.monitoring.captureChallenge(held, f.page, "screen");
+    await f.monitoring.challengedFrame(
+      held,
+      {
+        source: "screen",
+        seq: ticket.after_sequence + 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: f.jpeg,
+        challenge: ticket.challenge,
+        readiness: f.ready,
+      },
+      f.page,
+    );
+    const owner = {
+        ...f.owner,
+        generation: 1,
+        input_epoch: hash("technical handoff"),
+      },
+      request = {
+        type: "monitoring-technical-continue/v1",
+        agent: "class",
+        nonce: hash(randomUUID()),
+        previous_owner: f.owner,
+        owner,
+        continuity: {
+          owner: f.owner,
+          coverage_epoch: evidence.coverage_epoch,
+          after_sequence: evidence.sequence,
+          last_accepted_nonce: evidence.nonce,
+        },
+      },
+      route = "/api/agent/monitoring-continue";
+    const missing = await f.authenticated(route, {
+      ...request,
+      continuity: {
+        ...request.continuity,
+        last_accepted_nonce: hash("unknown"),
+      },
+    });
+    expect(missing.statusCode, missing.body).toBe(409);
+    expect(
+      f.store.db
+        .prepare("SELECT 1 FROM continuations WHERE attempt=?")
+        .get(f.id),
+    ).toBeUndefined();
+    const reply = await f.authenticated(route, request);
+    expect(reply.statusCode, reply.body).toBe(200);
+    const seed = JSON.parse(
+      Buffer.from(reply.json().payload, "base64").toString(),
+    );
+    expect(seed).toMatchObject({
+      type: request.type,
+      nonce: request.nonce,
+      previous_owner: f.owner,
+      owner,
+      bootstrap: { owner, coverage_epoch: evidence.coverage_epoch },
+    });
+    expect(seed.bootstrap.sequence).toBeGreaterThanOrEqual(evidence.sequence);
+    expect(seed.capture_valid_for_ms).toBeGreaterThan(0);
+    const retry = await f.authenticated(route, request);
+    expect(retry.statusCode, retry.body).toBe(200);
+    expect(
+      JSON.parse(Buffer.from(retry.json().payload, "base64").toString()),
+    ).toEqual(seed);
+    const { continuity, ...reviewed } = request;
+    expect(
+      (
+        await f.authenticated(route, {
+          ...reviewed,
+          type: "monitoring-continue/v1",
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 1,
+      start: original.start,
+      deadline: original.deadline,
+      original_deadline: original.original_deadline,
+    });
+    expect(
+      f.store.db
+        .prepare("SELECT consumed FROM continuations WHERE attempt=?")
+        .get(f.id),
+    ).toEqual({ consumed: 0 });
+    // Existing root signatures plus a live, bounded same-page waiter. Actual
+    // native thaw is simulated in this HTTP contract test; the joined guest
+    // test supplies real kernel/result production.
+    const waiter = f.monitoring.requestTechnicalRecovery(f.store.attempt(f.id));
+    const poll = {
+        type: "monitoring-technical-poll/v1",
+        agent: "class",
+        nonce: hash(randomUUID()),
+        owner: f.owner,
+        generation: 1,
+      },
+      technicalRoute = "/api/agent/monitoring-technical";
+    const asked = await f.authenticated(technicalRoute, poll);
+    expect(asked.statusCode, asked.body).toBe(200);
+    const answer = JSON.parse(
+      Buffer.from(asked.json().payload, "base64").toString(),
+    );
+    expect(answer).toMatchObject({
+      type: poll.type,
+      audience: "class",
+      nonce: poll.nonce,
+    });
+    const completion = {
+      type: "monitoring-technical-result/v1",
+      agent: "class",
+      request_nonce: answer.request_nonce,
+      result: {
+        attempt: {
+          id: f.id,
+          state: "ACTIVE",
+          monitoring_mode: "v1",
+          monitoring_resume_kind: "technical",
+          monitoring_resume_nonce: request.nonce,
+          registered_owner: owner,
+        },
+        input_epochs: {},
+        monitoring_remaining_ms: 15000,
+      },
+    };
+    expect(
+      (
+        await f.authenticated(technicalRoute, {
+          ...completion,
+          request_nonce: hash("stale waiter"),
+        })
+      ).statusCode,
+    ).toBe(409);
+    const completed = await f.authenticated(technicalRoute, completion);
+    expect(completed.statusCode, completed.body).toBe(200);
+    expect(await waiter.promise).toEqual(completion.result);
+    expect((await f.authenticated(technicalRoute, completion)).statusCode).toBe(
+      409,
+    );
+    const secondWaiter = f.monitoring.requestTechnicalRecovery(
+      f.store.attempt(f.id),
+    );
+    const cancelled = expect(secondWaiter.promise).rejects.toThrow(
+      /technical-gap/,
+    );
+    waiter.cancel(); // Old cleanup cannot cancel/delete a newer request.
+    expect((await f.authenticated(technicalRoute, poll)).statusCode).toBe(200);
+    secondWaiter.cancel();
+    await cancelled;
+    const committed = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 2,
+      attempt: {
+        id: f.id,
+        exam: original.exam,
+        username: original.username,
+        uid: original.uid,
+        state: "ACTIVE",
+        settings: JSON.parse(original.settings),
+        grant: f.request.grant,
+        grant_begin_intent: f.intent,
+        start: original.start,
+        deadline: original.deadline,
+        original_deadline: original.original_deadline,
+        generation: 1,
+        clock_revision: 0,
+        boot: owner.boot,
+        protected: false,
+        registered_owner: owner,
+        browser_ssh: true,
+        terminal_supervised: true,
+        monitoring_mode: "v1",
+        monitoring_resume_kind: "technical",
+        monitoring_resume_nonce: request.nonce,
+      },
+    });
+    expect(committed.statusCode, committed.body).toBe(200);
+    expect(f.store.attempt(f.id).registered_owner).toBe(JSON.stringify(owner));
+    expect(
+      f.store.db
+        .prepare("SELECT consumed FROM continuations WHERE attempt=?")
+        .get(f.id),
+    ).toEqual({ consumed: 1 });
+    const lostReply = f.monitoring.requestTechnicalRecovery(
+        f.store.attempt(f.id),
+      ),
+      retryPoll = await f.authenticated(technicalRoute, { ...poll, owner });
+    expect(retryPoll.statusCode, retryPoll.body).toBe(200);
+    const retryNonce = JSON.parse(
+        Buffer.from(retryPoll.json().payload, "base64").toString(),
+      ).request_nonce,
+      deliveredAgain = await f.authenticated(technicalRoute, {
+        ...completion,
+        request_nonce: retryNonce,
+      });
+    expect(deliveredAgain.statusCode, deliveredAgain.body).toBe(200);
+    expect(await lostReply.promise).toEqual(completion.result);
+    // A new gateway has no native acceptance history even with fresh images.
+    const fresh = await createApp(f.config);
+    try {
+      expect(
+        (await f.authenticated(route, request, fresh.app)).statusCode,
+      ).toBe(409);
+    } finally {
+      await fresh.app.close();
+    }
+    // A real negative still invalidates a cached positive reply. Fresh images
+    // afterward cannot remove that negative or grant execution via the cache.
+    const current = f.store.attempt(f.id),
+      negative = f.monitoring.captureChallenge(current, f.page, "screen");
+    await f.monitoring.challengedFrame(
+      current,
+      {
+        source: "screen",
+        seq: negative.after_sequence + 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: f.jpeg,
+        challenge: negative.challenge,
+        readiness: { ...f.ready, visible: false },
+      },
+      f.page,
+    );
+    const blocked = await f.authenticated(route, request);
+    expect(blocked.statusCode, blocked.body).toBe(409);
+    expect(
+      f.store.db
+        .prepare(
+          "SELECT generation,consumed FROM continuations WHERE attempt=?",
+        )
+        .get(f.id),
+    ).toEqual({ generation: 1, consumed: 1 }); // Historical consumption is preserved, never reusable.
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 2,
+      start: original.start,
+      deadline: original.deadline,
+      original_deadline: original.original_deadline,
+    });
+  } finally {
+    await f.close();
+  }
+});
+
 it("signed pending native Continue remains retryable; confirmed native consumption keeps live evidence available while the reply is lost", async () => {
   const f = await activeEvidenceFixture(false, false, true);
   let clock: ReturnType<typeof vi.spyOn> | undefined;
@@ -783,6 +1246,40 @@ it("signed pending native Continue remains retryable; confirmed native consumpti
       coverage_epoch: seed.bootstrap.coverage_epoch,
       sequence: 1,
     });
+    // The hold was queued before the new owner committed, but delivered later
+    // with the SAME outer attempt generation. It must not undo that outcome.
+    const oldPending = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 4,
+      attempt: { ...native, retained_hold: "resuming" },
+    });
+    expect(oldPending.statusCode, oldPending.body).toBe(200);
+    expect(f.store.attempt(f.id).retained_hold).toBeNull();
+    await f.agent.acceptRegisteredOwnerObservation({
+      ...native,
+      retained_hold: "resuming",
+    });
+    expect(f.store.attempt(f.id).retained_hold).toBeNull();
+    const retired = {
+      ...native,
+      state: "LOCKED",
+      registered_owner: f.owner,
+      retained_hold: "held",
+      monitoring_hold_kind: "technical",
+    };
+    const delayed = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 5,
+      attempt: retired,
+    });
+    expect(delayed.statusCode, delayed.body).toBe(200);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      retained_hold: null,
+      registered_owner: JSON.stringify(owner),
+      generation: 1,
+    });
+    await f.agent.acceptRegisteredOwnerObservation(retired);
+    expect(f.store.attempt(f.id).retained_hold).toBeNull();
     // Approval's acceptance window can expire after native consumption. That
     // must not invalidate the already committed operation or mint a new window.
     clock = vi.spyOn(Date, "now").mockReturnValue(approval.json().expires + 1);
@@ -793,6 +1290,36 @@ it("signed pending native Continue remains retryable; confirmed native consumpti
       start: original.start,
       deadline: original.deadline,
       original_deadline: original.original_deadline,
+    });
+    const late = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 6,
+      attempt: retired,
+    });
+    expect(late.statusCode, late.body).toBe(200);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "ACTIVE",
+      generation: 1,
+      retained_hold: null,
+    });
+    const realLock = await f.authenticated("/api/agent/events", {
+      agent: "class",
+      sequence: 7,
+      attempt: {
+        ...native,
+        state: "LOCKED",
+        generation: 2,
+        retained_hold: "held",
+        monitoring_hold_kind: "policy",
+        reason: "Synthetic confirmed current-owner policy loss",
+      },
+    });
+    expect(realLock.statusCode, realLock.body).toBe(200);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      generation: 2,
+      retained_hold: "held",
+      monitoring_hold_kind: "policy",
     });
   } finally {
     clock?.mockRestore();

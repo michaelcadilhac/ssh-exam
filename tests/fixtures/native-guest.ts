@@ -403,7 +403,11 @@ export async function nativeGuest(
         );
       return value;
     },
-    async inspectMany(attempts: string[], finish = false) {
+    async inspectMany(
+      attempts: string[],
+      finish = false,
+      recovery?: "start" | "status" | "restore",
+    ) {
       if (
         students !== 16 ||
         attempts.length !== 16 ||
@@ -413,7 +417,7 @@ export async function nativeGuest(
       const value = JSON.parse(
         await collect(
           bridge("inspect"),
-          JSON.stringify({ attempts, finish }) + "\n",
+          JSON.stringify({ attempts, finish, recovery }) + "\n",
         ),
       );
       if (value.bridge_error)
@@ -426,6 +430,7 @@ export async function nativeGuest(
       attempt: string,
       action: "start" | "status" | "restore",
       allProofPaths = false,
+      transportOnly = false,
     ) {
       if (students !== 1)
         throw Error("Private coordinator fault requires one synthetic attempt");
@@ -436,6 +441,7 @@ export async function nativeGuest(
             attempt,
             coordinator: action,
             all_proof_paths: allProofPaths,
+            transport_only: transportOnly,
           }) + "\n",
         ),
       );
@@ -445,13 +451,36 @@ export async function nativeGuest(
         );
       return value;
     },
-    async gate(attempt: string, action: "start" | "status" | "restore") {
+    async transition(attempt: string, action: "start" | "status") {
+      if (students !== 1)
+        throw Error("Private transition fault requires one synthetic attempt");
+      const value = JSON.parse(
+        await collect(
+          bridge("inspect"),
+          JSON.stringify({ attempt, transition: action }) + "\n",
+        ),
+      );
+      if (value.bridge_error)
+        throw Error(
+          "Private transition observation refused: " + value.bridge_error,
+        );
+      return value;
+    },
+    async gate(
+      attempt: string,
+      action: "start" | "status" | "restore",
+      technicalRecovery = false,
+    ) {
       if (students !== 1)
         throw Error("Private gate fault requires one synthetic attempt");
       const value = JSON.parse(
         await collect(
           bridge("inspect"),
-          JSON.stringify({ attempt, gate: action }) + "\n",
+          JSON.stringify({
+            attempt,
+            gate: action,
+            technical_recovery: technicalRecovery,
+          }) + "\n",
         ),
       );
       if (value.bridge_error)

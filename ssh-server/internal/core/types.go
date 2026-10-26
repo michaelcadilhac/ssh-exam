@@ -86,6 +86,7 @@ type Attempt struct {
 	MonitoringMode              string               `json:"monitoring_mode,omitempty"`
 	RetainedHold                string               `json:"retained_hold,omitempty"` // Observation only; not a restored kernel receipt.
 	MonitoringResumeNonce       string               `json:"monitoring_resume_nonce,omitempty"`
+	MonitoringResumeKind        string               `json:"monitoring_resume_kind,omitempty"` // Transition provenance; never execution permission.
 	MonitoringHoldKind          string               `json:"monitoring_hold_kind,omitempty"`
 	RegisteredOwner             *monitoringOwner     `json:"registered_owner,omitempty"`
 	SSHExitedOwner              *monitoringOwner     `json:"ssh_exited_owner,omitempty"` // Negative pinned-lifetime observation only; never work permission.

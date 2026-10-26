@@ -13,10 +13,25 @@ it does not require a new approval or add time. Consumed approval does not permi
 fresh SSH sign-in. Unknown/unverified holds require inspection, never metadata
 edits or optimistic thaw. Technical capture verification delays block input and
 retry; a timeout alone is not policy loss. Preserve the original deadline/source/
-history and credential cleanup. Full C3/C9/root qualification remains required;
-there is no supported switch to enable an incomplete mode. Detailed current
+history and credential cleanup. The local C9/root/capacity matrix now passes;
+genuine SSH-loss/new-attempt integration and final public admission remain. There
+is no supported switch to enable an incomplete mode. Detailed current
 evidence and open boundaries: live-monitoring-runtime.md. Existing installed
 legacy behavior follows the procedures below.
+
+October26 disabled C9 candidate: a SAME-page purely technical hold may recover
+automatically only after positive live ownership and complete continuous coverage
+are verified, retaining the original clock and buffers. Keep capture and the page
+open. The existing native HTTPS trust can complete recovery while generic signed
+commands are delayed; a timeout alone creates no violation or approval requirement.
+A real missing-observation interval stays held even after fresh images return and
+requires the existing reviewed Continue workflow. Inspect the original attempt/
+interruption history with existing CLI/web workflows; do not edit native purpose,
+nonce, grant or hold metadata to force recovery. Queued old-owner hold reports must
+not undo a newer verified Continue. Local qualification now includes full619 app
+checks, native races/resources, root42 and actual16/64 recovery/protected finish.
+Installed admission remains OFF pending genuine SSH-loss/public-entry completion;
+there is no supported enable switch. See automatic-technical-recovery.md.
 
 October25 local gateway-routing candidate, also disabled/not deployed: keep the
 same open page when its SSH remains viable across gateway process replacement.
@@ -49,10 +64,11 @@ production recovery change. Evidence: retained-coordinator-loss.md.
 A newer local native candidate also supplies freshly challenged evidence through
 the existing watchdog, so a coordinator-only outage can preserve ACTIVE work when
 complete current ownership/coverage remain verifiable. Native/root qualification
-passes; class-capacity requalification is incomplete and installed admission stays
-OFF. If BOTH proof paths disappear, the attempt supervisor still freezes work;
+and class-capacity requalification pass; installed admission stays OFF. If BOTH
+proof paths disappear, the attempt supervisor still freezes work;
 their restart and fresh captures alone do not authorize thaw. Use the existing
-interruption inspection/authorization and same-page Continue, preserving the
+interruption inspection/authorization and same-page Continue when C9's entire-
+interval continuity cannot be verified, preserving the
 original deadline. Do not restart installed roles or clear state to try this
 candidate. Exact boundaries: watchdog-monitoring-evidence.md.
 
@@ -84,8 +100,9 @@ bootstrap/challenge versions. A still-authorized native supervisor can accept ne
 challenged facts after gateway restart; its original challenge/authorization cutoff
 still refuses expired work. A technical gap cannot be repaired with a reconnect or
 new frame. Preserve the same SSH and inspect the current hold/versions rather than
-altering deadlines, audit or grant state. Exact-artifact privileged and joined
-browser/capacity qualification remain pending; there is no supported enable switch.
+altering deadlines, audit or grant state. Local privileged and joined browser/
+capacity cases pass; genuine SSH-loss/public-entry qualification remains. There
+is no supported enable switch.
 
 - Network loss: input stops. Only the unchanged healthy in-memory page and retained SSH can
   recover within 15 seconds. Reload/lost SSH/longer outages need review.

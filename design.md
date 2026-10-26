@@ -2723,6 +2723,23 @@ Consolidate the temporary replacement service only during a fully drained window
 
 ## Registered page ownership (local candidate; migration029)
 
+October26 local C9 candidate now joins the existing student Continue/input-epoch
+workflow to automatic recovery of positively verified purely technical holds.
+The same live supervisor must prove its exact memory-accepted nonce/owner/coverage
+sequence; the gateway retains uninterrupted challenged observations, original ages,
+all gaps/negatives and authoritative clock scope. A separate signed purpose cannot
+turn automatic issuance into reviewed approval. Existing agent/watchdog outbound
+authentication can deliver the same freshly verified result when signed SSH commands
+stall, using bounded volatile same-page request nonces and separate recovery workers.
+Migration032 adds only observational native resume purpose/nonce; no disk row is
+permission. The local matrix now passes actual role-outage, blocked-command,
+real missing-capture/refused-auto/reviewed-Continue, first-SIGCONT repair, clock
+retry,16-student/64-terminal recovery and protected export, plus full application/
+native races/builds and affected browser checks. This uses the guarded private
+runtime adapter. Genuine SSH-loss/new-attempt integration and final public
+admission enablement remain; the installed guard stays OFF. No deployment. See
+docs/automatic-technical-recovery.md for exact receipts, failures and boundaries.
+
 New browser unified-grant Begin binds the current gateway page in its original
 intent and fresh authenticated outbound C15 exchange. Native actual start stores
 the verified page, attempt/account, root transport/boot, generation/clock and a

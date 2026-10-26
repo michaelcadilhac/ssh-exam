@@ -39,6 +39,8 @@ it("027 preserves legacy practice and fences grantless writers across accounts a
       monitoring_mode: null,
       retained_hold: null,
       monitoring_hold_kind: null,
+      native_resume_kind: null,
+      native_resume_nonce: null,
     });
     expect(
       db.prepare("SELECT version FROM schema_version WHERE version=27").get(),
@@ -87,6 +89,8 @@ it("027 preserves legacy practice and fences grantless writers across accounts a
       monitoring_mode: null,
       retained_hold: null,
       monitoring_hold_kind: null,
+      native_resume_kind: null,
+      native_resume_nonce: null,
     });
     expect(
       db

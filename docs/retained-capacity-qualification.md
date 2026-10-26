@@ -1,7 +1,13 @@
 # Guarded native sixteen-student capacity qualification
 
-October25,2026. Small-file16/64 baseline qualified locally; larger/fault workload
-qualification remains open. NOT enabled/deployed. Prior bfcc81e qualifies the
+October26,2026. Local16/64 baseline, two508MiB/collector-fault/retry and automatic
+technical recovery capacity workflows now pass. NOT enabled/deployed. Current C9
+release matrix remains open; the historical stages below do not override this
+status. See automatic-technical-recovery.md for the new exact-image9.8m pass:
+all64 populated scopes freeze, all16 real monitoring histories stay continuous,
+original shells/variables accept input after automatic recovery and all16 complete
+protected with original timing/holds. Exact host preservation/inactive-unit/key
+removal receipts are independently verified. Prior bfcc81e qualifies the
 actual single-student browser/shell/Nano dual-hold/protected-export workflow.
 This is the accepted16students/64panes target, not a production limit increase.
 

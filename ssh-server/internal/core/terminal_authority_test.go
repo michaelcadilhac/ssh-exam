@@ -1386,6 +1386,10 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 			if err != nil || view.View == nil || !view.View.ExecutionAuthorized || current.RetainedHold != "resuming" {
 				t.Fatal("fixture missed pending metadata with verified pre-fault authority", view, err)
 			}
+			early, resultErr := e.callTerminalAuthority(terminalAuthorityRequest{Op: "resume-result", Attempt: a.ID, Owner: *current.RegisteredOwner, NextOwner: current.RegisteredOwner, Nonce: current.MonitoringResumeNonce}, nil, false)
+			if resultErr == nil || (early.View != nil && early.View.ExecutionAuthorized) || len(early.InputEpochs) != 0 {
+				t.Fatal("pending physical transition returned a completed Continue result before all writers resumed", early, resultErr)
+			}
 			admission := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "issue-framed-owner-channel-admission", Username: a.Username, Transport: a.Transport, Body: Request{ID: a.ID, Pane: ManagementID(), Purpose: "exam", Username: a.Username, Transport: a.Transport, PageEpoch: a.RegisteredOwner.PageEpoch}}
 			if _, err := e.Command(signedCommand(key, admission), a.Username, a.Transport); err == nil || !strings.Contains(err.Error(), "attempt not active") {
 				t.Fatal("pending partial transition admitted another pane despite its closed admission metadata", err)

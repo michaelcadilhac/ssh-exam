@@ -24,6 +24,12 @@ const bindingBrand = Symbol("monitoring-evidence-binding");
 export type MonitoringEvidenceBinding = Readonly<{ [bindingBrand]: true }>;
 type Purpose = "policy" | "screen" | "webcam";
 type Challenge = { issued: number; ordinal: number; purpose: Purpose };
+type AcceptanceAnchor = {
+  owner: Readonly<MonitoringOwner>;
+  nonce: string;
+  sequence: number;
+  coverage: string;
+};
 const readiness = z
   .object({
     fullscreen: z.boolean(),
@@ -50,6 +56,9 @@ type Entry = {
   >;
   sequence: number;
   nativeEstablished: boolean;
+  bootstrapEstablished: boolean;
+  technicalAnchor?: AcceptanceAnchor;
+  clockAnchors: Map<string, AcceptanceAnchor>;
   restartAligned: boolean;
   coverageEpoch?: string;
   coverageUntil?: number;
@@ -157,6 +166,8 @@ export class MonitoringEvidenceLedger {
       frames: new Map(),
       sequence: 0,
       nativeEstablished: false,
+      bootstrapEstablished: false,
+      clockAnchors: new Map(),
       restartAligned: false,
       gaps: 0,
       receipts: new Map(),
@@ -182,6 +193,19 @@ export class MonitoringEvidenceLedger {
     )
       return refuse("ownership");
     e.owner = Object.freeze(parsed.data);
+    // Preserve only historical acceptance identity for C9, never an old
+    // challenge/reply in the new clock scope. Original signed receipts stay
+    // immutable, and no observation time/cutoff/sequence is refreshed.
+    for (const [nonce, receipt] of e.receipts) {
+      e.clockAnchors.set(nonce, {
+        owner: receipt.proof.owner,
+        nonce,
+        sequence: receipt.proof.sequence,
+        coverage: receipt.proof.coverage_epoch,
+      });
+    }
+    while (e.clockAnchors.size > 32)
+      e.clockAnchors.delete(e.clockAnchors.keys().next().value!);
     e.receipts.clear(); // An old native challenge cannot acquire the new scope.
     return binding;
   }
@@ -246,8 +270,106 @@ export class MonitoringEvidenceLedger {
     }
     e.sequence = 1;
     e.nativeEstablished = true;
+    e.bootstrapEstablished = true;
     e.coverageEpoch = coverage;
     e.coverageUntil = oldest + MONITORING_EVIDENCE_WINDOW_MS;
+  }
+  // Called only for a known signed C9 proposal followed by native ownership
+  // observation. This moves identity, not permission or sample freshness.
+  transferTechnicalOwner(
+    binding: MonitoringEvidenceBinding,
+    raw: unknown,
+    anchor: { nonce: string; sequence: number; coverage: string },
+  ) {
+    const e = this.entry(binding),
+      next = monitoringOwner.parse(raw);
+    this.touch(e, this.now());
+    const sameOwner = JSON.stringify(next) === JSON.stringify(e.owner);
+    if (
+      (!sameOwner &&
+        (next.generation <= e.owner.generation ||
+          next.input_epoch === e.owner.input_epoch)) ||
+      next.clock_revision < e.owner.clock_revision ||
+      JSON.stringify({
+        ...next,
+        generation: e.owner.generation,
+        input_epoch: e.owner.input_epoch,
+        clock_revision: e.owner.clock_revision,
+      }) !== JSON.stringify(e.owner) ||
+      !/^[a-f0-9]{64}$/.test(anchor.nonce) ||
+      !counter(anchor.sequence) ||
+      !/^[a-f0-9]{64}$/.test(anchor.coverage)
+    )
+      return refuse("ownership");
+    e.owner = Object.freeze(next);
+    if (!sameOwner) {
+      e.receipts.clear();
+      e.clockAnchors.clear();
+      e.bootstrapEstablished = false;
+    }
+    e.technicalAnchor = { owner: e.owner, ...anchor };
+    return binding;
+  }
+  technicalSnapshot(
+    binding: MonitoringEvidenceBinding,
+    witness: {
+      owner: MonitoringOwner;
+      coverage_epoch: string;
+      after_sequence: number;
+      last_accepted_nonce: string;
+    },
+  ) {
+    const e = this.entry(binding),
+      now = this.now();
+    this.touch(e, now);
+    if (JSON.stringify(witness.owner) !== JSON.stringify(e.owner))
+      return refuse("ownership");
+    if (e.blocked) return refuse("policy-blocked");
+    if (e.focusLost !== undefined && !e.focusUnverified)
+      return refuse("challenge"); // Preserve the existing focus grace; wait, never invent a violation.
+    if (
+      e.focusUnverified ||
+      e.gaps !== 0 ||
+      !e.coverageUntil ||
+      e.coverageEpoch !== witness.coverage_epoch ||
+      e.coverageUntil <= now ||
+      e.sequence < witness.after_sequence
+    )
+      return refuse("technical-gap");
+    const nonce = witness.last_accepted_nonce;
+    if (!nonce) {
+      if (!e.bootstrapEstablished || witness.after_sequence !== 1)
+        return refuse("technical-gap");
+    } else {
+      const receipt = e.receipts.get(nonce)?.proof;
+      const candidate = receipt
+        ? {
+            nonce,
+            owner: receipt.owner,
+            sequence: receipt.sequence,
+            coverage: receipt.coverage_epoch,
+          }
+        : e.technicalAnchor?.nonce === nonce
+          ? e.technicalAnchor
+          : e.clockAnchors.get(nonce);
+      if (
+        !candidate ||
+        candidate.sequence !== witness.after_sequence ||
+        candidate.coverage !== e.coverageEpoch ||
+        candidate.owner.clock_revision > e.owner.clock_revision ||
+        JSON.stringify({
+          ...candidate.owner,
+          clock_revision: e.owner.clock_revision,
+        }) !== JSON.stringify(e.owner)
+      )
+        return refuse("technical-gap");
+      e.technicalAnchor = { ...candidate, owner: e.owner }; // Pin the acknowledged history, not an expired permit.
+    }
+    return Object.freeze({
+      coverageEpoch: e.coverageEpoch,
+      sequence: e.sequence,
+      remainingMS: Math.floor(e.coverageUntil - now),
+    });
   }
   retire(binding: MonitoringEvidenceBinding) {
     const e = this.entry(binding);
@@ -489,10 +611,15 @@ export class MonitoringEvidenceLedger {
         return refuse("challenge");
       return old.proof; // Original age/sequence; never a refreshed retry.
     }
-    for (const [id, receipt] of e.receipts)
-      if (now - receipt.at >= MONITORING_EVIDENCE_WINDOW_MS)
-        e.receipts.delete(id);
-    if (e.receipts.size >= 32) return refuse("capacity");
+    // Retain the last bounded identities across a proof-path outage so C9 can
+    // match the native last-accepted nonce. Retry age is still checked above;
+    // retaining an expired receipt never refreshes or authorizes it.
+    if (e.receipts.size >= 32) {
+      const oldest = e.receipts.entries().next().value!;
+      if (now - oldest[1].at < MONITORING_CHALLENGE_WINDOW_MS)
+        return refuse("capacity");
+      e.receipts.delete(oldest[0]);
+    }
     let sequence = e.sequence,
       coverage = e.coverageEpoch,
       aligned = e.restartAligned;

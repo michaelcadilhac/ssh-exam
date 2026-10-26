@@ -22,6 +22,123 @@ const ready = {
   focus: true,
 };
 const nonce = () => randomBytes(32).toString("hex");
+
+it("technical continuity needs the exact accepted native receipt across an outage, preserving sample ages", () => {
+  const f = fixture();
+  f.full();
+  const proof = f.ledger.issueForNativeChallenge(f.binding, f.request());
+  const witness = {
+    owner,
+    coverage_epoch: proof.coverage_epoch,
+    after_sequence: proof.sequence,
+    last_accepted_nonce: proof.nonce,
+  };
+  for (let at = 5000; at <= 25000; at += 5000) {
+    f.at(at);
+    f.full();
+  }
+  f.at(26000);
+  expect(f.ledger.technicalSnapshot(f.binding, witness)).toMatchObject({
+    coverageEpoch: proof.coverage_epoch,
+    remainingMS: 14000,
+  });
+  for (const patch of [
+    { last_accepted_nonce: nonce() },
+    { after_sequence: proof.sequence + 1 },
+    { coverage_epoch: nonce() },
+    { last_accepted_nonce: "" },
+  ])
+    expect(() =>
+      f.ledger.technicalSnapshot(f.binding, { ...witness, ...patch }),
+    ).toThrow(/technical-gap/);
+  // A trusted clock-only carry retains original facts and native acceptance.
+  const changed = { ...owner, clock_revision: owner.clock_revision + 1 };
+  f.ledger.transferTrustedClock(f.binding, changed);
+  expect(
+    f.ledger.technicalSnapshot(f.binding, { ...witness, owner: changed })
+      .remainingMS,
+  ).toBe(14000);
+  const next = {
+      ...changed,
+      generation: changed.generation + 1,
+      input_epoch: nonce(),
+    },
+    accepted = nonce(),
+    snapshot = f.ledger.technicalSnapshot(f.binding, {
+      ...witness,
+      owner: changed,
+    });
+  f.ledger.transferTechnicalOwner(f.binding, next, {
+    nonce: accepted,
+    sequence: snapshot.sequence,
+    coverage: snapshot.coverageEpoch,
+  });
+  expect(
+    f.ledger.technicalSnapshot(f.binding, {
+      owner: next,
+      coverage_epoch: snapshot.coverageEpoch,
+      after_sequence: snapshot.sequence,
+      last_accepted_nonce: accepted,
+    }).remainingMS,
+  ).toBe(14000);
+});
+
+it("fresh frames and technical identity transfer never cure a gap or genuine negative", () => {
+  for (const negative of [false, true]) {
+    const f = fixture();
+    f.full();
+    const proof = f.ledger.issueForNativeChallenge(f.binding, f.request());
+    f.at(negative ? 1000 : 15000);
+    f.full(negative ? { ...ready, visible: false } : ready);
+    const next = {
+      ...owner,
+      generation: owner.generation + 1,
+      input_epoch: nonce(),
+    };
+    f.ledger.transferTechnicalOwner(f.binding, next, {
+      nonce: proof.nonce,
+      sequence: proof.sequence,
+      coverage: proof.coverage_epoch,
+    });
+    const retryNonce = nonce();
+    f.ledger.transferTechnicalOwner(f.binding, next, {
+      nonce: retryNonce,
+      sequence: proof.sequence,
+      coverage: proof.coverage_epoch,
+    });
+    expect(() =>
+      f.ledger.technicalSnapshot(f.binding, {
+        owner: next,
+        coverage_epoch: proof.coverage_epoch,
+        after_sequence: proof.sequence,
+        last_accepted_nonce: retryNonce,
+      }),
+    ).toThrow(negative ? /policy-blocked/ : /technical-gap/);
+  }
+});
+
+it("technical recovery waits through focus grace without declaring a violation or renewing age", () => {
+  const f = fixture();
+  f.full();
+  const proof = f.ledger.issueForNativeChallenge(f.binding, f.request()),
+    witness = {
+      owner,
+      coverage_epoch: proof.coverage_epoch,
+      after_sequence: proof.sequence,
+      last_accepted_nonce: proof.nonce,
+    };
+  f.at(1000);
+  f.full({ ...ready, focus: false });
+  expect(() => f.ledger.technicalSnapshot(f.binding, witness)).toThrow(
+    /challenge/,
+  );
+  f.at(2000);
+  f.policy();
+  expect(f.ledger.technicalSnapshot(f.binding, witness)).toMatchObject({
+    coverageEpoch: proof.coverage_epoch,
+    remainingMS: 14000,
+  });
+});
 function fixture(webcam = true, limit = 32) {
   let now = 0,
     sequence = 0;

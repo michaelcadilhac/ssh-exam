@@ -52,14 +52,54 @@ func (e *Engine) watchTerminalMonitoring(stop <-chan struct{}) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	nextLog := time.Time{}
+	ctx, cancel := context.WithCancel(context.Background())
+	var technicalWorkers sync.WaitGroup
+	defer func() { cancel(); technicalWorkers.Wait() }()
+	technicalActive, technicalSeen, technicalUntil := map[string]bool{}, map[string]string{}, map[string]int64{}
+	completed := make(chan string, 16)
 	for {
 		select {
 		case <-stop:
 			return
+		case id := <-completed:
+			delete(technicalActive, id)
 		case <-ticker.C:
 			if err := e.syncTerminalMonitoringTargets(); err != nil && !time.Now().Before(nextLog) {
 				log.Printf("watchdog monitoring bridge unavailable; existing live cutoffs remain authoritative: %v", err)
 				nextLog = time.Now().Add(30 * time.Second)
+			}
+			// These separate bounded workers may wait on audit/state fsync. They
+			// never occupy a live evidence-renewal worker or the cutoff loop.
+			state, err := readStateSnapshot(e.Config.State)
+			at, clockErr := monitoringBootMillis()
+			if err != nil || clockErr != nil {
+				continue
+			}
+			for id, a := range state.Attempts {
+				if !technicalRecoveryCandidate(a) {
+					delete(technicalSeen, id)
+					delete(technicalUntil, id)
+					continue
+				}
+				if a.State == "LOCKED" || a.RetainedHold == "resuming" || technicalSeen[id] != a.MonitoringResumeNonce {
+					technicalUntil[id] = at + 30000
+					technicalSeen[id] = a.MonitoringResumeNonce
+				}
+				if technicalActive[id] || len(technicalActive) >= 16 || at >= technicalUntil[id] {
+					continue
+				}
+				technicalActive[id] = true
+				technicalWorkers.Add(1)
+				go func(a *Attempt) {
+					defer technicalWorkers.Done()
+					defer func() {
+						select {
+						case completed <- a.ID:
+						case <-ctx.Done():
+						}
+					}()
+					_ = e.pollTechnicalRecovery(ctx, a)
+				}(a)
 			}
 		}
 	}
@@ -219,14 +259,18 @@ func (e *Engine) refreshTerminalMonitoring(ctx context.Context, id string, owner
 func (e *Engine) exchangeTerminalMonitoring(ctx context.Context, route string, body any) (SignedFrame, error) {
 	var frame SignedFrame
 	b := &e.terminalMonitoring
-	if !b.ready.Load() || (route != "/api/agent/monitoring-evidence" && route != "/api/agent/monitoring-continue") {
+	if !b.ready.Load() || (route != "/api/agent/monitoring-evidence" && route != "/api/agent/monitoring-continue" && route != "/api/agent/monitoring-technical") {
 		return frame, errMonitoringScope
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {
 		return frame, err
 	}
-	if len(payload) > monitoringEvidenceMaxBytes {
+	limit := monitoringEvidenceMaxBytes
+	if route == "/api/agent/monitoring-technical" {
+		limit = 65536
+	}
+	if len(payload) > limit {
 		return frame, errMonitoringScope
 	}
 	request, err := http.NewRequestWithContext(ctx, "POST", strings.TrimSuffix(e.Config.CallbackURL, "/")+route, bytes.NewReader(payload))

@@ -59,19 +59,21 @@ type terminalAuthorityRequest struct {
 }
 
 type terminalAuthorityReply struct {
-	Purpose     string                      `json:"purpose"`
-	Attempt     string                      `json:"attempt"`
-	Begin       *terminalAuthorityBegin     `json:"begin,omitempty"`
-	View        *monitoringAuthorityView    `json:"view,omitempty"`
-	Challenge   *monitoringChallenge        `json:"challenge,omitempty"`
-	Receipt     *monitoringCommitReceipt    `json:"receipt,omitempty"`
-	Error       string                      `json:"error,omitempty"`
-	Panes       []terminalAuthorityPaneView `json:"panes,omitempty"`
-	Hold        *terminalHoldView           `json:"hold,omitempty"`
-	Resume      *terminalResumePrepared     `json:"resume,omitempty"`
-	InputEpochs map[string]string           `json:"input_epochs,omitempty"`
-	HeldOwner   *monitoringOwner            `json:"held_owner,omitempty"`
-	Cutoff      *monitoringCutoffDescriptor `json:"cutoff,omitempty"`
+	Purpose     string                       `json:"purpose"`
+	Attempt     string                       `json:"attempt"`
+	Begin       *terminalAuthorityBegin      `json:"begin,omitempty"`
+	View        *monitoringAuthorityView     `json:"view,omitempty"`
+	Challenge   *monitoringChallenge         `json:"challenge,omitempty"`
+	Receipt     *monitoringCommitReceipt     `json:"receipt,omitempty"`
+	Error       string                       `json:"error,omitempty"`
+	Panes       []terminalAuthorityPaneView  `json:"panes,omitempty"`
+	Hold        *terminalHoldView            `json:"hold,omitempty"`
+	Resume      *terminalResumePrepared      `json:"resume,omitempty"`
+	Continuity  *terminalTechnicalContinuity `json:"continuity,omitempty"`
+	ResumeKind  string                       `json:"resume_kind,omitempty"`
+	InputEpochs map[string]string            `json:"input_epochs,omitempty"`
+	HeldOwner   *monitoringOwner             `json:"held_owner,omitempty"`
+	Cutoff      *monitoringCutoffDescriptor  `json:"cutoff,omitempty"`
 	cutoffFile  *os.File
 	cutoffPeer  *uidProcess
 }
@@ -137,6 +139,7 @@ type terminalAuthorityRuntime struct {
 	launches                                          map[string]PaneInstance // Includes pending scopes before manager startup.
 	resume                                            *terminalResumePrepared
 	resumeNonce                                       string
+	resumeKind                                        string
 	clockReset                                        *ClockReset      // Exact durable clock intent; lost replies never apply it twice.
 	cancelledResumeOwner                              *monitoringOwner // Negative-control alias only; never positive permission.
 	start, deadline, originalDeadline, deadlineBootMS int64
@@ -533,10 +536,10 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		if err != nil {
 			reply.Error = err.Error()
 		}
-	case "prepare-resume", "prepare-resume-recovery":
+	case "prepare-resume", "prepare-resume-recovery", "prepare-technical-resume", "prepare-technical-resume-recovery":
 		var resume terminalResumePrepared
 		var err error
-		if q.Op == "prepare-resume" {
+		if q.Op == "prepare-resume" || q.Op == "prepare-technical-resume" {
 			resume, err = s.prepareAuthorityResume(q.Owner, q.Generation)
 		} else {
 			resume, err = s.prepareAuthorityResumeRecovery(q.Owner, q.Nonce)
@@ -556,6 +559,14 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		// installed transition. Return the ACTUAL held actor separately.
 		owner := runtime.owner
 		s.mu.Unlock()
+		if q.Op == "prepare-technical-resume" || q.Op == "prepare-technical-resume-recovery" {
+			continuity, err := s.technicalContinuity(owner)
+			if err != nil {
+				reply.Error = err.Error()
+				return
+			}
+			reply.Continuity = &continuity
+		}
 		reply.Resume, reply.HeldOwner = &resume, &owner
 	case "commit-resume", "resume-result":
 		view, epochs, err := s.commitAuthorityResume(q)
@@ -564,6 +575,11 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 			return
 		}
 		reply.View, reply.InputEpochs = &view, epochs
+		s.mu.Lock()
+		if r := s.workAuthority; r != nil && r.resumeNonce == q.Nonce {
+			reply.ResumeKind = r.resumeKind
+		}
+		s.mu.Unlock()
 	case "register-launch", "cancel-launch", "launch-ready":
 		s.mu.Lock()
 		runtime := s.workAuthority

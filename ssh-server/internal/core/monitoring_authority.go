@@ -113,6 +113,7 @@ type monitoringAuthority struct {
 	challenges                 map[string]monitoringChallenge
 	committed                  map[string]monitoringCommitted
 	pending                    *monitoringCommitTicket
+	acceptedNonce              string // Live acceptance anchor; never reconstructed from disk.
 	publicationFailureObserved bool
 }
 
@@ -326,6 +327,7 @@ func (a *monitoringAuthority) accept(p monitoringPermitCandidate) (monitoringCom
 	a.context.AuthorityUntilMS = effectiveUntil
 	a.context.CoverageEpoch = p.CoverageEpoch
 	a.context.Sequence = p.Sequence
+	a.acceptedNonce = p.Nonce
 	a.phase = "active"
 	r := monitoringCommitReceipt{Nonce: p.Nonce, Sequence: p.Sequence, UntilUptimeMS: effectiveUntil, AcceptedRevision: a.revision}
 	a.committed[p.Nonce] = monitoringCommitted{ticket: t, receipt: r}

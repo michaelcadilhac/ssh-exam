@@ -132,6 +132,8 @@ it.each([false, true])(
           monitoring_mode,
           retained_hold,
           monitoring_hold_kind,
+          native_resume_kind,
+          native_resume_nonce,
           ...kept
         } = store.attempt(attempt);
         expect(kept).toEqual(old);
@@ -143,6 +145,8 @@ it.each([false, true])(
         expect(monitoring_mode).toBe("legacy");
         expect(retained_hold).toBeNull();
         expect(monitoring_hold_kind).toBeNull();
+        expect(native_resume_kind).toBeNull();
+        expect(native_resume_nonce).toBeNull();
         expect(
           db.prepare("SELECT rowid FROM attempt_grants WHERE id=?").get(grant),
         ).toEqual({ rowid: 42 });

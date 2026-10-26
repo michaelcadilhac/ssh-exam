@@ -22,6 +22,81 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_class_recovery_requires_exact_live_synthetic_fleet_before_transport_fault(self):
+        ids = ['%08x-1234-4234-8234-123456789abc' % index for index in range(16)]
+        snapshots = {attempt: {'attempt': {'username':name, 'state':'ACTIVE'},
+                     'supervisor': {'ssh_peer':'pinned-live', 'attached_panes':4},
+                     'kernel':[{'populated':'1', 'frozen':'0'} for _ in range(4)]}
+                     for attempt,name in zip(ids,bridge.fixture_accounts(16))}
+        def invoke(fixture, request):
+            server,client=socket.socketpair()
+            try:
+                server.settimeout(1);client.settimeout(1)
+                client.sendall((json.dumps(request)+'\n').encode())
+                fixture.inspect(server)
+                with client.makefile('rb') as stream: return bridge.line(stream)
+            finally: server.close();client.close()
+        with mock.patch.object(bridge,'private_json',return_value={'browser_students':16}), \
+             mock.patch.object(bridge,'CoordinatorOutage') as outage:
+            fixture=bridge.GuestBridge({});fixture.snapshot=lambda attempt:snapshots[attempt]
+            outage.return_value.status.return_value={'phase':'offline'}
+            # One incomplete physical scope refuses before creating any fault.
+            snapshots[ids[0]]['kernel'].pop()
+            with self.assertRaises(AssertionError): invoke(fixture,{'attempts':ids,'recovery':'start'})
+            outage.assert_not_called()
+            snapshots[ids[0]]['kernel'].append({'populated':'1','frozen':'0'})
+            self.assertEqual(invoke(fixture,{'attempts':ids,'recovery':'start'}),{'phase':'offline'})
+            outage.assert_called_once_with(seconds=35,all_proof_paths=True,transport_only=True)
+            self.assertEqual(invoke(fixture,{'attempts':list(reversed(ids)),'recovery':'status'}),{'phase':'offline'})
+            with self.assertRaises(AssertionError): invoke(fixture,{'attempts':ids[:-1],'recovery':'status'})
+            with self.assertRaises(AssertionError): invoke(fixture,{'attempts':ids,'recovery':'start'})
+            outage.return_value.cancel.assert_not_called()
+
+    def test_browser_finish_accepts_only_unchanged_clock_or_exact_authorized_reset_history(self):
+        original = {'start':1000, 'original_deadline':5401000, 'deadline':5401000, 'access_state':'HELD'}
+        bridge.verify_fixture_clock(original)
+        reset = {'id':'11111111-1234-4234-8234-123456789abc', 'revision':1, 'actor':'instructor',
+                 'remaining_seconds':5400, 'previous_deadline':5401000, 'requested_at':2000,
+                 'applied_at':2002, 'deadline':5402000}
+        current = {**original, 'deadline':5402000, 'clock_revision':1, 'clock_resets':[reset]}
+        bridge.verify_fixture_clock(current)
+        for change in ({'original_deadline':5402000}, {'access_state':'RELEASED'}, {'clock_revision':2},
+                       {'deadline':5403000}, {'clock_resets':[]}, {'clock_resets':[reset,reset]}):
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                bridge.verify_fixture_clock({**current, **change})
+        for change in ({'actor':'student'}, {'remaining_seconds':5401}, {'previous_deadline':5400000},
+                       {'requested_at':5401000}, {'deadline':5403000}, {'revision':2}, {'extend_seconds':60}):
+            with self.subTest(change=change), self.assertRaises(AssertionError):
+                bridge.verify_fixture_clock({**current, 'clock_resets':[{**reset, **change}]})
+
+    def test_proof_transport_outage_never_stops_or_restarts_owned_roles(self):
+        with mock.patch.object(bridge, 'guest_identity'), \
+             mock.patch.object(bridge.CoordinatorOutage, 'identity', side_effect=lambda unit, role: 101 if role == 'Agent' else 102), \
+             mock.patch.object(bridge.CoordinatorOutage, 'restored_identity', side_effect=lambda unit, role: 101 if role == 'Agent' else 102), \
+             mock.patch.object(bridge, 'root_command') as command:
+            fault = bridge.CoordinatorOutage(seconds=.01, all_proof_paths=True, transport_only=True)
+            fault.thread.join(timeout=1)
+            self.assertFalse(fault.thread.is_alive())
+            self.assertEqual(fault.status()['phase'], 'restored')
+            self.assertEqual(fault.status()['after'], 101)
+            self.assertEqual(fault.status()['watchdog_after'], 102)
+            command.assert_not_called()
+
+    def test_proof_transport_outage_is_an_explicit_503_before_gateway_dispatch(self):
+        fixture = object.__new__(bridge.GuestBridge)
+        fixture.coordinator_fault = types.SimpleNamespace(transport_only=True, status=lambda: {'phase':'offline'})
+        fixture.requests = types.SimpleNamespace(put_nowait=mock.Mock(side_effect=AssertionError('Outage dispatched to gateway')))
+        for path in ('monitoring-evidence', 'monitoring-continue', 'monitoring-technical'):
+            server, client = socket.socketpair()
+            try:
+                server.settimeout(1); client.settimeout(1)
+                client.sendall((json.dumps({'path':'/api/agent/'+path})+'\n').encode())
+                fixture.http(server)
+                with client.makefile('rb') as stream:
+                    self.assertEqual(bridge.line(stream)['status'], 503)
+            finally: server.close(); client.close()
+        fixture.requests.put_nowait.assert_not_called()
+
     def test_class_listener_accept_backlog_holds_both_proof_bursts(self):
         with mock.patch.object(bridge, 'private_json', return_value={'browser_students':16}):
             fixture=bridge.GuestBridge({})

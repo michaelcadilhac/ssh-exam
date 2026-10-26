@@ -385,3 +385,15 @@ well as successful wire producers before qualification. Existing AGENTS already
 requires those steps; adding more instructions is no substitute for following
 them. These are private-fixture corrections, not evidence that the production
 incident is explained or that the broader liveness feature is complete.
+
+October26 capacity recovery added35s of outage plus64 paced input checks but
+initially retained the baseline eight-minute Playwright budget. The first runner
+was stopped deliberately; increasing only that outer budget then missed the
+guest's independent540s completion wait, which powered off during the last input
+checks. Both exact failed guests preserved host files/authority and stopped; neither
+receipt qualifies the workflow. The private class mode now aligns completion,
+stream, oneshot and outer lifetimes within the existing bounded class envelope.
+Before another long composition, enumerate ALL runner/transport/guest lifetimes
+and calculate the paced end-to-end runtime. A timeout in any wrapper is not a
+product refusal or proof of a student violation. This was another avoidable fixture
+composition error; existing instructions already required reviewing that lifetime.

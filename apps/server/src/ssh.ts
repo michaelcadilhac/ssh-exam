@@ -543,6 +543,7 @@ export class Connection {
         this.browserCommands ||
         signedCommand.op === "issue-framed-owner-channel-admission" ||
         signedCommand.op === "consume-monitored-continuation" ||
+        signedCommand.op === "consume-technical-continuation" ||
         op === "renew-receipted-execution-lease" ||
         op === "execution-renewal-receipt" ||
         (op === "register" &&
@@ -593,7 +594,8 @@ export class Connection {
       if (signed)
         await this.agent.acceptRegisteredOwnerObservation(
           op === "execution-renewal-receipt" ||
-            signedCommand.op === "consume-monitored-continuation"
+            signedCommand.op === "consume-monitored-continuation" ||
+            signedCommand.op === "consume-technical-continuation"
             ? result?.attempt
             : result,
         );

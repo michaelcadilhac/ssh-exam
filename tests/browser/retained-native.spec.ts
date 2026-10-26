@@ -104,16 +104,78 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE === "1";
   const continuityMode =
     process.env.EXAM_BROWSER_NATIVE_COORDINATOR_CONTINUITY === "1";
+  const technicalRecovery =
+    process.env.EXAM_BROWSER_NATIVE_TECHNICAL_RECOVERY === "1";
+  const technicalSecondary =
+    process.env.EXAM_BROWSER_NATIVE_TECHNICAL_SECONDARY === "1";
+  const clockRetry = process.env.EXAM_BROWSER_NATIVE_CONTINUE_CLOCK === "1";
+  const technicalPartial =
+    process.env.EXAM_BROWSER_NATIVE_TECHNICAL_PARTIAL === "1";
+  expect(
+    technicalPartial &&
+      (!technicalRecovery || !coordinatorMode || technicalSecondary),
+  ).toBe(false);
+  expect(clockRetry && coordinatorMode).toBe(false);
+  const technicalGap = coordinatorMode && !continuityMode && !technicalRecovery;
+  let missingCaptureUntil = 0,
+    droppedCaptures = 0;
+  if (technicalGap) {
+    // Actual failed HTTP uploads to this synthetic page, not fabricated ledger
+    // facts. Live media remains available; v1 must report technical uncertainty.
+    await page.route(
+      "**/api/student/attempts/*/frames/challenged",
+      async (route) => {
+        if (performance.now() < missingCaptureUntil) {
+          droppedCaptures++;
+          await route.abort("timedout");
+        } else await route.continue();
+      },
+    );
+  }
+  expect(technicalSecondary && !(technicalRecovery && coordinatorMode)).toBe(
+    false,
+  );
   expect(continuityMode && !coordinatorMode).toBe(false);
   expect(stallMode && coordinatorMode).toBe(false);
+  expect(
+    technicalRecovery && (!coordinatorMode || continuityMode || processMode),
+  ).toBe(false);
   let coordinatorHeldBytes = 0;
   let bindingConnection = 0,
     confirmationConnection = 0,
     connections = 0,
     uploads = 0;
   let lastOpenRequest = "";
+  let recoveryTransport = "";
+  let manualContinue:
+    | { headers: Record<string, string>; data: unknown }
+    | undefined;
+  page.on("request", (request) => {
+    if (
+      request.url().endsWith("/continue") &&
+      request.method() === "POST" &&
+      request.postDataJSON().automaticTechnical !== true
+    ) {
+      const headers = request.headers();
+      manualContinue = {
+        data: request.postDataJSON(),
+        headers: {
+          origin,
+          "x-csrf-token": headers["x-csrf-token"] || "",
+          "x-page-instance": headers["x-page-instance"] || "",
+        },
+      };
+    }
+  });
   const paneReplies = new Map<string, "opened" | "error">();
   page.on("response", (response) => {
+    if (response.url().endsWith("/continue") && response.status() === 200)
+      void response
+        .json()
+        .then((value) => {
+          recoveryTransport = value.technicalRecoveryTransport || "";
+        })
+        .catch(() => {});
     if (
       response.url().endsWith("/frames/challenged") &&
       response.status() === 200
@@ -167,6 +229,9 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     gatewayProcess: processMode,
     gateStall: stallMode,
     coordinatorOutage: coordinatorMode,
+    technicalRecovery,
+    technicalPartial,
+    continueClock: clockRetry,
   });
   await simulatedMedia(page);
   await page.goto("/");
@@ -429,7 +494,8 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     const continued = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/attempts/${original.id}/continue`) &&
-        response.request().method() === "POST",
+        response.request().method() === "POST" &&
+        response.request().postDataJSON().automaticTechnical !== true,
     );
     await page
       .getByRole("button", {
@@ -443,6 +509,49 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     return paused;
   };
   let paused = await pauseAndContinue();
+  if (clockRetry) {
+    expect(!!manualContinue).toBe(true);
+    expect(!!manualContinue!.headers["x-page-instance"]).toBe(true);
+    const previous = await current();
+    const reset = await request.post(
+      `/api/admin/attempts/${original.id}/reset-clock`,
+      {
+        headers: { origin, "x-csrf-token": (await login.json()).csrf },
+        data: {
+          minutes: 90,
+          revision: previous.clock_revision,
+          requestID: crypto.randomUUID(),
+        },
+        timeout: 10000,
+      },
+    );
+    expect(reset.ok(), await reset.text()).toBe(true);
+    const changed = await current();
+    expect(changed.clock_revision).toBe(previous.clock_revision + 1);
+    expect(changed.original_deadline).toBe(original.original_deadline);
+    expect(changed.deadline).toBeGreaterThan(previous.deadline);
+    expect(changed.start).toBe(original.start);
+    const retry = await page.request.post(
+      `/api/student/attempts/${original.id}/continue`,
+      {
+        headers: manualContinue!.headers,
+        data: manualContinue!.data,
+        timeout: 10000,
+      },
+    );
+    expect(retry.ok(), await retry.text()).toBe(true);
+    expect((await retry.json()).attempt).toMatchObject({
+      state: "ACTIVE",
+      generation: paused.generation,
+      start: changed.start,
+      deadline: changed.deadline,
+      original_deadline: original.original_deadline,
+      clock_revision: changed.clock_revision,
+    });
+    // Later assertions use this explicitly authorized CURRENT deadline; the
+    // immutable original interval remains separately checked throughout.
+    before.attempt.deadline = changed.deadline;
+  }
   await pane.focus();
   await page.keyboard.type("verified'");
   await page.keyboard.press("Enter");
@@ -625,10 +734,35 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   );
   expect((await native()).editor_exists).toBe(false);
   if (coordinatorMode) {
+    const evidence = async () => {
+      const response = await request.get("/api/fixture/native-evidence", {
+        params: { attempt: original.id },
+        timeout: 5000,
+      });
+      expect(response.ok(), await response.text()).toBe(true);
+      return z
+        .object({
+          privateGuest: z.literal(true),
+          state: z.enum(["fresh", "technical-gap", "policy-blocked"]),
+          coverageEpoch: z
+            .string()
+            .regex(/^[a-f0-9]{64}$/)
+            .nullable(),
+          sequence: z.number().int().nonnegative(),
+          gaps: z.number().int().nonnegative(),
+          remainingMS: z.number().int().nonnegative(),
+        })
+        .parse(await response.json());
+    };
     const coordinator = async (action: "start" | "status" | "restore") => {
       const result = await request.post("/api/fixture/native-coordinator", {
         headers: { origin, "x-csrf-token": (await login.json()).csrf },
-        data: { attempt: original.id, action, allProofPaths: !continuityMode },
+        data: {
+          attempt: original.id,
+          action,
+          allProofPaths: !continuityMode,
+          transportOnly: technicalSecondary,
+        },
         timeout: 10000,
       });
       expect(result.ok(), await result.text()).toBe(true);
@@ -646,6 +780,13 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
       expect(value.phase, JSON.stringify(value)).not.toBe("failed");
       return value;
     };
+    const initialEvidence =
+      technicalRecovery || technicalGap ? await evidence() : undefined;
+    if (initialEvidence) {
+      expect(initialEvidence.state).toBe("fresh");
+      expect(initialEvidence.gaps).toBe(0);
+    }
+    if (technicalGap) missingCaptureUntil = performance.now() + 18000;
     const initial = await native(),
       started = await coordinator("start");
     expect(started.phase).not.toBe("failed");
@@ -743,61 +884,182 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
           { timeout: 5000 },
         )
         .toBe(true);
+      const transition = async (action: "start" | "status") => {
+        const response = await request.post("/api/fixture/native-transition", {
+          headers: { origin, "x-csrf-token": (await login.json()).csrf },
+          data: { attempt: original.id, action },
+          timeout: 10000,
+        });
+        expect(response.ok(), await response.text()).toBe(true);
+        return z
+          .object({
+            observed: z.boolean(),
+            verified_nonce_count: z.number().int().nonnegative(),
+            stage: z.literal("process-continued"),
+          })
+          .parse(await response.json());
+      };
+      if (technicalPartial)
+        expect((await transition("start")).observed).toBe(false);
+      const technicalGate = async (action: "start" | "status" | "restore") => {
+        const response = await request.post("/api/fixture/native-gate", {
+          headers: { origin, "x-csrf-token": (await login.json()).csrf },
+          data: { attempt: original.id, action, technicalRecovery: true },
+          timeout: 10000,
+        });
+        expect(response.ok(), await response.text()).toBe(true);
+        return z
+          .object({
+            phase: z.string(),
+            accepted: z.number().int(),
+            error: z.string().nullable(),
+            commandProbe: z.string(),
+          })
+          .parse(await response.json());
+      };
+      if (technicalSecondary)
+        expect((await technicalGate("start")).phase).toBe("blocked");
       await expect
         .poll(async () => (await coordinator("status")).phase, {
           timeout: 45000,
         })
         .toBe("restored");
       const restored = await coordinator("status");
-      expect(restored.after).not.toBe(started.before);
+      if (technicalSecondary) {
+        expect(restored.after).toBe(started.before);
+        expect(restored.watchdog_after).toBe(started.watchdog);
+      } else {
+        expect(restored.after).not.toBe(started.before);
+        expect(restored.watchdog_after).not.toBe(started.watchdog);
+      }
       expect(restored.watchdog).toBe(started.watchdog);
-      expect(restored.watchdog_after).not.toBe(started.watchdog);
       expect(restored.error).toBeNull();
-      await expect
-        .poll(
-          async () => {
-            const observed = await native();
-            return {
-              state: observed.attempt.state,
-              phase: observed.attempt.retained_hold,
-              kind: observed.attempt.monitoring_hold_kind,
-            };
-          },
-          { timeout: 10000 },
-        )
-        .toEqual({ state: "LOCKED", phase: "held", kind: "technical" });
-      const afterRestoreUploads = uploads;
-      await expect
-        .poll(() => uploads, { timeout: 15000 })
-        .toBeGreaterThan(afterRestoreUploads);
-      const unprovenGap = await native();
-      expect(unprovenGap.attempt).toMatchObject({
-        state: "LOCKED",
-        retained_hold: "held",
-        monitoring_hold_kind: "technical",
-        generation: initial.attempt.generation + 1,
-      });
-      expect(unprovenGap.attempt.reason).toContain(
-        "technical safety hold, not a student violation",
-      );
-      expect(unprovenGap.writer_bytes).toBe(held.writer_bytes);
-      expect(unprovenGap.supervisor).toMatchObject({
-        pid: initial.supervisor!.pid,
-        ssh_peer: "pinned-live",
-      });
-      expect(
-        unprovenGap.kernel.length > 0 &&
-          unprovenGap.kernel.every(
-            (unit) => unit.frozen === "1" && unit.populated === "1",
-          ),
-      ).toBe(true);
-      await expect
-        .poll(async () => (await current()).state, { timeout: 15000 })
-        .toBe("LOCKED");
+      if (technicalRecovery) {
+        // Positive witness BEFORE awaiting recovery: the same live ledger has
+        // complete uninterrupted challenged observations over the ENTIRE outage.
+        // A new frame/new coverage epoch is insufficient to satisfy this oracle.
+        const continuous = await evidence();
+        expect(continuous).toMatchObject({
+          state: "fresh",
+          coverageEpoch: initialEvidence!.coverageEpoch,
+          gaps: 0,
+        });
+        expect(continuous.sequence).toBeGreaterThan(initialEvidence!.sequence);
+        expect(continuous.remainingMS).toBeGreaterThan(0);
+        await expect
+          .poll(async () => (await native()).attempt.state, {
+            timeout: 12000,
+          })
+          .toBe("ACTIVE");
+        if (technicalSecondary) {
+          const blocked = await technicalGate("status");
+          expect(blocked.phase).toBe("blocked");
+          expect(blocked.accepted).toBeGreaterThan(0); // Actual signed SSH command reached the refusing boundary.
+          expect(blocked.error).toBeNull();
+          expect(blocked.commandProbe).toBe("pending");
+        }
+        const recovered = await native();
+        if (technicalPartial) {
+          const fault = await transition("status");
+          expect(fault.observed).toBe(true);
+          expect(fault.verified_nonce_count).toBeGreaterThanOrEqual(2);
+          expect(recovered.attempt.generation).toBe(
+            initial.attempt.generation + 1,
+          );
+        }
+        expect(recovered.attempt).toMatchObject({
+          start: initial.attempt.start,
+          deadline: initial.attempt.deadline,
+          original_deadline: initial.attempt.original_deadline,
+          transport: initial.attempt.transport,
+          grant: initial.attempt.grant,
+        });
+        expect(recovered.supervisor).toMatchObject({
+          pid: initial.supervisor!.pid,
+          ssh_peer: "pinned-live",
+        });
+        expect(
+          recovered.kernel.length > 0 &&
+            recovered.kernel.every(
+              (unit) => unit.frozen === "0" && unit.populated === "1",
+            ),
+        ).toBe(true);
+        await expect
+          .poll(async () => (await native()).writer_bytes, {
+            timeout: 5000,
+          })
+          .toBeGreaterThan(held.writer_bytes);
+        await expect(page.locator(".lock-overlay")).toBeHidden();
+        if (technicalSecondary) {
+          await expect
+            .poll(() => recoveryTransport, { timeout: 3000 })
+            .toBe("authenticated-native");
+          await pane.focus();
+          const marker = "SECONDARY-C9-CHECK";
+          await page.keyboard.type(marker, { delay: 15 });
+          await expect(page.locator(".xterm-rows").first()).toContainText(
+            marker,
+          );
+          for (const _ of marker) await page.keyboard.press("Backspace");
+          expect((await technicalGate("status")).phase).toBe("blocked");
+          expect((await technicalGate("restore")).phase).toBe("restored");
+        }
+      } else {
+        await expect
+          .poll(
+            async () => {
+              const observed = await native();
+              return {
+                state: observed.attempt.state,
+                phase: observed.attempt.retained_hold,
+                kind: observed.attempt.monitoring_hold_kind,
+              };
+            },
+            { timeout: 10000 },
+          )
+          .toEqual({ state: "LOCKED", phase: "held", kind: "technical" });
+        const afterRestoreUploads = uploads;
+        await expect
+          .poll(() => uploads, { timeout: 15000 })
+          .toBeGreaterThan(afterRestoreUploads);
+        const incomplete = await evidence();
+        expect(incomplete.state).toBe("fresh"); // Later images really have returned.
+        expect(droppedCaptures).toBeGreaterThan(0);
+        expect(incomplete.gaps).toBeGreaterThan(0);
+        expect(incomplete.coverageEpoch).not.toBe(
+          initialEvidence!.coverageEpoch,
+        );
+        const unprovenGap = await native();
+        expect(unprovenGap.attempt).toMatchObject({
+          state: "LOCKED",
+          retained_hold: "held",
+          monitoring_hold_kind: "technical",
+          generation: initial.attempt.generation + 1,
+        });
+        expect(unprovenGap.attempt.reason).toContain(
+          "technical safety hold, not a student violation",
+        );
+        expect(unprovenGap.writer_bytes).toBe(held.writer_bytes);
+        expect(unprovenGap.supervisor).toMatchObject({
+          pid: initial.supervisor!.pid,
+          ssh_peer: "pinned-live",
+        });
+        expect(
+          unprovenGap.kernel.length > 0 &&
+            unprovenGap.kernel.every(
+              (unit) => unit.frozen === "1" && unit.populated === "1",
+            ),
+        ).toBe(true);
+        await expect
+          .poll(async () => (await current()).state, { timeout: 15000 })
+          .toBe("LOCKED");
+      }
     }
   }
   paused = await pauseAndContinue(
-    coordinatorMode && !continuityMode ? "technical" : "policy",
+    coordinatorMode && !continuityMode && !technicalRecovery
+      ? "technical"
+      : "policy",
   );
   await pane.focus();
   await page.keyboard.press("Control+x");

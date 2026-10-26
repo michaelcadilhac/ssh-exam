@@ -9,6 +9,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"errors"
+	"os"
 	"reflect"
 	"time"
 
@@ -29,11 +30,12 @@ type terminalResumePrepared struct {
 }
 
 type monitoringContinueRequest struct {
-	Type          string          `json:"type"`
-	Agent         string          `json:"agent"`
-	Nonce         string          `json:"nonce"`
-	PreviousOwner monitoringOwner `json:"previous_owner"`
-	Owner         monitoringOwner `json:"owner"`
+	Type          string                       `json:"type"`
+	Agent         string                       `json:"agent"`
+	Nonce         string                       `json:"nonce"`
+	PreviousOwner monitoringOwner              `json:"previous_owner"`
+	Owner         monitoringOwner              `json:"owner"`
+	Continuity    *terminalTechnicalContinuity `json:"continuity,omitempty"`
 }
 
 type monitoringContinueReply struct {
@@ -78,7 +80,8 @@ func decodeMonitoringContinuation(frame SignedFrame, key ed25519.PublicKey) (mon
 		return result, err
 	}
 	result.Bootstrap = &seed
-	if result.Type != "monitoring-continue/v1" || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || result.Expires <= Millis() || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.PolicyReports != "v1" || seed.Owner != result.Owner || seed.Sequence != 1 || !monitoringDigest.MatchString(seed.CoverageEpoch) {
+	technical := result.Type == monitoringTechnicalContinue
+	if (result.Type != "monitoring-continue/v1" && !technical) || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || (!technical && result.Expires <= Millis()) || result.Expires <= 0 || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.PolicyReports != "v1" || seed.Owner != result.Owner || seed.Sequence == 0 || seed.Sequence > monitoringEvidenceMaxSequence || (!technical && seed.Sequence != 1) || !monitoringDigest.MatchString(seed.CoverageEpoch) {
 		return result, errMonitoringEvidence
 	}
 	return result, nil
@@ -192,6 +195,10 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 		return monitoringAuthorityView{}, nil, errMonitoringScope
 	}
 	if r.owner == *q.NextOwner && r.resumeNonce == q.Nonce && r.resume != nil {
+		if r.hold != nil {
+			s.mu.Unlock()
+			return monitoringAuthorityView{}, nil, errTerminalHold
+		}
 		s.mu.Unlock()
 		view := r.authority.check()
 		if !view.ExecutionAuthorized {
@@ -219,6 +226,13 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	proof, err := decodeMonitoringContinuation(*q.Frame, r.key)
 	if err != nil || proof.Audience != r.authority.context.Agent || proof.Nonce != p.Nonce || proof.PreviousOwner != p.PreviousOwner || proof.Owner != p.Owner {
 		return monitoringAuthorityView{}, nil, errMonitoringEvidence
+	}
+	technical := proof.Type == monitoringTechnicalContinue
+	if technical {
+		continuity, err := s.technicalContinuity(r.owner)
+		if err != nil || proof.Bootstrap.CoverageEpoch != continuity.CoverageEpoch || proof.Bootstrap.Sequence < continuity.AfterSequence {
+			return monitoringAuthorityView{}, nil, errMonitoringEvidence
+		}
 	}
 	now, err := monitoringBootMillis()
 	until := min(p.IssuedBootMS+proof.CaptureValidFor, r.deadlineBootMS)
@@ -262,6 +276,10 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	resumed := *p
 	resumed.InputEpochs = epochs
 	next := &terminalAuthorityRuntime{owner: p.Owner, beginNonce: r.beginNonce, key: r.key, peer: r.peer, claim: r.claim, hold: h, launches: map[string]PaneInstance{}, resume: &resumed, resumeNonce: p.Nonce, start: r.start, deadline: r.deadline, originalDeadline: r.originalDeadline, deadlineBootMS: r.deadlineBootMS}
+	next.resumeKind = "reviewed"
+	if technical {
+		next.resumeKind = "technical"
+	}
 	next.live.Store(true)
 	cutoff, err := newMonitoringSharedCutoff(p.Owner, until, r.deadlineBootMS)
 	if err != nil {
@@ -273,11 +291,14 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 			cutoff.close()
 		}
 	}()
-	c := monitoringActiveContext{Agent: proof.Audience, PolicyReports: proof.Bootstrap.PolicyReports, Owner: p.Owner, CoverageEpoch: proof.Bootstrap.CoverageEpoch, Sequence: 1, AuthorityUntilMS: until, DeadlineUptimeMS: r.deadlineBootMS, cutoff: cutoff}
+	c := monitoringActiveContext{Agent: proof.Audience, PolicyReports: proof.Bootstrap.PolicyReports, Owner: p.Owner, CoverageEpoch: proof.Bootstrap.CoverageEpoch, Sequence: proof.Bootstrap.Sequence, AuthorityUntilMS: until, DeadlineUptimeMS: r.deadlineBootMS, cutoff: cutoff}
 	c.verified = &monitoringActiveSeal{fingerprint: monitoringContextHash(c), current: func() bool { return next.live.Load() && next.peer.current() && next.claim.current() }}
 	next.authority, err = newMonitoringAuthority(c, monitoringBootMillis)
 	if err != nil {
 		return monitoringAuthorityView{}, nil, err
+	}
+	if technical {
+		next.authority.acceptedNonce = p.Nonce
 	}
 	s.mu.Lock()
 	if s.workAuthority != r || r.resume != p || len(s.timed) != len(streams) || len(r.launches) != len(streams) {
@@ -402,6 +423,7 @@ func (e *Engine) finishMonitoredResume(expected *Attempt, owner monitoringOwner,
 			return errMonitoringScope
 		}
 		current.RetainedHold = ""
+		current.MonitoringHoldKind, current.MonitoringResumeKind = "", result.ResumeKind
 		copy := *current
 		committed = &copy
 		return nil
@@ -410,10 +432,28 @@ func (e *Engine) finishMonitoredResume(expected *Attempt, owner monitoringOwner,
 		return expected, err
 	}
 	e.registerTerminalMonitoring(committed.ID, owner, int64(committed.UptimeDeadline*1000))
-	return map[string]any{"attempt": committed, "input_epochs": result.InputEpochs}, nil
+	// Metadata fsync can outlive the live permit. Obtain a fresh actual result
+	// before exposing any epochs, including after a lost command acknowledgement.
+	fresh, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "resume-result", Attempt: committed.ID, Owner: owner, NextOwner: &owner, Nonce: nonce}, nil, false)
+	if err != nil || fresh.View == nil || !fresh.View.ExecutionAuthorized {
+		return committed, errors.Join(errMonitoringAuthority, err)
+	}
+	at, err := monitoringBootMillis()
+	if err != nil || at >= fresh.View.AuthorityUntilMS {
+		return committed, errMonitoringAuthority
+	}
+	return map[string]any{"attempt": committed, "input_epochs": fresh.InputEpochs, "monitoring_remaining_ms": fresh.View.AuthorityUntilMS - at}, nil
 }
 
 func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
+	return e.resumeMonitoredPurpose(a, request, false)
+}
+
+func (e *Engine) resumeTechnical(a *Attempt, request Request) (any, error) {
+	return e.resumeMonitoredPurpose(a, request, true)
+}
+
+func (e *Engine) resumeMonitoredPurpose(a *Attempt, request Request, technical bool) (any, error) {
 	if a == nil || a.MonitoringMode != "v1" || a.RegisteredOwner == nil || request.Generation != a.Generation || request.PageEpoch != a.RegisteredOwner.PageEpoch || expired(a) {
 		return a, errMonitoringScope
 	}
@@ -430,12 +470,21 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 	if !recovering && (a.State != "LOCKED" || a.RetainedHold != "held" || a.ResumeTransport != a.Transport) {
 		return a, errTerminalHold
 	}
+	if technical && ((!recovering && a.MonitoringHoldKind != "technical") || (recovering && a.MonitoringResumeKind != "technical")) {
+		return a, errMonitoringScope
+	}
 	if err := e.prepareTerminalMonitoring(); err != nil {
 		return a, err
 	}
 	op := "prepare-resume"
 	if recovering {
 		op = "prepare-resume-recovery"
+	}
+	if technical {
+		op = "prepare-technical-resume"
+		if recovering {
+			op = "prepare-technical-resume-recovery"
+		}
 	}
 	prepared, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: op, Attempt: a.ID, Owner: *a.RegisteredOwner, Generation: a.Generation, Nonce: a.MonitoringResumeNonce}, nil, false)
 	if err != nil || prepared.Resume == nil {
@@ -450,7 +499,15 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	frame, err := e.exchangeTerminalMonitoring(ctx, "/api/agent/monitoring-continue", monitoringContinueRequest{Type: "monitoring-continue/v1", Agent: e.Config.AgentID, Nonce: p.Nonce, PreviousOwner: p.PreviousOwner, Owner: p.Owner})
+	kind := "monitoring-continue/v1"
+	var continuity *terminalTechnicalContinuity
+	if technical {
+		kind, continuity = monitoringTechnicalContinue, prepared.Continuity
+		if continuity == nil || continuity.Owner != *prepared.HeldOwner {
+			return a, errMonitoringScope
+		}
+	}
+	frame, err := e.exchangeTerminalMonitoring(ctx, "/api/agent/monitoring-continue", monitoringContinueRequest{Type: kind, Agent: e.Config.AgentID, Nonce: p.Nonce, PreviousOwner: p.PreviousOwner, Owner: p.Owner, Continuity: continuity})
 	if err != nil {
 		return a, err
 	}
@@ -459,12 +516,17 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 		return a, err
 	}
 	proof, err := decodeMonitoringContinuation(frame, key)
-	if err != nil || proof.Nonce != p.Nonce || proof.Audience != e.Config.AgentID || proof.PreviousOwner != p.PreviousOwner || proof.Owner != p.Owner {
+	if err != nil || proof.Type != kind || proof.Nonce != p.Nonce || proof.Audience != e.Config.AgentID || proof.PreviousOwner != p.PreviousOwner || proof.Owner != p.Owner || (technical && (proof.Bootstrap.CoverageEpoch != continuity.CoverageEpoch || proof.Bootstrap.Sequence < continuity.AfterSequence)) {
 		return a, errMonitoringEvidence
 	}
 	now, err := monitoringBootMillis()
 	if err != nil || now < p.IssuedBootMS || now >= min(p.IssuedBootMS+proof.CaptureValidFor, int64(a.UptimeDeadline*1000)) {
 		return a, errMonitoringAuthority
+	}
+	if technical {
+		if err := e.appendNativeManagementAudit(map[string]any{"action": "technical-continuation-verified", "attempt": a.ID, "nonce": p.Nonce, "generation": p.Owner.Generation, "clock_revision": a.ClockRevision, "actor_uid": os.Getuid(), "actor_euid": os.Geteuid(), "at": Millis()}); err != nil {
+			return a, err
+		}
 	}
 	var committed *Attempt
 	err = e.WithState(func() error {
@@ -472,7 +534,8 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 		if err != nil {
 			return err
 		}
-		if current.State != a.State || current.Generation != a.Generation || current.RegisteredOwner == nil || *current.RegisteredOwner != *a.RegisteredOwner || current.RetainedHold != a.RetainedHold || current.MonitoringResumeNonce != a.MonitoringResumeNonce || current.ResumeTransport != a.Transport || current.Start != a.Start || current.Deadline != a.Deadline || current.OriginalDeadline != a.OriginalDeadline || current.ClockRevision != a.ClockRevision || !reflect.DeepEqual(current.Units, a.Units) || expired(current) || proof.AuthorizationExpires <= Millis() {
+		at, clockErr := monitoringBootMillis()
+		if current.State != a.State || current.Generation != a.Generation || current.RegisteredOwner == nil || *current.RegisteredOwner != *a.RegisteredOwner || current.RetainedHold != a.RetainedHold || current.MonitoringResumeNonce != a.MonitoringResumeNonce || current.ResumeTransport != a.Transport || current.Start != a.Start || current.Deadline != a.Deadline || current.OriginalDeadline != a.OriginalDeadline || current.ClockRevision != a.ClockRevision || !reflect.DeepEqual(current.Units, a.Units) || expired(current) || (!technical && proof.AuthorizationExpires <= Millis()) || clockErr != nil || at < p.IssuedBootMS || at >= min(p.IssuedBootMS+proof.CaptureValidFor, int64(current.UptimeDeadline*1000)) || (technical && (current.MonitoringHoldKind != a.MonitoringHoldKind || current.MonitoringResumeKind != a.MonitoringResumeKind)) {
 			return errMonitoringScope
 		}
 		// Keep the immutable recorder/report identity. Only the reviewed,
@@ -502,11 +565,19 @@ func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {
 		owner := p.Owner
 		current.State, current.RetainedHold, current.RegisteredOwner, current.Authorization = "ACTIVE", "resuming", &owner, 0
 		current.MonitoringHoldKind = ""
+		current.MonitoringResumeKind = "reviewed"
+		if technical {
+			current.MonitoringHoldKind, current.MonitoringResumeKind = "technical", "technical"
+		}
 		current.MonitoringResumeNonce, current.Lease = p.Nonce, Millis()+proof.CaptureValidFor-(now-p.IssuedBootMS)
 		copy := *current
 		copy.Units = append([]string(nil), current.Units...)
 		committed = &copy
-		e.Audit("retained-continuation-committed", current.ID)
+		action := "retained-continuation-committed"
+		if technical {
+			action = "technical-continuation-committed"
+		}
+		e.Audit(action, current.ID)
 		return nil
 	})
 	if err != nil {

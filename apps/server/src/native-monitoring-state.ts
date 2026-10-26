@@ -1,6 +1,42 @@
 import type { Attempt, Store } from "./db.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 
+// Signed status order is not ownership order: a queued LOCKED generation N
+// still names the pre-Continue owner N-1. Once owner N committed, that retired
+// observation cannot re-hold it or invalidate its already-consumed operation.
+export function retiredNativeMonitoringObservation(a: Attempt, remote: any) {
+  if (
+    a.monitoring_mode !== "v1" ||
+    !a.start ||
+    !a.registered_owner ||
+    remote.monitoring_mode !== "v1" ||
+    !["ACTIVE", "LOCKED"].includes(remote.state) ||
+    !Number.isSafeInteger(remote.generation || 0) ||
+    (remote.generation || 0) > a.generation
+  )
+    return false;
+  let stored: unknown;
+  try {
+    stored = JSON.parse(a.registered_owner);
+  } catch {
+    return false;
+  }
+  const current = monitoringOwner.safeParse(stored),
+    previous = monitoringOwner.safeParse(remote.registered_owner);
+  return (
+    current.success &&
+    previous.success &&
+    current.data.attempt === a.id &&
+    previous.data.attempt === a.id &&
+    (previous.data.generation < current.data.generation ||
+      (previous.data.generation === current.data.generation &&
+        previous.data.clock_revision < current.data.clock_revision) ||
+      (remote.retained_hold === "resuming" &&
+        JSON.stringify(previous.data) === JSON.stringify(current.data) &&
+        nativeContinuationOutcomeRecorded(a)))
+  );
+}
+
 // Only accepted native signatures/SSH outcomes call this. These are version and
 // pending-operation observations, never permission reconstructed from SQLite.
 export function observeNativeMonitoring(store: Store, a: Attempt, remote: any) {
@@ -47,16 +83,24 @@ export function observeNativeMonitoring(store: Store, a: Attempt, remote: any) {
       "An already-started legacy attempt cannot be converted to retained monitoring; preserve its original workflow.",
     );
   const hold = remote.retained_hold || null,
-    kind = remote.monitoring_hold_kind || null;
+    kind = remote.monitoring_hold_kind || null,
+    resumeKind = remote.monitoring_resume_kind || null,
+    resumeNonce = remote.monitoring_resume_nonce || null;
   if (
     (hold !== null &&
       !["pending", "unverified", "held", "resuming"].includes(hold)) ||
     (kind !== null && !["policy", "technical"].includes(kind)) ||
-    (hold === "resuming" && remote.state !== "ACTIVE")
+    (hold === "resuming" && remote.state !== "ACTIVE") ||
+    (resumeKind !== null && !["reviewed", "technical"].includes(resumeKind)) ||
+    (resumeNonce !== null &&
+      (typeof resumeNonce !== "string" ||
+        !/^[a-f0-9]{64}$/.test(resumeNonce))) ||
+    (resumeKind !== null && resumeNonce === null)
   )
     throw Error(
       "Invalid native monitoring hold observation; no resume permission accepted.",
     );
+  if (retiredNativeMonitoringObservation(a, remote)) return;
   store.db
     .prepare("UPDATE attempts SET monitoring_mode='v1' WHERE id=?")
     .run(a.id);
@@ -66,9 +110,9 @@ export function observeNativeMonitoring(store: Store, a: Attempt, remote: any) {
   )
     store.db
       .prepare(
-        "UPDATE attempts SET retained_hold=?,monitoring_hold_kind=? WHERE id=?",
+        "UPDATE attempts SET retained_hold=?,monitoring_hold_kind=?,native_resume_kind=?,native_resume_nonce=? WHERE id=?",
       )
-      .run(hold, kind, a.id);
+      .run(hold, kind, resumeKind, resumeNonce, a.id);
 }
 
 // Recorded native outcome identity only. A caller still needs the current

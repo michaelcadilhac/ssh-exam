@@ -68,6 +68,11 @@ func TestRetainedPolicyAgentGuest(t *testing.T) {
 	if err := engine.Tick(); err != nil {
 		t.Fatal(err)
 	}
+	// Match the installed agent entry: management must receive actual signed
+	// configuration/capabilities, not a fixture-created readiness bypass.
+	if err := engine.ReportConfiguration(); err != nil {
+		t.Fatal(err)
+	}
 	if err := engine.ServeLocal(); err != nil {
 		t.Fatal(err)
 	}

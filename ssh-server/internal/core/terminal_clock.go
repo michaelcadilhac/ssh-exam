@@ -105,6 +105,10 @@ func (s *terminalSupervisor) changeAuthorityClock(q terminalAuthorityRequest) (m
 	// The old observer/proof can now act only on its old word. A fresh deadline
 	// mapping fences delayed watchdogs; all facts keep their original cutoff/age.
 	next := &terminalAuthorityRuntime{owner: expected, beginNonce: r.beginNonce, key: r.key, peer: r.peer, claim: r.claim, hold: r.hold, launches: r.launches, clockReset: q.Clock, start: r.start, deadline: q.Deadline, originalDeadline: r.originalDeadline, deadlineBootMS: q.DeadlineBootMS}
+	// Clock changes rotate no pane input epochs. Keep the immutable completed
+	// Continue identity so a lost result can query THIS fresh live authority;
+	// the old result/view/clock itself is never restored or accepted as permission.
+	next.resume, next.resumeNonce, next.resumeKind = r.resume, r.resumeNonce, r.resumeKind
 	next.live.Store(true)
 	c := prior.context
 	c.Owner, c.DeadlineUptimeMS, c.cutoff = expected, q.DeadlineBootMS, cutoff
@@ -129,7 +133,7 @@ func (s *terminalSupervisor) changeAuthorityClock(q terminalAuthorityRequest) (m
 	if now >= c.DeadlineUptimeMS {
 		causes["deadline"] = true
 	}
-	next.authority = &monitoringAuthority{context: c, incarnation: incarnation, clock: prior.clock, lastNow: now, phase: phase, revision: prior.revision + 1, causes: causes, challenges: map[string]monitoringChallenge{}, committed: map[string]monitoringCommitted{}, publicationFailureObserved: prior.publicationFailureObserved}
+	next.authority = &monitoringAuthority{context: c, incarnation: incarnation, clock: prior.clock, lastNow: now, phase: phase, revision: prior.revision + 1, causes: causes, challenges: map[string]monitoringChallenge{}, committed: map[string]monitoringCommitted{}, publicationFailureObserved: prior.publicationFailureObserved, acceptedNonce: prior.acceptedNonce}
 	for _, unit := range units {
 		stream := s.timed[unit]
 		for _, gate := range []*paneInputGate{stream.inputGate, stream.resizeGate} {

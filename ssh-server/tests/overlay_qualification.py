@@ -283,7 +283,7 @@ def run_locked(args):
         marker['browser_large'] = large
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
-        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=840') if large else UNIT)
+        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=840') if students == 16 else UNIT)
         command = candidate_command(unit, guest, inputs, output, students, storage)
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)

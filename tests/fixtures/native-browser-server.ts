@@ -20,6 +20,7 @@ import { managementOperations } from "../../packages/protocol/management.js";
 import { hosts } from "./hosts.js";
 import { nativeGuest } from "./native-guest.js";
 import { browserGatewayProcess } from "./browser-gateway-process.js";
+import type { MonitoringEvidenceLedger } from "../../apps/server/src/monitoring-evidence-ledger.js";
 
 const origin = "https://127.0.0.1:9444";
 const data = mkdtempSync(tmpdir() + "/ssh-exam-browser-native-");
@@ -133,7 +134,8 @@ if (gateway) {
   };
   await gateway.initialized;
 }
-const { app, store } = gateway ?? (await createApp(gatewayConfig));
+const localApplication = gateway ? undefined : await createApp(gatewayConfig);
+const { app, store } = gateway ?? localApplication!;
 store.db
   .prepare("INSERT INTO admins VALUES(?,?,?)")
   .run("fixture", "instructor", await argon2.hash("fixture-password"));
@@ -150,12 +152,43 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     gateStall: process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1",
     coordinatorOutage:
       process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE === "1",
+    technicalRecovery:
+      process.env.EXAM_BROWSER_NATIVE_TECHNICAL_RECOVERY === "1",
+    technicalPartial: process.env.EXAM_BROWSER_NATIVE_TECHNICAL_PARTIAL === "1",
+    capacityRecovery: process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1",
+    continueClock: process.env.EXAM_BROWSER_NATIVE_CONTINUE_CLOCK === "1",
     log: data + "/native-root.log",
   };
 });
 app.get("/api/fixture/native-state", async (req) =>
   guest.inspect(String((req.query as any).attempt)),
 );
+app.get("/api/fixture/native-evidence", async (req) => {
+  if (
+    (process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE !== "1" &&
+      process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY !== "1") ||
+    !localApplication
+  )
+    throw Error("Private technical-recovery inspection is not selected");
+  const id = String((req.query as any).attempt);
+  if (store.attempt(id).exam !== "native-browser")
+    throw Error("Only the synthetic native attempt may be inspected");
+  // Observe the REAL live ledger, without injecting facts or calling a signing
+  // path. Existing inspect may detect expiry; it cannot refresh any observation.
+  const monitoring = localApplication.monitoring as unknown as {
+    live: Map<
+      string,
+      { binding: Parameters<MonitoringEvidenceLedger["inspect"]>[0] }
+    >;
+    liveLedger: Pick<MonitoringEvidenceLedger, "inspect">;
+  };
+  const entry = monitoring.live.get(id);
+  if (!entry) throw Error("Synthetic live evidence has not been established");
+  return {
+    privateGuest: true,
+    ...monitoring.liveLedger.inspect(entry.binding),
+  };
+});
 app.post("/api/fixture/native-finish", async (req) => {
   const value = await guest.inspect(String((req.body as any).attempt), true);
   await guest.finished();
@@ -163,7 +196,20 @@ app.post("/api/fixture/native-finish", async (req) => {
 });
 app.post("/api/fixture/native-fleet", async (req) => {
   const body = req.body as any;
-  const value = await guest.inspectMany(body.attempts, body.finish === true);
+  if (
+    body.recovery !== undefined &&
+    (process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY !== "1" ||
+      students !== 16 ||
+      large ||
+      !["start", "status", "restore"].includes(body.recovery) ||
+      body.finish === true)
+  )
+    throw Error("Private sixteen-student recovery fault not selected");
+  const value = await guest.inspectMany(
+    body.attempts,
+    body.finish === true,
+    body.recovery,
+  );
   if (body.finish === true) {
     await guest.finished();
     return { ...value, preservation: "FULL" };
@@ -174,17 +220,69 @@ app.post("/api/fixture/native-coordinator", async (req) => {
   if (process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE !== "1")
     throw Error("Private coordinator fault not selected");
   const body = req.body as any;
+  if (
+    body.transportOnly === true &&
+    process.env.EXAM_BROWSER_NATIVE_TECHNICAL_SECONDARY !== "1"
+  )
+    throw Error("Private secondary transport fault not selected");
   return guest.coordinator(
     body.attempt,
     body.action,
     body.allProofPaths === true,
+    body.transportOnly === true,
   );
 });
+app.post("/api/fixture/native-transition", async (req) => {
+  if (
+    process.env.EXAM_BROWSER_NATIVE_TECHNICAL_PARTIAL !== "1" ||
+    students !== 1
+  )
+    throw Error("Private technical transition fault not selected");
+  const body = req.body as any;
+  if (store.attempt(body.attempt).exam !== "native-browser")
+    throw Error("Only the synthetic native attempt may be faulted");
+  return guest.transition(body.attempt, body.action);
+});
+let commandProbe: "unused" | "pending" | "completed" | "refused" = "unused";
 app.post("/api/fixture/native-gate", async (req) => {
-  if (process.env.EXAM_BROWSER_NATIVE_GATE_STALL !== "1")
+  if (
+    process.env.EXAM_BROWSER_NATIVE_GATE_STALL !== "1" &&
+    process.env.EXAM_BROWSER_NATIVE_TECHNICAL_SECONDARY !== "1"
+  )
     throw Error("Private gate fault not selected");
   const body = req.body as any;
-  return guest.gate(body.attempt, body.action);
+  if (
+    body.technicalRecovery === true &&
+    process.env.EXAM_BROWSER_NATIVE_TECHNICAL_SECONDARY !== "1"
+  )
+    throw Error("Private secondary recovery fault not selected");
+  const result = await guest.gate(
+    body.attempt,
+    body.action,
+    body.technicalRecovery === true,
+  );
+  if (body.technicalRecovery === true && body.action === "start") {
+    if (
+      !localApplication ||
+      students !== 1 ||
+      store.attempt(body.attempt).exam !== "native-browser"
+    )
+      throw Error("Only the synthetic local recovery command may be probed");
+    commandProbe = "pending";
+    // An actual harmless signed command through the retained student's SSH,
+    // dispatched AFTER the socket fault. No fake response or worker injection.
+    void localApplication.life.agent
+      .call("inspect-attempt", { id: body.attempt })
+      .then(
+        () => {
+          commandProbe = "completed";
+        },
+        () => {
+          commandProbe = "refused";
+        },
+      );
+  }
+  return { ...result, commandProbe };
 });
 app.post("/api/fixture/native-collection", async (req) => {
   const body = req.body as any;
@@ -277,9 +375,13 @@ let relaySequence = 0,
   relayRecords = 0;
 const relayDiagnostic = (record: object) => {
   if (relayRecords++ >= 128) return;
-  appendFileSync(data + "/relay-lifecycle.jsonl", JSON.stringify(record) + "\n", {
-    mode: 0o600,
-  });
+  appendFileSync(
+    data + "/relay-lifecycle.jsonl",
+    JSON.stringify(record) + "\n",
+    {
+      mode: 0o600,
+    },
+  );
 };
 relay.on("connection", (ws, req) => {
   const id = ++relaySequence,

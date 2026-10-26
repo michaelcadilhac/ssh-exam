@@ -91,7 +91,8 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if cmd.Expires <= Millis() || cmd.Expires > Millis()+30000 {
 		return nil, errors.New("command expired")
 	}
-	monitoredResume := cmd.Op == "consume-monitored-continuation"
+	technicalResume := cmd.Op == "consume-technical-continuation"
+	monitoredResume := cmd.Op == "consume-monitored-continuation" || technicalResume
 	if monitoredResume {
 		cmd.Op, cmd.Body.ownerRequired = "consume-continuation", true
 	}
@@ -464,6 +465,9 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		return e.reconcileRecoveryAllowance(cmd.Body, cmd.Expires)
 	}
 	if err == nil && monitoredResume {
+		if technicalResume {
+			return e.resumeTechnical(result.(*Attempt), cmd.Body)
+		}
 		return e.resumeMonitored(result.(*Attempt), cmd.Body)
 	}
 	if a, ok := result.(*Attempt); err == nil && cmd.Op == "lock-attempt" && ok && a.MonitoringMode == "v1" {

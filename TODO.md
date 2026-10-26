@@ -8,6 +8,22 @@ outcome. Keep production-only consolidation/acceptance deferred, and do not add
 another unused prerequisite chain. Current implementation status is in
 docs/todo-current-checkpoint.md; historical paragraphs below are not all current.
 
+October26 C9 automatic technical recovery is implemented/tested locally through
+the guarded runtime adapter, NOT enabled or deployed.
+Actual automatic recovery after BOTH-role loss and authenticated native completion
+while a real signed command remains blocked now preserve SSH/Nano/input/original
+time and protected exports. A real18s capture-upload gap correctly refuses automatic
+thaw; the reviewed-Continue completion defect it exposed is reproduced, fixed and
+requalified through the actual protected-export workflow. Actual instructor-clock
+retry and first-SIGCONT failure/automatic repair now also pass with retained buffers,
+original timing history and later genuine-policy approval. Full619 application
+checks (including actual CLI/TLS),23 composed browser cases, native race/resource
+core589.398s/CLI16.700s, root42 and actual16-student/64-terminal automatic recovery/
+protected finish pass. The original incident's initiating fault remains unproven.
+Genuine SSH-loss/new-attempt integration and final public admission enablement
+remain before closing the broader liveness/retained-SSH items. Admission stays OFF.
+Detailed evidence/failures: docs/automatic-technical-recovery.md.
+
 October25 a further confirmed Begin race is reproduced/fixed in focused local
 interfaces: signed ACTIVE callbacks arriving before the original activation reply
 were falsely classified as a lost acknowledgement, causing a pause/generation

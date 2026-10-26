@@ -840,8 +840,30 @@ export async function createApp(
         payload,
         String(req.headers["x-exam-signature"] || ""),
       );
+      const request = JSON.parse(payload.toString());
       return agent.signTiming(
-        monitoring.continueBootstrap(JSON.parse(payload.toString()), agent.id),
+        request.type === "monitoring-technical-continue/v1"
+          ? monitoring.continueTechnicalBootstrap(request, agent.id)
+          : monitoring.continueBootstrap(request, agent.id),
+      );
+    },
+  );
+  app.post(
+    "/api/agent/monitoring-technical",
+    { bodyLimit: 65536, config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload) || payload.length > 65536)
+        throw Error("Raw signed technical recovery exchange required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      const request = JSON.parse(payload.toString());
+      return agent.signTiming(
+        request.type === "monitoring-technical-poll/v1"
+          ? monitoring.pollTechnicalRecovery(request, agent.id)
+          : monitoring.completeTechnicalRecovery(request, agent.id),
       );
     },
   );
@@ -1999,6 +2021,11 @@ export async function createApp(
         attempt: a,
         serverNow: at,
         authenticationGap: authenticationGap(a.id),
+        automaticTechnical:
+          monitoring.technicalCandidate(a) ||
+          (a.state === "ACTIVE" &&
+            a.native_resume_kind === "technical" &&
+            nativeContinuationOutcomeRecorded(a)),
         authorization: authorization || null,
         continuation: studentContinuationStatus(store, a, authorization, at),
       };
@@ -2177,6 +2204,19 @@ export async function createApp(
   app.post("/api/student/attempts/:id/continue", async (req) => {
     const a = studentAttempt(req);
     page(req, a);
+    const automaticTechnical = (req.body as any)?.automaticTechnical === true;
+    if (
+      automaticTechnical &&
+      !(
+        monitoring.technicalCandidate(a) ||
+        (a.state === "ACTIVE" &&
+          a.native_resume_kind === "technical" &&
+          nativeContinuationOutcomeRecorded(a))
+      )
+    )
+      throw Error(
+        "Automatic technical recovery is unavailable for this pause. Preserve this page and request instructor review.",
+      );
     if (
       !a.deadline ||
       a.deadline <= now() ||
@@ -2190,16 +2230,17 @@ export async function createApp(
       throw Error("Your exam is not waiting for continuation.");
     const readiness = readinessMessage(req.body, JSON.parse(a.settings).webcam);
     if (readiness) throw Error(readiness);
-    await autoAuthorizeSandbox(a.id);
+    if (!automaticTechnical) await autoAuthorizeSandbox(a.id);
     const auth = store.db
       .prepare("SELECT * FROM continuations WHERE attempt=?")
       .get(a.id) as any;
     if (
-      !auth ||
-      (auth.consumed && !nativeContinuationOutcomeRecorded(a)) ||
-      auth.generation !== a.generation ||
-      (auth.expires <= now() &&
-        !(auth.consumed && nativeContinuationOutcomeRecorded(a)))
+      !automaticTechnical &&
+      (!auth ||
+        (auth.consumed && !nativeContinuationOutcomeRecorded(a)) ||
+        auth.generation !== a.generation ||
+        (auth.expires <= now() &&
+          !(auth.consumed && nativeContinuationOutcomeRecorded(a))))
     )
       throw Error(
         "Instructor authorization is required. Request review and wait for approval before continuing.",
@@ -2218,11 +2259,31 @@ export async function createApp(
     let inputEpochs:
       | Record<string, { instance: string; epoch: string }>
       | undefined;
+    let technicalRecoveryTransport: string | undefined;
+    const secondary = automaticTechnical
+      ? monitoring.requestTechnicalRecovery(a)
+      : undefined;
     try {
-      const result = await agent.call("consume-continuation", {
-        id: a.id,
-        generation: a.generation,
-      });
+      const primary = agent.call(
+        automaticTechnical
+          ? "consume-technical-continuation"
+          : "consume-continuation",
+        {
+          id: a.id,
+          generation: a.generation,
+        },
+      );
+      const outcome = secondary
+        ? await Promise.any([
+            primary.then((result) => ({ result, transport: "signed-ssh" })),
+            secondary.promise.then((result) => ({
+              result,
+              transport: "authenticated-native",
+            })),
+          ])
+        : { result: await primary, transport: undefined };
+      const result = outcome.result;
+      technicalRecoveryTransport = outcome.transport;
       if (a.monitoring_mode === "v1") {
         const current = store.attempt(a.id);
         if (
@@ -2236,6 +2297,8 @@ export async function createApp(
           );
         if (
           !result?.attempt ||
+          (automaticTechnical &&
+            result.attempt.monitoring_resume_kind !== "technical") ||
           result.attempt.state !== "ACTIVE" ||
           result.attempt.retained_hold ||
           !result.input_epochs ||
@@ -2267,6 +2330,8 @@ export async function createApp(
         await life.reconcile(a.id).catch(() => {});
       }
       throw error;
+    } finally {
+      secondary?.cancel();
     }
     const agreed = store.attempt(a.id);
     if (
@@ -2275,8 +2340,13 @@ export async function createApp(
       agreed.generation !== a.generation ||
       !nativeContinuationOutcomeRecorded(agreed)
     )
-      life.confirmContinuation(a.id, a.generation);
-    return { attempt: store.attempt(a.id), serverNow: now(), inputEpochs };
+      life.confirmContinuation(a.id, a.generation, automaticTechnical);
+    return {
+      attempt: store.attempt(a.id),
+      serverNow: now(),
+      inputEpochs,
+      ...(automaticTechnical ? { technicalRecoveryTransport } : {}),
+    };
   });
   app.post("/api/student/attempts/:id/finish", async (req) => {
     const a = studentAttempt(req);
@@ -3819,6 +3889,7 @@ export async function createApp(
     for (const client of wss.clients) client.terminate();
   });
   app.addHook("onClose", async () => {
+    monitoring.closeTechnicalRecovery();
     for (const t of [tick, cleanup, housekeeping, mail, purgeTick])
       clearInterval(t);
     await purges.close();

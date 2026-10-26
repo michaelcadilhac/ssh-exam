@@ -33,6 +33,31 @@ remain gates. Component/browser simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
 
+The October26 C9 candidate is additionally UNRELEASED. Migration032 adds nullable
+resume purpose/nonce observations; native JSON adds optional resume provenance
+and existing authority memory retains a nonrestorable receipt anchor. Back up the
+DB/WAL, continuation/audit history and native ownership state before any separately
+authorized matched-cohort migration. Do not convert legacy started attempts or
+restore permission from those fields. The installed admission guard stays OFF
+until the whole release matrix passes. Existing watchdog/agent HTTPS trust is
+reused; no new service or credential is required.
+
+Its local C9 matrix now passes619 application checks,23 affected browser cases,
+native race/resources, current-image root42 and actual16/64 automatic recovery/
+protected finish. This is guarded-adapter qualification, not public admission or
+production acceptance. Genuine SSH-loss integration/public enablement remain;
+perform the separately authorized drain/matched-cohort rollout below only after
+those gates. No production setting/service/student record was changed.
+
+Rollback must preserve histories, original clocks, holds and protected work. An
+older gateway signer does not distinguish a C9 automatic authorization from human
+approval, so do NOT run it over pending C9 authorization rows. Prefer repair
+forward; any later separately authorized downgrade needs the complete verified
+drain below, expiry of unused automatic rows and private-copy reader verification.
+Do not delete rows/audit or alter expiry to force compatibility. Optional metadata
+must survive rollback. Temporary-service consolidation remains unexecuted and
+requires the same positive drain; none of these notes authorize a service action.
+
 The newer watchdog-evidence candidate changes the native Watch runtime and must
 use the newly qualified native cohort, not the earlier0ecfc13 binaries. It reuses
 existing authenticated outbound trust with no new service, SQL/native schema,

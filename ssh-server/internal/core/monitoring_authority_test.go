@@ -99,6 +99,50 @@ func TestMonitoringAuthorityBootstrapCannotAuthorizeWorkOrInheritUnverifiedAllow
 	}
 }
 
+func TestMonitoringAuthorityTechnicalContinuityKeepsAcceptedNonceAndRefusesEveryOtherCause(t *testing.T) {
+	for _, cause := range []string{"technical-expiry", "policy-condition", "authentication-loss", "operator-pause", "recording-failure", "clock-unknown", "ownership-unknown", "resume-unverified", "deadline"} {
+		t.Run(cause, func(t *testing.T) {
+			f := nativeAuthorityFixture(t, false, 5000)
+			p := f.proof(t, 4, 10000)
+			if _, err := f.a.accept(p); err != nil {
+				t.Fatal(err)
+			}
+			f.clock.Store(p.UntilUptimeMS)
+			f.a.check()
+			if cause != "technical-expiry" {
+				f.a.mu.Lock()
+				f.a.revokeLocked(cause)
+				f.a.mu.Unlock()
+			}
+			witness, err := f.a.technicalContinuity(false)
+			if cause != "technical-expiry" {
+				if err == nil {
+					t.Fatal("nontechnical cause produced continuity", cause, witness)
+				}
+				retry, retryErr := f.a.technicalContinuity(true)
+				if cause == "resume-unverified" {
+					if retryErr != nil || retry.LastAcceptedNonce != p.Nonce {
+						t.Fatal("technical rehold lost its exact acceptance anchor", retry, retryErr)
+					}
+				} else if retryErr == nil {
+					t.Fatal("technical retry ignored a genuine negative or unknown scope", cause, retry)
+				}
+				return
+			}
+			if err != nil || witness.Owner != p.Owner || witness.CoverageEpoch != p.CoverageEpoch || witness.AfterSequence != p.Sequence || witness.LastAcceptedNonce != p.Nonce {
+				t.Fatal("lost the exact live acceptance anchor", witness, err)
+			}
+			if f.a.check().ExecutionAuthorized {
+				t.Fatal("historical witness granted execution")
+			}
+			f.clock.Store(f.context.DeadlineUptimeMS)
+			if _, err := f.a.technicalContinuity(false); err == nil {
+				t.Fatal("deadline allowed technical recovery")
+			}
+		})
+	}
+}
+
 func TestMonitoringAuthorityRenewalSupersedesOldCutoffAndRetriesKeepOriginalOutcome(t *testing.T) {
 	f := nativeAuthorityFixture(t, false, 5000)
 	p := f.proof(t, 4, 0)

@@ -134,6 +134,7 @@ export function Workspace({
   const activating = useRef(false);
   const lastServerSnapshot = useRef<number | null>(null);
   const continuation = useRef(new ContinuationStatusTracker());
+  const automaticRecovery = useRef({ busy: false, run: async () => {} });
   continuation.current.observeAttempt(attemptRef.current);
   const acceptSnapshot = (
     next: any,
@@ -1093,6 +1094,21 @@ export function Workspace({
             setMessage(result.attempt.reason);
           }
           if (
+            result.automaticTechnical &&
+            localLocked.current &&
+            !automaticRecovery.current.busy
+          ) {
+            automaticRecovery.current.busy = true;
+            void automaticRecovery.current
+              .run()
+              .catch(() => {
+                // Transport uncertainty is a technical wait, not a policy event.
+              })
+              .finally(() => {
+                automaticRecovery.current.busy = false;
+              });
+          }
+          if (
             [
               "FINALIZING",
               "COMPLETED",
@@ -1314,14 +1330,28 @@ export function Workspace({
       setRestoring(null);
     }
   };
-  const continueExam = async () => {
+  const automaticReady = () =>
+    !pendingPolicy.current &&
+    bound.current &&
+    online.current &&
+    controlReady.current &&
+    performance.now() - lastAck.current < 15000 &&
+    !readinessMessage(conditions(), settings.webcam) &&
+    (attemptRef.current.deadline || 0) >
+      serverClock.current.now + performance.now() - serverClock.current.at;
+  const continueExam = async (automaticTechnical = false) => {
     const epoch = activationEpoch.current;
+    if (automaticTechnical && !automaticReady())
+      throw Error("Waiting for current monitoring and SSH verification.");
     const readiness = readinessMessage(conditions(), settings.webcam);
     if (readiness) throw Error(readiness);
     ++snapshotEpoch.current;
     const result = await api(
       `/student/attempts/${id}/continue`,
-      conditions(),
+      {
+        ...conditions(),
+        ...(automaticTechnical ? { automaticTechnical: true } : {}),
+      },
       page,
     );
     ++snapshotEpoch.current;
@@ -1354,7 +1384,14 @@ export function Workspace({
           p.input = { epoch: next.epoch, sequence: 0 };
       }
     }
-    confirmActivation(epoch);
+    if (automaticTechnical) {
+      if (
+        epoch !== activationEpoch.current ||
+        !automaticReady() ||
+        attemptRef.current.state !== "ACTIVE"
+      )
+        throw Error("Waiting for current monitoring and input agreement.");
+    } else confirmActivation(epoch);
     setClock(serverClock.current.now);
     localLocked.current = false;
     setLocked(false);
@@ -1365,6 +1402,7 @@ export function Workspace({
       sendPaneResize(p);
     }
   };
+  automaticRecovery.current.run = () => continueExam(true);
   const restricted = armed.current || attempt.state === "LOCKED";
   const functionalTest = !!reservation.functionalTest;
   const block = (e: any) => {
