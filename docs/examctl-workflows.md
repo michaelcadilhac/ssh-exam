@@ -2,7 +2,10 @@
 
 October26 current local workflow: saved-source issuance/source-sync and C7
 new-attempt recovery are qualified through public CLI/web/student interfaces;
-legacy native migration/retirement and destructive workspace cleanup remain.
+cancel-first legacy migration and033 native definition reconciliation/retirement
+are qualified locally. Destructive workspace cleanup/configuration activation
+and the complete combined operator journey remain. Current authority/scenario
+and migration acceptance: unified-grant-acceptance.md.
 Retained v1 interruption authorization preserves the original viable page/SSH:
 explicit Continue requires fresh readiness and the existing scoped approval.
 Actual SSH loss requires a reviewed NEW saved-work attempt with chosen allowance/
@@ -23,7 +26,8 @@ authentication for outbound gateway management, with explicit operation
 authorization and auditing. The signed protocol and `web exams list/show/create/update`
 are now tested locally; reviewed retire-preview/delete/archive/unarchive for
 lifecycle-tracked definitions is described in exam-retirement.md. Pre-existing
-definitions refuse retirement until native reconciliation; full coverage remains
+definitions use web exams native-review/reconcile-native before a fresh retirement
+review; unknown/live/uncertain authority refuses. Full coverage remains
 pending (see
 agent-management.md). No browser-session login or extra CLI credential is required by the approved
 design; browser administration keeps its current authentication.
@@ -43,8 +47,10 @@ qualification and policy details are in sandbox-grants.md. No deployment.
 Use `examctl help grants` or `examctl web grants help` for initial enrollment-time
 snapshots, reviewed NEW legacy-unused initial issuance, reviewed additional
 attempts, and paginated inspection/unused revision/revoke. Initial/additional
-workflows are qualified locally; saved-source grants and complete legacy recovery
-migration remain unfinished. Exact materials and writable initializer can differ:
+workflows and saved-source grants are qualified locally. Replacing an unused
+native recovery permission takes two explicit actions: recovery-grants revoke-preview/
+revoke, then reviewed NEW issuance and source-sync. Inspect each receipt;
+failure cannot reopen the cancelled permission. Exact materials and writable initializer can differ:
 `--work empty` or `--work template --work-template NAME --work-template-version
 HASH`. Later defaults never revise issued grants. Review confirmation saves
 authority; only fresh native Begin starts time. See initial-grants-cli.md and

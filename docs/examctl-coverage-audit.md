@@ -1,6 +1,6 @@
 # Current management coverage audit
 
-October 23, 2026. Source/interface audit and local CLI correction; not deployed.
+October26,2026. Current source/interface audit and local CLI correction; not deployed.
 This inventories implemented workflows and actual gaps. It does not declare full
 management or the broader TODO investigation complete.
 
@@ -23,7 +23,7 @@ feature document retains the boundaries of its operational tests.
 
 | Management workflow | Discoverable supported CLI | Authority/limits |
 | --- | --- | --- |
-| Definitions/settings/finite practice window/retirement | `web exams list/show/create/update/retire-preview/delete/archive/unarchive`; `web help` | Shared ExamDefinitions; exact revision/dependency review, durable retry/audit; pre-existing native-unreconciled definitions refuse retirement |
+| Definitions/settings/finite practice window/retirement | `web exams list/show/create/update/native-review/reconcile-native/retire-preview/delete/archive/unarchive`; `web help` | Shared ExamDefinitions; exact revision/dependency review, durable retry/audit; legacy033 acknowledgement binds positive native/web history; unknown/live authority refuses |
 | Roster/CSV/accommodations | `web students help` | Shared RosterManagement; reviewed import, explicit-edit provenance; issued snapshots unchanged |
 | Initial, reviewed legacy/additional and practice grants | `web grants help` | Shared AttemptGrants/GrantIssuance; list/show/history/unused revise/revoke and reviewed preview/show/cancel/confirm; actual Begin starts time |
 | Immutable source installation/attestation | `templates help`, `web templates help` | Local jobs/verification and signed metadata sync; no mutable fallback for exact grants |
@@ -35,8 +35,8 @@ feature document retains the boundaries of its operational tests.
 | Native attempts/panes | `help COMMAND` for start, pause, finish, cancel, cancel-absent, retry; `panes help` | Root native scope/exact targets; reports plus existing reconcile inspect/acknowledge timed-owner receipts, while manual closure preserves pending proof; not retained freeze |
 | Native inspection/access/protection | `help COMMAND` for list, info, health, accounts, reconcile, override-access; `help collection`; `panes supervisor ATTEMPT` | Read-only inspection exposes optional registered page/transport/boot/authorization identity and exact lease-owner mismatch; observation grants no permission. Emergency override never an automatic shortcut |
 | Protected submissions | `help COMMAND` for manifest, export, delete | Code inspection confirms bounded verification and checked durable audit before exporting bytes to the caller; new0600 output/no overwrite; deletion preserves history/holds/dependencies |
-| Workspace metadata/holds | `workspaces help` | Known-attempt metadata/holds only; no eligibility/deletion command enabled |
-| Legacy saved-work grants | `help recovery-grants`; explicit allowance edits via `web students` | Read-only native catalog plus C17 preflight reconciliation, not unified create/revoke/migration |
+| Workspace inspection/holds | `workspaces help` | Known-attempt metadata/holds and isolated fresh archive/reference dry-run; snapshot_clear is diagnostic, eligible stays false; no deletion command |
+| Legacy saved-work grants | `help recovery-grants`, `web grants help`; explicit allowance edits via `web students` | Reviewed unused revoke-preview/revoke, then separate NEW issuance/source-sync; C17 preserves existing explicit unused-duration reconciliation; no consumed-history conversion |
 | Native configuration/lifecycle | `config help`, `help agent` | Offline selected-file/key observation; lifecycle is separately authorized drained maintenance, not implicit apply |
 
 Root protected export audit/output safety is ALREADY implemented in OpenExport
@@ -47,43 +47,34 @@ Incident JSON editing/transfer scripts remain unsupported management substitutes
 
 ## Necessary remaining integration gates
 
-- **C16 / retained authority:** timed ownership, input/loaded-role agreement and
-  verified stop-assisted hold/Continue now have actual CLI/PAM/cgroup/SSH/editor
-  workflow evidence, including protected export. Gateway replacement and collection
-  crash isolation have joined browser/native evidence. The newest independent
-  watchdog proof/callback-scheduler image is under fresh capacity qualification;
-  complete strict coverage/ownership acceptance and keep installed admission OFF.
-  Do not reimplement the working writer barrier or claim that guard is released.
-- **C18 / saved-source authority:** new saved-work grants already require durable
-  native source retention before usability. Native deletion observes those pins;
-  reviewed per-student bulk web/CLI issuance, staging and full new allowance at
-  actual Begin are implemented/tested locally. The newest root profile still
-  verifies those workflows. General native legacy migration remains C8 below;
-  it is not a reason to repeat the delivered C18 protocol. No offline JSON bypass.
-- **C8 / legacy retirement:** shared reviewed retirement now exists for newly
-  lifecycle-tracked definitions, preserving all history.028 blocks ALL pre-existing
-  definitions until supported native dependency reconciliation; missing web rows
-  never prove native legacy authority absent. Known saved-work references and
-  consumption lacking closed-attempt proof also refuse. No manual flag clearing.
-- **C4 / workspace cleanup:** holds are supported, destructive cleanup is not.
-  Require verified archive and complete writer/kernel/namespace-use proof through
-  the containment work; manual/no-grace approval is settled. No unsafe delete
-  switch or expiry-based release is a substitute.
+- **C17 first observation:** explicit duration/source/purpose/restart and supported
+  rejected-prepare cancellation are implemented/tested. Inspect legacy first-
+  observation capability/configuration agreement before claiming this broad item
+  complete; new unified grants already require their matching fresh Begin roles.
+- **C4 workspace cleanup:** metadata/holds and isolated fresh observation are
+  supported. Sequential snapshots are not a destructive lifetime barrier.
+  Complete exact-inode reviewed quarantine/removal, durable inspect/retry/cancel,
+  archive-pin/no-start integration and crash/healthy-peer/saved-restore qualification
+  remain. Manual/no-grace is settled; no unsafe switch/expiry shortcut.
 - **Configuration writes:** show/validate does not install/apply. Agent/watchdog
   load configuration at startup; a new examctl invocation reads its selected
-  file. A file replacement alone cannot establish agreement among loaded writers.
-  The next integrated workflow needs a reviewed exact candidate, closed admission,
-  full drain/inventory, checked audit, matched-role activation and explicit
-  separately authorized lifecycle actions. Include independent practice owners
-  and all three canonical/temporary agents. No partial apply is enabled here.
-- **Complete operator journey and target qualification:** current create/import/
-  grant/clock/review workflows have interface evidence; a single complete journey
-  through saved recovery, retirement and cleanup awaits those implementations.
-  Privileged exact-artifact SSH/PAM/cgroup/cross-namespace and simultaneous-load
-  qualification requires a positively safe disposable host. Earlier BUSY notes
-  are historical: subsequent guarded exact-artifact root profiles pass with host/
-  base preservation, including current framed SSH monitor pinning. Combined
-  capacity and unfinished workflow acceptance remain; see the current checkpoint.
+  file. A replacement alone cannot establish loaded-writer agreement. Need a
+  reviewed exact candidate, closed admission/full drain/inventory, checked audit,
+  matched-role activation and explicit authorized lifecycle actions, including
+  independent practice owners and all canonical/temporary agents. No partial apply.
+- **Complete operator journey:** create/import/grant/clock/review, saved recovery
+  and retirement have interface evidence; the combined journey still needs the
+  remaining cleanup/configuration workflows. Help must guide to implemented
+  commands and distinguish these exact gaps from deferred production checks.
+
+Retained liveness/SSH, C18 saved-source authority, cancel-first legacy replacement,
+C8 native reconciliation and accepted16-student/64-pane qualification are complete
+locally. See unified-grant-acceptance.md, legacy-recovery-migration.md,
+native-exam-reconciliation.md and retained-release-qualification.md for exact
+artifacts/seams. Do not reimplement them from older historical pending prose.
+Production drain/backup/install/live camera/MFA/alerts and three-service
+consolidation remain deferred by instruction. Existing receipts do not qualify
+new native diagnostic artifacts or constitute production acceptance.
 
 The current scope reconciliation is in todo-delivery-audit.md. Do not treat
 completed per-worker isolation as unimplemented because class-capacity testing
@@ -102,3 +93,11 @@ evidence from4148022/f8738d2 remains applicable; do not rerun unchanged browser 
 application suites merely for help wording. Logs:
 /tmp/ssh-exam-management-help-discovery-{red,focused,cli-race,build,vet}.log.
 All runners completed. No command was missing; nothing was pushed or deployed.
+
+October26 discovery correction: actual process regression RED0.023s exposed stale
+"saved-work migration pending" global help. All four first-time entry paths now
+show cancel-first NEW/source-sync and native-review/reconcile-native; focused
+process checks1.201s and full CLI/race/TLS/namespace suite19.499s PASS. No runtime
+contract or app/browser changes, so unchanged622 app/C8/browser/286 kernel evidence
+is retained within its original scope. Unified authority/scenario and existing
+crash/storage acceptance reconciliation is in unified-grant-acceptance.md.

@@ -124,9 +124,14 @@ empty or separate-template starters and finite repeatable sandbox practice are
 supported: examctl web grants help. New enrollment/practice requires an attested
 exact template version; a legacy mutable default is not new grant authority.
 Reviewed definition retirement is available for lifecycle-tracked definitions;
-legacy native-uncertain definitions refuse until supported reconciliation.
-Saved-work grant migration, configuration mutation and full management remain
-pending. Existing attempts/holds/history stay protected.
+legacy definitions use native-review, reconcile-native and a fresh retire-preview.
+Unknown/live/uncertain native authority refuses; history always forces archive.
+Saved-work issuance uses web grants help, then source-sync before availability.
+Cancel first when replacing an unused legacy permission: inspect recovery-grants
+revoke-preview/revoke, then separately issue the NEW saved-work grant. A failed
+replacement cannot reopen the cancelled permission or consume time. Configuration
+mutation, complete workspace cleanup and the full operator journey remain pending.
+Existing attempts/holds/history stay protected.
 
 Examples:
   sudo examctl web exams list --limit 50

@@ -177,8 +177,11 @@ Grant workflows save initial settings at enrollment, support reviewed NEW legacy
 initial/additional allowances, exact materials with empty or separate-template
 work, and finite repeatable sandbox practice. Inspect/revise/revoke unused grants;
 only fresh native Begin starts time. Changing defaults never revises issued grants.
-Saved-work grant migration remains pending; inspect legacy recovery-grants and
-preserve protected sources. Never replace unknown consumption as a retry.
+Saved work: review NEW authority, then web grants source-sync GRANT --revision N
+durably retains its exact archive before availability. Cancel first when replacing
+an unused legacy permission: recovery-grants revoke-preview, then recovery-grants revoke.
+Inspect the receipt, then separately issue the NEW grant; failure cannot reopen
+the old permission. Never replace unknown consumption as a retry.
 
 Local root workflows: templates help installs/verifies/syncs immutable sources;
 workspaces help covers retention metadata/holds and isolated dry-run (no deletion enabled); panes help
@@ -193,9 +196,10 @@ requires a NEW private directory and signed completion; it is not a protected
 submission. Administrator creation never resets/overwrites existing credentials.
 
 Reviewed definition retirement: web exams retire-preview/delete/archive/unarchive.
-Legacy native-uncertain definitions refuse until supported reconciliation; no
-history, grants or protected data is cascaded. Saved-work grant migration, complete workspace cleanup,
-configuration mutation and remaining full management are pending. No supported
+Legacy definitions need web exams native-review and web exams reconcile-native
+before a fresh retirement review. Unknown/live authority refuses; no history,
+grants or protected data is cascaded. Complete workspace cleanup, configuration
+mutation and the full operator journey remain pending. No supported
 offline SQL/JSON editing or separate agent control API exists. See each command's
 help and docs/todo-design-decisions.md for current coverage and safety gates.
 Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
@@ -217,8 +221,8 @@ Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
 		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM], revoke-preview and reviewed revoke; use examctl recovery-grants help. Cancel first, then separately issue a NEW grant with web grants; no clock or source deletion.")
 		fmt.Fprintln(w, "Workspace retention inspection/holds: workspaces list/show/dry-run/hold/release-hold; use examctl help workspaces (no deletion enabled).")
 		fmt.Fprintln(w, "Native targeted panes: panes list/show/close, panes supervisor and panes reports; offline snapshots/recording receipts, bounded root-owner Unix observations and durably audited revision-fenced closure. Use examctl help panes; clocks/holds/other panes are preserved.")
-		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update; use examctl web help (root agent identity, explicit gateway authorization).")
-		fmt.Fprintln(w, "Gateway attempt grants and sources: web grants; use examctl web grants help (initial/additional, independent work and finite sandbox practice).")
+		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update/retire-preview/delete/archive/unarchive; native-review/reconcile-native verify legacy history before retirement. Use examctl web help (root agent identity, explicit gateway authorization).")
+		fmt.Fprintln(w, "Gateway attempt grants and sources: web grants; use examctl web grants help (initial/additional, saved/empty/template work and finite sandbox practice; source-show/source-sync for durable saved-source retention).")
 		fmt.Fprintln(w, "Gateway roster/CSV: web students; use examctl web students help.")
 		fmt.Fprintln(w, "Gateway administrators: web administrators list/show/create; use examctl web administrators help (secret-safe input, no credential reset/overwrite).")
 		fmt.Fprintln(w, "Gateway email delivery/manual reminders: web alerts; use examctl web alerts help.")

@@ -3,7 +3,7 @@
 October26 reconciliation: the PUBLIC retained-SSH/liveness release is now
 implemented/tested locally, not deployed. Full621 application/native races,
 42 new-core kernel cases, public fault/C7/clock/dual-hold flows, actual16/64 and
-19 final affected UI cases pass (retained-release-qualification.md).27/38 main
+19 final affected UI cases pass (retained-release-qualification.md).29/38 main
 boxes are checked; overlap is not effort percentage. Earlier critical-workflow
 remaining gaps below are historical. The CLI catalog UID discrepancy is fixed in
 076a5c1; c27eac0 fixes coalesced capture recovery, and the exact packaged image now
@@ -13,8 +13,10 @@ Legacy definition retirement now has root native-review/reconcile-native033 and
 shared browser/CLI retirement, qualified by622 app checks, native races/actual
 CLI/TLS,11 affected browsers plus real-WASM input recovery and schema24→33 image
 startup. This closes C8's local workflow; it does not perform production conversion
-or close the broader command-coverage checkbox. Manual verified cleanup/no grace and complete
-configuration/help/operator journey remain. Do not rerun or reimplement the
+or close the broader command-coverage checkbox. Isolated workspace dry-run observation is now supported; complete manual cleanup/no grace,
+C17 first-observation compatibility and configuration/help/operator journey remain.
+Unified authority/migration/scenario specification and existing crash/storage
+repair acceptance are reconciled locally in unified-grant-acceptance.md. Do not rerun or reimplement the
 completed retained workflow merely because those management outcomes are open.
 
 October23,2026. This is a reconciliation of the existing requirements, not new

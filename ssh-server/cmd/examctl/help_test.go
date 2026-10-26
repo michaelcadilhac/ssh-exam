@@ -94,7 +94,7 @@ func TestGrantWorkflowsAreDiscoverableFromCurrentManagementHelp(t *testing.T) {
 				t.Fatal("supported grant workflow is hidden from first-time management discovery", code, output)
 			}
 			if entry.name != "overview" {
-				for _, supported := range []string{"empty", "separate-template", "sandbox", "saved-work grant migration"} {
+				for _, supported := range []string{"empty", "separate-template", "sandbox"} {
 					if !strings.Contains(strings.ToLower(output), supported) {
 						t.Fatal("help omits supported source/practice scope or the actual remaining migration", supported, output)
 					}
@@ -106,6 +106,30 @@ func TestGrantWorkflowsAreDiscoverableFromCurrentManagementHelp(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCurrentRecoveryAndRetirementJourneyIsDiscoverableWithoutConfiguration(t *testing.T) {
+	for _, entry := range []struct {
+		args     []string
+		required []string
+	}{
+		{[]string{"help"}, []string{"source-sync", "native-review", "reconcile-native", "dry-run"}},
+		{[]string{"help", "management"}, []string{"recovery-grants revoke-preview", "recovery-grants revoke", "source-sync", "native-review", "reconcile-native", "Cancel first", "NEW"}},
+		{[]string{"web", "help"}, []string{"source-sync", "native-review", "reconcile-native", "Cancel first", "NEW"}},
+		{[]string{"web", "grants", "help"}, []string{"recovery-grants revoke-preview", "recovery-grants revoke", "Cancel first", "NEW", "source-sync"}},
+	} {
+		out, code := cliProcess(t, entry.args...)
+		for _, want := range entry.required {
+			if code != 0 || !strings.Contains(out, want) {
+				t.Fatal("first-time help hides delivered migration step", entry.args, want, code, out)
+			}
+		}
+		for _, stale := range []string{"Saved-work grant migration remains pending", "Saved-work grant migration, configuration mutation", "until supported reconciliation", "until supported native dependency reconciliation"} {
+			if strings.Contains(out, stale) {
+				t.Fatal("help reports delivered workflow as unavailable", entry.args, stale, out)
+			}
+		}
 	}
 }
 

@@ -1,5 +1,13 @@
 # Deferred work
 
+October26 current local completion:29/38 main items (not effort/readiness). Unified
+grant authority/migration/scenario specification and recovery crash/storage repair
+acceptance are reconciled in docs/unified-grant-acceptance.md. Native definition
+reconciliation033 is also delivered locally. Root workspace dry-run now observes
+archives/references but grants no deletion eligibility. Remaining: C17 first-
+observation compatibility, complete cleanup/configuration/help/operator journey,
+and separately deferred production consolidation/live acceptance. Nothing deployed.
+
 October26 native legacy cancellation/replacement is implemented/tested locally:
 actual root CLI refusal/crash/retry, exact native root43, PUBLIC web NEW20-minute
 saved-work/full Begin/protected export and final matching16/64 recovery/collection
@@ -1360,7 +1368,18 @@ Existing enrollment migration and implementation remain outstanding.
   “another attempt available” separately from preflight, active, paused and completed.
   Apply the firm `examctl` completeness/help policy to every resulting operation.
 
-- [ ] **Specify authority, migration and acceptance scenarios.**
+- [x] **Specify authority, migration and acceptance scenarios.**
+  October26 source/evidence reconciliation completes this local specification:
+  docs/unified-grant-acceptance.md maps every requested scenario to its actual
+  CLI/web/student/native entry and qualification, durable authorities, one-use/
+  retry rules and reviewed migration/rollback. Enrollment snapshots, additional/
+  empty/template/saved/practice grants, durable source retention and approved
+  cancel-first legacy replacement are implemented/tested locally;033 now covers
+  legacy definition reconciliation. Current signed TLS/start/restart/allowance/
+  rejected-preflight/crash/storage acceptance passes41.678s, eleven top-level
+  entries, no skips; existing622 app/root43/PUBLIC C7/16x4 evidence is scoped in
+  that document. Separate C17 first-observation compatibility, cleanup/configuration
+  and production inventory/drain/install gates remain open. Nothing deployed.
   Define durable authoritative records and authenticated synchronization using the
   existing architecture, one-use/idempotency rules and crash/retry handling. Plan
   migration of ordinary exam uniqueness rules, sandbox behavior and recovery
@@ -1733,6 +1752,10 @@ the approval is not a production change or a completed investigation.
   Keep ordinary policy and explicit approval for emergency handoffs unchanged.
 
 - [ ] **Require a recovery-aware agent and detect mismatched configuration.**
+  October26 reconciliation: explicit allowance/source/purpose/restart checks pass
+  again on current sources. Remaining investigation is specifically first-
+  observation legacy admission/role compatibility, plus future matched installed
+  acceptance; broad source migration is now delivered and is not a new dependency.
   C17 now adds local dedicated recovery allowance capability negotiation and
   distinct signed reconcile/prepare/Begin purposes. Explicit edit or retained
   authenticated source expectations require the matching role before admission;
@@ -1747,7 +1770,18 @@ the approval is not a production change or a completed investigation.
   files instead of saved work. Add readiness/installation checks and a supported
   repair path that preserves the original archive, audit and one-use history.
 
-- [ ] **Extend recovery restoration crash/failure tests and repair procedures.**
+- [x] **Extend recovery restoration crash/failure tests and repair procedures.**
+  October26 local acceptance reconciliation supersedes the older pending notes
+  below. Current actual child-death/compiled CLI repair/watchdog-first and real
+  ENOSPC/EROFS matrices pass within41.678s targeted grant/recovery races, with no
+  skips. All eight publication/start/one-use phases and eight storage stages
+  preserve source bytes, original intervals/consumption and healthy signed peers;
+  exact286 guarded root43/PUBLIC C7 supplies separate SSH/kernel/new-saved-attempt
+  coverage. Synthetic account/activation adapters in the fault matrix are explicit,
+  not a claim of root enforcement or power-loss testing. Supported repair and
+  approved NEW-attempt recovery, never refunds/reopening, are documented in
+  docs/unified-grant-acceptance.md and linked feature documents. Local only;
+  production migration/restore/installation remains separately deferred.
   October22 metadata safety candidate reproduces two shared-lock FIFO stalls in
   actual Begin child processes and five accepted unsafe/ambiguous records, then
   corrects them with pinned private directories, bounded no-follow/nonblocking

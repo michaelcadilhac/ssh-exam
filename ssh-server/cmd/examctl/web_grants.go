@@ -63,7 +63,12 @@ explicit revoke/revision, synchronize the OLD source revision to release its pin
 only after every linked consumer has verified completed/no-start evidence.
 --request retries one exact confirmation. A later release is a NEW intent:
 omit --request or choose a new UUID. Never reuse the earlier retain intent ID.
-Migration of root-only legacy saved-work authority remains separate. Sandbox practice automatically saves each
+Cancel first to replace unused root-only legacy authority: recovery-grants revoke-preview
+EXAM USER, then recovery-grants revoke EXAM USER --review HASH --reason TEXT.
+Inspect the irreversible receipt, then separately issue the reviewed NEW grant
+and source-sync its saved archive. A failed replacement leaves the student waiting;
+never reopen the cancelled permission or erase its source/history/one-use evidence.
+Sandbox practice automatically saves each
 five-minute/no-webcam/four-terminal grant within its finite configured window.
 Cancelled retries reuse unused authority. Expired/revoked grants do not silently
 regenerate: revise an expired unused grant, or explicitly review NEW practice with
