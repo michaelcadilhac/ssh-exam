@@ -1,9 +1,10 @@
 // Actual gateway/browser against the guarded csc-sys native guest. Test-only.
-import { mkdtempSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { createPublicKey, verify } from "node:crypto";
 import https from "node:https";
+import http from "node:http";
 import net from "node:net";
 import argon2 from "argon2";
 import { WebSocketServer } from "ws";
@@ -12,6 +13,7 @@ import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 import { managementOperations } from "../../packages/protocol/management.js";
 import { hosts } from "./hosts.js";
 import { nativeGuest } from "./native-guest.js";
+import { browserGatewayProcess } from "./browser-gateway-process.js";
 
 const origin = "https://127.0.0.1:9444";
 const data = mkdtempSync(tmpdir() + "/ssh-exam-browser-native-");
@@ -84,7 +86,7 @@ const tls = {
   key: readFileSync(data + "/tls.key"),
   cert: readFileSync(data + "/tls.crt"),
 };
-const { app, store } = await createApp({
+const gatewayConfig: Parameters<typeof createApp>[0] = {
   mode: "development",
   origin,
   port: 3100,
@@ -101,7 +103,31 @@ const { app, store } = await createApp({
     relay: "wss://127.0.0.1:9445",
     audience: "native-browser-relay",
   },
-});
+};
+const gateway =
+  process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1"
+    ? browserGatewayProcess(
+        gatewayConfig,
+        new URL("../../apps/server/src/connection-worker.ts", import.meta.url),
+        { detached: true },
+      )
+    : undefined;
+if (gateway) {
+  const previousCleanup = cleanup;
+  cleanup = async () => {
+    try {
+      await previousCleanup();
+    } finally {
+      try {
+        await gateway.app.close();
+      } finally {
+        rmSync(data + "/tls.key", { force: true });
+      }
+    }
+  };
+  await gateway.initialized;
+}
+const { app, store } = gateway ?? (await createApp(gatewayConfig));
 store.db
   .prepare("INSERT INTO admins VALUES(?,?,?)")
   .run("fixture", "instructor", await argon2.hash("fixture-password"));
@@ -114,6 +140,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     uid: metadata.uid,
     students: metadata.students,
     large,
+    gatewayProcess: !!gateway,
     log: data + "/native-root.log",
   };
 });
@@ -138,17 +165,87 @@ app.post("/api/fixture/native-collection", async (req) => {
   const body = req.body as any;
   return guest.collection(body.attempts, body.action);
 });
+if (gateway) {
+  let restarting = false;
+  app.get("/api/fixture/native-gateway-runtime", async () => {
+    const pid = gateway.pid;
+    if (!pid) throw Error("Owned fixture gateway PID unavailable");
+    // Signal0 observes the exact owned child's dedicated process group. The
+    // runner may terminate the parent group; child shutdown stays parent-owned.
+    process.kill(-pid, 0);
+    return { pid, fixturePID: process.pid, ownGroup: true };
+  });
+  app.post("/api/fixture/native-gateway-restart", async (req) => {
+    const mode = (req.body as any)?.mode;
+    if (restarting || !["kill", "graceful"].includes(mode))
+      throw Error("Explicit owned gateway restart mode required");
+    restarting = true;
+    const previous = gateway.pid;
+    setTimeout(() => {
+      void gateway
+        .restart(mode)
+        .catch((error) => terminate(1, error))
+        .finally(() => {
+          restarting = false;
+        });
+    }, 50);
+    return { previous };
+  });
+}
 await app.listen({ host: "127.0.0.1", port: 3100 });
-const web = https.createServer(tls, (req, res) =>
-  app.server.emit("request", req, res),
-);
-web.on("upgrade", (req, socket, head) =>
-  app.server.emit("upgrade", req, socket, head),
-);
-await new Promise<void>((resolve, reject) => {
-  web.once("error", reject);
-  web.listen(9444, "127.0.0.1", resolve);
+// The optional child owns the real application/IPC; parent TLS, relay and SSH
+// stay alive across its replacement. Original HTTP/WS headers/bytes are kept.
+const web = https.createServer(tls, (req, res) => {
+  if (!gateway) {
+    app.server.emit("request", req, res);
+    return;
+  }
+  const upstream = http.request(
+    {
+      host: "127.0.0.1",
+      port: 3100,
+      path: req.url,
+      method: req.method,
+      headers: req.headers,
+    },
+    (response) => {
+      res.writeHead(response.statusCode || 502, response.headers);
+      response.pipe(res);
+    },
+  );
+  upstream.on("error", () => {
+    if (!res.headersSent) res.writeHead(503);
+    res.end("Private fixture gateway unavailable");
+  });
+  req.on("aborted", () => upstream.destroy());
+  req.pipe(upstream);
 });
+web.on("upgrade", (req, socket, head) => {
+  if (!gateway) {
+    app.server.emit("upgrade", req, socket, head);
+    return;
+  }
+  const upstream = net.connect(3100, "127.0.0.1", () => {
+    upstream.write(`${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`);
+    for (let i = 0; i < req.rawHeaders.length; i += 2)
+      upstream.write(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`);
+    upstream.write("\r\n");
+    if (head.length) upstream.write(head);
+    socket.pipe(upstream).pipe(socket);
+  });
+  upstream.on("error", () => socket.destroy());
+  upstream.on("close", () => socket.destroy());
+  socket.on("error", () => upstream.destroy());
+  socket.on("close", () => upstream.destroy());
+});
+const listenWeb = () =>
+  new Promise<void>((resolve, reject) => {
+    web.once("error", reject);
+    web.listen(9444, "127.0.0.1", resolve);
+  });
+// Parent-owned fixture routes have no Fastify reply object. Keep the TLS ready
+// URL unavailable until setup is complete in child mode; callbacks use3100.
+if (!gateway) await listenWeb();
 const relayServer = https.createServer(tls),
   relay = new WebSocketServer({ server: relayServer });
 relay.on("connection", (ws, req) => {
@@ -219,9 +316,12 @@ const login = await app.inject({
   payload: { username: "instructor", password: "fixture-password" },
 });
 if (login.statusCode !== 200) throw Error("Private instructor setup failed");
-const cookie = login.cookies
-  .map((value) => value.name + "=" + value.value)
+const cookieHeader = login.headers["set-cookie"];
+const cookie = (Array.isArray(cookieHeader) ? cookieHeader : [cookieHeader])
+  .filter((value) => typeof value === "string")
+  .map((value) => String(value).split(";")[0])
   .join("; ");
+if (!cookie) throw Error("Private instructor cookie unavailable");
 const headers = { origin, cookie, "x-csrf-token": login.json().csrf };
 for (const [url, payload] of [
   [
@@ -253,22 +353,29 @@ for (const [url, payload] of [
     );
 }
 ready = true;
+if (gateway) await listenWeb();
 let closing = false;
 async function close() {
   if (closing) return;
   closing = true;
   // Abort/drain the guarded guest BEFORE waiting on HTTP/socket shutdown. The
   // latter can wait on commands whose peer lives in that guest.
-  await guest.close();
-  for (const socket of relay.clients) socket.terminate();
-  relay.close();
-  await new Promise<void>((resolve) => relayServer.close(() => resolve()));
-  await Promise.all([
-    new Promise<void>((resolve) => web.close(() => resolve())),
-    app.close(),
-  ]);
-  await h.close();
-  unlinkSync(data + "/tls.key");
+  try {
+    await guest.close();
+    for (const socket of relay.clients) socket.terminate();
+    relay.close();
+    await new Promise<void>((resolve) => relayServer.close(() => resolve()));
+    await Promise.all([
+      new Promise<void>((resolve) => web.close(() => resolve())),
+      app.close(),
+    ]);
+  } finally {
+    try {
+      await h.close();
+    } finally {
+      rmSync(data + "/tls.key", { force: true });
+    }
+  }
 }
 cleanup = close;
 console.log("Actual native/browser fixture ready; private evidence: " + data);

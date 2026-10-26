@@ -7,7 +7,11 @@ import { Store } from "../../apps/server/src/db.js";
 
 type Config = Parameters<typeof createApp>[0];
 type App = Awaited<ReturnType<typeof createApp>>["app"];
-export function browserGatewayProcess(config: Config, workerEntry: URL) {
+export function browserGatewayProcess(
+  config: Config,
+  workerEntry: URL,
+  options: { detached?: boolean } = {},
+) {
   const store = new Store(config.data);
   const configFile = config.data + "/fixture-gateway.json";
   writeFileSync(configFile, JSON.stringify(config), {
@@ -77,6 +81,7 @@ export function browserGatewayProcess(config: Config, workerEntry: URL) {
         },
         stdio: ["ignore", "ignore", "pipe", "ipc"],
         serialization: "advanced",
+        detached: options.detached ?? false,
       },
     );
     const target = child;

@@ -21,6 +21,16 @@ protected/HELD with original timing/generation. Restart-gap and broader release
 gates remain. No deployment.
 Details: docs/retained-capacity-qualification.md.
 
+October25 actual browser/SSH/native-kernel gateway replacement is now qualified
+locally: an active SIGKILL and graceful/forced replacements during two approved
+policy holds preserve the same authenticated SSH/supervisor/private shell/Nano
+buffers and original interval/grant. Populated kernel scopes remain frozen until
+explicit fresh Continue; protected export verifies both exact files. Clean/default
+root cases and22 composed scenarios pass, with FULL preservation/inactive units
+and temporary keys removed. Native binaries remain0ecfc13; installed admission
+stays OFF. Command/coordinator stalls and complete coverage/gap fault acceptance
+remain. No deployment. Evidence: docs/retained-gateway-restart.md.
+
 October25 gateway routing now survives actual process replacement locally through
 current-page and signed native owner verification, retaining the same SSH/private
 shell input and interval/grant. Repeated page/transport/clock refusal preserves

@@ -20,8 +20,10 @@ passes. Owner-bound SSH-exit feedback now passes fresh native/app/browser checks
 and active/policy-held actual-root42 variants, with full host/base preservation.
 Actual joined browser/root16-student/64-pane and two508MiB/fatal-worker/retry/
 protected-export qualification now pass locally, with a separate current-binary
-shared-process/original-deadline root12 receipt. Actual whole-gateway/coordinator
-restart and complete coverage/gap fault qualification remain gates. Component/browser simulations do not replace those boundaries.
+shared-process/original-deadline root12 receipt. Actual native/gateway process
+replacement now passes active and approved/held shell/Nano/export plus clean
+teardown. Command/coordinator stalls and complete coverage/gap qualification
+remain gates. Component/browser simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
 

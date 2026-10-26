@@ -140,7 +140,9 @@ shutdown likewise does not create a retained student policy lock. A real policy
 hold/approval remains in force. Inspect Alerts/interruption review (or the
 corresponding examctl workflows); do not reset clocks or issue another attempt
 merely because a proxy failed. Unknown monitoring coverage still requires explicit
-technical review. Native admission remains OFF pending combined qualification;
+technical review. Actual browser/native gateway replacement and16/64 collection
+qualification now pass; command/coordinator and coverage/gap gates remain. Native
+admission remains OFF;
 this is local development, not current production behavior. See
 retained-gateway-restart.md and monitoring-restart-continuity.md.
 
@@ -149,8 +151,11 @@ guarded native guest through Begin, verified populated kernel freeze, instructor
 authorization/explicit Continue and protected finish on the same private shell.
 The supported root CLI source-sync uses its real authenticated HTTPS path. Media
 and jump MFA are synthetic; the native test role/readiness adapter is private.
-This is one-student local evidence, not permission to enable retained admission
-or install these test drivers. Unsaved-editor/fault/capacity gates remain. See
+Local qualification also covers unsaved Nano/two holds/root export,16students/
+64panes with two large targets/isolated worker death/retry, and actual gateway
+process replacement while active and approved/held. It grants no permission to
+enable admission or install test drivers; remaining coordinator/coverage/gap
+gates and genuine SSH-loss recovery stay separate. See
 retained-browser-kernel-qualification.md for the exact command/artifacts and scope.
 
 The local pending diagnostic CLI adds `examctl list --read-only` and

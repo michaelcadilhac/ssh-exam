@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
+import { mkdir, writeFile } from "node:fs/promises";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
 // types.go Attempt serializes retained_hold as a STRING. The independent live
@@ -14,6 +15,7 @@ const nativeProbe = z.object({
       deadline: z.number(),
       original_deadline: z.number(),
       transport: z.string(),
+      generation: z.number().int(),
       retained_hold: z.string().optional(),
       monitoring_hold_kind: z.string().optional(),
       grant: z.unknown(),
@@ -46,18 +48,22 @@ test.afterEach(async ({ page }, info) => {
   )
     return;
   try {
+    const diagnostic = async (name: string, value: unknown) => {
+      await mkdir(info.outputDir, { recursive: true });
+      const path = info.outputPath(name + ".json");
+      await writeFile(
+        path,
+        Buffer.isBuffer(value) ? value : JSON.stringify(value),
+        { mode: 0o600 },
+      );
+      await info.attach(name, { path, contentType: "application/json" });
+    };
     const response = await page.request.get("/api/fixture/native-state", {
       params: { attempt: failureAttempt },
       timeout: 10000,
     });
-    await info.attach("native-boundary-state", {
-      body: await response.body(),
-      contentType: "application/json",
-    });
-    await info.attach("student-control-boundary", {
-      body: Buffer.from(JSON.stringify(failureStates)),
-      contentType: "application/json",
-    });
+    await diagnostic("native-boundary-state", await response.body());
+    await diagnostic("student-control-boundary", failureStates);
     const focus = await page.evaluate(() => ({
       activeTag: document.activeElement?.tagName,
       activeClass: document.activeElement?.className,
@@ -66,10 +72,7 @@ test.afterEach(async ({ page }, info) => {
       focused: document.hasFocus(),
       fullscreen: !!document.fullscreenElement,
     }));
-    await info.attach("browser-input-boundary", {
-      body: Buffer.from(JSON.stringify(focus)),
-      contentType: "application/json",
-    });
+    await diagnostic("browser-input-boundary", focus);
   } catch {
     /* Preserve the original failure if the independent probe refuses. */
   }
@@ -88,11 +91,31 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   page.setDefaultTimeout(10000);
   failureAttempt = "";
   failureStates.length = 0;
+  const processMode = process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1";
+  let bindingConnection = 0,
+    confirmationConnection = 0,
+    connections = 0,
+    uploads = 0;
+  page.on("response", (response) => {
+    if (
+      response.url().endsWith("/frames/challenged") &&
+      response.status() === 200
+    )
+      uploads++;
+  });
   page.on("websocket", (socket) => {
     if (new URL(socket.url()).pathname !== "/api/student/session") return;
+    const connection = ++connections;
     socket.on("framereceived", ({ payload }) => {
       try {
         const message = JSON.parse(String(payload));
+        if (message.binding) bindingConnection = connection;
+        if (
+          message.type === "state" &&
+          message.confirmation &&
+          !message.binding
+        )
+          confirmationConnection = connection;
         failureStates.push({
           type: message.type,
           binding: !!message.binding,
@@ -112,6 +135,10 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     (await (await request.get("/api/fixture/native-ready")).json())
       .privateGuest,
   ).toBe(true);
+  expect(
+    (await (await request.get("/api/fixture/native-ready")).json())
+      .gatewayProcess,
+  ).toBe(processMode);
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
@@ -171,7 +198,97 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     data: { username: "instructor", password: "fixture-password" },
   });
   expect(login.ok(), await login.text()).toBe(true);
+  const restart = async (mode: "kill" | "graceful", held = false) => {
+    const runtime = async () => {
+      const response = await request.get(
+        "/api/fixture/native-gateway-runtime",
+        { timeout: 3000 },
+      );
+      expect(response.ok(), await response.text()).toBe(true);
+      return z
+        .object({
+          pid: z.number().int().positive(),
+          fixturePID: z.number().int().positive(),
+          ownGroup: z.literal(true),
+        })
+        .parse(await response.json());
+    };
+    const old = await runtime(),
+      oldConnections = connections;
+    expect(old.pid).not.toBe(old.fixturePID);
+    const injected = await request.post("/api/fixture/native-gateway-restart", {
+      headers: { origin, "x-csrf-token": (await login.json()).csrf },
+      data: { mode },
+      timeout: 5000,
+    });
+    expect(injected.ok(), await injected.text()).toBe(true);
+    expect((await injected.json()).previous).toBe(old.pid);
+    await expect
+      .poll(
+        async () => {
+          try {
+            return (await runtime()).pid;
+          } catch {
+            return old.pid;
+          }
+        },
+        { timeout: 20000 },
+      )
+      .not.toBe(old.pid);
+    await expect
+      .poll(() => bindingConnection, { timeout: 20000 })
+      .toBeGreaterThan(oldConnections);
+    if (!held) {
+      await expect
+        .poll(() => confirmationConnection, { timeout: 15000 })
+        .toBeGreaterThan(oldConnections);
+      const confirmedUploads = uploads;
+      await expect
+        .poll(() => uploads, { timeout: 15000 })
+        .toBeGreaterThan(confirmedUploads);
+    }
+    await expect(
+      page.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toHaveCount(0, { timeout: 15000 });
+    await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+  };
+  if (processMode) {
+    await restart("kill");
+    await expect
+      .poll(
+        async () => {
+          const value = await native();
+          return {
+            state: value.attempt.state,
+            generation: value.attempt.generation,
+            ssh: value.supervisor?.ssh_peer,
+            pid: value.supervisor?.pid,
+            unfrozen:
+              value.kernel.length > 0 &&
+              value.kernel.every(
+                (unit) => unit.frozen === "0" && unit.populated === "1",
+              ),
+          };
+        },
+        { timeout: 15000 },
+      )
+      .toEqual({
+        state: "ACTIVE",
+        generation: before.attempt.generation,
+        ssh: "pinned-live",
+        pid: before.supervisor!.pid,
+        unfrozen: true,
+      });
+    await pane.focus();
+    await expect(pane).toBeFocused();
+    await page.keyboard.type("gateway-", { delay: 25 });
+    await expect(page.locator(".xterm-rows")).toContainText(
+      "retained-private-gateway-",
+    );
+  }
+  let policyCycle = 0;
   const pauseAndContinue = async () => {
+    policyCycle++;
     await page.evaluate(() => document.exitFullscreen());
     await expect(page.locator(".lock-overlay")).toBeVisible();
     await expect
@@ -222,6 +339,35 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     expect(
       (await native()).kernel.every((entry: any) => entry.frozen === "1"),
     ).toBe(true);
+    if (processMode) {
+      await restart(policyCycle === 1 ? "graceful" : "kill", true);
+      await expect(
+        page.getByRole("heading", {
+          name: "Continuation approved",
+          exact: true,
+        }),
+      ).toBeVisible();
+      const stillHeld = await native();
+      expect(stillHeld.attempt).toMatchObject({
+        state: "LOCKED",
+        retained_hold: "held",
+        generation: paused.generation,
+        start: before.attempt.start,
+        deadline: before.attempt.deadline,
+        original_deadline: before.attempt.original_deadline,
+        grant: before.attempt.grant,
+      });
+      expect(stillHeld.supervisor).toMatchObject({
+        pid: before.supervisor!.pid,
+        ssh_peer: "pinned-live",
+      });
+      expect(
+        stillHeld.kernel.length > 0 &&
+          stillHeld.kernel.every(
+            (unit) => unit.frozen === "1" && unit.populated === "1",
+          ),
+      ).toBe(true);
+    }
     await page
       .getByRole("button", { name: "Restore fullscreen", exact: true })
       .click();
@@ -260,7 +406,9 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   await page.keyboard.type("verified'");
   await page.keyboard.press("Enter");
   await expect(page.locator(".xterm-rows")).toContainText(
-    "NATIVE-retained-private-verified-END",
+    processMode
+      ? "NATIVE-retained-private-gateway-verified-END"
+      : "NATIVE-retained-private-verified-END",
   );
   await page.keyboard.type("nano -I -w /work/browser-editor.txt", {
     delay: 25,

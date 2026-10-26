@@ -317,3 +317,134 @@ broad-browser,qualified-types,qualified-build}.log. Inputs frozen through comple
 The prior full163browser+fresh refusal evidence still applies to unchanged legacy
 paths; this run exercises changed retained/capture/admission workflows. No native
 production source or authority schema changed yet; no new root proof is claimed.
+
+## Actual browser/native process join — WIP after eb5e5f0
+
+The bounded next entry is the EXISTING retained-native.spec.ts one-student
+WASM/SSH/Nano/two-hold/Continue/protected-export workflow, with explicit
+EXAM_BROWSER_NATIVE_GATEWAY_PROCESS=1. The existing browserGatewayProcess child
+owns actual createApp/SQLite/connection proxies. Parent TLS, synthetic jump/relay
+and guarded native guest remain independent. HTTP and WebSocket headers/bytes
+forward to that child unchanged; original signed native HTTPS bodies still use
+the existing bounded bridge. No native/product/config/guard change or new helper
+chain. Native exact bundlefnwvqu0t remains applicable.
+
+Acceptance: active SIGKILL replacement preserves the private half-typed shell
+line, same native supervisor/SSH/generation/clock/grant and populated unfrozen
+work. Scoped policy approval survives a graceful replacement while ALL native
+scopes stay populated/frozen; no thaw until restored conditions and explicit
+Continue. A second held SIGKILL preserves actual unsaved Nano memory; fresh
+Continue/save/root export verifies the exact original editor/shell proofs. Each
+replacement must have a distinct real child PID and a fresh page binding, never
+password/MFA re-entry. Final native/web protection and FULL host/base preservation
+are mandatory. Synthetic media/jump do not qualify physical camera/MFA.
+
+State/failure review before the run: child restart reuses the durable DB/keys,
+claims, approval/report receipts and original interval. Fresh native verification
+is still required; the TLS proxy/reconnected socket is not permission. Old child
+requests fail503/bounded IPC timeouts, never invent a policy violation. All owned
+IPC/root processes have existing finite bounds and exact cleanup. Parent TLS
+readiness in child mode starts only AFTER source registration/exam/enrollment
+setup, avoiding a false early ready response from a facade without Fastify reply.
+Cookie bootstrap reads actual Set-Cookie headers, supported by both real app and
+child facade. Early child cleanup ends the owned guest/child and private keys.
+No production reservation, new durable state, clock or admission path is added.
+
+Fixture types53705 and final case types23218 PASS. Actual process/native run
+not yet executed; no restart-workflow completion or admission enablement claimed.
+The20/38 checked count and prior large/isolation eb5e5f0 receipts remain unchanged.
+
+First actual native process run4312 FAILS after active SIGKILL: new child PID and
+page binding, native same supervisor/SSH/ACTIVE generation0/unfrozen populated
+scope and original half-typed shell line are observed, but the eight added keys
+do not echo. Final snapshot later says Connected. The test had not waited for
+post-restart public confirmation, challenged capture or completion of input-blocked
+recovery BEFORE capturing those keys. Browser source intentionally discards keys
+captured while unconfirmed; waiting afterward is not a replay mechanism. This
+is an insufficient readiness oracle, not a claimed product routing fix.
+Root stagermdaoy89 independently reports failed result/
+FULL files+authority preservation and inactive owned unit. Original failure log
+/tmp/ssh-exam-native-gateway-first.log and error-context.md are retained.
+
+The corrected test waits for a fresh post-replacement correlated state reply,
+new challenged upload and disappearance of Reconnecting/input-blocked status,
+then positively verifies focus before typing. Failure native/control/focus metadata
+is written to private per-test JSON paths, because body-only list-reporter
+attachments were not persisted. Types75103 PASS. Native/production code and
+root bundlefnwvqu0t remain unchanged. A fresh actual run is required; no product
+fix or restart completion is claimed from this test correction.
+
+Second native process run80804 reaches successful ACTIVE input after real child
+replacement, then fails43.4s at an INVALID held-state heartbeat expectation.
+Workspace stops that heartbeat while policy-locked. Saved native diagnostics show
+LOCKED generation1, policy/held, same pinned supervisor/SSH and populated frozen
+scope; approval remains visible. No product regression or heartbeat-policy change
+is inferred. Root stage5dv3_klg independently reports failed result/FULL and exact
+owned unit04f52ff4d3554005948599e7d65debf9 inactive. Failure files are preserved at
+/tmp/ssh-exam-native-gateway-second-evidence.3xpubdx2/test-output; log remains
+/tmp/ssh-exam-native-gateway-second.log.
+
+The corrected oracle requires a NEW socket's binding (and, while ACTIVE, a
+correlated reply on that socket, a subsequent challenged upload and input-ready
+UI/focus). A HELD restart instead requires the new binding, preserved scoped
+approval and ALL populated kernel scopes still frozen. Existing restore-conditions/
+fresh-fullscreen-capture/explicit Continue follows; no active heartbeat or thaw
+is invented while held. Types95668 PASS; fresh actual run still required.
+
+Third11511 passes the actual native case1/50.3s (57.5s total): active input,
+three real child replacements, both kernel holds/scoped approvals/fresh explicit
+Continue, unsaved Nano/private shell line and root protected export. Root
+stagekib1hisd result0/FULL and exact unit52ac7c02d87f4979b8609850b7b52ef0 inactive
+are independently reread. HOWEVER fixture teardown logs Fixture gateway exited:
+Playwright's graceful group SIGTERM can kill the child before the parent's
+ordered shutdown RPC. Do not count full clean qualification from the test exit0.
+It left the exact synthetic host-key dir and TLS key; local public-key derivation
+was matched to root input SHA25687139b83278e1c2c03b79ff262fbb6702dd18b4e13905d6cf74a0c0cf9ddc96a
+before removing only /tmp/exam-ssh-keys-fNKiL0 and the exact generated TLS key in
+/tmp/ssh-exam-browser-native-Sm8yJh. Logs/metadata/unrelated credentials remain.
+
+The reusable fixture adapter now has an optional detached-child mode, selected
+ONLY by this native fixture; existing callers retain their original default. A
+read-only signal0 probe of the exact owned child group is required by its runtime
+response, and the public case asserts that proof. Parent retains shutdown/IPC
+ownership; child still exits on parent IPC loss. Final synthetic key cleanup is
+in finally even if another shutdown step fails. No shared production service or
+process group is signaled by these controls. Types23290 PASS; fresh clean actual
+run required. Native/product/root bundle remains unchanged.
+
+Fourth87893 is clean PASS1/55.5s (1.1m overall), including the dedicated-child-group
+proof and full ordered teardown: no Fixture gateway exited log. Active gateway
+SIGKILL retains the same native supervisor/SSH/generation0/unfrozen scope and
+half-typed shell command. A graceful replacement during the first approved policy
+hold and SIGKILL during the second hold retain the SAME populated frozen scope/
+scoped approval; explicit restored-condition Continue is still necessary. Unsaved
+Nano and the shell line survive, both exact files verify via real root examctl
+export, original full90-minute interval/grant and held access remain unchanged.
+
+Root stagei_ti2545 result0/FULL files+authority preservation and exact owned unit
+de21cffd366f4b5aa3ea03101019bd61 inactive independently reread. Local evidence
+/tmp/ssh-exam-browser-native-q3W9gT/native-root.log; log
+/tmp/ssh-exam-native-gateway-fourth.log. Exact TLS key and synthetic SSH key dir
+are absent after normal cleanup. The earlier failures/teardown error remain
+recorded above and are not called passes.
+
+Default direct-app native regression27008 also PASS1/40.5s (47.5s overall), same
+shell/Nano/dual-hold/export and FULL preservation. Root stage3gtrnfa_ result0/FULL,
+exact unit078245da56c54ee8935e76b0bc1f49e2 inactive independently reread. Local log
+/tmp/ssh-exam-native-gateway-default-regression.log. Its TLS key is cleaned.
+Affected22 composed browser scenarios46815 PASS4.2m after the reusable fixture
+adapter gained its optional fork setting; default behavior remains covered.
+
+This closes actual native/gateway process replacement for still-viable SSH under
+verified coverage. It does NOT qualify a blind coverage gap, actual coordinator
+faults, genuine SSH replacement or physical camera/MFA. Root binaries remain
+EXACT0ecfc13/fnwvqu0t and installed retained admission stays OFF. Existing609 app/
+build/native-race receipts apply to unchanged product inputs; no deployment.
+
+Final milestone review: the actual native clean/default cases and22 composed
+scenarios all complete successfully. This is test-only integration, with no SQL,
+native authority format, production source/configuration or operator action added.
+The inspected root driver and native binaries are unchanged fnwvqu0t/0ecfc13.
+Prior609 application/build/native race/resource receipts remain applicable; no
+whole-suite rerun is claimed for unchanged product inputs. Current checkpoint
+records the exact next active native command-socket stall/coverage boundary.

@@ -2907,8 +2907,14 @@ old gateway replies cannot cross the browser's new control-reply epoch. Missing
 gateway memory alone no longer creates a v1 policy violation or SSH-loss claim.
 Actual policy holds and scoped approvals survive this process replacement. Five
 actual-process/WASM/SSH cases pass locally with simulated native policy. Native
-coverage-ledger continuity and joined actual-root/capacity qualification remain
-open; no blanket technical thaw or installed enablement is provided. See
+coverage-ledger continuity, the actual browser/kernel16/64 join and now actual
+native/gateway process replacement are qualified locally. Active SIGKILL and
+granted policy-held graceful/SIGKILL replacements preserve the pinned native
+supervisor/SSH, half-typed shell and unsaved Nano; holds remain populated/frozen
+until fresh explicit Continue, then protected export verifies exact saved files.
+Original clocks/grants/holds and cleanup are retained. Command/coordinator stalls
+and strict coverage/gap acceptance remain; no blanket technical thaw or installed
+enablement is provided. See
 docs/retained-gateway-restart.md.
 
 The local policy-delivery candidate gives each retained page's genuine negative
