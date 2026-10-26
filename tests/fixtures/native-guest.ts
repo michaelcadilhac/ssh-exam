@@ -368,6 +368,21 @@ export async function nativeGuest(
         ),
       );
     },
+    async coordinator(attempt: string, action: "start" | "status" | "restore") {
+      if (students !== 1)
+        throw Error("Private coordinator fault requires one synthetic attempt");
+      const value = JSON.parse(
+        await collect(
+          bridge("inspect"),
+          JSON.stringify({ attempt, coordinator: action }) + "\n",
+        ),
+      );
+      if (value.bridge_error)
+        throw Error(
+          "Private coordinator observation refused: " + value.bridge_error,
+        );
+      return value;
+    },
     async gate(attempt: string, action: "start" | "status" | "restore") {
       if (students !== 1)
         throw Error("Private gate fault requires one synthetic attempt");

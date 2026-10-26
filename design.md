@@ -2916,9 +2916,13 @@ Original clocks/grants/holds and cleanup are retained. A real17.5s signed-comman
 socket stall now separately passes with fresh independent native evidence,
 foreground input/background writes, unchanged supervisor/SSH/clock/grant and
 subsequent operational-error handling/fresh pane admission/editor hold/export.
-The coordinator continues running in that case; whole coordinator loss and strict
-coverage/gap acceptance remain. No blanket technical thaw or installed enablement
-is provided. See docs/retained-native-command-stall.md and
+The coordinator continues running in that case. A separate actual coordinator
+outage now verifies a technical freeze with SSH/Nano/writers preserved; fresh
+captures keep that unproven gap held until reviewed Continue. Original clocks
+and protected export pass. Continuous availability through coordinator loss and
+full coverage/gap acceptance remain. No blanket technical thaw or installed
+enablement is provided. See docs/retained-coordinator-loss.md,
+docs/retained-native-command-stall.md and
 docs/retained-gateway-restart.md.
 
 The local policy-delivery candidate gives each retained page's genuine negative

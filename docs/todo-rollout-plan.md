@@ -25,8 +25,10 @@ replacement now passes active and approved/held shell/Nano/export plus clean
 teardown. An actual signed-command socket stall now also passes while the
 independent evidence bridge remains healthy, including native writer/input,
 original owner/clock and subsequent pane/editor/hold/export. Whole coordinator
-loss and complete coverage/gap qualification remain gates. Component/browser
-simulations do not replace those boundaries.
+outage now passes verified technical freeze, retained SSH/Nano/writers, no thaw
+from fresh captures alone and reviewed Continue/protected export. Continuous
+coordinator-loss availability and complete coverage/gap qualification remain
+gates. Component/browser simulations do not replace those boundaries.
 Current exact evidence: todo-current-checkpoint.md and retained-ssh-exit-feedback.md.
 No part of this plan authorizes deployment.
 

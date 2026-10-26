@@ -37,6 +37,15 @@ does not establish that monitoring survives a stopped coordinator or justify
 thaw after a blind gap; those gates remain open and installed admission stays
 OFF. Exact synthetic evidence: retained-native-command-stall.md.
 
+The actual private coordinator-outage case now verifies the complementary safe
+hold: the independent supervisor freezes all populated work scopes, retains SSH
+and Nano, and records a technical safety hold rather than a student violation.
+Restart and fresh captures do not erase its unproven native coverage gap. Existing
+instructor authorization and explicit same-page Continue recover work at the
+original deadline; protected export verifies the saved editor buffer. This is
+local qualification, not continuous availability through coordinator loss or a
+production recovery change. Evidence: retained-coordinator-loss.md.
+
 The October25 local candidate also retries the SAME genuine policy report until
 its scoped delivery receipt arrives. Positive samples wait for that receipt;
 streams and SSH stay open. Duplicate reports preserve existing approval. A

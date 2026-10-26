@@ -223,6 +223,62 @@ class GateStall:
         assert self.status()['phase'] == 'restored', 'Owned gate restore failed; preserve private evidence'
 
 
+class CoordinatorOutage:
+    """Stop only the guarded guest's coordinator, then restore it unconditionally."""
+    def __init__(self, seconds=22.5):
+        guest_identity()
+        self.before = self.identity('exam-agent.service', 'Agent')
+        self.watchdog = self.identity('exam-deadline-watchdog.service', 'Watchdog')
+        self.phase, self.after, self.error = 'stopping', None, None
+        self.stop = threading.Event()
+        self.lock = threading.Lock()
+        self.thread = threading.Thread(target=self.run, args=(seconds,), daemon=True)
+        self.thread.start()
+
+    @staticmethod
+    def identity(unit, role):
+        assert (unit, role) in (('exam-agent.service', 'Agent'), ('exam-deadline-watchdog.service', 'Watchdog'))
+        pid = int(root_command('systemctl', 'show', unit, '--property=MainPID', '--value').strip())
+        assert pid > 1
+        process = Path('/proc') / str(pid)
+        assert process.stat().st_uid == 0
+        assert (process / 'exe').resolve() == INPUT / 'core-qualification.test'
+        assert ('-test.run=^TestRetainedPolicy' + role + 'Guest$').encode() in (process / 'cmdline').read_bytes().split(b'\0')
+        assert any(row.endswith('/' + unit) for row in (process / 'cgroup').read_text().splitlines())
+        return pid
+
+    def status(self):
+        with self.lock:
+            return {'phase': self.phase, 'before': self.before, 'after': self.after,
+                    'watchdog': self.watchdog, 'error': self.error}
+
+    def run(self, seconds):
+        error = None
+        try:
+            root_command('systemctl', 'stop', 'exam-agent.service')
+            assert root_command('systemctl', 'show', 'exam-agent.service', '--property=MainPID', '--value').strip() == '0'
+            assert self.identity('exam-deadline-watchdog.service', 'Watchdog') == self.watchdog
+            with self.lock: self.phase = 'offline'
+            self.stop.wait(seconds)
+        except Exception as failure:
+            error = type(failure).__name__
+        finally:
+            try:
+                root_command('systemctl', 'start', 'exam-agent.service')
+                after = self.identity('exam-agent.service', 'Agent')
+                assert after != self.before, 'Coordinator was not replaced'
+                assert self.identity('exam-deadline-watchdog.service', 'Watchdog') == self.watchdog
+                with self.lock: self.after = after
+            except Exception as failure:
+                error = type(failure).__name__
+            with self.lock: self.phase, self.error = ('failed' if error else 'restored'), error
+
+    def cancel(self):
+        self.stop.set(); self.thread.join(timeout=35)
+        assert not self.thread.is_alive(), 'Owned coordinator restoration did not settle'
+        assert self.status()['phase'] == 'restored', 'Owned coordinator restore failed; preserve private evidence'
+
+
 class GuestBridge:
     def __init__(self, config):
         self.config = config
@@ -235,6 +291,8 @@ class GuestBridge:
         self.collection_operation = None
         self.collection_lock = threading.Lock()
         self.gate_fault = None
+        self.coordinator_fault = None
+        self.coordinator_attempt = None
         self.evidence_replies = 0
         self.evidence_lock = threading.Lock()
 
@@ -441,12 +499,24 @@ class GuestBridge:
     def inspect(self, client):
         with client.makefile('rwb', buffering=0) as stream:
             request = line(stream)
+            if 'coordinator' in request:
+                assert self.students == 1 and request['coordinator'] in ('start', 'status', 'restore')
+                if request['coordinator'] == 'start':
+                    attempt = self.snapshot(request['attempt'])['attempt']
+                    assert attempt['username'] == 'examq' and attempt['state'] == 'ACTIVE'
+                    assert self.coordinator_fault is None and self.gate_fault is None
+                    self.coordinator_fault = CoordinatorOutage()
+                    self.coordinator_attempt = request['attempt']
+                assert self.coordinator_fault is not None and self.coordinator_attempt == request['attempt']
+                if request['coordinator'] == 'restore': self.coordinator_fault.cancel()
+                send(stream, self.coordinator_fault.status())
+                return
             if 'gate' in request:
                 assert self.students == 1 and request['gate'] in ('start', 'status', 'restore')
                 attempt = self.snapshot(request['attempt'])['attempt']
                 assert attempt['username'] == 'examq' and attempt['state'] == 'ACTIVE'
                 if request['gate'] == 'start':
-                    assert self.gate_fault is None
+                    assert self.gate_fault is None and self.coordinator_fault is None
                     self.gate_fault = GateStall(Path(self.config['socket']))
                 assert self.gate_fault is not None
                 if request['gate'] == 'restore': self.gate_fault.cancel()
@@ -457,6 +527,9 @@ class GuestBridge:
                 send(stream, self.collection(request['collection']))
                 return
             if request == {'abort': True}:
+                if self.coordinator_fault is not None:
+                    try: self.coordinator_fault.cancel()
+                    except AssertionError: self.failures.append('Private coordinator restoration failed; preserve exact guest')
                 if self.gate_fault is not None:
                     try: self.gate_fault.cancel()
                     except AssertionError: self.failures.append('Private gate restoration failed; preserve exact sockets')
@@ -563,6 +636,7 @@ def run_guest(config, prepare_roles):
     if not bridge.done.wait(780 if bridge.large else 540):
         raise TimeoutError('Actual browser/native qualification did not finish')
     if bridge.gate_fault is not None: bridge.gate_fault.cancel()
+    if bridge.coordinator_fault is not None: bridge.coordinator_fault.cancel()
     if bridge.failures:
         raise RuntimeError(bridge.failures[0])
     print('BROWSER_NATIVE_PROTECTED_FINISH_OK', flush=True)

@@ -22,8 +22,41 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_coordinator_outage_restores_only_owned_role_and_preserves_watchdog(self):
+        with mock.patch.object(bridge, 'guest_identity'), \
+             mock.patch.object(bridge.CoordinatorOutage, 'identity', side_effect=[101, 202, 202, 303, 202]), \
+             mock.patch.object(bridge, 'root_command', side_effect=['', '0', '']) as command:
+            fault = bridge.CoordinatorOutage(.02)
+            fault.thread.join(timeout=1)
+            self.assertFalse(fault.thread.is_alive())
+            self.assertEqual(fault.status(), {'phase': 'restored', 'before': 101, 'after': 303, 'watchdog': 202, 'error': None})
+            self.assertEqual(command.call_args_list, [mock.call('systemctl', 'stop', 'exam-agent.service'),
+                mock.call('systemctl', 'show', 'exam-agent.service', '--property=MainPID', '--value'),
+                mock.call('systemctl', 'start', 'exam-agent.service')])
+            fault.cancel()
+
+    def test_coordinator_stop_failure_still_restores_and_remains_a_failure(self):
+        with mock.patch.object(bridge, 'guest_identity'), \
+             mock.patch.object(bridge.CoordinatorOutage, 'identity', side_effect=[101, 202, 303, 202]), \
+             mock.patch.object(bridge, 'root_command', side_effect=[subprocess.CalledProcessError(1, 'owned stop'), '']) as command:
+            fault = bridge.CoordinatorOutage(.02)
+            fault.thread.join(timeout=1)
+            self.assertFalse(fault.thread.is_alive())
+            self.assertEqual(fault.status()['phase'], 'failed')
+            self.assertEqual(fault.status()['after'], 303)
+            command.assert_called_with('systemctl', 'start', 'exam-agent.service')
+            with self.assertRaisesRegex(AssertionError, 'restore failed'): fault.cancel()
+
+    def test_coordinator_outage_never_stops_an_unqualified_role(self):
+        with mock.patch.object(bridge, 'guest_identity'), \
+             mock.patch.object(bridge.CoordinatorOutage, 'identity', side_effect=AssertionError('wrong executable')), \
+             mock.patch.object(bridge, 'root_command') as command:
+            with self.assertRaisesRegex(AssertionError, 'wrong executable'): bridge.CoordinatorOutage(.02)
+            command.assert_not_called()
+
     def test_abort_always_completes_even_when_owned_gate_restore_refuses(self):
         fixture = object.__new__(bridge.GuestBridge)
+        fixture.coordinator_fault = None
         fixture.gate_fault = types.SimpleNamespace(cancel=mock.Mock(side_effect=AssertionError('changed socket')))
         fixture.failures = []; fixture.done = threading.Event()
         server, client = socket.socketpair()

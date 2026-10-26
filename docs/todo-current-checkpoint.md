@@ -9,7 +9,7 @@ not an effort percentage. Collection crash isolation is closed locally.
 
 ## Validated revisions and current increment
 
-The latest validated signed-command-stall increment builds on a46f229.
+The latest validated coordinator-outage increment builds on c9c3d8d.
 Native binaries/source remain EXACT0ecfc13;
 product gateway97e5bc6. No new native build, authority/config/schema, deployment or
 mode switch. Installed retained admission stays unconditional OFF.
@@ -25,6 +25,14 @@ types17338 PASS. Prior609app/build/full native-race and composed22 browser recei
 apply separately to unchanged inputs. All runners completed. Failure/state review,
 two preserved fixture failures and exact receipts: retained-native-command-stall.md.
 
+Actual coordinator outage now PASS31247/1.4m: MainPID0, original watchdog/supervisor/
+SSH, verified technical freeze and fixed writer bytes, new coordinator/fresh
+captures without optimistic thaw, reviewed Continue/Nano save/protected export.
+Root s__fx7jq FULL/inactive. Composed gateway-process/command-stall40201 PASS1.3m
+on SAME new4a6qcmpx/local50aajhzd driver; rootg2jsvbe2 FULL/inactive. Both exact
+TLS keys absent. Focused17/full Python61/types42625 PASS; all runners completed.
+Detailed state/artifacts and limitations: retained-coordinator-loss.md.
+
 Prior a46f229 actual gateway replacement passes active and approved-held shell/
 Nano/export plus default/shared22 and clean teardown (retained-gateway-restart.md).
 Prior eb5e5f0 actual16/64/two508MiB/fatal-worker/retry/export completes all16 with
@@ -36,13 +44,14 @@ closed locally; original incident cause is still unproven.
 
 ## Exact next action
 
-Qualify actual coordinator loss and strict complete-coverage/gap behavior through the student/
-native interfaces. Inspect actual producers: terminal_monitoring.go runs the
-evidence bridge IN the coordinator, directly to the supervisor independently of
-Config.Socket. Whole coordinator stop also stops that bridge. Require verified
-safe hold when authorization expires, preserved viable SSH/private buffers,
-unchanged clocks and no false student violation or optimistic gap-repair thaw.
-No unused helper chain or permission inferred from contact replies.
+The coordinator's evidence bridge is still an availability dependency: stopping
+it stops native proof retrieval despite healthy web captures. Inspect the actual
+existing watchdog/authenticated callback caller for a bounded independent mirror,
+without another process or supervisor credential transfer. Keep authority in the
+attempt supervisor, original proof age/cutoff and genuine-gap hold/review; test
+actual coordinator outage through writer/Nano/protected export. Then complete
+strict full-coverage/gap and fault-matrix acceptance. No unused helper chain or
+permission inferred from contact replies. Installed guard stays OFF.
 
 Other finite local outcomes: reviewed native legacy migration/definition retirement;
 manual secured-workspace cleanup without grace; reviewed configuration/full CLI

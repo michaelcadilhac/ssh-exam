@@ -31,9 +31,13 @@ and temporary keys removed. Native binaries remain0ecfc13; installed admission
 stays OFF. A separate actual17.5s signed-command socket stall now passes with
 healthy independent evidence, continuous foreground/background work, unchanged
 native ownership/clock, fresh-pane recovery and editor/hold/protected export.
-Whole coordinator loss and complete coverage/gap fault acceptance remain. No
-deployment. Evidence: docs/retained-gateway-restart.md and
-docs/retained-native-command-stall.md.
+Whole coordinator loss now separately proves a verified technical freeze,
+preserved SSH/Nano/writer memory and original interval, no automatic thaw from
+fresh captures, then reviewed Continue and protected export. A composed gateway/
+command-stall run passes on that new exact driver too. Continuous availability
+through coordinator loss and complete coverage/gap acceptance remain. No deployment.
+Evidence: docs/retained-gateway-restart.md, docs/retained-native-command-stall.md
+and docs/retained-coordinator-loss.md.
 
 October25 gateway routing now survives actual process replacement locally through
 current-page and signed native owner verification, retaining the same SSH/private

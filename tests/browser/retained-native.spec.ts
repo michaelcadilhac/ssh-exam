@@ -100,6 +100,10 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   failureStates.length = 0;
   const processMode = process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1";
   const stallMode = process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1";
+  const coordinatorMode =
+    process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE === "1";
+  expect(stallMode && coordinatorMode).toBe(false);
+  let coordinatorHeldBytes = 0;
   let bindingConnection = 0,
     confirmationConnection = 0,
     connections = 0,
@@ -154,13 +158,13 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   });
   const origin = "https://127.0.0.1:9444";
   expect(
-    (await (await request.get("/api/fixture/native-ready")).json())
-      .privateGuest,
-  ).toBe(true);
-  expect(
-    (await (await request.get("/api/fixture/native-ready")).json())
-      .gatewayProcess,
-  ).toBe(processMode);
+    await (await request.get("/api/fixture/native-ready")).json(),
+  ).toMatchObject({
+    privateGuest: true,
+    gatewayProcess: processMode,
+    gateStall: stallMode,
+    coordinatorOutage: coordinatorMode,
+  });
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
@@ -316,9 +320,10 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     );
   }
   let policyCycle = 0;
-  const pauseAndContinue = async () => {
+  const pauseAndContinue = async (cause: "policy" | "technical" = "policy") => {
     policyCycle++;
-    await page.evaluate(() => document.exitFullscreen());
+    if (cause === "policy")
+      await page.evaluate(() => document.exitFullscreen());
     await expect(page.locator(".lock-overlay")).toBeVisible();
     await expect
       .poll(
@@ -327,6 +332,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
           return {
             state: held.attempt.state,
             phase: held.attempt.retained_hold,
+            kind: held.attempt.monitoring_hold_kind,
             populatedFrozen:
               held.kernel.length > 0 &&
               held.kernel.every(
@@ -341,6 +347,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
       .toEqual({
         state: "LOCKED",
         phase: "held",
+        kind: cause,
         populatedFrozen: true,
         ssh: "pinned-live",
         pid: before.supervisor!.pid,
@@ -397,9 +404,10 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
           ),
       ).toBe(true);
     }
-    await page
-      .getByRole("button", { name: "Restore fullscreen", exact: true })
-      .click();
+    if (cause === "policy")
+      await page
+        .getByRole("button", { name: "Restore fullscreen", exact: true })
+        .click();
     const keyboard = page.getByRole("button", {
       name: "Restore keyboard lock",
       exact: true,
@@ -587,6 +595,21 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     await pane.focus();
     await expect(pane).toBeFocused();
   }
+  if (coordinatorMode) {
+    await pane.focus();
+    await expect(pane).toBeFocused();
+    await page.keyboard.type(
+      "(while :; do printf x >> /work/control-stall-proof; sleep 0.2; done) & coordinator_writer=$!; printf 'COORDINATOR-%s\\n' READY",
+      { delay: 25 },
+    );
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".xterm-rows")).toContainText(
+      "COORDINATOR-READY",
+    );
+    await expect
+      .poll(async () => (await native()).writer_bytes)
+      .toBeGreaterThan(2);
+  }
   await page.keyboard.type("nano -I -w /work/browser-editor.txt", {
     delay: 25,
   });
@@ -597,7 +620,122 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     "UNSAVED-native-editor",
   );
   expect((await native()).editor_exists).toBe(false);
-  paused = await pauseAndContinue();
+  if (coordinatorMode) {
+    const coordinator = async (action: "start" | "status" | "restore") => {
+      const result = await request.post("/api/fixture/native-coordinator", {
+        headers: { origin, "x-csrf-token": (await login.json()).csrf },
+        data: { attempt: original.id, action },
+        timeout: 10000,
+      });
+      expect(result.ok(), await result.text()).toBe(true);
+      return z
+        .object({
+          phase: z.enum(["stopping", "offline", "restored", "failed"]),
+          before: z.number().int().positive(),
+          after: z.number().int().positive().nullable(),
+          watchdog: z.number().int().positive(),
+          error: z.string().nullable(),
+        })
+        .parse(await result.json());
+    };
+    const initial = await native(),
+      started = await coordinator("start");
+    expect(started.phase).not.toBe("failed");
+    await expect
+      .poll(async () => (await coordinator("status")).phase, { timeout: 10000 })
+      .toBe("offline");
+    await expect
+      .poll(
+        async () => {
+          const observed = await native();
+          return {
+            state: observed.attempt.state,
+            phase: observed.attempt.retained_hold,
+            kind: observed.attempt.monitoring_hold_kind,
+            frozen:
+              observed.kernel.length > 0 &&
+              observed.kernel.every(
+                (unit) => unit.populated === "1" && unit.frozen === "1",
+              ),
+          };
+        },
+        { timeout: 25000 },
+      )
+      .toEqual({
+        state: "LOCKED",
+        phase: "held",
+        kind: "technical",
+        frozen: true,
+      });
+    const held = await native();
+    coordinatorHeldBytes = held.writer_bytes;
+    expect(held.attempt).toMatchObject({
+      generation: initial.attempt.generation + 1,
+      start: initial.attempt.start,
+      deadline: initial.attempt.deadline,
+      original_deadline: initial.attempt.original_deadline,
+      transport: initial.attempt.transport,
+      grant: initial.attempt.grant,
+    });
+    expect(held.attempt.reason).toContain(
+      "technical safety hold, not a student violation",
+    );
+    expect(held.supervisor).toMatchObject({
+      pid: initial.supervisor!.pid,
+      ssh_peer: "pinned-live",
+      attached_panes: 1,
+    });
+    expect(held.editor_exists).toBe(false);
+    const sampled = performance.now();
+    await expect
+      .poll(
+        async () => {
+          const observed = await native();
+          expect(observed.writer_bytes).toBe(held.writer_bytes);
+          expect(
+            observed.kernel.every(
+              (unit) => unit.frozen === "1" && unit.populated === "1",
+            ),
+          ).toBe(true);
+          return performance.now() - sampled >= 3000;
+        },
+        { timeout: 5000 },
+      )
+      .toBe(true);
+    await expect
+      .poll(async () => (await coordinator("status")).phase, { timeout: 45000 })
+      .toBe("restored");
+    const restored = await coordinator("status");
+    expect(restored.after).not.toBe(started.before);
+    expect(restored.watchdog).toBe(started.watchdog);
+    expect(restored.error).toBeNull();
+    const afterRestoreUploads = uploads;
+    await expect
+      .poll(() => uploads, { timeout: 15000 })
+      .toBeGreaterThan(afterRestoreUploads);
+    const unprovenGap = await native();
+    expect(unprovenGap.attempt).toMatchObject({
+      state: "LOCKED",
+      retained_hold: "held",
+      monitoring_hold_kind: "technical",
+      generation: held.attempt.generation,
+    });
+    expect(unprovenGap.writer_bytes).toBe(held.writer_bytes);
+    expect(unprovenGap.supervisor).toMatchObject({
+      pid: initial.supervisor!.pid,
+      ssh_peer: "pinned-live",
+    });
+    expect(
+      unprovenGap.kernel.length > 0 &&
+        unprovenGap.kernel.every(
+          (unit) => unit.frozen === "1" && unit.populated === "1",
+        ),
+    ).toBe(true);
+    await expect
+      .poll(async () => (await current()).state, { timeout: 15000 })
+      .toBe("LOCKED");
+  }
+  paused = await pauseAndContinue(coordinatorMode ? "technical" : "policy");
   await pane.focus();
   await page.keyboard.press("Control+x");
   await expect(page.locator(".xterm-rows")).toContainText(
@@ -606,6 +744,19 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   await page.keyboard.type("y");
   await expect(page.locator(".xterm-rows")).toContainText("File Name to Write");
   await page.keyboard.press("Enter");
+  if (coordinatorMode) {
+    await expect
+      .poll(async () => (await native()).writer_bytes, { timeout: 5000 })
+      .toBeGreaterThan(coordinatorHeldBytes);
+    await page.keyboard.type(
+      'kill "$coordinator_writer"; wait "$coordinator_writer" 2>/dev/null; printf \'COORDINATOR-%s\\n\' STOPPED',
+      { delay: 25 },
+    );
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".xterm-rows")).toContainText(
+      "COORDINATOR-STOPPED",
+    );
+  }
   await page.keyboard.type("cat /work/browser-editor.txt", { delay: 25 });
   await page.keyboard.press("Enter");
   await expect(page.locator(".xterm-rows")).toContainText(

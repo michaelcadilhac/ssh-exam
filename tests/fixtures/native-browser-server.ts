@@ -142,6 +142,8 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     large,
     gatewayProcess: !!gateway,
     gateStall: process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1",
+    coordinatorOutage:
+      process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE === "1",
     log: data + "/native-root.log",
   };
 });
@@ -161,6 +163,12 @@ app.post("/api/fixture/native-fleet", async (req) => {
     return { ...value, preservation: "FULL" };
   }
   return value;
+});
+app.post("/api/fixture/native-coordinator", async (req) => {
+  if (process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE !== "1")
+    throw Error("Private coordinator fault not selected");
+  const body = req.body as any;
+  return guest.coordinator(body.attempt, body.action);
 });
 app.post("/api/fixture/native-gate", async (req) => {
   if (process.env.EXAM_BROWSER_NATIVE_GATE_STALL !== "1")
