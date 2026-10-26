@@ -35,6 +35,48 @@ func workspaceRetentionFixture(t *testing.T) (*Engine, string) {
 	return e, id
 }
 
+func TestWorkspaceRetentionSandboxDirectoryIsNotThePrivateHostTarget(t *testing.T) {
+	for _, directory := range []string{"/work", "/exam-work"} {
+		t.Run(directory, func(t *testing.T) {
+			e, id := workspaceRetentionFixture(t)
+			e.Config.ExamDirectory = directory
+			if err := e.WithState(func() error { e.state.Attempts[id].WorkPath = e.directory(); return nil }); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(filepath.Join(e.Config.State, "state.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			v, err := e.WorkspaceRetention(id)
+			if err != nil || !v.Candidate || v.Eligible || v.ArchiveVerified || v.RecordedDirectory != directory || v.Path != filepath.Join(e.Config.Work, id) {
+				t.Fatal("native recorded sandbox directory confused with host retention target", v, err)
+			}
+			after, err := os.ReadFile(filepath.Join(e.Config.State, "state.json"))
+			if err != nil || string(before) != string(after) {
+				t.Fatal("metadata inspection rewrote saved directory/authority", err)
+			}
+			e.Config.ExamDirectory = "/future-exam-directory"
+			v, err = e.WorkspaceRetention(id)
+			if err != nil || !v.Candidate || v.RecordedDirectory != directory {
+				t.Fatal("future defaults invalidated historical directory", v, err)
+			}
+		})
+	}
+}
+
+func TestWorkspaceRetentionMalformedRecordedDirectoryStillBlocks(t *testing.T) {
+	for _, directory := range []string{"relative", "/", "/work/../etc", "/work\x00", "/" + strings.Repeat("x", 4095)} {
+		e, id := workspaceRetentionFixture(t)
+		if err := e.WithState(func() error { e.state.Attempts[id].WorkPath = directory; return nil }); err != nil {
+			t.Fatal(err)
+		}
+		v, err := e.WorkspaceRetention(id)
+		if err != nil || v.Candidate || v.Eligible || v.ArchiveVerified || !strings.Contains(strings.Join(v.Blockers, " "), "Recorded exam directory is malformed") {
+			t.Fatal("malformed recorded directory accepted as candidate", v, err)
+		}
+	}
+}
+
 func TestWorkspaceRetentionMetadataNeverClaimsFreshEligibilityOrReleasesHold(t *testing.T) {
 	e, id := workspaceRetentionFixture(t)
 	var before []byte

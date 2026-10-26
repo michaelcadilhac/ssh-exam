@@ -41,17 +41,28 @@ Codebe4994ca0232243a29005027f43b6ccdfc320560 committed/integrated main. Clean-
 commit actual root CLI/TLS rerun PASS7.55s; log clean-commit-cli.log. Source/asset
 hashes match full qualification. No new execution-cohort/csc qualification claimed.
 
-Exact next action: finish this documentation receipt commit/integrate, create
-isolated workspace-cleanup-delivery worktree from main and continue C4 manual
-verified cleanup/no grace. C4 approval already permits conservative same-UID
-active-work deferral; no new policy question. Native MountTopology is unwired;
-read actual worker/proc/thread/UID/hold helpers before coding. Deliver supported
-CLI dry-run then reviewed exact cleanup with bounded independent worker, fresh
-archive/use proof, safe quarantine/crash/retry and preservation of all clocks/
-account holds/sources/history. See workspace-retention.md113-208 for approvals and
-acceptance. Do not add another unused scanner chain. Configuration/help/operator
-journey and remaining migration acceptance audit follow. No new decision pending.
-Do not stop at plan or commit while actionable local work remains.
+Active worktree/branch now workspace-cleanup-delivery, from1802fcd. Confirmed
+C4a metadata bug: native WorkPath is exam-visible /work, not private host target.
+Producer/native RED0.046s and actual root CLI RED0.031s; correction separately
+returns recorded_directory and canonical UUID path, preserves historical defaults,
+rejects malformed paths and leaves eligible/archive_verified=false. Focused races
+core1.095s/CLI1.633s, broad workspace/hold/snapshot1.672s/full CLI16.472s, build/vet
+PASS. No application/student runtime changes; C8 evidence applies unchanged.
+
+Exact next action: commit/integrate this validated metadata correction locally,
+then implement C4 dry-run and explicit cleanup end to end. Plan/approvals in
+workspace-cleanup-delivery.md and workspace-retention.md. Existing mount helper is
+unwired; worker resource/profile, proc lifetime/thread and mount helper signatures
+have now been read. Root CLI workspaces currently initializes Engine for old
+metadata commands; new heavy read-only inspection should use a bounded independent
+worker with validated initialized state, current archive/hold/use proof, no signals
+or account changes. Preserve existing collection reply/size/control semantics;
+new diagnostic report must be scoped and bounded. Follow with exact-inode private
+quarantine/durable audit+retry, source-pin/no-start inventory integration and real
+namespace/crash/healthy-peer/saved-restore qualification. Do not stop at a helper.
+No new policy decision: same-UID active work can conservatively defer cleanup;
+no waiting solely for old access deadline. Future config/help/journey and remaining
+migration acceptance audit stay open. No active runner or guest.
 
 ## Prior release and production boundary
 

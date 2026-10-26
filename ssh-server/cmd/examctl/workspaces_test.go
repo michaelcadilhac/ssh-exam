@@ -66,7 +66,9 @@ func TestWorkspaceCLIInRootUserNamespace(t *testing.T) {
 	if err := os.WriteFile(answer, []byte("synthetic protected answer"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	state := core.State{Attempts: map[string]*core.Attempt{id: {ID: id, Exam: "midterm", Username: "student", UID: 29999, State: "COMPLETED", Start: 1, Ended: 2, Deadline: core.Millis() + 3600000, OriginalDeadline: core.Millis() + 7200000, Protected: true, Checksum: strings.Repeat("a", 64), AccessState: "HELD", WorkPath: work}}, Caps: map[string]core.Capability{}, Registrations: map[string]string{}}
+	// Match the actual preparation producer's default exam-visible directory;
+	// the host target above is deliberately a different path.
+	state := core.State{Attempts: map[string]*core.Attempt{id: {ID: id, Exam: "midterm", Username: "student", UID: 29999, State: "COMPLETED", Start: 1, Ended: 2, Deadline: core.Millis() + 3600000, OriginalDeadline: core.Millis() + 7200000, Protected: true, Checksum: strings.Repeat("a", 64), AccessState: "HELD", WorkPath: "/work"}}, Caps: map[string]core.Capability{}, Registrations: map[string]string{}}
 	writeJSON := func(path string, v any) {
 		t.Helper()
 		b, err := json.Marshal(v)
@@ -107,8 +109,13 @@ func TestWorkspaceCLIInRootUserNamespace(t *testing.T) {
 		return v
 	}
 	original := show()
-	if !original.Candidate || original.Eligible || original.ArchiveVerified || original.Hold.Revision != 0 {
+	if !original.Candidate || original.Eligible || original.ArchiveVerified || original.Hold.Revision != 0 || original.RecordedDirectory != "/work" || original.Path != filepath.Join(c.Work, id) {
 		t.Fatal("recorded metadata became cleanup proof", original)
+	}
+	c.ExamDirectory = "/future-exam-directory"
+	writeJSON(config, c)
+	if v := show(); !v.Candidate || v.RecordedDirectory != "/work" || v.Path != original.Path {
+		t.Fatal("actual CLI confused changed defaults with historical host target", v)
 	}
 	job, err := os.OpenFile(filepath.Join(c.State, "collection-locks", id), os.O_RDWR, 0)
 	if err != nil {

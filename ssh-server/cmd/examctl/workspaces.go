@@ -28,6 +28,9 @@ orphan folders are not enumerated or eligible for cleanup; preserve them for a
 separate supported proof workflow. show reports exact configured UUID paths,
 decimal-string device/inode identities, state, current/original deadlines and
 recorded protection. It does not recursively read student files or hash archives.
+recorded_directory is the saved directory inside the exam (normally /work).
+path is the separate private host UUID folder; never use recorded_directory as a
+host cleanup target. Future directory defaults do not rewrite historical attempts.
 
 IMPORTANT: candidate=true is only an absence of obvious metadata blockers.
 eligible=false and archive_verified=false are intentional: fresh archive,

@@ -60,6 +60,7 @@ type WorkspaceRetentionStatus struct {
 	AccessError       string                `json:"access_error"`
 	RecordedProtected bool                  `json:"recorded_protected"`
 	Checksum          string                `json:"checksum"`
+	RecordedDirectory string                `json:"recorded_directory"`
 	Path              string                `json:"path"`
 	Base              WorkspacePathIdentity `json:"base"`
 	Work              WorkspacePathIdentity `json:"work"`
@@ -245,7 +246,7 @@ func (e *Engine) workspaceRetentionStatus(a *Attempt) (WorkspaceRetentionStatus,
 	v := WorkspaceRetentionStatus{Attempt: a.ID, Exam: a.Exam, Username: a.Username, UID: a.UID, State: a.State, Start: a.Start, Ended: a.Ended,
 		Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline, AccessState: a.AccessState,
 		PolicyState: a.PolicyState, PolicyError: a.PolicyError[:min(len(a.PolicyError), 1500)], AccessError: a.AccessError[:min(len(a.AccessError), 1500)],
-		RecordedProtected: a.Protected, Checksum: a.Checksum, Path: e.workspaceBase(a.ID), Hold: h, Blockers: []string{},
+		RecordedProtected: a.Protected, Checksum: a.Checksum, RecordedDirectory: a.WorkPath, Path: e.workspaceBase(a.ID), Hold: h, Blockers: []string{},
 		Note: "Recorded metadata only, not fresh protected-copy/writer/mount/process-use verification. No cleanup command is enabled. Holds never change deadlines/access; no automatic cleanup or grace period."}
 	if h.Revision > 0 {
 		initialized, err := e.workspaceRetentionGlobalMarker(false)
@@ -272,8 +273,12 @@ func (e *Engine) workspaceRetentionStatus(a *Attempt) (WorkspaceRetentionStatus,
 	if a.PolicyState == "RESTORE_FAILED" || a.PolicyError != "" || a.AccessError != "" {
 		v.Blockers = append(v.Blockers, "Account restoration/access errors remain; inspect native info and repair without deleting recovery work")
 	}
-	if a.WorkPath != "" && filepath.Clean(a.WorkPath) != filepath.Join(e.Config.Work, a.ID, "work") {
-		v.Blockers = append(v.Blockers, "Recorded work path differs from the exact configured attempt target; preserve it for investigation")
+	// WorkPath is the saved directory INSIDE the exam environment (usually
+	// /work), not the private host source. Never derive a retention target from
+	// it or require it to match future configuration edits. The host target is
+	// independently pinned below using Config.Work and the immutable attempt ID.
+	if a.WorkPath != "" && (!filepath.IsAbs(a.WorkPath) || filepath.Clean(a.WorkPath) != a.WorkPath || a.WorkPath == "/" || strings.IndexByte(a.WorkPath, 0) >= 0 || len(a.WorkPath) >= 4096) {
+		v.Blockers = append(v.Blockers, "Recorded exam directory is malformed; preserve workspace and inspect native examctl info before further retention work")
 	}
 	if !filepath.IsAbs(e.Config.Work) || filepath.Clean(e.Config.Work) != e.Config.Work || e.Config.Work == "/" {
 		return v, errors.New("unsafe configured workspace root; preserve data and inspect configuration")

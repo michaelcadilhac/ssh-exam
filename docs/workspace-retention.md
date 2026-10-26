@@ -5,6 +5,18 @@ are **not complete**. C4a metadata/hold controls are implemented/tested locally;
 there is no cleanup command or production deletion. Latest instruction: keep all development/testing local; do not
 deploy or consolidate services.
 
+October26 metadata correction (implemented/tested locally): `WorkPath` is the saved
+directory inside the exam (normally `/work`), not the host UUID source. `show/list`
+now return `recorded_directory` separately from `path`; future directory defaults
+do not invalidate that historical value. Host paths still derive only from pinned
+Config.Work/attempt identity. Relative/unclean/root/NUL/oversized saved directories
+remain blocked. Eligibility/archive_verified still false; no cleanup enabled.
+Producer-based and actual CLI RED→GREEN tests, affected workspace/snapshot races
+1.672s and full CLI/root-namespace/TLS races16.472s pass with build/vet. Web/student
+runtime unchanged; C8's622 app/11 affected browsers plus real-WASM input evidence
+still applies to those unchanged surfaces. No redundant app/browser/new csc run.
+Detailed current delivery plan: workspace-cleanup-delivery.md.
+
 ## October22 hold-record correctness follow-up (tested locally; not deployed)
 
 The actual root-user-namespace CLI reproduced an incomplete v1 record with its
