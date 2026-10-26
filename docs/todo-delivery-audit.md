@@ -5,9 +5,11 @@ implemented/tested locally, not deployed. Full621 application/native races,
 42 new-core kernel cases, public fault/C7/clock/dual-hold flows, actual16/64 and
 19 final affected UI cases pass (retained-release-qualification.md).26/38 main
 boxes are checked; overlap is not effort percentage. Earlier critical-workflow
-remaining gaps below are historical. Next bounded outcome is the real CLI's
-legacy catalog UID/username discrepancy, then reviewed native migration and
-legacy definition retirement. Manual verified cleanup/no grace and complete
+remaining gaps below are historical. The CLI catalog UID discrepancy is fixed in
+076a5c1; c27eac0 fixes coalesced capture recovery, and the exact packaged image now
+passes startup/migration/20 affected browsers/actual16x4 recovery and protected
+finish. Reviewed native cancellation/replacement and legacy definition retirement
+remain open. Manual verified cleanup/no grace and complete
 configuration/help/operator journey remain. Do not rerun or reimplement the
 completed retained workflow merely because those management outcomes are open.
 
@@ -56,8 +58,9 @@ Production deployment, configuration activation, service restart, student-record
 changes and live agent consolidation are not authorized. The deployment-only
 controlled alert/production acceptance item stays deferred. The rollout/migration/
 rollback and canonical/live-upgrade/deferred-recovery consolidation plan remains
-in todo-rollout-plan.md; prepare it, do not execute it. Docker packaging currently
-lacks its configured local daemon/socket; do not substitute a production context.
+in todo-rollout-plan.md; prepare it, do not execute it. Docker is now available
+locally; exact image startup/migration/asset and16x4 checks pass. Use only the
+explicit local Unix engine; never substitute a production context.
 These restrictions do not block unrelated local implementation or guarded tests.
 
 ## Next integrated result and stopping rule

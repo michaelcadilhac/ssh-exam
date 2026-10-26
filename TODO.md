@@ -1,12 +1,13 @@
 # Deferred work
 
-October26 packaged-release qualification is currently NO-GO: an earlier16th-login
-failure remains unclassified, and a later run lost terminal input after recovery.
-A deterministic real-WASM regression now reproduces a client input gate left
-disabled when React coalesces failed/healthy capture updates. The focused fix
-passes; broader/class requalification and native legacy-permission cancellation
-remain open. See docs/release-readiness.md and docs/capture-input-recovery.md.
-Earlier passing development-artifact results below do not qualify new packages.
+October26 packaged candidate c27eac0 now passes startup/migration/all-asset checks,
+20 affected browsers and the actual16-student/64-terminal freeze/recovery/protected
+finish workflow. Its reproduced capture input-gate bug is fixed locally: React
+coalescing failed/healthy samples can no longer leave input disabled indefinitely.
+Earlier16th-login failure and the original incident's triggers remain unproven.
+Main-bug release is still NO-GO pending native legacy-permission cancellation/
+replacement compatibility and future authorized cutover acceptance. See
+docs/release-readiness.md and docs/capture-input-recovery.md. Not deployed.
 
 October26 current local release status: the retained-SSH/liveness workflow is
 implemented and qualified through PUBLIC executables, not deployed. Policy holds

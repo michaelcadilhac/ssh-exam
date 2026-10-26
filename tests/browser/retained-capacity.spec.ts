@@ -2,6 +2,7 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { z } from "zod";
 import { mkdir, writeFile } from "node:fs/promises";
 import { simulatedMedia, ready } from "./transition-fixture.js";
+import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js";
 
 const origin = "https://127.0.0.1:9444";
 const shellQuote = (value: string) =>
@@ -79,6 +80,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
   const headers = { origin, "x-csrf-token": (await login.json()).csrf };
   let measuring = false;
   let recovering = false;
+  let bootstrap = async (): Promise<unknown> => null;
   let signInEvents: { event: string; path: string; type?: string }[] = [];
   const fleet: {
     context: BrowserContext;
@@ -145,6 +147,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
         confirmations = new Map<string, number>(),
         timing = { contacts: 0, states: 0, maxContactMs: 0, maxStateMs: 0 };
       page.setDefaultTimeout(10000);
+      bootstrap = await observeWasmBootstrap(page);
       await simulatedMedia(page);
       const events: typeof signInEvents = [];
       signInEvents = events;
@@ -677,6 +680,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
       JSON.stringify({
         error: String(error).slice(0, 1200),
         signInEvents,
+        wasmBootstrap: await bootstrap(),
         publicStates,
       }),
       { mode: 0o600 },

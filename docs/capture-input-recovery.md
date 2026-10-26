@@ -34,6 +34,10 @@ Receipts: /tmp/ssh-exam-input-recovery-red-oracle.log and
 JavaScript. All20 affected real-WASM/process/transition browser checks pass3.5m;
 19 focused unit checks, typecheck and browser build pass. Native code/protocol and
 durable state are unchanged; earlier full application/native evidence still
-applies to those inputs. New packaged-image/native class requalification remains.
+applies to those inputs. New packaged-image/native class requalification passes:
+all16 students/64 terminals, actual technical freeze/automatic recovery, fresh
+shell input, original intervals/holds and independent protected submissions9.7m/
+10.0m including setup. Exact image/133-source manifest and independent exit0/
+host-base-authority-preserved/inactive guest receipt are in release-readiness.md.
 This proves a client defect, not the initiating cause of the original
 student incident or the unresolved earlier16th-login failure.

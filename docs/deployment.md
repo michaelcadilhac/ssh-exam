@@ -88,11 +88,19 @@ one gateway instance. No production Vite server or systemd inside Docker. Restri
 connections to configured jump SSH, SMTP and DNS/time facilities.
 No runtime CDN access. Liveness is not proof of server guards/notifications.
 
-After manual validation, set maintenance false during a drained configuration restart.
-Restarting loses SSH and locks active attempts, so drain before upgrades. Set maintenance true,
-wait for attempts to finish/protect, back up offline, build a version-tagged image,
-test, deploy --no-build and verify readiness. Roll back the prior tag with preserved compatible
-data/migration version. Never down -v. Keep certificate/trust rollback copies.
+Maintenance is loaded once at gateway startup: editing maintenance:true does not
+pause a running gateway. Do not restart active work merely to enter maintenance.
+First arrange a verified admission stop and positively drain attempts/preflights,
+pending transitions, original access holds and needed native/temporary owners.
+Only then stop, back up offline and install a tested version-tagged matching
+web/native cohort with maintenance enabled. Verify protected history, role agreement,
+SSH/capture/hold/Continue/collection/access and controlled alerts before reopening
+starts through a drained configuration restart. Container replacement can destroy
+its authenticated connection processes; it is never a live-exam maintenance switch.
+Follow docs/release-readiness.md and docs/todo-rollout-plan.md for the current
+proposal and rollback constraints; production authorization is separate. Never
+restore pre-start authority or strip new provenance for an older reader. Never
+down -v. Keep certificate/trust rollback copies.
 
     docker compose stop --timeout 45
     scripts/backup var/production /secure/backups/exam-YYYYMMDD --gateway-stopped
