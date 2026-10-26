@@ -2108,7 +2108,12 @@ export async function createApp(
   app.post("/api/student/attempts/:id/recover-page", async (req) => {
     let a = studentAttempt(req);
     if (a.state === "ACTIVE") {
-      await life.lock(a.id, "Page reloaded; fresh SSH authentication required");
+      await life.lock(
+        a.id,
+        a.monitoring_mode === "v1"
+          ? "Page reloaded; instructor review for a new attempt required"
+          : "Page reloaded; fresh SSH authentication required",
+      );
       a = store.attempt(a.id);
     }
     if (a.state === "LOCKED") {
@@ -2134,6 +2139,10 @@ export async function createApp(
   });
   app.post("/api/student/attempts/:id/reauth", async (req, reply) => {
     let a = studentAttempt(req);
+    if (a.monitoring_mode === "v1")
+      throw Error(
+        "A replacement SSH connection cannot reopen this attempt. Ask your instructor for a reviewed new attempt from verified saved work, with a chosen allowance and finite Begin window. The original deadline, history and account restrictions remain.",
+      );
     await autoAuthorizeSandbox(a.id, true);
     a = store.attempt(a.id);
     const auth = store.db
@@ -2159,6 +2168,10 @@ export async function createApp(
   });
   app.post("/api/student/attempts/:id/claim", async (req) => {
     let a = studentAttempt(req);
+    if (a.monitoring_mode === "v1")
+      throw Error(
+        "A replacement SSH connection cannot reopen this attempt. Ask your instructor for a reviewed new attempt from verified saved work, with a chosen allowance and finite Begin window. The original deadline, history and account restrictions remain.",
+      );
     await autoAuthorizeSandbox(a.id);
     a = store.attempt(a.id);
     const auth = store.db

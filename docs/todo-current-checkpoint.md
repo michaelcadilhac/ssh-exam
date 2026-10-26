@@ -10,7 +10,8 @@ never use.21/38 main boxes checked; overlap, not an effort percentage.
 
 ## Validated baseline
 
-Main/worktree HEAD e2188d7: requested rule + retrospective. C9 runtime baseline
+Main/worktree validated HEAD67bd49f: terminal readiness + joined C7. Requested
+missing-tool rule/retrospective e2188d7. C9 runtime baseline
 3242422 and C6 sizing361ad62 committed/fast-forwarded locally. Active worktree
 var/worktrees/source-grant-retention, branch source-grant-retention.
 Installed retained admission stays OFF; no deployment. C9 exact state/evidence:
@@ -74,13 +75,33 @@ Logs terminal-ready-browser-final and c7-final-types. Native Go/module273 hashes
 unchanged, so C9 full619 application/native589.398s and exact root/capacity evidence
 still apply; no unchanged native suite was repeated for this UI/private-driver fix.
 
-NEXT bounded entry: retained /reauth and /claim plus reload/workspace student UI.
-They still advertise/allow the legacy original-attempt reconnect even though C7
-requires a reviewed NEW attempt. Add actual HTTP refusal regression with valid
-unused approval; preserve session/SSH/approval/clock/page and same-page Continue.
-Update clear student guidance without treating unknown control as positive SSH
-loss. Test affected HTTP/browser/build, then reconcile final public admission.
-No policy question is pending. Do not enable incomplete retained admission.
+VALIDATED next increment: retained /reauth and /claim plus reload/workspace UI.
+HTTP77021 RED: valid unused approval let reauth close SSH/delete session (200),
+claim called unsupported native attach-transport. Candidate guards precede all
+mutation/autoauthorization. Focus95717 PASS5/10.93s, including same-page Continue
+and legacy recovery. UI47011 RED both old reconnect messages; candidate94024
+PASS2/6.8s: reviewed-new-attempt guidance, no replacement controls/requests, and
+unused approval explicitly scoped to original page/SSH. Types67741/build21660
+PASS (index-CLLPbybj). Existing owner-bound positive SSH-loss/unknown/stale rules
+unchanged; control proxy failure has its distinct audit and retains verification.
+No new durable/intermediate state or permission introduced. Full9267 PASS621/
+110files319.73s (namespace CLI/TLS enabled, no skips), affected82589 PASS30/3.3m.
+Logs c7-guidance-{application,browser}. Current UI/server joined51130 PASS49.5s/
+58.6s setup, c7-final-current-guidance; exact native artifacts unchanged. Guest
+0ey8ogb9/unit3c7cdcf89e334ba4a9b0992860aff382 independently result0/preserved/
+inactive; localcDYKpZ key absent. Feature doc owns detailed receipts. No runners
+remain active. No policy question is pending.
+
+NEXT bounded result: public release executables negotiate retained Begin and
+complete the already-qualified policy/technical/C7 workflows in the guarded
+disposable environment WITHOUT the compiled private readiness override. First
+reconcile the finite release matrix; preserve live loaded-role/config/executable/
+legacy-writer checks and mixed-version refusal. Add focused release capability/
+refusal regressions before changing default readiness. Native changes require
+new artifacts and appropriate native race/build/root/capacity qualification;
+never infer new-image qualification from old adapters. No deployment/production
+configuration switch is authorized or needed. Continue other audit milestones
+after this critical public outcome, not another unused helper chain.
 
 ## Remaining work and preservation
 

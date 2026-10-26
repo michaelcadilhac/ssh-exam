@@ -38,6 +38,13 @@ Exact synthetic acceptance and remaining public-admission/guidance gates:
 retained-transport-recovery-plan.md. Viable same-page technical/policy holds use
 the separate retained-SSH procedures below; a timeout is never proof of SSH loss.
 
+The local candidate now refuses retained `/reauth` and `/claim` before closing
+SSH, removing sessions or changing approval/ownership. An unused original-page
+approval cannot authorize replacement authentication. Use the reviewed new-attempt
+sequence above for actual loss; preserve a viable original page for Continue.
+These refusals/guidance and the joined workflow pass locally; only public release
+admission is still a gate. Existing installed legacy recovery is unchanged.
+
 Local retained-monitoring candidate, **disabled/not deployed**: web/CLI interruption
 inspection additionally reports `monitoring_mode`, `retained_hold` and
 `monitoring_hold_kind`. These are observations, not a verified live freeze or

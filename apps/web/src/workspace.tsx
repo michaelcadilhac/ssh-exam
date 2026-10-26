@@ -198,6 +198,10 @@ export function Workspace({
     "COLLECTION_FAILED",
     "CANCELLED_BEFORE_START",
   ].includes(attempt.state);
+  const replacementRequired =
+    attempt.monitoring_mode === "v1" && !!attempt.start && authenticationGap;
+  const replacementMessage =
+    "Your SSH connection has ended. Ask your instructor for a reviewed new attempt from verified saved work, with an allowance and Begin window they choose. This attempt's clock, history and account restrictions remain. Unsaved editor buffers cannot be restored after the connection is lost.";
   const preflightRecovery =
     attempt.state === "PREPARING" && (authenticationGap || recoveryExpired);
   const covered =
@@ -1020,7 +1024,12 @@ export function Workspace({
       }
       if (m.type === "loss") {
         updateAuthenticationGap(true);
-        setMessage("SSH disconnected. Sign in again to reconnect.");
+        setMessage(
+          attemptRef.current.monitoring_mode === "v1" &&
+            attemptRef.current.start
+            ? replacementMessage
+            : "SSH disconnected. Sign in again to reconnect.",
+        );
       }
     });
     const heartbeat = setInterval(() => {
@@ -1522,7 +1531,9 @@ export function Workspace({
               }
             >
               {authenticationGap
-                ? "SSH sign-in required"
+                ? replacementRequired
+                  ? "New attempt needs review"
+                  : "SSH sign-in required"
                 : connected
                   ? "Connected"
                   : recoveryExpired
@@ -1776,20 +1787,27 @@ export function Workspace({
                   {!sandbox && attempt.state === "LOCKED" && (
                     <p
                       className={
-                        approval.state === "approved" ? "status" : "warn"
+                        approval.state === "approved" && !replacementRequired
+                          ? "status"
+                          : "warn"
                       }
                       role="status"
                       aria-live="polite"
                       data-continuation-state={approval.state}
                     >
-                      {continuationNotice(approval, authenticationGap)}
-                      {approval.state === "approved" && approval.expires && (
-                        <> Approval expires {chicago(approval.expires)}.</>
-                      )}
+                      {replacementRequired
+                        ? "Continuation approval applies only to the original page and SSH connection. It cannot authorize a replacement connection or a new attempt."
+                        : continuationNotice(approval, authenticationGap)}
+                      {!replacementRequired &&
+                        approval.state === "approved" &&
+                        approval.expires && (
+                          <> Approval expires {chicago(approval.expires)}.</>
+                        )}
                     </p>
                   )}
                   {!sandbox &&
-                    !["approved", "completing"].includes(approval.state) && (
+                    (replacementRequired ||
+                      !["approved", "completing"].includes(approval.state)) && (
                       <details className="review-request">
                         <summary>Request instructor review</summary>
                         <label>
@@ -1848,12 +1866,18 @@ export function Workspace({
                   </div>
                   {authenticationGap && (
                     <p className="warn">
-                      SSH disconnected. Reconnect
-                      {sandbox || approval.state === "approved"
-                        ? ""
-                        : " after instructor authorization"}{" "}
-                      to resume. Saved files remain. A disconnected session
-                      cannot restore unsaved editor buffers.
+                      {replacementRequired ? (
+                        replacementMessage
+                      ) : (
+                        <>
+                          SSH disconnected. Reconnect
+                          {sandbox || approval.state === "approved"
+                            ? ""
+                            : " after instructor authorization"}{" "}
+                          to resume. Saved files remain. A disconnected session
+                          cannot restore unsaved editor buffers.
+                        </>
+                      )}
                     </p>
                   )}
                   <div className="restore-actions" hidden={authenticationGap}>
@@ -1945,7 +1969,7 @@ export function Workspace({
                       : "Continue exam after authorization"}
                   </button>
                   <button
-                    hidden={!authenticationGap}
+                    hidden={!authenticationGap || replacementRequired}
                     onClick={() =>
                       void recoveryAction(
                         "Opening SSH sign-in",

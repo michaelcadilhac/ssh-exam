@@ -58,6 +58,74 @@ async function paused(
   };
 }
 
+test("retained SSH loss requests a new-attempt review without offering replacement authentication, even with unused approval", async ({
+  page,
+}) => {
+  const p = await paused(page, true);
+  Object.assign(p.f.model.attempt, { monitoring_mode: "v1" });
+  p.f.model.socket!.send(JSON.stringify({ type: "state", ...p.f.snapshot() }));
+  const replacementRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/\/(reauth|claim|continue)$/.test(request.url()))
+      replacementRequests.push(request.url());
+  });
+  await expect(
+    page.getByText(
+      /Ask your instructor for a reviewed new attempt from verified saved work/,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Reconnect SSH", exact: true }),
+  ).toBeHidden();
+  p.update("approved", Date.now() + 60000);
+  await expect(
+    page.locator('[data-continuation-state="approved"]'),
+  ).toContainText(
+    "It cannot authorize a replacement connection or a new attempt",
+  );
+  await expect(
+    page.getByRole("button", { name: /Continue exam/ }),
+  ).toBeHidden();
+  await expect(
+    page.getByText("Request instructor review", { exact: true }).first(),
+  ).toBeVisible();
+  expect(replacementRequests).toEqual([]);
+});
+
+test("a reloaded retained attempt offers a new-attempt review instead of restoring the original page", async ({
+  page,
+}) => {
+  const f = await fixture(page, "LOCKED", "student", "retained-new-attempt");
+  Object.assign(f.model.attempt, { monitoring_mode: "v1" });
+  const requests: { path: string; body: any }[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (/\/(reauth|claim|continue|review-request)$/.test(path))
+      requests.push({ path, body: request.postDataJSON() });
+  });
+  await page.goto("/");
+  await expect(
+    page.getByText(/This page cannot take over your earlier attempt/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Reconnect SSH|Restore page/ }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Request a new-attempt review", exact: true })
+    .click();
+  await expect
+    .poll(() => requests)
+    .toEqual([
+      {
+        path: `/api/student/attempts/${f.model.attempt.id}/review-request`,
+        body: {
+          message:
+            "Page reloaded; requesting a reviewed new attempt from verified saved work",
+        },
+      },
+    ]);
+});
+
 test("retained Continue keeps editor output visible while blocked and adopts fresh input only after the response", async ({
   page,
 }) => {

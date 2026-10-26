@@ -3044,3 +3044,20 @@ supervisor inspection shows current SSH lifetime; full reconciling info includes
 the captured exit fact. No new control API or mode switch is introduced. This candidate remains
 under fresh artifact qualification with installed admission OFF; see
 docs/retained-ssh-exit-feedback.md.
+
+October26 C7 is now joined/qualified locally, not deployed: after genuine loss,
+secure/verify the original saved work, issue a reviewed NEW same-exam grant with
+an instructor-chosen allowance and finite Begin window, durably retain its exact
+archive, and resolve the old account restriction separately. Fresh preflight uses
+no clock; actual Begin gets the full chosen allowance. The old attempt remains
+history with its original timing/checksum. A stopped live folder is never a
+substitute for the verified protected source. Retained `/reauth` and `/claim`
+refuse before changing authentication, approval, ownership or clock; existing
+same-page Continue and legacy recovery stay intact. The student page explains
+that original-page approval cannot transfer to another SSH connection. Unknown
+control/proxy state still requests verification, never a misconduct or SSH-loss
+inference. Full621 application/30 affected browser and actual guarded native
+new-attempt/protected-export acceptance pass. Installed admission remains OFF;
+the private readiness adapter does not qualify public release executables.
+Evidence/operator workflow: docs/retained-transport-recovery-plan.md and
+docs/recovery-runbook.md.

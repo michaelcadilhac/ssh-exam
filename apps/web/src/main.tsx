@@ -554,9 +554,11 @@ function App() {
                       ) ? (
                       <>
                         <p className="warn">
-                          {isSandbox(info.exam.id)
-                            ? "Resume this sandbox attempt; its original clock continues."
-                            : `Attempt ${info.attempt.state}. A reload requires instructor approval. The clock continues.`}
+                          {info.attempt.monitoring_mode === "v1"
+                            ? "This page cannot take over your earlier attempt. Ask your instructor for a reviewed new attempt from verified saved work, with an allowance and finite Begin window they choose. The earlier attempt's clock, history and account restrictions remain."
+                            : isSandbox(info.exam.id)
+                              ? "Resume this sandbox attempt; its original clock continues."
+                              : `Attempt ${info.attempt.state}. A reload requires instructor approval. The clock continues.`}
                         </p>
                         {!isSandbox(info.exam.id) && (
                           <>
@@ -567,59 +569,64 @@ function App() {
                                     `/student/attempts/${info.attempt.id}/review-request`,
                                     {
                                       message:
-                                        "Page reloaded; requesting review",
+                                        info.attempt.monitoring_mode === "v1"
+                                          ? "Page reloaded; requesting a reviewed new attempt from verified saved work"
+                                          : "Page reloaded; requesting review",
                                     },
                                   ),
                                 )
                               }
                             >
-                              Request instructor review
+                              {info.attempt.monitoring_mode === "v1"
+                                ? "Request a new-attempt review"
+                                : "Request instructor review"}
                             </button>
                           </>
                         )}
-                        {!info.sshConnected ? (
-                          <>
-                            <button
-                              disabled={browserBlocked || !!navigation}
-                              onClick={() =>
-                                action(async () => {
-                                  await requireExamBrowser();
-                                  await api(
-                                    `/student/attempts/${info.attempt.id}/reauth`,
-                                    {},
-                                  );
-                                  setSession({ user: null, info: null });
-                                })
-                              }
-                            >
-                              Reconnect SSH
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              disabled={browserBlocked || !!navigation}
-                              onClick={() =>
-                                action(async () => {
-                                  await navigate("restore", async () => {
+                        {info.attempt.monitoring_mode !== "v1" &&
+                          (!info.sshConnected ? (
+                            <>
+                              <button
+                                disabled={browserBlocked || !!navigation}
+                                onClick={() =>
+                                  action(async () => {
                                     await requireExamBrowser();
-                                    const r = await api(
-                                      `/student/attempts/${info.attempt.id}/claim`,
+                                    await api(
+                                      `/student/attempts/${info.attempt.id}/reauth`,
                                       {},
                                     );
-                                    setReservation(r);
-                                  });
-                                })
-                              }
-                            >
-                              {navigation === "restore"
-                                ? "Restoring exam…"
-                                : isSandbox(info.exam.id)
-                                  ? "Restore page"
-                                  : "Restore page after instructor authorization"}
-                            </button>
-                          </>
-                        )}
+                                    setSession({ user: null, info: null });
+                                  })
+                                }
+                              >
+                                Reconnect SSH
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                disabled={browserBlocked || !!navigation}
+                                onClick={() =>
+                                  action(async () => {
+                                    await navigate("restore", async () => {
+                                      await requireExamBrowser();
+                                      const r = await api(
+                                        `/student/attempts/${info.attempt.id}/claim`,
+                                        {},
+                                      );
+                                      setReservation(r);
+                                    });
+                                  })
+                                }
+                              >
+                                {navigation === "restore"
+                                  ? "Restoring exam…"
+                                  : isSandbox(info.exam.id)
+                                    ? "Restore page"
+                                    : "Restore page after instructor authorization"}
+                              </button>
+                            </>
+                          ))}
                       </>
                     ) : (
                       <>

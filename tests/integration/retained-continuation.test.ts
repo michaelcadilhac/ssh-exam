@@ -162,9 +162,7 @@ it("same-page retained pause keeps SSH; failed native Continue retries the same 
       payload: {},
     });
     expect(reauth.statusCode, reauth.body).toBe(400);
-    expect(reauth.json().error).toContain(
-      "authorization required for an authentication gap",
-    );
+    expect(reauth.json().error).toContain("reviewed new attempt");
     expect(f.connection.alive).toBe(true);
     const continued = await continueAttempt();
     expect(continued.statusCode, continued.body).toBe(200);
@@ -190,3 +188,102 @@ it("same-page retained pause keeps SSH; failed native Continue retries the same 
     await f.close();
   }
 });
+
+it.each(["reauth", "claim"])(
+  "retained %s refuses replacement authentication before changing a valid unused approval, session or interval",
+  async (operation) => {
+    const f = await liveMonitoring({ ownedAttempt: true });
+    const original = f.store.attempt(f.id);
+    const owner = {
+      attempt: f.id,
+      exam: original.exam,
+      username: original.username,
+      uid: original.uid,
+      transport_hash: f.connection.transport,
+      boot: "77777777-1234-4234-8234-123456789abc",
+      page_epoch: hash(f.page),
+      input_epoch: hash("original retained input authority"),
+      generation: 0,
+      clock_revision: 0,
+    };
+    f.store.db
+      .prepare(
+        "UPDATE attempts SET monitoring_mode='v1',registered_owner=? WHERE id=?",
+      )
+      .run(JSON.stringify(owner), f.id);
+    f.h.control.command = async (op) => {
+      if (op === "lock-attempt")
+        return { id: f.id, state: "LOCKED", generation: 1 };
+      throw Error("Unexpected replacement native operation: " + op);
+    };
+    try {
+      await f.life.lock(f.id, "Synthetic policy pause with retained SSH");
+      const admin = f.store.session("admin", "synthetic-instructor", null);
+      const approval = await f.app.inject({
+        method: "POST",
+        url: `/api/admin/attempts/${f.id}/authorize`,
+        headers: {
+          origin: f.headers.origin,
+          cookie: `session=${admin.token}`,
+          "x-csrf-token": admin.csrf,
+        },
+        payload: {
+          generation: 1,
+          revision: f.store.attempt(f.id).continuation_revision,
+          requestID: randomUUID(),
+          reason: "Reviewed SAME-page Continue, never a replacement transport",
+        },
+      });
+      expect(approval.statusCode, approval.body).toBe(200);
+      const approved = f.store.db
+        .prepare("SELECT * FROM continuations WHERE attempt=?")
+        .get(f.id);
+      expect(approved).toMatchObject({ consumed: 0, generation: 1 });
+      const before = f.store.attempt(f.id);
+      const authCalls = { ...f.h.authCalls };
+      const close = vi.spyOn(f.connection, "close");
+      const command = vi.spyOn(f.connection, "command");
+      const refused = await f.app.inject({
+        method: "POST",
+        url: `/api/student/attempts/${f.id}/${operation}`,
+        headers: f.headers,
+        payload: {},
+      });
+      expect(refused.statusCode, refused.body).toBe(400);
+      expect(refused.json().error).toContain("reviewed new attempt");
+      expect(close).not.toHaveBeenCalled();
+      expect(command.mock.calls.some(([op]) => op === "attach-transport")).toBe(
+        false,
+      );
+      expect(f.connection.alive).toBe(true);
+      expect(
+        f.store.db
+          .prepare("SELECT * FROM continuations WHERE attempt=?")
+          .get(f.id),
+      ).toEqual(approved);
+      for (const key of [
+        "state",
+        "generation",
+        "start",
+        "deadline",
+        "original_deadline",
+        "page_hash",
+        "registered_owner",
+        "grant_id",
+        "access_state",
+        "protected",
+      ] as const)
+        expect(f.store.attempt(f.id)[key], key).toEqual(before[key]);
+      const session = await f.app.inject({
+        method: "GET",
+        url: "/api/session",
+        headers: f.headers,
+      });
+      expect(session.statusCode, session.body).toBe(200);
+      expect(session.json().username).toBe(original.username);
+      expect(f.h.authCalls).toEqual(authCalls);
+    } finally {
+      await f.close();
+    }
+  },
+);

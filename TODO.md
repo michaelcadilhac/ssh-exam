@@ -1430,8 +1430,12 @@ the approval is not a production change or a completed investigation.
   A confirmed first-key startup loss is also fixed locally: Opening panes remain
   non-editable until actual valid acknowledgement; legacy/framed and malformed
   agreement regressions pass. See docs/terminal-opening-readiness.md and
-  docs/retained-transport-recovery-plan.md. Remaining: consistent retained-loss
-  student guidance/reauthentication refusals and final public release admission.
+  docs/retained-transport-recovery-plan.md. Retained-loss/reload student guidance
+  and web reauth/claim refusals are now implemented/tested locally too: valid
+  unused approval cannot close SSH, delete the session or replace ownership.
+  Same-page Continue/legacy recovery remain; full621 app checks,30 affected
+  browser cases and current-UI joined C7 pass. Final public release admission
+  remains disabled pending its own exact-release qualification.
   This checkbox stays open; no deployment or original-attempt ownership transfer.
   Bind reuse to the same authenticated student, attempt, page and retained SSH
   transport. Close retained connections when the page closes, the student logs

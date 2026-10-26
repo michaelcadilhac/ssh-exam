@@ -7,6 +7,13 @@ of selecting another private prerequisite whenever a workflow proved difficult.
 ## Why the main count stopped moving
 
 The38 main checkboxes are overlapping requirements, not38 independent features.
+Current October26 update: C9 automatic technical-hold recovery and its actual
+16/64 coverage/gap matrix are qualified locally (3242422); C6 actual GCC/G++/GDB
+and class storage sizing is complete locally (361ad62). C7 genuine SSH-loss →
+reviewed NEW saved-work attempt/full chosen allowance/protected finish now passes
+the joined root/browser workflow (67bd49f). Retained reauth/claim/reload guidance
+is being aligned; final public release admission remains closed. The table's
+earlier gap descriptions below are historical where superseded by these receipts.
 Several broad items were kept open for the same missing native integration or
 saved-source migration. Historical status paragraphs also contradict later work:
 initial snapshots, definition retirement and general grant workflows now exist;

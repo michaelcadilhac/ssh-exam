@@ -1,8 +1,9 @@
 # Retained mode after genuine SSH loss
 
-October25,2026. Investigation under the already-approved C7 policy, NOT a delivered
-replacement workflow. Baseline ad828f5; local work only, no deployment. Installed
-retained admission stays OFF.
+October26,2026. The joined C7 new-attempt workflow and consistent student guidance/
+web refusals are qualified locally (joined baseline67bd49f). Public native admission
+stays OFF; no deployment. Earlier investigation/failed receipts below are historical,
+not remaining design choices or qualification of different artifacts.
 
 ## Confirmed correctness defect and bounded fix
 
@@ -171,3 +172,25 @@ C7 qualification gap, not the whole release gate. Remaining public guidance/entr
 checks: retained pages still advertise legacy original-attempt reauthentication;
 refuse that path before closing authentication/altering ownership, explain the
 reviewed NEW-attempt workflow, and preserve same-page Continue/legacy behavior.
+
+The public-guidance follow-up reproduces both HTTP failures with valid unused
+approval:77021 reauth returns200 and closes SSH/deletes session; claim calls
+unsupported attach-transport. Both now refuse BEFORE autoauthorization or any
+authentication/approval/page/clock mutation. Existing same-page Continue and legacy
+recovery pass focused95717 (5/10.93s). Browser47011 is RED for misleading reconnect
+guidance; rebuilt94024 PASS2/6.8s. Reload requests a new-attempt review, and the
+lost-SSH page explains why its original continuation approval cannot authorize
+replacement authentication. Unknown proxy/control handling is unchanged.
+
+Full9267 application PASS621/110files319.73s, with real namespace-root CLI/TLS
+checks and no skips (`/tmp/ssh-exam-c7-guidance-application.log`). Affected browser
+82589 PASS30/3.3m, no skips (`/tmp/ssh-exam-c7-guidance-browser`). Types/build pass,
+assets index-CLLPbybj. Native Go/module273 inputs/binaries remain unchanged, so
+the C9 full native-race/resource/namespace/compiler/default-size receipt applies;
+no unrelated native suite repeated for web guards/messages. Actual51130 current
+UI/server C7 PASS1/49.5s (58.6s with setup), `/tmp/ssh-exam-c7-final-current-guidance`.
+Guest0ey8ogb9/unit3c7cdcf89e334ba4a9b0992860aff382 independently result0/files+
+authority preserved/inactive, localcDYKpZ TLS key absent. Both archives, source
+retention, separately reviewed early disposition, zero-clock preflight and full
+new allowance remain proven. Final public release-binary admission is the next
+gate; no production action or new policy choice occurred.
