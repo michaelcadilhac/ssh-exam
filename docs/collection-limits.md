@@ -1,7 +1,7 @@
 # Collection limits and storage — local implementation
 
-October 21, 2026. Implemented/tested locally; **not deployed**. Final browser
-interface regression is recorded in todo-progress.md; release gates remain open.
+October 26, 2026. Implemented/tested locally; **not deployed**. Representative
+C/C++/GDB sizing and full-class storage planning are now reviewed below.
 Do not execute a storage migration, service change or cleanup from this document.
 
 ## Policy and supported configuration
@@ -28,6 +28,79 @@ Larger allowances do not increase the 256 MiB/120-second worker bounds or reserv
 disk space. Qualify actual course/compiler/debugger work, storage and concurrent
 cutoffs before using any allowance in production. Sandbox keeps its fixed
 five-minute/webcam/terminal policy but permits the same collection configuration.
+
+For an already-issued UNUSED grant, inspect and explicitly revise that grant;
+changing exam defaults alone cannot change its saved settings:
+
+```sh
+sudo examctl web grants show GRANT_UUID
+sudo examctl web grants revise GRANT_UUID --revision CURRENT_NUMBER --collection-file-mib 256 --collection-total-mib 512 --reason 'Reviewed course debugger core-file requirement'
+```
+
+The equivalent web grant inspector uses the same revision/validation/audit.
+Active attempts and protected submissions keep their original snapshot. A larger
+configuration needs qualification; this example is not permission to change any
+production grant or a claim that every256MiB artifact is qualified.
+
+## C/C++ and GDB review
+
+The instructor selected C/C++ with GCC and GDB as representative on October26.
+The reproducible synthetic driver is `ssh-server/tests/compiler_debugger_sizing.py`:
+from the repository root run
+`python3 ssh-server/tests/compiler_debugger_sizing.py --output /absolute/private/owned/parent/NEW_DIRECTORY` with a fresh
+output directory and at least1GiB scratch. It checks gcc/g++/gdb first and exits127
+on a missing command. It builds with `-g3 -O0`, actually stops at a C++ buffer in
+GDB, creates an ELF core and independently reopens that core to verify its first
+and last buffer bytes. It never opens student files or installed exam services.
+
+Measured GCC16.2.1/GDB18.1 synthetic outputs:
+
+| Workload | Largest file, logical bytes | All artifacts, logical bytes | Default128/512MiB |
+| --- | ---: | ---: | --- |
+| Small C source/object/debug executable | 31,536 | 48,677 | Fits |
+| C++ debug build and core with64MiB live buffer | 68,763,808 | 69,213,380 | Fits |
+| C++ debug build and core with192MiB live buffer | 202,981,544 | 203,431,116 | Refuses per-file size |
+
+The existing real40MiB C constant-table fixture separately protects both its
+object and executable under the new defaults, while the legacy32MiB/file policy
+refuses without publishing. These examples support retaining the approved
+defaults for ordinary course builds. They do not establish that all C/C++ work
+fits: debugger cores and generated data can exceed128MiB even below512MiB total.
+If such outputs are required answers, choose/revise a compatible unused grant
+explicitly and qualify that size before Begin. Do not silently omit a core or
+answer, weaken traversal/worker bounds, or rewrite a running/historical snapshot.
+
+Final actual driver75532 passes all three workflows. Receipt:
+`var/collection-tests/course-debugger-sizing.omlmcjrl/workloads/sizing.json` in the
+main workspace; earlier99299 also passes. Each core was generated and reopened
+with real GDB and exact42/42 boundary bytes. These are synthetic artifact-size
+measurements, not student workload inspection or a production capacity test.
+
+## Sixteen-student storage planning
+
+Use logical worst-case sizes when planning; compressibility and sparse allocation
+do not lower collection allowances. At the approved class maximum,16 workspaces
+at512MiB need8GiB for answer contents alone. Sixteen archive envelopes of at most
+512+64MiB need another9GiB. These are planning envelopes, not measured disk usage
+or reserved capacity. Account separately for directory/manifest/filesystem costs.
+
+For example, retaining TWO attempts per student can require16GiB of workspace
+contents plus18GiB of archive envelopes. One independent backup of those archives
+adds18GiB:52GiB before staging/failed-worker scratch, filesystem/snapshot overhead,
+monitoring recordings and free-space headroom. Restore stages can add another
+workspace copy; failed partials and additional retained attempts add more. Manual
+cleanup has no grace period but remains optional and must verify protected work;
+never assume historical directories have already disappeared. Monitoring has its
+own configurable quota. The submission limit is not a live-workspace disk quota.
+
+This arithmetic does not certify a host/storage device. Operators must budget the
+actual retained attempt count, backup policy, recording quota and restore/collection
+concurrency, and measure free durable disk plus I/O headroom before admission.
+Actual local qualification already includes16 students/64 SSH terminals, two
+simultaneous508MiB collections, an observed collector SIGKILL, supported retry,
+eight byte-verified127MiB files and14 peers retaining usable input/original timing.
+The unchanged bounded pool serializes excess collectors; this does not claim16
+simultaneous full-size compression workers or a production disk benchmark.
 
 ## Immutable settings and historical compatibility
 

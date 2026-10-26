@@ -1922,7 +1922,7 @@ the approval is not a production change or a completed investigation.
   monitoring authorization or per-attempt isolation. This is additional assurance,
   not a confirmed recurrence of the repaired blockage.
 
-- [ ] **Review collection limits against actual exam workloads.**
+- [x] **Review collection limits against actual exam workloads.**
   Local policy C6 approved October 21: configurable per-exam defaults of 128 MiB
   per file and 512 MiB total; retain 10,000 entries/depth 32. Mandatory collection
   crash isolation has a local bounded-worker implementation. The following local
@@ -1932,9 +1932,16 @@ the approval is not a production change or a completed investigation.
   disk-backed collection plus private restore pass with concurrent signed healthy
   renewals. Actual tmpfs output OOM motivates new-admission storage refusal, not
   weakened worker bounds. See docs/collection-limits.md and todo-progress.md for
-  final test status. Course/debugger sizing, concurrent worst-case storage and
-  worst-case privileged workload qualification remain open. Q2's narrow real
-  SSH/PAM/PTY/fatal-collector tests pass; no capacity/deployment claim is implied.
+  final test status. October26 the instructor-selected C/C++/GCC/GDB review now
+  measures actual debug builds and verified64/192MiB-buffer cores: ordinary builds
+  and the64MiB core fit; the192MiB core exceeds the per-file default despite fitting
+  the total. Explicit unused-grant revision guidance and16-student storage/backup/
+  restore planning are documented in collection-limits.md. Actual16/64 with two
+  simultaneous508MiB collections, collector SIGKILL/retry/byte-verified protected
+  export and14 healthy peers is separately qualified. Defaults remain128/512;
+  larger custom allowances still require their own qualification. This closes
+  the local workload/limit review, not production disk acceptance or the separate
+  retained-mode release gate. No deployment or production sizing change occurred.
   Original collection limits were 32 MiB per-file / 64 MiB total logical size,
   10,000 entries and depth 32 (`collection.go`). These are separate
   from the increased configurable monitoring-recording limit. Check whether normal
