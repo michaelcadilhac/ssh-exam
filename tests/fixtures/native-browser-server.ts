@@ -146,6 +146,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
   return {
     ready,
     privateGuest: true,
+    releaseNative: metadata.releaseNative === true,
     uid: metadata.uid,
     students: metadata.students,
     large,

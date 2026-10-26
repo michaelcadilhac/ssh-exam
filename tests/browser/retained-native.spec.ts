@@ -483,6 +483,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     });
     if ((await keyboard.getAttribute("aria-pressed")) !== "true")
       await keyboard.click();
+    const captureUntil = performance.now() + 15000;
     const captured = page.waitForResponse(
       (response) =>
         response.url().endsWith("/frames/challenged") &&
@@ -490,7 +491,30 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
         response.request().postDataJSON().readiness?.fullscreen === true,
       { timeout: 15000 },
     );
-    await captured;
+    const capturedReply = await captured;
+    const pageInstance = capturedReply.request().headers()["x-page-instance"];
+    expect(pageInstance).toBeTruthy();
+    // One accepted image does not establish complete current policy/capture
+    // readiness. Observe the real scoped protocol within the SAME setup budget.
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(
+            `/api/student/attempts/${original.id}/monitoring-readiness`,
+            {
+              headers: { "x-page-instance": pageInstance },
+              timeout: Math.max(
+                1,
+                Math.min(3000, captureUntil - performance.now()),
+              ),
+            },
+          );
+          expect(response.ok(), await response.text()).toBe(true);
+          return (await response.json()).complete;
+        },
+        { timeout: Math.max(1, captureUntil - performance.now()) },
+      )
+      .toBe(true);
     const continued = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/attempts/${original.id}/continue`) &&

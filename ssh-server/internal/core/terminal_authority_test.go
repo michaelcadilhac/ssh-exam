@@ -46,10 +46,13 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited"} {
+	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
+			if mode == "current-release" {
+				terminalAuthorityReadiness = qualifiedReleaseReadiness
+			}
 			t.Cleanup(func() { terminalAuthorityReadiness = previous })
 			e, key, r := initialGrantUnpreparedFixture(t)
 			e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return &nativeRoleGuard{}, nil } // Desktop role/group seam; real root profile uses production probing.
@@ -1267,7 +1270,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	}
 	stage, stageErr := os.ReadFile(marker)
 	pending, pendingErr := readStateSnapshot(e.Config.State)
-	if stageErr != nil || string(stage) != "refused-at-supervisor-commit" || pendingErr != nil || pending.Attempts[a.ID].State != "ACTIVE" || pending.Attempts[a.ID].RetainedHold != "resuming" || pending.Attempts[a.ID].Start != a.Start || pending.Attempts[a.ID].OriginalDeadline != a.OriginalDeadline {
+	if stageErr != nil || string(stage) != "refused-at-supervisor-commit" || pendingErr != nil || pending.Attempts[a.ID].State != "ACTIVE" || pending.Attempts[a.ID].RetainedHold != "resuming" || pending.Attempts[a.ID].MonitoringResumeKind != "reviewed" || pending.Attempts[a.ID].MonitoringResumeNonce == "" || pending.Attempts[a.ID].Start != a.Start || pending.Attempts[a.ID].OriginalDeadline != a.OriginalDeadline {
 		t.Fatal("refusal missed the intended durable-commit/live-hold boundary", stageErr, pendingErr)
 	}
 	heldNative, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
@@ -1338,7 +1341,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 			t.Fatal("explicit pending Continue cancellation did not verify the existing hold", err)
 		}
 		held = cancelled.(*Attempt)
-		if held.State != "LOCKED" || held.RetainedHold != "held" || held.MonitoringResumeNonce != "" || held.RegisteredOwner == nil || *held.RegisteredOwner != *a.RegisteredOwner || held.Start != a.Start || held.OriginalDeadline != a.OriginalDeadline {
+		if held.State != "LOCKED" || held.RetainedHold != "held" || held.MonitoringResumeNonce != "" || held.MonitoringResumeKind != "" || held.RegisteredOwner == nil || *held.RegisteredOwner != *a.RegisteredOwner || held.Start != a.Start || held.OriginalDeadline != a.OriginalDeadline {
 			t.Fatal("pending cancellation changed work/time or kept an unexecuted owner", held)
 		}
 		resume.Nonce = Token()
@@ -1570,11 +1573,23 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		}
 	}
 	authorize(0)
-	pausedAgain, err := e.Admin("pause", a.ID, "synthetic second retained pause")
+	var pausedAgain any
+	if mode == "current-release" {
+		if active.MonitoringResumeKind != "reviewed" || active.MonitoringResumeNonce == "" {
+			t.Fatal("repeated signed pause fixture missed completed reviewed-resume provenance", active.MonitoringResumeKind)
+		}
+		pause := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "lock-attempt", Username: a.Username, Transport: a.Transport, Body: Request{ID: a.ID, Generation: active.Generation + 1, Reason: "synthetic second signed retained pause"}}
+		pausedAgain, err = e.Command(signedCommand(key, pause), a.Username, a.Transport)
+	} else {
+		pausedAgain, err = e.Admin("pause", a.ID, "synthetic second retained pause")
+	}
 	if err != nil {
 		t.Fatal("second policy hold failed", err)
 	}
 	second := pausedAgain.(*Attempt)
+	if mode == "current-release" && (second.MonitoringResumeNonce != "" || second.MonitoringResumeKind != "") {
+		t.Fatal("new signed pause published inconsistent old resume provenance", second.MonitoringResumeKind, second.MonitoringResumeNonce)
+	}
 	resume.Body.Generation, resume.Nonce = second.Generation, Token()
 	if _, err := e.Command(signedCommand(key, resume), a.Username, a.Transport); err == nil {
 		t.Fatal("second pause reused the first approval")

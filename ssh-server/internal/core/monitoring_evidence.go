@@ -3,7 +3,7 @@ package core
 // Signed evidence verification for the guarded attempt supervisor. Verification
 // alone is not permission: its live authority rechecks current ownership, nonce,
 // sequence and original cutoffs, then commits in memory independently of optional
-// disk publication. Installed retained admission remains disabled. This verifier
+// disk publication. Admission independently verifies qualified live roles. This verifier
 // requires unexpired prior authority; held recovery/thaw is a separate barrier.
 // Never fabricate a new AuthorityUntilMS to reuse an expired challenge.
 

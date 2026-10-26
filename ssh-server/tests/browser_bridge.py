@@ -238,7 +238,7 @@ class GateStall:
 
 class CoordinatorOutage:
     """Bounded loss of selected proof roles in the guarded guest ONLY."""
-    def __init__(self, seconds=22.5, all_proof_paths=False, transport_only=False):
+    def __init__(self, seconds=22.5, all_proof_paths=False, transport_only=False, role_ready=None):
         assert type(all_proof_paths) is bool and type(transport_only) is bool
         assert not transport_only or all_proof_paths
         guest_identity()
@@ -247,6 +247,8 @@ class CoordinatorOutage:
         self.phase, self.after, self.error = 'stopping', None, None
         self.all_proof_paths, self.watchdog_after = all_proof_paths, None
         self.transport_only = transport_only
+        assert role_ready is None or callable(role_ready)
+        self.role_ready = role_ready
         self.stop = threading.Event()
         self.lock = threading.Lock()
         self.thread = threading.Thread(target=self.run, args=(seconds,), daemon=True)
@@ -259,9 +261,17 @@ class CoordinatorOutage:
         assert pid > 1, 'Owned role MainPID is not ready'
         process = Path('/proc') / str(pid)
         assert process.stat().st_uid == 0, 'Owned role UID mismatch'
-        assert (process / 'exe').resolve() == INPUT / 'core-qualification.test', 'Owned role executable is not ready'
-        assert ('-test.run=^TestRetainedPolicy' + role + 'Guest$').encode() in (process / 'cmdline').read_bytes().split(b'\0'), 'Owned role argument is not ready'
-        assert any(row.endswith('/' + unit) for row in (process / 'cgroup').read_text().splitlines()), 'Owned role cgroup mismatch'
+        arguments = (process / 'cmdline').read_bytes().rstrip(b'\0').split(b'\0')
+        if private_json(INPUT / 'run.json').get('release_native') is True:
+            installed, loaded = Path('/usr/local/sbin/exam-agent').stat(), (process / 'exe').stat()
+            assert (installed.st_dev,installed.st_ino) == (loaded.st_dev,loaded.st_ino), 'Owned release executable is not ready'
+            expected = [b'/usr/local/sbin/exam-agent', b'-config', b'/etc/exam-agent/agent.json']
+            if role == 'Watchdog': expected.append(b'-watchdog')
+            assert arguments == expected, 'Owned release role arguments are not ready'
+        else:
+            assert (process / 'exe').resolve() == INPUT / 'core-qualification.test', 'Owned role executable is not ready'
+            assert ('-test.run=^TestRetainedPolicy' + role + 'Guest$').encode() in arguments, 'Owned role argument is not ready'
+        assert (process / 'cgroup').read_text() == '0::/system.slice/' + unit + '\n', 'Owned role cgroup mismatch'
         return pid
 
     @classmethod
@@ -290,6 +300,9 @@ class CoordinatorOutage:
                 after = self.restored_identity('exam-agent.service', 'Agent')
                 watchdog = self.restored_identity('exam-deadline-watchdog.service', 'Watchdog')
                 assert after == self.before and watchdog == self.watchdog, 'Proof-transport fault changed an owned role'
+                if self.role_ready is not None:
+                    roles = self.role_ready()
+                    assert roles['agent']['pid'] == after and roles['watchdog']['pid'] == watchdog
                 with self.lock: self.after, self.watchdog_after, self.phase = after, watchdog, 'restored'
             except Exception as error:
                 with self.lock: self.phase, self.error = 'failed', type(error).__name__
@@ -319,6 +332,10 @@ class CoordinatorOutage:
                 stage = 'verifying-watchdog'
                 watchdog = self.restored_identity('exam-deadline-watchdog.service', 'Watchdog')
                 assert (watchdog != self.watchdog) if self.all_proof_paths else (watchdog == self.watchdog)
+                if self.role_ready is not None:
+                    stage = 'verifying-operational-role-protocol'
+                    roles = self.role_ready()
+                    assert roles['agent']['pid'] == after and roles['watchdog']['pid'] == watchdog
                 with self.lock: self.after, self.watchdog_after = after, watchdog
             except Exception as failure:
                 error = stage + ':' + type(failure).__name__ + ':' + str(failure)[:160]
@@ -349,8 +366,9 @@ def verify_fixture_clock(attempt):
 
 
 class GuestBridge:
-    def __init__(self, config):
+    def __init__(self, config, role_ready=None):
         self.config = config
+        self.role_ready = role_ready
         self.done = threading.Event()
         self.students = private_json(INPUT / 'run.json').get('browser_students', 1)
         self.large = private_json(INPUT / 'run.json').get('browser_large', False)
@@ -473,7 +491,7 @@ class GuestBridge:
                     result['reply'] = reply
                     completed.set()
 
-    def snapshot(self, attempt_id):
+    def snapshot(self, attempt_id, scope_retries=2):
         assert re.fullmatch(r'[a-f0-9-]{36}', attempt_id)
         self.inspection_context.current = {'attempt': attempt_id}
         state = private_json(Path(self.config['state']) / 'state.json', atomic_snapshot=True)
@@ -492,7 +510,15 @@ class GuestBridge:
             self.inspection_context.current.update(unit_count=len(observed_units), unit_hashes=[hashlib.sha256(unit.encode()).hexdigest() for unit in observed_units[:8]])
             for unit in observed_units:
                 events = scope_directory(attempt_id, unit) / 'cgroup.events'
-                kernel.append(dict(unit=unit, **dict(row.split() for row in events.read_text().splitlines())))
+                try:
+                    kernel.append(dict(unit=unit, **dict(row.split() for row in events.read_text().splitlines())))
+                except FileNotFoundError:
+                    # A real pane can retire after the supervisor observation.
+                    # Discard ALL partial proof and re-read ownership/cohort;
+                    # persistent unknown state still refuses, never becomes [].
+                    if scope_retries > 0:
+                        return self.snapshot(attempt_id, scope_retries-1)
+                    raise
         editor = Path(self.config['work']) / attempt_id / 'work/browser-editor.txt'
         writer = Path(self.config['work']) / attempt_id / 'work/control-stall-proof'
         written = 0
@@ -744,7 +770,7 @@ class GuestBridge:
                     assert type(both) is bool
                     transport = request.get('transport_only', False)
                     assert type(transport) is bool and (not transport or both)
-                    self.coordinator_fault = CoordinatorOutage(all_proof_paths=both, transport_only=transport)
+                    self.coordinator_fault = CoordinatorOutage(all_proof_paths=both, transport_only=transport, role_ready=self.role_ready)
                     self.coordinator_attempt = request['attempt']
                 assert self.coordinator_fault is not None and self.coordinator_attempt == request['attempt']
                 if request['coordinator'] == 'restore': self.coordinator_fault.cancel()
@@ -802,7 +828,7 @@ class GuestBridge:
                         self.coordinator_attempts = frozenset(ids)
                         # Transport-only: no service stop/restart.35s permits
                         # independent observation of all64 physically held panes.
-                        self.coordinator_fault = CoordinatorOutage(seconds=35, all_proof_paths=True, transport_only=True)
+                        self.coordinator_fault = CoordinatorOutage(seconds=35, all_proof_paths=True, transport_only=True, role_ready=self.role_ready)
                     assert self.coordinator_fault is not None and self.coordinator_attempts == frozenset(ids)
                     if request['recovery'] == 'restore': self.coordinator_fault.cancel()
                     send(stream, self.coordinator_fault.status())
@@ -832,7 +858,7 @@ class GuestBridge:
                 self.done.set()
 
 
-def run_guest(config, prepare_roles):
+def run_guest(config, prepare_roles, role_snapshot):
     guest_identity()
     public = (INPUT / 'browser-gateway.pub').read_bytes()
     assert len(public) <= 256 and public.startswith(b'-----BEGIN PUBLIC KEY-----\n')
@@ -871,10 +897,19 @@ def run_guest(config, prepare_roles):
                  '--reason', 'Private synthetic actual browser/native workflow')
     host_key = Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[1]
     metadata = {'agent': config['agent_id'], 'username': 'examq', 'uid': pwd.getpwnam('examq').pw_uid,
+                'releaseNative': private_json(INPUT / 'run.json').get('release_native') is True,
                 'students': [{'username': name, 'uid': pwd.getpwnam(name).pw_uid} for name in names],
                 'callbackPublicKey': Path('/etc/exam-agent/callback.pub').read_text(),
                 'classPins': [hashlib.sha256(base64.b64decode(host_key)).hexdigest()], 'template': version}
-    bridge = GuestBridge(config)
+    initial_roles = role_snapshot(config)
+    assert initial_roles['agent']['hash'] == initial_roles['watchdog']['hash']
+    assert all(value['retained_enabled'] for value in initial_roles.values())
+    def role_ready():
+        observed = role_snapshot(config)
+        for name in ('agent','watchdog'):
+            assert observed[name]['hash'] == initial_roles[name]['hash'] and observed[name]['exe'] == initial_roles[name]['exe'] and observed[name]['retained_enabled']
+        return observed
+    bridge = GuestBridge(config, role_ready=role_ready)
     for name, handler in (('ssh.sock', bridge.ssh), ('http.sock', bridge.http),
                           ('gateway.sock', bridge.gateway), ('inspect.sock', bridge.inspect)):
         bridge.serve(name, handler)

@@ -1,5 +1,15 @@
 # Native class-server installation
 
+October26 local release qualification is complete, **not deployed**. Actual
+public executables now negotiate retained v1 only with matching live v2 roles and
+complete ownership/monitoring/input/writer barriers. Verified policy holds preserve
+viable SSH/editor buffers; only positive continuous coverage permits technical-only
+automatic recovery. Policy Continue remains reviewed; genuine SSH loss requires a
+reviewed NEW saved-work attempt. No environment/configuration bypass exists.
+See [exact qualification and limits](../docs/retained-release-qualification.md)
+and [proposed drained rollout/rollback](../docs/todo-rollout-plan.md). Historical
+staged notes below do not override that local status or authorize installation.
+
 Local pending CLI update: [examctl workflows](../docs/examctl-workflows.md)
 documents command-specific help, actionable refusals and private non-overwriting
 exports. Full gateway-management coverage is still under investigation; this is

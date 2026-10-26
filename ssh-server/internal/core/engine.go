@@ -343,7 +343,9 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				if a.MonitoringMode == "v1" {
 					a.MonitoringHoldKind = "policy"
 				}
-				a.MonitoringResumeNonce = ""
+				// Current resume provenance is one pair. A new pause invalidates
+				// both fields; history remains in its existing audit/status events.
+				a.MonitoringResumeNonce, a.MonitoringResumeKind = "", ""
 				e.Audit(op, a.ID)
 			}
 			if a.State == "LOCKED" {

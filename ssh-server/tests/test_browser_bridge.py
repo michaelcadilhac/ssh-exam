@@ -22,6 +22,35 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_snapshot_reobserves_retired_scope_without_publishing_partial_kernel_proof(self):
+        attempt='11111111-1234-4234-8234-123456789abc'
+        gone='exam-'+attempt+'-22222222-1234-4234-8234-123456789abc-aaaaaaaa-1234-4234-8234-123456789abc.scope'
+        live='exam-'+attempt+'-33333333-1234-4234-8234-123456789abc-bbbbbbbb-1234-4234-8234-123456789abc.scope'
+        a={'id':attempt,'exam':'native-browser','username':'examq','uid':20001,'state':'ACTIVE','terminal_supervised':True}
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'live').mkdir()
+            (root/'live/cgroup.events').write_text('populated 1\nfrozen 0\n')
+            old={'attached_units':[gone,live],'attached_panes':2}
+            current={'attached_units':[live],'attached_panes':1}
+            def metadata(path,**kwargs):
+                return {'attempts':{attempt:a}} if path.name=='state.json' else {'browser_students':1}
+            with mock.patch.object(bridge,'private_json',side_effect=metadata), \
+                 mock.patch.object(bridge.pwd,'getpwnam',return_value=types.SimpleNamespace(pw_uid=20001)), \
+                 mock.patch.object(bridge,'scope_directory',side_effect=lambda _,unit:root/('gone' if unit==gone else 'live')), \
+                 mock.patch.object(bridge,'root_command',side_effect=[json.dumps(old),json.dumps(current)]) as command:
+                fixture=bridge.GuestBridge({'state':str(root),'work':str(root)})
+                value=fixture.snapshot(attempt)
+                self.assertEqual(command.call_count,2)
+                self.assertEqual(value['supervisor']['attached_panes'],1)
+                self.assertEqual(value['kernel'],[{'unit':live,'populated':'1','frozen':'0'}])
+            with mock.patch.object(bridge,'private_json',side_effect=metadata), \
+                 mock.patch.object(bridge.pwd,'getpwnam',return_value=types.SimpleNamespace(pw_uid=20001)), \
+                 mock.patch.object(bridge,'scope_directory',return_value=root/'gone'), \
+                 mock.patch.object(bridge,'root_command',return_value=json.dumps(old)) as command:
+                fixture=bridge.GuestBridge({'state':str(root),'work':str(root)})
+                with self.assertRaises(FileNotFoundError):fixture.snapshot(attempt)
+                self.assertEqual(command.call_count,3,'Persistent unknown scope must refuse after a bounded fresh read')
+
     def test_inspection_key_error_returns_a_private_receipt_instead_of_empty_json(self):
         secret='PRIVATE-DICTIONARY-KEY-MUST-NOT-BE-RECORDED'
         def refuse(client): raise KeyError(secret)
@@ -113,7 +142,7 @@ class BrowserBridgeTests(unittest.TestCase):
             outage.assert_not_called()
             snapshots[ids[0]]['kernel'].append({'populated':'1','frozen':'0'})
             self.assertEqual(invoke(fixture,{'attempts':ids,'recovery':'start'}),{'phase':'offline'})
-            outage.assert_called_once_with(seconds=35,all_proof_paths=True,transport_only=True)
+            outage.assert_called_once_with(seconds=35,all_proof_paths=True,transport_only=True,role_ready=None)
             self.assertEqual(invoke(fixture,{'attempts':list(reversed(ids)),'recovery':'status'}),{'phase':'offline'})
             with self.assertRaises(AssertionError): invoke(fixture,{'attempts':ids[:-1],'recovery':'status'})
             with self.assertRaises(AssertionError): invoke(fixture,{'attempts':ids,'recovery':'start'})
@@ -335,6 +364,56 @@ class BrowserBridgeTests(unittest.TestCase):
              mock.patch.object(bridge, 'root_command', return_value='1'):
             with self.assertRaisesRegex(AssertionError, 'crashed/restarted'):
                 bridge.CoordinatorOutage.restored_identity('exam-agent.service', 'Agent')
+
+    def test_restored_coordinator_requires_fresh_operational_role_protocol_before_reporting_restored(self):
+        reached,released=threading.Event(),threading.Event()
+        def ready():
+            reached.set()
+            self.assertTrue(released.wait(1),'Owned readiness gate was not released')
+            return {'agent':{'pid':303},'watchdog':{'pid':202}}
+        with mock.patch.object(bridge,'guest_identity'), \
+             mock.patch.object(bridge.CoordinatorOutage,'identity',side_effect=[101,202,202]), \
+             mock.patch.object(bridge.CoordinatorOutage,'restored_identity',side_effect=[303,202]), \
+             mock.patch.object(bridge,'root_command',return_value='0'):
+            fault=bridge.CoordinatorOutage(.01,role_ready=ready)
+            try:
+                self.assertTrue(reached.wait(1),'Fixture never reached operational role boundary')
+                self.assertEqual(fault.status()['phase'],'offline')
+                self.assertIsNone(fault.status()['after'])
+            finally:
+                released.set();fault.cancel()
+            self.assertEqual(fault.status()['phase'],'restored')
+
+    def test_public_role_fault_selector_requires_exact_installed_inode_arguments_and_scope(self):
+        # Only this selector unit mocks root ownership; actual root failure runs
+        # use the guest's real /proc and systemd MainPID without these substitutes.
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); process=root/'proc/101'; process.mkdir(parents=True)
+            installed=root/'agent'; installed.write_bytes(b'private synthetic executable')
+            (process/'exe').symlink_to(installed)
+            (process/'cmdline').write_bytes(b'/usr/local/sbin/exam-agent\0-config\0/etc/exam-agent/agent.json\0')
+            (process/'cgroup').write_text('0::/system.slice/exam-agent.service\n')
+            original_stat=Path.stat
+            def owned(path,*args,**kwargs):
+                if path==process: return types.SimpleNamespace(st_uid=0)
+                return original_stat(path,*args,**kwargs)
+            def paths(path):
+                return {'/proc':root/'proc','/usr/local/sbin/exam-agent':installed}.get(str(path),Path(path))
+            with mock.patch.object(bridge,'Path',side_effect=paths), \
+                 mock.patch.object(Path,'stat',owned), \
+                 mock.patch.object(bridge,'private_json',return_value={'release_native':True}), \
+                 mock.patch.object(bridge,'root_command',return_value='101\n') as command:
+                self.assertEqual(bridge.CoordinatorOutage.identity('exam-agent.service','Agent'),101)
+                (process/'cmdline').write_bytes(b'/usr/local/sbin/exam-agent\0-config\0/etc/exam-agent/agent.json\0-watchdog\0')
+                with self.assertRaisesRegex(AssertionError,'arguments'): bridge.CoordinatorOutage.identity('exam-agent.service','Agent')
+                (process/'cmdline').write_bytes(b'/usr/local/sbin/exam-agent\0-config\0/etc/exam-agent/agent.json\0')
+                (process/'cgroup').write_text('0::/unrelated.slice/exam-agent.service\n')
+                with self.assertRaisesRegex(AssertionError,'cgroup'): bridge.CoordinatorOutage.identity('exam-agent.service','Agent')
+                (process/'cgroup').write_text('0::/system.slice/exam-agent.service\n')
+                other=root/'different-agent';other.write_bytes(installed.read_bytes())
+                (process/'exe').unlink();(process/'exe').symlink_to(other)
+                with self.assertRaisesRegex(AssertionError,'executable'): bridge.CoordinatorOutage.identity('exam-agent.service','Agent')
+                self.assertTrue(all(call.args==('systemctl','show','exam-agent.service','--property=MainPID','--value') for call in command.call_args_list))
 
     def test_coordinator_outage_restores_only_owned_role_and_preserves_watchdog(self):
         with mock.patch.object(bridge, 'guest_identity'), \

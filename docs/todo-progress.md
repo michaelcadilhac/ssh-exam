@@ -2712,3 +2712,16 @@ PASS65.464s; release build/vet pass. Unchanged7ece84d app/browser evidence retai
 its full native receipt does not qualify these newer bytes. Root/all-writer/async/
 clock/failure/loaded roles remain; installed guard stays OFF. No TODO closure or
 production action. Detailed receipts/failures: live-monitoring-runtime.md.
+
+
+October26 public retained release is qualified locally, not deployed: actual
+release-role Begin/dual policy hold/Continue/Nano/export, C7 saved-work new attempt,
+automatic technical recovery versus real capture gap, command/coordinator/gateway
+faults, clock retry and accepted16/64 pass. New-core root42, full621 app, native
+race/resource/default-size, build/vet/types and19 final affected UI cases pass.
+Signed repeated pause/cancel now clear resume-kind and nonce together; mixed old/
+unqualified roles refuse before time/grant use. All exact guests independently
+preserved/inactive and TLS keys removed. Detailed failed/passing evidence lives
+in retained-release-qualification.md. Original incident cause remains unproven.
+Five overlapping local implementation/qualification boxes close (26/38); no
+production acceptance, migration, cleanup or consolidation is claimed complete.

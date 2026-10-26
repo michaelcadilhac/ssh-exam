@@ -1,5 +1,22 @@
 # Instructor operations
 
+Current October26 local release (not deployed): retained v1 policy holds keep
+the same viable page/SSH/editor buffers; authorize the scoped interruption using
+web review or `examctl web interruptions authorize`, then the student explicitly
+chooses Continue after readiness. Approval alone never thaws work. A healthy
+same-owner technical hold may recover automatically only with positively verified
+complete continuous monitoring. A real capture gap still needs reviewed Continue.
+Genuine SSH loss uses a reviewed NEW saved-work grant/chosen allowance/finite
+Begin window and separate account disposition, as recovery-runbook.md describes.
+
+Fresh `examctl health` reports retained support only for a matching live v2
+agent/watchdog cohort; observation is not execution permission. Preserve a refused
+Begin's grant/work/intent, inspect loaded agreement and retry after authorized
+repair. Never reset clocks, clear holds or restart needed services to force it.
+Release qualification and exact limitations: retained-release-qualification.md.
+Earlier dated staged notes below are historical; production keeps its installed
+behavior until a separately authorized drained rollout. There is no enable switch.
+
 Bootstrap the initial administrator interactively and visit /admin. **Add administrator**
 creates additional accounts with the same permissions. Sign out is in the header.
 

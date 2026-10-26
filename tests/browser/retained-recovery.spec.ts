@@ -46,6 +46,8 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
     sshRecovery: true,
     large: false,
   });
+  if (process.env.EXAM_BROWSER_NATIVE_RELEASE === "1")
+    expect(metadata.releaseNative).toBe(true);
   expect(
     metadata.students.map((s: { username: string }) => s.username),
   ).toEqual(["examq"]);

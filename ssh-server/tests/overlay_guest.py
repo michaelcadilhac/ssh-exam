@@ -170,12 +170,13 @@ def native_role_snapshot(config):
                         data += chunk
                         assert len(data) <= 4096
                     reply = json.loads(data)
-                    assert set(reply) == {'purpose', 'role', 'nonce', 'boot', 'config_hash'}
-                    assert reply['purpose'] == 'native-loaded-role/v1' and reply['role'] == role and reply['nonce'] == nonce
+                    assert set(reply) == {'purpose', 'role', 'nonce', 'boot', 'config_hash', 'retained_enabled'}
+                    assert reply['purpose'] == 'native-loaded-role/v2' and reply['role'] == role and reply['nonce'] == nonce
+                    assert isinstance(reply['retained_enabled'], bool)
                     assert reply['boot'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip()
                     assert len(reply['config_hash']) == 64
                     executable = Path('/proc/' + str(pid) + '/exe').stat()
-                    result[role] = {'hash': reply['config_hash'], 'exe': (executable.st_dev, executable.st_ino), 'pid': pid}
+                    result[role] = {'hash': reply['config_hash'], 'exe': (executable.st_dev, executable.st_ino), 'pid': pid, 'retained_enabled':reply['retained_enabled']}
                 break
             except (ConnectionError, FileNotFoundError, socket.timeout):
                 if time.monotonic() >= until:
@@ -246,12 +247,14 @@ def qualify_loaded_role_cli(config):
     def health(expected, issue=None):
         output = subprocess.run(['examctl', 'health'], capture_output=True, text=True, check=True, timeout=45)
         roles = json.loads(output.stdout)['native_roles']
-        assert roles['observation_only'] and not roles['retained_enabled'] and roles['complete'] == expected, roles
+        assert roles['observation_only'] and roles['retained_enabled'] == (expected and qualified) and roles['complete'] == expected, roles
         assert (roles['roles'] == ['agent', 'watchdog'] and not roles['issues']) if expected else (not roles['roles'] and roles['issues'])
         if issue:
             assert any(issue in message for message in roles['issues']), roles
     original = native_role_snapshot(config)
     assert original['agent']['hash'] == original['watchdog']['hash'] and original['agent']['exe'] == original['watchdog']['exe']
+    qualified = original['agent']['retained_enabled']
+    assert qualified == original['watchdog']['retained_enabled']
     health(True)
     private = Path(tempfile.mkdtemp(prefix='qualification-native-role-', dir='/run'))
     changed = {**config, 'terminal_recording_limit_mib': 2 if config.get('terminal_recording_limit_mib') == 1 else 1}
@@ -302,7 +305,7 @@ def qualify_loaded_role_cli(config):
                 assert lifetime.poll(2000), 'Owned synthetic legacy process did not positively exit'
                 os.close(handle)
         native_role_snapshot(config); health(True)
-    print('PASS: actual compiled health observes the loaded cohort, refuses positively observed config/executable mismatch and recovers after private-guest repair; installed retained mode stays disabled', flush=True)
+    print('PASS: actual compiled health observes qualified loaded support, refuses positively observed config/executable mismatch and recovers after private-guest repair; host installation unchanged', flush=True)
     print('PASS: actual compiled health refuses both positively populated temporary-writer cgroups and recovers only after the exact newly owned guest processes exit', flush=True)
 
 
@@ -321,6 +324,16 @@ def prepare_retained_roles(qualify_roles=True):
     assert INPUT.is_mount() and OUTPUT.is_mount()
     marker = json.loads((INPUT / 'run.json').read_text())
     assert marker['profile'] == 'retained-policy' and marker['username'] == 'examq'
+    if marker.get('release_native'):
+        assert marker.get('driver') == 'browser'
+        config = json.loads(Path('/etc/exam-agent/agent.json').read_text())
+        installed = Path('/usr/local/sbin/exam-agent').stat()
+        roles = native_role_snapshot(config)
+        assert all(role['retained_enabled'] and role['exe'] == (installed.st_dev, installed.st_ino) for role in roles.values())
+        health = json.loads(subprocess.run(['examctl', 'health'], capture_output=True, text=True, check=True, timeout=45).stdout)['native_roles']
+        assert health['observation_only'] and health['complete'] and health['retained_enabled'] and health['roles'] == ['agent','watchdog'] and not health['issues']
+        print('PUBLIC_RELEASE_NATIVE_ROLES_VERIFIED no_test_override=true', flush=True)
+        return
     if qualify_roles:
         qualify_loaded_role_cli(json.loads(Path('/etc/exam-agent/agent.json').read_text()))
     services = ('exam-agent.service', 'exam-deadline-watchdog.service')
@@ -417,7 +430,7 @@ def main():
     config = prepare_normal_filesystem(config)
     if settings.get('driver') == 'browser':
         from browser_bridge import run_guest
-        return run_guest(config, prepare_retained_roles)
+        return run_guest(config, prepare_retained_roles, native_role_snapshot)
     if settings.get('profile') == 'loaded-roles':
         qualify_loaded_role_cli(config)
         profiles = ()

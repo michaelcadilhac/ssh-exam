@@ -117,6 +117,7 @@ export async function nativeGuest(
     stopping = false,
     hostTunnelExits = 0,
     gatewayFailures = 0,
+    monitoringRefusals = 0,
     runner: ChildProcess | undefined;
   const processes = new Set<ChildProcess>();
   const logfile = local + "/native-root.log";
@@ -260,6 +261,9 @@ export async function nativeGuest(
             "--browser-students",
             String(students),
             ...(large ? ["--browser-large"] : []),
+            ...(process.env.EXAM_BROWSER_NATIVE_RELEASE === "1"
+              ? ["--release-native"]
+              : []),
           ],
           true,
         ),
@@ -289,6 +293,13 @@ export async function nativeGuest(
         if (stage) {
           try {
             const metadata = JSON.parse(await collect(bridge("metadata")));
+            if (
+              process.env.EXAM_BROWSER_NATIVE_RELEASE === "1" &&
+              metadata.releaseNative !== true
+            )
+              throw Error(
+                "Private guest did not verify actual public release roles",
+              );
             if (
               metadata.username !== "examq" ||
               !Number.isInteger(metadata.uid) ||
@@ -353,6 +364,35 @@ export async function nativeGuest(
                 const body = Buffer.from(await response.arrayBuffer());
                 if (body.length > 524288)
                   throw Error("Private callback reply exceeds bound");
+                if (
+                  request.path === "/api/agent/monitoring-continue" &&
+                  response.status !== 200 &&
+                  monitoringRefusals++ < 64
+                ) {
+                  // Fixed error taxonomy only: no signed request, nonce,
+                  // credentials, capture or arbitrary response text is logged.
+                  let reason = "other";
+                  try {
+                    reason =
+                      String(JSON.parse(body.toString()).error).match(
+                        /^Monitoring evidence (ownership|capacity|challenge|technical-gap|policy-blocked|conflict|sequence|clock);/,
+                      )?.[1] || "other";
+                  } catch {
+                    /* Malformed reply remains an unclassified refusal. */
+                  }
+                  appendFileSync(
+                    local + "/monitoring-refusals.jsonl",
+                    JSON.stringify({
+                      route: request.path,
+                      status: response.status,
+                      reason,
+                      replyHash: createHash("sha256")
+                        .update(body)
+                        .digest("hex"),
+                    }) + "\n",
+                    { mode: 0o600 },
+                  );
+                }
                 if (!controller.signal.aborted)
                   child.stdin!.write(
                     JSON.stringify({

@@ -179,6 +179,37 @@ class OverlayTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'Unknown private test role'):
             guest.retained_role_override('InstalledAgent')
 
+    def test_public_release_selection_verifies_live_roles_without_test_override_or_service_actions(self):
+        # Container/mount/role identities are mocked here; the guarded browser
+        # qualification independently verifies their real kernel counterparts.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            inputs, outputs = root/'input', root/'output'
+            inputs.mkdir(); outputs.mkdir()
+            (inputs/'run.json').write_text(json.dumps({'profile':'retained-policy','username':'examq',
+                                                      'driver':'browser','release_native':True}))
+            container, config, executable = root/'container', root/'config.json', root/'agent'
+            container.write_text('systemd-nspawn\n'); config.write_text('{}'); executable.write_bytes(b'synthetic fixture')
+            info = executable.stat()
+            paths = {'/run/systemd/container':container, '/etc/exam-agent/agent.json':config,
+                     '/usr/local/sbin/exam-agent':executable}
+            health = {'native_roles':{'observation_only':True,'complete':True,'retained_enabled':True,
+                                      'roles':['agent','watchdog'],'issues':[]}}
+            def command(args, **kwargs):
+                self.assertEqual(args,['examctl','health'], 'Release selection attempted a service/test-override action')
+                return types.SimpleNamespace(stdout=json.dumps(health))
+            roles = {name:{'retained_enabled':True,'exe':(info.st_dev,info.st_ino)} for name in ('agent','watchdog')}
+            with mock.patch.object(guest,'INPUT',inputs), mock.patch.object(guest,'OUTPUT',outputs), \
+                 mock.patch.object(guest,'Path',side_effect=lambda path:paths[path]), \
+                 mock.patch.object(Path,'is_mount',autospec=True,side_effect=lambda path:path in (inputs,outputs)), \
+                 mock.patch.object(guest,'native_role_snapshot',return_value=roles), \
+                 mock.patch.object(guest.subprocess,'run',side_effect=command) as run:
+                guest.prepare_retained_roles(qualify_roles=False)
+                self.assertEqual(run.call_count,1)
+                roles['watchdog']['retained_enabled']=False
+                with self.assertRaises(AssertionError): guest.prepare_retained_roles(qualify_roles=False)
+                self.assertEqual(run.call_count,1)
+
     def test_asyncio_profile_uses_a_manifested_unprivileged_fixture_and_bounded_test(self):
         self.assertEqual(overlay.FILES['asyncio-probe'], (None, 0o755))
         self.assertEqual(guest.monitoring_asyncio_command(), [

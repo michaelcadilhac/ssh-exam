@@ -19,17 +19,18 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const nativeRolePurpose = "native-loaded-role/v1"
+const nativeRolePurpose = "native-loaded-role/v2"
 const nativeWatchdogSocket = "watchdog-role.sock"
 
 var errNativeRoles = errors.New("live native agent/watchdog agreement unavailable or mismatched; preserve the same grant/work/Begin intent and inspect examctl health and examctl agent status; repair matching loaded roles only in authorized drained maintenance, never restart active exams or clear records; no new clock or grant consumed")
 
 type nativeRoleReply struct {
-	Purpose    string `json:"purpose"`
-	Role       string `json:"role"`
-	Nonce      string `json:"nonce"`
-	Boot       string `json:"boot"`
-	ConfigHash string `json:"config_hash"`
+	Purpose         string `json:"purpose"`
+	Role            string `json:"role"`
+	Nonce           string `json:"nonce"`
+	Boot            string `json:"boot"`
+	ConfigHash      string `json:"config_hash"`
+	RetainedEnabled bool   `json:"retained_enabled"`
 }
 
 type NativeRoleObservation struct {
@@ -89,7 +90,7 @@ func (e *Engine) replyNativeRole(c *net.UnixConn, data []byte, role string) {
 		return
 	}
 	_ = c.SetWriteDeadline(time.Now().Add(time.Second))
-	_ = json.NewEncoder(c).Encode(nativeRoleReply{nativeRolePurpose, role, request.Nonce, boot(), hash})
+	_ = json.NewEncoder(c).Encode(nativeRoleReply{nativeRolePurpose, role, request.Nonce, boot(), hash, terminalAuthorityReadiness() == nil})
 }
 
 // expected is a pinned executable, never a path or PID from the reply. Production
@@ -157,7 +158,7 @@ func probeNativeRole(ctx context.Context, path, role, group, configHash string, 
 		return nil, refuse("bounded reply unavailable")
 	}
 	var reply nativeRoleReply
-	if _, err := decodeMonitoringObject(data, &reply, []string{"purpose", "role", "nonce", "boot", "config_hash"}); err != nil {
+	if _, err := decodeMonitoringObject(data, &reply, []string{"purpose", "role", "nonce", "boot", "config_hash", "retained_enabled"}); err != nil {
 		return nil, refuse("scoped reply invalid or unavailable")
 	}
 	if reply.Purpose != nativeRolePurpose || reply.Role != role || reply.Nonce != nonce || reply.Boot != boot() {
@@ -165,6 +166,9 @@ func probeNativeRole(ctx context.Context, path, role, group, configHash string, 
 	}
 	if reply.ConfigHash != configHash {
 		return nil, refuse("loaded configuration mismatch")
+	}
+	if reply.RetainedEnabled != (terminalAuthorityReadiness() == nil) {
+		return nil, refuse("retained runtime capability mismatch")
 	}
 	if err := check(); err != nil {
 		return nil, err
@@ -275,12 +279,13 @@ func (e *Engine) observeNativeRoles() NativeRoleObservation {
 	}
 	defer guard.close()
 	v.Complete = guard.current()
+	v.RetainedEnabled = v.Complete && terminalAuthorityReadiness() == nil
 	if v.Complete {
 		v.Roles = []string{"agent", "watchdog"}
 	} else {
 		v.Issues = append(v.Issues, errNativeRoles.Error())
 	}
-	// Observation only: the unconditional installed-mode guard stays OFF.
+	// Observation only: matching loaded support is not live execution permission.
 	return v
 }
 

@@ -97,7 +97,7 @@ func (e *Engine) finishRetainedPause(id string) (any, error) {
 					e.state.PaneInstances[unit] = pane
 				}
 				owner := *result.HeldOwner
-				a.RegisteredOwner, a.MonitoringResumeNonce = &owner, ""
+				a.RegisteredOwner, a.MonitoringResumeNonce, a.MonitoringResumeKind = &owner, "", ""
 				e.Audit("cancelled-unexecuted-retained-continuation", a.ID)
 			}
 			a.RetainedHold = "held"

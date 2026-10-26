@@ -2,7 +2,7 @@
 
 Never edit deadline state or remove account gates to resolve outages. Grant extra time only through audited instructor Reset clock or Extend time actions.
 
-For the local retained-mode candidate only (disabled/not deployed), genuine SSH
+For the locally qualified retained-mode release (not deployed), genuine SSH
 loss uses a reviewed **new attempt**, not continuation on a replacement transport.
 The joined guarded qualification now passes this sequence; it does not authorize
 performing it on production records:
@@ -34,7 +34,7 @@ performing it on production records:
    editor buffers are not promised after actual transport destruction. An instructor
    may deliberately choose the old remaining allowance, but it is a new attempt.
 
-Exact synthetic acceptance and remaining public-admission/guidance gates:
+Exact synthetic acceptance and public release qualification:
 retained-transport-recovery-plan.md. Viable same-page technical/policy holds use
 the separate retained-SSH procedures below; a timeout is never proof of SSH loss.
 
@@ -42,10 +42,10 @@ The local candidate now refuses retained `/reauth` and `/claim` before closing
 SSH, removing sessions or changing approval/ownership. An unused original-page
 approval cannot authorize replacement authentication. Use the reviewed new-attempt
 sequence above for actual loss; preserve a viable original page for Continue.
-These refusals/guidance and the joined workflow pass locally; only public release
-admission is still a gate. Existing installed legacy recovery is unchanged.
+These refusals/guidance and the joined workflow pass locally; public release
+qualification is complete. Existing installed legacy recovery is unchanged.
 
-Local retained-monitoring candidate, **disabled/not deployed**: web/CLI interruption
+Locally qualified retained-monitoring release, **not deployed**: web/CLI interruption
 inspection additionally reports `monitoring_mode`, `retained_hold` and
 `monitoring_hold_kind`. These are observations, not a verified live freeze or
 permission. A viable same-page v1 policy pause keeps SSH; authorize with the
@@ -57,12 +57,12 @@ fresh SSH sign-in. Unknown/unverified holds require inspection, never metadata
 edits or optimistic thaw. Technical capture verification delays block input and
 retry; a timeout alone is not policy loss. Preserve the original deadline/source/
 history and credential cleanup. The local C9/root/capacity matrix now passes;
-genuine SSH-loss/new-attempt integration and final public admission remain. There
-is no supported switch to enable an incomplete mode. Detailed current
+genuine SSH-loss/new-attempt and public admission qualification also pass. There
+is no supported switch to bypass live verification. Detailed current
 evidence and open boundaries: live-monitoring-runtime.md. Existing installed
 legacy behavior follows the procedures below.
 
-October26 disabled C9 candidate: a SAME-page purely technical hold may recover
+October26 locally qualified C9 release, not deployed: a SAME-page purely technical hold may recover
 automatically only after positive live ownership and complete continuous coverage
 are verified, retaining the original clock and buffers. Keep capture and the page
 open. The existing native HTTPS trust can complete recovery while generic signed

@@ -5,6 +5,22 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+Current local runtime contract (October26,2026; **not deployed**): negotiated v1
+keeps the original viable authenticated SSH/page and per-attempt supervisor through
+policy holds. Verified stop-assisted writer/input barriers preserve shells/editor
+buffers; only fresh scoped approval/Continue restores policy-held work. Positively
+verified complete uninterrupted monitoring may automatically recover a technical
+hold. Contact, timeout and saved metadata never grant execution or prove misconduct.
+Restart requires fresh verification. Genuine SSH loss uses an explicitly reviewed
+NEW grant from verified protected work, with a chosen finite Begin window/allowance;
+no original-attempt transfer, refund, hold release or completed-attempt reopening.
+Fresh native-loaded-role/v2 binds matching live config/executable and retained
+support before Begin/Continue; there is no environment/configuration enable bypass.
+The exact release/native/kernel/browser/16-student qualification and limitations
+are in docs/retained-release-qualification.md. Earlier dated implementation notes
+below are historical; this contract supersedes their disabled/incomplete status.
+Production retains its installed cohort until separately authorized drained rollout.
+
 ## 1. Instructions to the implementing agent
 
 Build the application described here. This is an implementation specification, not a request for a design mockup. Implement the student application, instructor dashboard, SSH connection manager, monitoring, protected submission collection, class-server enforcement, and deployment assets.

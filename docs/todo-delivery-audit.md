@@ -1,5 +1,16 @@
 # Delivery audit and bounded execution order
 
+October26 reconciliation: the PUBLIC retained-SSH/liveness release is now
+implemented/tested locally, not deployed. Full621 application/native races,
+42 new-core kernel cases, public fault/C7/clock/dual-hold flows, actual16/64 and
+19 final affected UI cases pass (retained-release-qualification.md).26/38 main
+boxes are checked; overlap is not effort percentage. Earlier critical-workflow
+remaining gaps below are historical. Next bounded outcome is the real CLI's
+legacy catalog UID/username discrepancy, then reviewed native migration and
+legacy definition retirement. Manual verified cleanup/no grace and complete
+configuration/help/operator journey remain. Do not rerun or reimplement the
+completed retained workflow merely because those management outcomes are open.
+
 October23,2026. This is a reconciliation of the existing requirements, not new
 scope, completed implementation or permission to deploy. It replaces the practice
 of selecting another private prerequisite whenever a workflow proved difficult.

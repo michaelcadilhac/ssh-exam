@@ -1,5 +1,34 @@
 # Proposed TODO rollout, migration and rollback
 
+Current October26 local release qualification is COMPLETE (not deployed):
+public executable Begin/dual hold/Continue, C7 new-attempt recovery, technical-only
+automatic recovery versus real capture gap, coordinator/command/gateway faults,
+clock retry,42 new-core kernel cases and accepted16/64 pass. Exact scope/failures
+are in retained-release-qualification.md. Earlier disabled/pending gate notes
+below are historical. The remaining management migrations/cleanup are separate;
+none authorizes installing/restarting/consolidating services.
+
+Before a future separately authorized cutover, back up consistent schema032 DB/
+WAL, keys, immutable grants/claims/intents/audit, native intervals/owners, legacy
+catalog/consumption, source pins, recordings and protected archives. Test private
+copies first. Positively drain active work, preflights, pending Begin/Continue/
+clock/source operations, original access deadlines, failed collection/restoration
+and all canonical/live-upgrade/deferred-recovery PTY owners. Install the matching
+v2 CLI/entry/agent/watchdog and gateway/browser cohort only after that proof; a
+mixed cohort deliberately refuses before new time/grant use. Verify loaded-role
+health and synthetic complete workflows, independent deadlines/callbacks/access
+restoration and alert delivery before opening new admissions. Do not rewrite
+historical attempts or invent enrollment-time settings during migration.
+
+Rollback likewise requires a complete drain and compatible matched readers;
+preserve schema032/provenance, original intervals/holds and all consumption/pins.
+An old gateway cannot safely consume pending automatic C9 authorizations. Prefer
+repair forward, keeping admission unavailable until fresh live verification; never
+strip metadata, clear one-use fences or restore a pre-start snapshot as a rollback.
+Temporary three-service consolidation remains the unexecuted verified-drain
+procedure below. Preserve any still-needed temporary owner; inspect exact unit,
+config/executable/state and empty scopes before retirement. No such action ran.
+
 **Proposal only; not executed. The instructor's latest October 21 instruction
 revokes the earlier conditional csc-sys deployment authorization. Do not deploy
 at the end of this work or execute temporary-service consolidation.**

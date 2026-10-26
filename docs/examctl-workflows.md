@@ -1,5 +1,16 @@
 # Current examctl workflows
 
+October26 current local workflow: saved-source issuance/source-sync and C7
+new-attempt recovery are qualified through public CLI/web/student interfaces;
+legacy native migration/retirement and destructive workspace cleanup remain.
+Retained v1 interruption authorization preserves the original viable page/SSH:
+explicit Continue requires fresh readiness and the existing scoped approval.
+Actual SSH loss requires a reviewed NEW saved-work attempt with chosen allowance/
+finite window, not reauth/claim of the original. Legacy recovery remains supported
+on its original path. Release health requires matching native-loaded-role/v2;
+no cached health is work permission. Exact local qualification, not deployment:
+retained-release-qualification.md. Earlier staged status below is historical.
+
 Local source update October 23, 2026; **not deployed**. Current coverage/source
 audit and corrected global discovery: examctl-coverage-audit.md. Full web-management
 coverage is not implemented yet; see the explicit inventory/decisions in

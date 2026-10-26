@@ -2,7 +2,7 @@ package core
 
 // Runtime caller: the attempt supervisor's hold RPC. This holds its current
 // registered writers and PTY input; it does not authorize Continue or restore
-// permission after restart. Incomplete retained-mode admission stays disabled.
+// permission after restart. Admission requires matching qualified live roles.
 
 import (
 	"context"

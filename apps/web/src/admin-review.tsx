@@ -379,7 +379,10 @@ export function AdminReview({
           <p>
             Reviewed revision {authorization.revision}, fixed despite background
             updates. Approval lasts at most five minutes or until the deadline.
-            The clock continues; fresh SSH and monitoring are still required.
+            The clock continues.{" "}
+            {a.monitoring_mode === "v1"
+              ? "Keep the original page and SSH connection. The student must restore monitoring and explicitly Continue. If that page or SSH is lost, use a reviewed new attempt from verified saved work; this approval cannot transfer to a replacement connection."
+              : "Fresh SSH and monitoring are still required."}
           </p>
           <label>
             Authorization reason
@@ -421,7 +424,11 @@ export function AdminReview({
                   );
                   setAuthorization(null);
                   await onChanged();
-                  return `Resume authorized until ${chicago(result.expires)}. The student must reconnect and restore monitoring.`;
+                  return `Resume authorized until ${chicago(result.expires)}. ${
+                    a.monitoring_mode === "v1"
+                      ? "The student restores monitoring and chooses Continue on the same page and SSH connection."
+                      : "The student must reconnect and restore monitoring."
+                  }`;
                 })
               }
             >

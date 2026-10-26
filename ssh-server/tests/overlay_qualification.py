@@ -248,6 +248,9 @@ def run_locked(args):
             assert b'PRIVATE' not in public
             (inputs / 'browser-gateway.pub').write_bytes(public)
             marker['driver'] = 'browser'
+        if getattr(args, 'release_native', False):
+            assert args.profile == 'retained-policy' and args.username == 'examq' and marker.get('driver') == 'browser'
+            marker['release_native'] = True
         students = getattr(args, 'browser_students', 1)
         large = getattr(args, 'browser_large', False)
         assert not large or students == 16
@@ -360,6 +363,7 @@ if __name__ == '__main__':
     parser.add_argument('--browser-students', type=int, choices=(1, 16), default=1,
                         help='Private browser capacity target; sixteen uses only owned disk binds and bounded3GiB/2CPU/2048tasks')
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
+    parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
     parser.add_argument('--profile', choices=('loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)

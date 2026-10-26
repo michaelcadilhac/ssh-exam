@@ -64,7 +64,7 @@ func TestLiveNativeRoleProbeAuthenticatesCurrentPeerAndFreshReply(t *testing.T) 
 					return
 				}
 				stage <- true
-				reply := nativeRoleReply{nativeRolePurpose, "watchdog", request.Nonce, boot(), hash}
+				reply := nativeRoleReply{nativeRolePurpose, "watchdog", request.Nonce, boot(), hash, terminalAuthorityReadiness() == nil}
 				switch mode {
 				case "nonce":
 					reply.Nonce = Token()

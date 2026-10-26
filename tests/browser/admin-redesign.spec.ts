@@ -31,12 +31,20 @@ function makeAttempt(
     ...extra,
   };
 }
-async function fixture(page: Page, large = false, provenance = false) {
+async function fixture(
+  page: Page,
+  large = false,
+  provenance = false,
+  retained = false,
+) {
   const amy = makeAttempt(1, "amy", "ACTIVE", {
       working: true,
       attempt_number: 2,
     }),
-    bob = makeAttempt(3, "bob", "LOCKED", { reason: "Fullscreen exited" });
+    bob = makeAttempt(3, "bob", "LOCKED", {
+      reason: "Fullscreen exited",
+      monitoring_mode: retained ? "v1" : undefined,
+    });
   const rows: any[] = [
     {
       username: "amy",
@@ -704,6 +712,39 @@ test("row menus ignore queued scroll at the same anchor but dismiss after actual
   await page.evaluate(() => scrollBy(0, 100));
   await expect.poll(() => page.evaluate(() => scrollY)).not.toBe(previous);
   await expect(menu).toHaveCount(0);
+});
+
+test("retained instructor authorization preserves the original page and SSH rather than requesting replacement authentication", async ({
+  page,
+}) => {
+  await fixture(page, false, false, true);
+  await page
+    .getByRole("rowgroup", { name: "bob", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "bob · Attempt 1",
+    exact: true,
+  });
+  await dialog
+    .getByRole("button", { name: "Authorize resume", exact: true })
+    .click();
+  await expect(dialog).toContainText(
+    "Keep the original page and SSH connection",
+  );
+  await expect(dialog).toContainText(
+    "reviewed new attempt from verified saved work",
+  );
+  await dialog
+    .getByRole("textbox", { name: /^Authorization reason/ })
+    .fill("Reviewed same-page monitoring restoration");
+  await dialog
+    .getByRole("button", { name: "Confirm authorization", exact: true })
+    .click();
+  await expect(dialog).toContainText(
+    "The student restores monitoring and chooses Continue on the same page and SSH connection",
+  );
+  await expect(dialog).not.toContainText("must reconnect");
 });
 
 test("review keeps recovery deliberate, shows incidents and does not call an unverified submission secured", async ({

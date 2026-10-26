@@ -1,8 +1,8 @@
 package core
 
-// Integration WIP: the typed native Begin caller is wired here, but admission
-// stays disabled until the input/writer/expiry/Continue boundary is complete.
-// There is no configuration/environment switch to enable an incomplete mode.
+// Retained admission requires the matched live native cohort and the complete
+// input/writer/expiry/Continue barriers below. No environment/configuration
+// bypass exists. Candidate release qualification is recorded separately.
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 const terminalAuthorityPurpose = "terminal-monitoring-authority/v1"
 
 var terminalAuthorityReadiness = func() error {
-	return errors.New("retained monitoring admission is disabled until the complete native input/writer/expiry/Continue workflow is qualified; preserve the current grant and inspect examctl help panes; no interval committed")
+	return nil
 }
 
 type terminalAuthorityBegin struct {

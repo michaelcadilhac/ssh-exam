@@ -1,5 +1,20 @@
 # Deferred work
 
+October26 current local release status: the retained-SSH/liveness workflow is
+implemented and qualified through PUBLIC executables, not deployed. Policy holds
+preserve viable same-page SSH/shells/editor buffers through verified input/writer
+barriers; complete continuous monitoring permits technical-only automatic recovery.
+Actual policy loss still requires reviewed Continue, and genuine SSH loss uses a
+reviewed NEW saved-work attempt. Original deadlines, holds and protected history
+remain. Fresh native-loaded-role/v2 agreement refuses mixed/unqualified roles
+before clock/grant use. Full621 application checks, native races/resources,
+42 guarded kernel assertions, actual16students/64terminals and19 final affected
+browser cases pass. Exact artifacts, seams, retained failures and receipts:
+[retained-release qualification](docs/retained-release-qualification.md).
+The original incident's initiating cause remains unproven. Historical progress
+paragraphs below describe earlier stages; they do not override this status.
+No deployment, production change or temporary-service consolidation occurred.
+
 Current delivery audit and bounded public-workflow acceptance:
 [docs/todo-delivery-audit.md](docs/todo-delivery-audit.md). The main checkboxes
 overlap; component/test counts do not establish completion. The retained SSH
@@ -435,7 +450,7 @@ native races/resources/default-size qualification also passes. This does not
 close the broader liveness item or enable retained mode. See
 docs/retained-continuation-recovery.md.
 
-- [ ] **Redesign monitoring liveness and execution authorization; do not turn a
+- [x] **Redesign monitoring liveness and execution authorization; do not turn a
   delayed control exchange into a student violation or destructive lockout.**
   Requested October 21. Initial read-only investigation confirms that the
   installed gateway serializes session messages, awaits an SSH renewal before
@@ -1391,7 +1406,7 @@ the approval is not a production change or a completed investigation.
   native per-pane epochs and complete C3 barriers remain required. See
   docs/browser-input-lifetime.md. No native retention mode is enabled.
 
-- [ ] **Keep the existing SSH connection alive through policy lockouts.**
+- [x] **Keep the existing SSH connection alive through policy lockouts.**
   October23 actual framed handoffs now pin the original socket's authenticated
   root SSH monitor; root CLI exposes current pidfd observation only. Focused
   races5.404s, full native race/resource core421.168s/CLI30.268s, builds/vet/35
@@ -1408,7 +1423,7 @@ the approval is not a production change or a completed investigation.
   SSH and requires fresh authentication. Update the canonical design, student
   messages, recovery UI, native admission and tests together when implementing it.
 
-- [ ] **Separate retained transport from permission to work.**
+- [x] **Separate retained transport from permission to work.**
   A live SSH connection must not allow terminal input, new panes/channels, remote
   commands, file transfer or background writes while locked. Design a safe writer
   freeze/containment strategy compatible with keeping SSH alive; decide how shells
@@ -1419,7 +1434,7 @@ the approval is not a production change or a completed investigation.
   original clock, account restrictions and independent deadline collection intact;
   a finished attempt must never reopen. Preserve the existing focus grace period.
 
-- [ ] **Define connection ownership, loss and cleanup behavior.**
+- [x] **Define connection ownership, loss and cleanup behavior.**
   October26 actual guarded browser/WASM/SSH/native recovery now passes: positive
   registered-owner SSH exit, audited stop/verified archive, reviewed NEW saved-work
   grant with finite Begin window/chosen20-minute allowance, durable source-sync,
@@ -1930,7 +1945,7 @@ the approval is not a production change or a completed investigation.
   create unrelated lockouts. This is an open implementation/qualification item,
   not covered by tests that only return an error from a mocked writer operation.
 
-- [ ] **Broaden the multi-attempt stress and fault-injection coverage.**
+- [x] **Broaden the multi-attempt stress and fault-injection coverage.**
   C6 now additionally requires actual collection-worker crash/hang/resource/disk
   fault containment: the earlier returned-error/blocked-hook regressions do not
   prove that a fatal collection crash cannot kill the shared agent or lock others.

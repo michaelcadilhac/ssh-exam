@@ -336,8 +336,8 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			// otherwise a successful Begin could lead to an unusable terminal.
 			if !account.SandboxOnly && !e.hostAccess(&Attempt{Username: username, UID: account.UID}) {
 				features["framed_pane_input"] = "v1"
-				// The installed guard remains closed until the entire workflow is
-				// qualified. Compiled test roles may exercise negotiation now.
+				// This advertises support, never execution permission. Actual Begin
+				// still requires matching live roles and fresh signed ownership.
 				if terminalAuthorityReadiness() == nil {
 					features["retained_monitoring"] = "v1"
 				}
