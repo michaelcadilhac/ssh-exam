@@ -9,10 +9,11 @@
   production configuration/student records, or interrupt exams.
   Store generated browser screenshots in per-test output; preserve existing
   documentation images as workspace data.
-- Stop work when a required development/test executable is genuinely absent from
-  its intended execution environment, including one invoked by a fixture. Verify
-  the intended command and its executable path/PATH before classifying the failure;
-  do not silently install it or substitute another tool.
+- Stop for a missing executable only when its required package is missing and
+  the instructor must install it. First verify the intended environment, working
+  directory and executable path/PATH. Correct a bad path or use the project's
+  already-installed executable and continue; a new worktree need not contain its
+  own node_modules. Do not install a missing package without authorization.
   A `command not found` string in expected negative-test output, a mock, or a
   synthetic student's malformed/corrupted command is not itself a missing
   dependency. Compare intended and received input and check the intended executable
