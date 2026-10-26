@@ -305,7 +305,12 @@ browser claim, unsigned result or arbitrary successful SSH endpoint is insuffici
 
 Terminal input/output flows directly between browser and csc-sys relay; marco
 is not in the interactive data path. Opening channels remains backend-authorized.
-Buffer bounded early input until admission completes, preserving order. A lost
+New panes show **Opening terminal** and remain non-editable until the backend's
+verified `opened` acknowledgement supplies the pane's input agreement. Legacy
+panes also require an explicit acknowledgement. Do not accept or replay unscoped
+keystrokes into a later native input epoch; malformed agreements keep input
+blocked with an actionable diagnostic. Capture scoped input before any bounded
+asynchronous queue and preserve its original epoch and order. A lost
 control socket may rebind with the authenticated session and private in-memory
 control token within the existing 15-second grace. Re-deliver pending requests
 with the same IDs; cache replies so recovery does not repeat a signed operation.

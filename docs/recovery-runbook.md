@@ -2,6 +2,42 @@
 
 Never edit deadline state or remove account gates to resolve outages. Grant extra time only through audited instructor Reset clock or Extend time actions.
 
+For the local retained-mode candidate only (disabled/not deployed), genuine SSH
+loss uses a reviewed **new attempt**, not continuation on a replacement transport.
+The joined guarded qualification now passes this sequence; it does not authorize
+performing it on production records:
+
+1. Distinguish positive loss of the registered SSH owner from delayed replies or
+   unknown monitoring. Inspect `examctl info ATTEMPT --read-only` and
+   `examctl panes supervisor ATTEMPT`. Preserve the original interval/hold/history.
+2. Explicitly secure the abandoned work with `examctl stop ATTEMPT --reason TEXT`.
+   Wait for protected completion, then verify `examctl manifest ATTEMPT` and,
+   when needed, `examctl export ATTEMPT --output NEW_PRIVATE_FILE`. If collection
+   fails, inspect/repair/retry; no new grant may substitute unverified live files.
+3. In web administration issue another attempt under the same exam with that
+   student's exact protected UUID/checksum, chosen allowance and finite Begin
+   window. The equivalent CLI is `examctl web grants additional-preview` with
+   `--work saved --work-attempt UUID --work-checksum SHA256`, explicit duration,
+   definition/template revisions and Begin dates; inspect with `issue-show` and
+   confirm the reviewed revision with `issue-confirm`. See `web grants help`.
+4. Run `examctl web grants source-sync GRANT --revision N`. Pending retention is
+   inspectable/retryable and cannot start work or reserve the account. A usable
+   grant does not itself release the original account hold.
+5. Wait for ordinary release, or separately review an explicit early disposition
+   using `examctl override-access ATTEMPT --reason TEXT`. Its existing protection,
+   termination/restoration and audit checks still apply. This is never automatic
+   recovery or permission to clear a gate, source hold or deadline.
+6. After native/web release agreement, the student signs in afresh and selects
+   the new grant. Preflight starts no clock; actual Begin receives the full chosen
+   allowance. Restore the verified archive even if the old live folder differs.
+   The original remains completed with its original timing/checksum/audit. Unsaved
+   editor buffers are not promised after actual transport destruction. An instructor
+   may deliberately choose the old remaining allowance, but it is a new attempt.
+
+Exact synthetic acceptance and remaining public-admission/guidance gates:
+retained-transport-recovery-plan.md. Viable same-page technical/policy holds use
+the separate retained-SSH procedures below; a timeout is never proof of SSH loss.
+
 Local retained-monitoring candidate, **disabled/not deployed**: web/CLI interruption
 inspection additionally reports `monitoring_mode`, `retained_hold` and
 `monitoring_hold_kind`. These are observations, not a verified live freeze or

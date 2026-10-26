@@ -1420,6 +1420,19 @@ the approval is not a production change or a completed investigation.
   a finished attempt must never reopen. Preserve the existing focus grace period.
 
 - [ ] **Define connection ownership, loss and cleanup behavior.**
+  October26 actual guarded browser/WASM/SSH/native recovery now passes: positive
+  registered-owner SSH exit, audited stop/verified archive, reviewed NEW saved-work
+  grant with finite Begin window/chosen20-minute allowance, durable source-sync,
+  separate explicit early access disposition, fresh preflight with no clock,
+  full1200seconds only at Begin and protected final bytes. The old live source is
+  deliberately changed to prove archive restoration; old timing/checksum/history
+  and the new hold remain intact. Host/base preservation/inactive guest verified.
+  A confirmed first-key startup loss is also fixed locally: Opening panes remain
+  non-editable until actual valid acknowledgement; legacy/framed and malformed
+  agreement regressions pass. See docs/terminal-opening-readiness.md and
+  docs/retained-transport-recovery-plan.md. Remaining: consistent retained-loss
+  student guidance/reauthentication refusals and final public release admission.
+  This checkbox stays open; no deployment or original-attempt ownership transfer.
   Bind reuse to the same authenticated student, attempt, page and retained SSH
   transport. Close retained connections when the page closes, the student logs
   out/finishes, or the deadline ends access; handle missing browser-close events

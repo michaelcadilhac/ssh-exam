@@ -133,6 +133,9 @@ export async function fixture(
     onBind: undefined as
       | undefined
       | ((socket: WebSocketRoute, binding: string) => Promise<void>),
+    onOpen: undefined as
+      | undefined
+      | ((socket: WebSocketRoute, message: any) => Promise<void>),
     recover: undefined as undefined | ((route: Route) => Promise<void>),
     status: undefined as undefined | ((route: Route) => Promise<void>),
     preflight: undefined as undefined | ((route: Route) => Promise<void>),
@@ -176,7 +179,14 @@ export async function fixture(
             ...snapshot(),
           }),
         );
-      } else if (model.onMonitoring) await model.onMonitoring(socket, message);
+      } else {
+        if (message.type === "open") {
+          if (model.onOpen) await model.onOpen(socket, message);
+          else
+            socket.send(JSON.stringify({ type: "opened", pane: message.pane }));
+        }
+        if (model.onMonitoring) await model.onMonitoring(socket, message);
+      }
     });
   });
   await page.routeWebSocket("**/api/admin/events", () => {});

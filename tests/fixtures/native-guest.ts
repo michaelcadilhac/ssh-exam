@@ -403,6 +403,24 @@ export async function nativeGuest(
         );
       return value;
     },
+    async sshRecovery(
+      attempt: string,
+      action: "stop" | "verify" | "source-sync" | "release" | "finish",
+      grant?: string,
+    ) {
+      if (students !== 1 || large)
+        throw Error("Private SSH recovery requires one synthetic student");
+      const value = JSON.parse(
+        await collect(
+          bridge("operator"),
+          JSON.stringify({ attempt, ssh_recovery: action, grant }) + "\n",
+          130000,
+        ),
+      );
+      if (value.bridge_error)
+        throw Error("Private SSH recovery refused: " + value.bridge_error);
+      return value;
+    },
     async inspectMany(
       attempts: string[],
       finish = false,

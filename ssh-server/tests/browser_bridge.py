@@ -127,9 +127,10 @@ def scope_directory(attempt, unit):
     return Path('/sys/fs/cgroup/exam.slice') / unit
 
 
-def verify_fixture_archive(path):
-    expected = {'browser-proof.txt': b'SAVED-actual-native-END\n',
-                'browser-editor.txt': b'UNSAVED-native-editor\n'}
+def verify_fixture_archive(path, expected=None):
+    if expected is None:
+        expected = {'browser-proof.txt': b'SAVED-actual-native-END\n',
+                    'browser-editor.txt': b'UNSAVED-native-editor\n'}
     found = set()
     with tarfile.open(path, 'r:gz') as archive:
         members = archive.getmembers()
@@ -366,6 +367,10 @@ class GuestBridge:
         self.coordinator_attempt = None
         self.coordinator_attempts = None
         self.transition_attempt = None
+        self.recovery_source = None
+        self.recovery_before = None
+        self.recovery_checksum = None
+        self.recovery_grant = None
         self.evidence_replies = 0
         self.evidence_lock = threading.Lock()
         self.inspection_context = threading.local()
@@ -390,7 +395,7 @@ class GuestBridge:
                         try:
                             client.settimeout(6)
                             handler(client)
-                        except (OSError, ValueError, AssertionError, RuntimeError, queue.Full, subprocess.SubprocessError) as error:
+                        except (OSError, ValueError, KeyError, AssertionError, RuntimeError, queue.Full, subprocess.SubprocessError) as error:
                             print('BROWSER_BRIDGE_REFUSAL ' + name + ':' + type(error).__name__, flush=True)
                             if name == 'inspect.sock':
                                 # Preserve the failing CODE boundary before the
@@ -604,9 +609,91 @@ class GuestBridge:
         threading.Thread(target=retry_verify, daemon=True).start()
         return operation
 
+    def ssh_recovery(self, request):
+        """Join existing PUBLIC root commands for one positively ended SSH owner."""
+        assert self.students == 1 and not self.large
+        assert self.coordinator_fault is None and self.gate_fault is None
+        assert set(request) <= {'attempt', 'ssh_recovery', 'grant'}
+        action, attempt_id = request['ssh_recovery'], request['attempt']
+        assert action in ('stop', 'verify', 'source-sync', 'release', 'finish')
+        value = self.snapshot(attempt_id)
+        a = value['attempt']
+        assert a['username'] == 'examq' and a['exam'] == 'native-browser'
+        if action == 'stop':
+            assert a['state'] in ('LOCKED', 'FINALIZING', 'COLLECTION_FAILED', 'COMPLETED')
+            assert a.get('ssh_exited_owner') and a['ssh_exited_owner'] == a['registered_owner']
+            assert a['monitoring_mode'] == 'v1' and not a['grant'].get('kind')
+            assert a['start'] > 0 and a['deadline'] == a['original_deadline'] == a['start'] + 5400000
+            assert self.recovery_source in (None, attempt_id)
+            self.recovery_source = attempt_id
+            if self.recovery_before is None:
+                self.recovery_before = {key:a[key] for key in ('start','deadline','original_deadline','grant','uid')}
+            root_command('examctl', 'stop', attempt_id, '--reason', 'Private C7 instructor explicitly secures abandoned SSH attempt')
+            return self.snapshot(attempt_id)
+        assert self.recovery_source is not None
+        source = self.snapshot(self.recovery_source)['attempt']
+        assert all(source[key] == value for key,value in self.recovery_before.items())
+        assert source['state'] == 'COMPLETED' and source['protected'] and source['checksum']
+        if self.recovery_checksum is not None: assert source['checksum'] == self.recovery_checksum
+        if action == 'finish':
+            assert self.recovery_grant and attempt_id != self.recovery_source
+            assert source['access_state'] in ('OVERRIDDEN','RELEASED') and source['policy_state'] == 'NORMAL'
+            assert source['access_override'] == 'Private C7 instructor separately approves early access disposition'
+            assert a['state'] == 'COMPLETED' and a['protected'] and a['checksum'] and a['access_state'] == 'HELD'
+            assert a['settings']['duration'] == 1200 and a['start'] > source['start']
+            assert a['deadline'] == a['original_deadline'] == a['start'] + 1200000
+            assert not a.get('clock_resets') and a['grant']['kind'] == 'ADDITIONAL' and a['grant']['id'] == self.recovery_grant
+            expected = {'kind':'saved','attempt':self.recovery_source,'checksum':self.recovery_checksum}
+            assert a['grant']['work'] == expected and a['workspace']['source'] == expected
+            exported = OUTPUT / ('recovery-target-' + attempt_id + '.tar.gz')
+            root_command('examctl', 'manifest', self.recovery_source)
+            root_command('examctl', 'manifest', attempt_id)
+            root_command('examctl', 'export', attempt_id, '--output', str(exported))
+            files = verify_fixture_archive(exported, {'recovery-proof.txt':b'SAVED-before-genuine-SSH-loss\n',
+                                                      'recovery-result.txt':b'NEW-20-MINUTE-ATTEMPT\n'})
+            return dict(value, source=source, verified_files=files)
+        assert attempt_id == self.recovery_source
+        if action == 'verify':
+            root_command('examctl', 'manifest', attempt_id)
+            exported = OUTPUT / ('recovery-source-' + attempt_id + '.tar.gz')
+            if not exported.exists(): root_command('examctl', 'export', attempt_id, '--output', str(exported))
+            files = verify_fixture_archive(exported, {'recovery-proof.txt':b'SAVED-before-genuine-SSH-loss\n'})
+            self.recovery_checksum = source['checksum']
+            # A test-only fault in the stopped synthetic LIVE folder proves the
+            # new grant restores the verified archive, never this stale folder.
+            live = Path(self.config['work']) / attempt_id / 'work/recovery-proof.txt'
+            descriptor = os.open(live, os.O_WRONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(descriptor, 'wb') as output:
+                info = os.fstat(output.fileno())
+                assert stat.S_ISREG(info.st_mode) and info.st_uid == source['uid'] and info.st_nlink == 1 and info.st_size <= 1024
+                output.truncate(0); output.write(b'CHANGED-UNUSED-LIVE-FOLDER\n'); output.flush(); os.fsync(output.fileno())
+            return dict(value, verified_files=files, live_source_changed=True)
+        assert self.recovery_checksum is not None
+        if action == 'source-sync':
+            grant = request['grant']
+            assert re.fullmatch(r'[a-f0-9-]{36}', grant)
+            reply = json.loads(root_command('examctl', 'web', 'grants', 'show', grant))
+            assert reply['confirmed'] is True and reply['operation'] == 'grants.show' and isinstance(reply['result'], dict)
+            selected = reply['result']
+            assert selected['exam'] == 'native-browser' and selected['username'] == 'examq' and selected['revision'] == 1
+            assert selected['settings']['duration'] == 1200
+            assert selected['work'] == {'kind':'saved','attempt':attempt_id,'checksum':self.recovery_checksum}
+            root_command('examctl', 'web', 'grants', 'source-sync', grant, '--revision', '1')
+            self.recovery_grant = grant
+            return self.snapshot(attempt_id)
+        assert self.recovery_grant and action == 'release'
+        assert source['deadline'] > int(time.time()*1000), 'This case must exercise explicit EARLY disposition'
+        root_command('examctl', 'override-access', attempt_id, '--reason', 'Private C7 instructor separately approves early access disposition')
+        return self.snapshot(attempt_id)
+
     def inspect(self, client):
         with client.makefile('rwb', buffering=0) as stream:
             request = line(stream)
+            if 'ssh_recovery' in request:
+                value = self.ssh_recovery(request)
+                send(stream, value)
+                if request['ssh_recovery'] == 'finish': self.done.set()
+                return
             if 'transition' in request:
                 assert self.students == 1 and request['transition'] in ('start', 'status')
                 snapshot = self.snapshot(request['attempt'])
@@ -842,15 +929,18 @@ def host_bridge(stage, mode):
     if mode == 'metadata':
         send(sys.stdout.buffer, private_json(stage / 'output/browser-ready.json'))
         return
-    assert mode in ('ssh', 'gateway', 'inspect')
-    target = stage / 'output' / (mode + '.sock')
+    assert mode in ('ssh', 'gateway', 'inspect', 'operator')
+    if mode == 'operator':
+        assert marker.get('browser_students', 1) == 1 and not marker.get('browser_large')
+    target = stage / 'output' / (('inspect' if mode == 'operator' else mode) + '.sock')
     info = target.lstat()
     assert stat.S_ISSOCK(info.st_mode) and info.st_uid == 0 and info.st_mode & 0o777 == 0o600
     with socket.socket(socket.AF_UNIX) as client:
         client.settimeout(6)
         client.connect(str(target))
         # Stdio uses separate fds. Do not buffer or interpret SSH bytes.
-        deadline = time.monotonic() + ((900 if marker.get('browser_students') == 16 else 600) if mode in ('ssh', 'gateway') else 8)
+        lifetime = (900 if marker.get('browser_students') == 16 else 600) if mode in ('ssh', 'gateway') else (125 if mode == 'operator' else 8)
+        deadline = time.monotonic() + lifetime
         while time.monotonic() < deadline:
             ready, _, _ = select.select((sys.stdin.buffer, client), (), (), .5)
             for source in ready:
@@ -868,6 +958,6 @@ def host_bridge(stage, mode):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', type=Path, required=True)
-    parser.add_argument('mode', choices=('metadata', 'ssh', 'gateway', 'inspect'))
+    parser.add_argument('mode', choices=('metadata', 'ssh', 'gateway', 'inspect', 'operator'))
     args = parser.parse_args()
     host_bridge(args.host, args.mode)

@@ -33,6 +33,9 @@ type Pane = {
   fit: FitAddon;
   box: any;
   observer: ResizeObserver;
+  element: HTMLDivElement;
+  opening: HTMLDivElement;
+  opened: boolean;
   input?: CapturedPaneInput;
   outputEpoch?: string;
 };
@@ -238,6 +241,7 @@ export function Workspace({
     }
   };
   const capturePaneInput = (p: Pane): CapturedPaneInput | undefined | null => {
+    if (!p.opened) return null;
     if (!p.input) return undefined; // Explicit legacy pane.
     if (p.input.sequence >= Number.MAX_SAFE_INTEGER) {
       setMessage(
@@ -368,12 +372,17 @@ export function Workspace({
     if (panes.current.has(paneId)) return;
     const el = document.createElement("div");
     el.className = "terminal";
+    el.setAttribute("aria-busy", "true");
+    const opening = document.createElement("div");
+    opening.className = "terminal-opening";
+    opening.setAttribute("role", "status");
+    opening.textContent = "Opening terminal…";
     const term = new Terminal({
       scrollback: 3000,
       fontSize: 15,
       allowProposedApi: false,
       theme: { background: "#0d1420", foreground: "#dbe5f2" },
-      disableStdin: false,
+      disableStdin: true,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -516,9 +525,22 @@ export function Workspace({
     });
     const observer = new ResizeObserver(resize);
     observer.observe(el);
-    const pane: Pane = { id: paneId, name, term, fit, box, observer };
+    const pane: Pane = {
+      id: paneId,
+      name,
+      term,
+      fit,
+      box,
+      observer,
+      element: el,
+      opening,
+      opened: false,
+    };
     panes.current.set(paneId, pane);
     term.open(el);
+    el.append(opening);
+    if (term.element) term.element.inert = true;
+    if (term.textarea) term.textarea.disabled = true;
     term.onData((data) => {
       for (const chunk of terminalInputChunks(data)) {
         if (coveredRef.current || !interaction()) break;
@@ -869,24 +891,51 @@ export function Workspace({
             armed.current = true;
           }
         }
-        if (m.type === "opened" && m.input) {
+        if (m.type === "opened") {
           const p = panes.current.get(m.pane);
-          if (p) {
+          if (
+            p &&
+            ![
+              "FINALIZING",
+              "COMPLETED",
+              "COLLECTION_FAILED",
+              "CANCELLED_BEFORE_START",
+            ].includes(attemptRef.current.state)
+          ) {
             if (
-              m.input.protocol !== "v1" ||
-              !/^[a-f0-9]{64}$/.test(m.input.epoch || "")
+              (m.input &&
+                (m.input.protocol !== "v1" ||
+                  !/^[a-f0-9]{64}$/.test(m.input.epoch || ""))) ||
+              (!m.input && p.outputEpoch)
             ) {
+              p.opened = false;
               p.term.options.disableStdin = true;
+              if (p.term.element) p.term.element.inert = true;
+              if (p.term.textarea) p.term.textarea.disabled = true;
+              p.opening.textContent = "Terminal input unavailable";
+              p.element.append(p.opening);
               setMessage(
                 "Native terminal input agreement is unsupported. Preserve this pane and ask the operator to inspect matching versions.",
               );
               return;
             }
-            if (p.input?.epoch !== m.input.epoch)
+            if (m.input && p.input?.epoch !== m.input.epoch)
               p.input = { epoch: m.input.epoch, sequence: 0 };
-            p.outputEpoch ||= m.input.epoch;
+            if (m.input) p.outputEpoch ||= m.input.epoch;
+            p.opened = true;
+            p.element.setAttribute("aria-busy", "false");
+            p.opening.remove();
+            p.term.options.disableStdin = false;
+            if (p.term.element) p.term.element.inert = false;
+            if (p.term.textarea) p.term.textarea.disabled = false;
             p.fit.fit();
             sendPaneResize(p); // Fresh current viewport, not a relabelled queued resize.
+            if (
+              active.current === m.pane &&
+              !coveredRef.current &&
+              !dialogRef.current
+            )
+              p.term.focus();
           }
         }
         if (

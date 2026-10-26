@@ -22,6 +22,73 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_inspection_key_error_returns_a_private_receipt_instead_of_empty_json(self):
+        secret='PRIVATE-DICTIONARY-KEY-MUST-NOT-BE-RECORDED'
+        def refuse(client): raise KeyError(secret)
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(bridge,'OUTPUT',Path(directory)), \
+             mock.patch.object(bridge,'private_json',return_value={'attempts':{}}):
+            fixture=bridge.GuestBridge({'state':'/unused-private-state'})
+            worker=fixture.serve('inspect.sock',refuse)
+            try:
+                with socket.socket(socket.AF_UNIX) as client:
+                    client.settimeout(1);client.connect(str(Path(directory)/'inspect.sock'))
+                    with client.makefile('rb') as stream:
+                        self.assertEqual(bridge.line(stream),{'bridge_error':'KeyError','stage':'inspect.sock'})
+                receipt=Path(directory)/'inspect-refusal.json'
+                raw=receipt.read_text()
+                self.assertEqual(json.loads(raw)['error'],'KeyError')
+                self.assertNotIn(secret,raw)
+                self.assertEqual(receipt.stat().st_mode&0o777,0o600)
+                self.assertEqual(receipt.stat().st_uid,os.geteuid())
+            finally:
+                fixture.done.set();worker.join(timeout=1);self.assertFalse(worker.is_alive())
+
+    def test_c7_source_sync_reads_the_verified_public_cli_result_envelope(self):
+        attempt='11111111-1234-4234-8234-123456789abc'
+        grant='22222222-1234-4234-8234-123456789abc'
+        a={'id':attempt,'username':'examq','uid':20001,'exam':'native-browser','state':'COMPLETED',
+           'protected':True,'checksum':'f'*64,'start':1000,'deadline':5401000,'original_deadline':5401000,'grant':{'id':'initial'}}
+        selected={'exam':'native-browser','username':'examq','revision':1,'settings':{'duration':1200},
+                  'work':{'kind':'saved','attempt':attempt,'checksum':'f'*64}}
+        # core.ManagementResult is the CLI output, not the signed HTTPS reply.
+        reply={'request':'33333333-1234-4234-8234-123456789abc',
+               'confirmed':True,'operation':'grants.show','result':selected}
+        with mock.patch.object(bridge,'private_json',return_value={'browser_students':1}), \
+             mock.patch.object(bridge,'root_command',return_value=json.dumps(reply)) as command:
+            fixture=bridge.GuestBridge({});fixture.snapshot=lambda _: {'attempt':a}
+            fixture.recovery_source=attempt
+            fixture.recovery_before={key:a[key] for key in ('start','deadline','original_deadline','grant','uid')}
+            fixture.recovery_checksum='f'*64
+            fixture.ssh_recovery({'attempt':attempt,'ssh_recovery':'source-sync','grant':grant})
+            self.assertEqual(fixture.recovery_grant,grant)
+            self.assertEqual(command.call_args_list,[
+                mock.call('examctl','web','grants','show',grant),
+                mock.call('examctl','web','grants','source-sync',grant,'--revision','1')])
+
+    def test_c7_operator_refuses_unproven_loss_and_unsecured_release_before_public_cli(self):
+        attempt='11111111-1234-4234-8234-123456789abc'
+        owner={'attempt':attempt,'generation':0}
+        a={'id':attempt,'username':'examq','uid':29979,'exam':'native-browser',
+           'monitoring_mode':'v1','registered_owner':owner,'state':'LOCKED','grant':{'id':'initial'},
+           'start':1000,'deadline':5401000,'original_deadline':5401000}
+        with mock.patch.object(bridge,'private_json',return_value={'browser_students':1}), \
+             mock.patch.object(bridge,'root_command') as command:
+            fixture=bridge.GuestBridge({});fixture.snapshot=lambda _: {'attempt':a}
+            request={'attempt':attempt,'ssh_recovery':'stop'}
+            with self.assertRaises(AssertionError): fixture.ssh_recovery(request)
+            command.assert_not_called()
+            a['ssh_exited_owner']={**owner,'generation':1}
+            with self.assertRaises(AssertionError): fixture.ssh_recovery(request)
+            command.assert_not_called()
+            a['ssh_exited_owner']=owner
+            fixture.ssh_recovery(request)
+            command.assert_called_once_with('examctl','stop',attempt,'--reason','Private C7 instructor explicitly secures abandoned SSH attempt')
+            with self.assertRaises(AssertionError): fixture.ssh_recovery({'attempt':attempt,'ssh_recovery':'release'})
+            a.update(state='COMPLETED',protected=True,checksum='f'*64)
+            with self.assertRaises(AssertionError): fixture.ssh_recovery({'attempt':attempt,'ssh_recovery':'release'})
+            self.assertEqual(command.call_count,1)
+
     def test_class_recovery_requires_exact_live_synthetic_fleet_before_transport_fault(self):
         ids = ['%08x-1234-4234-8234-123456789abc' % index for index in range(16)]
         snapshots = {attempt: {'attempt': {'username':name, 'state':'ACTIVE'},

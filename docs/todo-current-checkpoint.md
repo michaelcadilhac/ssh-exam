@@ -1,94 +1,99 @@
 # Current local TODO checkpoint
 
-October 26, 2026. Local development/testing/commits ONLY. NO push/deploy,
-production restart/config/student changes or temporary-service consolidation.
-csc-sys only the agreed guarded disposable environment; busy/uncertain = NO TEST.
-Stop on a missing executable (optional go tool buildid waived; never use).
-None missing. 21/38 main boxes checked; overlap, not an effort percentage.
+October26,2026. Local development/testing/commits ONLY. NO push/deploy, production
+restart/config/student changes or temporary-service consolidation. csc-sys only
+agreed guarded disposable qualification; busy/uncertain = NO TEST. Missing-tool
+rule clarified by user and committed e2188d7: stop for a genuinely missing REQUIRED
+executable in its intended environment; diagnose corrupted/expected synthetic
+command failures. No required tool is missing. Optional go tool buildid waived;
+never use.21/38 main boxes checked; overlap, not an effort percentage.
 
-## Validated C9 milestone
+## Validated baseline
 
-This commit follows361ad62 (independent C/C++/GDB sizing, also on local main).
-Active worktree var/worktrees/source-grant-retention, branch source-grant-retention.
-C9 automatic technical recovery is implemented/tested locally through the guarded
-runtime adapter, NOT enabled/deployed. Installed retained admission stays OFF.
-Actual student Continue uses exact memory-accepted evidence, continuous coverage
-of the ENTIRE interruption, original ages/clock and verified physical resume/input
-agreement. Existing-role authenticated HTTPS completes while an actual signed
-command is blocked. Genuine policy/gaps still require reviewed Continue. Old hold/
-resuming reports cannot undo a newer confirmed result. Clock retry and partial
-first-SIGCONT results cannot report success before the physical barrier completes.
-Migration032 records observation only; no disk row restores permission.
+Main/worktree HEAD e2188d7: requested rule + retrospective. C9 runtime baseline
+3242422 and C6 sizing361ad62 committed/fast-forwarded locally. Active worktree
+var/worktrees/source-grant-retention, branch source-grant-retention.
+Installed retained admission stays OFF; no deployment. C9 exact state/evidence:
+automatic-technical-recovery.md. Full619 app/110files (actual root-mapped CLI/TLS,
+no skips),23 composed browser cases, native-race/resource/namespace/compiler/
+default-size ALONE core589.398s/CLI16.700s, build/types/CGO-free/vet, root42 and
+actual16/64 automatic recovery/protected finish all PASS. Current-core partial-
+SIGCONT and instructor-clock retry, actual missing-capture/refused-auto/reviewed
+Continue and blocked-command/native HTTPS/Nano/export PASS. Every exact guest
+independently preserved/inactive, temporary keys removed. Earlier large16/64 pair
+of508MiB/fatal collector/retry remains its recorded earlier baseline; do not claim
+a new large-browser run. Original production incident initiating cause unproven.
 
-Exact source, state review, failures, limits and receipts:
-[automatic-technical-recovery.md](automatic-technical-recovery.md).
-Native bundle MAIN var/collection-tests/watchdog-evidence-artifacts.sd3e1pr8;
-remote /var/tmp/ssh-exam-browser-native-upload.ve4slc2c (18 audited code-only files).
-Agent59577de/coreeb67983 (full hashes in feature doc); all273 native source hashes
-match preceding0f72780 code, core roles byte-identical, agent VCS metadata names361.
-Final644-file runtime/test/migration source manifest in MAIN:
-var/collection-tests/automatic-technical-recovery.sources.json.
+Qualified native source/artifacts: MAIN var/collection-tests/
+watchdog-evidence-artifacts.sd3e1pr8, agent59577de/coreeb67983 (full hashes in
+feature doc).273 native Go/module hashes unchanged. Immutable644-source receipt:
+MAIN var/collection-tests/automatic-technical-recovery.sources.json.
+C6 actual GCC/G++/GDB sizing/default128/512 and storage planning: collection-limits.md.
 
-Final verification: build/types/CGO-free build/vet PASS; full application619/110
-files319.68s with BOTH actual namespace-root CLI/TLS workflows and NO skipped tests;
-composed real-WASM/gateway-process browser23/3.8m; native-race/resource/namespace/
-compiler/default-size suite ALONE core589.398s/CLI16.700s. Native suite20m runner
-budget covers prior583s baseline; individual refusal/freshness/worker bounds stay
-unchanged. Current-image root42, real18s gap/refused-auto/reviewed/export and
-blocked-command/native-completion/Nano/export PASS. Current-core first-SIGCONT
-repair/two nonces/same generation and public instructor-clock retry PASS. Actual
-16students/64panes recovery40933 PASS9.8m/9.9m: all populated scopes frozen,
-continuous REAL coverage, automatic recovery, all original shell variables/input,
-unchanged supervisors/SSH/timing/grants/holds and protected web/native completion.
-All exact guests independently result0/preserved/inactive; temporary keys removed.
-Earlier private-lifetime and migration-expectation failures are retained honestly.
-No runner remains active; do not rerun unchanged suites without a new reason.
+## Current bounded milestone: terminal opening input, then C7
 
-The earlier two508MiB/collector-SIGKILL/retry/14-peer browser workload remains
-qualified at its recorded baseline; collection/pool code is unchanged. Current
-native suite repeats actual default-size/concurrent resource coverage. Do not claim
-a fresh large16-browser run. Synthetic media/jump MFA and private native adapter
-remain disclosed limits. The original production incident's initiating fault is
-unproven; this is qualification against reproduced faults, not an incident claim.
+C7 WIP is uncommitted: private driver/actions, typed fixture plumbing, new
+retained-recovery.spec.ts and recovery plan. Native Go/app-server runtime unchanged.
+Actual flow: positive owner-bound genuine SSH loss → root stop/manifest → reviewed
+NEW same-exam saved-work grant1200s/finite Begin window → durable native source-sync
+→ SEPARATE explicit early access override → fresh SSH/preflight (zero clock) →
+Begin/full1200s → protected finish, old checksum/clock/history and new hold intact.
+Private stopped live proof is deliberately changed after archive verification to
+prove the new work comes from the protected archive. No automatic refund/reopen/
+hold release. No new original-attempt ownership-transfer protocol or design question.
 
-C6 sizing committed361ad62: actual C/GCC/C++/GDB builds and generated/reopened
-cores;64MiB-buffer core fits128/512 defaults,192MiB-buffer core exceeds per-file
-allowance. Explicit unused-grant revision and16-student storage planning documented
-in collection-limits.md. Receipt in MAIN var/collection-tests/
-course-debugger-sizing.omlmcjrl/workloads/sizing.json. Defaults unchanged.
+Failed cases retained in retained-transport-recovery-plan.md:
+4346 empty protected proof/no pre-close read-back;2846 read-back/archive PASS then
+private CLI envelope KeyError; focused envelope RED→PASS and safe refusal handling
+51 Python tests PASS5.973s, fixture types PASS. Actual59016 FAILS37.1s BEFORE loss:
+first p dropped, shell rintf not found; following printf succeeds. The read-back
+correctly rejects the empty file. Latest guest6h1w0ia5/
+unit05541fdb463b4a2f9a8be5b26302db61 now independently result1/files+authority
+preserved/inactive;5SETV1 TLS key absent. No missing printf dependency. This was a
+false task-stop classification, not proof of missing tooling or collection loss.
 
-## Exact next action
+Private C7 bundle MAIN var/collection-tests/ssh-loss-recovery-artifacts.sc8u2oyc;
+remote /var/tmp/ssh-exam-browser-native-upload.33favmez. Exact qualified native
+binaries reused; immutable MAIN var/collection-tests/ssh-loss-recovery.sources.json
+pins614 source inputs/artifacts and the successful receipt. Operator125s host/
+130s controller/135s HTTP, case300s/guest540s/oneshot720s/outer900s; inspect8s and
+all product timing/guards unchanged. Actual5797 PASS1/50.5s (57.6s with setup),
+/tmp/ssh-exam-c7-native-preflight-schema-fixed. Guest2y5klm91/unit66248940711f4298
+b37a8c7e91ee066e independently result0/preserved/inactive; local15y8wN key absent.
+Verified archive survives changed old live folder; full1200s only at Begin, old
+interval/checksum/history and new HELD access preserved. Private readiness adapter
+only; public admission remains OFF. All failed guests independently inactive/
+preserved, keys removed; detailed fixture/schema corrections in feature doc.
 
-After committing this validated milestone, fast-forward main, preserving the
-original screenshots/stashes. Main's active pointer is already saved in
-stashfa8db9651cec4f8728aa5e40369c8bb723e8bc9a; do NOT reapply that old pointer.
+Terminal opening is implemented/tested locally:22890 RED both editable pending
+panes → disabled/inert Opening until valid actual acknowledgement. Safe early-key
+drop/epoch capture unchanged. Focus74310 PASS4/7.5s, all51 private Python checks
+PASS5.942s, final types94427/build PASS. Affected actual-WASM/retained/gateway-
+replacement/monitoring/clipboard/transition browser16348 PASS55/5.9m, no skips.
+Logs terminal-ready-browser-final and c7-final-types. Native Go/module273 hashes
+unchanged, so C9 full619 application/native589.398s and exact root/capacity evidence
+still apply; no unchanged native suite was repeated for this UI/private-driver fix.
 
-Next bounded public outcome is approved C7, NOT a new ownership-transfer protocol:
-actual positive SSH loss → existing root stop/manifest → separately reviewed
-emergency access disposition if resuming before the original deadline → reviewed
-NEW saved-work grant with chosen allowance/finite Begin window → fresh student SSH/
-preflight/Begin → protected finish. No automatic refund/reopening/hold release.
-Existing stop/override-access CLI already support those explicit audited steps;
-inspect implementation and join the actual interfaces before adding code. Start
-with one synthetic student in the guarded guest. Original interval/history and
-saved-source identity must survive; failure consumes no new clock/grant. See
-retained-transport-recovery-plan.md. Then qualify final public retained admission;
-never simply remove its guard without covering the remaining integrated gates.
+NEXT bounded entry: retained /reauth and /claim plus reload/workspace student UI.
+They still advertise/allow the legacy original-attempt reconnect even though C7
+requires a reviewed NEW attempt. Add actual HTTP refusal regression with valid
+unused approval; preserve session/SSH/approval/clock/page and same-page Continue.
+Update clear student guidance without treating unknown control as positive SSH
+loss. Test affected HTTP/browser/build, then reconcile final public admission.
+No policy question is pending. Do not enable incomplete retained admission.
 
-Continue independent remaining outcomes from todo-delivery-audit.md: native legacy
-migration/definition retirement; manual verified-workspace cleanup (no grace);
-reviewed configuration workflow and complete CLI operator journey. Production alert
-acceptance/consolidation remain UNEXECUTED in todo-rollout-plan.md. Do not stop
-merely because C9 is committed; actionable local work remains.
+## Remaining work and preservation
 
-## Decisions and preservation
+Continue todo-delivery-audit.md after C7/public admission: native legacy migration/
+definition retirement, manual verified-workspace cleanup/no grace, configuration
+workflow and complete CLI operator journey. Production alerts/consolidation remain
+UNEXECUTED in todo-rollout-plan.md. Do not stop after a status/plan/helper/commit.
 
-No design question remains. C1–C18/clock choices settled;16students/64panes accepted.
-C7 permits choosing the old remaining allowance on a NEW reviewed attempt; no old-
-attempt reconnect protocol. Untracked node_modules symlink NEVER stage.
-Preserve ALL stashes, especially40f1fb64187db13783ea23c0125d66824d65b301,
-2b9ba2b9209fc06de361402cdf8780cc2ff6c3f0 and the newfa8db965 pointer backup.
-8cf701553752ed700c1e234c5938a09f46789472 and2b36da2d121da54d1dfc7dd3624cafdebbd241d3
-ALREADY APPLIED; never reapply. Main's ten dirty screenshots match baseline
-/tmp/ssh-exam-retained-recording-main-image-hashes.json (verified this milestone).
-Never stage/restore them. Main pointer backup /tmp/ssh-exam-c9-main-pointer-stash.
+Main has ten ORIGINAL dirty screenshots plus active-checkpoint pointer. Preserve
+all; hashes /tmp/ssh-exam-retained-recording-main-image-hashes.json. Untracked
+node_modules symlink NEVER stage. Preserve ALL stashes; fa8db9651cec4f8728aa5e40369c8bb723e8bc9a
+is the old main pointer; do NOT reapply. Rule-edit stash from this turn is also
+retained.40f1fb64187db13783ea23c0125d66824d65b301 and2b9ba2b9209fc06de361402cdf8780cc2ff6c3f0
+remain.8cf701553752ed700c1e234c5938a09f46789472 and2b36da2d121da54d1dfc7dd3624cafdebbd241d3
+ALREADY APPLIED; never reapply. Main's pointer needs its own targeted stash before
+later C7 fast-forward. No policy question is pending;16students/64panes accepted.

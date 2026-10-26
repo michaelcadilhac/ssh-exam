@@ -21,6 +21,7 @@ import { hosts } from "./hosts.js";
 import { nativeGuest } from "./native-guest.js";
 import { browserGatewayProcess } from "./browser-gateway-process.js";
 import type { MonitoringEvidenceLedger } from "../../apps/server/src/monitoring-evidence-ledger.js";
+import { z } from "zod";
 
 const origin = "https://127.0.0.1:9444";
 const data = mkdtempSync(tmpdir() + "/ssh-exam-browser-native-");
@@ -156,6 +157,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
       process.env.EXAM_BROWSER_NATIVE_TECHNICAL_RECOVERY === "1",
     technicalPartial: process.env.EXAM_BROWSER_NATIVE_TECHNICAL_PARTIAL === "1",
     capacityRecovery: process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1",
+    sshRecovery: process.env.EXAM_BROWSER_NATIVE_SSH_RECOVERY === "1",
     continueClock: process.env.EXAM_BROWSER_NATIVE_CONTINUE_CLOCK === "1",
     log: data + "/native-root.log",
   };
@@ -193,6 +195,28 @@ app.post("/api/fixture/native-finish", async (req) => {
   const value = await guest.inspect(String((req.body as any).attempt), true);
   await guest.finished();
   return { ...value, preservation: "FULL" };
+});
+app.post("/api/fixture/native-ssh-recovery", async (req) => {
+  if (
+    process.env.EXAM_BROWSER_NATIVE_SSH_RECOVERY !== "1" ||
+    students !== 1 ||
+    large
+  )
+    throw Error("Private SSH recovery workflow not selected");
+  const body = z
+    .object({
+      attempt: z.string().uuid(),
+      action: z.enum(["stop", "verify", "source-sync", "release", "finish"]),
+      grant: z.string().uuid().optional(),
+    })
+    .strict()
+    .parse(req.body);
+  const value = await guest.sshRecovery(body.attempt, body.action, body.grant);
+  if (body.action === "finish") {
+    await guest.finished();
+    return { ...value, preservation: "FULL" };
+  }
+  return value;
 });
 app.post("/api/fixture/native-fleet", async (req) => {
   const body = req.body as any;
