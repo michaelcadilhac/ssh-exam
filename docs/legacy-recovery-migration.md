@@ -1,8 +1,8 @@
 # Reviewed native legacy recovery migration
 
 October26,2026. Partial local candidate in the isolated legacy-recovery-revocation
-worktree, committed286acd9 and locally validated; PUBLIC web qualification and
-broader migration remain incomplete. Not deployed.
+worktree, committed286acd9 and locally qualified through root43/PUBLIC web and
+final16/64. Broader definition reconciliation/migration remains open. Not deployed.
 Baseline076a5c1 now aligns catalog uncertainty with Begin's UID fence. Public
 retained release1641c8b is independently qualified; this management migration is
 not a new prerequisite for retained SSH.
@@ -225,3 +225,26 @@ Existing actual writer/SSH/editor/linked-IO/clock/fault controls also pass. Gues
 attempt authority unchanged and inactive. Capture/test-role adapter is explicit;
 this is not yet the updated PUBLIC browser workflow. Logs:
 /tmp/ssh-exam-revocation-{artifact-build,upload,root}.log. No production action.
+
+
+UPDATED PUBLIC C7 run34987 PASS49.2s/1.0m with exact286 native and packaged c27
+browser. Actual legacy cancellation/exact retry is observed before NEW20-minute
+web authority becomes AVAILABLE, with zero-clock preflight, full chosen Begin,
+exact protected-source/result export and independent original hold/history. Guest
+v0ydx4sf/unitbd95bf9b23d04604bcd05e7a1cf53883 independently exit0/files-base-host
+status preserved/inactive; local02yKbb TLS key absent. Log:
+/tmp/ssh-exam-revocation-public-c7.log. Main/release now187008c; runtime native286.
+The final16/64 exact-cohort run is active; do not edit/rebuild its inputs. Broader
+native definition reconciliation remains open, and no production action occurs.
+
+
+Final exact native286/browserc27 cohort55616 PASS9.7m/9.8m: all16 students/64 panes
+begin, verify technical hold/automatic recovery, accept fresh input and secure
+independent protected submissions with original intervals/holds. Frozen133 host
+inputs/assets still match release-286-capacity.sources.json. Max public contact
+15.89ms/state40.26ms is contact evidence, not native permission. Guest854b4bq6/
+unit2f7239f0b53542ffaad654e78deda66c independently exit0/files-base-authority-
+preserved/inactive; local8U0KTz TLS key absent. Logs /tmp/ssh-exam-release-286-capacity.log.
+This closes the bounded supported legacy cancellation→NEW saved-work workflow
+locally. C8 definition reconciliation, real-data migration, cleanup/configuration
+and future authorized production acceptance remain separate; nothing deployed.

@@ -1,5 +1,33 @@
 # Proposed TODO rollout, migration and rollback
 
+Latest October26 candidate: native286acd9 now passes full local races/resources,
+guarded root43 and the PUBLIC web cancellation→NEW saved-work20-minute workflow.
+The matching c27 packaged browser passes startup/migration/asset checks. The final
+exact native286/browserc27 16-student/64-terminal run passes9.7m/9.8m, with
+independent exit0/preservation/inactive-unit proof and frozen sources/assets.
+Current evidence and remaining gates: release-readiness.md and
+legacy-recovery-migration.md. No production action is authorized or executed.
+
+The approved old-permission migration is TWO reviewed actions. First cancel only
+a positively unused native permission using recovery-grants revoke-preview/revoke;
+then separately issue NEW authority with exact verified source, chosen allowance,
+finite Begin window and preserved effective webcam unless explicitly overridden.
+Use reviewed bulk NEW initial issuance for ordinary unused legacy enrollments;
+use additional-preview with the explicit saved source for a replacement, including
+an enrollment without an initial grant. Never invent enrollment-time settings.
+The new saved grant stays unavailable until durable native retention confirmation.
+No failed issuance/preflight consumes time or reopens the cancelled permission.
+Original restrictions remain; grant issuance/cancellation is not an access release.
+
+Back up the canonical cancellation envelopes AND their audit/original raw record,
+all consumption/source-pin records and protected archives. Old readers deliberately
+refuse the envelope. Never unwrap it to bare old JSON, delete it or restore a pre-
+cancellation snapshot to make a downgrade run: that could revive old permission.
+Prefer compatible forward repair with admissions unavailable. Legacy definition
+retirement remains fenced until its supported native reconciliation is complete;
+do not clear lifecycle flags or source expectations manually. Manual workspace
+cleanup remains a separate unimplemented gate, not a rollout cleanup shortcut.
+
 Current October26 local release qualification is COMPLETE (not deployed):
 public executable Begin/dual hold/Continue, C7 new-attempt recovery, technical-only
 automatic recovery versus real capture gap, coordinator/command/gateway faults,

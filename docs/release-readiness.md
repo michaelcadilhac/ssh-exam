@@ -201,3 +201,15 @@ Actual root cancellation→NEW saved-source/full90min/protected export passes wi
 independent host/base/authority preservation and inactive exact unit. Updated
 PUBLIC web20-minute source-replacement qualification remains before clearing the
 focused compatibility gate. No deployment or temporary-service consolidation.
+
+
+Latest focused milestone COMPLETE LOCALLY, not deployed: exact286 native + c27
+packaged browser passes root43, PUBLIC web cancellation→NEW20-minute saved-work
+Begin/export, and final16/64 technical recovery/protected finish9.7m/9.8m. Exact
+receipts/preservation/source hashes are in legacy-recovery-migration.md. The earlier
+implementation-level cancellation gate is resolved. Current27/38 local boxes
+are checked, not a readiness percentage. Production remains NO-GO until actual
+legacy records/enrollments are reviewed/migrated through supported workflows,
+verified drain/backups/matched installation and controlled live SSH/MFA/media/
+access/alerts acceptance are separately authorized/performed. Broader C8 definition
+reconciliation, cleanup and configuration/help remain on TODO; no production action.

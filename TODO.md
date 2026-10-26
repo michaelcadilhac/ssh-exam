@@ -1,21 +1,20 @@
 # Deferred work
 
-October26 native legacy cancellation is implemented/tested locally through actual
-root-mapped `recovery-grants revoke-preview/revoke`, conservative refusal states,
-stable retry and five actual process-crash boundaries. Final complete native
-race/resource/namespace/compiler/default-size suite passes; build/vet/types and80
-Python checks pass. Joined fresh-artifact root/public cancellation→NEW saved-work
-Begin/export qualification is still pending. This does not complete migration,
-definition reconciliation, deployment or any account/data cleanup. Current finite
-scope and evidence: docs/legacy-recovery-migration.md.
+October26 native legacy cancellation/replacement is implemented/tested locally:
+actual root CLI refusal/crash/retry, exact native root43, PUBLIC web NEW20-minute
+saved-work/full Begin/protected export and final matching16/64 recovery/collection
+pass. This closes recovery-grant administration locally. Broader legacy definition
+reconciliation, cleanup and configuration/help remain open. Nothing is deployed;
+production still requires separately authorized inventory/migration/drain and live
+acceptance. Current evidence: docs/legacy-recovery-migration.md.
 
 October26 packaged candidate c27eac0 now passes startup/migration/all-asset checks,
 20 affected browsers and the actual16-student/64-terminal freeze/recovery/protected
 finish workflow. Its reproduced capture input-gate bug is fixed locally: React
 coalescing failed/healthy samples can no longer leave input disabled indefinitely.
 Earlier16th-login failure and the original incident's triggers remain unproven.
-Main-bug release is still NO-GO pending native legacy-permission cancellation/
-replacement compatibility and future authorized cutover acceptance. See
+Main-bug candidate is locally qualified; production is still NO-GO pending
+actual legacy inventory/migration, verified drain and authorized live acceptance. See
 docs/release-readiness.md and docs/capture-input-recovery.md. Not deployed.
 
 October26 current local release status: the retained-SSH/liveness workflow is
@@ -1703,7 +1702,17 @@ the approval is not a production change or a completed investigation.
   Never retire an uncertain started attempt. Test never-contacted records, real
   abandoned preflights, delayed signed confirmations and application restarts.
 
-- [ ] **Provide supported recovery-grant administration and visibility.**
+- [x] **Provide supported recovery-grant administration and visibility.**
+  Implemented/tested locally October26, not deployed: new saved-work permissions
+  use the shared web/examctl issuance, inspection, revision/revoke and signed
+  PENDING_NATIVE/AVAILABLE source-retention workflow. The approved native legacy
+  transition is explicit reviewed cancellation first, then separate NEW issuance;
+  no new ad hoc JSON-grant creation is supported. Root CLI preview/refusal/audit/
+  crash/retry tests, exact root43 and PUBLIC web20-minute replacement/full Begin/
+  protected export pass. Final matching16-student/64-terminal recovery/collection
+  also passes with original intervals, holds and protected history. Definition
+  reconciliation and broader migration remain separate open items. Evidence:
+  docs/legacy-recovery-migration.md. The older description below is historical.
   Coordinate this work with the unified attempt-model investigation above; avoid
   cementing a second, separate exam-management model solely for recovery.
   Grants currently use root-owned JSON under
