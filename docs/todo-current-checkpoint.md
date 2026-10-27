@@ -45,11 +45,12 @@ examctl-coverage-audit.md and todo-local-completion-evidence.0einctzi.
 
 ## Exact next action and decisions
 
-Local preparation is validated and ready for its coherent commit. Request/await
-explicit production cutover permission for the concrete documented changes;
-latest approval was read-only inventory. An async clarification asks which non-student account the instructor
-chooses for live SSH/MFA/media and one inbox-delivery confirmation. Do not select
-an existing student or weaken its protections. No other design question is open.
+Validated preparation committed locally as9be4cf9 and fast-forwarded onto main;
+runtime815a895 unchanged. Two async dialogs are pending: explicit production
+cutover authorization for the concrete documented changes, and the instructor's
+chosen non-student account for real SSH/MFA/media/inbox acceptance. Latest approval
+covered read-only inventory only. Do not deploy on silence, select an existing
+student or weaken protections. No other design question is open.
 
 After authorization, verify the nginx new-admission fence and repeat complete
 all-three-agent/independent/practice/preflight/pending-work drain immediately before
