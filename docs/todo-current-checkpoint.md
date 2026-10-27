@@ -1,6 +1,6 @@
 # Current local TODO checkpoint
 
-October26,2026. Main f9d34fe contains C17, C8, C4a/C4b diagnostics and prior
+October26,2026. Main2ff7ca4 contains the locally validated C4c increment plus C17/C8 and prior
 qualified release work.30/38 main checkboxes locally complete (not effort or
 readiness). Active C4c is validated locally in this commit on workspace-cleanup-delivery,
 var/worktrees/workspace-cleanup-delivery. Nothing deployed/pushed; production and
@@ -29,12 +29,37 @@ is inferred from private namespace fixtures. No new helper-only completion.
 Broad native PASS: core348.394s/CLI24.430s, go test -race ./... with management/
 collection userns opt-ins. Build/vet PASS; all291 frozen native inputs unchanged.
 Logs /tmp/ssh-exam-workspace-cleanup-native-broad.log and -build.log/-vet.log.
-No active local runner. Then build exact guarded guest probe/bundle
-for real resource/queued-directory/multi-UID/healthy-peer/restore proof. Preserve
-host/base/student data; busy/uncertain guard means no test. Existing286 upload
-approval covers ONLY its old artifact, not this new candidate. SSH is connected and root read-only precheck passes:172 records,0 live/unresolved,
-private guest present. This does not replace the runner's fresh/concurrent guard;
-no upload or test guest has been started for this candidate.
+No active runner/container/guest. Durable evidence is MAIN
+var/collection-tests/workspace-cleanup-evidence-2ff7ca4. SIGTERM mutation control
+is correctly rejected (exact143); original test restored, all291 hashes equal.
+
+Guarded CLI test driver now covers actual source cleanup while a healthy signed
+SSH peer runs, real lease-break cancellation/owner restoration, a nonstudent's
+queued directory FD losing write access, then protected NEW90-minute restore
+AFTER the original folder is gone. Driver/nested syntax and21 runner-safety tests
+pass; these do NOT establish root kernel acceptance. Native binaries unchanged.
+Private guest sourceUID20001/probe29978 unused/peer29979 distinct are verified
+read-only from actual guest passwd (the config account map is dynamic).
+
+BLOCKED upload: automatic approval review explicitly rejected this NEW sensitive
+project-code payload because prior authorization covered only old286 artifacts.
+No upload executed; /var/tmp/ssh-exam-workspace-cleanup-upload.RJ7UhKUY is empty.
+The first39f1... bundle question is superseded after a test-only omitted-grant
+comparison correction. Current dialog requests the corrected bundle AND scoped
+future audited code-only corrections, or exact-only/local-only alternatives.
+Await the actual answer; do not infer approval or reuse old approval for new bytes.
+
+Corrected18-file45,698,592-byte bundle (no credentials/config/student data):
+MAIN var/collection-tests/workspace-cleanup-2ff7ca4-fixed.ti4yc5e6
+Digest08e2b42b6bbc5abd8db1a352aed2afe4fd5cac0711a893ac9ea2df10ad87b35e
+Adjacent .audit.json contains exact files/digests and native/source provenance.
+Original39f1... bundle remains unchanged; do not upload it by mistake. Remote
+upload, if approved, must revalidate this exact bundle, verify remote hashes and
+use ONLY the existing guarded overlay runner. Run worker-isolation then retained-
+policy profiles for actual cleanup/healthy peer and cleanup→NEW saved-work Begin.
+Fresh/concurrent host/base guards remain mandatory; busy/uncertain means no test.
+Read-only csc-sys precheck:172 records,0 live/unresolved, private guest available.
+No production installation/records/config/service changes; no new guest started.
 
 Do not stop at this candidate or a report. After validated cleanup, finish the
 management coverage/help/actionable-refusal/operator journey using existing

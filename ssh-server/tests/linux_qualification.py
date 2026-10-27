@@ -435,6 +435,87 @@ def qualify_held_pane_closure(connection,id,continued,live,original,values):
             extra.stdin.close();extra.stdout.close()
 
 
+def qualify_workspace_cleanup(original, break_lease=False):
+    """Actual root CLI/resource/UID barriers, only inside this guarded guest."""
+    import array
+    assert pathlib.Path('/run/ssh-exam-qualification-input/run.json').is_file()
+    old=info(original['id']);assert old['state']=='COMPLETED' and old['protected']
+    base=pathlib.Path(config['work'])/old['id'];work=base/'work'
+    archive=pathlib.Path(config['state'])/'submissions'/old['id']/'submission.tar.gz'
+    checksum=hashlib.sha256(archive.read_bytes()).hexdigest()
+    receipts={str(p.relative_to(base)):p.read_bytes() for p in (base/'initialized',base/'workspace-ready/receipt.json') if p.is_file()}
+    child=None;left=right=None;gate=None;worker=None
+    try:
+        if break_lease:
+            probe=work/'cleanup-dir-0000';assert probe.stat().st_uid==account.pw_uid and stat.S_IMODE(probe.stat().st_mode)==0o777
+            left,right=socket.socketpair();read_gate,gate=os.pipe();descriptor=os.open(probe,os.O_RDONLY|os.O_DIRECTORY)
+            child_code='''import array,errno,os,socket,sys
+s=socket.socket(fileno=int(sys.argv[1]));fd=int(sys.argv[2]);gate=int(sys.argv[3])
+assert os.getuid()==os.geteuid()==29978
+f=os.open('baseline',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600,dir_fd=fd);os.write(f,b'synthetic');os.close(f);os.unlink('baseline',dir_fd=fd);os.close(fd)
+os.write(1,b'BASELINE\\n');assert os.read(gate,1)==b'R'
+data,anc,flags,addr=s.recvmsg(1,socket.CMSG_SPACE(array.array('i').itemsize));assert data==b'Q' and len(anc)==1
+fds=array.array('i');fds.frombytes(anc[0][2]);assert len(fds)==1;fd=fds[0]
+st=os.fstat(fd);assert st.st_uid==0 and st.st_mode&0o777==0o500
+try:os.open('must-not-exist',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600,dir_fd=fd)
+except OSError as error:assert error.errno==errno.EACCES
+else:raise AssertionError('queued directory descriptor bypassed the sealed barrier')
+os.close(fd);os.write(1,b'SEALED\\n')
+'''
+            child=subprocess.Popen(['setpriv','--no-new-privs','--bounding-set=-all','--reuid=29978','--regid=29978','--clear-groups','/usr/bin/python3','-c',child_code,str(right.fileno()),str(descriptor),str(read_gate)],pass_fds=(right.fileno(),descriptor,read_gate),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            os.close(descriptor);os.close(read_gate);right.close();right=None
+            assert select.select([child.stdout],[],[],5)[0] and child.stdout.readline()==b'BASELINE\n','nonstudent baseline did not reach create/remove/close'
+            descriptor=os.open(probe,os.O_RDONLY|os.O_DIRECTORY)
+            try:left.sendmsg([b'Q'],[(socket.SOL_SOCKET,socket.SCM_RIGHTS,array.array('i',[descriptor]))])
+            finally:os.close(descriptor)
+        preview=json.loads(root('examctl','workspaces','dry-run',old['id']))
+        assert preview['snapshot_clear'] and not preview['eligible'] and preview['archive_verified'],preview['blockers']
+        request=str(uuid.uuid4())
+        command=['examctl','workspaces','cleanup',old['id'],'--review',preview['review'],'--request',request,'--reason','Guarded disposable root manual cleanup with no grace period']
+        if break_lease:
+            worker=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            record=pathlib.Path(config['state'])/'workspace-cleanups'/(old['id']+'.json')
+            deadline=time.monotonic()+15
+            while True:
+                if worker.poll() is not None:
+                    out,error=worker.communicate(timeout=3);raise AssertionError('cleanup ended before exact PREPARED lease-break boundary: '+error.decode(errors='replace')[-1000:])
+                if record.is_file() and json.loads(record.read_bytes())['phase']=='PREPARED':break
+                assert time.monotonic()<deadline,'cleanup did not reach PREPARED'
+                time.sleep(.001)
+            try:descriptor=os.open(work/'fault-ready',os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+            except OSError as error:assert error.errno==errno.EAGAIN,'did not reach actual exclusive-lease break'
+            else:os.close(descriptor);raise AssertionError('file had no exclusive lease at PREPARED')
+            out,error=worker.communicate(timeout=30)
+            assert worker.returncode!=0 and (b'lease break' in error or b'reference barrier lost' in error),error.decode(errors='replace')[-1000:]
+            status=json.loads(root('examctl','workspaces','cleanup-status',old['id'],'--request',request))
+            assert status['archive_pinned'] and status['phase'] in ('PREPARED','SEALED','QUARANTINED')
+            os.write(gate,b'R');os.close(gate);gate=None
+            out,error=child.communicate(timeout=5);assert child.returncode==0 and out==b'SEALED\n',error.decode(errors='replace')[-1000:]
+            ok('real root leases interrupt cleanup on a fresh reader; a queued directory FD loses its former nonstudent write access after every-directory sealing')
+            cancelled=json.loads(root('examctl','workspaces','cleanup-cancel',old['id'],'--request',request,'--review',status['review'],'--reason','Guarded intact cancellation after actual lease-break refusal'))
+            assert cancelled['phase']=='CANCELLED' and not cancelled['archive_pinned']
+            assert probe.stat().st_uid==account.pw_uid and stat.S_IMODE(probe.stat().st_mode)==0o777
+            assert not (probe/'must-not-exist').exists()
+            preview=json.loads(root('examctl','workspaces','dry-run',old['id']));assert preview['snapshot_clear']
+            request=str(uuid.uuid4());command[command.index('--review')+1]=preview['review'];command[command.index('--request')+1]=request
+        cleaned=json.loads(root(*command))
+        assert cleaned['phase']=='COMPLETED' and cleaned['cleaned'] and not cleaned['archive_pinned'] and not base.exists()
+        assert json.loads(root('examctl','workspaces','cleanup-status',old['id'],'--request',request))['phase']=='COMPLETED'
+        assert json.loads(root(*command))['request']==request
+        record=json.loads((pathlib.Path(config['state'])/'workspace-cleanups'/(old['id']+'.json')).read_bytes())
+        retained={entry['path']:base64.b64decode(entry['receipt'],validate=True) for entry in record['entries'] if entry['receipt'] is not None}
+        assert retained==receipts and hashlib.sha256(archive.read_bytes()).hexdigest()==checksum
+        current=info(old['id']);assert all(current.get(k)==old.get(k) for k in ('start','deadline','original_deadline','grant','checksum','protected'))
+        assert current['access_state']=='HELD' or int(time.time()*1000)>=old['original_deadline']
+        ok('actual root resource-limited cleanup removes only the exact old workspace, preserving literal lifecycle receipts, protected archive, original history and deadline restriction')
+    finally:
+        if worker and worker.poll() is None:worker.kill();worker.wait(timeout=5)
+        if child and child.poll() is None:child.kill();child.wait(timeout=5)
+        if left:left.close()
+        if right:right.close()
+        if gate is not None:os.close(gate)
+
+
 def qualify_saved_source_grant(original):
     """Real root CLI pin -> actual saved staging/Begin/collection in this guest."""
     assert a.retained_policy and temporary and account.pw_uid>=1000
@@ -446,6 +527,9 @@ def qualify_saved_source_grant(original):
         finally:pathlib.Path(name).unlink(missing_ok=True)
     old=info(original['id'])
     assert old['state']=='COMPLETED' and old['protected'] and old['access_state']=='RELEASED'
+    with tarfile.open(pathlib.Path(config['state'])/'submissions'/old['id']/'submission.tar.gz') as source_archive:
+        saved=source_archive.extractfile('retained-editor.txt').read();assert saved
+    qualify_workspace_cleanup(old)
     # Historical fixture authority, created ONLY in this guarded overlay. The
     # supported workflow must cancel it before the separate NEW grant can stage.
     legacy_parent=pathlib.Path(config['state'])/'recovery-preparations'
@@ -503,9 +587,7 @@ def qualify_saved_source_grant(original):
     refused=run(['examctl','delete',old['id'],'--reason','Private synthetic unused source dependency refusal'])
     assert refused.returncode!=0 and 'submission retained by saved-source grant' in refused.stderr, (refused.returncode,refused.stderr)
     ok('actual root source-sync signs fixed-purpose HTTPS, durably pins the real archive before availability and blocks unused-source deletion')
-    live=pathlib.Path(config['work'])/old['id']/'work/retained-editor.txt'
-    saved=live.read_bytes();assert saved
-    live.write_bytes(b'Private synthetic stale live folder; restore must use the protected archive\n')
+    assert not (pathlib.Path(config['work'])/old['id']).exists(),'saved-work restore must succeed after actual old-workspace cleanup'
     connection=Connection();pane=None
     try:
         at=int(time.time()*1000)
@@ -521,7 +603,7 @@ def qualify_saved_source_grant(original):
         pane=connection.pane(id,framed=True)
         connection.input(pane,"IFS= read -r saved < /work/retained-editor.txt; printf 'SAVED-%s:END\\n' \"$saved\"\n")
         read_until(pane,('SAVED-'+saved.decode().splitlines()[0]+':END').encode(),timeout=3)
-        ok('separate NEW saved-work grant after cancellation restores protected Nano bytes instead of stale live work and starts its chosen full ninety-minute interval only at Begin')
+        ok('separate NEW saved-work grant after cancellation and actual old-workspace cleanup restores protected Nano bytes and starts its chosen full ninety-minute interval only at Begin')
         work_directory=pathlib.Path(config['work'])/id/'work'
         writer_code="import signal,time\nsignal.signal(signal.SIGHUP,signal.SIG_IGN)\nf=open('/work/owner-death-writer','ab',buffering=0)\nwhile True:\n f.write(b'x');time.sleep(.005)"
         connection.input(pane,'python3 -c '+shlex.quote(writer_code)+" & writer=$!; printf '%s' \"$writer\" > /work/owner-death.pid; printf 'SAVED-OWNER-WRITER:END\\n'\n")
@@ -1195,7 +1277,7 @@ print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
         # Real student-side bounded incompressible output keeps the collector
         # alive long enough to identify and kill its actual supervised process.
         target_connection.command('renew-execution-lease',{'id':target_id})
-        target_pane.stdin.write(b"cd /work && python3 -c 'import os,pathlib; [(pathlib.Path(\"fault-%d.bin\"%i).write_bytes(os.urandom(10*1024*1024))) for i in range(4)]; pathlib.Path(\"fault-ready\").write_text(\"ready\")'\n");target_pane.stdin.flush()
+        target_pane.stdin.write(b"cd /work && python3 -c 'import os,pathlib; [(pathlib.Path(\"cleanup-dir-%04d\"%i).mkdir(mode=0o700)) for i in range(512)]; pathlib.Path(\"cleanup-dir-0000\").chmod(0o777); [(pathlib.Path(\"fault-%d.bin\"%i).write_bytes(os.urandom(10*1024*1024))) for i in range(4)]; pathlib.Path(\"fault-ready\").write_text(\"ready\")'\n");target_pane.stdin.flush()
         wait_for(lambda:(target_work/'fault-ready').is_file(),20)
         original=info(target_id)
         owners=root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
@@ -1267,6 +1349,14 @@ print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
                 name='fault-%d.bin'%i
                 assert hashlib.sha256(bundle.extractfile(name).read()).digest()==hashlib.sha256((target_work/name).read_bytes()).digest()
         ok('explicit retry protects all original target bytes after real worker death')
+        target_connection.close()
+        qualify_workspace_cleanup(original,break_lease=True)
+        healthy_pane.stdin.write(b"printf 'CLEANUP_%s\\n' PEER_LIVE\n");healthy_pane.stdin.flush();read_until(healthy_pane,b'CLEANUP_PEER_LIVE',10)
+        current=info(healthy_id)
+        assert all(current[k]==before[k] for k in ('start','deadline','original_deadline','generation')) and current['state']=='ACTIVE'
+        assert healthy_pane.poll() is None and not failures and max(acknowledgements)<5
+        assert owners==root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
+        ok('real healthy SSH/input/signed renewals and shared-role PIDs survive root cleanup/lease refusal/cancellation/retry without changed authority')
         stop.set();thread.join(timeout=10);assert not thread.is_alive() and not failures
         healthy.command('finalize-attempt',{'id':healthy_id});secure(healthy_id)
         wait_for(lambda:info(target_id)['access_state']=='RELEASED' and info(healthy_id)['access_state']=='RELEASED',150)

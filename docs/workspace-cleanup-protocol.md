@@ -103,3 +103,25 @@ Before closing C4: finish fresh guarded exact-artifact
 resource/multi-UID/queued-directory/healthy-peer and source-restore qualification,
 then update the current checkpoint/TODO with actual receipts. Web/app/WASM are
 unchanged; C17's625 checks and packaged browsers cover those unchanged surfaces.
+
+The guarded driver is now prepared: worker-isolation adds actual CLI lease-break
+refusal/cancellation, restoration of real student-owned directories, and a
+different UID's queued directory descriptor which could write before sealing but
+must receive EACCES afterward, alongside the healthy SSH/renewal peer. The saved-
+source profile removes the original folder before the existing reviewed NEW
+90-minute saved-work workflow. Driver/nested-child syntax and21 runner-safety
+tests pass; these are preparation evidence, not actual root acceptance. Source
+UID20001/probe29978 unused/peer29979 distinct are confirmed read-only in the
+private guest. Native binaries remain2ff7ca4. A temporary SIGTERM mutation is
+rejected at exact143; the original test is restored and all291 hashes match.
+
+Upload is blocked by automatic approval review, which explicitly limits retained
+authorization to the older286 artifact. No upload/guest test ran. The corrected
+18-file45,698,592-byte code-only bundle is MAIN var/collection-tests/workspace-
+cleanup-2ff7ca4-fixed.ti4yc5e6; adjacent .audit.json pins every file and source.
+Digest08e2b42b6bbc5abd8db1a352aed2afe4fd5cac0711a893ac9ea2df10ad87b35e.
+The prior39f1... question/bundle is superseded after correcting the native JSON
+producer's omitted legacy grant in the test consumer. Current dialog offers
+scoped future audited code-only corrections, exact-corrected-only or local-only.
+No credentials/config/student data or deployment is included. Await the actual
+answer and refresh guards; permission/elapsed time never establishes acceptance.
