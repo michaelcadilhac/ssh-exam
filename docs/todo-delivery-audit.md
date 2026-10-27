@@ -1,5 +1,14 @@
 # Delivery audit and bounded execution outcome
 
+October27 current outcome:37/38 items covered. The instructor authorized the guarded
+rollout; consolidation is now deployed/verified, matched web/schema33 and native
+872fe80 remain in maintenance. Protected history, full native races, actual signed
+readiness, assets/root CLI and exactly-one human inbox alert PASS. Only full human
+ordinary/recovery acceptance remains, blocked by needing a non-admin test identity;
+mcadilha is practice-only. No admission reopening. Current deployed receipt and
+rollback boundary: production-rollout-2026-10-27.md. The October26 local-only inventory
+below is historical and must not be mistaken for current production status.
+
 October26:36/38 main TODO items implemented/tested LOCALLY, not an effort percentage
 or production signoff. Only production consolidation and post-rollout live acceptance
 remain open. No push, deployment, production service restart/configuration or

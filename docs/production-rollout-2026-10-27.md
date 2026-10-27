@@ -1,11 +1,74 @@
 # Production rollout preparation, October 27
 
-Requested outcome: safely consolidate the three installed agent owners and record
-controlled live acceptance. Both production TODOs remain OPEN. Runtime source is
-815a895. The instructor approved read-only inventory on csc-sys and identified the
-web server as marco, origin https://ssh-exam.cadilhac.name. That inventory has run;
-no production transfer, configuration/record change, service restart or deployment
-has run. Cutover still needs a new explicit instruction. Local commits are allowed.
+October27 CURRENT: guarded production rollout was explicitly authorized and
+executed on marco/csc-sys. Consolidation is DEPLOYED/VERIFIED;37/38 TODO boxes are
+covered. Full live exam/recovery acceptance is still OPEN. Web remains maintenance
+true behind the tested external new-start fence. No student start/grant/clock was
+created, no push, SSH/relay restart, host reboot or unrelated-service change.
+
+## Actual deployed result and evidence
+
+- Web: qualified815a895 image, OCI manifest4d969bbe…/config46244c89…, actual marco
+  image ID `sha256:46244c89f91cd635d6b7836d7693ca40f4293e605c0ba76b2af59c9fc547bcb3`.
+  Actual DB11→33. Before live migration, actual private production-copy startup
+  preserved all18 old data tables exactly with no network/production credentials.
+  Live108 historical attempts retain original settings/clocks/generation/protection/
+  checksums/access;0 invented grants. All6 public HTML/JS/CSS/worker/WASM hashes match.
+  Existing Compose/project/mounts/no-build unit and secrets/pins/mail/readiness kept.
+- Native final command source872fe80854e640af483aad1af6df4ed8febebe43:
+  agent `d44283ef81d36d3b4108af735c1d7a3a4b162b397c18399ec2114c1b7c9fee87`,
+  examctl `0c95fe05dba7036c6f39e3398c4e85c591ec11db485c1595391aff6cc43fb54a`.
+  Qualified unchanged-wire clients retained: loginb1d4d3ae…/infoa52ce6c4…;
+  support scripts unchanged. Both old temporary units/preservation drop-in removed
+  only after fresh full drain/private backup. One canonical socket owner, enabled
+  active canonical/watchdog/reconcile timer, required resource slices. Canonical
+  proxy matches the existing working watchdog route; hardening/SSH/relay preserved.
+- Actual172 native historical attempts retain settings/original/current intervals,
+  protection/checksums/access/grants;408 protected/source/account-policy files are
+  byte-identical to the original backup. Intentional metadata normalization:
+  14 cancelled, zero-clock, never-applied policies explicitly acknowledge NORMAL
+  through the existing source-defined rule. No OS account/hold/clock changed.
+- Readiness defect: initial report preceded the role socket. First correction80eb76e
+  failed actual positive acceptance because reconcile.service's ProtectHome=yes
+  hides /home/student. Failure retained; protections stayed intact. Final872fe80
+  reports inside the canonical context after listener bind and each minute;
+  one-shot is delivery-only. Public actual-binary startup/minute/TLS/CLI regressions,
+  native core races207.681s/CLI6.353s/vet PASS. Actual healthy signed observations
+  1328→1330 advanced120,076ms; production_ready/roles/retained true, no missing guards.
+  Reconciler resumed and does not overwrite that view. See native-configuration-refresh.md.
+- Root signed examctl→gateway management PASS under the explicit56-name allowlist;
+  current help/queue boundaries are supported. One authorized notification test,
+  same durable request/outbox on retry, SMTP accepted; instructor confirmed inbox
+  receipt exactly once. Only that notice added (sent106/cancelled20); all32 existing
+  incidents unchanged, no new student incident. No actual human MFA/media test yet.
+
+Private rollback backups, with keys/student data remaining on their owning hosts:
+marco `/var/backups/ssh-exam/cutover-20261027-vymmm77z` (data/config13,543,137,280 bytes,
+153,304 members; SQLite integrity/FKs and old image retained), csc-sys
+`/var/backups/ssh-exam/cutover-20261027-ngzrkhmr` (201,594,880 bytes/3,947 members,
+plus each pre-correction current state/command copy). Aggregate checksums/receipts
+and operational scripts: MAIN var/collection-tests/production-cutover.td6oq2x6;
+`{csc-sys,marco}-final-aggregate-receipts.json`. No raw production authority or keys
+were downloaded. Original dirty screenshots/stashes remain preserved.
+
+## Remaining acceptance gate
+
+The instructor selected mcadilha, which is an explicitly practice-only administrator.
+Source inspection confirmed normal account policy also refuses privileged groups
+and sudo rights: changing the static flag is insufficient. The earlier flag-only
+conversion option is withdrawn. Do not relax those guards or remove administrative
+rights as an inferred routine change. A dialog requests a non-admin, non-student
+institutional identity; credentials/MFA are entered directly, never sent to the agent.
+Full ordinary/recovery timing, saved restore, real capture, preserved buffers through
+hold/Continue, protected finish and original/current-deadline credential/access
+restoration still need that controlled test. Email acceptance is already complete.
+Until then leave maintenance/new-start fence in place; do not claim student admission
+is approved. Existing unused enrollments need separately reviewed NEW grants/windows;
+no bulk conversion or invented enrollment-time snapshot occurred during this rollout.
+
+The sections below retain the exact prepared artifact/inventory/procedure used for
+this rollout. Their earlier snapshots are historical, not a claim that deployment
+is still unapproved/unexecuted. The rollback boundary at the end remains binding.
 
 ## Matched candidate and local acceptance
 
@@ -96,7 +159,7 @@ execution. The reduced non-secret storage-path inventory succeeded. No credentia
 values were exposed; future private backups must resolve/include key files on their
 owning host without printing or transferring keys to the development machine.
 
-## Concrete cutover milestones — require production authorization
+## Authorized cutover sequence — steps1–2 executed, full step3 pending
 
 ### 1. Close new admission, then positively drain
 

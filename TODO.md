@@ -1889,31 +1889,28 @@ the approval is not a production change or a completed investigation.
   student data; fresh/concurrent busy/base guards remain mandatory. Historical
   orphaned/unknown folders still require supported proof, never blanket deletion.
 
-- [ ] **Consolidate the live agent handoffs after a verified drain.**
-  October27 authorized production cutover IN PROGRESS: full admission-fenced
-  web/native drain and private backups verified. The two temporary agents are
-  retired; native815a895 and matched web/schema33 run in maintenance. All original
-  intervals/settings/protected checksums/access/grants remain intact;14 previously
-  unapplied zero-clock cancellations explicitly acknowledge NORMAL, without an OS
-  policy change. Six exact public asset hashes and root signed CLI PASS;0 invented
-  grants/queued alerts. A stale initial native configuration snapshot was caught
-  before reopening. The first command-only refresh80eb76e exposed the reconciler's
-  different ProtectHome view; its false-readiness receipt is retained, timer paused.
-  Corrected canonical-context post-listen/minute publication is locally public-entry
-  RED→GREEN validated; full native core/CLI races207.681s/6.353s and vet PASS.
-  Actual correction deployment/fresh signed callback agreement pending. Item OPEN.
-  Do not use old idle counts or auto-cancelling historical upgrade helpers.
-  Exact package and remaining gates: docs/production-rollout-2026-10-27.md.
-  The canonical agent, `exam-agent-live-upgrade`, and
-  `exam-agent-deferred-recovery` retain existing PTY bridges. Do not stop any of
-  them while students may still depend on them. Once active attempts, real
-  preflights, pending timing changes and unresolved collection/access recovery
-  have drained, follow `docs/native-cleanup-isolation-incident.md`: stop the two
-  temporary services, start the patched canonical service, remove temporary units
-  and the preservation drop-in, and verify socket ownership, watchdog, callbacks,
-  readiness and boot behavior. Preserve grants, consumption markers and archives.
-  Check that obsolete incident helper processes have exited; do not use broad
-  process-name killing. Review documentation that still refers to only two gates.
+- [x] **Consolidate the live agent handoffs after a verified drain.**
+  October27 DEPLOYED/VERIFIED under explicit instructor authorization on csc-sys
+  and marco. External admission fence20 real refusals, full web/native pending/
+  session/PTY/process/cgroup/interval/account-journal drain, and verified root-private
+  backups preceded any stop. Both temporary unit files and live-preserve.conf are
+  retired; one canonical socket owner, matching canonical/watchdog executable,
+  active/enabled watchdog/reconcile timer, required slices and correct boot wiring.
+  SSH/relay, hardening, secrets and unrelated services were preserved; no reboot
+  or process-name killing. Matched web schema33/image815a895 and native command
+  correction872fe80 are installed in MAINTENANCE; no admission reopening claimed.
+  All172 native/108 web historical intervals/settings/protection/access/grants
+  preserved,408 protected/source/policy files byte-identical;14 old never-applied
+  zero-clock cancellations explicitly acknowledge NORMAL without changing an OS
+  account. No invented grants or new student incidents. The startup configuration
+  defect and failed helper-namespace correction were retained, then fixed by
+  canonical-context post-listen/minute publication. Full native core/CLI races
+  207.681s/6.353s/vet and actual two healthy signed observations120,076ms apart PASS;
+  the hardened reconciler no longer overwrites readiness. All6 packaged public
+  assets and authenticated root CLI PASS. Email accepted and confirmed once; full
+  live exam/recovery acceptance remains the separate OPEN production item below.
+  Exact deployed hashes/receipts/backup and rollback boundaries:
+  docs/production-rollout-2026-10-27.md, docs/native-configuration-refresh.md.
 
 - [x] **Isolate collection failure from the shared agent and other students.**
   October25 implemented/tested locally through the actual16-browser/64-terminal
@@ -2042,19 +2039,28 @@ the approval is not a production change or a completed investigation.
   is claimed. Capacity16students/64terminals remains the approved previously
   qualified target. Detailed receipts: docs/examctl-coverage-audit.md,
   docs/workspace-cleanup-protocol.md and docs/release-readiness.md.
-  No deployment is scheduled or authorized; production-only checks stay open.
+  October26's no-deployment status is historical: the instructor subsequently
+  authorized the October27 guarded rollout. Consolidation is deployed/verified;
+  full live acceptance remains OPEN and admissions remain closed.
 - [ ] After the maintenance rollout, verify delivery of a small controlled alert
   test, exact recovery timing and saved-work restoration, normal access policy,
   dashboard status and absence of duplicate alerts. Record the revision, checks
   and deployment outcome without publishing student information.
-  October27 authorized rollout IN PROGRESS: actual private production-copy
-  schema11→33 startup preserved all18 old data tables; live schema33/history/assets
-  verified in maintenance. No controlled alert/real acceptance claimed yet. Selected
-  mcadilha is currently practice-only; a consequential dialog asks another normal
-  non-student identity or explicit temporary exception change with independent
-  admin/root access. Do not bypass the installed exception. Human SSH/MFA/media/
-  inbox confirmation remains required; external new starts stay fenced. Exact
-  host-specific changes/acceptance/rollback: docs/production-rollout-2026-10-27.md.
+  October27 matched rollout/consolidation DEPLOYED and verified in maintenance.
+  Actual private production-copy schema11→33 startup preserved all18 old tables;
+  actual historical data/assets/CLI/native-role/callback checks PASS. One controlled
+  email was accepted, same-intent retry reused its outbox, and instructor confirmed
+  inbox receipt exactly once. No new student incident or attempt/grant was created.
+  Full real SSH/MFA/camera, retained hold/Continue, protected NEW saved-work/full
+  chosen allowance and normal deadline/access/credential restoration remain pending.
+  mcadilha is practice-only AND has administrator/sudo rights; merely changing its
+  static exception cannot satisfy normal account-policy guards. No privilege or
+  account-policy rule was weakened. A dialog requests a non-admin, non-student
+  institutional account for the full test; instructor enters credentials directly.
+  Earlier offered flag-only conversion was withdrawn after inspecting the helper.
+  External new starts remain fenced; no production-ready-for-students claim.
+  Host-specific receipt/acceptance/rollback: docs/production-rollout-2026-10-27.md.
+
 
 References: `docs/native-cleanup-isolation-incident.md`,
 `docs/recovery-runbook.md`, `design.md`, and the protected October 20 alert/audit

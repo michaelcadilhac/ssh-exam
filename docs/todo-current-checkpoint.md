@@ -1,129 +1,81 @@
 # Current TODO checkpoint
 
-October27 CURRENT: guarded production cutover is AUTHORIZED and IN PROGRESS on
-marco and csc-sys; instructor chose mcadilha for real SSH/MFA/media/inbox checks.
-No repeated deployment/local-commit/account approval is needed. Public new-start
-gate verified20 refused requests including encoded paths/spoofed headers. Full
-web/native owner/interval/journal/session/auth/socket/cgroup drain passed before
-stopping the exact exam components; SSH/relay/nginx/unrelated services untouched.
+October27 CURRENT:37/38 items covered. The instructor explicitly authorized the
+guarded production cutover on marco/csc-sys. Consolidation is DEPLOYED/VERIFIED;
+web remains MAINTENANCE true with external new-start fence. Do not ask again for
+deployment/local commits or send another alert. No push or student start/grant.
 
-Both private backups verified: marco /var/backups/ssh-exam/cutover-20261027-vymmm77z
-(13,543,137,280-byte data/config archive,153,304 members,SQLite integrity plus old
-image); csc-sys /var/backups/ssh-exam/cutover-20261027-ngzrkhmr (201,594,880 bytes,
-3,947 members). Credentials/student data remain on their owning hosts.
+## Current deployed cohort and proof
 
-Native815a895 is NOW DEPLOYED: four exact binaries/eight units, canonical outbound
-proxy; both old temporary unit files/live-preserve.conf retired after drain and
-backup. Single socket owner, canonical/watchdog/timer active+boot enabled; root
-examctl health production_ready true, retained role complete/enabled/issues[].
-172 original intervals/settings/protection/access/grants preserved;408 protected
-source/account files byte-identical. Only14 legacy never-started/unapplied
-cancellations receive the source-defined NORMAL acknowledgement; no OS account,
-clock/hold/source/protected byte change. Record this intentional metadata update.
+Web815a895/schema33, marco image config ID46244c89… (OCI manifest4d969bbe…); checkout
+stillb7af387, exact loaded image selected through preserved no-build Compose unit.
+Native command source872fe80854e640af483aad1af6df4ed8febebe43:
+agentd44283ef81d36d3b4108af735c1d7a3a4b162b397c18399ec2114c1b7c9fee87,
+CLI0c95fe05dba7036c6f39e3398c4e85c591ec11db485c1595391aff6cc43fb54a.
+Qualified unchanged-wire loginb1d4d3ae…/infoa52ce6c4… and support retained.
 
-Web is NOW DEPLOYED schema33/healthy, maintenance:true, explicit56 CLI operations,
-fenced-release nginx, original Compose/secrets/pins/mail/readiness intact. Actual
-production-copy rehearsal preserved all18 old data tables; actual live108 attempt
-histories/clocks/settings/protection/access unchanged;0 invented grants/outbox
-queued. All6 public qualified assets match and root signed web CLI exams.list PASS.
+External gate20 public refusals/full native+web pending/owner/interval/journal drain
+preceded stops/backups. Temporary live-upgrade/deferred-recovery unit files and
+live-preserve.conf retired; one canonical socket owner, matching running agent/
+watchdog, active/enabled reconcile timer and correct boot dependencies. SSH/relay,
+hardening, secrets and unrelated services unchanged. No reboot was performed.
 
-Cutover caught stale configuration: startup publication preceded the role socket.
-First correction80eb76e is NOW INSTALLED (agent554fc2c2…/CLI49fd2180…), but production
-verification caught a context defect: hardened reconcile.service hides /home/student,
-so its report has complete roles but readiness false. This failed receipt is NOT
-qualification. Reconcile.timer is PAUSED in authorized drained maintenance; canonical
-and independent watchdog stay active, no student/grant/clock started. Never weaken
-ProtectHome or other guards to make reporting pass.
+Actual production-copy startup preserved all18 old data tables through11→33; live
+108 web/172 native historical settings/clocks/generation/protection/access/grants
+unchanged and408 protected/source/policy files byte-identical. Only14 zero-clock,
+never-applied cancellations explicitly acknowledge NORMAL; no OS account/hold
+change. All6 public assets/root signed management PASS. No invented grant or new
+student incident. Outbox126:106sent/20cancelled, incidents32 unchanged.
 
-Corrected source now publishes from the actual canonical ServeLocal context after
-socket bind and each minute; errors are observations/logged, never a cause to kill
-healthy PTY owners. One-shot returns to delivery-only; supported root CLI reconcile
-still queues an explicit host-view refresh offline. Focused PUBLIC normal-agent
-startup+real minute refresh/TLS delivery and CLI queue PASS; exact own SIGTERM and
-all synthetic keys/process cleanup verified. Binary outputs configuration-service-bin.
-Full core/CLI race session97284 COMPLETED/PASS:207.681s/6.353s; vet45236 PASS.
-Public focused startup+real-minute/TLS/CLI queue regressions PASS; all owned test
-processes/keys removed. New source validated for the coherent commit and deployment;
-80eb76e remains only the first installed correction. Doc/source evidence:
-docs/native-configuration-refresh.md and this run's configuration-*.log.
+A startup readiness publication defect was caught before reopening. First80eb76e
+fix failed positive service-context acceptance (reconciler ProtectHome hides/home);
+receipt retained, no protection relaxed. Final872fe80 publishes from canonical
+ServeLocal after listener bind/every minute; one-shot delivery-only, CLI explicit
+queue still supported. Actual public startup+minute/TLS/CLI regressions and native
+core races207.681s/CLI6.353s/vet PASS. Deployed automatic healthy signed snapshots
+1328→1330 advanced120,076ms; production_ready/roles/retained true/no missing guards.
+Timer RESUMED/active/enabled; no race/build/test process remains running.
 
-Single authorized alert test requested21f0c981-5468-4f2f-8236-82d1c3ad5c97,
-outboxe2cb1539-d6ef-4e5e-9a42-8d82c87c6ae6. Same-request retry returns same outbox;
-SMTP accepted and instructor CONFIRMED inbox receipt exactly once; local
-controlled-alert-human-confirmation.json records the actual response.
-Do not send a second test. No student incident created. The full real acceptance
-still needs human SSH/MFA/media and eligible account choice; inbox is complete.
+## Remaining required answer and exact next action
 
-Open NEW consequential choice dialog: mcadilha is explicitly configured practice-
-only (sandbox_only:true and health's administrator_sandbox_accounts). Full ordinary
-exam/recovery testing needs another named non-student identity OR explicit temporary
-exception change with independent admin/root access (mcadilha restrictions may
-remove its normal admin SSH until deadline). Do not silently bypass that exception.
-Continue independent correction/acceptance preparation while awaiting the choice.
+Full live ordinary/NEW saved-work acceptance is OPEN. Instructor selected mcadilha,
+but it is practice-only AND has sudo/admin rights; normal policy explicitly refuses
+privileged groups/sudo rights. Merely flipping its exception is insufficient. The
+earlier flag-only conversion option was withdrawn. Do not change its privilege,
+exception or guards. Latest dialog requests a NON-ADMIN NON-STUDENT institutional
+username for real SSH/MFA/media tests. Never request passwords/MFA codes.
 
-Owned headed-browser Node REPL session79153; local SSH SOCKS forward46779 through
-marco, browser-forward.json records exact cancel command. It uses real TLS/public
-origin and per-process host mapping for loopback-only gate access, not a global
-DNS/browser or certificate bypass. Collect its last launch/probe result before UI
-work. No credentials/MFA/camera/inbox result obtained. Cancel only the exact owned
-forward when done; preserve the user's parent SSH connection.
+Email criterion COMPLETE: controlled outboxe2cb1539-d6ef-4e5e-9a42-8d82c87c6ae6,
+request21f0c981-5468-4f2f-8236-82d1c3ad5c97; same-intent retry same outbox, SMTP sent,
+instructor confirmed inbox exactly once. Do not send another test.
 
-Durable in-progress receipts/scripts: MAIN var/collection-tests/production-cutover.td6oq2x6;
-pointer /tmp/ssh-exam-production-cutover.json. Host staging: csc-sys
-/var/tmp/ssh-exam-rollout-815a895-kro4_1em; marco
-/var/tmp/ssh-exam-rollout-815a895-heo02ogn. Both production TODOs remain OPEN pending
-matched web/callback/boot checks and actual controlled live acceptance. No push.
+After an eligible identity is provided, follow this run's live-acceptance-run-sheet.md:
+new synthetic template/exam/grants, finite explicit Begin windows, real human
+SSH/MFA/screen/webcam, full allowance only at Begin, preserved shell/editor through
+hold/approval/Continue, protected finish, verified retained source→NEW saved-work
+allowance, actual original/current-deadline account/credential cleanup, consistent
+dashboard/callbacks/no duplicates. Keep external starts fenced until all pass and
+the test is drained. Newly authored local C++ input is ready; no production test
+template, account, enrollment, attempt or grant was created. Do not use a real
+student or weaken policy to manufacture acceptance.
 
-## Validated result
+## Durable records and preservation
 
-Current worktree var/worktrees/production-rollout-20261027. Exact host-specific
-sequence, inventory and rollback limits: docs/production-rollout-2026-10-27.md.
-Use that document, not the entire historical log.
+Main work is /home/micha/src/ssh-exam, source872fe80; older rollout worktree at9be4cf9
+is historical. Feature receipts: docs/production-rollout-2026-10-27.md and
+native-configuration-refresh.md. Run MAIN var/collection-tests/production-cutover.td6oq2x6;
+pointer /tmp/ssh-exam-production-cutover.json. Whitelisted aggregate host receipts
+are retained locally; credentials/production authority/media stay on owning hosts.
+Private backups: marco/var/backups/ssh-exam/cutover-20261027-vymmm77z (13.54GB plus
+verified SQLite/old image); csc-sys/var/backups/ssh-exam/cutover-20261027-ngzrkhmr
+(201.6MB plus pre-correction state/commands). No old DB/state restore over newer
+authority; prefer closed admissions/forward repair when compatibility is unproven.
 
-Matched code-only release MAIN var/releases/ssh-exam-815a895-20261027.d3w4bye4:
-21 files/144,610,717 bytes, manifest SHA256
-ab446d7d4174567c449f17113938327303f70ab29ab7e68998085b158de4bb54.
-Image OCI manifest4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae;
-config46244c89f91cd635d6b7836d7693ca40f4293e605c0ba76b2af59c9fc547bcb3.
-Four exact qualified native executables/291 source hashes, unchanged scripts/units,
-whole package/OCI layer binding and actual staged CLI help PASS. No secret/config/
-student/test-driver payload. Adjacent .verification.json retains the receipt.
-
-Read-only snapshots: native172 terminal attempts/96 protected completions,
-web108 terminal attempts/82 protected completions, no unfinished work/current
-owners/pending clock/collection/access work observed. This is NOT a future drain.
-marco schema11, two open admission windows, maintenance false; three old native
-listeners active. Web Compose matches candidate; unit already uses --no-build.
-Native canonical lacks the proxy route already working for watchdog/reconciler;
-nginx still serves three old frontend override blocks. These are concrete cutover
-changes, not new product features. Sufficient private backup space observed.
-
-Actual image schema11→33 and24→33 synthetic migration/startup/asset tests PASS;
-old columns/enrollments/settings preserved, no invented grants/owners, exact
-private containers/images/keys removed. tests/container-release-smoke.py adds
-schema11 and independent-asset-receipt options; no application/image input changed.
-Three exact adjacent .cutover-candidates nginx configs also PASS actual local
-nginx syntax and51 HTTP/TLS/WebSocket routing/refusal checks EACH; all owned
-processes/keys removed. Candidate manifest47b38817ed946f418f74a52e53e30879974f048c6f94d2ec4a3de381b7b6f4e0.
-Includes the canonical proxy override/explicit56-operation allowlist; no secrets.
-Target syntax/refusal/drain checks still required before any stop.
-Durable receipts: MAIN var/collection-tests/production-rollout-readonly.e3c_z4rz.
-Prior native/public/browser qualification remains in release-readiness.md,
-examctl-coverage-audit.md and todo-local-completion-evidence.0einctzi.
-
-## Exact next action and decisions
-
-Commit/manifest the passed bounded configuration refresh correction and perform
-its fresh-idle matched native activation; verify automatic signed configuration
-refresh, preserved history and root CLI. Keep web in maintenance and external
-new-start gate until account choice and controlled real acceptance are complete.
-Human MFA/media/inbox participation is required; never request passwords or codes.
-No other design question is open. Do not re-run old four-owner drain/install
-scripts: both temporary agents are retired. Never run historical automatic
-installers, revive approval/reset helpers, weaken guards, bulk-convert old grants
-or restore pre-start authority. Prefer closed admissions/forward repair on failure.
-Original main ten dirty PNGs/stashes remain preserved; hash manifest
-/tmp/ssh-exam-retained-recording-main-image-hashes.json. Local commits authorized.
-No subagents. Stop for a missing executable only when its package is absent and
-instructor must install. Automatic review blocked credential-field output before
-execution; narrower non-secret storage inventory succeeded, no access blocker.
+Owned headed browser/session79153 and forward46779 are CLEANED UP; port confirmed
+unreachable and the user's parent SSH connection preserved. Recreate an owned
+headed browser/loopback forward only after eligibility is known. No credentials or
+media permissions were entered. All ten original dirty screenshots/stashes remain;
+hashes /tmp/ssh-exam-retained-recording-main-image-hashes.json. Local commits allowed,
+no push. No subagents; missing executable stops only if instructor must install its
+required package. Never rerun the old auto-cancelling installers or four-owner
+activation scripts against the now-consolidated service.

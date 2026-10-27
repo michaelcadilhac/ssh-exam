@@ -1,5 +1,16 @@
 # Main-bug release readiness
 
+October27 CURRENT: matched web815a895/schema33 and corrected native commands872fe80
+are DEPLOYED IN MAINTENANCE under explicit authorization. Full drain/private backups,
+three-agent consolidation, protected historical comparisons, public assets/root CLI,
+automatically healthy signed role snapshots and exactly-one inbox alert PASS.
+37/38 TODO items covered. Full human normal exam/NEW saved-work acceptance still
+needs an eligible non-admin identity; mcadilha is practice-only. Do not reopen new
+student starts or treat this as final admission signoff. Current authoritative
+receipt/rollback: production-rollout-2026-10-27.md. Earlier dated NO-GO/artifact notes
+below are historical; native-configuration-refresh.md records the corrected context
+failure and207.681s/6.353s race qualification.
+
 Latest October26 LOCAL completion:36/38 main TODO items are implemented/tested.
 The only open boxes are production agent-service consolidation and post-rollout
 live acceptance; neither is authorized here. C4 now has actual guarded root manual

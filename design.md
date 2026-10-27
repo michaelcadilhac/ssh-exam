@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-Current local runtime contract (October26,2026; **not deployed**): negotiated v1
+Current runtime contract (October27,2026; **deployed in maintenance**): negotiated v1
 keeps the original viable authenticated SSH/page and per-attempt supervisor through
 policy holds. Verified stop-assisted writer/input barriers preserve shells/editor
 buffers; only fresh scoped approval/Continue restores policy-held work. Positively
@@ -19,7 +19,13 @@ support before Begin/Continue; there is no environment/configuration enable bypa
 The exact release/native/kernel/browser/16-student qualification and limitations
 are in docs/retained-release-qualification.md. Earlier dated implementation notes
 below are historical; this contract supersedes their disabled/incomplete status.
-Production retains its installed cohort until separately authorized drained rollout.
+The instructor-authorized drained rollout installed matched web815a895/schema33
+and native command872fe80; consolidation and live signed readiness are verified.
+New admissions remain closed pending full human ordinary/recovery acceptance with
+an eligible non-admin identity. Existing historical intervals/protection remain
+intact. Exact status/backup/rollback: docs/production-rollout-2026-10-27.md. Dated
+feature status paragraphs below are development history; this rollout receipt is
+current.
 
 The capture-input recovery correction also refreshes the browser ingress gate from
 live verified conditions after a healthy sample; it cannot depend solely on a

@@ -51,8 +51,14 @@ plus actual public hashes/history evidence remains applicable.
 
 Current receipts/binaries: MAIN var/collection-tests/production-cutover.td6oq2x6,
 configuration-service-bin and configuration-service-{green,cli-green,races}.log.
-Focused public regressions PASS; full native core races207.681s, full affected CLI
-races6.353s and vet PASS. The canonical-context correction is NOT YET DEPLOYED. Web schema33 and native
-80eb76e remain in authorized maintenance; reconcile.timer paused, deadline watchdog
-running. Email was accepted and instructor confirmed exactly one inbox delivery.
-Full human exam/recovery acceptance and account eligibility choice remain open.
+Full native core races207.681s/CLI6.353s/vet PASS. Final872fe80 is DEPLOYED: canonical
+agent and watchdog share agent hashd44283ef…; CLI0c95fe05…. Exact positive service-
+context acceptance PASS: fresh automatic signed web snapshots1328→1330/120,076ms,
+production readiness and retained role agreement true/no missing guards. The hardened
+reconciler timer is resumed, active/enabled and does not replace that healthy view.
+All172 native/108 web historical intervals/settings/protection/access/grants and408
+protected/source/account-policy files preserved. Only14 previously unapplied
+zero-clock cancellations acknowledge NORMAL, without changing account policy.
+Email received exactly once. Full human exam/recovery acceptance remains pending
+an eligible non-admin account; admissions stay closed. Do not count the failed80eb76e
+namespace receipt as qualification or revive its timer-generated readiness behavior.
