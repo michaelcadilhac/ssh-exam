@@ -1,65 +1,54 @@
 # Current local TODO checkpoint
 
-October26,2026. Mainb335327 includes C8, C4a/C4b diagnostics, corrected management discovery
-and reconciled unified-grant/crash acceptance. Current C17 correction is validated locally in this commit; no deployment.30/38 main items checked locally;
-not effort/readiness. No deployment/push/service/config/student changes.
+October26,2026. Main f9d34fe contains C17, C8, C4a/C4b diagnostics and prior
+qualified release work.30/38 main checkboxes locally complete (not effort or
+readiness). Active C4c is validated locally in this commit on workspace-cleanup-delivery,
+var/worktrees/workspace-cleanup-delivery. Nothing deployed/pushed; production and
+ten original dirty main screenshots remain untouched.
 
-## Current milestone and next action
+## Current milestone and exact next action
 
-Active branch/worktree workspace-cleanup-delivery under var/worktrees. Actual
-process-help RED0.023s exposed stale "saved-work migration pending" guidance;
-corrected root/management/web/grants help now links cancel-first NEW/source-sync
-and native-review/reconcile-native. Focused1.201s/full CLI races19.499s PASS.
-No runtime/app/browser contract changed. Unified authority/migration/scenario
-specification and existing recovery crash/storage repair acceptance now close
-those two local checklist items: docs/unified-grant-acceptance.md. Fresh current-
-source native race41.678s passes all11 selected top-level entries, no skips:
-signed fresh TLS Begin/restart, allowance/source/rejected-preflight retry, both
-8-stage death/CLI-repair/watchdog orders and8 actual ENOSPC/EROFS stages. Matrix
-OS account/activation adapters remain synthetic; separate exact286 root43/PUBLIC
-C7/16x4 evidence supplies installed boundaries, within its own artifact scope.
+Actual root entry: examctl workspaces cleanup/status/retry/cancel, backed by one
+bounded private worker with attempt/account fences, fresh archive/use proof,
+exclusive regular-file leases/all-directory sealing, exact-inode quarantine,
+durable recoverable phases/receipt bytes and independent archive pins. Source
+and no-start/definition-retirement interfaces now understand the new receipts.
+C4 remains OPEN pending broad and guarded privileged qualification. Protocol,
+state review, seams and failures: docs/workspace-cleanup-protocol.md.
 
-C17 first-observation/fresh-Begin correction is now implemented/tested locally:
-all625 application checks110files335.54s PASS, both actual CLI/TLS tests enabled;
-critical packaged-WASM refusal/same-preparation repair/finish11.3s plus5 affected
-browsers59.5s PASS; build/types and production-maintenance image24->33/history/
-clock/assets PASS. No new native protocol or execution path; scope/seams/failures:
-recovery-admission-consistency.md.30/38 local items checked. Source/asset manifest
-MAIN var/collection-tests/recovery-first-observation.sources.json. The only late
-change is browser-only shell readiness/focus, excluded from Vitest/image inputs;
-focused22.7s then5-case repeat pass. Do not rerun unchanged full app for that.
+Frozen291 native inputs: /tmp/ssh-exam-workspace-cleanup-native-sources.json.
+Final focus PASS: CLI8.300s/core6.301s, no changed frozen inputs. Actual compiled
+CLI513-file cleanup/reference/SCM_RIGHTS/audit/FIFO/stale-byte/replay/discovery
+checks; exact SIGKILL/live-status/storage/marker/hold/inode/cancel/retry/history
+and actual saved-work prepare from unchanged archive with zero clock. Earlier
+PID1 panic/nonzero crash receipts are INVALID and excluded: separate PID1 reaper
+and exact137 oracle now pass. Corrected3 race repeats14.394s; later history/pin
+focus6.018s and final frozen focus above. No installed PAM/cgroup/multi-UID proof
+is inferred from private namespace fixtures. No new helper-only completion.
 
-Image ssh-exam-release-test:recovery-compatibility-033-67c74bba8133,
-sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae;
-pinned Docker WASM1bea6f8e/JS51cc420a. Dist/web is extracted from that image;
-dist server/native clock remains the separately validated local build. Local
-Go1.27.3 WASM3143... is preserved at MAIN var/collection-tests/recovery-compatibility-
-local-web. No active runner/container/guest. Owned smoke/export objects removed.
+Broad native PASS: core348.394s/CLI24.430s, go test -race ./... with management/
+collection userns opt-ins. Build/vet PASS; all291 frozen native inputs unchanged.
+Logs /tmp/ssh-exam-workspace-cleanup-native-broad.log and -build.log/-vet.log.
+No active local runner. Then build exact guarded guest probe/bundle
+for real resource/queued-directory/multi-UID/healthy-peer/restore proof. Preserve
+host/base/student data; busy/uncertain guard means no test. Existing286 upload
+approval covers ONLY its old artifact, not this new candidate. SSH is connected and root read-only precheck passes:172 records,0 live/unresolved,
+private guest present. This does not replace the runner's fresh/concurrent guard;
+no upload or test guest has been started for this candidate.
 
-Next: commit/integrate C17, then deliver approved C4 explicit cleanup end to end:
-root workspaces cleanup/review/status/retry/cancel, private same-FS exact-inode
-quarantine, durable audit/phase/pin/no-start integration and no-follow removal.
-Fresh archive/current holds/UID workflow fences, all writer/mount/use barriers
-and crash/healthy-peer/saved-restore qualification are required. Queued-only
-regular SCM_RIGHTS reference is invisible to proc but positively refused by a
-file lease; directories do not support leases. Existing quiesceWriters seals ONLY
-the top work dir0500, so do not infer sealed nested directories/queued directory
-references. Qualify the actual deletion barrier; no unused helper chain or
-eligibility from snapshot_clear. Manual/no-grace policy remains settled.
+Do not stop at this candidate or a report. After validated cleanup, finish the
+management coverage/help/actionable-refusal/operator journey using existing
+interfaces. Configuration-file apply architecture awaits the existing dialog:
+root-locally on each owning server with separate explicit restarts (recommended),
+or class-server examctl also controls web-host files/services. No answer yet;
+continue independent work, do not repeat settled grant/SSH/retention choices.
 
-Pending design dialog: server-file config apply root-locally on each owning
-server with separate restarts (recommended), or class examctl remote web-host
-file/service control? Existing signed web management is settled. Await that
-architecture answer only; continue independent cleanup. Config apply/help/full
-operator journey and2 production-only completion items remain open.
-
-C4 public workspaces dry-run verifies archive and observes objects/all threads/
-foreign mounts/fd/cwd/root/maps/watches in a bounded independent worker under
-attempt/account fences. usage_observed/snapshot_clear are diagnostics; eligible
-stays false. No signals/clock/hold/grant/source changes or deletion. Full CLI
-races20.858s/affected core14.954s/build/vet PASS; real private namespaces, ONLY
-manager resource interface mocked. New installed resource/PAM proof not claimed.
-Exact failures/state review: docs/workspace-cleanup-delivery.md. No active runner.
+Web/app/WASM unchanged by C4c; C17 f9d34fe625 application checks and packaged
+browsers/image evidence cover those unchanged surfaces. Image:
+ssh-exam-release-test:recovery-compatibility-033-67c74bba8133
+sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae
+C17 source/asset receipt MAIN var/collection-tests/recovery-first-observation.sources.json.
+No new ordinary native execution cohort claimed.
 
 ## Prior qualified cohort and production boundary
 

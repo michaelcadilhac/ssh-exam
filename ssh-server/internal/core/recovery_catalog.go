@@ -249,6 +249,9 @@ func (e *Engine) RecoveryGrants(exam string) ([]RecoveryGrantView, error) {
 // Isolated verification before source deletion. The root coordinator owns the
 // source-attempt and catalog locks across this check and the final short commit.
 func (e *Engine) checkSubmissionDependencies(source *Attempt) error {
+	if err := e.checkWorkspaceCleanupDependency(source); err != nil {
+		return err
+	}
 	if err := e.checkGrantSourceDependencies(source.ID); err != nil {
 		return err
 	}

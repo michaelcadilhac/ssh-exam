@@ -1916,6 +1916,16 @@ the approval is not a production change or a completed investigation.
 ## Maintenance and further validation
 
 - [ ] **Define and implement private workspace cleanup after secured collection.**
+  October26 C4c candidate now implements actual reviewed cleanup/status/retry/
+  cancel, exclusive regular-file leases/all-directory sealing, exact-inode private
+  quarantine, durable phase/receipt/archive pins and no-start history integration.
+  Actual CLI513-file/reference/audit/stale-byte refusals and corrected exact-
+  SIGKILL/storage/restore cases pass focused checks. Broad native races now pass
+  core348.394s/CLI24.430s with build/vet. Guarded multi-UID/resource/healthy-peer
+  qualification remains: C4 is NOT complete.
+  Invalid PID1 panic/nonzero crash receipts are excluded; corrected tests require
+  exact SIGKILL. Current protocol/evidence: docs/workspace-cleanup-protocol.md.
+  No deployment, production cleanup, grace period or automatic deletion.
   October26 integrated root `workspaces dry-run` now performs bounded independent
   archive/kernel-reference observation with useful CLI help and scoped replies.
   Actual compiled CLI/private namespace tests catch foreign fd/cwd/map/watch,

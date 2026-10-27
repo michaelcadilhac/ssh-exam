@@ -70,6 +70,7 @@ type WorkspaceRetentionStatus struct {
 	ArchiveVerified   bool                  `json:"archive_verified"`
 	Blockers          []string              `json:"blockers"`
 	Note              string                `json:"note"`
+	Cleanup           *WorkspaceCleanupView `json:"cleanup,omitempty"`
 }
 
 func (e *Engine) workspaceRetentionDirectory() string {
@@ -247,7 +248,22 @@ func (e *Engine) workspaceRetentionStatus(a *Attempt) (WorkspaceRetentionStatus,
 		Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline, AccessState: a.AccessState,
 		PolicyState: a.PolicyState, PolicyError: a.PolicyError[:min(len(a.PolicyError), 1500)], AccessError: a.AccessError[:min(len(a.AccessError), 1500)],
 		RecordedProtected: a.Protected, Checksum: a.Checksum, RecordedDirectory: a.WorkPath, Path: e.workspaceBase(a.ID), Hold: h, Blockers: []string{},
-		Note: "Recorded metadata only, not fresh protected-copy/writer/mount/process-use verification. No cleanup command is enabled. Holds never change deadlines/access; no automatic cleanup or grace period."}
+		Note: "Recorded metadata only, not fresh protected-copy/writer/mount/process-use verification. Use dry-run then explicitly reviewed cleanup; inspect cleanup-status for any recorded request. Holds never change deadlines/access; no automatic cleanup or grace period."}
+	j, data, readErr := e.readCleanupJob(a.ID, "")
+	if readErr != nil && j == nil {
+		return v, readErr
+	}
+	if j != nil {
+		status, err := e.cleanupStatus(j, data, a)
+		if err != nil {
+			return v, err
+		}
+		if readErr != nil {
+			status.Error = "Accepted cleanup receipt needs explicit same-job marker durability repair; preserve archive and inspect cleanup-status"
+			status.ArchivePinned = true
+		}
+		v.Cleanup = &status
+	}
 	if h.Revision > 0 {
 		initialized, err := e.workspaceRetentionGlobalMarker(false)
 		if err != nil {
@@ -370,7 +386,7 @@ type WorkspaceRetentionPage struct {
 }
 
 func (e *Engine) WorkspaceRetentions(exam, after string, limit int) (WorkspaceRetentionPage, error) {
-	page := WorkspaceRetentionPage{Workspaces: []WorkspaceRetentionStatus{}, Note: "Known native attempts only; unknown/orphan folders stay preserved. ID order is not chronological. Candidate is not eligibility; no deletion is enabled."}
+	page := WorkspaceRetentionPage{Workspaces: []WorkspaceRetentionStatus{}, Note: "Known native attempts only; unknown/orphan folders stay preserved. ID order is not chronological. Candidate is not eligibility; use dry-run and explicitly reviewed cleanup. Existing request appears in cleanup metadata."}
 	if (exam != "" && !identifier.MatchString(exam)) || (after != "" && !attemptID.MatchString(after)) || limit < 1 || limit > 200 {
 		return page, errors.New("list requires optional exam ID/attempt UUID cursor and --limit 1..200")
 	}

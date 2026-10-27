@@ -1,6 +1,11 @@
 # Manual workspace cleanup delivery
 
 Local investigation/development only; no deployment or production deletion.
+October26 C4c now has an integrated candidate cleanup/status/retry/cancel worker,
+durable archive pins/receipts and actual CLI/crash/storage/restore regressions.
+Broad and guarded privileged qualification remain; C4 stays open. Current
+protocol, state review, exact failures and next acceptance:
+[workspace-cleanup-protocol.md](workspace-cleanup-protocol.md).
 Approved C4 policy remains manual, no grace period, preserve authoritative clocks,
 account restrictions, protected archives/history and source grants. Same-UID active
 work or uncertain usage can defer cleanup without interrupting any process. Archive

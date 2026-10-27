@@ -147,6 +147,9 @@ func (e *Engine) recoveryRevocationState() (State, error) {
 // Whole bounded inventories reject unknown crash residue, rather than inferring
 // no start from the canonical row alone. They never traverse/delete orphan work.
 func (e *Engine) recoveryNoStartFiles(state State, r *RecoveryPreparation) error {
+	if err := e.checkCleanupHistoryAuthority(state); err != nil {
+		return err
+	}
 	for _, directory := range []string{e.Config.Work, filepath.Join(e.Config.State, "submissions")} {
 		root, err := os.OpenFile(directory, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 		if os.IsNotExist(err) && directory != e.Config.Work {
@@ -166,6 +169,12 @@ func (e *Engine) recoveryNoStartFiles(state State, r *RecoveryPreparation) error
 				return errors.New("workspace/submission inventory exceeds safe bounds; preserve records for reviewed migration")
 			}
 			for _, entry := range entries {
+				if directory == e.Config.Work && entry.Name() == ".workspace-cleanup-quarantine" {
+					if err := e.checkCleanupQuarantine(state); err != nil {
+						return err
+					}
+					continue
+				}
 				a := state.Attempts[entry.Name()]
 				if !attemptID.MatchString(entry.Name()) || !entry.IsDir() || a == nil || a.ID != entry.Name() {
 					return errors.New("unknown workspace/submission crash residue; preserve it and reconcile consistent native history before cancellation")

@@ -254,12 +254,18 @@ func workspaceWatchedUse(data []byte, objects map[workspaceObject]bool) (bool, e
 }
 
 func (e *Engine) workspaceUseSnapshot(a *Attempt, expected WorkspacePathIdentity) ([]WorkspaceUse, error) {
+	return e.workspaceUseSnapshotAt(a, expected, e.workspaceBase(a.ID), nil)
+}
+
+// owned contains only this worker's still-open, pinned inspection/lease handles.
+// Other processes' descriptors, including identical inode references, still count.
+func (e *Engine) workspaceUseSnapshotAt(a *Attempt, expected WorkspacePathIdentity, path string, owned map[int]workspaceObject) ([]WorkspaceUse, error) {
 	uses := []WorkspaceUse{}
 	var observerRoot unix.Stat_t
 	if unix.Stat("/", &observerRoot) != nil {
 		return uses, errWorkspaceUsage
 	}
-	root, err := os.OpenFile(e.workspaceBase(a.ID), os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK|syscall.O_NOATIME, 0)
+	root, err := os.OpenFile(path, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK|syscall.O_NOATIME, 0)
 	if err != nil {
 		return uses, errWorkspaceUsage
 	}
@@ -284,12 +290,12 @@ func (e *Engine) workspaceUseSnapshot(a *Attempt, expected WorkspacePathIdentity
 	if err != nil {
 		return uses, err
 	}
-	anchor, err := workspaceMountAnchorFor(e.workspaceBase(a.ID), inventory.Mount, uint64(stat.Dev), mounts)
+	anchor, err := workspaceMountAnchorFor(path, inventory.Mount, uint64(stat.Dev), mounts)
 	if err != nil {
 		return uses, err
 	}
 	for _, m := range mounts {
-		if workspaceMountContains(e.workspaceBase(a.ID), m.point) {
+		if workspaceMountContains(path, m.point) {
 			return uses, errors.New("workspace contains/is a mountpoint; preserve it and inspect mounts before cleanup")
 		}
 	}
@@ -448,12 +454,15 @@ func (e *Engine) workspaceUseSnapshot(a *Attempt, expected WorkspacePathIdentity
 						return errWorkspaceUsage
 					}
 					descriptors := os.NewFile(uintptr(fd), "workspace-descriptor-inventory")
-					ids, err := workspaceNumericEntries(descriptors, 4096)
+					ids, err := workspaceNumericEntries(descriptors, 24000)
 					descriptors.Close()
 					if err != nil {
 						return err
 					}
 					fdCount += len(ids)
+					if pid == os.Getpid() {
+						fdCount -= len(owned)
+					}
 					if fdCount > workspaceUsageDescriptors {
 						return errWorkspaceUsage
 					}
@@ -468,6 +477,13 @@ func (e *Engine) workspaceUseSnapshot(a *Attempt, expected WorkspacePathIdentity
 								continue
 							}
 							return errWorkspaceUsage
+						}
+						if expected, ok := owned[id]; pid == os.Getpid() && ok && expected == (workspaceObject{uint64(object.Dev), object.Ino}) {
+							var pinned unix.Stat_t
+							if unix.Fstat(id, &pinned) != nil || pinned.Dev != object.Dev || pinned.Ino != object.Ino {
+								return errWorkspaceUsage
+							}
+							continue
 						}
 						if inventory.Objects[workspaceObject{uint64(object.Dev), object.Ino}] {
 							if err := add(pid, tid, "descriptor", id); err != nil {
@@ -555,7 +571,7 @@ func (e *Engine) workspaceUseSnapshot(a *Attempt, expected WorkspacePathIdentity
 	}
 	// Reopen for an independent directory offset; never treat an exhausted readdir
 	// cursor as a second empty inventory.
-	second, err := os.OpenFile(e.workspaceBase(a.ID), os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK|syscall.O_NOATIME, 0)
+	second, err := os.OpenFile(path, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK|syscall.O_NOATIME, 0)
 	if err != nil {
 		return uses, errWorkspaceUsage
 	}

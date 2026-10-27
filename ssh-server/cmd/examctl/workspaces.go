@@ -16,6 +16,10 @@ func workspacesHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl workspaces list [--exam EXAM --limit N --after ATTEMPT]
        sudo examctl workspaces show ATTEMPT
        sudo examctl workspaces dry-run ATTEMPT
+       sudo examctl workspaces cleanup ATTEMPT --review SHA256 --request UUID --reason TEXT
+       sudo examctl workspaces cleanup-status ATTEMPT --request UUID
+       sudo examctl workspaces cleanup-retry ATTEMPT --request UUID --review SHA256 --reason TEXT
+       sudo examctl workspaces cleanup-cancel ATTEMPT --request UUID --review SHA256 --reason TEXT
        sudo examctl workspaces hold ATTEMPT --revision N --reason TEXT
        sudo examctl workspaces release-hold ATTEMPT --revision N --reason TEXT
 
@@ -43,10 +47,21 @@ opaque/changing kernel observations refuse no-use proof. Same-account live work
 can defer cleanup; never interrupt another exam to make verification succeed.
 usage_observed=true means the bounded scan completed. snapshot_clear=true means
 it found no reference or blocker at observation; it is not a lifetime barrier.
-eligible remains false until the complete destructive barrier is qualified.
+dry-run's eligible remains false; cleanup must establish its OWN lifetime barrier.
 It requires the installed bounded collection slice; failures are NOT queued.
-NO WORKSPACE DELETION COMMAND IS ENABLED. An archive filename/checksum or expired
-account hold is not proof that an old workspace may safely be removed.
+cleanup requires the exact fresh dry-run review, a NEW request UUID and an audited
+reason. Its bounded worker repeats archive/state/use checks, seals every directory,
+holds exclusive regular-file leases and quarantines only the reviewed inode before
+removal. No grace period or automatic cleanup. Unsupported objects and references
+refuse; never kill another process or relax ownership to make cleanup succeed.
+Private lifecycle receipt bytes are preserved in the durable cleanup receipt.
+After a lost reply use cleanup-status with the SAME request. Repeating cleanup
+only inspects that recorded intent. To continue an interrupted operation inspect
+status, review its CURRENT review hash, then use cleanup-retry. cleanup-cancel
+restores only intact work before REMOVING; it never recreates deleted data or
+overwrites another folder. Pending cleanup pins its protected archive, starts no
+clock and creates no account reservation. Holds and active same-account work defer
+cleanup. An archive filename or expired account hold alone is not permission.
 
 hold/release-hold require show's integer HOLD revision, not a clock revision or
 definition hash, plus an 8..1000 UTF-8 byte permanently audited operator reason.
@@ -73,7 +88,7 @@ Examples:
   sudo examctl workspaces hold ATTEMPT --revision 0 --reason 'Retain workspace for investigation'
   sudo examctl workspaces release-hold ATTEMPT --revision 1 --reason 'Investigation complete; independent proof still required'
 
-Exit status: 0 inspection/control result (never a deletion permit),
+Exit status: 0 inspection/control/deletion result (never a future deletion permit),
 1 operational refusal/failure, 2 invalid syntax. No production action is implied.`)
 }
 
@@ -90,6 +105,8 @@ func workspacesMain(args []string) int {
 	after := flags.String("after", "", "exclusive attempt cursor")
 	revision := flags.String("revision", "", "reviewed hold revision")
 	reason := flags.String("reason", "", "audited UTF-8 reason")
+	review := flags.String("review", "", "exact reviewed dry-run/status SHA256")
+	request := flags.String("request", "", "persistent cleanup request UUID")
 	usage := func(message string) int { fmt.Fprintln(os.Stderr, message+"; run examctl help workspaces"); return 2 }
 	if err := flags.Parse(ordered(args)); err != nil {
 		return usage("invalid workspace flags")
@@ -104,9 +121,24 @@ func workspacesMain(args []string) int {
 	}
 	seen := map[string]bool{}
 	flags.Visit(func(f *flag.Flag) { seen[f.Name] = true })
+	cleanup := len(w) > 1 && strings.HasPrefix(w[1], "cleanup")
+	if !cleanup && (seen["review"] || seen["request"]) {
+		return usage("review/request flags belong only to cleanup workflows")
+	}
 	ref := regexp.MustCompile(`^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$`)
 	var rev int64
 	switch w[1] {
+	case "cleanup", "cleanup-status", "cleanup-retry", "cleanup-cancel":
+		if len(w) != 3 || !ref.MatchString(w[2]) || !ref.MatchString(*request) || seen["exam"] || seen["limit"] || seen["after"] || seen["revision"] {
+			return usage("cleanup needs one exact attempt and --request UUID, without list/hold flags")
+		}
+		if w[1] == "cleanup-status" {
+			if seen["review"] || seen["reason"] {
+				return usage("cleanup-status accepts no mutation flags")
+			}
+		} else if !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(*review) || len(strings.TrimSpace(*reason)) < 8 || len(*reason) > 1000 {
+			return usage("cleanup control needs exact --review SHA256 and --reason 8..1000 UTF-8 bytes")
+		}
 	case "list":
 		if len(w) != 2 || *limit < 1 || *limit > 200 || (*exam != "" && !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(*exam)) || (*after != "" && !ref.MatchString(*after)) || seen["revision"] || seen["reason"] {
 			return usage("list needs only optional exam/limit/after filters")
@@ -127,7 +159,7 @@ func workspacesMain(args []string) int {
 			}
 		}
 	default:
-		return usage("workspace deletion is not enabled; choose list/show/dry-run/hold/release-hold")
+		return usage("choose list/show/dry-run/hold/release-hold or cleanup/cleanup-status/cleanup-retry/cleanup-cancel")
 	}
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "Workspace controls require real/effective root; run sudo examctl with identical arguments. Help is available without privilege.")
@@ -137,6 +169,18 @@ func workspacesMain(args []string) int {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot load root configuration %q: %v; use --config FILE and examctl help workspaces\n", *config, err)
 		return 1
+	}
+	if cleanup {
+		result, err := core.ControlWorkspaceCleanup(c, w[1], w[2], *request, *review, *reason)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+			fmt.Fprintln(os.Stderr, "Result output failed; inspect cleanup-status with same attempt/request:", err)
+			return 1
+		}
+		return 0
 	}
 	if w[1] == "dry-run" {
 		result, err := core.InspectWorkspaceCleanup(c, w[2])

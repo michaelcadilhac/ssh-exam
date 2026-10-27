@@ -36,12 +36,17 @@ type workspaceInspectionRequest struct {
 	Nonce   string `json:"nonce"`
 	ID      string `json:"id"`
 	Config  Config `json:"config"`
+	Action  string `json:"action,omitempty"`
+	Request string `json:"request,omitempty"`
+	Review  string `json:"review,omitempty"`
+	Reason  string `json:"reason,omitempty"`
 }
 type workspaceInspectionReply struct {
 	Purpose string                   `json:"purpose"`
 	Nonce   string                   `json:"nonce"`
 	ID      string                   `json:"id"`
 	Preview *WorkspaceCleanupPreview `json:"preview,omitempty"`
+	Cleanup *WorkspaceCleanupView    `json:"cleanup,omitempty"`
 	Error   string                   `json:"error,omitempty"`
 }
 
@@ -59,12 +64,23 @@ func WorkspaceInspectionWorkerMain(args []string) bool {
 		os.Exit(1)
 	}
 	e := &Engine{Config: request.Config}
-	preview, err := e.inspectWorkspaceCleanup(request.ID)
 	reply := workspaceInspectionReply{Purpose: request.Purpose, Nonce: request.Nonce, ID: request.ID}
+	var err error
+	if request.Action == "" {
+		preview, inspectErr := e.inspectWorkspaceCleanup(request.ID)
+		err = inspectErr
+		if err == nil {
+			reply.Preview = &preview
+		}
+	} else {
+		result, cleanupErr := e.workspaceCleanupControl(request)
+		err = cleanupErr
+		if err == nil {
+			reply.Cleanup = &result
+		}
+	}
 	if err != nil {
 		reply.Error = "Workspace inspection unavailable: " + err.Error()
-	} else {
-		reply.Preview = &preview
 	}
 	data, err := json.Marshal(reply)
 	if err != nil || len(data) > 8192 {
@@ -97,7 +113,7 @@ func InspectWorkspaceCleanup(c Config, id string) (WorkspaceCleanupPreview, erro
 	if err := collectionResourceBounds(); err != nil {
 		return result, err
 	}
-	request := workspaceInspectionRequest{workspaceInspectionPurpose, Token(), id, c}
+	request := workspaceInspectionRequest{Purpose: workspaceInspectionPurpose, Nonce: Token(), ID: id, Config: c}
 	payload, err := json.Marshal(request)
 	if err != nil || len(payload) > 65536 {
 		return result, errors.New("private workspace inspection request exceeds safe bound")
@@ -123,7 +139,7 @@ func InspectWorkspaceCleanup(c Config, id string) (WorkspaceCleanupPreview, erro
 		return result, fmt.Errorf("bounded inspection worker exited; no cleanup eligibility or queued action: %w; inspect workspaces show and retry dry-run", err)
 	}
 	var reply workspaceInspectionReply
-	if output.overflow || !validReadOnlyJSON(output.Bytes()) || decodeWorkerFrame(bytes.NewReader(output.Bytes()), 8192, &reply) != nil || reply.Purpose != request.Purpose || reply.Nonce != request.Nonce || reply.ID != id || (reply.Error != "" && reply.Preview != nil) {
+	if output.overflow || !validReadOnlyJSON(output.Bytes()) || decodeWorkerFrame(bytes.NewReader(output.Bytes()), 8192, &reply) != nil || reply.Purpose != request.Purpose || reply.Nonce != request.Nonce || reply.ID != id || reply.Cleanup != nil || (reply.Error != "" && reply.Preview != nil) {
 		return result, errors.New("invalid private inspection reply; no eligibility established; preserve evidence and retry dry-run")
 	}
 	if reply.Error != "" {
@@ -135,29 +151,27 @@ func InspectWorkspaceCleanup(c Config, id string) (WorkspaceCleanupPreview, erro
 	return *reply.Preview, nil
 }
 
-func (e *Engine) inspectWorkspaceCleanup(id string) (WorkspaceCleanupPreview, error) {
-	result := WorkspaceCleanupPreview{Uses: []WorkspaceUse{}}
+func (e *Engine) workspaceCleanupLocks(id string) (func(), error) {
 	if !attemptID.MatchString(id) {
-		return result, errors.New("invalid exact workspace attempt identifier")
+		return nil, errors.New("invalid exact workspace attempt identifier")
 	}
 	state, err := e.recoveryRevocationState()
 	if err != nil {
-		return result, err
+		return nil, err
 	}
 	a := state.Attempts[id]
 	if a == nil || a.ID != id {
-		return result, errors.New("known native attempt required; preserve orphan folders and inspect list --read-only")
+		return nil, errors.New("known native attempt required; preserve orphan folders and inspect list --read-only")
 	}
 	job, err := e.attemptCollectionLock(id)
 	if err != nil {
-		return result, errors.New("attempt job busy; inspection NOT accepted or queued; retry after staging/collection settles")
+		return nil, errors.New("attempt job busy; operation NOT accepted or queued; retry after staging/collection settles")
 	}
-	defer job.Close()
 	account, err := e.accountWorkLock(a.UID)
 	if err != nil {
-		return result, errors.New("account workflow busy; no eligibility or queued cleanup; retry without interrupting work")
+		job.Close()
+		return nil, errors.New("account workflow busy; retry without interrupting work")
 	}
-	defer account.Close()
 	var slot *os.File
 	for i := range 2 {
 		slot, err = e.collectionLock(fmt.Sprintf("slot-%d", i))
@@ -165,18 +179,35 @@ func (e *Engine) inspectWorkspaceCleanup(id string) (WorkspaceCleanupPreview, er
 			break
 		}
 		if !errors.Is(err, errCollectionPending) {
-			return result, err
+			account.Close()
+			job.Close()
+			return nil, err
 		}
 	}
 	if slot == nil {
-		return result, errors.New("verification workers busy; inspection not queued; retry after existing workers finish")
+		account.Close()
+		job.Close()
+		return nil, errors.New("verification workers busy; operation not queued; retry after existing workers finish")
 	}
-	defer slot.Close()
-	state, err = e.recoveryRevocationState()
+	return func() { slot.Close(); account.Close(); job.Close() }, nil
+}
+
+func (e *Engine) inspectWorkspaceCleanup(id string) (WorkspaceCleanupPreview, error) {
+	release, err := e.workspaceCleanupLocks(id)
+	if err != nil {
+		return WorkspaceCleanupPreview{}, err
+	}
+	defer release()
+	return e.inspectWorkspaceCleanupLocked(id)
+}
+
+func (e *Engine) inspectWorkspaceCleanupLocked(id string) (WorkspaceCleanupPreview, error) {
+	result := WorkspaceCleanupPreview{Uses: []WorkspaceUse{}}
+	state, err := e.recoveryRevocationState()
 	if err != nil {
 		return result, err
 	}
-	a = state.Attempts[id]
+	a := state.Attempts[id]
 	if a == nil || a.ID != id {
 		return result, errReadOnlySnapshot
 	}

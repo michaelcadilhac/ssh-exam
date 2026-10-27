@@ -432,3 +432,17 @@ host files/authority preserved. The user clarified the rule: verify the intended
 executable in its actual environment; stop for a genuinely missing required tool,
 and continue diagnosis for expected negative output or corrupted synthetic input.
 Do not hide such failures, install a misspelled command or weaken the regression.
+
+October26 cleanup qualification exposed another concrete oracle error before
+broad testing. The worker fixture itself was PID1 inside its private PID namespace.
+Its self-directed SIGKILL was ignored; an immediate panic produced a nonzero exit
+that the initial test accepted as death. Removing that panic revealed the error.
+Those earlier crash receipts are invalid, even though their filesystem checks
+passed. Stop the exact owned runner; never substitute its timeout for the event.
+
+The corrected fixture leaves a separate tiny reaper as PID1 and runs the worker
+as an ordinary child. Every crash case requires exact137/SIGKILL; panic, setup
+refusal and timeout fail. It waits for the actual durable phase before testing
+live inspection. Corrected repeats and the later archive/no-start/restore checks
+pass. AGENTS now records this specific rule. This was a test-design failure;
+no production incident is explained and no monitoring enforcement is relaxed.

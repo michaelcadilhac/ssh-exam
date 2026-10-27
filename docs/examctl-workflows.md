@@ -3,8 +3,10 @@
 October26 current local workflow: saved-source issuance/source-sync and C7
 new-attempt recovery are qualified through public CLI/web/student interfaces;
 cancel-first legacy migration and033 native definition reconciliation/retirement
-are qualified locally. Destructive workspace cleanup/configuration activation
-and the complete combined operator journey remain. Current authority/scenario
+are qualified locally. Reviewed workspace cleanup/status/retry/cancel now has a
+local candidate with focused CLI/kernel/crash/storage/restore checks; broad and
+guarded qualification remain (workspace-cleanup-protocol.md). Configuration
+activation and the complete combined operator journey remain. Current authority/scenario
 and migration acceptance: unified-grant-acceptance.md.
 Retained v1 interruption authorization preserves the original viable page/SSH:
 explicit Continue requires fresh readiness and the existing scoped approval.

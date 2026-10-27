@@ -13,8 +13,10 @@ Legacy definition retirement now has root native-review/reconcile-native033 and
 shared browser/CLI retirement, qualified by622 app checks, native races/actual
 CLI/TLS,11 affected browsers plus real-WASM input recovery and schema24→33 image
 startup. This closes C8's local workflow; it does not perform production conversion
-or close the broader command-coverage checkbox. Isolated workspace dry-run observation is now supported; complete manual cleanup/no grace,
-configuration/help/operator journey remain. C17 first-observation/fresh-Begin
+or close the broader command-coverage checkbox. Isolated workspace dry-run is
+supported; C4c reviewed cleanup/status/retry/cancel now has an integrated locally
+focused-tested candidate, with broad/guarded qualification still pending. Manual
+cleanup has no grace period. Configuration/help/operator journey remain. C17 first-observation/fresh-Begin
 compatibility is now qualified locally with625 app checks and packaged browsers.
 Unified authority/migration/scenario specification and existing crash/storage
 repair acceptance are reconciled locally in unified-grant-acceptance.md. Do not rerun or reimplement the

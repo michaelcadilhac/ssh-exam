@@ -9,10 +9,12 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"examworkspace/agent/internal/core"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -54,6 +56,9 @@ func TestWorkspaceDryRunCompiledCLIInPrivateNamespaces(t *testing.T) {
 		t.Fatal(err)
 	}
 	write(filepath.Join(work, "answer.txt"), []byte("SYNTHETIC SAVED ANSWER\n"), 0600)
+	for i := range 512 {
+		write(filepath.Join(work, fmt.Sprintf("synthetic-%04d.txt", i)), []byte("bounded synthetic file\n"), 0600)
+	}
 	now := core.Millis()
 	a := &core.Attempt{ID: id, Exam: "midterm", Username: "synthetic", UID: 29999, State: "COMPLETED", Settings: core.Settings{Duration: 3600, Template: "v1"}, Start: now - 1000, Ended: now, Deadline: now + 3599000, OriginalDeadline: now + 3599000, Protected: true, AccessState: "HELD", WorkPath: "/work"}
 	a.Checksum, err = core.Collect(work, filepath.Join(c.State, "submissions", id), a)
@@ -102,6 +107,11 @@ else:
     namespace_fd=None
     namespace_path=None
     if mode=='descriptor': held=open(work+'/answer.txt','rb')
+    if mode=='queued-descriptor':
+        queued_reader,queued_writer=socket.socketpair()
+        fd=os.open(work+'/answer.txt',os.O_RDONLY)
+        queued_writer.sendmsg([b'x'],[(socket.SOL_SOCKET,socket.SCM_RIGHTS,array.array('i',[fd]))])
+        os.close(fd)
     if mode=='cwd': os.chdir(work)
     if mode=='mapping':
         f=open(work+'/answer.txt','rb'); held=mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ); f.close()
@@ -282,5 +292,98 @@ else:
 	answer, err := os.ReadFile(filepath.Join(work, "answer.txt"))
 	if err != nil || !strings.Contains(string(answer), "SYNTHETIC SAVED ANSWER") {
 		t.Fatal("inspection changed work", err)
+	}
+	preview := invoke("none")
+	request := core.ManagementID()
+	args := []string{"cleanup", id, "--review", preview.Review, "--request", request, "--reason", "Reviewed synthetic protected workspace cleanup with no grace period"}
+	for _, mode := range []string{"descriptor", "queued-descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd"} {
+		out, stderr, err := rawInvoke(mode, args...)
+		if err == nil || len(out) != 0 {
+			t.Fatal("cleanup ignored real kernel reference", mode, err, string(out), stderr)
+		}
+		if mode == "queued-descriptor" && !strings.Contains(stderr, "exclusive file-reference barrier refused") {
+			t.Fatal("queued-only descriptor did not reach lease refusal", stderr)
+		}
+		if _, err := os.Lstat(filepath.Join(c.State, "workspace-cleanups", id+".json")); !os.IsNotExist(err) {
+			t.Fatal("refused cleanup accepted a durable job", mode, err)
+		}
+		if data, err := os.ReadFile(filepath.Join(work, "answer.txt")); err != nil || !bytes.Equal(data, answer) {
+			t.Fatal("refused cleanup changed saved work", mode, err)
+		}
+	}
+	write(filepath.Join(work, "answer.txt"), []byte("NEW UNARCHIVED BYTES\n"), 0600)
+	out, stderr, err := rawInvoke("none", args...)
+	if err == nil || len(out) != 0 || !strings.Contains(stderr, "absent from its protected archive") {
+		t.Fatal("cleanup discarded unarchived changes", err, string(out), stderr)
+	}
+	write(filepath.Join(work, "answer.txt"), answer, 0600)
+	audit := filepath.Join(c.State, "audit.ndjson")
+	if err := os.Rename(audit, audit+".preserved"); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(audit, 0600); err != nil {
+		t.Fatal(err)
+	}
+	out, stderr, err = rawInvoke("none", args...)
+	if err == nil || len(out) != 0 {
+		t.Fatal("cleanup ignored unsafe audit sink", err, string(out), stderr)
+	}
+	if _, err := os.Lstat(filepath.Join(c.State, "workspace-cleanups", id+".json")); !os.IsNotExist(err) {
+		t.Fatal("audit failure accepted cleanup", err)
+	}
+	if err := os.Remove(audit); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(audit+".preserved", audit); err != nil {
+		t.Fatal(err)
+	}
+	opaque := filepath.Join(work, "synthetic-fifo")
+	if err := syscall.Mkfifo(opaque, 0600); err != nil {
+		t.Fatal(err)
+	}
+	blockedPreview := invoke("none")
+	opaqueArgs := append([]string{}, args...)
+	opaqueArgs[3] = blockedPreview.Review
+	out, stderr, err = rawInvoke("none", opaqueArgs...)
+	if err == nil || len(out) != 0 || !strings.Contains(stderr, "unsupported workspace object") {
+		t.Fatal("opaque object did not reach intended refusal", err, string(out), stderr)
+	}
+	if err := os.Remove(opaque); err != nil {
+		t.Fatal(err)
+	}
+	if out, stderr, err := rawInvoke("none", "cleanup", id, "--review", strings.Repeat("0", 64), "--request", core.ManagementID(), "--reason", "Synthetic stale review refusal"); err == nil || len(out) != 0 || !strings.Contains(stderr, "stale or blocked") {
+		t.Fatal("stale cleanup review accepted", err, string(out), stderr)
+	}
+	out, stderr, err = rawInvoke("none", args...)
+	var cleaned map[string]any
+	if err != nil || json.Unmarshal(out, &cleaned) != nil || cleaned["phase"] != "COMPLETED" || cleaned["attempt"] != id || cleaned["request"] != request {
+		t.Fatal("actual reviewed cleanup workflow did not complete", err, string(out), stderr)
+	}
+	if _, err := os.Lstat(filepath.Join(c.Work, id)); !os.IsNotExist(err) {
+		t.Fatal("cleanup did not remove the exact reviewed UUID folder", err)
+	}
+	unchanged, err := os.ReadFile(filepath.Join(c.State, "state.json"))
+	if err != nil || !bytes.Equal(stateBytes, unchanged) {
+		t.Fatal("cleanup changed authoritative attempt/hold/clock history", err)
+	}
+	protected, err := os.ReadFile(checksumPath)
+	if err != nil || !bytes.Equal(protected, checksum) {
+		t.Fatal("cleanup changed protected source", err)
+	}
+	for _, action := range []string{"cleanup-status", "cleanup"} {
+		command := []string{action, id, "--request", request}
+		if action == "cleanup" {
+			command = args
+		}
+		reply, stderr, err := rawInvoke("none", command...)
+		var status map[string]any
+		if err != nil || json.Unmarshal(reply, &status) != nil || status["phase"] != "COMPLETED" || status["request"] != request {
+			t.Fatal("inspection/exact retry lost durable completion", action, err, string(reply), stderr)
+		}
+	}
+	show, stderr, err := rawInvoke("none", "show", id)
+	var observed core.WorkspaceRetentionStatus
+	if err != nil || json.Unmarshal(show, &observed) != nil || observed.Cleanup == nil || observed.Cleanup.Request != request || !observed.Cleanup.Cleaned || observed.Candidate || observed.AccessState != "HELD" {
+		t.Fatal("metadata entry lost cleanup/account history", err, string(show), stderr)
 	}
 }

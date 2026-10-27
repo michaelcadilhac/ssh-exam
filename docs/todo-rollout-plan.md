@@ -45,7 +45,16 @@ Prefer compatible forward repair with admissions unavailable. Production legacy
 definition retirement remains fenced until the supported033/CLI cohort is installed
 and each exact exam's native/web review is completed; do not clear lifecycle flags
 or source expectations manually. Manual workspace
-cleanup remains a separate unimplemented gate, not a rollout cleanup shortcut.
+cleanup remains a separate qualification gate, not a rollout cleanup shortcut.
+The local C4c candidate now has reviewed cleanup/status/retry/cancel and durable
+archive pins/phase/literal-receipt history (workspace-cleanup-protocol.md); broad
+and guarded privileged acceptance remain. Before any separately authorized
+installation, back up its records/known markers/quarantines with native authority,
+source/consumption metadata, audit and protected archives. Install the matched
+CLI/agent/watchdog/reconcile cohort before permitting cleanup. Older archive
+deleters do not enforce its pending-job pin: finish or reversibly cancel pending
+jobs under compatible binaries before a reviewed downgrade, preserve all receipts,
+and prefer forward repair. No production cleanup or consolidation is authorized.
 
 Current October26 local release qualification is COMPLETE (not deployed):
 public executable Begin/dual hold/Continue, C7 new-attempt recovery, technical-only

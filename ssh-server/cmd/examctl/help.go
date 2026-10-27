@@ -184,7 +184,7 @@ Inspect the receipt, then separately issue the NEW grant; failure cannot reopen
 the old permission. Never replace unknown consumption as a retry.
 
 Local root workflows: templates help installs/verifies/syncs immutable sources;
-workspaces help covers retention metadata/holds and isolated dry-run (no deletion enabled); panes help
+workspaces help covers retention metadata/holds, isolated dry-run and reviewed cleanup/status/retry/cancel; panes help
 covers targeted inspection/closure. Native manifest/export/delete concern protected
 submissions, not exam definitions. Configuration show/validate is offline only;
 use config help. Agent stop/restart requires a separately authorized full drain.
@@ -219,7 +219,7 @@ Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
 		fmt.Fprintln(w, "Offline native configuration/candidate checks: config show/validate; use examctl config help. No configuration apply or service action.")
 		fmt.Fprintln(w, "Immutable local templates: templates validate/install/list/show/verify/jobs/clean; templates sync records a signed gateway source attestation, not a grant. Use examctl templates help and web templates help.")
 		fmt.Fprintln(w, "Legacy saved work: recovery-grants [--exam EXAM], revoke-preview and reviewed revoke; use examctl recovery-grants help. Cancel first, then separately issue a NEW grant with web grants; no clock or source deletion.")
-		fmt.Fprintln(w, "Workspace retention inspection/holds: workspaces list/show/dry-run/hold/release-hold; use examctl help workspaces (no deletion enabled).")
+		fmt.Fprintln(w, "Workspace retention: workspaces list/show/dry-run/hold/release-hold and reviewed cleanup/cleanup-status/cleanup-retry/cleanup-cancel; use examctl help workspaces.")
 		fmt.Fprintln(w, "Native targeted panes: panes list/show/close, panes supervisor and panes reports; offline snapshots/recording receipts, bounded root-owner Unix observations and durably audited revision-fenced closure. Use examctl help panes; clocks/holds/other panes are preserved.")
 		fmt.Fprintln(w, "Gateway definitions: web exams list/show/create/update/retire-preview/delete/archive/unarchive; native-review/reconcile-native verify legacy history before retirement. Use examctl web help (root agent identity, explicit gateway authorization).")
 		fmt.Fprintln(w, "Gateway attempt grants and sources: web grants; use examctl web grants help (initial/additional, saved/empty/template work and finite sandbox practice; source-show/source-sync for durable saved-source retention).")

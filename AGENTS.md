@@ -160,6 +160,9 @@
   fixture modes/owners and the intended request/reply stage. The runner's default
   timeout is not a refusal oracle. Wait for the exact protocol boundary under test,
   not merely shell output or an incidental timestamp.
+  Crash tests must verify the exact signal exit, not merely any failure. A PID
+  namespace's init can ignore self-directed SIGKILL; keep a separate reaper as
+  PID1 and kill the ordinary worker. Panics/timeouts never qualify process death.
 - Put cross-process fault controls in an existing directory visible and writable
   in each actor's actual mount namespace; inspect service hardening first. If a
   worker ends before its checkpoint, report its outcome immediately instead of

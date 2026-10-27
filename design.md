@@ -240,7 +240,16 @@ Workspace-hold v1 metadata must be complete and explicit: missing/null/duplicate
 or case-aliased fields never default protection to released. Invalid UTF-8 or
 identity/revision/audit attribution refuses without replacing the record. Valid
 true/false writer records retain their format and independent timing/access;
-no deletion/eligibility capability is enabled. See docs/workspace-retention.md.
+the earlier C4a/C4b increments enable no deletion/eligibility capability. The new
+local C4c candidate supplies root-only reviewed cleanup/status/retry/cancel in an
+independent bounded worker, exclusive file leases/all-directory sealing, exact-
+inode private quarantine and durable recoverable phase/archive-pin receipts.
+Independent cleanup history also participates in no-start/definition-retirement
+proof after live/archive folders are absent. Original clocks/account restrictions,
+source grants, protected archives/history and literal lifecycle receipts remain.
+Manual/no-grace policy is intentional; no automatic cleanup. Broad and guarded
+privileged acceptance remain before closing C4; nothing deployed. See
+docs/workspace-cleanup-protocol.md and docs/workspace-retention.md.
 
 ## 2. Product context and defaults
 

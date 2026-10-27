@@ -19,7 +19,7 @@ import (
 func TestWorkspaceHelpAndSyntaxWithoutRootOrConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "workspaces"}, {"workspaces", "help"}, {"--config", "/missing", "workspaces", "--help"}} {
 		out, code := cliProcess(t, args...)
-		for _, want := range []string{"Usage:", "--revision", "--reason", "Offline", "candidate=true", "eligible=false", "NO WORKSPACE DELETION", "Exit status:"} {
+		for _, want := range []string{"Usage:", "--revision", "--reason", "Offline", "candidate=true", "eligible=false", "cleanup-status", "cleanup-retry", "cleanup-cancel", "NEW request UUID", "Exit status:"} {
 			if code != 0 || !strings.Contains(out, want) {
 				t.Fatal(want, code, out)
 			}

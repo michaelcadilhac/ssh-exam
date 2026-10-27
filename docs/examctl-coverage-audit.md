@@ -35,7 +35,7 @@ feature document retains the boundaries of its operational tests.
 | Native attempts/panes | `help COMMAND` for start, pause, finish, cancel, cancel-absent, retry; `panes help` | Root native scope/exact targets; reports plus existing reconcile inspect/acknowledge timed-owner receipts, while manual closure preserves pending proof; not retained freeze |
 | Native inspection/access/protection | `help COMMAND` for list, info, health, accounts, reconcile, override-access; `help collection`; `panes supervisor ATTEMPT` | Read-only inspection exposes optional registered page/transport/boot/authorization identity and exact lease-owner mismatch; observation grants no permission. Emergency override never an automatic shortcut |
 | Protected submissions | `help COMMAND` for manifest, export, delete | Code inspection confirms bounded verification and checked durable audit before exporting bytes to the caller; new0600 output/no overwrite; deletion preserves history/holds/dependencies |
-| Workspace inspection/holds | `workspaces help` | Known-attempt metadata/holds and isolated fresh archive/reference dry-run; snapshot_clear is diagnostic, eligible stays false; no deletion command |
+| Workspace inspection/holds/manual cleanup | `workspaces help` | Known metadata/holds and isolated dry-run; snapshot_clear is diagnostic. C4c candidate adds reviewed cleanup/status/retry/cancel, leases/all-directory sealing, exact-inode quarantine, durable receipt/history/archive pins; focused local CLI/kernel checks pass, broad/guarded qualification pending |
 | Legacy saved-work grants | `help recovery-grants`, `web grants help`; explicit allowance edits via `web students` | Reviewed unused revoke-preview/revoke, then separate NEW issuance/source-sync; C17 preserves existing explicit unused-duration reconciliation; no consumed-history conversion |
 | Native configuration/lifecycle | `config help`, `help agent` | Offline selected-file/key observation; lifecycle is separately authorized drained maintenance, not implicit apply |
 
@@ -47,11 +47,12 @@ Incident JSON editing/transfer scripts remain unsupported management substitutes
 
 ## Necessary remaining integration gates
 
-- **C4 workspace cleanup:** metadata/holds and isolated fresh observation are
-  supported. Sequential snapshots are not a destructive lifetime barrier.
-  Complete exact-inode reviewed quarantine/removal, durable inspect/retry/cancel,
-  archive-pin/no-start integration and crash/healthy-peer/saved-restore qualification
-  remain. Manual/no-grace is settled; no unsafe switch/expiry shortcut.
+- **C4 workspace cleanup:** the integrated candidate now supplies reviewed
+  quarantine/removal/status/retry/cancel, archive-pin/no-start integration and
+  corrected exact-SIGKILL/storage/restore regressions through actual interfaces.
+  Broad native and guarded multi-UID/resource/healthy-peer qualification remain.
+  Manual/no-grace is settled; no unsafe switch/expiry shortcut. Exact state review
+  and qualification scope: workspace-cleanup-protocol.md. C4 stays open.
 - **Configuration writes:** show/validate does not install/apply. Agent/watchdog
   load configuration at startup; a new examctl invocation reads its selected
   file. A replacement alone cannot establish loaded-writer agreement. Need a
