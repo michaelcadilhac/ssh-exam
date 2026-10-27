@@ -1,108 +1,101 @@
 # Current local TODO checkpoint
 
-October26,2026. Main2ff7ca4 contains the locally validated C4c increment plus C17/C8 and prior
-qualified release work.30/38 main checkboxes locally complete (not effort or
-readiness). Active C4c is validated locally in this commit on workspace-cleanup-delivery,
-var/worktrees/workspace-cleanup-delivery. Nothing deployed/pushed; production and
-ten original dirty main screenshots remain untouched.
+October26,2026. Main/active branch e44cfad; worktree workspace-cleanup-delivery
+at var/worktrees/workspace-cleanup-delivery.30/38 main items locally complete,
+not effort/readiness. C4 remains OPEN. No push/deployment/production change.
+Preserve all stashes and ten original dirty main PNGs; hashes in
+/tmp/ssh-exam-retained-recording-main-image-hashes.json.
 
-## Current milestone and exact next action
+## Current bounded milestone
 
-Actual root entry: examctl workspaces cleanup/status/retry/cancel, backed by one
-bounded private worker with attempt/account fences, fresh archive/use proof,
-exclusive regular-file leases/all-directory sealing, exact-inode quarantine,
-durable recoverable phases/receipt bytes and independent archive pins. Source
-and no-start/definition-retirement interfaces now understand the new receipts.
-C4 remains OPEN pending broad and guarded privileged qualification. Protocol,
-state review, seams and failures: docs/workspace-cleanup-protocol.md.
+Deliver actual root examctl workspaces cleanup/status/retry/cancel: protected
+archive/history/clock/hold preservation, exclusive leases/all-directory sealing,
+exact-inode quarantine, durable recovery/pins and later NEW saved-work restore.
+Integrated local2ff7ca4 passes full native races core348.394s/CLI24.430s,
+build/vet and actual CLI513-file/crash/storage/restore checks. Earlier PID1
+panic receipts are invalid; corrected exact137 and SIGTERM mutation143 are
+recorded in docs/workspace-cleanup-protocol.md. No installed-root proof inferred.
 
-Frozen291 native inputs: /tmp/ssh-exam-workspace-cleanup-native-sources.json.
-Final focus PASS: CLI8.300s/core6.301s, no changed frozen inputs. Actual compiled
-CLI513-file cleanup/reference/SCM_RIGHTS/audit/FIFO/stale-byte/replay/discovery
-checks; exact SIGKILL/live-status/storage/marker/hold/inode/cancel/retry/history
-and actual saved-work prepare from unchanged archive with zero clock. Earlier
-PID1 panic/nonzero crash receipts are INVALID and excluded: separate PID1 reaper
-and exact137 oracle now pass. Corrected3 race repeats14.394s; later history/pin
-focus6.018s and final frozen focus above. No installed PAM/cgroup/multi-UID proof
-is inferred from private namespace fixtures. No new helper-only completion.
+Guarded guests first exposed obsolete fixture Begin/page_epoch messages; those
+are corrected without weakening admission. Third guest reached real collector
+SIGKILL/retry/protected bytes and healthy SSH, then refused mount parsing before
+cleanup. Fourth diagnostic identified nspawn synthetic tmpfs boot-id/kmsg bind
+roots ending //deleted on an unrelated device. Host/base/authority preservation
+and independent inactive/dead/MainPID0 are verified for every completed guest.
+Diagnostic/RED evidence: MAIN var/collection-tests/workspace-cleanup-evidence-2ff7ca4.
 
-Broad native PASS: core348.394s/CLI24.430s, go test -race ./... with management/
-collection userns opt-ins. Build/vet PASS; all291 frozen native inputs unchanged.
-Logs /tmp/ssh-exam-workspace-cleanup-native-broad.log and -build.log/-vet.log.
-No active runner/container/guest. Durable evidence is MAIN
-var/collection-tests/workspace-cleanup-evidence-2ff7ca4. SIGTERM mutation control
-is correctly rejected (exact143); original test restored, all291 hashes equal.
+Current uncommitted native fix explicitly retains deleted-root ambiguity; it
+cannot be an anchor and refuses on the workspace device. Only a distinct kernel
+device excludes it. Namespace handles/malformed roots/all use barriers still
+refuse. Real deleted-bind compiled CLI regression was RED, then final focused
+races PASS core1.292s/CLI6.201s (including actual successful cleanup/refusals/fuzz
+invariants). No new durable/intermediate state; prior C4 phase review applies.
+All81 Python fixture checks PASS5.963s; current code-only build and vet PASS.
 
-Guarded CLI test driver now covers actual source cleanup while a healthy signed
-SSH peer runs, real lease-break cancellation/owner restoration, a nonstudent's
-queued directory FD losing write access, then protected NEW90-minute restore
-AFTER the original folder is gone. Driver/nested syntax and21 runner-safety tests
-pass; these do NOT establish root kernel acceptance. Native binaries unchanged.
-Private guest sourceUID20001/probe29978 unused/peer29979 distinct are verified
-read-only from actual guest passwd (the config account map is dynamic).
+## Running qualification and exact next action
 
-BLOCKED upload: automatic approval review explicitly rejected this NEW sensitive
-project-code payload because prior authorization covered only old286 artifacts.
-No upload executed; /var/tmp/ssh-exam-workspace-cleanup-upload.RJ7UhKUY is empty.
-The first39f1... bundle question is superseded after a test-only omitted-grant
-comparison correction. Current dialog requests the corrected bundle AND scoped
-future audited code-only corrections, or exact-only/local-only alternatives.
-Await the actual answer; do not infer approval or reuse old approval for new bytes.
+Frozen291 native inputs:
+/tmp/ssh-exam-workspace-cleanup-deleted-mount-native-sources.json.
+BROAD PASS: core338.313s/CLI25.973s, full native races. Build/vet PASS;
+all291 frozen inputs unchanged. /tmp/ssh-exam-workspace-deleted-mount-native-broad.log.
 
-Corrected18-file45,698,592-byte bundle (no credentials/config/student data):
-MAIN var/collection-tests/workspace-cleanup-2ff7ca4-fixed.ti4yc5e6
-Digest08e2b42b6bbc5abd8db1a352aed2afe4fd5cac0711a893ac9ea2df10ad87b35e
-Adjacent .audit.json contains exact files/digests and native/source provenance.
-Original39f1... bundle remains unchanged; do not upload it by mistake. Remote
-upload, if approved, must revalidate this exact bundle, verify remote hashes and
-use ONLY the existing guarded overlay runner. Run worker-isolation then retained-
-policy profiles for actual cleanup/healthy peer and cleanup→NEW saved-work Begin.
-Fresh/concurrent host/base guards remain mandatory; busy/uncertain means no test.
-Read-only csc-sys precheck:172 records,0 live/unresolved, private guest available.
-No production installation/records/config/service changes; no new guest started.
+Frozen18-file45,711,222-byte bundle:
+MAIN var/collection-tests/workspace-cleanup-deleted-mount.sbqgdhtx
+Digest1bfca438505e4f7be3f639e54ad6dc03b463eb0d7b0dd64638bb4fdab4882106.
+Adjacent .audit.json pins exact native/source/artifact hashes; unchanged static
+synthetic probes/resource slices, no credentials/runtime host config/student data.
+Remote /var/tmp/ssh-exam-workspace-cleanup-upload.mb4is4bw exact18 hashes verified.
+Fresh host guard172 records/0 live-unresolved; runner continues guarding.
+Guest20135 passed mount parsing then correctly refused a live reference before
+cleanup; its failure report omitted the reference details. Stage w1yxkb1c has
+independent preservation/inactive/dead/MainPID0 proof. Native binaries unchanged.
+Completed diagnostic guest21239, retained-policy --cleanup-peer:
+/tmp/ssh-exam-cleanup-guest-reference-diagnostics.log, stage /var/tmp/ssh-exam-
+overlay-jabvav18. Corrected diagnostic-only18-file45,711,851-byte bundle is MAIN
+var/collection-tests/workspace-cleanup-reference-diagnostics.phz14xp_, digest
+885b02e7e30fe176c7daa3aca4052bc08c04ef974fcb4dbd7ed887cacef6cedc, uploaded to
+/var/tmp/ssh-exam-workspace-cleanup-upload.tt2fqy9j. Same native artifacts; now
+captures full preview/reference PID/status/cgroup plus bounded mount tables.
+Full preview proves mount-source reports are systemd's ReadWritePaths parent
+bind at the SAME canonical path in agent/watchdog/healthy bwrap namespaces.
+Independent preservation/inactive/dead/MainPID0 verified. No guest is running.
+NEXT: actual CLI RED→GREEN for unchanged covering mappings versus real foreign
+aliases; do not stop loaded services/healthy peers or waive the reference. This
+is necessary for usable C4, not an optional architecture prerequisite. Local
+repeat helper /tmp/ssh-exam-cleanup-guest-runner.py validates exact
+bundle/native hashes and guards/uploads/runs a new private guest; it accepts a
+metadata JSON path, output tag and optional --cleanup-peer. If peer passes, run normal
+retained-policy on this SAME bundle to prove cleanup→reviewed NEW90-minute saved
+restore after old folder is gone. Fix real failures before advancing. No installed
+configuration/service/records changed. Then update docs/TODO and commit locally.
 
-Do not stop at this candidate or a report. After validated cleanup, finish the
-management coverage/help/actionable-refusal/operator journey using existing
-interfaces. Configuration-file apply architecture awaits the existing dialog:
-root-locally on each owning server with separate explicit restarts (recommended),
-or class-server examctl also controls web-host files/services. No answer yet;
-continue independent work, do not repeat settled grant/SSH/retention choices.
+## Settled authority and next milestone
 
-Web/app/WASM unchanged by C4c; C17 f9d34fe625 application checks and packaged
-browsers/image evidence cover those unchanged surfaces. Image:
-ssh-exam-release-test:recovery-compatibility-033-67c74bba8133
-sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae
-C17 source/asset receipt MAIN var/collection-tests/recovery-first-observation.sources.json.
-No new ordinary native execution cohort claimed.
+Instructor explicitly approves audited code-only cleanup uploads AND corrected
+bundles for these same guarded tests, each below96MiB, to NEW private csc-sys
+/var/tmp/ssh-exam-workspace-cleanup-upload.* directories. Do not ask again within
+scope. Fresh/concurrent busy/base guards remain mandatory; uncertain means no test.
 
-## Prior qualified cohort and production boundary
+WITHDRAW the premature examctl-copies/remote deployment-file question. Instructor
+prefers web administration for operational settings; CLI parity uses the existing
+authenticated API. Concrete schema currently has SMTP/recipients, worker/recording/
+preflight limits and maintenance; no editing UI exists. Origin/listen/storage/
+SSH/pins/key/relay paths are deployment setup unless explicitly included. Do not
+infer remote editing of every bootstrap file as a prerequisite. After cleanup,
+finish management coverage/help/actionable refusals/operator journey using actual
+existing interfaces. Present a concrete settings proposal when that milestone
+is reached. Do not repeat settled grant/SSH/retention/upload policy questions.
 
-C8 codebe4994c/clean1802fcd:622app/110files318.79s, actual CLI/TLS/native races,
-11 admin browsers plus real-WASM capture/input and schema24->33 image PASS.
-Image ssh-exam-release-test:native-retirement-033-a37c150de4,
-sha256:5bdf4d902ea93fa3e6c89c3d51b9a52a74808045f3309ff3607bf3344398e027.
-Manifest MAIN var/collection-tests/native-exam-reconciliation.sources.json;
-new CLI-only diagnostics/help do not alter those web/ordinary execution surfaces.
-Detailed scope/failures: docs/native-exam-reconciliation.md.
+Unchanged web/app/WASM: C17 f9d34fe625 checks and packaged browsers/image remain
+applicable; no redundant application rerun for native-only parser changes.
+Image ssh-exam-release-test:recovery-compatibility-033-67c74bba8133,
+sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae.
+Previous286 guarded root/PUBLIC C7/16students64terminals evidence does NOT qualify
+new artifacts; see release-readiness.md/legacy-recovery-migration.md.
 
-Exact286acd9 approved18-file63,687,566-byte code bundle uploaded/qualified at
-csc-sys /var/tmp/ssh-exam-browser-native-upload.revocation286acd9_835ac9c4d31d43da;
-digest8a01d37836260f5d351471ebfe19e12515d3ce122a131919aaec67a5eb78cb56.
-Guarded root43/PUBLIC C7/16students64terminals PASS with independent teardown and
-host/base preservation. Details: legacy-recovery-migration.md/release-readiness.md.
-No active guest. This does NOT qualify new native diagnostic artifacts; no new
-upload is claimed. Do not ask again for the unchanged approved286 bundle.
-
-No subagents authorized. Preserve all stashes and ten original dirty main PNGs;
-hashes /tmp/ssh-exam-retained-recording-main-image-hashes.json verified after FF.
-Stop for missing executable only if package absent AND instructor must install;
-correct paths/use installed tools otherwise. Main node_modules supplies tools.
-Use npm test (native-clock pretest) for app suites; no redundant unchanged broad
-app/browser rerun for CLI wording. Local listeners/userns/user-systemd need tool
-sandbox escalation. No user approval for routine testing/local commits.
-
-Production NO-GO until separately authorized inventory/reviewed conversion/full
-drain/consistent backup/matched installation and live SSH/MFA/media/access/alerts
-acceptance. Deployment/migration/rollback/three-service consolidation are PROPOSALS
-in todo-rollout-plan.md; DO NOT EXECUTE. csc-sys only guarded disposable tests;
-busy/uncertain means no test. Existing production deferrals remain in force.
+No subagents authorized. Main node_modules supplies installed tools. Stop for a
+missing executable only if its package is absent AND instructor must install;
+correct paths otherwise. Local listeners/userns/user-systemd require tool sandbox
+escalation; do not ask instructor for routine testing/commits. No deploy/push.
+Production-only inventory/drain/backup/migration/live acceptance and temporary
+agent-service consolidation remain PROPOSALS in docs/todo-rollout-plan.md.

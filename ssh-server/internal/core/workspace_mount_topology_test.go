@@ -68,6 +68,35 @@ func TestWorkspaceMountTopologyDecodesRootsAndNeverEquatesCoverWithPermission(t 
 	}
 }
 
+func TestWorkspaceMountTopologyDeletedBackingFileRequiresDifferentDevice(t *testing.T) {
+	// Minimal real nspawn observation: the kernel appends //deleted to an
+	// unlinked bind source. Never clean that marker into an apparent pathname.
+	table := "1 0 8:1 / / rw - ext4 /dev/root rw\n839 1 0:68 /.#proc-sys-kernel-random-boot-id83a2db09b3fe4357//deleted /proc/sys/kernel/random/boot_id ro,nosuid,nodev,noexec shared:780 - tmpfs tmpfs rw\n"
+	rows, err := parseWorkspaceMountTopology(strings.NewReader(table))
+	if err != nil || len(rows) != 2 {
+		t.Fatal("unrelated deleted backing file prevented topology inspection", err)
+	}
+	anchor, err := workspaceMountAnchorFor("/work", 1, unix.Mkdev(8, 1), rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if related, err := workspaceMountRelationships(anchor, rows); err != nil || len(related) != 1 || related[0].mount.id != 1 {
+		t.Fatal("unrelated device became workspace authority", related, err)
+	}
+	if _, err := workspaceMountAnchorFor("/proc/sys/kernel/random/boot_id", 839, unix.Mkdev(0, 68), rows); err == nil {
+		t.Fatal("deleted root became an authoritative workspace anchor")
+	}
+	anchor.device = workspaceMountDevice{0, 68}
+	if _, err := workspaceMountRelationships(anchor, rows); err == nil {
+		t.Fatal("ambiguous deleted source on workspace device looked clear")
+	}
+	for _, root := range []string{"//deleted", "/a/../b//deleted", "/a//deleted/child", "mnt:[4026532999]", "/a\\000b//deleted"} {
+		if _, err := parseWorkspaceMountTopology(strings.NewReader("2 1 0:68 " + root + " /alias rw - tmpfs tmpfs rw\n")); err == nil {
+			t.Fatal("malformed/opaque root was normalized into proof", root)
+		}
+	}
+}
+
 func TestWorkspaceMountTopologyRefusesTruncationMalformedAndOversizeWithoutPrivateErrors(t *testing.T) {
 	good := "1 0 8:1 / / rw - ext4 /dev/root rw\n"
 	for _, input := range []string{"", strings.TrimSuffix(good, "\n"), good + strings.TrimSuffix(good, "\n"), good + good, "PRIVATE-TOPOLOGY-CONTENT\n", "+1 0 8:1 / / rw - ext4 /dev/root rw\n", "1 0 4294967296:1 / / rw - ext4 /dev/root rw\n", "1 0 8:1 /../source / rw - ext4 /dev/root rw\n", `1 0 8:1 /a\000b / rw - ext4 /dev/root rw` + "\n", `1 0 8:1 /a\999b / rw - ext4 /dev/root rw` + "\n", `1 0 8:1 /a\12 / rw - ext4 /dev/root rw` + "\n", `1 0 8:1 /a\040(deleted) / rw - ext4 /dev/root rw` + "\n", good + "\n", strings.Repeat("x", workspaceMountTableMax+1)} {
@@ -273,7 +302,7 @@ func TestWorkspaceMountTopologyChildRefusesUnqualifiedHost(t *testing.T) {
 }
 
 func FuzzWorkspaceMountTopology(f *testing.F) {
-	for _, seed := range []string{"1 0 8:1 / / rw - ext4 /dev/root rw\n", "2 1 0:42 /real\\040work /store rw unknown:tag - overlay overlay rw\n", "", "1 0 8:1 / / rw - ext4 /dev/root rw"} {
+	for _, seed := range []string{"1 0 8:1 / / rw - ext4 /dev/root rw\n", "2 1 0:42 /real\\040work /store rw unknown:tag - overlay overlay rw\n", "1 0 8:1 /work /store rw - ext4 /dev/root rw\n2 1 8:1 /gone//deleted /alias rw - ext4 /dev/root rw\n", "1 0 8:1 /work /store rw - ext4 /dev/root rw\n2 1 0:68 /gone//deleted /alias rw - tmpfs tmpfs rw\n", "", "1 0 8:1 / / rw - ext4 /dev/root rw"} {
 		f.Add([]byte(seed))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -292,7 +321,17 @@ func FuzzWorkspaceMountTopology(f *testing.F) {
 		if err != nil {
 			return
 		} // A literal system-root target deliberately refuses.
+		ambiguous := false
+		for _, row := range rows {
+			ambiguous = ambiguous || row.device == anchor.device && row.deletedRoot
+		}
 		observed, err := workspaceMountRelationships(anchor, rows)
+		if ambiguous {
+			if err == nil {
+				t.Fatal("deleted workspace-device root did not refuse")
+			}
+			return
+		}
 		if err != nil {
 			t.Fatal("parsed anchor rejected", err)
 		}

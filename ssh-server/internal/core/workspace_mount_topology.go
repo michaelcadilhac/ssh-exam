@@ -26,6 +26,7 @@ type workspaceMount struct {
 	id, parent              uint64
 	device                  workspaceMountDevice
 	root, point, filesystem string
+	deletedRoot             bool // Kernel //deleted marker; never a path/anchor.
 }
 type workspaceMountAnchor struct {
 	device         workspaceMountDevice
@@ -146,7 +147,15 @@ func parseWorkspaceMountTopology(in io.Reader) ([]workspaceMount, error) {
 		if err != nil {
 			return nil, errWorkspaceMountTopology
 		}
-		root, err := workspaceMountPath(fields[3])
+		// dentry_path() appends //deleted for unlinked bind sources, including
+		// nspawn's synthetic boot-id/kmsg files. Retain the ambiguity explicitly:
+		// only a different device can exclude it from workspace relationships.
+		deletedRoot := strings.HasSuffix(fields[3], "//deleted")
+		rootField := fields[3]
+		if deletedRoot {
+			rootField = strings.TrimSuffix(rootField, "//deleted")
+		}
+		root, err := workspaceMountPath(rootField)
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +167,7 @@ func parseWorkspaceMountTopology(in io.Reader) ([]workspaceMount, error) {
 		// as authority. A parent omitted by a chroot view is legitimate, not an
 		// excuse to claim this one process exposes the entire namespace.
 		seen[id] = true
-		mounts = append(mounts, workspaceMount{id, parent, workspaceMountDevice{uint32(major), uint32(minor)}, root, point, fields[separator+1]})
+		mounts = append(mounts, workspaceMount{id, parent, workspaceMountDevice{uint32(major), uint32(minor)}, root, point, fields[separator+1], deletedRoot})
 	}
 	if scanner.Err() != nil || len(mounts) == 0 {
 		return nil, errWorkspaceMountTopology
@@ -183,7 +192,7 @@ func workspaceMountAnchorFor(absolute string, mountID, device uint64, mounts []w
 		if mount.id != mountID {
 			continue
 		}
-		if mount.device != expected || !workspaceMountContains(mount.point, absolute) {
+		if mount.device != expected || mount.deletedRoot || !workspaceMountContains(mount.point, absolute) {
 			return anchor, errWorkspaceMountTopology
 		}
 		relative := strings.TrimPrefix(absolute, mount.point)
@@ -209,6 +218,9 @@ func workspaceMountRelationships(anchor workspaceMountAnchor, mounts []workspace
 	for _, mount := range mounts {
 		if mount.device != anchor.device {
 			continue
+		}
+		if mount.deletedRoot {
+			return nil, errWorkspaceMountTopology
 		}
 		relation := ""
 		switch {

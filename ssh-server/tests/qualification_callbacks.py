@@ -8,6 +8,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import re
 import ssl
 import stat
 import threading
@@ -27,6 +28,16 @@ def private_registry(path):
   raw=os.read(descriptor,65537);assert len(raw)==metadata.st_size
   return json.loads(raw)
  finally:os.close(descriptor)
+
+
+def monitoring_fixture_path(data):
+ """Concurrent synthetic students retain separate immutable expected requests."""
+ directory=Path('/run/qualification-framed-attempts')
+ if not directory.is_dir():return '/run/qualification-framed-grant.json'
+ attempt=data.get('attempt') or data.get('owner',{}).get('attempt')
+ if data.get('attempt') and data.get('owner',{}).get('attempt'):assert data['attempt']==data['owner']['attempt']
+ assert isinstance(attempt,str) and re.fullmatch(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',attempt)
+ return str(directory/(attempt+'.json'))
 
 
 def source_fixture_reply(data,expected,record,now):
@@ -153,7 +164,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     payload=json.dumps(reply,separators=(',',':')).encode()
     result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
    elif self.path in ('/api/agent/grant-begin','/api/agent/monitoring-evidence','/api/agent/monitoring-continue'):
-    expected=private_registry('/run/qualification-framed-grant.json')
+    expected=private_registry(monitoring_fixture_path(data))
     assert expected['agent']==config['agent_id']
     approval=private_registry('/run/qualification-retained-approval.json') if self.path.endswith('/monitoring-continue') else None
     with owner_lock:reply=fixture_reply(self.path,data,expected,approval,owners,int(time.time()*1000))

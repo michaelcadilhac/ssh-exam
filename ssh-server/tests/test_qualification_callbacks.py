@@ -7,6 +7,7 @@ import http.server
 import io
 import json
 from pathlib import Path
+import re
 import sys
 import types
 import unittest
@@ -16,15 +17,28 @@ from unittest import mock
 # Load ONLY this fixture's pure reply function, never its root startup/server.
 source = Path(__file__).with_name('qualification_callbacks.py')
 tree = ast.parse(source.read_text())
-namespace = {'hashlib': hashlib, 'json': json}
+namespace = {'hashlib': hashlib, 'json': json, 'Path': Path, 're': re}
 exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n, ast.FunctionDef)
-                             and n.name in ('fixture_reply','source_fixture_reply')], type_ignores=[]),
+                             and n.name in ('fixture_reply','source_fixture_reply','monitoring_fixture_path')], type_ignores=[]),
              str(source), 'exec'), namespace)
 reply = namespace['fixture_reply']
 source_reply = namespace['source_fixture_reply']
 
 
 class CallbackTests(unittest.TestCase):
+    def test_concurrent_monitored_attempts_keep_separate_fixture_authority(self):
+        select_registry=namespace['monitoring_fixture_path']
+        first='11111111-1234-4234-8234-123456789abc'
+        second='22222222-1234-4234-8234-123456789abc'
+        with mock.patch.object(Path,'is_dir',return_value=True):
+            self.assertEqual(select_registry({'attempt':first}),'/run/qualification-framed-attempts/'+first+'.json')
+            self.assertEqual(select_registry({'owner':{'attempt':second}}),'/run/qualification-framed-attempts/'+second+'.json')
+            for attempt in ('../../config','/tmp/unknown','',None,'not-a-uuid'):
+                with self.subTest(attempt=attempt),self.assertRaises(AssertionError):select_registry({'attempt':attempt})
+            with self.assertRaises(AssertionError):select_registry({'attempt':first,'owner':{'attempt':second}})
+        with mock.patch.object(Path,'is_dir',return_value=False):
+            self.assertEqual(select_registry({'attempt':first}),'/run/qualification-framed-grant.json')
+
     def test_browser_forwarding_failure_is_operational_not_signature_refusal(self):
         # Load only the handler definition, never root startup or the TLS server.
         scope={'http':http,'base64':base64,'json':json,'Path':Path,

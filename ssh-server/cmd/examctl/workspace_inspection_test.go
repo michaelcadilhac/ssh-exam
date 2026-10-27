@@ -84,7 +84,7 @@ func TestWorkspaceDryRunCompiledCLIInPrivateNamespaces(t *testing.T) {
 	}
 	manager := filepath.Join(dir, "private-manager.py")
 	write(manager, []byte(`#!/usr/bin/python3
-import array,ctypes,json,mmap,os,select,socket,subprocess,sys
+import array,ctypes,json,mmap,os,select,socket,subprocess,sys,tempfile
 args=sys.argv[1:]
 if os.path.basename(sys.argv[0])=='systemctl':
     assert args==['show','exam-collection.slice','--property=LoadState','--property=MemoryMax','--property=MemorySwapMax','--property=TasksMax'],args
@@ -106,6 +106,21 @@ else:
     child=None
     namespace_fd=None
     namespace_path=None
+    deleted_scratch=None
+    if mode in ['unrelated-deleted-mount','workspace-device-deleted-mount']:
+        deleted_scratch=tempfile.mkdtemp(prefix='deleted-mount-',dir=os.path.dirname(os.path.dirname(work)))
+        backing=deleted_scratch+'/backing';os.mkdir(backing,0o700)
+        libc=ctypes.CDLL(None,use_errno=True)
+        if mode=='unrelated-deleted-mount':
+            assert libc.mount(b'tmpfs',backing.encode(),b'tmpfs',6,None)==0,ctypes.get_errno()
+        source=backing+'/synthetic-source';open(source,'xb').close()
+        deleted_alias=deleted_scratch+'/alias';open(deleted_alias,'xb').close()
+        assert libc.mount(source.encode(),deleted_alias.encode(),None,4096,None)==0,ctypes.get_errno()
+        assert (os.stat(deleted_alias).st_dev!=os.stat(work).st_dev)==(mode=='unrelated-deleted-mount')
+        os.unlink(source)
+        with open('/proc/self/mountinfo') as table:
+            rows=[row.split(' ') for row in table.read().splitlines()]
+        assert any(row[4]==deleted_alias and row[3].endswith('//deleted') for row in rows),'fixture never reached a deleted bind source'
     if mode=='descriptor': held=open(work+'/answer.txt','rb')
     if mode=='queued-descriptor':
         queued_reader,queued_writer=socket.socketpair()
@@ -177,6 +192,11 @@ else:
                 assert ctypes.CDLL(None).umount2(namespace_path.encode(),0)==0
                 os.unlink(namespace_path)
             os.rmdir(alias)
+        if deleted_scratch is not None:
+            assert ctypes.CDLL(None).umount2(deleted_alias.encode(),0)==0
+            os.unlink(deleted_alias)
+            if mode=='unrelated-deleted-mount':assert ctypes.CDLL(None).umount2(backing.encode(),0)==0
+            os.rmdir(backing);os.rmdir(deleted_scratch)
     raise SystemExit(result)
 `), 0700)
 	rawInvoke := func(mode string, args ...string) ([]byte, string, error) {
@@ -206,10 +226,10 @@ else:
 		}
 		return result
 	}
-	for _, mode := range []string{"none", "unrelated-watch", "descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd", "mounted-namespace-handle"} {
+	for _, mode := range []string{"none", "unrelated-watch", "unrelated-deleted-mount", "workspace-device-deleted-mount", "descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd", "mounted-namespace-handle"} {
 		t.Run(mode, func(t *testing.T) {
 			v := invoke(mode)
-			if mode == "none" || mode == "unrelated-watch" {
+			if mode == "none" || mode == "unrelated-watch" || mode == "unrelated-deleted-mount" {
 				if !v.UsageObserved || !v.SnapshotClear || v.Eligible || len(v.Uses) != 0 {
 					t.Fatal("quiet/unrelated observation falsely refused", v)
 				}
@@ -217,9 +237,9 @@ else:
 				if v.Eligible || v.SnapshotClear || v.UsageObserved || !strings.Contains(strings.Join(v.Blockers, " "), "root view") {
 					t.Fatal("hidden foreign mount incorrectly looked unused", v)
 				}
-			} else if mode == "detached-namespace-fd" || mode == "mounted-namespace-handle" {
+			} else if mode == "detached-namespace-fd" || mode == "mounted-namespace-handle" || mode == "workspace-device-deleted-mount" {
 				cause := "namespace handle"
-				if mode == "mounted-namespace-handle" {
+				if mode != "detached-namespace-fd" {
 					cause = "mount topology unavailable"
 				} // nsfs root is deliberately not interpreted as a pathname.
 				if v.Eligible || v.SnapshotClear || v.UsageObserved || !strings.Contains(strings.Join(v.Blockers, " "), cause) {
@@ -296,7 +316,7 @@ else:
 	preview := invoke("none")
 	request := core.ManagementID()
 	args := []string{"cleanup", id, "--review", preview.Review, "--request", request, "--reason", "Reviewed synthetic protected workspace cleanup with no grace period"}
-	for _, mode := range []string{"descriptor", "queued-descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd"} {
+	for _, mode := range []string{"workspace-device-deleted-mount", "descriptor", "queued-descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd"} {
 		out, stderr, err := rawInvoke(mode, args...)
 		if err == nil || len(out) != 0 {
 			t.Fatal("cleanup ignored real kernel reference", mode, err, string(out), stderr)
@@ -354,7 +374,7 @@ else:
 	if out, stderr, err := rawInvoke("none", "cleanup", id, "--review", strings.Repeat("0", 64), "--request", core.ManagementID(), "--reason", "Synthetic stale review refusal"); err == nil || len(out) != 0 || !strings.Contains(stderr, "stale or blocked") {
 		t.Fatal("stale cleanup review accepted", err, string(out), stderr)
 	}
-	out, stderr, err = rawInvoke("none", args...)
+	out, stderr, err = rawInvoke("unrelated-deleted-mount", args...)
 	var cleaned map[string]any
 	if err != nil || json.Unmarshal(out, &cleaned) != nil || cleaned["phase"] != "COMPLETED" || cleaned["attempt"] != id || cleaned["request"] != request {
 		t.Fatal("actual reviewed cleanup workflow did not complete", err, string(out), stderr)

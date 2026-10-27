@@ -106,7 +106,7 @@ class Connection:
             body['settings']=dict(issued['settings']);self.grant=dict(issued['grant']);body['grant']=self.grant
             self.page_epoch=hashlib.sha256(uuid.uuid4().bytes).hexdigest()
         elif initial_grant:
-            assert (a.framed_owner or a.retained_policy) and temporary and self.username=='examq'
+            assert (a.framed_owner or a.retained_policy) and temporary and (self.username=='examq' or (a.worker_isolation and self.username==a.peer=='examqpeer'))
             body['settings']['earliest']=int(time.time()*1000)-1000
             # Author a new public synthetic package. The prepared legacy
             # template intentionally has private materials permissions; never
@@ -115,6 +115,11 @@ class Connection:
             for tree in ('work','materials'):(authored/tree).mkdir(mode=0o755)
             for relative,text in (('work/answer.txt','synthetic initial work\n'),('materials/instructions.txt','Private synthetic framing qualification\n')):
                 path=authored/relative;path.write_text(text);path.chmod(0o644)
+            if a.worker_isolation:
+                inventory=pathlib.Path(config['templates'])/'qualification/work/qualification-command-inventory.txt'
+                assert inventory.is_file()
+                shutil.copyfile(inventory,authored/'work/qualification-command-inventory.txt')
+                (authored/'work/qualification-command-inventory.txt').chmod(0o644)
             if a.retained_policy:
                 for name in ('asyncio-probe','thread-leader-probe'):
                     probe=authored/'work'/name
@@ -163,10 +168,15 @@ class Connection:
                         with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry);registry.flush();os.fsync(registry.fileno())
                         os.replace(temporary_registry,'/run/qualification-framed-grant.json')
                     finally:pathlib.Path(temporary_registry).unlink(missing_ok=True)
+                elif a.worker_isolation:
+                    directory=pathlib.Path('/run/qualification-framed-attempts');directory.mkdir(mode=0o700,exist_ok=True)
+                    assert directory.stat().st_uid==0 and stat.S_IMODE(directory.stat().st_mode)==0o700 and not directory.is_symlink()
+                    descriptor=os.open(directory/(id+'.json'),os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+                    with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry);registry.flush();os.fsync(registry.fileno())
                 else:
                     descriptor=os.open('/run/qualification-framed-grant.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
                     with os.fdopen(descriptor,'w') as registry:json.dump(expected,registry)
-            if a.retained_policy and not issued:
+            if a.retained_policy and not a.worker_isolation and not issued:
                 from overlay_guest import guest_watchdog_override, native_role_snapshot
                 receipt_bytes=(base/'workspace-ready/receipt.json').read_bytes()
                 with guest_watchdog_override('/usr/local/sbin/exam-agent'):
@@ -469,7 +479,38 @@ os.close(fd);os.write(1,b'SEALED\\n')
             try:left.sendmsg([b'Q'],[(socket.SOL_SOCKET,socket.SCM_RIGHTS,array.array('i',[descriptor]))])
             finally:os.close(descriptor)
         preview=json.loads(root('examctl','workspaces','dry-run',old['id']))
-        assert preview['snapshot_clear'] and not preview['eligible'] and preview['archive_verified'],preview['blockers']
+        if not preview['snapshot_clear']:
+            # Bounded guest-only evidence; never used as absence/deletion proof.
+            tables=[];seen=set();budget=4*1024*1024;tasks=0
+            for process in pathlib.Path('/proc').iterdir():
+                if not process.name.isdigit():continue
+                try:threads=list((process/'task').iterdir())
+                except (FileNotFoundError,PermissionError):continue
+                for task in threads:
+                    tasks+=1
+                    if tasks>2048 or len(tables)>=32 or budget<=0:break
+                    try:
+                        namespace=(task/'ns/mnt').stat().st_ino
+                        if namespace in seen:continue
+                        with (task/'mountinfo').open('rb') as source:data=source.read(min(budget,512*1024)+1)
+                        truncated=len(data)>min(budget,512*1024);data=data[:min(budget,512*1024)];budget-=len(data);seen.add(namespace)
+                        tables.append({'pid':int(process.name),'tid':int(task.name),'namespace':namespace,'truncated':truncated,'mountinfo':data.decode('utf8',errors='replace')})
+                    except (FileNotFoundError,PermissionError,ProcessLookupError):continue
+            path=pathlib.Path('/run/ssh-exam-qualification-output/workspace-mounts.json')
+            processes=[]
+            for use in preview.get('uses',[])[:16]:
+                process=pathlib.Path('/proc')/str(use['pid'])
+                observed={'use':use}
+                for name in ('comm','status','cgroup'):
+                    try:observed[name]=(process/name).read_text()[:16384]
+                    except (FileNotFoundError,PermissionError,ProcessLookupError):pass
+                for name in ('cwd','root'):
+                    try:observed[name]=os.readlink(process/name)
+                    except (FileNotFoundError,PermissionError,ProcessLookupError):pass
+                processes.append(observed)
+            descriptor=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+            with os.fdopen(descriptor,'w') as output:json.dump({'attempt':old['id'],'preview':preview,'processes':processes,'tables':tables},output);output.flush();os.fsync(output.fileno())
+        assert preview['snapshot_clear'] and not preview['eligible'] and preview['archive_verified'],preview
         request=str(uuid.uuid4())
         command=['examctl','workspaces','cleanup',old['id'],'--review',preview['review'],'--request',request,'--reason','Guarded disposable root manual cleanup with no grace period']
         if break_lease:
@@ -698,7 +739,7 @@ def normal_access(label):
 
 wait_for(agent_ready,40)
 
-if a.framed_owner or a.retained_policy:
+if (a.framed_owner or a.retained_policy) and not a.worker_isolation:
     marker=json.loads(pathlib.Path('/run/ssh-exam-qualification-input/run.json').read_text())
     assert a.username=='examq' and marker['username']=='examq' and marker['profile']==('retained-policy' if a.retained_policy else 'framed-owner')
     assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn' and temporary
@@ -1234,22 +1275,25 @@ if a.worker_isolation:
         while not stop.is_set():
             began=time.monotonic()
             try:
-                healthy.command('renew-execution-lease',{'id':id})
+                healthy.command('renew-execution-lease',{'id':id,'page_epoch':healthy.page_epoch})
                 acknowledgements.append(time.monotonic()-began)
             except Exception as error:
                 failures.append(str(error));return
             stop.wait(.5)
     try:
-        healthy_id=healthy.start(duration=120); healthy_pane=healthy.pane(healthy_id)
+        assert a.retained_policy,'cleanup peer fixture requires the current monitored/framed Begin'
+        healthy_id=healthy.start(duration=180,initial_grant=True); healthy_pane=healthy.pane(healthy_id,framed=True)
         before=info(healthy_id)
+        began=time.monotonic();healthy.command('renew-execution-lease',{'id':healthy_id,'page_epoch':healthy.page_epoch})
+        acknowledgements.append(time.monotonic()-began)
         thread=threading.Thread(target=renew,args=(healthy_id,),daemon=True);thread.start()
-        target_id=target_connection.start();target_pane=target_connection.pane(target_id)
+        target_id=target_connection.start(duration=120,initial_grant=True);target_pane=target_connection.pane(target_id,framed=True)
         assert before.get('browser_ssh') and before.get('terminal_supervised') and info(target_id).get('terminal_supervised')
         # EXAM-READY is only the provisional admission reply, before closed
         # bootstrap/owner handoff. Require actual shell execution, not a sleep
         # or a retry that could hide a failed launch, before observing owners.
-        for pane in (healthy_pane,target_pane):
-            pane.stdin.write(b"printf 'OWNER_%s\\n' SHELL_READY\n");pane.stdin.flush()
+        for connection,pane in ((healthy,healthy_pane),(target_connection,target_pane)):
+            connection.input(pane,b"printf 'OWNER_%s\\n' SHELL_READY\n")
             read_until(pane,b'OWNER_SHELL_READY',10)
         healthy_owner=json.loads(root('examctl','panes','supervisor',healthy_id))
         target_owner=json.loads(root('examctl','panes','supervisor',target_id))
@@ -1257,9 +1301,10 @@ if a.worker_isolation:
         ok('two synthetic BrowserSSH attempts have independently scoped timed recording owners')
         target_work=pathlib.Path(config['work'])/target_id/'work'
         assert config.get('host_filesystem') is True and config['rootfs']=='/', 'Normal filesystem required, not a minimal rootfs'
-        target_pane.stdin.write(b"while IFS= read -r path; do if ! test -x \"$path\"; then printf 'COMMAND_%s: %s\\n' NOT_FOUND \"$path\"; break; fi; done < /work/qualification-command-inventory.txt; printf 'PUBLIC_%s\\n' INVENTORY_CHECKED\n");target_pane.stdin.flush()
+        assert (target_work/'qualification-command-inventory.txt').is_file()
+        target_connection.input(target_pane,b"while IFS= read -r path; do if ! test -x \"$path\"; then printf 'COMMAND_%s: %s\\n' NOT_FOUND \"$path\"; break; fi; done < /work/qualification-command-inventory.txt; printf 'PUBLIC_%s\\n' INVENTORY_CHECKED\n")
         read_until(target_pane,b'PUBLIC_INVENTORY_CHECKED',10)
-        target_pane.stdin.write(b"command -v python3 >/dev/null 2>&1 && printf 'STUDENT_%s\\n' PYTHON_OK || printf 'COMMAND_%s: python3\\n' NOT_FOUND\n");target_pane.stdin.flush()
+        target_connection.input(target_pane,b"command -v python3 >/dev/null 2>&1 && printf 'STUDENT_%s\\n' PYTHON_OK || printf 'COMMAND_%s: python3\\n' NOT_FOUND\n")
         read_until(target_pane,b'STUDENT_PYTHON_OK',5)
         security_check='''import os,pathlib,ssl,sqlite3,ctypes
 status=dict(line.split(':',1) for line in pathlib.Path('/proc/self/status').read_text().splitlines() if ':' in line)
@@ -1271,13 +1316,13 @@ for hidden in ('/etc/exam-agent/agent.json','/var/lib/exam-agent/state.json','/r
  assert not pathlib.Path(hidden).exists()
 print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
 '''
-        target_pane.stdin.write(('python3 -c '+shlex.quote(security_check)+'\n').encode());target_pane.stdin.flush()
+        target_connection.input(target_pane,'python3 -c '+shlex.quote(security_check)+'\n')
         read_until(target_pane,b'NORMAL_STUDENT_SECURITY_OK',5)
         ok('normal-root public commands/Python libraries remain available; root/home are read-only, private endpoints hidden and student capabilities zero')
         # Real student-side bounded incompressible output keeps the collector
         # alive long enough to identify and kill its actual supervised process.
-        target_connection.command('renew-execution-lease',{'id':target_id})
-        target_pane.stdin.write(b"cd /work && python3 -c 'import os,pathlib; [(pathlib.Path(\"cleanup-dir-%04d\"%i).mkdir(mode=0o700)) for i in range(512)]; pathlib.Path(\"cleanup-dir-0000\").chmod(0o777); [(pathlib.Path(\"fault-%d.bin\"%i).write_bytes(os.urandom(10*1024*1024))) for i in range(4)]; pathlib.Path(\"fault-ready\").write_text(\"ready\")'\n");target_pane.stdin.flush()
+        target_connection.command('renew-execution-lease',{'id':target_id,'page_epoch':target_connection.page_epoch})
+        target_connection.input(target_pane,b"cd /work && python3 -c 'import os,pathlib; [(pathlib.Path(\"cleanup-dir-%04d\"%i).mkdir(mode=0o700)) for i in range(512)]; pathlib.Path(\"cleanup-dir-0000\").chmod(0o777); [(pathlib.Path(\"fault-%d.bin\"%i).write_bytes(os.urandom(10*1024*1024))) for i in range(4)]; pathlib.Path(\"fault-ready\").write_text(\"ready\")'\n")
         wait_for(lambda:(target_work/'fault-ready').is_file(),20)
         original=info(target_id)
         owners=root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
@@ -1317,11 +1362,11 @@ print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
         assert failed['state']=='COLLECTION_FAILED' and failed['access_state']=='HELD'
         assert failed['start']==original['start'] and failed['deadline']==original['deadline'] and failed['original_deadline']==original['original_deadline']
         ok('real supervised collection-worker SIGKILL fails only its target and preserves its original hold/interval')
-        healthy_pane.stdin.write(b"printf ISOLATION_LIVE > /work/healthy-proof; printf 'PTY_AFTER_%s\\n' WORKER_FAULT\n");healthy_pane.stdin.flush()
+        healthy.input(healthy_pane,b"printf ISOLATION_LIVE > /work/healthy-proof; printf 'PTY_AFTER_%s\\n' WORKER_FAULT\n")
         read_until(healthy_pane,b'PTY_AFTER_WORKER_FAULT',10)
         assert (pathlib.Path(config['work'])/healthy_id/'work/healthy-proof').read_text()=='ISOLATION_LIVE'
-        extra=healthy.pane(healthy_id)
-        extra.stdin.write(b"printf 'FRESH_%s\\n' ADMISSION\n");extra.stdin.flush();read_until(extra,b'FRESH_ADMISSION',10)
+        extra=healthy.pane(healthy_id,framed=True)
+        healthy.input(extra,b"printf 'FRESH_%s\\n' ADMISSION\n");read_until(extra,b'FRESH_ADMISSION',10)
         assert owners==root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
         current=info(healthy_id)
         observed_owner=json.loads(root('examctl','panes','supervisor',healthy_id))
@@ -1351,15 +1396,15 @@ print('NORMAL_STUDENT_'+'SECURITY_OK',flush=True)
         ok('explicit retry protects all original target bytes after real worker death')
         target_connection.close()
         qualify_workspace_cleanup(original,break_lease=True)
-        healthy_pane.stdin.write(b"printf 'CLEANUP_%s\\n' PEER_LIVE\n");healthy_pane.stdin.flush();read_until(healthy_pane,b'CLEANUP_PEER_LIVE',10)
+        healthy.input(healthy_pane,b"printf 'CLEANUP_%s\\n' PEER_LIVE\n");read_until(healthy_pane,b'CLEANUP_PEER_LIVE',10)
         current=info(healthy_id)
         assert all(current[k]==before[k] for k in ('start','deadline','original_deadline','generation')) and current['state']=='ACTIVE'
         assert healthy_pane.poll() is None and not failures and max(acknowledgements)<5
         assert owners==root('systemctl','show','exam-agent','exam-deadline-watchdog','--property=MainPID','--value')
         ok('real healthy SSH/input/signed renewals and shared-role PIDs survive root cleanup/lease refusal/cancellation/retry without changed authority')
         stop.set();thread.join(timeout=10);assert not thread.is_alive() and not failures
-        healthy.command('finalize-attempt',{'id':healthy_id});secure(healthy_id)
-        wait_for(lambda:info(target_id)['access_state']=='RELEASED' and info(healthy_id)['access_state']=='RELEASED',150)
+        healthy.command('finalize-attempt',{'id':healthy_id,'page_epoch':healthy.page_epoch});secure(healthy_id)
+        wait_for(lambda:info(target_id)['access_state']=='RELEASED' and info(healthy_id)['access_state']=='RELEASED',max(0,before['original_deadline']/1000-time.time())+30)
         assert secure(target_id)[2]==checksum
         ok('both synthetic accounts restore only after their unchanged deadlines and verified protection')
         print(json.dumps({'passed':passed,'count':len(passed),'renewals':len(acknowledgements),'max_renewal_seconds':max(acknowledgements),'worker_isolation':True}),flush=True)

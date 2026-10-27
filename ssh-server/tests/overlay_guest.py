@@ -526,7 +526,8 @@ def main():
     else:
         profiles = (['--handoff-only'], ['--setup-only'], [])
     # Commands execute only in the network/PID/mount namespace of this overlay.
-    if settings.get('profile', 'enforcement') == 'worker-isolation':
+    if settings.get('profile', 'enforcement') == 'worker-isolation' or settings.get('cleanup_peer'):
+        assert not settings.get('cleanup_peer') or settings.get('profile') == 'retained-policy'
         peer, uid = 'examqpeer', 29979
         for entry in pwd.getpwall():
             assert entry.pw_name != peer and entry.pw_uid != uid, 'Synthetic peer identity already exists'
@@ -540,7 +541,7 @@ def main():
         assert not authorized.exists(), 'Synthetic peer authorization already exists'
         authorized.write_bytes((authorized.parent / username).read_bytes())
         authorized.chmod(0o644)
-        profiles = (['--worker-isolation', '--peer', peer],)
+        profiles = ((['--retained-policy'] if settings.get('cleanup_peer') else []) + ['--worker-isolation', '--peer', peer],)
     for flags in profiles:
         command = ['/usr/bin/python3', str(INPUT / 'linux_qualification.py'),
                    '--username', username, *flags]
@@ -550,13 +551,13 @@ def main():
             return result.returncode
     state = json.loads((Path(config['state']) / 'state.json').read_text())
     plan, pin = None, None
-    if settings.get('profile') == 'retained-policy':
+    if settings.get('profile') == 'retained-policy' and not settings.get('cleanup_peer'):
         plan = json.loads(Path('/run/qualification-saved-source-grant.json').read_text())['plan']
         grant = plan['grant']
         pin = json.loads((Path(config['state']) / 'source-retentions' /
                           (grant['id'] + '-' + str(grant['revision']) + '.json')).read_text())
     import time
-    verify_finished_guest(state, settings.get('profile'), plan, pin, int(time.time() * 1000))
+    verify_finished_guest(state, 'worker-isolation' if settings.get('cleanup_peer') else settings.get('profile'), plan, pin, int(time.time() * 1000))
     print('OVERLAY_QUALIFICATION_OK', flush=True)
     return 0
 

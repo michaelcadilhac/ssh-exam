@@ -241,6 +241,10 @@ def run_locked(args):
             target.write_bytes(source_bytes[name])
             target.chmod(mode)
         marker = {'username': args.username, 'unit': unit, 'profile': args.profile}
+        if getattr(args, 'cleanup_peer', False):
+            assert args.profile == 'retained-policy' and args.username == 'examq'
+            assert not getattr(args, 'browser_gateway_public_key', None)
+            marker['cleanup_peer'] = True
         if getattr(args, 'browser_gateway_public_key', None):
             assert args.profile == 'retained-policy' and args.username == 'examq'
             public = args.browser_gateway_public_key.read_bytes()
@@ -364,6 +368,7 @@ if __name__ == '__main__':
                         help='Private browser capacity target; sixteen uses only owned disk binds and bounded3GiB/2CPU/2048tasks')
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
+    parser.add_argument('--cleanup-peer', action='store_true', help='Private retained-policy fixture: current monitored Begin, framed input and a healthy peer during manual workspace cleanup')
     parser.add_argument('--profile', choices=('loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)

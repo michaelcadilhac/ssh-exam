@@ -1916,6 +1916,11 @@ the approval is not a production change or a completed investigation.
 ## Maintenance and further validation
 
 - [ ] **Define and implement private workspace cleanup after secured collection.**
+  Resumed October26: instructor explicitly approves audited code-only cleanup
+  qualification uploads AND later corrections for the same guarded tests, each
+  below96MiB, to new private /var/tmp/ssh-exam-workspace-cleanup-upload.* directories
+  on csc-sys. No credentials/config/student data, deployment or production changes.
+  This supersedes the prior new-bundle approval blocker, not host/base/busy guards.
   October26 C4c candidate now implements actual reviewed cleanup/status/retry/
   cancel, exclusive regular-file leases/all-directory sealing, exact-inode private
   quarantine, durable phase/receipt/archive pins and no-start history integration.

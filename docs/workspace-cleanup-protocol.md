@@ -115,13 +115,53 @@ UID20001/probe29978 unused/peer29979 distinct are confirmed read-only in the
 private guest. Native binaries remain2ff7ca4. A temporary SIGTERM mutation is
 rejected at exact143; the original test is restored and all291 hashes match.
 
-Upload is blocked by automatic approval review, which explicitly limits retained
-authorization to the older286 artifact. No upload/guest test ran. The corrected
-18-file45,698,592-byte code-only bundle is MAIN var/collection-tests/workspace-
-cleanup-2ff7ca4-fixed.ti4yc5e6; adjacent .audit.json pins every file and source.
-Digest08e2b42b6bbc5abd8db1a352aed2afe4fd5cac0711a893ac9ea2df10ad87b35e.
-The prior39f1... question/bundle is superseded after correcting the native JSON
-producer's omitted legacy grant in the test consumer. Current dialog offers
-scoped future audited code-only corrections, exact-corrected-only or local-only.
-No credentials/config/student data or deployment is included. Await the actual
-answer and refresh guards; permission/elapsed time never establishes acceptance.
+The instructor subsequently approved audited code-only cleanup uploads and later
+corrections for these same guarded tests: each below96MiB, new private /var/tmp/
+ssh-exam-workspace-cleanup-upload.* directories, no credentials/runtime host
+configuration/student data or deployment. Earlier review rejection is superseded;
+fresh and concurrent idle/preservation guards remain mandatory.
+
+Three guarded guests have run with unchanged native binaries. The first two
+exposed obsolete fixture admission/renewal messages, corrected to current monitored
+Begin, framed input, immutable per-attempt requests and page-bound renewal/finish.
+All81 Python fixture checks pass with local listener permission. The third passed
+actual collector SIGKILL/retry, protected bytes and a healthy monitored SSH peer,
+then refused cleanup preview on mount-topology parsing. No deletion was accepted.
+All three independently verify preserved host/base/authority and stopped unique
+units. The next guest collects bounded guest-only mount metadata to identify the
+exact rejected entry; no namespace/reference protection is relaxed speculatively.
+Current exact artifacts, log and next action are in todo-current-checkpoint.md.
+
+The diagnostic guest identified actual nspawn tmpfs bind roots ending in
+`//deleted` for synthetic boot-id/kmsg files. All six captured mount tables were
+bounded/complete; none contained the previously suspected nsfs roots. The old
+parser incorrectly rejected these unrelated filesystems. The correction retains
+an explicit deleted-root marker, refuses it as an anchor or on the workspace's
+device, and only excludes it by a different kernel device identity. It does not
+normalize the marker into a live source path. Opaque namespace handles, malformed
+paths, mountpoints inside work and every existing use/barrier check still refuse.
+Kernel representation: [dentry_path](https://github.com/torvalds/linux/blob/v6.1/fs/d_path.c).
+
+Both minimal captured-row and actual compiled-CLI regressions fail before the fix.
+Real deleted bind mounts then pass on an unrelated tmpfs and complete reviewed
+cleanup, while an ambiguous source on the workspace device refuses before any
+job is accepted. Existing mounted/detached namespace-handle refusals remain in
+that same interface run. Final focused races pass core1.292s/CLI6.201s, including
+the corresponding fuzz invariants. No new durable/intermediate state, expiry,
+reservation, execution permission or cancellation behavior is introduced; the
+existing C4 phase/crash/admission/source-pin review still applies. New native
+artifacts require fresh broad and guarded qualification before C4 can close.
+
+That corrected artifact passes full native races core338.313s/CLI25.973s,
+build/vet and unchanged291-input verification. The next guarded guest passes
+mount parsing but refuses mount-source use. A diagnostic correction captures
+the full preview/owning synthetic processes: agent, watchdog and two healthy
+bwrap parents inherit systemd's ReadWritePaths bind of the workspace parent
+at the SAME canonical path. This is an unchanged protected parent view, not a
+new alias, but the scanner only exempts a filesystem-root cover. C4 would thus
+remain unusable with normal loaded services. Next bounded correction must
+recognize an exactly unchanged covering mapping while continuing to refuse
+foreign aliases, exact/descendant workspace mounts and hidden roots, through
+actual compiled CLI and guarded healthy-peer cleanup. Do not stop a service or
+waive the reference to qualify it. All completed guests independently preserve
+host/base/authority and have inactive/dead/MainPID0 unique units.
