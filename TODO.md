@@ -1890,9 +1890,14 @@ the approval is not a production change or a completed investigation.
   orphaned/unknown folders still require supported proof, never blanket deletion.
 
 - [ ] **Consolidate the live agent handoffs after a verified drain.**
-  October27: matched code-only candidate staged/verified locally; fresh production
-  drain/ownership inventory awaits explicit read-only access after tool rejection.
-  Do not use old idle counts or the auto-cancelling historical upgrade helpers.
+  October27: matched code-only candidate staged/verified locally. Instructor-
+  approved read-only inventory on csc-sys/marco found terminal history/no unfinished
+  work, all three old listeners and web schema11. Schema11→33/24→33 synthetic
+  migration/image/asset checks PASS without changing history or inventing grants.
+  Canonical outbound proxy and nginx frontend-overlay removal are concrete cutover
+  changes. No production change/deployment; cutover authorization and a fresh
+  admission-fenced full drain remain required. Never use old idle counts or the
+  auto-cancelling historical upgrade helpers.
   Exact package and remaining gates: docs/production-rollout-2026-10-27.md.
   The canonical agent, `exam-agent-live-upgrade`, and
   `exam-agent-deferred-recovery` retain existing PTY bridges. Do not stop any of
@@ -2037,9 +2042,11 @@ the approval is not a production change or a completed investigation.
   test, exact recovery timing and saved-work restoration, normal access policy,
   dashboard status and absence of duplicate alerts. Record the revision, checks
   and deployment outcome without publishing student information.
-  October27 preparation is local only; no alert sent, rollout performed or live
-  acceptance claimed. Inventory, explicit cutover authorization and a controlled
-  synthetic identity are required first. See docs/production-rollout-2026-10-27.md.
+  October27 read-only production inventory and local schema11→33/24→33 image
+  rehearsals complete. No alert sent, rollout performed or live acceptance claimed.
+  Explicit cutover authorization and a chosen non-student identity with real
+  SSH/MFA/media/inbox confirmation remain required. Exact host-specific changes,
+  acceptance and rollback: docs/production-rollout-2026-10-27.md.
 
 References: `docs/native-cleanup-isolation-incident.md`,
 `docs/recovery-runbook.md`, `design.md`, and the protected October 20 alert/audit

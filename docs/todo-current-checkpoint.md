@@ -1,62 +1,66 @@
-# Current local TODO checkpoint
+# Current TODO checkpoint
 
-October27 current milestone: production consolidation/live acceptance preparation,
-requested after36/38 items were implemented/tested locally. Both production boxes
-remain OPEN. No production command or transfer ran; no service/config/student
-record change or push. Source/runtime baseline815a895 remains unchanged.
+October27 milestone: finish production consolidation/live acceptance preparation.
+36/38 items remain implemented/tested locally; both production boxes OPEN.
+Runtime/image/native source815a895 unchanged. Instructor approved READ-ONLY
+inventory on csc-sys and marco (ssh-exam.cadilhac.name). Inventory ran; no production
+transfer, configuration/student-record change, restart, deployment or push.
 
-## Concrete validated preparation
+## Validated result
 
-Branch/worktree production-rollout-20261027 at var/worktrees/production-rollout-20261027.
-Feature record: docs/production-rollout-2026-10-27.md. It contains the proposed
-cutover/acceptance gates, exact artifact and exclusions; do not read the entire
-historical rollout log to resume.
+Current worktree var/worktrees/production-rollout-20261027. Exact host-specific
+sequence, inventory and rollback limits: docs/production-rollout-2026-10-27.md.
+Use that document, not the entire historical log.
 
-Local matched code-only package: MAIN
-var/releases/ssh-exam-815a895-20261027.d3w4bye4;21 files/144,610,717 bytes.
-Manifest SHA256 ab446d7d4174567c449f17113938327303f70ab29ab7e68998085b158de4bb54.
-Four exact qualified native executables/291 source hashes, four unchanged support
-scripts/eight units, reference Compose/web unit, and the qualified web image
-locally tagged ssh-exam-release:815a895. OCI manifest digest4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae;
-config digest46244c89f91cd635d6b7836d7693ca40f4293e605c0ba76b2af59c9fc547bcb3.
-Whole membership/hashes, thirteen OCI blobs/eleven layer-diff bindings and actual
-staged CLI help PASS. Adjacent .verification.json records acceptance. An initial
-verifier incorrectly equated OCI manifest ID with config ID; retained/corrected,
-no product/image changes. No credentials/config/student data or test roles shipped.
+Matched code-only release MAIN var/releases/ssh-exam-815a895-20261027.d3w4bye4:
+21 files/144,610,717 bytes, manifest SHA256
+ab446d7d4174567c449f17113938327303f70ab29ab7e68998085b158de4bb54.
+Image OCI manifest4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae;
+config46244c89f91cd635d6b7836d7693ca40f4293e605c0ba76b2af59c9fc547bcb3.
+Four exact qualified native executables/291 source hashes, unchanged scripts/units,
+whole package/OCI layer binding and actual staged CLI help PASS. No secret/config/
+student/test-driver payload. Adjacent .verification.json retains the receipt.
 
-## Blocking access and exact next action
+Read-only snapshots: native172 terminal attempts/96 protected completions,
+web108 terminal attempts/82 protected completions, no unfinished work/current
+owners/pending clock/collection/access work observed. This is NOT a future drain.
+marco schema11, two open admission windows, maintenance false; three old native
+listeners active. Web Compose matches candidate; unit already uses --no-build.
+Native canonical lacks the proxy route already working for watchdog/reconciler;
+nginx still serves three old frontend override blocks. These are concrete cutover
+changes, not new product features. Sufficient private backup space observed.
 
-Automatic approval review REJECTED sudo READ-ONLY production inventory on csc-sys,
-interpreting existing authorization as disposable tests only. No SSH command ran.
-Async dialog asks explicit read-only inventory permission for csc-sys and exam web
-server; await an actual answer. Do not retry through another command or treat old
-idle counts as current drain proof. Deployment/restarts remain a separate explicit
-authorization after concrete installed inventory/cutover review.
+Actual image schema11→33 and24→33 synthetic migration/startup/asset tests PASS;
+old columns/enrollments/settings preserved, no invented grants/owners, exact
+private containers/images/keys removed. tests/container-release-smoke.py adds
+schema11 and independent-asset-receipt options; no application/image input changed.
+Three exact adjacent .cutover-candidates nginx configs also PASS actual local
+nginx syntax and51 HTTP/TLS/WebSocket routing/refusal checks EACH; all owned
+processes/keys removed. Candidate manifest47b38817ed946f418f74a52e53e30879974f048c6f94d2ec4a3de381b7b6f4e0.
+Includes the canonical proxy override/explicit56-operation allowlist; no secrets.
+Target syntax/refusal/drain checks still required before any stop.
+Durable receipts: MAIN var/collection-tests/production-rollout-readonly.e3c_z4rz.
+Prior native/public/browser qualification remains in release-readiness.md,
+examctl-coverage-audit.md and todo-local-completion-evidence.0einctzi.
 
-On approval, inspect current installed revisions/schema/config metadata, all three
-agents' PTY/process/socket/cgroup ownership, independent/practice/recording owners,
-web/native attempts/preflights/pending Begin/timing/recovery/collection/account holds.
-Verify actual web host/service and admission-stop mechanism. Busy/uncertain means
-wait; never cancel/override/kill to manufacture a drain. Then finish the concrete
-host-specific backup/cutover/acceptance sequence and obtain deployment authorization.
-Legacy upgrade-prebuilt auto-reconciles/cancels preflights; historical installers
-lack full three-owner/current independent-work drain. DO NOT RUN them unchanged.
-Do not invent a new installer abstraction before installed facts are known.
+## Exact next action and decisions
 
-## Preserved qualification and authority
+Local preparation is validated and ready for its coherent commit. Request/await
+explicit production cutover permission for the concrete documented changes;
+latest approval was read-only inventory. An async clarification asks which non-student account the instructor
+chooses for live SSH/MFA/media and one inbox-delivery confirmation. Do not select
+an existing student or weaken its protections. No other design question is open.
 
-Prior C4/retained/recovery and management qualification remains in
-examctl-coverage-audit.md, workspace-cleanup-protocol.md and MAIN
-var/collection-tests/todo-local-completion-evidence.0einctzi. Final native races,
-CLI/TLS/root cleanup/NEW saved-work checks passed;297 unchanged web/image inputs
-match prior625-test/packaged-browser evidence. No unrelated test rerun was needed
-for this docs/packaging-only preparation. No test or guest remains running.
+After authorization, verify the nginx new-admission fence and repeat complete
+all-three-agent/independent/practice/preflight/pending-work drain immediately before
+any stop. Busy/uncertain means wait, never cancel/override/kill/clear to fit the gate.
+Then private consistent backups, reviewed matched activation/schema33, single
+canonical consolidation, maintenance checks, controlled live acceptance, reopen.
+Never run unchanged historical automatic installers or treat old idle counts as
+proof. No new activation/settings subsystem or bulk legacy-grant conversion.
 
-Preserve all stashes/ten original dirty main PNGs; hashes
-/tmp/ssh-exam-retained-recording-main-image-hashes.json. Local commits authorized,
-no push/deploy without new instruction. Installation settings stay in files by
-explicit instructor decision; no new Settings/remote-file-control feature.
-No subagents authorized. Stop for missing executable only if package absent AND
-instructor must install. Main node_modules supplies installed tools. Existing
-csc-sys guarded code-only test authorization does not imply production access;
-keep host/base/student data intact and never bypass busy/uncertain guards.
+Original main ten dirty PNGs/stashes remain preserved; hash manifest
+/tmp/ssh-exam-retained-recording-main-image-hashes.json. Local commits authorized.
+No subagents. Stop for a missing executable only when its package is absent and
+instructor must install. Automatic review blocked credential-field output before
+execution; narrower non-secret storage inventory succeeded, no access blocker.

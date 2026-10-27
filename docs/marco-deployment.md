@@ -1,5 +1,12 @@
 # ssh-exam.cadilhac.name deployment
 
+October27 read-only inventory supersedes the historical frontend/update status
+below: marco still runs the October20 image/schema11, with the October22 urgent
+frontend overlay. No new rollout occurred. The reviewed matched-image/schema33,
+admission-fenced drain, backup, consolidation and live acceptance sequence is in
+[production-rollout-2026-10-27.md](production-rollout-2026-10-27.md). Do not use the
+old git-pull/build recipe below for that cutover or treat maintenance as a hot switch.
+
 > Initial installation/history record. The subsequent SSH command and callback
 > architecture is now deployed on both hosts; see [the upgrade record](ssh-command-deployment.md)
 > for transport and migration history, and [qualification](production-qualification.md)

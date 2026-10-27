@@ -17,12 +17,20 @@ from cryptography.hazmat.primitives import serialization
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--image', required=True, help='already-built local release image')
 parser.add_argument('--docker-host', default='unix:///var/run/docker.sock')
+parser.add_argument('--from-schema', type=int, choices=(11, 24), default=24,
+                    help='synthetic installed schema to upgrade; production inventory is11')
+parser.add_argument('--asset-receipt', type=Path,
+                    help='independent qualified source/asset receipt instead of a local dist/web build')
 args = parser.parse_args()
 assert re.fullmatch(r'[a-z0-9][a-z0-9./_-]*:[a-zA-Z0-9_.-]+', args.image)
 assert args.docker_host in ('unix:///var/run/docker.sock',
                            f'unix:///run/user/{os.getuid()}/docker.sock'), 'Local engine only'
 assert Path(args.docker_host.removeprefix('unix://')).is_socket()
 project = Path(__file__).resolve().parents[1]
+asset_receipt = json.loads(args.asset_receipt.read_text()) if args.asset_receipt else None
+if asset_receipt:
+    assert isinstance(asset_receipt.get('assets'), dict)
+    assert re.fullmatch(r'sha256:[a-f0-9]{64}', asset_receipt['release_image']['id'])
 docker = ['docker', '--host', args.docker_host]
 nonce = uuid.uuid4().hex
 tag = 'ssh-exam-private-release-smoke:' + nonce
@@ -68,15 +76,19 @@ const hash = b => createHash('sha256').update(b).digest('hex');
   assert(Number.isSafeInteger(first) && first > 0 && second >= first);
   const db = new Database('/data/metadata.sqlite', {readonly:true});
   const expected = JSON.parse(fs.readFileSync('/opt/release-smoke/expected.json'));
-  const actual = db.prepare('SELECT * FROM attempts WHERE id=?').get(expected.id);
-  for (const [key, value] of Object.entries(expected)) assert.deepEqual(actual[key], value, key);
-  assert.equal(actual.monitoring_mode, 'legacy');
-  for (const key of ['registered_owner','retained_hold','monitoring_hold_kind','native_resume_kind','native_resume_nonce'])
-    assert.equal(actual[key], null, key);
+  for (const row of expected.attempts) {
+    const actual = db.prepare('SELECT * FROM attempts WHERE id=?').get(row.id);
+    for (const [key, value] of Object.entries(row)) assert.deepEqual(actual[key], value, key);
+    assert.equal(actual.monitoring_mode, row.start === null ? null : 'legacy');
+    for (const key of ['registered_owner','retained_hold','monitoring_hold_kind','native_resume_kind','native_resume_nonce'])
+      assert.equal(actual[key], null, key);
+  }
+  assert.deepEqual(db.prepare('SELECT * FROM enrollments ORDER BY username').all(), expected.enrollments);
+  assert.equal(db.prepare('SELECT config FROM exams WHERE id=?').get('release-smoke').config, expected.exam_config);
   assert.equal(db.prepare('SELECT max(version) AS v FROM schema_version').get().v, 33);
   assert.equal(db.prepare('SELECT count(*) AS n FROM exam_native_reconciliations').get().n, 0);
   assert.deepEqual(db.pragma('foreign_key_check'), []);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM attempts').get().n, 1);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM attempts').get().n, expected.attempts.length);
   assert.equal(db.prepare('SELECT count(*) AS n FROM attempt_grants').get().n, 0);
   db.close();
   for (const file of ['config.json','gateway.key','callback.pub','metadata.sqlite','expected.json']) {
@@ -99,7 +111,8 @@ const hash = b => createHash('sha256').update(b).digest('hex');
     assets[path] = hash(bytes);
   }
   console.log(JSON.stringify({uid:process.getuid(), productionMaintenance:true, schema:33,
-    historicalAttemptPreserved:true, noInventedGrants:true, nativeBootClock:true, assets}));
+    historicalAttemptsPreserved:expected.attempts.length, enrollmentSettingsPreserved:true,
+    noInventedGrants:true, nativeBootClock:true, assets}));
 })().catch(error => { console.error(error); process.exit(1); });
 '''
 
@@ -112,6 +125,8 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-release-container-') as direct
     try:
         base = run(docker + ['image', 'inspect', '--format', '{{.Id}}', args.image])
         assert re.fullmatch(r'sha256:[a-f0-9]{64}', base)
+        if asset_receipt:
+            assert base == asset_receipt['release_image']['id'], 'Receipt is for another image'
         key = ed25519.Ed25519PrivateKey.generate()
         (fixture / 'gateway.key').write_bytes(key.private_bytes(serialization.Encoding.PEM,
             serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
@@ -127,8 +142,9 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-release-container-') as direct
         db = sqlite3.connect(fixture / 'metadata.sqlite')
         db.row_factory = sqlite3.Row
         for path in sorted((project / 'migrations').iterdir()):
-            if re.fullmatch(r'\d{3}\.sql', path.name) and int(path.stem) <= 24:
+            if re.fullmatch(r'\d{3}\.sql', path.name) and int(path.stem) <= args.from_schema:
                 db.executescript(path.read_text())
+        assert db.execute('SELECT max(version) FROM schema_version').fetchone()[0] == args.from_schema
         settings = json.dumps({'id':'release-smoke', 'name':'Synthetic historical exam', 'template':'v1',
                                'duration':5400, 'webcam':True, 'terminals':4, 'earliest':100, 'latest':200})
         db.execute('INSERT INTO exams VALUES(?,?)', ('release-smoke', settings))
@@ -136,7 +152,22 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-release-container-') as direct
         db.execute('INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended,protected,checksum,access_state) '
                    'VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
                    (attempt,'release-smoke','synthetic',20001,'COMPLETED',settings,1000,5401000,5401000,2000,1,'c'*64,'HELD'))
-        expected = dict(db.execute('SELECT * FROM attempts WHERE id=?', (attempt,)).fetchone())
+        db.execute('INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?)',
+                   ('release-smoke','synthetic',None,None,20001))
+        if args.from_schema == 11:
+            for suffix,username,state,access,start,deadline,protected,webcam,duration,uid in (
+                ('ab1','synthetic-released','COMPLETED','RELEASED',1000,5401000,1,1,4500,20002),
+                ('ab2','synthetic-overridden','COMPLETED','OVERRIDDEN',1000,5401000,1,0,3600,20003),
+                ('ab3','synthetic-cancelled','CANCELLED_BEFORE_START','UNKNOWN',None,None,0,None,None,0),
+            ):
+                identifier=attempt[:-3]+suffix
+                db.execute('INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended,protected,checksum,access_state,policy_state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                           (identifier,'release-smoke',username,uid,state,settings,start,deadline,deadline,2000,protected,'d'*64 if protected else None,access,None))
+                db.execute('INSERT INTO enrollments(exam,username,webcam,duration,uid) VALUES(?,?,?,?,?)',
+                           ('release-smoke',username,webcam,duration,uid))
+        expected = {'attempts':[dict(row) for row in db.execute('SELECT * FROM attempts ORDER BY id')],
+                    'enrollments':[dict(row) for row in db.execute('SELECT * FROM enrollments ORDER BY username')],
+                    'exam_config':settings}
         db.commit(); db.close()
         (fixture / 'expected.json').write_text(json.dumps(expected))
         for path in fixture.iterdir():
@@ -167,9 +198,12 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-release-container-') as direct
         assert inspection['HostConfig']['CapDrop'] == ['ALL']
         assert 'no-new-privileges' in inspection['HostConfig']['SecurityOpt']
         for path, digest in result['assets'].items():
-            local = project / 'dist/web' / path.lstrip('/')
-            assert local.is_file() and hashlib.sha256(local.read_bytes()).hexdigest() == digest, 'Packaged asset differs from browser-qualified host build: ' + path
-        print(json.dumps({'image':base, 'container':container, **result}), flush=True)
+            if asset_receipt:
+                assert asset_receipt['assets'].get('dist/web'+path) == digest, 'Packaged asset differs from independent qualified receipt: ' + path
+            else:
+                local = project / 'dist/web' / path.lstrip('/')
+                assert local.is_file() and hashlib.sha256(local.read_bytes()).hexdigest() == digest, 'Packaged asset differs from browser-qualified host build: ' + path
+        print(json.dumps({'image':base, 'container':container, 'from_schema':args.from_schema, **result}), flush=True)
     except BaseException:
         if container:
             log = subprocess.run(docker + ['logs', '--tail', '30', container], capture_output=True, text=True, timeout=10)
