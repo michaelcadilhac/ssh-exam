@@ -133,6 +133,22 @@ func TestCurrentRecoveryAndRetirementJourneyIsDiscoverableWithoutConfiguration(t
 	}
 }
 
+func TestCompletedManagementHelpDistinguishesInstallationFromExamState(t *testing.T) {
+	for _, args := range [][]string{{"help", "management"}, {"web", "help"}} {
+		out, code := cliProcess(t, append(args, "--config", "/missing/configuration")...)
+		for _, required := range []string{"Installation settings remain in configuration files", "workspaces", "dry-run", "cleanup-status", "matched", "exam-state"} {
+			if code != 0 || !strings.Contains(out, required) {
+				t.Fatal("current management workflow/scope is not discoverable without configuration", args, required, code, out)
+			}
+		}
+		for _, stale := range []string{"do not yet satisfy full coverage", "definitions and future settings", "operator journey remain pending", "configuration mutation and", "complete workspace cleanup and"} {
+			if strings.Contains(out, stale) {
+				t.Fatal("help incorrectly reports delivered or excluded work as missing", args, stale, out)
+			}
+		}
+	}
+}
+
 func TestAttemptHelpExplainsHistoricalGrantAndSourceInspection(t *testing.T) {
 	output, code := cliProcess(t, "web", "attempts", "--config", "/missing/configuration", "--help")
 	for _, required := range []string{"APPLIED grant revision/hash", "web grants show GRANT", "web attempts show SOURCE-ATTEMPT", "web grants list EXAM --username USER", "not fresh archive verification"} {
@@ -154,7 +170,7 @@ func TestInvalidCLIUsagePointsToRelevantHelpBeforeRootOrConfiguration(t *testing
 		t.Fatal(output)
 	}
 	output, code = cliProcess(t, "help", "management")
-	if code != 0 || !strings.Contains(output, "do not yet satisfy full coverage") {
+	if code != 0 || !strings.Contains(output, "Installation settings remain in configuration files") {
 		t.Fatal(output)
 	}
 }

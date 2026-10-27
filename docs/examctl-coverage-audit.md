@@ -45,7 +45,7 @@ that capability. Browser login/logout and local desktop preferences remain
 interactive; root management uses the agent identity instead of a browser session.
 Incident JSON editing/transfer scripts remain unsupported management substitutes.
 
-## Remaining local completion and settled scope
+## Local completion and settled scope
 
 C4 is implemented/tested locally: actual resource-limited root cleanup alongside
 healthy signed SSH, lease-break/cancel/other-UID barriers, original-deadline
@@ -64,9 +64,36 @@ tests/integration/agent-management.test.ts and its management fixture helpers.
 It covers definitions/CSV/grants/clocks/reviews/alerts/admin/monitoring/retirement
 with conflicts, partial/offline/restart retries and dangerous refusals. Current
 focused run passes7.79s. Separate actual-root native collection/access/cleanup/
-saved-restore acceptance supplies the privileged boundaries. The remaining local
-work is stale help claiming these workflows are missing, then final help/refusal/
-coverage reconciliation. Do not add duplicate features or tests from old prose.
+saved-restore acceptance supplies the privileged boundaries. Stale missing-work
+help is now corrected and the management boxes are reconciled as implemented/tested
+locally. Do not add duplicate features or tests from old historical pending prose.
+
+Final bounded help correction is implemented/tested locally: actual process regression
+reproduced stale missing-work claims, and management/web help now describes the
+delivered cleanup/status/retry/cancel flow and explicitly file-based installation
+scope. Exam-state SQL/JSON remains protected; offline validation is not loaded
+agreement. Focused help/refusal/read-only/scoping races pass7.227s. One initial
+test oracle incorrectly matched legitimate collection limits applying to future
+settings snapshots; it is narrowed to the exact stale definitions-heading claim,
+with the failure retained. No product snapshot policy was changed. Only command
+help strings/tests change; core state/ownership/monitoring and application/browser
+contracts are unchanged. Final full affected CLI races pass24.386s, actual compiled
+CLI→real gateway/TLS journey passes7.81s and build/vet pass. Exact final18-file
+45,716,855-byte code-only bundle0ec06626170a9de24a920f77e0c4a16e2d9e79bf773d18583b12f8ab980f1f8c
+passes guarded real-root healthy-peer/collection-SIGKILL/lease-break/cancel/queued-
+FD/cleanup/deadline release. Stagew9dm54_b independently preserves host/base/authority;
+unique unit51ffcf319b0b48acbd291ab6422c432c is inactive/dead/MainPID0. No guest remains.
+The final bundle's core-qualification.test is byte-identical to the full retained/
+saved-restore cohort, and all core source inputs are unchanged; final root health/
+SSH/cleanup checks use the rebuilt CLI and roles. All291 final native inputs match.
+The297 recorded application/browser/image source inputs match the prior C17 receipt,
+including its declared browser wait-fixture correction; this is reuse of unchanged
+625-test/browser/image evidence, not a claim that those suites ran again.
+
+Durable final receipts: MAIN var/collection-tests/todo-local-completion-evidence.0einctzi;
+current artifact/source details and production boundary: todo-current-checkpoint.md.
+All four management checkboxes and local regression acceptance are complete locally.
+Only separately deferred production consolidation/live acceptance remain; no deploy.
 
 C17 first-observation/fresh-Begin compatibility, retained liveness/SSH, C18 saved-source authority, cancel-first legacy replacement,
 C8 native reconciliation and accepted16-student/64-pane qualification are complete

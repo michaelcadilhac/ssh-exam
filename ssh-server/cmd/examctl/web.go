@@ -129,9 +129,14 @@ Unknown/live/uncertain native authority refuses; history always forces archive.
 Saved-work issuance uses web grants help, then source-sync before availability.
 Cancel first when replacing an unused legacy permission: inspect recovery-grants
 revoke-preview/revoke, then separately issue the NEW saved-work grant. A failed
-replacement cannot reopen the cancelled permission or consume time. Configuration
-mutation, complete workspace cleanup and the full operator journey remain pending.
-Existing attempts/holds/history stay protected.
+replacement cannot reopen the cancelled permission or consume time.
+Native workspace cleanup uses matched CLI/agent/watchdog/reconcile roles:
+examctl workspaces show/dry-run, reviewed cleanup and cleanup-status after a lost
+reply. workspaces help covers explicit retry/cancel and preservation refusals.
+Installation settings remain in configuration files; no website Settings screen,
+remote file editor or automatic activation is provided. Native config help covers
+offline show/validate, not loaded agreement. Never edit exam-state SQL/JSON to
+complete management. Existing attempts/holds/history stay protected.
 
 Examples:
   sudo examctl web exams list --limit 50

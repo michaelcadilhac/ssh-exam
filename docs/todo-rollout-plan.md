@@ -1,5 +1,30 @@
 # Proposed TODO rollout, migration and rollback
 
+October26 current local completion:36/38 main items; only the two production-only
+boxes remain open. Existing management is complete locally, installation settings
+stay in files by instructor decision, and manual cleanup→NEW saved restoration
+is qualified. Final CLI/root artifact and unchanged application evidence are in
+release-readiness.md/examctl-coverage-audit.md. Nothing here is executed.
+
+A future separately instructed maintenance sequence is: read-only web/native/
+service-owner inventory; reviewed cancel-first/new-grant and native reconciliation
+where required; close new admission and positively drain attempts, preflights,
+practice/recovery/recording/timing owners and unresolved collection; take one
+consistent DB/native/work/submission/monitoring/config/key backup; install only a
+matched qualified native/web cohort; migrate reviewed authority without inventing
+old snapshots or changing clocks; verify loaded-role agreement and controlled live
+SSH/MFA/media/recovery/access/alert delivery before reopening. Consolidate the
+canonical/live-upgrade/deferred-recovery agents ONLY after that positive full drain,
+following the detailed runbook below; never stop a needed PTY owner to obtain it.
+
+Rollback must preserve newer grants/consumption, original deadlines/holds, protected
+submissions, lifecycle/no-start/retirement receipts, cleanup metadata/quarantines and
+source pins. Finish or intact-cancel pending cleanup under compatible binaries
+before any reviewed downgrade; older deleters do not enforce its archive pin.
+Never restore a pre-start database or remove metadata to revive old authority.
+Keep admission closed and repair forward when compatible rollback is unproven.
+This is a proposal, not deployment, restart, migration or student-record permission.
+
 Latest local web correction: C17 first-observation/fresh-Begin compatibility now
 passes625 app checks, six packaged-asset browser workflows and isolated033 image
 startup/upgrade/history/clock/hash smoke. New local image4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae.

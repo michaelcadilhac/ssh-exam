@@ -1,5 +1,33 @@
 # Main-bug release readiness
 
+Latest October26 LOCAL completion:36/38 main TODO items are implemented/tested.
+The only open boxes are production agent-service consolidation and post-rollout
+live acceptance; neither is authorized here. C4 now has actual guarded root manual
+cleanup/lease-break/cancel/healthy-peer/original-deadline release and OLD-folder-
+gone→NEW saved-work/full90-minute Begin/protected-history acceptance. Two confirmed
+cleanup false refusals are fixed. Current management coverage/help/refusals and
+actual CLI→gateway/TLS operator journey are reconciled; installation settings stay
+in files by explicit instructor choice, without a new web Settings/remote editor.
+
+Final affected CLI races24.386s, focused help/refusals7.227s, build/vet, real CLI/TLS
+journey7.81s and exact final-artifact guarded peer all PASS. Full unchanged core
+races335.342s and byte-identical core-test retained/saved acceptance remain valid.
+The297 C17 application/browser/image source inputs match its existing625-test and
+packaged-browser/image receipt; no unchanged full suite rerun is claimed. Exact
+artifacts, seams, failures and independent preservation/unit teardown are recorded
+in examctl-coverage-audit.md/workspace-cleanup-protocol.md and MAIN
+var/collection-tests/todo-local-completion-evidence.0einctzi. Earlier dated counts/
+missing-feature notes below are historical, not current blockers or new-artifact
+qualification. Nothing is deployed, restarted or changed in production.
+
+**Release candidate, no production go-ahead.** A separately instructed rollout
+still needs read-only inventory and reviewed legacy conversion, full positive drain
+of all needed owners, a consistent backup, matched installation and live SSH/MFA/
+camera/monitoring/access/alert acceptance. Rollback must retain newer consumption,
+clock/history/source/cleanup pins and receipts; prefer forward repair if an older
+reader cannot preserve them. The temporary three-service consolidation remains the
+unexecuted drained procedure in todo-rollout-plan.md/native-cleanup-isolation-incident.md.
+
 Latest October26 C17 correction (LOCAL ONLY): all625 app/integration checks pass
 335.54s with actual root CLI/TLS enabled. First legacy preflight refuses an old
 agent before ordinary fallback; Begin rechecks support without false activation

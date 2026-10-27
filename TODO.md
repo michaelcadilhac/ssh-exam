@@ -1,14 +1,16 @@
 # Deferred work
 
-October26 current local completion:31/38 main items (not effort/readiness). Unified
+October26 current local completion:36/38 main items (not effort/readiness). Unified
 grants, native definition reconciliation033 and reviewed manual workspace cleanup/
 retry/cancel→NEW saved-work restoration are implemented/tested locally. Native
 races/build/vet, guarded real-root healthy-peer/retained/recovery tests and unchanged
-C17 application/packaged-browser evidence pass. Remaining local work: reconcile
-CLI coverage/help/refusals/operator-journey status. Installation settings stay in
+C17 application/packaged-browser evidence pass. CLI coverage/help/refusals/operator journeys are
+implemented/tested locally, and the final exact-artifact guarded repeat passes. Installation settings stay in
 files by explicit instructor decision; no new web Settings feature or remote file
 control is required. Production consolidation/live acceptance remain deferred.
-Nothing deployed. Current checkpoint: docs/todo-current-checkpoint.md.
+Nothing deployed. Only the two production-only boxes remain open; earlier dated
+pending notes below are historical where superseded by current completed items.
+Current checkpoint: docs/todo-current-checkpoint.md.
 
 October26 native legacy cancellation/replacement is implemented/tested locally:
 actual root CLI refusal/crash/retry, exact native root43, PUBLIC web NEW20-minute
@@ -983,152 +985,69 @@ An administrator should be able to discover and finish a workflow using
 
 ## examctl completeness and usability work
 
-- [ ] **Audit command coverage against the complete management policy above.**
-  October23 source/interface inventory now distinguishes current supported
-  workflows from actual remaining gates (docs/examctl-coverage-audit.md).
-  Protected-export audit/new-private-output safety was already implemented;
-  stale global help incorrectly hid working grants/sources/practice. Three
-  actual process regressions RED, then focused help and full CLI races15.259s
-  pass with build/vet. C8 retirement, saved-source migration, destructive cleanup,
-  configuration activation and full privileged operator journey remain open;
-  this audit does not close them or authorize deployment.
-  October22 administrator parity candidate now adds shared browser/root
-  `web administrators list/show/create`, explicit named agent authorization,
-  original-password strong-verifier retries, secret-safe TTY/stdin and no account
-  overwrite. Full426 app/native race/build and actual CLI/TLS/PTY checks pass;
-  all114 combined browser checks pass with174 unchanged source/runtime hashes.
-  Migration021 contains
-  sensitive verifier intents, not plaintext/fast password fingerprints. See
-  docs/administrator-management.md. Full management/remaining items stay open;
-  this is local work, not configuration enablement or deployment.
-  C8 approved October 21: delete only unused exam definitions; archive those with
-  history, preserving attempts/submissions. No cascade deletion or silent grant
-  cancellation. October23 local candidate now supplies matching reviewed preview/
-  delete/archive/unarchive, lifecycle visibility, audit/retry/ABA fences and
-  archived-writer refusal. October26 now adds supported root native-review/
-  reconcile-native, authenticated explicit authorization,033 graph/lifecycle-bound
-  acknowledgements and shared browser/CLI status/retirement.028's legacy flag stays
-  intact. Native-only history forces archive; unknown/live/unused/uncertain or
-  unprotected/unreleased authority refuses. Source expectations, original intervals,
-  holds, cancellation/consumption receipts and all protected bytes are preserved.
-  Same-file/request retry, restart/ABA, history-loss detection, actual root CLI/TLS,
-  native races,622 application checks,11 affected browsers plus real-WASM input
-  recovery and isolated schema24→33 startup pass LOCALLY. Nothing deployed.
-  C8's legacy-retirement workflow is now implemented/tested locally; this broad
-  command-coverage item still includes cleanup/configuration/help/journey gaps.
-  Evidence/state review: docs/native-exam-reconciliation.md and exam-retirement.md.
-  Inventory every web-admin action and setting, native operation and current
-  incident-script workflow. Map each to a supported CLI command; record and fill
-  all gaps. Include bulk operations and inspection of confirmed versus pending
-  changes. Make the CLI and web UI agree after either changes a setting. Carry
-  this firm policy into the canonical design and operator documentation.
-  October22 per-pane CLI candidate now implements bounded no-write `panes
-  list/show` and reviewed `panes close` with checked durable root/machine audit,
-  scoped revisions, unique native incarnations and shared targeted student close.
-  Legacy/startup-unverified records refuse rather than discard tracking. Final426
-  app/full native race/resource/build and actual guest ACK/two-shell/root-CLI pass;
-  the same exact candidate also passes40 guest enforcement and11 real collector-
-  death/healthy-peer assertions, all host/base preservation passing. Exact tests/hashes
-  and future drained mixed-version/rollback gates are in docs/native-pane-management.md.
-  Manual close can lose that pane's buffers; it is not C3 retained lockout freeze.
-  No deployment, direct state editing or whole-attempt substitute is implied.
+- [x] **Audit command coverage against the complete management policy above.**
+  October26 implemented/tested LOCALLY. docs/examctl-coverage-audit.md maps existing
+  web-admin/native actions, settings, bulk operations and confirmed/pending states
+  to supported commands sharing validation, authorization, audit and concurrency.
+  Definitions/retirement/native reconciliation, immutable templates, enrollment/CSV,
+  administrators, initial/additional/legacy/sandbox grants, exact saved sources,
+  clocks, interruption review, monitoring, alerts, targeted panes, collections,
+  submissions, account inspection/release, manual workspace cleanup and lifecycle/
+  diagnostics have discoverable CLI workflows. No ad hoc SQL/JSON/incident script
+  is a supported management substitute. Web/CLI changes use the same authority.
+  Instructor explicitly keeps INSTALLATION settings in files; no new web Settings,
+  remote deployment-file editor or activation subsystem is required. Offline native
+  config show/validate is observation, never loaded agreement or permission.
+  Scope/evidence: examctl-coverage-audit.md, native-exam-reconciliation.md,
+  workspace-cleanup-protocol.md, administrator-management.md and management fixture
+  helpers. No deployment, production conversion or service action is implied.
 
-- [ ] **Redesign help around discoverable management workflows.**
-  October23 global help/management/web entry points now discover current initial,
-  reviewed additional/legacy, empty/separate-template and sandbox workflows via
-  web grants help. They explicitly identify saved-work migration and remaining
-  management gaps, and new-enrollment examples select an attested exact source.
-  Process-help RED/focused/full CLI races/build/vet pass; broader pending features
-  still need their supported workflows. No production change.
-  Administrator candidate help covers full privilege consequences, named
-  permissions, exact secret input, scope-safe metadata, original-intent retry,
-  no reset/overwrite and actionable known-cause refusals. Unknown signed errors
-  cannot leak credentials. The old missing workflow and candidate overly generic
-  refusal each fail their real CLI regressions before correction. Actual private
-  TLS and hidden-terminal checks, final426 app/full native repeat and114 browser
-  checks pass locally. Do not count this as completed help for all pending grant/config
-  workflows or deployed functionality.
-  October 21 C1a: signed root-agent gateway management and `web exams list/show`
-  are tested locally, including the compiled CLI against the real gateway over
-  isolated local TLS/restart. Default-deny named operation authorization, replay/
-  idempotent request records, pinned reply validation and machine/root audit are
-  implemented. Further management capabilities, complete CLI/web parity and
-  deployment remain open.
-  C1b now adds shared web/CLI create/update for all current definition settings,
-  revision conflicts, partial preservation, durable browser retry and before/
-  after audit, tested through compiled CLI/TLS, HTTP and 40 browser checks.
-  This closes configuration writes, not retirement or full management. Native-only
-  legacy recovery grants must become visible/migrated before safe C8 archival.
-  C1c adds shared roster/CSV list/add/remove/settings/preview/confirm/export/example
-  workflows, tested through actual compiled CLI/TLS, 302 application tests,
-  native race/build and 28 browser interface/SSH checks. No caller UID is trusted,
-  no active snapshot/clock/hold changes, and consumed previews retry after expiry.
-  C1d adds shared alert metadata/test/explicit audited reminders without automatic
-  escalation. C1e adds bounded attempt/clock-intent inspection, individual reset/
-  extension and explicit bulk/default-allowance workflows. Gateway acceptance is
-  distinguished from native application; retries preserve each intent. Confirmed
-  timestamp/default-allowance races are fixed, with matching web/CLI fences and
-  regression tests. See docs/attempt-clock-management.md for local qualification.
-  C1f adds private paginated interruption review/current approval inspection and
-  shared audited authorization. Exact generation plus monotonic review revision
-  fixes stale/new-reason approval races; retries preserve original expiry and
-  private metadata receipts cannot replay deleted monitoring text. All 320 app
-  tests, native race/build and 81 combined browser checks pass locally. See
-  docs/interruption-management.md. Other management gaps remain open; no local
-  increment is a deployment claim.
+- [x] **Redesign help around discoverable management workflows.**
+  October26 implemented/tested LOCALLY. Global/topic/web help is available before
+  privilege/configuration and explains target types, grouping, defaults, examples,
+  seconds/minutes/RFC3339/timezones/Unix milliseconds, required authorization,
+  destructive consequences, restrictions, exit status and machine-readable output.
+  Unknown syntax points to relevant help. Grant/source/recovery/retirement and
+  manual cleanup/status/retry/cancel are discoverable; installation files stay
+  distinct from protected exam-state and loaded enforcement. Help no longer claims
+  delivered cleanup/full operator journeys are missing or promises future settings.
+  Actual process regression was RED; focused help/refusal/scoping races PASS7.227s,
+  full affected CLI races PASS24.386s, build/vet PASS. One initial overbroad test
+  matched legitimate future-snapshot policy; its oracle is corrected without
+  changing policy. Every supported native command has process-tested help.
+  This is supported guidance, not authorization to restart/deploy.
 
-  A later actual CLI/TLS regression confirmed wrong nested private-review scope
-  was printed before rejection. Local validators now precede output; valid fully
-  scoped partial clock diagnostics retain their JSON/exit1 contract. Dedicated
-  actual root CLI/TLS/restart and companion-target unit regressions pass locally,
-  including the full350 application tests. No new management policy/deployment.
-  Local status: all currently supported native commands have process-tested help,
-  examples, defaults, restrictions, units and exit-code guidance without requiring
-  root/configuration. Unknown syntax and target/reason/filter misuse point to help.
-  C1 now approves existing agent authentication for root-run gateway management;
-  C2 also approves unified fixed-at-issuance grants. Implementation, qualification
-  and the remaining policy defaults are pending, so this item is open.
-  The current help is insufficient. Provide a clear command overview, consistent
-  grouping/naming, command-specific help and examples for normal use and recovery.
-  Explain identifiers, target selection, time units/timezones, privilege needs,
-  destructive effects, exit status and machine-readable output. Invalid syntax
-  and unknown commands should point to the relevant help, not just print a terse
-  failure. Review the CLI as a first-time administrator with no repository context.
+- [x] **Make refusal messages actionable, especially deletion and access release.**
+  Implemented/tested LOCALLY. Refusals distinguish definitions, attempts, protected
+  submissions, preparation cancellation, finishing and ordinary-account release.
+  Bounded diagnostics identify target/account, original/current deadlines, protection,
+  policy/writer/storage errors, dependency/revision state and inspection/repair/retry
+  commands. Read-only refusal reporting never reconciles or rewrites authority.
+  Emergency release explains prerequisites, reason and consequences and is never
+  an automatic shortcut. Unknown signed replies remain secret-safe/empty before
+  validation; partial/pending clock/source/monitoring states are not success.
+  Real CLI/TLS/root namespace tests cover stale/conflicting requests, lost replies,
+  permission/offline/storage/corruption refusals and successful suggested repairs.
+  Workspace unsupported/unknown objects deliberately preserve work; no force-delete
+  is offered. See native-read-only-diagnostics.md, attempt-clock-management.md,
+  interruption-management.md, workspace-cleanup-protocol.md and CLI help tests.
 
-- [ ] **Make refusal messages actionable, especially deletion and access release.**
-  October22 local correction removes a confirmed side effect: refusal reporting
-  called legacy List, reconciling access/rewriting state merely to explain an
-  error. It now uses scoped read-only capture, preserves the original error/exit1,
-  displays bounded recorded diagnostics and suggests working --read-only commands
-  with the chosen config path. Original state/lock regressions are RED0.318s; the
-  corrected actual compiled namespace-root workflow is RED0.405s when the old
-  side effect is restored, then passes after restoration. See
-  docs/native-read-only-diagnostics.md. Final full affected CLI races/TLS/namespace/
-  PTY/help pass14.594s, three focused read-only core repeats1.097s and build/vet
-  pass; no app/browser implementation or deployed policy change, and broader
-  management/refusal coverage remains open.
-  Local status: CLI refusals show target type, attempt/account, original/current
-  deadlines, protection/policy/writer errors and exact inspection/reconciliation
-  commands. Emergency release remains separate and conditional. Broader web/CLI
-  parity and complete end-to-end management qualification remain open.
-  “Submission cannot be deleted until the account restriction is released” is
-  insufficient by itself. Explain whether the target is an exam or a submission,
-  which attempt/account blocks the operation, the original/current deadlines,
-  protection status, outstanding writers or restoration failures, and the exact
-  inspection/reconciliation commands to run next. Explain when normal release is
-  eligible and how to verify it. If an emergency override is relevant, explain
-  its prerequisites, privileges, required audited reason and consequences; never
-  invoke or recommend it as an automatic shortcut. Clearly distinguish deleting
-  an exam definition, deleting a submission, cancelling an unstarted preparation,
-  finishing an attempt and restoring ordinary account access.
-
-- [ ] **Validate end-to-end CLI usability and error guidance.**
-  Walk through creating an exam, importing students, changing settings/time,
-  inspecting and authorizing an interruption, staging recovery, diagnosing failed
-  collection, restoring eligible access and deleting the intended resource using
-  only command help. Include offline/partial failures, conflicting edits, retries
-  and dangerous-operation refusals. Test that suggested next commands actually
-  work in the state being reported and preserve audit/security requirements.
+- [x] **Validate end-to-end CLI usability and error guidance.**
+  October26 implemented/tested LOCALLY. The existing actual compiled root-mapped
+  CLI→real gateway application over local TLS walks creation, settings, enrollment/
+  CSV, templates/grants/saved sources, clocks, interruption review, alerts, private
+  monitoring, administrators and definition retirement. Current focused run PASS
+  7.81s; restart/lost reply, explicit authorization, conflicts, invalid targets,
+  dangerous refusals, private scopes and no-overwrite guidance are exercised.
+  Its authored synthetic histories do not pretend to be real kernel attempts:
+  separate guarded root workflows exercise collection death/repair, deadline-based
+  access release, lease/cancellation/manual cleanup and NEW saved-work/full chosen
+  allowance after the old folder is gone. All use actual public interfaces and
+  preserve audit/history/holds. Current final-CLI process/help races PASS24.386s;
+  exact rebuilt CLI's guarded peer repeat passes with independently verified
+  preservation and stopped unique unit; receipts are in the checkpoint.
+  No first-time operator needs repository internals or direct state editing.
+  Production SSH/MFA/camera/alerts acceptance remains separately deferred.
 
 ## Design investigation: unified exams, attempts and workspace initialization
 
@@ -2086,10 +2005,23 @@ the approval is not a production change or a completed investigation.
   instructor-facing preparation checks. Preserve safe filesystem traversal and
   fail-closed collection; do not silently omit saved answers to meet a limit.
 
-## Completion evidence for future work
+## Completion evidence and deferred production acceptance
 
-- [ ] Add focused regressions for each changed behavior, then run appropriate
+- [x] Add focused regressions for each changed behavior, then run appropriate
   integration/race tests in an isolated environment before scheduling deployment.
+  October26 LOCAL acceptance complete: confirmed correctness defects have RED→
+  GREEN public-interface regressions, full native races core335.342s/CLI26.363s,
+  final help/refusal focus7.227s/full affected CLI24.386s, build/vet and actual
+  compiled CLI→gateway/TLS operator journey7.81s. Exact final artifact also passes
+  guarded real-root collection-death/healthy-peer/lease/cancel/cleanup/deadline
+  restoration with independent stopped-unit/host/base/authority preservation.
+  Full retained/NEW saved-work90-minute restore is qualified on byte-identical
+  core test artifacts. The297 unchanged application/browser/image source inputs
+  match C17's625-test/packaged-browser/schema24→33 evidence; no unrelated repeat
+  is claimed. Capacity16students/64terminals remains the approved previously
+  qualified target. Detailed receipts: docs/examctl-coverage-audit.md,
+  docs/workspace-cleanup-protocol.md and docs/release-readiness.md.
+  No deployment is scheduled or authorized; production-only checks stay open.
 - [ ] After the maintenance rollout, verify delivery of a small controlled alert
   test, exact recovery timing and saved-work restoration, normal access policy,
   dashboard status and absence of duplicate alerts. Record the revision, checks

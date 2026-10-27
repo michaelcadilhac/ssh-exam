@@ -157,12 +157,12 @@ func printHelp(w io.Writer, topic string) bool {
 		return true
 	}
 	if topic == "management" {
-		fmt.Fprintln(w, `examctl must cover every web/native management workflow. Current native commands
-do not yet satisfy full coverage. Help and syntax need no root/configuration.
+		fmt.Fprintln(w, `examctl is the management entry point for web and native exam workflows.
+Help and syntax need no root/configuration.
 
 Gateway workflows use the existing root agent identity over verified outbound
 HTTPS, with explicit named operation authorization; no browser login is required:
-  examctl web help                     definitions and future settings
+  examctl web help                     definitions and exam settings
   examctl web students help            roster, settings and reviewed CSV import
   examctl web grants help              attempt grants and workspace sources
   examctl web templates help           authenticated exact source metadata
@@ -184,10 +184,18 @@ Inspect the receipt, then separately issue the NEW grant; failure cannot reopen
 the old permission. Never replace unknown consumption as a retry.
 
 Local root workflows: templates help installs/verifies/syncs immutable sources;
-workspaces help covers retention metadata/holds, isolated dry-run and reviewed cleanup/status/retry/cancel; panes help
-covers targeted inspection/closure. Native manifest/export/delete concern protected
+workspaces help covers retention metadata/holds, dry-run and reviewed
+cleanup/cleanup-status/cleanup-retry/cleanup-cancel; panes help covers targeted
+inspection/closure. Native manifest/export/delete concern protected
 submissions, not exam definitions. Configuration show/validate is offline only;
 use config help. Agent stop/restart requires a separately authorized full drain.
+
+Installation settings remain in configuration files: email delivery/recipients,
+server addresses, storage/key paths and operating limits. No website Settings
+screen, remote file editor or automatic configuration activation is provided.
+Offline config validation never proves loaded configuration or work permission.
+Use matched native CLI/agent/watchdog/reconcile roles and the reviewed installation
+procedure; changing a file is not service activation or authorization to restart.
 
 Gateway clock acceptance is not native application: inspect each intent and native
 info ATTEMPT --read-only. Interruption approval is not execution permission.
@@ -198,10 +206,18 @@ submission. Administrator creation never resets/overwrites existing credentials.
 Reviewed definition retirement: web exams retire-preview/delete/archive/unarchive.
 Legacy definitions need web exams native-review and web exams reconcile-native
 before a fresh retirement review. Unknown/live authority refuses; no history,
-grants or protected data is cascaded. Complete workspace cleanup, configuration
-mutation and the full operator journey remain pending. No supported
-offline SQL/JSON editing or separate agent control API exists. See each command's
-help and docs/todo-design-decisions.md for current coverage and safety gates.
+grants or protected data is cascaded.
+
+Secured workspace folders: inspect workspaces show and dry-run ATTEMPT, then
+review cleanup with --review SHA256 --request NEW_UUID --reason TEXT. After a lost
+reply/refusal use cleanup-status with the SAME request; workspaces help explains
+explicit retry or intact cancellation. No grace period or automatic deletion.
+Unknown/busy references mean preserve and defer, never terminate unrelated users.
+Diagnose failed collection with info ATTEMPT --read-only and help collection;
+repair the reported cause before retry. Account release remains deadline/protection
+dependent, separate from finishing or deleting any resource.
+Never edit exam-state SQL/JSON or use a separate agent control API as a substitute.
+See each command's help and docs/todo-design-decisions.md for scope and safety gates.
 Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
 		return true
 	}
@@ -213,7 +229,7 @@ Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
 		}
 		fmt.Fprintf(w, "Usage: sudo examctl %s\n\n%s\n\n%s\n\nExamples (replace ATTEMPT with a UUID from list):\n%s\n\n", g.usage, g.summary, g.restrictions, g.examples)
 	} else {
-		fmt.Fprint(w, "Usage: examctl help [COMMAND] | sudo examctl [FLAGS] COMMAND [TARGET]\n\nInspect:       list, info, health, accounts\nAttempts:      start, pause, stop (finish), cancel, cancel-absent, retry\nWorkspace:     workspace-prepare, workspace-repair\nSubmissions:   manifest, export, delete\nAccess:        reconcile, override-access\nAgent:         agent start|stop|restart|status\nCompatibility: export-status, pause-export, resume-export (disabled)\n\nIncident observation: list --read-only -> info ATTEMPT --read-only -> review reported causes\nOnly after deliberate recovery authorization: reconcile -> info ATTEMPT --read-only\nSubmission deletion is separate from exam-definition deletion and account release.\nRead examctl help COMMAND before mutations; examctl help management describes remaining coverage gaps.\nUse examctl help collection for worker/resource/pending-state recovery.\n\n")
+		fmt.Fprint(w, "Usage: examctl help [COMMAND] | sudo examctl [FLAGS] COMMAND [TARGET]\n\nInspect:       list, info, health, accounts\nAttempts:      start, pause, stop (finish), cancel, cancel-absent, retry\nWorkspace:     workspace-prepare, workspace-repair\nSubmissions:   manifest, export, delete\nAccess:        reconcile, override-access\nAgent:         agent start|stop|restart|status\nCompatibility: export-status, pause-export, resume-export (disabled)\n\nIncident observation: list --read-only -> info ATTEMPT --read-only -> review reported causes\nOnly after deliberate recovery authorization: reconcile -> info ATTEMPT --read-only\nSubmission deletion is separate from exam-definition deletion and account release.\nRead examctl help COMMAND before mutations; examctl help management maps workflows and safety boundaries.\nUse examctl help collection for worker/resource/pending-state recovery.\n\n")
 	}
 	if topic == "" {
 		fmt.Fprintln(w, "Offline native configuration/candidate checks: config show/validate; use examctl config help. No configuration apply or service action.")
