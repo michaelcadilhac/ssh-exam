@@ -1890,14 +1890,17 @@ the approval is not a production change or a completed investigation.
   orphaned/unknown folders still require supported proof, never blanket deletion.
 
 - [ ] **Consolidate the live agent handoffs after a verified drain.**
-  October27: matched code-only candidate staged/verified locally. Instructor-
-  approved read-only inventory on csc-sys/marco found terminal history/no unfinished
-  work, all three old listeners and web schema11. Schema11→33/24→33 synthetic
-  migration/image/asset checks PASS without changing history or inventing grants.
-  Canonical outbound proxy and nginx frontend-overlay removal are concrete cutover
-  changes. No production change/deployment; cutover authorization and a fresh
-  admission-fenced full drain remain required. Never use old idle counts or the
-  auto-cancelling historical upgrade helpers.
+  October27 authorized production cutover IN PROGRESS: full admission-fenced
+  web/native drain and private backups verified. The two temporary agents are
+  retired; native815a895 and matched web/schema33 run in maintenance. All original
+  intervals/settings/protected checksums/access/grants remain intact;14 previously
+  unapplied zero-clock cancellations explicitly acknowledge NORMAL, without an OS
+  policy change. Six exact public asset hashes and root signed CLI PASS;0 invented
+  grants/queued alerts. A stale initial native configuration snapshot was caught
+  before reopening. Command-only refresh through existing reconcile CLI/timer is
+  locally RED→GREEN validated, full affected CLI races/vet PASS; corrected command
+  deployment/fresh signed callback agreement still pending. Item stays OPEN.
+  Do not use old idle counts or auto-cancelling historical upgrade helpers.
   Exact package and remaining gates: docs/production-rollout-2026-10-27.md.
   The canonical agent, `exam-agent-live-upgrade`, and
   `exam-agent-deferred-recovery` retain existing PTY bridges. Do not stop any of
@@ -2042,11 +2045,14 @@ the approval is not a production change or a completed investigation.
   test, exact recovery timing and saved-work restoration, normal access policy,
   dashboard status and absence of duplicate alerts. Record the revision, checks
   and deployment outcome without publishing student information.
-  October27 read-only production inventory and local schema11→33/24→33 image
-  rehearsals complete. No alert sent, rollout performed or live acceptance claimed.
-  Explicit cutover authorization and a chosen non-student identity with real
-  SSH/MFA/media/inbox confirmation remain required. Exact host-specific changes,
-  acceptance and rollback: docs/production-rollout-2026-10-27.md.
+  October27 authorized rollout IN PROGRESS: actual private production-copy
+  schema11→33 startup preserved all18 old data tables; live schema33/history/assets
+  verified in maintenance. No controlled alert/real acceptance claimed yet. Selected
+  mcadilha is currently practice-only; a consequential dialog asks another normal
+  non-student identity or explicit temporary exception change with independent
+  admin/root access. Do not bypass the installed exception. Human SSH/MFA/media/
+  inbox confirmation remains required; external new starts stay fenced. Exact
+  host-specific changes/acceptance/rollback: docs/production-rollout-2026-10-27.md.
 
 References: `docs/native-cleanup-isolation-incident.md`,
 `docs/recovery-runbook.md`, `design.md`, and the protected October 20 alert/audit

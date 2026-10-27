@@ -1,10 +1,64 @@
 # Current TODO checkpoint
 
-October27 milestone: finish production consolidation/live acceptance preparation.
-36/38 items remain implemented/tested locally; both production boxes OPEN.
-Runtime/image/native source815a895 unchanged. Instructor approved READ-ONLY
-inventory on csc-sys and marco (ssh-exam.cadilhac.name). Inventory ran; no production
-transfer, configuration/student-record change, restart, deployment or push.
+October27 CURRENT: guarded production cutover is AUTHORIZED and IN PROGRESS on
+marco and csc-sys; instructor chose mcadilha for real SSH/MFA/media/inbox checks.
+No repeated deployment/local-commit/account approval is needed. Public new-start
+gate verified20 refused requests including encoded paths/spoofed headers. Full
+web/native owner/interval/journal/session/auth/socket/cgroup drain passed before
+stopping the exact exam components; SSH/relay/nginx/unrelated services untouched.
+
+Both private backups verified: marco /var/backups/ssh-exam/cutover-20261027-vymmm77z
+(13,543,137,280-byte data/config archive,153,304 members,SQLite integrity plus old
+image); csc-sys /var/backups/ssh-exam/cutover-20261027-ngzrkhmr (201,594,880 bytes,
+3,947 members). Credentials/student data remain on their owning hosts.
+
+Native815a895 is NOW DEPLOYED: four exact binaries/eight units, canonical outbound
+proxy; both old temporary unit files/live-preserve.conf retired after drain and
+backup. Single socket owner, canonical/watchdog/timer active+boot enabled; root
+examctl health production_ready true, retained role complete/enabled/issues[].
+172 original intervals/settings/protection/access/grants preserved;408 protected
+source/account files byte-identical. Only14 legacy never-started/unapplied
+cancellations receive the source-defined NORMAL acknowledgement; no OS account,
+clock/hold/source/protected byte change. Record this intentional metadata update.
+
+Web is NOW DEPLOYED schema33/healthy, maintenance:true, explicit56 CLI operations,
+fenced-release nginx, original Compose/secrets/pins/mail/readiness intact. Actual
+production-copy rehearsal preserved all18 old data tables; actual live108 attempt
+histories/clocks/settings/protection/access unchanged;0 invented grants/outbox
+queued. All6 public qualified assets match and root signed web CLI exams.list PASS.
+
+Cutover caught a real stale-configuration observation: startup ReportConfiguration
+precedes the local agent observer, and no later configuration is queued. Root
+examctl health roles are complete, but web's signed startup snapshot remains
+incomplete. Corrected locally in command wiring only: CLI reconcile queues a fresh
+observation; existing periodic agent -reconcile reports before delivery. Actual
+compiled public agent/CLI regressions RED→GREEN using synthetic namespace/TLS,
+affected full CLI races6.007s/vet PASS. Core/web/image/protocol/support unchanged.
+Details: docs/native-configuration-refresh.md. Two corrected native command binaries
+are in this run's configuration-refresh-bin; source changes are validated for the coherent correction commit, not yet
+installed. Next commit/manifest them and replace only the corrected cohort in
+a fresh verified still-idle maintenance drain, then require fresh signed complete
+web callback agreement and unchanged authority/protected bytes. Do not reopen yet.
+
+Open NEW consequential choice dialog: mcadilha is explicitly configured practice-
+only (sandbox_only:true and health's administrator_sandbox_accounts). Full ordinary
+exam/recovery testing needs another named non-student identity OR explicit temporary
+exception change with independent admin/root access (mcadilha restrictions may
+remove its normal admin SSH until deadline). Do not silently bypass that exception.
+Continue independent correction/acceptance preparation while awaiting the choice.
+
+Owned headed-browser Node REPL session79153; local SSH SOCKS forward46779 through
+marco, browser-forward.json records exact cancel command. It uses real TLS/public
+origin and per-process host mapping for loopback-only gate access, not a global
+DNS/browser or certificate bypass. Collect its last launch/probe result before UI
+work. No credentials/MFA/camera/inbox result obtained. Cancel only the exact owned
+forward when done; preserve the user's parent SSH connection.
+
+Durable in-progress receipts/scripts: MAIN var/collection-tests/production-cutover.td6oq2x6;
+pointer /tmp/ssh-exam-production-cutover.json. Host staging: csc-sys
+/var/tmp/ssh-exam-rollout-815a895-kro4_1em; marco
+/var/tmp/ssh-exam-rollout-815a895-heo02ogn. Both production TODOs remain OPEN pending
+matched web/callback/boot checks and actual controlled live acceptance. No push.
 
 ## Validated result
 
@@ -45,21 +99,15 @@ examctl-coverage-audit.md and todo-local-completion-evidence.0einctzi.
 
 ## Exact next action and decisions
 
-Validated preparation committed locally as9be4cf9 and fast-forwarded onto main;
-runtime815a895 unchanged. Two async dialogs are pending: explicit production
-cutover authorization for the concrete documented changes, and the instructor's
-chosen non-student account for real SSH/MFA/media/inbox acceptance. Latest approval
-covered read-only inventory only. Do not deploy on silence, select an existing
-student or weaken protections. No other design question is open.
-
-After authorization, verify the nginx new-admission fence and repeat complete
-all-three-agent/independent/practice/preflight/pending-work drain immediately before
-any stop. Busy/uncertain means wait, never cancel/override/kill/clear to fit the gate.
-Then private consistent backups, reviewed matched activation/schema33, single
-canonical consolidation, maintenance checks, controlled live acceptance, reopen.
-Never run unchanged historical automatic installers or treat old idle counts as
-proof. No new activation/settings subsystem or bulk legacy-grant conversion.
-
+Commit/manifest the passed bounded configuration refresh correction and perform
+its fresh-idle matched native activation; verify automatic signed configuration
+refresh, preserved history and root CLI. Keep web in maintenance and external
+new-start gate until account choice and controlled real acceptance are complete.
+Human MFA/media/inbox participation is required; never request passwords or codes.
+No other design question is open. Do not re-run old four-owner drain/install
+scripts: both temporary agents are retired. Never run historical automatic
+installers, revive approval/reset helpers, weaken guards, bulk-convert old grants
+or restore pre-start authority. Prefer closed admissions/forward repair on failure.
 Original main ten dirty PNGs/stashes remain preserved; hash manifest
 /tmp/ssh-exam-retained-recording-main-image-hashes.json. Local commits authorized.
 No subagents. Stop for a missing executable only when its package is absent and

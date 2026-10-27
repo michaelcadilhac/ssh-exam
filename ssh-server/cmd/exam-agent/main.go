@@ -46,6 +46,11 @@ func main() {
 		if err = e.ReconcilePolicies(); err != nil {
 			log.Print(err)
 		}
+		// The startup snapshot precedes the command listener. Refresh it through
+		// the existing timer after both live role endpoints can answer probes.
+		if err = e.ReportConfiguration(); err != nil {
+			log.Printf("native configuration report: %v", err)
+		}
 		if err = e.DeliverCallbacks(); err != nil {
 			log.Print(err)
 		}

@@ -257,6 +257,9 @@ func main() {
 		if policyErr := e.ReconcilePolicies(); err == nil {
 			err = policyErr
 		}
+		if reportErr := e.ReportConfiguration(); err == nil {
+			err = reportErr
+		}
 		result = map[string]bool{"ok": err == nil}
 	case "override-access":
 		result, err = e.OverrideAccess(id, *reason)
