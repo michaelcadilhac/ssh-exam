@@ -112,6 +112,19 @@ vet, diff check. Web/application/ordinary native execution are unchanged, so C8'
 those unchanged surfaces. No new installed resource/host-root proof is inferred.
 No active runner, guest, production action or workspace deletion.
 
+C4c investigation during independent application qualification: a private local
+Unix socket pair can retain a regular file ONLY in queued SCM_RIGHTS, while proc
+FD inventory shows only the inspecting process's own descriptor. A synthetic
+kernel probe confirms a fresh exclusive F_SETLEASE refuses that queued reference
+and succeeds after it is received/closed; original bytes remain unchanged. Linux
+file leases cover regular files, not directory references (the real directory
+probe returns EINVAL). This is evidence for a necessary cleanup-worker barrier,
+not an enabled helper, complete proof or deletion. Do not generalize the regular-
+file result to directories/namespace/admission races. Quarantine, full inode/use
+barriers and durable retry still must integrate at the public cleanup entry.
+Primary semantics: Linux [lease implementation](https://github.com/torvalds/linux/blob/v6.17/fs/locks.c)
+and [lease interface](https://man7.org/linux/man-pages/man2/F_GETLEASE.2const.html).
+
 Metadata correction: native producer-based default/custom directory regressions
 RED0.046s and actual root-mapped CLI RED0.031s reproduced the wrong host-path
 comparison. Focused GREEN under race core1.095s/CLI1.633s verifies recorded_directory

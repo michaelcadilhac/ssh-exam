@@ -47,10 +47,6 @@ Incident JSON editing/transfer scripts remain unsupported management substitutes
 
 ## Necessary remaining integration gates
 
-- **C17 first observation:** explicit duration/source/purpose/restart and supported
-  rejected-prepare cancellation are implemented/tested. Inspect legacy first-
-  observation capability/configuration agreement before claiming this broad item
-  complete; new unified grants already require their matching fresh Begin roles.
 - **C4 workspace cleanup:** metadata/holds and isolated fresh observation are
   supported. Sequential snapshots are not a destructive lifetime barrier.
   Complete exact-inode reviewed quarantine/removal, durable inspect/retry/cancel,
@@ -67,7 +63,7 @@ Incident JSON editing/transfer scripts remain unsupported management substitutes
   remaining cleanup/configuration workflows. Help must guide to implemented
   commands and distinguish these exact gaps from deferred production checks.
 
-Retained liveness/SSH, C18 saved-source authority, cancel-first legacy replacement,
+C17 first-observation/fresh-Begin compatibility, retained liveness/SSH, C18 saved-source authority, cancel-first legacy replacement,
 C8 native reconciliation and accepted16-student/64-pane qualification are complete
 locally. See unified-grant-acceptance.md, legacy-recovery-migration.md,
 native-exam-reconciliation.md and retained-release-qualification.md for exact

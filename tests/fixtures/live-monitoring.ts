@@ -17,7 +17,13 @@ export async function liveMonitoring(
   const h = await hosts({ mfaDelayMs: 10 });
   h.control.command = async (op, body) => {
     if (options.ownedAttempt && op === "health")
-      return { ready: true, fixture: true, capabilities: [] };
+      return {
+        ready: true,
+        fixture: true,
+        capabilities: ["recovery-allowance-sync-v1"],
+      };
+    if (options.ownedAttempt && op === "reconcile-recovery-allowance")
+      return { version: 1, recovery: null }; // The owned synthetic legacy account has no saved grant.
     if (options.ownedAttempt && op === "prepare-attempt")
       return { ...body, state: "PREPARING", work_path: "/work" };
     if (op === "register")

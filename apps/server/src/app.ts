@@ -203,6 +203,18 @@ export async function createApp(
         "Class server lacks finite sandbox Begin-window enforcement; ask the operator to verify matching native roles before new practice. No exam clock has started.",
       );
   };
+  // Both legacy preflight and Begin call this before requesting native
+  // preparation/activation. No saved source may need to be known on the web yet.
+  const requireLegacyRecoveryAgent = (h: any) => {
+    if (!h.capabilities?.includes("recovery-allowance-sync-v1"))
+      throw Error(
+        "Class server lacks recovery allowance synchronization; verify matching native roles with sudo examctl health before retrying preflight or Begin. Preserve the preparation and protected source; no new clock or grant was consumed.",
+      );
+    if (!h.ready)
+      throw Error(
+        "Class server guards are not ready; inspect sudo examctl health and preserve the preparation/source before retrying. No new clock was requested.",
+      );
+  };
   const requireTemplateAgent = (settings: any, h: any) => {
     if (
       settings.template_version &&
@@ -1541,15 +1553,7 @@ export async function createApp(
     let recovery = previous?.recovery_preflight
       ? recoveryPreflight.parse(JSON.parse(previous.recovery_preflight))
       : null;
-    if (
-      !initialGrant &&
-      !isSandbox(s.exam) &&
-      (allowanceEdit || recovery || knownRecovery) &&
-      !h.capabilities?.includes("recovery-allowance-sync-v1")
-    )
-      throw Error(
-        "Class server lacks recovery allowance synchronization; update matching native roles before retrying. No grant or clock was consumed.",
-      );
+    if (!initialGrant && !isSandbox(s.exam)) requireLegacyRecoveryAgent(h);
     if (
       !initialGrant &&
       !isSandbox(s.exam) &&
@@ -1828,7 +1832,13 @@ export async function createApp(
       throw Error("Preparation is changing; check status before starting.");
     busy.add(a.id);
     let checkingMonitoring = false;
+    let checkingLegacyRoles = false;
     try {
+      if (!a.grant_id && !isSandbox(a.exam)) {
+        checkingLegacyRoles = true;
+        requireLegacyRecoveryAgent(await conn.command("health"));
+        checkingLegacyRoles = false;
+      }
       if (isSandbox(a.exam))
         requireSandboxAgent(a.exam, await conn.command("health"));
       const prepared = await conn.command("inspect-attempt", { id: a.id });
@@ -1987,6 +1997,10 @@ export async function createApp(
       return { attempt: store.attempt(a.id), serverNow: now() };
     } catch (e) {
       life.activationPending.delete(a.id);
+      if (checkingLegacyRoles)
+        throw Error(
+          "Class server recovery allowance synchronization and guards could not be verified. Ask the operator to inspect sudo examctl health and matching native roles, then retry this preflight. Preserve the preparation/source; this request did not start a new clock or consume a grant.",
+        );
       const reason = (e as Error).message.slice(0, 500);
       store.audit("gateway", "activation-failed", a.id, reason);
       app.log.warn(

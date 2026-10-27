@@ -2,6 +2,74 @@
 
 Local development only; not deployed. Synthetic identities/data only.
 
+## October26 first-observation and Begin compatibility correction (implemented/tested locally)
+
+Confirmed through authenticated SSH/web entry: without an explicit allowance edit
+or a previously remembered recovery source, preflight accepted an older agent's
+health and sent ordinary prepare-attempt. A second actual interface regression
+changed the reported role after valid preflight; Begin still started/consumed its
+full allowance. Both are RED in recovery-first-observation-red.log (8.79s).
+
+Intentional compatibility tightening, within the existing recovery-aware-agent
+requirement: EVERY unconverted ordinary/legacy preflight requires recovery-
+allowance-sync-v1 before any native preparation or web PREPARING insertion, even
+on first observation with no edit/source history. A matching agent must positively
+answer its existing authenticated probe before ordinary template selection.
+Fresh legacy Begin also checks current capability/readiness under its existing
+busy fence. The new guard applies to unstarted work only; already-started clocks
+and monitoring are unchanged. Unified grants/practice retain their separate
+already-required typed authority and source checks. Nothing is auto-migrated.
+
+Unknown/unavailable/old role is an actionable admission refusal, never misconduct
+or permission to continue. Begin guard failure returns safe verification/retry
+guidance without activation-failed audit, activation reconciliation, grant/time
+consumption or a new pending operation. Its finally releases the existing busy
+fence. Inspect sudo examctl health; repair matching roles only in separately
+authorized drained maintenance, then retry the SAME saved preparation/source.
+This does not authenticate a deliberately replaced root authority backup or prove
+arbitrary pre-observation data was never lost; consistent legacy inventory/backup
+and matched installation remain future production gates.
+
+Pre-broad state review: no new schema, durable/intermediate state, reservation,
+execution permission, native protocol/worker, key or configuration change. Checks
+precede prepare/activate; existing preflight expiry/positive cancellation and all
+source/UID/interval/one-use fences remain. A lost health reply creates no positive
+receipt or clock; stale page/connection/window/readiness still recheck before
+actual activation. Source restoration/crash repair remains the tested original
+workflow. Do not bypass the guard for fixture/development health in product code.
+
+Focused all11 initial cases PASS50.07s, including no-history old-role refusal and
+Begin role loss. Expanded missing-capabilities and exact same-preparation repair
+retry are added; affected staging/handoff cases pass. Cleanup regression now
+models a matching saved allowance, then a storage refusal AFTER the required
+source probe so it still reaches absent native preparation/cancellation. Its old
+source UUID was not RFC-valid and one old3600 assertion remained; corrected the
+fixture, never the schema or product duration fence. All3 cleanup outcomes now
+PASS24.85s. Build/types/browser/full app qualification follows; not deployed.
+
+Current focused browser journey PASS11.2s with real Chromium/WASM/SSH: first
+preflight refusal creates no web/native attempt; Begin role-loss refusal keeps
+the same zero-clock preparation and no activation-failed audit; repaired roles
+start that same allowance and protected finish completes. The first fixture
+control lacked existing Origin/CSRF authentication, then retry clicked behind
+the displayed Workspace error dialog. Corrected the test to use the authenticated
+session/control and observed Close button; no product guard was relaxed.
+
+First full run322.63s:615 pass,8 fail,2 intentionally unselected root-namespace
+CLI cases. All8 failures are the shared live-monitoring mock's old empty capability
+list, so the new gate correctly refused BEFORE their intended retained-session
+stage. The fixture now advertises/answers the current empty-catalog probe; all8
+affected real HTTP/SSH retained-contact/Continue/SSH-exit tests pass17.77s. Keep
+the failed full receipt (...application.first.log). Search shared producers as
+well as per-scenario mocks when a protocol prerequisite changes. Full repeat
+enables EXAM_MANAGEMENT_USERNS=1 so its two actual CLI/TLS cases run too.
+
+Local build/typecheck PASS. Local Go1.27.3-X:nodwarf5 generated WASM3143b590...,
+whereas the release image pins Go1.27.2. Those are different artifacts: final
+packaged-image browser checks must use its extracted assets, without attributing
+earlier C8 WASM1bea6f8e evidence to a newly compiled client. No new native protocol
+or class-server executable/production installation is changed by this web guard.
+
 ## Bounded implementation plan
 
 1. Student `/api/student/preflight` → failed native `prepare-attempt` →
@@ -226,3 +294,49 @@ so old UUIDs remain fenced; never restore old state over newer starts/consumptio
 or delete an orphan web row to force retry. Consolidation of the three temporary
 agent services and independent practice owners remains the guarded proposal in
 todo-rollout-plan.md, not an executed action or required restart during exams.
+
+## Final current-source correction qualification, October26
+
+All625 application/integration checks across110 files PASS335.54s, no skips;
+EXAM_MANAGEMENT_USERNS=1 exercises both actual root-mapped CLI/TLS workflows.
+Native authority/source/restart/crash/storage evidence remains the fresh41.678s
+matrix in unified-grant-acceptance.md; no Go/native protocol or enforcement path
+changed here. Build and final typecheck/diff checks pass.
+
+Local pinned release image ssh-exam-release-test:recovery-compatibility-033-67c74bba8133,
+sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae.
+Source digest67c74bba81334f7c99f8dcd53bdc8ba19dea535fd68b3e9b5941ccc8377f54b4.
+Its private UID10001/read-only/no-network/cap-dropALL fixture upgrades24->33,
+preserves exact original HELD history, invents no grants/reconciliation and verifies
+CLOCK_BOOTTIME/native ABI and served asset hashes. Labelled fixture/container,
+synthetic keys/data and unstarted export container are independently removed;
+base image retained. Explicit local Docker Unix socket only; no production action.
+
+Extracted Go1.27.2 WASM is1bea6f8ef01e81532d5fa8a7064047f93fd2fc729391bad6fe109b51193b3e40;
+JS51cc420a907399b8a7d65b757e8a0c4ea4896e05df6080cf2f183ca053861520.
+Critical real-WASM compatibility/refusal/same-preparation repair/finish PASS11.3s.
+Five affected Chromium checks PASS59.5s: reviewed NEW legacy issuance/lost reply,
+preflight expiry, repeated SSH EOF/targeted closure/logout/relogin/finish, active
+logout and exact-source legacy Begin. This includes ordinary, versioned, grant-
+aware and finite practice paths. It is not new privileged SSH/PAM/cgroup proof.
+
+The first broader browser run was4 pass/1 fail: repeated exit had no command echo
+and an unexpected extra pane, before the intended EOF. Its helper only waited for
+window count, without proving shell readiness/focus. The corrected helper waits
+for the actual prompt, verifies the observed Terminal input textbox is focused
+and targets real sequential keyboard/Enter events there. Focused EOF workflow
+PASS22.7s, then all5 broader checks pass. Original trigger is not proven solely
+by that snapshot; retain browser-packaged.first.log. No product/UI change or
+acceptance weakening. This browser-only fixture edit changes no Vitest input or
+image build input, so no unchanged full application/container rerun is needed.
+
+MAIN var/collection-tests/recovery-first-observation.sources.json pins698 source/
+config files,73 local build outputs and the6 exact packaged frontend assets,
+with image provenance and that explicit post-application browser-only delta.
+Prior manifests/local-Go frontend are preserved. Logs /tmp/ssh-exam-recovery-first-
+observation-{application,build,types-final,docker-build,artifacts,container,browser-
+packaged-focus,browser-packaged,ssh-focus}.log; retained earlier failures have
+.first.log or dedicated red/focus receipts. All sources/assets match after runs.
+Original main screenshots/stashes remain preserved. No active runner/guest.
+Production installation, inventory/drain/live acceptance and three-agent
+consolidation remain separate unexecuted proposals in todo-rollout-plan.md.

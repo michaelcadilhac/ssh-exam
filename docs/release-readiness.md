@@ -1,5 +1,18 @@
 # Main-bug release readiness
 
+Latest October26 C17 correction (LOCAL ONLY): all625 app/integration checks pass
+335.54s with actual root CLI/TLS enabled. First legacy preflight refuses an old
+agent before ordinary fallback; Begin rechecks support without false activation
+audit or lost allowance. Same-preparation repair/finish passes actual WASM11.3s;
+five affected packaged browser workflows pass59.5s. New local image
+ssh-exam-release-test:recovery-compatibility-033-67c74bba8133,
+sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae,
+passes production-maintenance schema24->33/HELD-history/native-clock/asset smoke.
+WASM remains the exact pinned1bea6f8e; source/asset/seam/failure receipts are in
+recovery-admission-consistency.md.30/38 overlapping boxes checked locally, not
+effort or production readiness. No deployment or new native execution cohort
+qualification is claimed; production boundaries below remain in force.
+
 Latest October26 C8 management increment (LOCAL ONLY): legacy native-review/
 reconcile-native033 and shared CLI/browser retirement now pass622 application
 checks, full CLI/affected native races,11 affected browsers, the real-WASM capture

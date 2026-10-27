@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import WebSocket from "ws";
 import { createApp } from "../../apps/server/src/app.js";
+import { hash } from "../../apps/server/src/db.js";
 import { hosts } from "../fixtures/hosts.js";
 
 it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
@@ -26,10 +27,11 @@ it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
     const preparedIDs: string[] = [],
       cancelledIDs: string[] = [];
     const source = {
-      source_attempt: "11111111-1234-1234-1234-123456789abc",
+      source_attempt: "11111111-1234-4234-8234-123456789abc",
       checksum: "a".repeat(64),
     };
-    const grant = { ...source, duration: 3600, consumed: false };
+    const grant = { ...source, duration: 4500, consumed: false };
+    const createdAt = Date.now() - 10000;
     h.control.command = async (op, body) => {
       if (op === "register") return { uid: 10001 };
       if (op === "resolve-course-accounts") return { student: 10001 };
@@ -37,14 +39,33 @@ it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
         return {
           ready: true,
           fixture: true,
-          capabilities: ["private-workspace-staging"],
+          capabilities: [
+            "private-workspace-staging",
+            "recovery-allowance-sync-v1",
+          ],
         };
-      if (op === "prepare-attempt") {
+      if (op === "reconcile-recovery-allowance")
+        return {
+          version: 1,
+          recovery: {
+            version: 1,
+            exam: "recovery",
+            username: "student",
+            uid: 10001,
+            duration: grant.duration,
+            ...source,
+            created_at: createdAt,
+            grant_hash: hash(JSON.stringify(grant)),
+            allowance_revision: null,
+          },
+        };
+      if (op === "prepare-recovery-attempt") {
         preparedIDs.push(body.id);
         expect(body.settings.duration).toBe(4500);
+        expect(body.expected_recovery).toBe(hash(JSON.stringify(grant)));
         if (rejectPreparation)
           throw Error(
-            "recovery preparation does not match this student, exam or allowance",
+            "Synthetic recovery preparation storage unavailable after verified allowance",
           );
         remote = {
           ...body,
@@ -97,19 +118,17 @@ it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
     try {
       const origin = await app.listen({ host: "127.0.0.1", port: 0 });
       config.origin = origin;
-      store.db
-        .prepare("INSERT INTO exams VALUES('recovery',?)")
-        .run(
-          JSON.stringify({
-            id: "recovery",
-            duration: 3600,
-            webcam: false,
-            template: "v1",
-            terminals: 2,
-            earliest: Date.now() - 60000,
-            latest: Date.now() + 600000,
-          }),
-        );
+      store.db.prepare("INSERT INTO exams VALUES('recovery',?)").run(
+        JSON.stringify({
+          id: "recovery",
+          duration: 3600,
+          webcam: false,
+          template: "v1",
+          terminals: 2,
+          earliest: Date.now() - 60000,
+          latest: Date.now() + 600000,
+        }),
+      );
       store.db
         .prepare(
           "INSERT INTO enrollments(exam,username,uid,duration) VALUES('recovery','student',0,4500)",
@@ -191,7 +210,7 @@ it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
         app.inject({ method: "POST", url, headers, payload: {} });
       const refused = await post("/api/student/preflight");
       expect(refused.statusCode).toBe(400);
-      expect(refused.json().error).toContain("allowance");
+      expect(refused.json().error).toContain("preparation storage unavailable");
       expect(preparedIDs).toHaveLength(1);
       const failedID = preparedIDs[0];
       expect(store.attempt(failedID)).toMatchObject({
@@ -202,7 +221,7 @@ it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
       expect(remote).toBeUndefined();
       expect((await post("/api/logout")).statusCode).toBe(200);
       expect(cancelledIDs).toEqual([failedID]);
-      expect(grant).toEqual({ ...source, duration: 3600, consumed: false });
+      expect(grant).toEqual({ ...source, duration: 4500, consumed: false });
       if (outcome === "unconfirmed") {
         expect(store.attempt(failedID)).toMatchObject({
           state: "PREPARING",
@@ -219,7 +238,7 @@ it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
         ).toEqual({ n: 1 });
-        expect(grant).toEqual({ ...source, duration: 3600, consumed: false });
+        expect(grant).toEqual({ ...source, duration: 4500, consumed: false });
         return;
       }
       expect(store.attempt(failedID).state).toBe("CANCELLED_BEFORE_START");
@@ -230,9 +249,9 @@ it.each(["confirmed", "lost-cancel-reply", "unconfirmed"])(
           )
           .get(),
       ).toEqual({ n: 0 });
-      // Synthetic operator repair; real native allowance revision is qualified
-      // separately. The cleanup regression must not weaken duration enforcement.
-      grant.duration = 4500;
+      // Synthetic storage repair after the actual new recovery protocol reached
+      // preparation. Allowance synchronization is covered separately; do not
+      // bypass the mandatory first-observation probe to reach this failure.
       rejectPreparation = false;
       headers = await login();
       const retry = await post("/api/student/preflight");

@@ -1,8 +1,7 @@
 # Current local TODO checkpoint
 
-October26,2026. Maina85c370 includes C8 reconciliation, C4a directory fix and C4b
-isolated public dry-run diagnostics. Current commit corrects management discovery
-and reconciles existing grant/crash acceptance.29/38 main items checked locally;
+October26,2026. Mainb335327 includes C8, C4a/C4b diagnostics, corrected management discovery
+and reconciled unified-grant/crash acceptance. Current C17 correction is validated locally in this commit; no deployment.30/38 main items checked locally;
 not effort/readiness. No deployment/push/service/config/student changes.
 
 ## Current milestone and next action
@@ -20,14 +19,39 @@ signed fresh TLS Begin/restart, allowance/source/rejected-preflight retry, both
 OS account/activation adapters remain synthetic; separate exact286 root43/PUBLIC
 C7/16x4 evidence supplies installed boundaries, within its own artifact scope.
 
-Next integrated result: inspect/fix C17 first-observation legacy capability/config
-agreement before preparation/fallback, through student preflight and supported
-CLI diagnosis. Explicit allowance/source/purpose/restart is already delivered;
-do not repeat it. No policy question pending. Then complete safe C4 deletion and
-configuration activation/help/operator journey. Full deletion lifetime barrier,
-reviewed exact-inode quarantine, durable inspect/retry/cancel, archive-pin/no-start
-integration and crash/healthy-peer/saved-restore qualification remain real C4 work;
-sequential /proc snapshots are insufficient. Do not extend unused scanner chains.
+C17 first-observation/fresh-Begin correction is now implemented/tested locally:
+all625 application checks110files335.54s PASS, both actual CLI/TLS tests enabled;
+critical packaged-WASM refusal/same-preparation repair/finish11.3s plus5 affected
+browsers59.5s PASS; build/types and production-maintenance image24->33/history/
+clock/assets PASS. No new native protocol or execution path; scope/seams/failures:
+recovery-admission-consistency.md.30/38 local items checked. Source/asset manifest
+MAIN var/collection-tests/recovery-first-observation.sources.json. The only late
+change is browser-only shell readiness/focus, excluded from Vitest/image inputs;
+focused22.7s then5-case repeat pass. Do not rerun unchanged full app for that.
+
+Image ssh-exam-release-test:recovery-compatibility-033-67c74bba8133,
+sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae;
+pinned Docker WASM1bea6f8e/JS51cc420a. Dist/web is extracted from that image;
+dist server/native clock remains the separately validated local build. Local
+Go1.27.3 WASM3143... is preserved at MAIN var/collection-tests/recovery-compatibility-
+local-web. No active runner/container/guest. Owned smoke/export objects removed.
+
+Next: commit/integrate C17, then deliver approved C4 explicit cleanup end to end:
+root workspaces cleanup/review/status/retry/cancel, private same-FS exact-inode
+quarantine, durable audit/phase/pin/no-start integration and no-follow removal.
+Fresh archive/current holds/UID workflow fences, all writer/mount/use barriers
+and crash/healthy-peer/saved-restore qualification are required. Queued-only
+regular SCM_RIGHTS reference is invisible to proc but positively refused by a
+file lease; directories do not support leases. Existing quiesceWriters seals ONLY
+the top work dir0500, so do not infer sealed nested directories/queued directory
+references. Qualify the actual deletion barrier; no unused helper chain or
+eligibility from snapshot_clear. Manual/no-grace policy remains settled.
+
+Pending design dialog: server-file config apply root-locally on each owning
+server with separate restarts (recommended), or class examctl remote web-host
+file/service control? Existing signed web management is settled. Await that
+architecture answer only; continue independent cleanup. Config apply/help/full
+operator journey and2 production-only completion items remain open.
 
 C4 public workspaces dry-run verifies archive and observes objects/all threads/
 foreign mounts/fd/cwd/root/maps/watches in a bounded independent worker under

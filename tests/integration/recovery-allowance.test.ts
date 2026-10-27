@@ -14,6 +14,9 @@ it.each([
   "default-only",
   "lost-reply",
   "old-role",
+  "old-role-first-observation",
+  "missing-capabilities-first-observation",
+  "role-lost-before-begin",
   "prepared",
   "missing-after-receipt",
   "wrong-reply",
@@ -21,6 +24,7 @@ it.each([
 ])(
   "explicit recovery allowance synchronization through settings, signed SSH preflight and Begin (%s)",
   async (scenario) => {
+    const firstObservation = scenario.endsWith("first-observation");
     const h = await hosts();
     const data = mkdtempSync(tmpdir() + "/recovery-allowance-");
     const config = {
@@ -50,7 +54,8 @@ it.each([
     let remote: any,
       available = true,
       lost = false,
-      changed = false;
+      changed = false,
+      roleLost = false;
     h.control.command = async (op, body) => {
       operations.push(op);
       if (op === "register") return { uid: 10001 };
@@ -59,10 +64,18 @@ it.each([
         return {
           ready: true,
           fixture: true,
-          capabilities: [
-            "private-workspace-staging",
-            ...(scenario === "old-role" ? [] : ["recovery-allowance-sync-v1"]),
-          ],
+          ...(scenario === "missing-capabilities-first-observation"
+            ? {}
+            : {
+                capabilities: [
+                  "private-workspace-staging",
+                  ...(["old-role", "old-role-first-observation"].includes(
+                    scenario,
+                  ) || roleLost
+                    ? []
+                    : ["recovery-allowance-sync-v1"]),
+                ],
+              }),
         };
       if (op === "reconcile-recovery-allowance") {
         if (scenario === "prepared")
@@ -202,7 +215,7 @@ it.each([
         )
         .run(scenario === "default-only" ? null : 3600);
       const admin = store.session("admin", "fixture-instructor", null);
-      if (scenario !== "default-only") {
+      if (scenario !== "default-only" && !firstObservation) {
         const edit = await app.inject({
           method: "POST",
           url: "/api/admin/exams/recovery/roster/settings",
@@ -305,9 +318,32 @@ it.each([
           payload: {},
         });
       let prepared = await preflight();
-      if (["old-role", "prepared", "wrong-reply"].includes(scenario)) {
+      if (
+        [
+          "old-role",
+          "old-role-first-observation",
+          "missing-capabilities-first-observation",
+          "prepared",
+          "wrong-reply",
+        ].includes(scenario)
+      ) {
         expect(prepared.statusCode, prepared.body).toBe(400);
         expect(operations).not.toContain("prepare-recovery-attempt");
+        if (firstObservation) {
+          expect(prepared.json().error).toContain(
+            "recovery allowance synchronization",
+          );
+          expect(operations).not.toContain("prepare-attempt");
+          expect(operations).not.toContain("reconcile-recovery-allowance");
+          expect(
+            new RosterManagement(store).allowanceEdit("recovery", "student"),
+          ).toBeNull();
+          expect(
+            store.db
+              .prepare("SELECT count(*) n FROM recovery_grant_sources")
+              .get(),
+          ).toEqual({ n: 0 });
+        }
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
         ).toEqual({ n: 0 });
@@ -375,19 +411,47 @@ it.each([
       expect(grant.consumed).toBe(false);
       expect(remote.workspace.source.attempt).toBe(source.source_attempt);
       await freshCapture(app, id, page, headers);
-      const begin = await app.inject({
-        method: "POST",
-        url: `/api/student/attempts/${id}/begin`,
-        headers: { ...headers, "x-page-instance": page },
-        payload: {
-          screen: true,
-          keyboard: true,
-          fullscreen: true,
-          focus: true,
-          visible: true,
-          webcam: false,
-        },
-      });
+      if (scenario === "role-lost-before-begin") roleLost = true;
+      const requestBegin = () =>
+        app.inject({
+          method: "POST",
+          url: `/api/student/attempts/${id}/begin`,
+          headers: { ...headers, "x-page-instance": page },
+          payload: {
+            screen: true,
+            keyboard: true,
+            fullscreen: true,
+            focus: true,
+            visible: true,
+            webcam: false,
+          },
+        });
+      let begin = await requestBegin();
+      if (scenario === "role-lost-before-begin") {
+        expect(begin.statusCode, begin.body).toBe(400);
+        expect(begin.json().error).toContain(
+          "recovery allowance synchronization",
+        );
+        expect(operations).not.toContain("activate-recovery-attempt");
+        expect(store.attempt(id)).toMatchObject({
+          state: "PREPARING",
+          start: null,
+          deadline: null,
+          original_deadline: null,
+        });
+        expect(grant.consumed).toBe(false);
+        expect(
+          store.db
+            .prepare(
+              "SELECT count(*) n FROM audit WHERE action='activation-failed' AND target=?",
+            )
+            .get(id),
+        ).toEqual({ n: 0 });
+        // Repair the role, then reuse the SAME saved preparation/source. Only
+        // the actual successful Begin receives its full original allowance.
+        roleLost = false;
+        begin = await requestBegin();
+      }
       expect(begin.statusCode, begin.body).toBe(200);
       expect(store.attempt(id).deadline! - store.attempt(id).start!).toBe(
         grant.duration * 1000,

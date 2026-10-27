@@ -56,7 +56,12 @@ it.each([
       }
       if (op === "resolve-course-accounts") return { student: 10001 };
       if (op === "inspect-attempt") return { ...remote };
-      if (op === "health") return { ready: true, fixture: true };
+      if (op === "health")
+        return {
+          ready: true,
+          fixture: true,
+          capabilities: ["recovery-allowance-sync-v1"],
+        };
       if (op === "prepare-account-policy") {
         Object.assign(remote, {
           policy_state: "READY",

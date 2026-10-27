@@ -1,5 +1,15 @@
 # Proposed TODO rollout, migration and rollback
 
+Latest local web correction: C17 first-observation/fresh-Begin compatibility now
+passes625 app checks, six packaged-asset browser workflows and isolated033 image
+startup/upgrade/history/clock/hash smoke. New local image4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae.
+Future matched installation must supply recovery-allowance-sync-v1 for ALL
+unconverted ordinary preflights and fresh legacy Begin, before any new clock.
+A failed verification preserves the same source/preparation for retry, never an
+automatic refund or starter fallback. No new native protocol/config/schema is
+added here. Exact scope: recovery-admission-consistency.md. This is not deployment
+authorization; three-service consolidation below remains a proposal only.
+
 Latest October26 candidate: native286acd9 now passes full local races/resources,
 guarded root43 and the PUBLIC web cancellation→NEW saved-work20-minute workflow.
 The matching c27 packaged browser passes startup/migration/asset checks. The final

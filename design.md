@@ -118,6 +118,14 @@ consumes a grant/clock or changes historical attempts/holds. Preserve these new
 records/fields on backup and rollback; older native readers deliberately refuse
 revised grant metadata. Evidence/compatibility:
 docs/recovery-admission-consistency.md. Local implementation, not deployed.
+Every unconverted ordinary/legacy preflight now requires recovery-aware support
+and its authenticated probe even before the first remembered source/edit. Fresh
+legacy Begin checks current compatibility/readiness under the existing busy fence.
+Failure preserves the preparation/source and starts no clock, grant consumption
+or activation-failure audit; repair retries the same preparation/full allowance.
+This intentionally tightens old-agent compatibility without changing already-
+started deadlines/monitoring. Unified/practice grants retain their distinct roles.
+No new durable state, configuration or native protocol is introduced.
 
 Saved-work restoration explicitly reapplies archived ordinary file modes and
 available modification times after student ownership, independently of umask.

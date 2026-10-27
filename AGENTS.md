@@ -53,7 +53,9 @@
   preserve the complete logical transaction when reusing a fixture, including
   issuance, enrollment and claim. Assert a polled field exists in the producer's
   actual projection; prefer the public response when it owns the required fact.
-  do not infer argument order or invent setter names. Bound individual browser
+  When adding mandatory capabilities/operations, inspect shared fixture producers
+  as well as scenario mocks and run their public callers before broad qualification.
+  Do not infer argument order or invent setter names. Bound individual browser
   actions and use observed accessible roles so a bad locator cannot consume the
   whole workflow timeout. A locator failure is not a product refusal oracle.
   First-grant fixtures use a fresh synthetic exam namespace and authored source;

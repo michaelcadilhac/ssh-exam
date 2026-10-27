@@ -1,5 +1,18 @@
 # Development retrospective — October 22, 2026
 
+October26 C17 follow-up: the new mandatory legacy recovery probe was verified in
+its own SSH/web/browser cases, but the first full run found8 older retained tests
+sharing a different empty-capability fixture. Search shared producers, not only
+scenario files, when a prerequisite changes; the exact8 public callers then pass
+17.77s without any product bypass. The same first broad invocation omitted the
+existing root-namespace opt-in, skipping2 actual CLI/TLS checks; the repeat enables
+it explicitly. Preserve the first result, never call it qualification. Browser
+fault controls also need their existing session/Origin/CSRF, and retry must close
+the observed Workspace error dialog. Finally local Go1.27.3 and pinned release
+Go1.27.2 produce different WASM: qualify extracted release assets instead of
+assigning old browser proof to the local rebuild. Detailed receipts/state review:
+recovery-admission-consistency.md. These corrections add no enforcement exception.
+
 October26 worktree setup follow-up: a repository-relative Prettier executable was
 absent in a new worktree although the package was installed in the main workspace.
 The instructor clarified that only an actually missing package requiring their

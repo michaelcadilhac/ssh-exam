@@ -41,6 +41,7 @@ const accounts = { student01: 10001, student02: 10002, student03: 10003 };
 const health = {
   ready: true,
   fixture: true,
+  capabilities: ["recovery-allowance-sync-v1"],
   warning: "Simulation; no native account or process isolation",
 };
 const manifest = (a: any) =>
@@ -109,6 +110,8 @@ h.control.command = async (op, b) => {
   }
   if (op.startsWith("issue-")) return h.agent.call(op, b);
   if (op === "health") return health;
+  if (op === "reconcile-recovery-allowance")
+    return { version: 1, recovery: null }; // This simulator has no legacy recovery catalog.
   if (op === "resolve-course-accounts") {
     if (b.usernames.some((n: string) => !(n in accounts)))
       throw Error("Unknown fixture account");

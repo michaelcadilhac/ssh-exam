@@ -73,6 +73,9 @@ const versionAccounts = {
   extra02: 10028,
   practice01: 10026,
 };
+const recoveryRoleAccounts = { recovery01: 10046 };
+let recoveryRoleMissing = false;
+const recoveryRoleOperations: string[] = [];
 const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
@@ -213,6 +216,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       fixture: true,
       capabilities: [
         "private-workspace-staging",
+        "recovery-allowance-sync-v1",
         "immutable-template-versions-v1",
         "exact-template-begin-v1",
         "unified-initial-grants-v1",
@@ -224,6 +228,8 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         "reviewed-initial-grants-v1",
       ],
     };
+  if (op === "reconcile-recovery-allowance")
+    return { version: 1, recovery: null }; // Ordinary synthetic legacy catalog is empty.
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
       ...timezoneAccounts,
@@ -239,6 +245,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...approvalAccounts,
       ...preflightAccounts,
       ...versionAccounts,
+      ...recoveryRoleAccounts,
       policytest01: 12001,
       student01: 10001,
       student02: 10002,
@@ -755,6 +762,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       ...preflightAccounts,
       ...versionAccounts,
       ...retainedRestartAccounts,
+      ...recoveryRoleAccounts,
       student01: 10001,
       student02: 10002,
       student03: 10003,
@@ -843,6 +851,18 @@ h.control.dropReply = (frame) =>
   frame.username === "receipt01" &&
   frame.op.includes("receipted-execution-lease");
 h.control.command = async (op, b, frame) => {
+  if (frame?.username === "recovery01") {
+    if (recoveryRoleOperations.length < 128) recoveryRoleOperations.push(op);
+    if (op === "health" && recoveryRoleMissing) {
+      const value = await fixtureCall(op, b);
+      return {
+        ...value,
+        capabilities: value.capabilities.filter(
+          (c: string) => c !== "recovery-allowance-sync-v1",
+        ),
+      };
+    }
+  }
   const pendingPause = attempts.get(b.id);
   if (
     op === "lock-attempt" &&
@@ -1064,6 +1084,18 @@ store.db
 store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("versioned-source", "version01", null, null, null, 10021);
+definitions.create(
+  {
+    ...exam,
+    id: "recovery-compatibility",
+    name: "Legacy recovery role compatibility",
+    template_version: versionHash,
+  },
+  "fixture-operator",
+);
+store.db
+  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
+  .run("recovery-compatibility", "recovery01", null, null, null, 10046);
 definitions.create(
   {
     ...exam,
@@ -1328,6 +1360,29 @@ store.db
   .run("temporary-access", "policytest01", null, null, null, 12001);
 // Disposable browser-test instrumentation only; never part of the production app.
 app.get("/api/fixture/runtime", async () => ({
+  recoveryCompatibility: {
+    missing: recoveryRoleMissing,
+    operations: recoveryRoleOperations,
+    native: [...attempts.values()]
+      .filter((a) => a.username === "recovery01")
+      .map((a) => ({
+        id: a.id,
+        state: a.state,
+        start: a.start ?? 0,
+        deadline: a.deadline ?? 0,
+        original_deadline: a.original_deadline ?? 0,
+      })),
+    web: store.db
+      .prepare(
+        "SELECT id,state,start,deadline,original_deadline FROM attempts WHERE exam='recovery-compatibility' AND username='recovery01'",
+      )
+      .all(),
+    activationFailures: store.db
+      .prepare(
+        "SELECT count(*) n FROM audit WHERE action='activation-failed' AND target IN (SELECT id FROM attempts WHERE exam='recovery-compatibility')",
+      )
+      .get(),
+  },
   retainedRegistrations,
   nativeBeginRequests,
   refusedRetainedPauses,
@@ -1379,6 +1434,13 @@ app.get("/api/fixture/runtime", async () => ({
     .all(),
 }));
 // Fault injection is strictly fixture-only; production has no corresponding route.
+app.post("/api/fixture/recovery-role", async (req) => {
+  const body = req.body as { missing?: unknown };
+  if (Object.keys(body).length !== 1 || typeof body.missing !== "boolean")
+    throw Error("Choose one synthetic recovery role state");
+  recoveryRoleMissing = body.missing;
+  return { missing: recoveryRoleMissing };
+});
 app.post("/api/fixture/age-preflight", async (req) => {
   const { id } = req.body as { id: string };
   const a = store.attempt(id);

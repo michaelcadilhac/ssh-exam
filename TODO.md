@@ -1,11 +1,11 @@
 # Deferred work
 
-October26 current local completion:29/38 main items (not effort/readiness). Unified
+October26 current local completion:30/38 main items (not effort/readiness). Unified
 grant authority/migration/scenario specification and recovery crash/storage repair
 acceptance are reconciled in docs/unified-grant-acceptance.md. Native definition
 reconciliation033 is also delivered locally. Root workspace dry-run now observes
-archives/references but grants no deletion eligibility. Remaining: C17 first-
-observation compatibility, complete cleanup/configuration/help/operator journey,
+archives/references but grants no deletion eligibility. C17 first-observation compatibility now passes625 application checks and exact
+packaged-asset browsers. Remaining: complete cleanup/configuration/help/operator journey,
 and separately deferred production consolidation/live acceptance. Nothing deployed.
 
 October26 native legacy cancellation/replacement is implemented/tested locally:
@@ -1378,8 +1378,7 @@ Existing enrollment migration and implementation remain outstanding.
   legacy definition reconciliation. Current signed TLS/start/restart/allowance/
   rejected-preflight/crash/storage acceptance passes41.678s, eleven top-level
   entries, no skips; existing622 app/root43/PUBLIC C7/16x4 evidence is scoped in
-  that document. Separate C17 first-observation compatibility, cleanup/configuration
-  and production inventory/drain/install gates remain open. Nothing deployed.
+  that document. Separate cleanup/configuration and production inventory/drain/install gates remain open. Nothing deployed.
   Define durable authoritative records and authenticated synchronization using the
   existing architecture, one-use/idempotency rules and crash/retry handling. Plan
   migration of ordinary exam uniqueness rules, sandbox behavior and recovery
@@ -1751,11 +1750,21 @@ the approval is not a production change or a completed investigation.
   commands and agent-to-webserver callbacks; do not reintroduce a control API.
   Keep ordinary policy and explicit approval for emergency handoffs unchanged.
 
-- [ ] **Require a recovery-aware agent and detect mismatched configuration.**
-  October26 reconciliation: explicit allowance/source/purpose/restart checks pass
-  again on current sources. Remaining investigation is specifically first-
-  observation legacy admission/role compatibility, plus future matched installed
-  acceptance; broad source migration is now delivered and is not a new dependency.
+- [x] **Require a recovery-aware agent and detect mismatched configuration.**
+  October26 local completion: first-observation legacy preflight now requires the
+  recovery-aware capability and authenticated probe even with no remembered source
+  or allowance edit, BEFORE preparation/web reservation. Fresh legacy Begin also
+  checks current support/readiness; failure keeps the same zero-clock preparation
+  without an activation-failed audit or grant consumption. Matching-role repair
+  retries the same source/full allowance. All625 app checks/110files335.54s pass,
+  including actual root CLI/TLS; exact pinned-image compatibility browser11.3s and
+  five affected WASM workflows59.5s pass. Production-image schema24->33/HELD-history/
+  clock/asset smoke, build/typecheck and unchanged-source native authority/crash
+  matrix41.678s pass. No new native protocol, source fallback, refund or production
+  install. Full scope/seams/failures: docs/recovery-admission-consistency.md.
+  Historical partial-state notes below are superseded by that current acceptance;
+  future production inventory, backup, matching installation/live acceptance remain
+  separately required, not a claim that unobserved lost root history is recoverable.
   C17 now adds local dedicated recovery allowance capability negotiation and
   distinct signed reconcile/prepare/Begin purposes. Explicit edit or retained
   authenticated source expectations require the matching role before admission;

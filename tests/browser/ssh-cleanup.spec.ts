@@ -19,13 +19,18 @@ async function login(page: Page, username: string) {
   expect(attempt.start).toBeNull();
 }
 async function command(page: Page, text: string) {
-  await page
-    .locator(".winbox")
-    .last()
-    .locator(".xterm-helper-textarea")
-    .focus();
-  await page.keyboard.type(text);
-  await page.keyboard.press("Enter");
+  const pane = page.locator(".winbox").last();
+  // A window exists before its asynchronous SSH shell is usable. Wait for the
+  // observed prompt and keep keyboard events targeted at this pane's textbox.
+  await expect(pane.locator(".xterm-rows")).toContainText("/work $");
+  const input = pane.getByRole("textbox", {
+    name: "Terminal input",
+    exact: true,
+  });
+  await input.focus();
+  await expect(input).toBeFocused();
+  await input.pressSequentially(text);
+  await input.press("Enter");
 }
 async function start(page: Page) {
   await ready(page);

@@ -55,12 +55,15 @@ it.each(["e", "versioned"])(
           fixture: !legacyAgent,
           capabilities: [
             "private-workspace-staging",
+            "recovery-allowance-sync-v1",
             ...(versioned && !legacyTemplateAgent
               ? ["immutable-template-versions-v1", "exact-template-begin-v1"]
               : []),
           ],
         };
       }
+      if (op === "reconcile-recovery-allowance")
+        return { version: 1, recovery: null }; // Authenticated empty synthetic catalog.
       if (op === "prepare-attempt") {
         expect(body.settings.collection_file_mib).toBe(128);
         expect(body.settings.collection_total_mib).toBe(512);
