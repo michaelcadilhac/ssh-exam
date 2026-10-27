@@ -247,8 +247,11 @@ inode private quarantine and durable recoverable phase/archive-pin receipts.
 Independent cleanup history also participates in no-start/definition-retirement
 proof after live/archive folders are absent. Original clocks/account restrictions,
 source grants, protected archives/history and literal lifecycle receipts remain.
-Manual/no-grace policy is intentional; no automatic cleanup. Broad native checks
-pass; guarded privileged acceptance remains before closing C4; nothing deployed. See
+Manual/no-grace policy is intentional; no automatic cleanup. Broad native and
+guarded privileged cleanup/healthy-peer/NEW saved-restore acceptance now pass
+locally. Installation settings remain in files by explicit instructor decision;
+no new web Settings or remote configuration-file activation service is required.
+Existing web management retains CLI parity. Nothing deployed. See
 docs/workspace-cleanup-protocol.md and docs/workspace-retention.md.
 
 ## 2. Product context and defaults

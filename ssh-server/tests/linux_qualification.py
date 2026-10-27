@@ -1065,6 +1065,16 @@ if (a.framed_owner or a.retained_policy) and not a.worker_isolation:
                         else:io_baseline=completed
                     finally:
                         for descriptor in fifo_handles:os.close(descriptor)
+                    # These are this probe's IPC scaffolding, not saved work.
+                    # Remove them as the student AFTER the probe has exited and
+                    # before collection; cleanup must keep refusing unknown IPC.
+                    fifo_cleanup='import os,stat\n'
+                    fifo_cleanup+='for path in '+repr(['/work/'+tag+'-data','/work/'+tag+'-control'])+':\n'
+                    fifo_cleanup+=' st=os.lstat(path); assert stat.S_ISFIFO(st.st_mode) and st.st_uid==os.getuid() and st.st_nlink==1; os.unlink(path)\n'
+                    fifo_cleanup+='print("FIFO-"+"REMOVED:"+'+repr(tag)+',flush=True)'
+                    connection.input(fresh,'python3 -c '+shlex.quote(fifo_cleanup)+'\n')
+                    read_until(fresh,('FIFO-REMOVED:'+tag).encode(),timeout=3)
+                    assert all(not (work/(tag+suffix)).exists() for suffix in ('-data','-control'))
 
             # A recorder's immutable identity predates all approved Continues.
             # Its real failure must still affect this exact current attempt,

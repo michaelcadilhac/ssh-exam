@@ -3,7 +3,7 @@
 October26 reconciliation: the PUBLIC retained-SSH/liveness release is now
 implemented/tested locally, not deployed. Full621 application/native races,
 42 new-core kernel cases, public fault/C7/clock/dual-hold flows, actual16/64 and
-19 final affected UI cases pass (retained-release-qualification.md).30/38 main
+19 final affected UI cases pass (retained-release-qualification.md).31/38 main
 boxes are checked; overlap is not effort percentage. Earlier critical-workflow
 remaining gaps below are historical. The CLI catalog UID discrepancy is fixed in
 076a5c1; c27eac0 fixes coalesced capture recovery, and the exact packaged image now
@@ -14,9 +14,12 @@ shared browser/CLI retirement, qualified by622 app checks, native races/actual
 CLI/TLS,11 affected browsers plus real-WASM input recovery and schema24→33 image
 startup. This closes C8's local workflow; it does not perform production conversion
 or close the broader command-coverage checkbox. Isolated workspace dry-run is
-supported; C4c reviewed cleanup/status/retry/cancel now has an integrated locally
-focused-tested candidate, with broad/guarded qualification still pending. Manual
-cleanup has no grace period. Configuration/help/operator journey remain. C17 first-observation/fresh-Begin
+supported; C4c reviewed cleanup/status/retry/cancel now passes full native and
+guarded healthy-peer/cleanup→NEW saved-work restoration qualification locally.
+Manual cleanup has no grace period. Instructor chose installation settings in
+files; no new web Settings/remote file activation feature is required. Current
+actual compiled CLI→real gateway/TLS operator journey passes7.79s. Stale help and
+final coverage/refusal/journey reconciliation remain. C17 first-observation/fresh-Begin
 compatibility is now qualified locally with625 app checks and packaged browsers.
 Unified authority/migration/scenario specification and existing crash/storage
 repair acceptance are reconciled locally in unified-grant-acceptance.md. Do not rerun or reimplement the

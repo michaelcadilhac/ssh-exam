@@ -3,8 +3,8 @@
 Local investigation/development only; no deployment or production deletion.
 October26 C4c now has an integrated candidate cleanup/status/retry/cancel worker,
 durable archive pins/receipts and actual CLI/crash/storage/restore regressions.
-Broad native qualification passes; guarded privileged qualification remains.
-C4 stays open. Current
+Broad native and guarded privileged healthy-peer/cleanup/NEW saved-work restore
+qualification now pass. C4 is complete locally; nothing is deployed. Current
 protocol, state review, exact failures and next acceptance:
 [workspace-cleanup-protocol.md](workspace-cleanup-protocol.md).
 Approved C4 policy remains manual, no grace period, preserve authoritative clocks,
@@ -13,7 +13,7 @@ work or uncertain usage can defer cleanup without interrupting any process. Arch
 dependencies are not live-folder dependencies. Existing approvals/state review:
 workspace-retention.md. No new policy question is pending.
 
-Dependency-ordered public milestones:
+Original dependency-ordered milestones (all now delivered/tested locally):
 
 1. Correct `examctl workspaces show/list` metadata. Confirmed source discrepancy:
    native preparation records `WorkPath=Engine.directory()` (normally `/work`),
@@ -46,11 +46,12 @@ Dependency-ordered public milestones:
 Do not stop after metadata or a helper: continue to the integrated safe cleanup.
 Full privileged boundaries require the agreed guarded disposable csc-sys guest;
 local namespace fixtures alone do not qualify host-root/PAM/cgroups. Busy/uncertain
-host guard means no test. New bundle approval, if tool review requires it, must
-refer to a complete audited exact artifact; previous286 approval covers only it.
-
-Detailed cleanup protocol is not final merely because this plan exists. The
-worker/usage lifetime barrier and crash-state layout remain under investigation.
+host guard means no test. The instructor has since approved audited code-only
+cleanup bundles/corrections below96MiB in new private test directories, excluding
+credentials/runtime host config/student data. Exact artifact and guards remain
+mandatory. The lifetime barrier and crash layout now have actual integrated
+qualification in workspace-cleanup-protocol.md; the following earlier increments
+are retained history, not the current completion status.
 
 ## C4b integrated observation, October26 (local; not cleanup qualification)
 

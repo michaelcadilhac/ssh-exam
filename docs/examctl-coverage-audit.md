@@ -35,7 +35,7 @@ feature document retains the boundaries of its operational tests.
 | Native attempts/panes | `help COMMAND` for start, pause, finish, cancel, cancel-absent, retry; `panes help` | Root native scope/exact targets; reports plus existing reconcile inspect/acknowledge timed-owner receipts, while manual closure preserves pending proof; not retained freeze |
 | Native inspection/access/protection | `help COMMAND` for list, info, health, accounts, reconcile, override-access; `help collection`; `panes supervisor ATTEMPT` | Read-only inspection exposes optional registered page/transport/boot/authorization identity and exact lease-owner mismatch; observation grants no permission. Emergency override never an automatic shortcut |
 | Protected submissions | `help COMMAND` for manifest, export, delete | Code inspection confirms bounded verification and checked durable audit before exporting bytes to the caller; new0600 output/no overwrite; deletion preserves history/holds/dependencies |
-| Workspace inspection/holds/manual cleanup | `workspaces help` | Known metadata/holds and isolated dry-run; snapshot_clear is diagnostic. C4c candidate adds reviewed cleanup/status/retry/cancel, leases/all-directory sealing, exact-inode quarantine, durable receipt/history/archive pins; focused and broad native checks pass, guarded qualification pending |
+| Workspace inspection/holds/manual cleanup | `workspaces help` | Reviewed cleanup/status/retry/cancel, leases/all-directory sealing, exact-inode quarantine, durable history/archive pins; full native and guarded healthy-peer/NEW saved-restore qualification pass locally. Preview alone is not a deletion permit |
 | Legacy saved-work grants | `help recovery-grants`, `web grants help`; explicit allowance edits via `web students` | Reviewed unused revoke-preview/revoke, then separate NEW issuance/source-sync; C17 preserves existing explicit unused-duration reconciliation; no consumed-history conversion |
 | Native configuration/lifecycle | `config help`, `help agent` | Offline selected-file/key observation; lifecycle is separately authorized drained maintenance, not implicit apply |
 
@@ -45,32 +45,28 @@ that capability. Browser login/logout and local desktop preferences remain
 interactive; root management uses the agent identity instead of a browser session.
 Incident JSON editing/transfer scripts remain unsupported management substitutes.
 
-## Necessary remaining integration gates
+## Remaining local completion and settled scope
 
-- **C4 workspace cleanup:** the integrated candidate now supplies reviewed
-  quarantine/removal/status/retry/cancel, archive-pin/no-start integration and
-  corrected exact-SIGKILL/storage/restore regressions through actual interfaces.
-  Broad native checks pass; guarded multi-UID/resource/healthy-peer qualification remains.
-  Manual/no-grace is settled; no unsafe switch/expiry shortcut. Exact state review
-  and qualification scope: workspace-cleanup-protocol.md. C4 stays open.
-- **Configuration writes:** show/validate does not install/apply. Agent/watchdog
-  load configuration at startup; a new examctl invocation reads its selected
-  file. A replacement alone cannot establish loaded-writer agreement. Need a
-  reviewed exact candidate, closed admission/full drain/inventory, checked audit,
-  matched-role activation and explicit authorized lifecycle actions, including
-  independent practice owners and all canonical/temporary agents. No partial apply.
-  Do not interpret this as a requirement to remotely edit every deployment file.
-  The instructor prefers web administration for operational settings; CLI parity
-  would use the existing authenticated API. SMTP/recipients, worker/recording/
-  preflight limits and maintenance are concrete candidates to review. Origin,
-  listen/storage paths, SSH endpoints/pins and key/relay paths remain deployment
-  setup unless explicitly included. The repeated question about two examctl
-  installations/remote file control was premature and is withdrawn; it is not an
-  unanswered prerequisite for cleanup or existing management workflows.
-- **Complete operator journey:** create/import/grant/clock/review, saved recovery
-  and retirement have interface evidence; the combined journey still needs the
-  remaining cleanup/configuration workflows. Help must guide to implemented
-  commands and distinguish these exact gaps from deferred production checks.
+C4 is implemented/tested locally: actual resource-limited root cleanup alongside
+healthy signed SSH, lease-break/cancel/other-UID barriers, original-deadline
+release and cleanup→NEW90-minute protected saved-work restore all pass. Exact
+artifacts, state review and retained failures: workspace-cleanup-protocol.md.
+
+The instructor explicitly chose to KEEP installation settings in configuration
+files and finish existing management. No new web Settings, remote file editor or
+activation subsystem is required. Native show/validate remains offline; it never
+claims loaded agreement. Reviewed installation/full drain/matched-role activation
+and temporary-agent consolidation remain separate production procedures, not
+missing runtime management features. Existing web controls retain CLI parity.
+
+The combined actual compiled-root-CLI→real gateway/TLS journey already exists in
+tests/integration/agent-management.test.ts and its management fixture helpers.
+It covers definitions/CSV/grants/clocks/reviews/alerts/admin/monitoring/retirement
+with conflicts, partial/offline/restart retries and dangerous refusals. Current
+focused run passes7.79s. Separate actual-root native collection/access/cleanup/
+saved-restore acceptance supplies the privileged boundaries. The remaining local
+work is stale help claiming these workflows are missing, then final help/refusal/
+coverage reconciliation. Do not add duplicate features or tests from old prose.
 
 C17 first-observation/fresh-Begin compatibility, retained liveness/SSH, C18 saved-source authority, cancel-first legacy replacement,
 C8 native reconciliation and accepted16-student/64-pane qualification are complete

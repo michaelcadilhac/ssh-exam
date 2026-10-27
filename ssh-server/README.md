@@ -599,7 +599,7 @@ explicit `cleanup-retry` or reversible `cleanup-cancel`. No force-delete exists.
 Use matched native roles, since older archive deleters cannot enforce pending-job
 pins. See [the protocol and qualification status](../docs/workspace-cleanup-protocol.md)
 for backup/recovery, partial removal and saved-work restore after the old folder
-is gone. Local guarded qualification is in progress; nothing is installed here.
+is gone. Local guarded qualification passes; nothing is installed here.
 
 The local configuration-inspection candidate works without initializing native
 state or contacting a service: `examctl config show` reads selected metadata with

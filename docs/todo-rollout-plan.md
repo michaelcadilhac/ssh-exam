@@ -48,7 +48,9 @@ or source expectations manually. Manual workspace
 cleanup remains a separate qualification gate, not a rollout cleanup shortcut.
 The local C4c candidate now has reviewed cleanup/status/retry/cancel and durable
 archive pins/phase/literal-receipt history (workspace-cleanup-protocol.md); broad
-and guarded privileged acceptance remain. Before any separately authorized
+native and guarded healthy-peer/NEW saved-restore acceptance now pass locally.
+Installation settings remain in files by explicit instructor decision; no new
+runtime web Settings/remote activation subsystem is part of this rollout. Before any separately authorized
 installation, back up its records/known markers/quarantines with native authority,
 source/consumption metadata, audit and protected archives. Install the matched
 CLI/agent/watchdog/reconcile cohort before permitting cleanup. Older archive

@@ -1,8 +1,8 @@
 # Reviewed manual workspace cleanup
 
-October26 candidate in workspace-cleanup-delivery. Implemented with focused and
-broad native tests locally; guarded installed qualification remains.
-C4 stays open. Nothing is deployed. Earlier C4a/C4b receipts in
+October26 implemented/tested locally in workspace-cleanup-delivery. Focused/full
+native races, build/vet and guarded real-root healthy-peer/cleanup/NEW saved-work
+restore qualification pass. C4 is complete locally. Nothing is deployed. Earlier C4a/C4b receipts in
 workspace-cleanup-delivery.md describe diagnostics, not this destructive worker.
 
 Use the matched candidate CLI/agent/watchdog/reconcile cohort only. Older source
@@ -204,3 +204,17 @@ d9af3a7ab0bb5e486aa1d7cc230939d04a98874634c67b573c12f682ebd297a5.
 All native binary/probe/resource/other-fixture bytes and291 native inputs match
 the passed canonical-cover cohort. New saved-work acceptance is still pending;
 the earlier failed run is retained, with independent preservation/inactive/dead/0.
+
+FINAL: the corrected full retained/saved profile exits0. Actual old-workspace
+cleanup is followed by reviewed legacy cancellation, durable HTTPS source-sync/
+archive retention, separate NEW saved-work preparation with zero clock, restored
+protected Nano bytes and the full chosen90 minutes only at actual Begin. Later
+supervisor death remains contained; protected completion, explicit source-pin
+retirement and both submissions/history preserve the new original account hold.
+Stage /var/tmp/ssh-exam-overlay-_ogejwq_ independently preserves host/base/authority;
+unique unite48d138761cb44d1a4a0ac9281e48c5f is inactive/dead/MainPID0. No guest
+remains. Native artifacts are byte-identical to the passed two-student canonical-
+cover cohort; the normal fixture-only FIFO correction is separately qualified.
+C4 is complete locally, not deployed. Durable evidence is MAIN
+var/collection-tests/workspace-cleanup-covering-evidence.yyw1mbz6. Existing C17
+application/browser/image evidence still applies to unchanged web/WASM contracts.

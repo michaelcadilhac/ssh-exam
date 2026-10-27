@@ -1,12 +1,14 @@
 # Deferred work
 
-October26 current local completion:30/38 main items (not effort/readiness). Unified
-grant authority/migration/scenario specification and recovery crash/storage repair
-acceptance are reconciled in docs/unified-grant-acceptance.md. Native definition
-reconciliation033 is also delivered locally. Root workspace dry-run now observes
-archives/references but grants no deletion eligibility. C17 first-observation compatibility now passes625 application checks and exact
-packaged-asset browsers. Remaining: complete cleanup/configuration/help/operator journey,
-and separately deferred production consolidation/live acceptance. Nothing deployed.
+October26 current local completion:31/38 main items (not effort/readiness). Unified
+grants, native definition reconciliation033 and reviewed manual workspace cleanup/
+retry/cancel→NEW saved-work restoration are implemented/tested locally. Native
+races/build/vet, guarded real-root healthy-peer/retained/recovery tests and unchanged
+C17 application/packaged-browser evidence pass. Remaining local work: reconcile
+CLI coverage/help/refusals/operator-journey status. Installation settings stay in
+files by explicit instructor decision; no new web Settings feature or remote file
+control is required. Production consolidation/live acceptance remain deferred.
+Nothing deployed. Current checkpoint: docs/todo-current-checkpoint.md.
 
 October26 native legacy cancellation/replacement is implemented/tested locally:
 actual root CLI refusal/crash/retry, exact native root43, PUBLIC web NEW20-minute
@@ -965,6 +967,13 @@ Explain which operations require the webserver and provide useful offline local
 inspection/recovery where possible, without pretending disconnected changes have
 been synchronized.
 
+October26 scope clarification APPROVED: finish existing management controls and
+keep server installation settings in configuration files. Do not add a new web
+Settings screen, remote deployment-file control or configuration-activation
+subsystem to complete this TODO. Existing web management retains full CLI parity;
+offline native config show/validate and separately authorized installation
+procedures remain supported. No deployment/restart authorization is implied.
+
 Help and errors are part of the interface contract. Every command must explain
 what it does, required arguments, defaults, relevant state restrictions and
 consequences, and show practical examples. A refusal must explain why, display
@@ -1915,71 +1924,44 @@ the approval is not a production change or a completed investigation.
 
 ## Maintenance and further validation
 
-- [ ] **Define and implement private workspace cleanup after secured collection.**
-  Resumed October26: instructor explicitly approves audited code-only cleanup
-  qualification uploads AND later corrections for the same guarded tests, each
-  below96MiB, to new private /var/tmp/ssh-exam-workspace-cleanup-upload.* directories
-  on csc-sys. No credentials/config/student data, deployment or production changes.
-  This supersedes the prior new-bundle approval blocker, not host/base/busy guards.
-  October26 C4c candidate now implements actual reviewed cleanup/status/retry/
-  cancel, exclusive regular-file leases/all-directory sealing, exact-inode private
-  quarantine, durable phase/receipt/archive pins and no-start history integration.
-  Actual CLI513-file/reference/audit/stale-byte refusals and corrected exact-
-  SIGKILL/storage/restore cases pass focused checks. Broad native races now pass
-  core348.394s/CLI24.430s with build/vet. Guarded multi-UID/resource/healthy-peer
-  qualification remains: C4 is NOT complete.
-  Invalid PID1 panic/nonzero crash receipts are excluded; corrected tests require
-  exact SIGKILL. Current protocol/evidence: docs/workspace-cleanup-protocol.md.
-  No deployment, production cleanup, grace period or automatic deletion.
-  October26 integrated root `workspaces dry-run` now performs bounded independent
-  archive/kernel-reference observation with useful CLI help and scoped replies.
-  Actual compiled CLI/private namespace tests catch foreign fd/cwd/map/watch,
-  directory/file mounts, chroot-hidden mounts and retained namespace handles;
-  hold/archive repair and worker/protocol refusals preserve authority and bytes.
-  `snapshot_clear` is diagnostic; eligible remains false. Sequential observations
-  are not the required destructive lifetime barrier. Quarantine/retry, complete
-  reference qualification and cleanup remain open; no deletion is enabled.
-  Evidence/state review: docs/workspace-cleanup-delivery.md. Not deployed.
-  October22 C4b0 implements/tests an internal bounded mountinfo/source-root
-  relationship prerequisite, including actual private-namespace same-device
-  directory/file aliases and escaped paths; a wrong mountpoint-only mutant fails
-  and is removed. Full414 app/native race/build, bounded fuzz and140 unchanged
-  web-artifact hashes pass. This is NOT complete mount/process-use proof,
-  eligibility or a cleanup command; those and fresh archive/hold/state/admission
-  fences remain required. See docs/workspace-mount-observations.md. No workspace
-  is deleted, grace period introduced or production state changed.
-  Local design status: C4 approved October 21—manual cleanup with no grace period,
-  superseding the earlier 14-day proposal. Verified archive/manifest, confirmed
-  termination, no mounts/use/repair dependencies, holds, dry-run and audited
-  exact-target concurrency checks remain required. No automatic deletion or
-  cleanup of existing folders has been performed; implementation/tests remain open.
-  October 21 source investigation/ordered safety increments are recorded in
-  docs/workspace-retention.md. Existing release verification can terminate and
-  cannot stand in for a dry run; other-namespace mounts/process use need fresh
-  proof. Saved-work grants depend on the archive, not the retained live folder.
-  Investigation is not marked complete merely because a proposal exists.
-  C4a now implements local `workspaces list/show/hold/release-hold`, bounded known-
-  attempt metadata, audited hold revisions and metadata-loss fail-closed markers.
-  Actual CLI, full native race/resource/compiler/default-size opt-ins, 320 app
-  tests and static build/vet/typecheck/build pass; full qualification is in
-  docs/todo-progress.md. Candidate is not eligibility: no fresh archive/usage
-  proof or workspace deletion command is enabled. Full C4 remains open.
-  Original attempt work folders currently remain indefinitely even after the
-  protected submission is secured. Decide on retention/grace periods and an
-  explicit eligibility rule before implementing deletion. A secured archive alone
-  is not enough: require verified archive/manifest integrity, confirmed termination
-  of all writers and no active mount/use, and account for outstanding recovery or
-  administrator holds. Never delete active, paused, unstarted-but-needed or
-  collection-failed work. Preserve the protected archive, receipts, audit history
-  and recovery grants; cleanup must not release account restrictions or change
-  their original deadline. Verify recovery can still restore from the protected
-  archive after the old workspace is gone. Keep workspace retention distinct from
-  both submission retention and the 60-day monitoring policy. Provide audited
-  `examctl` inspection, dry-run, cleanup and hold controls with actionable refusal
-  messages. Use safe traversal without following student-controlled links, make
-  retries/restarts idempotent, and test races with finalization, recovery startup,
-  failed collection and administrator inspection. Reclaim historical orphaned
-  folders only through the agreed policy, not an immediate blanket deletion.
+- [x] **Define and implement private workspace cleanup after secured collection.**
+  October26 implemented/tested LOCALLY; nothing deployed or cleaned in production.
+  Actual root `examctl workspaces list/show/dry-run/hold/release-hold` and reviewed
+  `cleanup/cleanup-status/cleanup-retry/cleanup-cancel` preserve protected archives,
+  literal lifecycle receipts/history, grants, authoritative deadlines and account
+  restrictions. Manual only, NO grace period or automatic deletion: this approved
+  policy supersedes the earlier14-day proposal. Work retention is separate from
+  submission retention and60-day monitoring retention.
+  Eligibility requires fresh archive/manifest/checksum verification, matching live
+  bytes, completed protected authority, no active/needed/failed work or retention
+  hold, and complete bounded writer/mount/reference/repair proof. Independent
+  resource-limited workers hold attempt/account fences, exclusive regular-file
+  leases and root-owned sealed directories; exact-inode no-follow quarantine and
+  durable phases/history support inspection, explicit retry and intact cancellation.
+  Pending jobs independently pin archives; cleanup receipts also prevent false
+  no-start/unused-definition proofs after work/archive removal. Unsupported or
+  uncertain objects/references refuse; no force-delete or service interruption.
+  Actual compiled CLI/crash/storage/inode/history/pin regressions, full native
+  races core335.342s/CLI26.363s and build/vet pass. Guarded disposable csc-sys
+  tests prove real reader lease-break refusal/cancel/owner restoration, a different
+  UID's queued directory descriptor losing write access, actual cleanup alongside
+  healthy SSH/input/signed renewals with unchanged shared PIDs/deadlines, and
+  release only after original deadlines. Full retained/saved qualification then
+  removes the old folder, restores protected Nano bytes through a reviewed NEW
+  grant, starts its full chosen90 minutes ONLY at Begin, and preserves both
+  submissions/history and the new account hold. All completed guests independently
+  preserve host/base/authority and have stopped unique units.
+  Qualification fixed two confirmed false refusals: unrelated-device deleted bind
+  roots and systemd's unchanged same-path parent binds. Real aliases, hidden roots,
+  namespace handles and same-device ambiguous roots still refuse. Invalid old PID1
+  panic receipts are excluded; corrected exact-SIGKILL tests pass. Synthetic probe
+  FIFOs are removed by their student producer BEFORE collection; native unsupported-
+  object refusal is unchanged. Evidence, exact artifacts, retained failures, full
+  state review and backup/rollback limits: docs/workspace-cleanup-protocol.md.
+  Instructor's standing guarded code-only correction-upload authorization remains
+  scoped below96MiB/new private directories, excluding credentials/host config/
+  student data; fresh/concurrent busy/base guards remain mandatory. Historical
+  orphaned/unknown folders still require supported proof, never blanket deletion.
 
 - [ ] **Consolidate the live agent handoffs after a verified drain.**
   The canonical agent, `exam-agent-live-upgrade`, and
