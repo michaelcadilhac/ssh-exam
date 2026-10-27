@@ -1,5 +1,12 @@
 # Deferred work
 
+October27 production preparation has started at the instructor's request; both
+production-only boxes remain OPEN. The matched qualified release is staged and
+integrity-checked locally. Automatic approval review rejected even read-only
+production inventory as outside the earlier disposable-test authorization; a new
+explicit read-only access dialog is pending. No production command ran. Current
+artifact/access/cutover gates: docs/production-rollout-2026-10-27.md.
+
 October26 current local completion:36/38 main items (not effort/readiness). Unified
 grants, native definition reconciliation033 and reviewed manual workspace cleanup/
 retry/cancel→NEW saved-work restoration are implemented/tested locally. Native
@@ -1883,6 +1890,10 @@ the approval is not a production change or a completed investigation.
   orphaned/unknown folders still require supported proof, never blanket deletion.
 
 - [ ] **Consolidate the live agent handoffs after a verified drain.**
+  October27: matched code-only candidate staged/verified locally; fresh production
+  drain/ownership inventory awaits explicit read-only access after tool rejection.
+  Do not use old idle counts or the auto-cancelling historical upgrade helpers.
+  Exact package and remaining gates: docs/production-rollout-2026-10-27.md.
   The canonical agent, `exam-agent-live-upgrade`, and
   `exam-agent-deferred-recovery` retain existing PTY bridges. Do not stop any of
   them while students may still depend on them. Once active attempts, real
@@ -2026,6 +2037,9 @@ the approval is not a production change or a completed investigation.
   test, exact recovery timing and saved-work restoration, normal access policy,
   dashboard status and absence of duplicate alerts. Record the revision, checks
   and deployment outcome without publishing student information.
+  October27 preparation is local only; no alert sent, rollout performed or live
+  acceptance claimed. Inventory, explicit cutover authorization and a controlled
+  synthetic identity are required first. See docs/production-rollout-2026-10-27.md.
 
 References: `docs/native-cleanup-isolation-incident.md`,
 `docs/recovery-runbook.md`, `design.md`, and the protected October 20 alert/audit

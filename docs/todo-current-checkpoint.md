@@ -1,77 +1,62 @@
 # Current local TODO checkpoint
 
-October26,2026. All authorized LOCAL work is implemented/tested:36/38 main TODO
-items complete. Only production service consolidation and post-rollout live
-acceptance remain unchecked. Nothing pushed/deployed; no production services,
-configuration or student records changed. No unresolved design question.
+October27 current milestone: production consolidation/live acceptance preparation,
+requested after36/38 items were implemented/tested locally. Both production boxes
+remain OPEN. No production command or transfer ran; no service/config/student
+record change or push. Source/runtime baseline815a895 remains unchanged.
 
-## Validated outcome and exact artifacts
+## Concrete validated preparation
 
-C4 manual/no-grace examctl workspace inspection/holds/cleanup/status/retry/cancel
-is delivered. File leases/all-directory sealing, exact-inode quarantine, durable
-phase/history/archive pins and independent no-start/retirement evidence preserve
-protected archives/receipts/history/grants/clocks/account restrictions. Two real
-false refusals fixed in6df3b76/8c7fb36; full guarded acceptance committedfbcf5ee.
-Unsupported/unknown objects or use still preserve work; no force-delete exists.
-Earlier PID1 panic receipts are INVALID; exact137/143 mutation checks are retained.
+Branch/worktree production-rollout-20261027 at var/worktrees/production-rollout-20261027.
+Feature record: docs/production-rollout-2026-10-27.md. It contains the proposed
+cutover/acceptance gates, exact artifact and exclusions; do not read the entire
+historical rollout log to resume.
 
-Final help-only native changes correct stale missing-work claims and distinguish
-file-based INSTALLATION settings from protected exam-state. Instructor explicitly
-chose existing management, no new web Settings/remote activation subsystem.
-Actual process RED→GREEN; focus7.227s/full affected CLI races24.386s/build/vet PASS.
-Real compiled root CLI→gateway/TLS management journey PASS7.81s, including CSV,
-grants/clocks/reviews/alerts/admin/monitoring/retirement and restart/conflict/refusal.
-Full core races335.342s remain valid; core source is unchanged by the help correction.
+Local matched code-only package: MAIN
+var/releases/ssh-exam-815a895-20261027.d3w4bye4;21 files/144,610,717 bytes.
+Manifest SHA256 ab446d7d4174567c449f17113938327303f70ab29ab7e68998085b158de4bb54.
+Four exact qualified native executables/291 source hashes, four unchanged support
+scripts/eight units, reference Compose/web unit, and the qualified web image
+locally tagged ssh-exam-release:815a895. OCI manifest digest4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae;
+config digest46244c89f91cd635d6b7836d7693ca40f4293e605c0ba76b2af59c9fc547bcb3.
+Whole membership/hashes, thirteen OCI blobs/eleven layer-diff bindings and actual
+staged CLI help PASS. Adjacent .verification.json records acceptance. An initial
+verifier incorrectly equated OCI manifest ID with config ID; retained/corrected,
+no product/image changes. No credentials/config/student data or test roles shipped.
 
-Exact final18-file45,716,855-byte code-only bundle:
-MAIN var/collection-tests/workspace-cleanup-final-management-help.3f_7_puz
-Digest0ec06626170a9de24a920f77e0c4a16e2d9e79bf773d18583b12f8ab980f1f8c.
-Adjacent .audit.json records291 source hashes/roles; metadata labels the actual
-fbcf5ee+help build inputs, not an untested rebuilt release. Frozen manifest:
-/tmp/ssh-exam-final-management-native-sources.json. All final source/artifact
-hashes verified after tests. Use tested artifacts or requalify a different build.
-Remote private upload /var/tmp/ssh-exam-workspace-cleanup-upload.crpt6rt1.
-Guarded final peer PASS: actual collection SIGKILL/retry/protected bytes, root
-reader lease-break/cancel/ownership restore, other-UID queued descriptor denied,
-actual cleanup alongside healthy signed SSH/input/unchanged PIDs/clocks, both
-accounts released only after original deadlines. Stagew9dm54_b independently
-preserves host/base/authority; unit51ffcf319b0b48acbd291ab6422c432c inactive/dead/0.
+## Blocking access and exact next action
 
-The final core-qualification.test is BYTE-IDENTICAL to full retained/saved acceptance:
-Nano/jobs/linked async/clock/coordinator/SSH-loss, old-folder cleanup→reviewed legacy
-cancel/source retention→NEW saved bytes/full90-minute Begin→supervisor fault/
-protected finish/pin retirement, both histories and original holds preserved.
-Stage_ogejwq_ independently preserved; unite48d138761cb44d1a4a0ac9281e48c5f dead/0.
-Only synthetic probe FIFOs were removed by their student producer after exit and
-BEFORE collection; native unsupported-object refusal was never weakened.
+Automatic approval review REJECTED sudo READ-ONLY production inventory on csc-sys,
+interpreting existing authorization as disposable tests only. No SSH command ran.
+Async dialog asks explicit read-only inventory permission for csc-sys and exam web
+server; await an actual answer. Do not retry through another command or treat old
+idle counts as current drain proof. Deployment/restarts remain a separate explicit
+authorization after concrete installed inventory/cutover review.
 
-297 application/browser/image inputs MATCH C17's existing625-test/packaged-browser/
-schema24→33 image receipt, including its declared browser wait correction. No
-unchanged broad app/browser rerun is claimed. Qualified local web image:
-ssh-exam-release-test:recovery-compatibility-033-67c74bba8133,
-sha256:4d969bbeebc956f56b38f71e76b8096fbd3137d86de6e3f61fab410742559dae.
-Approved capacity16students/64terminals remains previously qualified.
-Durable final receipts/audits: MAIN
-var/collection-tests/todo-local-completion-evidence.0einctzi. Detailed seams,
-retained failures/state review: examctl-coverage-audit.md/workspace-cleanup-protocol.md.
-No running local test or disposable guest remains.
+On approval, inspect current installed revisions/schema/config metadata, all three
+agents' PTY/process/socket/cgroup ownership, independent/practice/recording owners,
+web/native attempts/preflights/pending Begin/timing/recovery/collection/account holds.
+Verify actual web host/service and admission-stop mechanism. Busy/uncertain means
+wait; never cancel/override/kill to manufacture a drain. Then finish the concrete
+host-specific backup/cutover/acceptance sequence and obtain deployment authorization.
+Legacy upgrade-prebuilt auto-reconciles/cancels preflights; historical installers
+lack full three-owner/current independent-work drain. DO NOT RUN them unchanged.
+Do not invent a new installer abstraction before installed facts are known.
 
-## Remaining boundary and next action
+## Preserved qualification and authority
 
-Do NOT deploy/push/restart production or alter student records. The only remaining
-TODOs require a NEW production instruction: full positive drain and temporary
-canonical/live-upgrade/deferred-recovery service consolidation, then controlled
-live SSH/MFA/media/recovery/access/dashboard/alert/no-duplicate acceptance. Keep
-needed owners/holds/history intact. Read-only inventory, reviewed legacy conversion,
-consistent backup, matched installation and rollback/forward-repair limits are
-UNEXECUTED proposals in todo-rollout-plan.md/release-readiness.md. Do not invent
-new local prerequisites or resurrect superseded historical pending notes.
+Prior C4/retained/recovery and management qualification remains in
+examctl-coverage-audit.md, workspace-cleanup-protocol.md and MAIN
+var/collection-tests/todo-local-completion-evidence.0einctzi. Final native races,
+CLI/TLS/root cleanup/NEW saved-work checks passed;297 unchanged web/image inputs
+match prior625-test/packaged-browser evidence. No unrelated test rerun was needed
+for this docs/packaging-only preparation. No test or guest remains running.
 
 Preserve all stashes/ten original dirty main PNGs; hashes
-/tmp/ssh-exam-retained-recording-main-image-hashes.json. Local coherent commits
-are authorized without approval; never push/deploy. Main node_modules supplies
-installed tools; stop for missing executable only if package absent AND instructor
-must install. No subagents authorized. Guarded code-only correction uploads below
-96MiB/new private directories remain authorized only for agreed disposable tests,
-excluding credentials/runtime host config/student data; fresh/concurrent busy/
-base guards mandatory. Temporary /tmp build/guest helpers validate exact hashes.
+/tmp/ssh-exam-retained-recording-main-image-hashes.json. Local commits authorized,
+no push/deploy without new instruction. Installation settings stay in files by
+explicit instructor decision; no new Settings/remote-file-control feature.
+No subagents authorized. Stop for missing executable only if package absent AND
+instructor must install. Main node_modules supplies installed tools. Existing
+csc-sys guarded code-only test authorization does not imply production access;
+keep host/base/student data intact and never bypass busy/uncertain guards.
