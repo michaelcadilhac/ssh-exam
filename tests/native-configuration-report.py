@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import ssl
 import subprocess
 import tempfile
@@ -50,6 +51,7 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-configuration-report-') as dir
     (root / 'tls.key').write_bytes(key.private_bytes(
         serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
     events, failures = [], []
+    daemon = None
 
     class Receiver(BaseHTTPRequestHandler):
         def do_POST(self):
@@ -103,40 +105,79 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-configuration-report-') as dir
         for path in root.iterdir():
             if path.is_file():
                 path.chmod(0o600)
-        command = ([str(binary), '-config', str(root / 'config.json'), '-reconcile']
-                   if args.entry == 'agent' else
-                   [str(binary), '--config', str(root / 'config.json'), 'reconcile'])
-        # Map only this synthetic fixture's owning UID to root. No mount/network
-        # namespace or production service/account/configuration is changed.
-        result = subprocess.run([unshare, '--user', '--map-root-user', '--', *command],
-                                capture_output=True, text=True, timeout=25)
-        assert result.returncode == 0, result.stdout + result.stderr
-        assert not failures, failures
-        state = json.loads((root / 'state/state.json').read_text())
-        assert state['attempts'] == {} and state['capabilities'] == {}
+        def command(arguments):
+            return [unshare, '--user', '--map-root-user', '--', str(binary), *arguments]
+
         if args.entry == 'agent':
-            reports = [event for event in events if 'health' in event]
-            assert len(reports) == 1, 'reconcile exited successfully without delivering a signed configuration snapshot'
-            assert not state.get('events'), 'delivered configuration remains queued'
+            service_started = time.monotonic()
+            daemon = subprocess.Popen(command(['-config', str(root / 'config.json')]),
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            for cycle in range(2):
+                until = time.monotonic() + (15 if cycle == 0 else 75)
+                while True:
+                    if daemon.poll() is not None:
+                        stdout, stderr = daemon.communicate()
+                        raise AssertionError('Serving agent exited before publication: ' + stdout + stderr)
+                    state_path = root / 'state/state.json'
+                    state = json.loads(state_path.read_text()) if state_path.exists() else {}
+                    queued = [event for event in state.get('events', []) if 'health' in event]
+                    if queued:
+                        break
+                    assert time.monotonic() < until, 'serving agent did not queue initial/periodic configuration'
+                    time.sleep(0.05)
+                assert (root / 'gate.sock').is_socket()
+                # The hardened one-shot is a delivery worker, not the producer
+                # of canonical service-view readiness. Its entry must not add a
+                # second configuration from another mount/capability context.
+                result = subprocess.run(command(['-config', str(root / 'config.json'), '-reconcile']),
+                                        capture_output=True, text=True, timeout=25)
+                assert result.returncode == 0, result.stdout + result.stderr
+                reports = [event for event in events if 'health' in event]
+                assert len(reports) == cycle + 1, 'configuration must come only from the serving agent, not the one-shot context'
+                state = json.loads(state_path.read_text())
+                assert not state.get('events'), 'delivered configuration remains queued'
+            assert reports[1]['sequence'] > reports[0]['sequence']
+            assert reports[1]['at'] > reports[0]['at'], 'periodic snapshot retained old observation time'
+            assert time.monotonic() - service_started >= 59, 'periodic configuration did not follow the one-minute cadence'
         else:
+            result = subprocess.run(command(['--config', str(root / 'config.json'), 'reconcile']),
+                                    capture_output=True, text=True, timeout=25)
+            assert result.returncode == 0, result.stdout + result.stderr
             assert json.loads(result.stdout) == {'ok':True}
             assert not events, 'offline CLI reconciliation must not require gateway delivery'
+            state = json.loads((root / 'state/state.json').read_text())
             reports = [event for event in state.get('events', []) if 'health' in event]
             assert len(reports) == 1, 'CLI reconcile did not durably queue a fresh configuration snapshot'
+        assert not failures, failures
+        assert state['attempts'] == {} and state['capabilities'] == {}
         health = reports[0]['health']
         assert reports[0]['accounts'] == {'synthetic-report':10001}
         assert health['ready'] is False and health['production_ready'] is False
         assert health['native_roles']['observation_only'] is True
         assert health['native_roles']['complete'] is False
-        print(json.dumps({'entry':args.entry, 'status':'PASS', 'configuration_snapshots':1,
+        print(json.dumps({'entry':args.entry, 'status':'PASS', 'configuration_snapshots':len(reports),
                           'signed_tls_delivery':args.entry == 'agent',
                           'offline_durable_queue':args.entry == 'examctl',
                           'unavailable_observation_never_permission':True,
                           'attempts_or_grants_created':0}))
     finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=3)
-        assert not thread.is_alive()
+        try:
+            if daemon is not None:
+                alive = daemon.poll() is None
+                if alive:
+                    daemon.terminate()
+                try:
+                    daemon.communicate(timeout=5)
+                except subprocess.TimeoutExpired:
+                    daemon.kill()
+                    daemon.communicate(timeout=3)
+                    raise AssertionError('owned agent required forced cleanup; normal shutdown unverified')
+                assert alive, 'serving agent must stay alive while observations are unavailable'
+                assert daemon.returncode == -signal.SIGTERM, 'exact owned agent termination was not confirmed'
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+            assert not thread.is_alive()
 assert not root.exists()
 print('Owned receiver/process completed; synthetic state and keys removed')

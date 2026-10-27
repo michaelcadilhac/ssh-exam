@@ -1897,9 +1897,11 @@ the approval is not a production change or a completed investigation.
   unapplied zero-clock cancellations explicitly acknowledge NORMAL, without an OS
   policy change. Six exact public asset hashes and root signed CLI PASS;0 invented
   grants/queued alerts. A stale initial native configuration snapshot was caught
-  before reopening. Command-only refresh through existing reconcile CLI/timer is
-  locally RED→GREEN validated, full affected CLI races/vet PASS; corrected command
-  deployment/fresh signed callback agreement still pending. Item stays OPEN.
+  before reopening. The first command-only refresh80eb76e exposed the reconciler's
+  different ProtectHome view; its false-readiness receipt is retained, timer paused.
+  Corrected canonical-context post-listen/minute publication is locally public-entry
+  RED→GREEN validated; full native core/CLI races207.681s/6.353s and vet PASS.
+  Actual correction deployment/fresh signed callback agreement pending. Item OPEN.
   Do not use old idle counts or auto-cancelling historical upgrade helpers.
   Exact package and remaining gates: docs/production-rollout-2026-10-27.md.
   The canonical agent, `exam-agent-live-upgrade`, and

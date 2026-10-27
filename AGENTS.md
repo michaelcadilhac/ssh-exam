@@ -164,7 +164,11 @@
   namespace's init can ignore self-directed SIGKILL; keep a separate reaper as
   PID1 and kill the ordinary worker. Panics/timeouts never qualify process death.
 - Put cross-process fault controls in an existing directory visible and writable
-  in each actor's actual mount namespace; inspect service hardening first. If a
+  in each actor's actual mount namespace; inspect service hardening first.
+  Publish readiness from the service whose readiness is claimed: a helper's
+  ProtectHome, mount or capability view can differ. Qualify both healthy and
+  unavailable publication in the actual service context; an unavailable-only
+  synthetic fixture cannot establish that a healthy service reports correctly. If a
   worker ends before its checkpoint, report its outcome immediately instead of
   hiding it behind the checkpoint wait timeout.
 - Report progress in usable outcomes and remaining gaps, not commit/test counts.

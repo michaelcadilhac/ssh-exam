@@ -103,6 +103,33 @@ func (e *Engine) ServeLocal() error {
 	if err = os.Chmod(e.Config.Socket, 0666); err != nil {
 		return err
 	}
+	if e.Config.CallbackURL != "" {
+		// Probe after the role socket is listening, in the canonical agent's
+		// actual mount/capability context. A reconciler can intentionally hide
+		// paths that this service must inspect. These are observations, never
+		// execution permission; failure must not terminate healthy PTY owners.
+		done := make(chan struct{})
+		defer close(done)
+		go func() {
+			ticker := time.NewTicker(time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-done:
+					return
+				default:
+				}
+				if err := e.ReportConfiguration(); err != nil {
+					log.Printf("native configuration report unavailable: %v", err)
+				}
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+				}
+			}
+		}()
+	}
 	for {
 		c, err := l.AcceptUnix()
 		if err != nil {

@@ -27,18 +27,32 @@ production-copy rehearsal preserved all18 old data tables; actual live108 attemp
 histories/clocks/settings/protection/access unchanged;0 invented grants/outbox
 queued. All6 public qualified assets match and root signed web CLI exams.list PASS.
 
-Cutover caught a real stale-configuration observation: startup ReportConfiguration
-precedes the local agent observer, and no later configuration is queued. Root
-examctl health roles are complete, but web's signed startup snapshot remains
-incomplete. Corrected locally in command wiring only: CLI reconcile queues a fresh
-observation; existing periodic agent -reconcile reports before delivery. Actual
-compiled public agent/CLI regressions RED→GREEN using synthetic namespace/TLS,
-affected full CLI races6.007s/vet PASS. Core/web/image/protocol/support unchanged.
-Details: docs/native-configuration-refresh.md. Two corrected native command binaries
-are in this run's configuration-refresh-bin; source changes are validated for the coherent correction commit, not yet
-installed. Next commit/manifest them and replace only the corrected cohort in
-a fresh verified still-idle maintenance drain, then require fresh signed complete
-web callback agreement and unchanged authority/protected bytes. Do not reopen yet.
+Cutover caught stale configuration: startup publication preceded the role socket.
+First correction80eb76e is NOW INSTALLED (agent554fc2c2…/CLI49fd2180…), but production
+verification caught a context defect: hardened reconcile.service hides /home/student,
+so its report has complete roles but readiness false. This failed receipt is NOT
+qualification. Reconcile.timer is PAUSED in authorized drained maintenance; canonical
+and independent watchdog stay active, no student/grant/clock started. Never weaken
+ProtectHome or other guards to make reporting pass.
+
+Corrected source now publishes from the actual canonical ServeLocal context after
+socket bind and each minute; errors are observations/logged, never a cause to kill
+healthy PTY owners. One-shot returns to delivery-only; supported root CLI reconcile
+still queues an explicit host-view refresh offline. Focused PUBLIC normal-agent
+startup+real minute refresh/TLS delivery and CLI queue PASS; exact own SIGTERM and
+all synthetic keys/process cleanup verified. Binary outputs configuration-service-bin.
+Full core/CLI race session97284 COMPLETED/PASS:207.681s/6.353s; vet45236 PASS.
+Public focused startup+real-minute/TLS/CLI queue regressions PASS; all owned test
+processes/keys removed. New source validated for the coherent commit and deployment;
+80eb76e remains only the first installed correction. Doc/source evidence:
+docs/native-configuration-refresh.md and this run's configuration-*.log.
+
+Single authorized alert test requested21f0c981-5468-4f2f-8236-82d1c3ad5c97,
+outboxe2cb1539-d6ef-4e5e-9a42-8d82c87c6ae6. Same-request retry returns same outbox;
+SMTP accepted and instructor CONFIRMED inbox receipt exactly once; local
+controlled-alert-human-confirmation.json records the actual response.
+Do not send a second test. No student incident created. The full real acceptance
+still needs human SSH/MFA/media and eligible account choice; inbox is complete.
 
 Open NEW consequential choice dialog: mcadilha is explicitly configured practice-
 only (sandbox_only:true and health's administrator_sandbox_accounts). Full ordinary

@@ -1,50 +1,58 @@
-# Refresh signed native configuration after startup
+# Publish readiness from the canonical agent context
 
-October27 production cutover found a real stale-observation defect. The normal
-agent publishes configuration before ServeLocal binds its command/role socket.
-The signed startup snapshot therefore accurately reports the agent observation
-endpoint unavailable. Once both services were running, direct `examctl health`
-reported complete retained support, but the gateway still held that initial
-incomplete snapshot: configuration was never reported again. This is an unavailable
-observation, never a student violation or execution permission. Admissions stayed
-closed while correcting it.
+October27 production cutover found a stale-observation defect: main published
+configuration before ServeLocal bound the agent's role socket and never refreshed
+it. The signed startup snapshot accurately said the observer was unavailable,
+while later direct health was complete. New admissions remained fenced throughout.
 
-The bounded correction uses existing workflows and processes:
+The first correction80eb76e queued reports through CLI/timer reconciliation. Public
+synthetic-entry regressions and CLI races passed, but actual production verification
+caught its missing positive case: reconcile.service deliberately uses ProtectHome=yes.
+Its view hides /home/student, so it published readiness false even though role
+agreement and the canonical agent's readiness were true. That is a retained failed
+acceptance receipt, never production qualification. The timer was paused while the
+canonical agent and independent deadline watchdog stayed running. No student clock,
+grant or access policy was changed and no protection was relaxed.
 
-- `examctl reconcile` still reconciles timing/collection and eligible restoration,
-  then durably queues a fresh configuration/health observation. It does not require
-  gateway callback delivery to succeed. Help documents the queue/delivery boundary.
-- `exam-agent -reconcile`, already run by exam-reconcile.timer each minute, performs
-  the same fresh report after reconciliation and before normal callback delivery.
-  After the live role endpoints are available, the next signed snapshot replaces
-  the initial unavailable observation. No new timer, service, broker or protocol.
-- Failed reporting is logged by the existing one-shot agent; previously queued
-  lifecycle callbacks are still attempted. Native deadline/monitoring enforcement,
-  access holds, settings, grants and their fresh Begin guards are unchanged.
-  Configuration facts never substitute for live monitoring or retained execution
-  permission. The existing bounded health probe stays outside the state lock.
+The corrected publisher runs inside the existing canonical ServeLocal process,
+after binding/chmodding its role socket and then each minute. Its one bounded
+background loop probes using that actual mount/capability context, outside the
+shared state lock, and durably queues the ordinary signed configuration event.
+Existing callback workers deliver it. The loop stops when the server exits; probe
+errors are logged observations and never terminate healthy PTY owners. No new
+process, service, protocol, configuration flag or execution permission is added.
 
-`tests/native-configuration-report.py` exercises the actual compiled agent and CLI
-entry points with only synthetic private state/keys, an unprivileged user namespace
-mapped to root and a local TLS1.3 receiver. The original binaries exit successfully
-without either delivered or queued configuration (retained RED receipts). Corrected
-binaries PASS: exactly one signature-verified delivered agent report; exactly one
-durable CLI report without network delivery; zero attempts/capabilities created;
-unavailable role facts remain incomplete/not production ready. Every owned process,
-receiver, synthetic key and temporary directory is removed. The first fixture
-omitted the mandatory configured account and correctly refused; that setup failure
-was retained/corrected without weakening validation or creating an OS account.
+The one-shot returns to reconciliation/delivery only; its harder filesystem view
+must not replace canonical service readiness. Existing root `examctl reconcile`
+retains an explicit host-view fresh-report queue workflow without requiring callback
+delivery. Help describes that boundary. Independent native Begin, monitoring,
+deadlines, account holds, protected sources/history and credential cleanup remain
+authoritative; cached readiness is never execution permission or student misconduct.
 
-Runtime changes are limited to command wiring/help; all native core enforcement,
-web/image/protocol/support inputs remain unchanged. Both actual-entry regressions,
-full affected CLI race suite6.007s and vet pass. Earlier full core/privileged retained/
-collection/browser evidence still applies to those unchanged inputs; this does not
-attribute old artifact qualification to the two corrected command binaries.
+`tests/native-configuration-report.py` exercises actual binaries with only synthetic
+private state/keys, a root-mapped user namespace and a local TLS1.3 receiver. Original
+binaries lack refresh (retained RED);80eb76e produces a second report from the wrong
+one-shot context (retained RED). Corrected normal serving agent PASS: startup plus a
+real one-minute refresh, increasing sequence/new observation time, exactly one
+signature-verified delivery per serving-agent snapshot, and no readiness generation
+by the one-shot. CLI PASS: one durable offline report. Unavailable facts stay
+incomplete/not production ready; zero attempts/capabilities are created. Tests verify
+the exact owned daemon's SIGTERM exit and remove all receivers/keys/temp state.
+The first fixture's missing mandatory account refusal is separately retained and
+corrected; no OS account or enforcement exception is created to fit the fixture.
 
-Local correction outputs/receipts: MAIN
-var/collection-tests/production-cutover.td6oq2x6/configuration-refresh-bin and
-configuration-{agent,cli}-{red,green}.log. Corrected binary deployment and the real
-signed callback/unchanged-history proof must be recorded before closing the
-production consolidation item. At this writing the web/native815a895 cohort is
-running in maintenance behind the tested new-start gate; correction deployment
-and full live acceptance remain pending. No admission reopening is implied.
+The service-context positive acceptance remains the real canonical role/signed
+web snapshot and historical-protection comparison on csc-sys/marco. Do not infer
+that positive case from an unavailable-only synthetic fixture. All hardening stays
+intact. Full affected native core/CLI races and vet are required after the ServeLocal
+wiring change; do not attribute older native-artifact qualification to new bytes.
+Web/image/protocol/support inputs remain unchanged and their existing qualification
+plus actual public hashes/history evidence remains applicable.
+
+Current receipts/binaries: MAIN var/collection-tests/production-cutover.td6oq2x6,
+configuration-service-bin and configuration-service-{green,cli-green,races}.log.
+Focused public regressions PASS; full native core races207.681s, full affected CLI
+races6.353s and vet PASS. The canonical-context correction is NOT YET DEPLOYED. Web schema33 and native
+80eb76e remain in authorized maintenance; reconcile.timer paused, deadline watchdog
+running. Email was accepted and instructor confirmed exactly one inbox delivery.
+Full human exam/recovery acceptance and account eligibility choice remain open.

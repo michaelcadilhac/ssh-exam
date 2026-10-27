@@ -46,11 +46,6 @@ func main() {
 		if err = e.ReconcilePolicies(); err != nil {
 			log.Print(err)
 		}
-		// The startup snapshot precedes the command listener. Refresh it through
-		// the existing timer after both live role endpoints can answer probes.
-		if err = e.ReportConfiguration(); err != nil {
-			log.Printf("native configuration report: %v", err)
-		}
 		if err = e.DeliverCallbacks(); err != nil {
 			log.Print(err)
 		}
@@ -67,9 +62,6 @@ func main() {
 		log.Fatal(e.ServeLocal())
 	}
 	if err = e.Tick(); err != nil {
-		log.Fatal(err)
-	}
-	if err = e.ReportConfiguration(); err != nil {
 		log.Fatal(err)
 	}
 	// No TCP listener and no command polling. The only command input is the local SSH gate.
