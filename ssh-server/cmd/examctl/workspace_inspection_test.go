@@ -106,6 +106,13 @@ else:
     child=None
     namespace_fd=None
     namespace_path=None
+    cover_path=None
+    if mode in ['covering-same-path','covering-alias','unrelated-deleted-mount']:
+        parent=os.path.dirname(os.path.dirname(work))
+        cover_path=parent if mode!='covering-alias' else os.path.dirname(parent)+'/covering-alias'
+        if mode=='covering-alias':os.mkdir(cover_path,0o700)
+        libc=ctypes.CDLL(None,use_errno=True)
+        assert libc.mount(parent.encode(),cover_path.encode(),None,4096,None)==0,ctypes.get_errno()
     deleted_scratch=None
     if mode in ['unrelated-deleted-mount','workspace-device-deleted-mount']:
         deleted_scratch=tempfile.mkdtemp(prefix='deleted-mount-',dir=os.path.dirname(os.path.dirname(work)))
@@ -197,6 +204,9 @@ else:
             os.unlink(deleted_alias)
             if mode=='unrelated-deleted-mount':assert ctypes.CDLL(None).umount2(backing.encode(),0)==0
             os.rmdir(backing);os.rmdir(deleted_scratch)
+        if cover_path is not None:
+            assert ctypes.CDLL(None).umount2(cover_path.encode(),0)==0
+            if mode=='covering-alias':os.rmdir(cover_path)
     raise SystemExit(result)
 `), 0700)
 	rawInvoke := func(mode string, args ...string) ([]byte, string, error) {
@@ -226,10 +236,10 @@ else:
 		}
 		return result
 	}
-	for _, mode := range []string{"none", "unrelated-watch", "unrelated-deleted-mount", "workspace-device-deleted-mount", "descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd", "mounted-namespace-handle"} {
+	for _, mode := range []string{"none", "unrelated-watch", "covering-same-path", "covering-alias", "unrelated-deleted-mount", "workspace-device-deleted-mount", "descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd", "mounted-namespace-handle"} {
 		t.Run(mode, func(t *testing.T) {
 			v := invoke(mode)
-			if mode == "none" || mode == "unrelated-watch" || mode == "unrelated-deleted-mount" {
+			if mode == "none" || mode == "unrelated-watch" || mode == "covering-same-path" || mode == "unrelated-deleted-mount" {
 				if !v.UsageObserved || !v.SnapshotClear || v.Eligible || len(v.Uses) != 0 {
 					t.Fatal("quiet/unrelated observation falsely refused", v)
 				}
@@ -246,7 +256,7 @@ else:
 					t.Fatal("retained foreign namespace incorrectly looked unused", mode, v)
 				}
 			} else {
-				kind := map[string]string{"descriptor": "descriptor", "cwd": "cwd", "mapping": "mapping", "workspace-watch": "watch", "foreign-directory-mount": "mount-source", "foreign-file-mount": "mount-source"}[mode]
+				kind := map[string]string{"covering-alias": "mount-source", "descriptor": "descriptor", "cwd": "cwd", "mapping": "mapping", "workspace-watch": "watch", "foreign-directory-mount": "mount-source", "foreign-file-mount": "mount-source"}[mode]
 				found := false
 				for _, use := range v.Uses {
 					if use.Kind == kind {
@@ -316,7 +326,7 @@ else:
 	preview := invoke("none")
 	request := core.ManagementID()
 	args := []string{"cleanup", id, "--review", preview.Review, "--request", request, "--reason", "Reviewed synthetic protected workspace cleanup with no grace period"}
-	for _, mode := range []string{"workspace-device-deleted-mount", "descriptor", "queued-descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd"} {
+	for _, mode := range []string{"covering-alias", "workspace-device-deleted-mount", "descriptor", "queued-descriptor", "cwd", "mapping", "workspace-watch", "foreign-directory-mount", "foreign-file-mount", "foreign-hidden-mount", "detached-namespace-fd"} {
 		out, stderr, err := rawInvoke(mode, args...)
 		if err == nil || len(out) != 0 {
 			t.Fatal("cleanup ignored real kernel reference", mode, err, string(out), stderr)

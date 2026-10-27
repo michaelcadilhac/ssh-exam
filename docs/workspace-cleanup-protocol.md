@@ -165,3 +165,42 @@ foreign aliases, exact/descendant workspace mounts and hidden roots, through
 actual compiled CLI and guarded healthy-peer cleanup. Do not stop a service or
 waive the reference to qualify it. All completed guests independently preserve
 host/base/authority and have inactive/dead/MainPID0 unique units.
+
+The unchanged-cover correction maps the source-relative workspace location into
+each observed mountpoint. Only a covering ancestor mapping to the SAME canonical
+workspace path is excluded from mount-source reports; its original private
+ancestors and the cleanup barriers still apply. A cover mapped elsewhere reports
+use (including filesystem-root aliases previously exempted indiscriminately).
+Exact/descendant mounts and hidden process roots remain blockers. No new durable
+state, permission, reservation, cancellation or source-pin behavior exists; the
+existing phase review applies. Actual CLI unchanged-cover/combined deleted-tmpfs
+cases were RED; focused races now PASS core1.295s/CLI8.230s, including successful
+reviewed cleanup and refused real foreign aliases before job acceptance.
+
+Final canonical-cover artifact passes full native races core335.342s/CLI26.363s,
+build/vet and unchanged291-input verification. Exact18-file45,711,851-byte bundle
+digesta819478141c1bead23f320e3bd191d3faa20d2019a720bb41cca6c72d69de2da
+passes the real guarded two-student peer profile: collector SIGKILL/retry, root
+resource-limited CLI cleanup/reader-triggered lease break, cancellation/ownership
+restore, another UID's queued directory descriptor losing write access, exact
+cleanup/literal receipt/archive/history preservation and healthy real SSH/input/
+signed renewals/shared-role PIDs throughout. Both accounts release only after
+unchanged original deadlines and verified protection. Stage /var/tmp/ssh-exam-
+overlay-87isrhlr has independent preserved host/base/authority and exact unit
+21fd1482586f4e458623118c452b588b inactive/dead/MainPID0. Final NEW saved-work
+restore after the old folder is gone remains to qualify on this SAME bundle;
+C4 is still open until that receipt is read. No deployment is implied.
+
+The first full retained/saved profile passed all shell/Nano/job/async-I/O/clock/
+coordinator/collection/deadline/SSH-loss assertions, then cleanup correctly refused
+unsupported objects. Its async probes had left24 synthetic FIFO paths in /work.
+This is a fixture error, not permission to relax cleanup: each successful probe
+now waits for its exact child exit, closes the fixture handles and removes ONLY
+its two owner/type/link-checked FIFOs through the actual student terminal BEFORE
+collection. A distinct output acknowledgement plus physical absence is required.
+The emitted Python compiles and81 runner tests pass5.994s. Only the Linux driver
+and checksum manifest change in the next18-file45,712,759-byte bundle, digest
+d9af3a7ab0bb5e486aa1d7cc230939d04a98874634c67b573c12f682ebd297a5.
+All native binary/probe/resource/other-fixture bytes and291 native inputs match
+the passed canonical-cover cohort. New saved-work acceptance is still pending;
+the earlier failed run is retained, with independent preservation/inactive/dead/0.

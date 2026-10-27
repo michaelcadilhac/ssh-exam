@@ -1,6 +1,6 @@
 # Current local TODO checkpoint
 
-October26,2026. Main/active branch e44cfad; worktree workspace-cleanup-delivery
+October26,2026. Main/active branch6df3b76; worktree workspace-cleanup-delivery
 at var/worktrees/workspace-cleanup-delivery.30/38 main items locally complete,
 not effort/readiness. C4 remains OPEN. No push/deployment/production change.
 Preserve all stashes and ten original dirty main PNGs; hashes in
@@ -34,40 +34,62 @@ All81 Python fixture checks PASS5.963s; current code-only build and vet PASS.
 
 ## Running qualification and exact next action
 
-Frozen291 native inputs:
-/tmp/ssh-exam-workspace-cleanup-deleted-mount-native-sources.json.
-BROAD PASS: core338.313s/CLI25.973s, full native races. Build/vet PASS;
-all291 frozen inputs unchanged. /tmp/ssh-exam-workspace-deleted-mount-native-broad.log.
+The deleted-root fix is committed locally at6df3b76. It passes full native races
+core338.313s/CLI25.973s, build/vet and81 fixture checks5.978s. No C4 completion.
+The subsequent exact-reference diagnostic is preserved with independent teardown
+at MAIN var/collection-tests/workspace-cleanup-evidence-2ff7ca4/reference-diagnostic.*.
 
-Frozen18-file45,711,222-byte bundle:
-MAIN var/collection-tests/workspace-cleanup-deleted-mount.sbqgdhtx
-Digest1bfca438505e4f7be3f639e54ad6dc03b463eb0d7b0dd64638bb4fdab4882106.
-Adjacent .audit.json pins exact native/source/artifact hashes; unchanged static
-synthetic probes/resource slices, no credentials/runtime host config/student data.
-Remote /var/tmp/ssh-exam-workspace-cleanup-upload.mb4is4bw exact18 hashes verified.
-Fresh host guard172 records/0 live-unresolved; runner continues guarding.
-Guest20135 passed mount parsing then correctly refused a live reference before
-cleanup; its failure report omitted the reference details. Stage w1yxkb1c has
-independent preservation/inactive/dead/MainPID0 proof. Native binaries unchanged.
-Completed diagnostic guest21239, retained-policy --cleanup-peer:
-/tmp/ssh-exam-cleanup-guest-reference-diagnostics.log, stage /var/tmp/ssh-exam-
-overlay-jabvav18. Corrected diagnostic-only18-file45,711,851-byte bundle is MAIN
-var/collection-tests/workspace-cleanup-reference-diagnostics.phz14xp_, digest
-885b02e7e30fe176c7daa3aca4052bc08c04ef974fcb4dbd7ed887cacef6cedc, uploaded to
-/var/tmp/ssh-exam-workspace-cleanup-upload.tt2fqy9j. Same native artifacts; now
-captures full preview/reference PID/status/cgroup plus bounded mount tables.
-Full preview proves mount-source reports are systemd's ReadWritePaths parent
-bind at the SAME canonical path in agent/watchdog/healthy bwrap namespaces.
-Independent preservation/inactive/dead/MainPID0 verified. No guest is running.
-NEXT: actual CLI RED→GREEN for unchanged covering mappings versus real foreign
-aliases; do not stop loaded services/healthy peers or waive the reference. This
-is necessary for usable C4, not an optional architecture prerequisite. Local
-repeat helper /tmp/ssh-exam-cleanup-guest-runner.py validates exact
-bundle/native hashes and guards/uploads/runs a new private guest; it accepts a
-metadata JSON path, output tag and optional --cleanup-peer. If peer passes, run normal
-retained-policy on this SAME bundle to prove cleanup→reviewed NEW90-minute saved
-restore after old folder is gone. Fix real failures before advancing. No installed
-configuration/service/records changed. Then update docs/TODO and commit locally.
+Current uncommitted second correction excludes only covering ancestors whose
+source-relative target maps to the SAME canonical workspace path; real aliases
+elsewhere still report use, even a filesystem-root cover. Existing direct/child
+mounts and hidden roots still refuse. Actual compiled CLI RED, then focused races
+PASS core1.295s/CLI8.230s, including combined deleted-tmpfs/same-path cleanup and
+foreign-alias refusal before job acceptance. No new durable state; prior C4 phase
+review applies. Build/vet PASS. Frozen291 native inputs:
+/tmp/ssh-exam-workspace-cleanup-covering-mount-native-sources.json.
+BROAD PASS core335.342s/CLI26.363s; build/vet PASS and all291 inputs unchanged.
+/tmp/ssh-exam-workspace-covering-mount-native-broad.log. Durable evidence MAIN
+var/collection-tests/workspace-cleanup-covering-evidence.yyw1mbz6.
+
+Frozen18-file45,711,851-byte code-only bundle:
+MAIN var/collection-tests/workspace-cleanup-covering-mount.gufpaqzf
+Digesta819478141c1bead23f320e3bd191d3faa20d2019a720bb41cca6c72d69de2da.
+Adjacent .audit.json pins exact native/source/artifact hashes. Remote exact bundle:
+/var/tmp/ssh-exam-workspace-cleanup-upload.8nmi3gno. Two-student --cleanup-peer PASS
+including root lease break/cancel/other-UID queued-FD/actual cleanup, healthy signed
+SSH/input/shared PIDs and original-deadline account release. Stage87isrhlr has
+independent preservation and unit21fd1482586f4e458623118c452b588b inactive/dead/0.
+
+First full retained/saved guest83282 passed all retained shell/Nano/async/clock/
+coordinator/protected collection/deadline/genuine SSH-loss assertions, then correctly
+refused unsupported leftover probe FIFOs. Stage v_w52q0g independently preserved
+host/base/authority and exact unit510bedd2253249feb51375ee219e9ecc inactive/dead/0.
+Do not weaken cleanup; each successful synthetic probe now closes its handles and
+removes its two exact owner/type/link-checked FIFOs AS THE STUDENT before collection,
+with distinct output acknowledgement/physical absence. Emitted code syntax and81
+fixture tests5.994s PASS. Only driver/checksum change; all native artifact hashes
+and291 native inputs exactly match the already-qualified canonical-cover cohort.
+
+NOW RUNNING final normal retained-policy corrected fixture, exec47646:
+/tmp/ssh-exam-cleanup-guest-saved-fifo-restore.log,
+/var/tmp/ssh-exam-overlay-_ogejwq_. Exact18-file45,712,759-byte bundle is MAIN
+var/collection-tests/workspace-cleanup-saved-fifo-fixture.2z2myd2e, digest
+ d9af3a7ab0bb5e486aa1d7cc230939d04a98874634c67b573c12f682ebd297a5;
+remote /var/tmp/ssh-exam-workspace-cleanup-upload.vj7288l_. Metadata
+/tmp/ssh-exam-workspace-cleanup-saved-fifo-bundle.json. Collect first failure or
+completion, independently verify preservation and exact unit inactive/dead/0.
+This must prove cleanup→reviewed NEW90-minute saved-work restore after the old
+folder is gone. Do not edit frozen Python/native inputs while guest runs. After
+passing, update C4 TODO/design/operator docs and commit locally, FF main preserving
+original dirty screenshots; then continue management help/refusal/journey audit.
+
+Local repeat helper /tmp/ssh-exam-cleanup-guest-runner.py validates all bundle/
+native hashes, guards/uploads/runs a new private guest; args metadata JSON path,
+output tag, optional --cleanup-peer. Build helper /tmp/ssh-exam-build-cleanup-bundle.py
+args parent metadata, native manifest, NEW output metadata, tag; copies only audited
+code/test inputs and recompiles all native roles/tests. Current Python sources
+must remain frozen while guest runs. No installed configuration/service/records
+changed. Then update docs/TODO and commit locally; continue management outcomes.
 
 ## Settled authority and next milestone
 

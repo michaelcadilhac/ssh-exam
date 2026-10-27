@@ -427,7 +427,12 @@ func (e *Engine) workspaceUseSnapshotAt(a *Attempt, expected WorkspacePathIdenti
 							return err
 						}
 						for _, rel := range relations {
-							if rel.relation != "covering-ancestor" || rel.mount.root != "/" {
+							// Service ReadWritePaths binds can cover the work parent
+							// at its unchanged path. They preserve the same private
+							// ancestors/barrier; an alias elsewhere still reports use.
+							relative := strings.TrimPrefix(strings.TrimPrefix(anchor.filesystemPath, rel.mount.root), "/")
+							unchangedCover := rel.relation == "covering-ancestor" && filepath.Join(rel.mount.point, relative) == path
+							if !unchangedCover {
 								if err := add(pid, tid, "mount-source", 0); err != nil {
 									return err
 								}

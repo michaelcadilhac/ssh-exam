@@ -584,6 +584,23 @@ drain are future compatibility prerequisites; no service change is authorized.
 This is not C3 retained SSH or proof of cleanup eligibility. See
 docs/native-pane-management.md for the full safety/qualification record.
 
+The local manual-cleanup candidate (not deployed) is discoverable through
+`examctl help workspaces`. Start with `workspaces show ATTEMPT` and `workspaces
+dry-run ATTEMPT`; inspect every blocker before reviewing `workspaces cleanup
+ATTEMPT --review SHA256 --request NEW_UUID --reason TEXT`. There is no grace period
+or automatic cleanup. A preview is not a deletion permit: the bounded independent
+worker repeats protected-byte, state/hold, exact-inode and kernel-reference checks
+and keeps regular-file leases plus sealed directories throughout removal. It
+preserves protected archives, lifecycle receipts/history, grants, deadlines and
+account restrictions. A busy or unknown observation means defer; never terminate
+unrelated processes to obtain eligibility. After an error/lost reply use
+`workspaces cleanup-status ATTEMPT --request SAME_UUID`; its current review guides
+explicit `cleanup-retry` or reversible `cleanup-cancel`. No force-delete exists.
+Use matched native roles, since older archive deleters cannot enforce pending-job
+pins. See [the protocol and qualification status](../docs/workspace-cleanup-protocol.md)
+for backup/recovery, partial removal and saved-work restore after the old folder
+is gone. Local guarded qualification is in progress; nothing is installed here.
+
 The local configuration-inspection candidate works without initializing native
 state or contacting a service: `examctl config show` reads selected metadata with
 path redaction; `examctl config validate --config /private/staged-agent.json`
