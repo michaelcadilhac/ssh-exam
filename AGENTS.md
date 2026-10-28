@@ -58,6 +58,11 @@
   Do not infer argument order or invent setter names. Bound individual browser
   actions and use observed accessible roles so a bad locator cannot consume the
   whole workflow timeout. A locator failure is not a product refusal oracle.
+  Before interactive MFA/media acceptance, establish which computer the instructor
+  can see and use. A headed browser on the development host is not visible to a
+  remote Codex operator. Use an explicitly authorized separate profile on the
+  instructor's host and loopback-only SSH transport; preserve personal profiles
+  and never request or record passwords/MFA answers.
   First-grant fixtures use a fresh synthetic exam namespace and authored source;
   never clear history or relax source permissions to fit a prepared legacy base.
   Before broad browser qualification, compare synthetic exam/account names across

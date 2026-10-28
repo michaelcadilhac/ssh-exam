@@ -1,18 +1,17 @@
 # Deferred work
 
-October 27 CURRENT: 37/38 main items are covered. The explicitly authorized guarded
-rollout and agent consolidation are deployed/verified on marco and csc-sys. The
-remaining box is controlled live exam/recovery acceptance; its email-delivery
-criterion is complete. Evening read-only checks again pass on both hosts, with
-unchanged history/notification counts, fresh signed readiness and 20 public
-admission refusals. The instructor subsequently authorized a synthetic class
-account with mcadilha used only on sshjump. That account, exact synthetic source
-and five-minute initial grant are ready; no clock has started. Controlled
-acceptance uses maintenance false with the external start fence still closed.
-The owned test browser awaits direct human SSH/MFA and capture participation.
-The private split-identity adapter is qualified; shipped login/enforcement is
-unchanged. Scope/limits: docs/live-acceptance-split-identity.md. Current next action:
-docs/todo-current-checkpoint.md and docs/production-rollout-2026-10-27.md.
+October28 CURRENT: 37/38 main items covered. The authorized rollout/consolidation
+is deployed on marco/csc-sys. Both real human timed workflows and the two synthetic
+instructor rows PASS, including retained Nano/SSH, NEW saved work/full allowance,
+protected early finish and actual SSH denial/release at the original deadline.
+A false transient timing-verification EMAIL at normal expiration was discovered;
+its notification-only correction passes full626 application tests, both opt-in
+root CLI/TLS cases, five affected browsers, typecheck/build. It is NOT DEPLOYED yet;
+external admissions remain fenced. The last box awaits corrected immutable-image
+qualification, fresh drain/backup, web-only activation and final admission checks.
+No more human MFA/media participation or design answer is pending. Exact evidence
+and bootstrap limits: docs/live-acceptance-split-identity.md and
+ docs/deadline-timing-notifications.md. Next action: docs/todo-current-checkpoint.md.
 
 The dated progress paragraphs below are historical where superseded by this
 status and the individual checkboxes.
@@ -2056,6 +2055,15 @@ the approval is not a production change or a completed investigation.
   test, exact recovery timing and saved-work restoration, normal access policy,
   dashboard status and absence of duplicate alerts. Record the revision, checks
   and deployment outcome without publishing student information.
+  October28 human acceptance PASS: actual five-minute ordinary and three-minute NEW
+  saved-work attempts, real jump MFA/media, preserved SSH/Nano through reviewed
+  hold/Continue, full180 seconds only at Begin, exact restored bytes/modes/mtimes,
+  protected finish, original-deadline ordinary SSH refusal/release, synthetic
+  dashboard agreement and browser/credential cleanup. One appropriate policy alert;
+  one false normal-expiry timing email exposed and corrected locally. Full626 app,
+  root CLI/TLS2, browser5/typecheck/build pass. Final image/drain/backup/web-only
+  correction and reopening remain; do not mark this deployed or complete yet.
+  See docs/deadline-timing-notifications.md. Earlier setup notes below are history.
   October27 matched rollout/consolidation DEPLOYED and verified in maintenance.
   Actual private production-copy schema11→33 startup preserved all18 old tables;
   actual historical data/assets/CLI/native-role/callback checks PASS. One controlled

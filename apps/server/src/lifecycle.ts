@@ -35,6 +35,10 @@ import { Monitoring } from "./monitoring.js";
 import { Alerts, alertContext, type AlertKey } from "./alerts.js";
 
 export const PREFLIGHT_CONFIRMATION_GRACE_MS = 2 * 60 * 1000;
+// A normal expired-deadline handshake can briefly publish pending before its
+// signed reply/confirmation arrives. Keep the hold visible immediately; notify
+// only if it remains unresolved, with a durable wait that retries cannot slide.
+export const DEADLINE_TIMING_ALERT_GRACE_MS = 2 * 60 * 1000;
 // Collection metadata is immutable; connection bookkeeping is not part of the
 // submission. SSH replies and callbacks must compare the same public snapshot.
 function manifestSnapshot(manifest: any) {
@@ -121,6 +125,7 @@ export class Lifecycle {
     subject: string,
     body: string,
     cause: string,
+    notBefore = 0,
   ) {
     return this.alert(subject, [...alertContext(a), "", body].join("\n"), {
       key: {
@@ -129,6 +134,7 @@ export class Lifecycle {
         generation: a.generation,
         cause: hash(cause),
       },
+      notBefore,
     });
   }
 
@@ -710,9 +716,10 @@ export class Lifecycle {
       this.notifyAttempt(
         this.store.attempt(id),
         "timing-verification",
-        "Collection timing requires recovery",
-        `Attempt ${id}: work is frozen; collection awaits authenticated timing verification.`,
+        "Collection timing verification delayed",
+        `Attempt ${id}: work is frozen; collection awaits authenticated timing verification. Automatic verification continues. This delay is not evidence of a student violation. Inspect examctl info ${id} and examctl web attempts show ${id}; do not reset time, reopen the attempt or release its account hold to bypass verification.`,
         "timing-unavailable",
+        now() + DEADLINE_TIMING_ALERT_GRACE_MS,
       );
       this.onEnd(this.store.attempt(id));
       return;

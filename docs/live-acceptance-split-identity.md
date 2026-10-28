@@ -16,18 +16,27 @@ exception is needed.
 2. Create and identify a new ordinary class account; verify a real pinned SSH
    login and prepare one labeled synthetic exam/grant. **PASS.** No student
    record, previous account row, SSH/PAM rule or native service was changed.
-3. Use the deployed gateway/native services for human jump-host MFA, real capture,
-   preflight without a clock, five-minute Begin, retained hold/approval/Continue,
-   protected finish and original/current-deadline account restoration. **OPEN:**
-   the owned headed Chromium window is waiting for the instructor's SSH sign-in.
-4. Issue a reviewed NEW three-minute saved-work grant with an explicit finite
-   Begin window; confirm durable native source retention before availability.
-   Verify restored bytes/metadata, full allowance only at Begin, protected finish,
-   access/credential cleanup, dashboard agreement and no duplicate alerts. **OPEN.**
+3. Use the installed gateway/native services for real jump MFA, entire-screen and
+   webcam capture, fullscreen/keyboard permission, zero-clock preflight and a
+   five-minute Begin. **PASS, October 28.** The instructor explicitly clicked Begin.
+   A deliberate fullscreen loss froze both terminal cgroups; reviewed CLI approval
+   and explicit Continue preserved the same SSH transport and Nano buffer.
+4. Issue a reviewed NEW three-minute saved-work grant with a finite Begin window
+   outside the expired exam defaults. **PASS.** Native durable source retention
+   preceded availability. Actual Begin granted the full 180 seconds; all eight
+   saved files retained their bytes/modes/mtimes. Early Finish protected the new
+   archive while ordinary SSH remained denied until the original deadline.
+5. Inspect only the two synthetic dashboard rows and remove test credentials and
+   browser ownership. **PASS.** Both rows show secured submissions and the correct
+   source lineage; instructor signed out and the exact browser/tunnels exited.
+   No personal browser or unrelated student row was accessed.
 
-Stop before Begin until the instructor completes real SSH/MFA and capture setup.
-Do not reopen public admissions until all required acceptance and final drain
-checks pass. Email delivery is already confirmed exactly once; do not repeat it.
+Public admissions remain fenced pending the notification-only correction found
+at normal expiration. The initial controlled email was received exactly once;
+do not repeat that test. The deliberate interruption produced one appropriate
+notice, but a healthy three-second timing handshake also produced a false recovery
+email. Its local regression/fix and deployment gate are documented in
+[deadline timing notifications](deadline-timing-notifications.md).
 
 ## Actual setup
 
@@ -53,12 +62,47 @@ The new `live-acceptance-20261027` definition and its only enrollment issue gran
 settings and empty claim history were inspected; no attempt/clock was created.
 This is synthetic authorization, not a change to a course exam or student grant.
 
+October 28: that window expired while unused. `grants show` confirmed revision 1,
+AVAILABLE and no claims; native state had no synthetic-account attempt. An explicit
+`examctl web grants revise --revision 1` changed only its Begin window, retaining
+the same grant/source/300s/webcam/two-terminal settings and full revision history.
+Revision 2 is available until 01:24:38 Chicago; no clock or allowance was consumed.
+The class key remains valid until 01:49:18 Chicago. Inspect current authority before
+any further revision; never create another grant as an unstarted retry.
+
 After fresh native/web full-drain guards, only the gateway was restarted on the
 same qualified image with maintenance false for controlled acceptance. The exact
 external nginx start fence remains in place. Public auth/preflight/Begin probes
 still refuse 503; public live/ready health return 200. SSH, relay and native
 services were not restarted. The owned browser reaches the same public TLS
 origin through an owned loopback SOCKS4 connection on marco.
+
+## Human browser location — October 28 correction
+
+The instructor controls Codex remotely from **euler** and could not see the first
+dev-host Chromium window. That owned window/forward and controller56119 were
+closed with a cleanup receipt; no SSH sign-in or exam had begun. No personal
+browser or production service was stopped. Do not repeat the dev-host GUI setup.
+
+The instructor explicitly authorized SSH to euler. Its installed Chromium154,
+display:0 and real camera devices are available. A fresh owned profile on euler
+has password saving disabled; its PID/start time/profile lock and newly published
+debug endpoint are verified. Chromium flattens `/proc/.../cmdline` into one title;
+the startup oracle now verifies the exact profile token and profile-lock PID rather
+than assuming NUL-separated arguments. Failed owned startups exited before retry.
+
+The now-closed controller exec53952 connected only to that new empty profile. An owned
+SSH pair carries CDP to development and SOCKS4 back to euler through marco; every
+browser/proxy listener is verified as loopback-only. No public debugging port,
+test URL, new deployment, personal-profile access or extra package is required.
+The real TLS form is prefilled on euler with the same private WASM substitution.
+MFA answers remain in the browser, capture uses euler's real display/camera, and
+the instructor must stop at preflight until the timed checks are ready.
+
+Receipt: `euler-browser-start.json` in the private run; launcher/controller files
+are `launch-euler-acceptance.py` and `euler-acceptance-browser.mjs` in the run root.
+Keep this browser/tunnels while the human step is pending or an attempt is active;
+only close their exact owned identities after the test is safely drained.
 
 ## Adapter boundary and verification limits
 
@@ -115,3 +159,41 @@ remaining login key. Preserve labeled attempts, grants, source pins, audit and
 protected submissions; archive the test definition through reviewed CLI retirement
 when its dependencies permit it. Never delete account/history or restore old
 DB/state to manufacture cleanup. Reopening admissions is a separate final gate.
+
+## Completed human workflows — October 28
+
+Initial attempt `0bcf71b7-d182-4043-968b-b9e114c29ecf` began at
+1793164662753 with original/current deadline1793164962753: exactly300 seconds.
+Actual C++ compilation/execution and GDB passed. Both terminal scopes reported
+kernel frozen=1 during the deliberate hold. Approval request
+`a9a183f8-b182-466a-8294-fa7a981ebf77` granted review, not execution; explicit
+Continue restored work after fresh browser verification. The SSH transport ID
+remained identical; Nano's `UNSAVED-EULER-RETAINED-20261028` marker was saved before
+expiration and appears in the protected archive. One synthetic command-typing
+mistake also remains honestly in that file. This does not qualify the separate
+originally-stopped-job assertion; that remains covered by prior isolated tests.
+Protected expiration checksum:
+`95cd5ec6a1b05f778defee6aaa2d905d306fd5254a7206e1bca8dd579b18c497`.
+Ordinary SSH succeeded after NORMAL/RELEASED at the unchanged deadline.
+
+NEW saved-work grant `1debc2b5-b5d9-40e1-9cca-194e6699f353` was first PENDING_NATIVE,
+then RETAINED/AVAILABLE after supported source synchronization. It retained webcam
+requirement, two panes and the exact first archive identity. Attempt
+`e8e65c21-6123-4825-8bcf-8c6ac5e6c8c2` remained zero-clock in preflight, began at
+1793165757132 with original/current deadline1793165937132, exactly180 seconds.
+Terminal verification printed `RESTORE_OK_180_SECONDS 28027 0o640`; all eight source
+files match bytes/mode/mtime in both protected archives, with only a new synthetic
+file added. Confirmed early Finish ended1793165874406, checksum
+`38d804db348ab3bcef0a17aba3695b5d5af33c45b08d8d94a6147e59d72738b6`.
+Actual ordinary SSH refused with the exam-guard message while HELD, then succeeded
+at the original deadline after NORMAL/RELEASED. No refund/reopening/hold override.
+
+The instructor selected the synthetic exam after signing in directly. Each row was
+inspected through its exact username/grant control, preserving unrelated records.
+Both showed Submission secured, correct allowances/webcam/source. The instructor
+session was signed out through UI and /api/session returned401. Exact Euler PID,
+start time/profile and owned loopback SSH tunnels were closed with a cleanup
+receipt. The synthetic SSH key authorization was removed after both legitimate
+hold releases; UID/name remain reserved, password locked, protected history intact.
+Local private-key disposal and reviewed exam archive are recorded in the rollout
+receipt when completed. No class-server or SSH service was restarted for this test.

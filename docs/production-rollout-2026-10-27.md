@@ -1,12 +1,16 @@
 # Production rollout preparation, October 27
 
-October27 CURRENT: guarded production rollout was explicitly authorized and
-executed on marco/csc-sys. Consolidation is DEPLOYED/VERIFIED;37/38 TODO boxes are
-covered. Full live exam/recovery acceptance is still OPEN. Web maintenance is now
-false only for controlled loopback acceptance behind the tested external start
-fence. The instructor-authorized synthetic account/exam/initial grant are ready;
-no test clock has started. No student record, push, SSH/relay restart, host reboot
-or unrelated service change. Scope/limits: live-acceptance-split-identity.md.
+October28 CURRENT: authorized rollout and single-agent consolidation are deployed.
+Both human ordinary/NEW saved-work tests and synthetic dashboard review PASS.
+Admissions remain fenced pending a notification-only correction for a transient
+false timing email at normal expiration. Full626 application checks, two actual
+root CLI/TLS opt-ins, five alert UI browsers, typecheck/build pass locally; the
+correction is NOT DEPLOYED yet. No native/SSH/relay change is required. All new
+110 web/174 native attempts and protected source/consumption/audit authority must
+be preserved in a fresh private backup before guarded web-only activation.
+See live-acceptance-split-identity.md and deadline-timing-notifications.md. Dated
+inventory/setup sections below describe the executed sequence and earlier gates;
+they do not override this current result. No further human test step is pending.
 
 ## Actual deployed result and evidence
 

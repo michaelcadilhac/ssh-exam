@@ -237,9 +237,9 @@ it("authenticates timing checks, persists offline resets, binds decisions and ex
     expect(
       store.db
         .prepare(
-          "SELECT subject FROM outbox WHERE subject='Collection timing requires recovery'",
+          "SELECT subject FROM outbox WHERE subject=? AND status='pending' AND next>?",
         )
-        .all(),
+        .all("Collection timing verification delayed", Date.now()),
     ).toHaveLength(1);
   } finally {
     await app.close();
