@@ -1,13 +1,16 @@
 # Delivery audit and bounded execution outcome
 
-October27 current outcome:37/38 items covered. The instructor authorized the guarded
-rollout; consolidation is now deployed/verified, matched web/schema33 and native
-872fe80 remain in maintenance. Protected history, full native races, actual signed
-readiness, assets/root CLI and exactly-one human inbox alert PASS. Only full human
-ordinary/recovery acceptance remains, blocked by needing a non-admin test identity;
-mcadilha is practice-only. No admission reopening. Current deployed receipt and
-rollback boundary: production-rollout-2026-10-27.md. The October26 local-only inventory
-below is historical and must not be mistaken for current production status.
+October28 current outcome: **38/38 main items covered; deployed and online.**
+Authorized temporary-agent consolidation and full controlled human ordinary/NEW
+saved-work acceptance PASS. The final notification-only correction7d0b894 is
+qualified/installed with fresh private backups; native872fe80 unchanged. All38
+durable tables/prior audit and174 native authoritative histories preserved. Public
+admissions reopened06:13 UTC, TLS/readiness/assets/unauthenticated refusals and
+fresh authenticated root CLI PASS. Existing unused permissions require reviewed
+NEW grants/windows; no bulk student conversion. Exact receipts, test bootstrap
+limits and compatible rollback: production-rollout-2026-10-27.md and
+live-acceptance-split-identity.md. The dated local inventory below is historical;
+its original production gates are now fulfilled as recorded above.
 
 October26:36/38 main TODO items implemented/tested LOCALLY, not an effort percentage
 or production signoff. Only production consolidation and post-rollout live acceptance
@@ -17,11 +20,11 @@ outcome inventory and docs/todo-current-checkpoint.md.
 
 | Public outcome | Local delivered workflow and evidence | Remaining boundary |
 | --- | --- | --- |
-| Retained SSH and monitoring | Verified policy/technical freeze, preserved Nano/shell/job/async state, approved Continue, independent live authority, positive-coverage technical recovery and genuine SSH-loss→reviewed NEW attempt. retained-release-qualification.md, retained-capacity-qualification.md, unified-grant-acceptance.md | Live institutional SSH/MFA/media acceptance in a separately instructed rollout |
+| Retained SSH and monitoring | Verified policy/technical freeze, preserved Nano/shell/job/async state, approved Continue, independent live authority, positive-coverage technical recovery and genuine SSH-loss→reviewed NEW attempt. retained-release-qualification.md, retained-capacity-qualification.md, unified-grant-acceptance.md | Completed controlled human acceptance; explicit private class-key bootstrap seam documented |
 | Grants, initialization and saved recovery | Enrollment-time settings snapshots; explicit unused revisions; exact sources, finite windows, preserved effective webcam; durable retention before availability; cancel-first legacy replacement; full chosen allowance only at Begin; protected history. legacy-recovery-migration.md, recovery-admission-consistency.md, grant-workspace-sources.md | Reviewed production inventory/conversion; no invented historical snapshots |
 | Examctl management | Shared authorized/audited definitions, CSV, grants, clocks, reviews, administrators, monitoring, alerts, templates, submissions, native diagnostics/access and retirement. Current compiled CLI→real gateway/TLS journey PASS7.81s and full affected CLI races24.386s. examctl-coverage-audit.md | Installation settings explicitly remain files; no new Settings/remote activation feature required |
 | Manual workspace cleanup | Root inspection/holds/reviewed cleanup/status/retry/cancel, file leases/directory seals, durable quarantine/history/archive pins; guarded healthy peer and NEW saved restore after old folder removal. workspace-cleanup-protocol.md | Unsupported/uncertain objects deliberately refuse; never force-delete |
-| Collection/capacity | Configurable128/512MiB defaults, unchanged entry/depth limits, actual GCC/G++/GDB sizing, independent fatal-worker recovery/protected exports, approved16students/64terminals. collection-limits.md, retained-capacity-qualification.md | Actual production storage/live acceptance remains a rollout check |
+| Collection/capacity | Configurable128/512MiB defaults, unchanged entry/depth limits, actual GCC/G++/GDB sizing, independent fatal-worker recovery/protected exports, approved16students/64terminals. collection-limits.md, retained-capacity-qualification.md | Production storage and controlled live acceptance completed; approved capacity16/64 unchanged |
 
 Final CLI help now discovers current workflows and file-based installation scope;
 actual process RED→GREEN prevents stale missing-work claims. Full native core races
@@ -32,12 +35,11 @@ Exact artifacts/failures/scope and independent teardown are in the current check
 and MAIN var/collection-tests/todo-local-completion-evidence.0einctzi. No older bundle
 is claimed to qualify new native behavior. Original dirty screenshots/stashes remain.
 
-The two remaining boxes require new production instructions: positively drain and
-consolidate canonical/live-upgrade/deferred-recovery owners, then verify controlled
-alert/recovery/access/dashboard/no-duplicate behavior after rollout. Inventory,
-consistent backup, reviewed migration, matched installation, rollback limits and
-consolidation are UNEXECUTED proposals in todo-rollout-plan.md. Never clear state,
-release holds or stop needed owners to satisfy a test or drain.
+Both original production-only boxes are now completed under the subsequent explicit
+cutover instruction. Full drain/backups/matched installation/migration/consolidation
+and human acceptance are recorded in production-rollout-2026-10-27.md. That approval
+does not authorize future deployments, bulk grant conversion or student-record
+edits; future changes still preserve the same authority/rollback boundaries.
 
 The development failure was an expanding prerequisite tree, repeatedly qualifying
 components without delivering the public workflow and treating already-delivered

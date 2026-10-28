@@ -49,6 +49,11 @@ pre-existing passwd/group/shadow/gshadow rows were preserved. The unchanged
 Its sole bootstrap authorization is a separately generated Ed25519 test key,
 restricted to loopback and the observed jump peer, with agent/port/X11 forwarding
 and user RC disabled. It expires October 28 at 01:49:18 Chicago (06:49:18 UTC).
+For the second login, the synthetic key's original source restriction rejected a
+second actual jump peer. Root sshd evidence verified it; only this test key's
+restriction was updated to the two verified peers and loopback, retaining its
+expiry/forwarding restrictions. The instructor retried real MFA successfully.
+No password defect, SSH/PAM/configuration bypass or service restart was involved.
 The account itself expires October 30. No institutional password was copied,
 stored on csc-sys or sent to the class account. Private test-key bytes remain in
 the private development run/browser; only its public key was installed on csc-sys.
@@ -195,5 +200,8 @@ session was signed out through UI and /api/session returned401. Exact Euler PID,
 start time/profile and owned loopback SSH tunnels were closed with a cleanup
 receipt. The synthetic SSH key authorization was removed after both legitimate
 hold releases; UID/name remain reserved, password locked, protected history intact.
-Local private-key disposal and reviewed exam archive are recorded in the rollout
-receipt when completed. No class-server or SSH service was restarted for this test.
+The matching local private key was unlinked and all three exact owned Euler
+profiles removed after no-process proof. Reviewed exam archive request
+`fad35204-968a-430b-9162-80f9c3878931` produced revision
+`ddd6efbd13f34131bc8b379ed7be3d6e0c27a7e64b73a8d898a5395602d392e6`.
+Both protected attempts/grants/source pins remain; UID/name stay reserved. No class-server or SSH service was restarted for this test.

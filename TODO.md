@@ -1,17 +1,23 @@
 # Deferred work
 
-October28 CURRENT: 37/38 main items covered. The authorized rollout/consolidation
-is deployed on marco/csc-sys. Both real human timed workflows and the two synthetic
-instructor rows PASS, including retained Nano/SSH, NEW saved work/full allowance,
-protected early finish and actual SSH denial/release at the original deadline.
-A false transient timing-verification EMAIL at normal expiration was discovered;
-its notification-only correction passes full626 application tests, both opt-in
-root CLI/TLS cases, five affected browsers, typecheck/build. It is NOT DEPLOYED yet;
-external admissions remain fenced. The last box awaits corrected immutable-image
-qualification, fresh drain/backup, web-only activation and final admission checks.
-No more human MFA/media participation or design answer is pending. Exact evidence
-and bootstrap limits: docs/live-acceptance-split-identity.md and
- docs/deadline-timing-notifications.md. Next action: docs/todo-current-checkpoint.md.
+October28 CURRENT: **38/38 main items covered.** The authorized rollout and
+single-agent consolidation are deployed/verified on marco/csc-sys. Real human
+ordinary and NEW saved-work acceptance, retained SSH/Nano through reviewed hold,
+full allowance only at Begin, protected finish and original-deadline SSH denial/
+release all PASS. The discovered false transient timing email is corrected in
+web7d0b894 (native872fe80 unchanged). Full626 application tests plus2 opt-in root
+CLI/TLS tests,5 affected browser checks, typecheck/build and packaged production
+image schema11/24→33 smokes pass. All38 durable tables/prior audit and174 native
+authoritative histories are preserved. Fresh private backups verified. Public
+admissions reopened October28 at06:13 UTC (01:13 Chicago); TLS/readiness/assets,
+unauthenticated refusals and fresh root CLI management PASS. Synthetic login key
+revoked/private bootstrap removed, owned browsers cleaned, test exam archived
+with protected history retained.
+No open implementation/design/acceptance blocker. Existing unused enrollments
+still need explicitly reviewed NEW grants/settings/finite windows before use;
+none were bulk converted and no historical settings were invented. Evidence:
+docs/production-rollout-2026-10-27.md, docs/live-acceptance-split-identity.md and
+docs/deadline-timing-notifications.md. Current checkpoint: docs/todo-current-checkpoint.md.
 
 The dated progress paragraphs below are historical where superseded by this
 status and the individual checkboxes.
@@ -2051,40 +2057,37 @@ the approval is not a production change or a completed investigation.
   October26's no-deployment status is historical: the instructor subsequently
   authorized the October27 guarded rollout. Consolidation is deployed/verified;
   full live acceptance remains OPEN and admissions remain closed.
-- [ ] After the maintenance rollout, verify delivery of a small controlled alert
+- [x] After the maintenance rollout, verify delivery of a small controlled alert
   test, exact recovery timing and saved-work restoration, normal access policy,
   dashboard status and absence of duplicate alerts. Record the revision, checks
   and deployment outcome without publishing student information.
-  October28 human acceptance PASS: actual five-minute ordinary and three-minute NEW
-  saved-work attempts, real jump MFA/media, preserved SSH/Nano through reviewed
-  hold/Continue, full180 seconds only at Begin, exact restored bytes/modes/mtimes,
-  protected finish, original-deadline ordinary SSH refusal/release, synthetic
-  dashboard agreement and browser/credential cleanup. One appropriate policy alert;
-  one false normal-expiry timing email exposed and corrected locally. Full626 app,
-  root CLI/TLS2, browser5/typecheck/build pass. Final image/drain/backup/web-only
-  correction and reopening remain; do not mark this deployed or complete yet.
-  See docs/deadline-timing-notifications.md. Earlier setup notes below are history.
-  October27 matched rollout/consolidation DEPLOYED and verified in maintenance.
-  Actual private production-copy schema11→33 startup preserved all18 old tables;
-  actual historical data/assets/CLI/native-role/callback checks PASS. One controlled
-  email was accepted, same-intent retry reused its outbox, and instructor confirmed
-  inbox receipt exactly once. No new student incident or attempt/grant was created.
-  Full real SSH/MFA/camera, retained hold/Continue, protected NEW saved-work/full
-  chosen allowance and normal deadline/access/credential restoration remain pending.
-  mcadilha is practice-only AND has administrator/sudo rights; merely changing its
-  static exception cannot satisfy normal account-policy guards. No privilege or
-  account-policy rule was weakened. The instructor instead authorized creation of
-  examacpt27/UID28027 and use of mcadilha only for jump MFA. Unchanged policy
-  identification and actual pinned class SSH login pass with an expiring synthetic
-  key; the owned browser's private adapter passes Go races/Chromium/WASM/SSH.
-  Synthetic source/initial300s grant are ready, no attempt/clock yet. Gateway-only
-  drained restart set maintenance false for this test; external admission remains
-  fenced. Latest dialog asks instructor to complete SSH sign-in and stop at
-  preflight, never send credentials. This is explicit test-only bootstrap wiring,
-  not a shipped alternate login mode or proof of class institutional-password auth.
-  See docs/live-acceptance-split-identity.md for the boundary and cleanup.
-  External new starts remain fenced; no production-ready-for-students claim.
-  Host-specific receipt/acceptance/rollback: docs/production-rollout-2026-10-27.md.
+  October28 DEPLOYED/VERIFIED: both real timed workflows and synthetic dashboard
+  review pass. Initial300s and NEW saved-work180s begin only after explicit Begin;
+  eight restored files retain bytes/modes/mtimes. Reviewed hold/Continue preserves
+  the same SSH transport and Nano marker. Early protection keeps the account HELD;
+  actual ordinary SSH refuses until the unchanged original deadline, then succeeds.
+  Instructor confirmed controlled email once. A false three-second timing-pending
+  email at normal expiration was exposed; web7d0b894 now delays only that notice
+  for a durable non-sliding two minutes and cancels on authenticated recovery.
+  Local real-SMTP/signed-HTTP regressions, full626 app tests plus2 root CLI/TLS
+  opt-ins,5 browser checks, typecheck/build and exact-image smokes pass. This does
+  not delay enforcement, collection or holds and does not label delay a violation.
+  Fresh private full backups preserve new110 web/174 native attempts, grants,
+  consumption/source pins and audit. Corrected web activation preserves all38
+  durable tables byte-for-value and prior audit, native histories unchanged;
+  fresh signed readiness/management and six qualified public assets pass. Standard
+  exam nginx site syntax/reload passes; external admissions reopened06:13 UTC,
+  production health200 and unauthenticated preflight/Begin401. No SSH/relay/native
+  restart for this web correction. Temporary agents were already consolidated in
+  the separately authorized cutover. No push.
+  Both test archives remain protected; synthetic key authorization/local key and
+  owned Euler profiles/tunnels removed, instructor session signed out, UID reserved
+  and test definition archived through reviewed CLI. The test used real jump MFA
+  and an explicit private class-key bootstrap adapter; class institutional-password
+  authentication was not retested and no alternate login mode was shipped.
+  Exact deployed hashes, retained failed probes, limits, backups and compatible
+  forward/rollback procedure: docs/production-rollout-2026-10-27.md,
+  docs/live-acceptance-split-identity.md, docs/deadline-timing-notifications.md.
 
 
 References: `docs/native-cleanup-isolation-incident.md`,

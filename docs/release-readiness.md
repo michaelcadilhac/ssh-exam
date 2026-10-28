@@ -1,20 +1,23 @@
 # Main-bug release readiness
 
-October27 CURRENT: matched web815a895/schema33 and corrected native commands872fe80
-are DEPLOYED with public admissions fenced under explicit authorization. Full drain/private backups,
-three-agent consolidation, protected historical comparisons, public assets/root CLI,
-automatically healthy signed role snapshots and exactly-one inbox alert PASS.
-37/38 TODO items covered. Full human normal exam/NEW saved-work acceptance still
-uses the instructor-authorized created account examacpt27 and private browser
-adapter: real mcadilha jump MFA, distinct ordinary class UID/test key, unchanged
-native guards. Local adapter races/Chromium/WASM and actual class SSH/policy pass;
-the human login/capture/timed workflow remains open. Gateway maintenance is false
-only for controlled loopback acceptance; external start fence remains closed.
-Do not treat this as final student admission signoff. Exact scope/limits:
-live-acceptance-split-identity.md. Current authoritative
-receipt/rollback: production-rollout-2026-10-27.md. Earlier dated NO-GO/artifact notes
-below are historical; native-configuration-refresh.md records the corrected context
-failure and207.681s/6.353s race qualification.
+October28 CURRENT: **release online;38/38 main TODO items covered.** Web7d0b894/
+schema33 and native872fe80 are deployed under the explicit guarded-cutover
+instruction. Human ordinary/NEW saved-work tests, retained SSH/Nano hold/Continue,
+full Begin allowance, protected finish and original-deadline SSH refusal/release,
+synthetic dashboard review and exactly-one controlled inbox delivery PASS.
+The discovered false transient timing email was fixed and qualified: full626 app
+checks plus2 opt-in root CLI/TLS cases,5 affected UI browsers, typecheck/build and
+private exact-image production smoke pass. Fresh full private backups,38 unchanged
+durable tables/prior audit,174 unchanged native histories and fresh signed readiness
+PASS. External admissions reopened06:13 UTC (01:13 Chicago); public TLS/health/
+assets/authentication refusal and fresh root management PASS. Test credentials,
+owned browser/profiles/tunnels cleaned, test exam archived/history protected.
+No open implementation/acceptance blocker. Existing unused enrollments still need
+reviewed NEW issuance/settings/finite windows; no student permissions were bulk
+converted. Exact artifacts, private class-key bootstrap seam, failures, backup and
+compatible image-only rollback: production-rollout-2026-10-27.md,
+live-acceptance-split-identity.md and deadline-timing-notifications.md.
+Dated local-only/NO-GO entries below are retained history, superseded by this result.
 
 Latest October26 LOCAL completion:36/38 main TODO items are implemented/tested.
 The only open boxes are production agent-service consolidation and post-rollout

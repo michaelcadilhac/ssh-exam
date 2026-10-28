@@ -1,5 +1,18 @@
 # Proposed TODO rollout, migration and rollback
 
+October28 execution status: the instructor subsequently explicitly authorized the
+guarded cutover. Inventory, admission fence/full drain, private backups, matched
+schema11→33 installation, single-agent consolidation, real human ordinary/NEW
+saved-work acceptance and final web-only false-timing-email correction are complete.
+38/38 TODO items covered. Public admissions reopened06:13 UTC, health/readiness/
+history/root CLI pass. Current actual artifacts, exact preservation/acceptance
+limits and compatible rollback: production-rollout-2026-10-27.md. Original local
+proposals below are retained historical procedure, not pending work or permission
+to rerun old installers. Existing unused enrollments still require explicit
+reviewed NEW grants/windows; no automatic historical conversion occurred.
+
+## Original proposed sequence (subsequently executed with recorded corrections)
+
 October26 current local completion:36/38 main items; only the two production-only
 boxes remain open. Existing management is complete locally, installation settings
 stay in files by instructor decision, and manual cleanup→NEW saved restoration

@@ -1,6 +1,6 @@
 # Deadline timing notifications
 
-October28, implemented/tested locally; not yet deployed. Controlled live acceptance
+October28, deployed/verified on marco as web7d0b894; admissions reopened06:13 UTC. Controlled live acceptance
 on the installed release exposed a false email at normal expiration: the agent
 reported timing verification pending while awaiting the signed response, then
 protected the submission about three seconds later. This is an authenticated
@@ -33,8 +33,37 @@ UI browser checks pass9.0s using private API fixtures, not another live SMTP/MFA
 test. Native artifacts and browser source are unchanged: prior exact-artifact
 race/capacity16students/64panes evidence and the completed human test still apply.
 
-Remaining release gate: immutable image smoke, fresh full drain/private backup,
-guarded web-only replacement and final public admission/readiness/history checks.
-Preserve schema33 and all new synthetic grants/attempts/source pins/outbox/audit;
-never restore a pre-test database or native state. A compatible image-only rollback
-is possible after a verified drain; the previous image reintroduces the false email.
+Release gate completed: exact-image production-maintenance/schema11/24→33 smoke
+passed with native boot clock, UID10001/read-only/no-network/cap-drop restrictions,
+unchanged qualified assets and removed private fixtures. Export SHA256
+`1c85d55a7de1d647c2b2fad10ba7bc9b2a9e7f94569ea3763d10a9fa1735b680`.
+Source-engine OCI manifest3cf5c9a5… and exported/target configd2ae5b01… differ by
+Docker image-store presentation; every blob and eleven rootfs diff IDs were bound
+to the exact artifact. Actual target compiled fix and all six assets pass.
+
+After full native/web drain and fresh private backups, only the web image-selection
+env line changed. Corrected container/source7d0b894 is healthy; all38 durable tables
+match the fresh SQLite backup in both directions, prior audit remains, schema33
+unchanged and all174 native authoritative histories agree. Fresh post-start signed
+canonical readiness passed, with one canonical agent/socket and the earlier approved
+temporary-service consolidation intact. No native/SSH/relay restart occurred.
+The standard nginx exam site passed target syntax and reload, public health200,
+normal auth initialization200 and unauthenticated preflight/Begin/session401;
+all six public assets match. Outbox remains108sent/20cancelled, incidents33: no
+new or duplicate mail from replacement. This is verified installation plus local
+signed-HTTP/SMTP correction qualification, not another human timed run after it.
+
+Retained harmless verifier failures: first comparison used the source engine's
+manifest ID as target config ID; a generated-script placeholder then collided
+inside nested code. Both failed BEFORE service stop. Structured parameters and
+local syntax checking fixed the verifier, without artifact changes. An external
+probe expected400 from auth/start; actual source intentionally returns200 with an
+anonymous ten-minute nonce, before any SSH/authentication or exam record. The
+probe oracle was corrected; no enforcement or product change made to fit it.
+
+Fresh backups and rollback boundary: production-rollout-2026-10-27.md. Preserve
+schema33 and all new grants/attempts/source pins/outbox/audit; never restore pre-test
+DB/native state. If rollback is separately needed, fence starts, positively drain
+and use a compatible image-only rollback retaining current data/native cohort.
+Previous815a895 supports schema33 but reintroduces the false timing email. Old
+schema11/old native cohorts are not established compatible rollback targets.

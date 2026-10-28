@@ -1,5 +1,10 @@
 # Application-host deployment
 
+For the current authorized marco/csc-sys release, live acceptance and rollback
+record, see [production rollout](production-rollout-2026-10-27.md). The commands
+below describe installation setup; they are not permission to replace a running
+production cohort or bulk-convert unused permissions.
+
 Prerequisites: Linux, Docker Engine, Compose v2 supporting --wait/--wait-timeout, nginx/systemd,
 TLS certificates, Ed25519 command/callback keys and SMTP. Native components install separately.
 Node baseline is 26.11.1-bookworm-slim with exact manifest digest in Dockerfile. Upgrade
@@ -32,7 +37,9 @@ outbox with retry/backoff; SMTP acceptance does not prove final recipient delive
 
 For a host installation, use Node 26.x and reinstall with `npm ci` when upgrading from
 Node 24. Native SQLite binaries are specific to the Node major version. Build and test
-before restarting the gateway; restarting discards authenticated SSH connections.
+before replacing the gateway in an authorized verified-drain window. Only fully
+negotiated retained sessions support verified routing recovery; do not assume
+every older connection survives a restart.
 
     cd /opt/exam-workspace
     sudo install -d -m 0700 -o 10001 -g 10001 var/production

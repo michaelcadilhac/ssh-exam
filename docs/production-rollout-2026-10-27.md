@@ -1,20 +1,80 @@
 # Production rollout preparation, October 27
 
-October28 CURRENT: authorized rollout and single-agent consolidation are deployed.
-Both human ordinary/NEW saved-work tests and synthetic dashboard review PASS.
-Admissions remain fenced pending a notification-only correction for a transient
-false timing email at normal expiration. Full626 application checks, two actual
-root CLI/TLS opt-ins, five alert UI browsers, typecheck/build pass locally; the
-correction is NOT DEPLOYED yet. No native/SSH/relay change is required. All new
-110 web/174 native attempts and protected source/consumption/audit authority must
-be preserved in a fresh private backup before guarded web-only activation.
-See live-acceptance-split-identity.md and deadline-timing-notifications.md. Dated
-inventory/setup sections below describe the executed sequence and earlier gates;
-they do not override this current result. No further human test step is pending.
+October28 CURRENT: **38/38 TODO items covered; release online.** The authorized
+rollout and agent consolidation are deployed, and real human ordinary/NEW saved-work
+acceptance and synthetic instructor review PASS. A normal-expiry false timing
+email was found and corrected in web7d0b894, fully qualified and installed under a
+fresh full drain/private backup. Public admissions reopened06:13 UTC (01:13 Chicago),
+production health/readiness200 and unauthenticated preflight/Begin401, fresh root
+CLI management PASS. No further human step/design answer or implementation blocker.
+No student record was edited, no push/SSH/relay restart/reboot occurred. Existing
+unused enrollments still require reviewed NEW grants/settings/finite Begin windows;
+no bulk conversion or invented historical enrollment snapshot occurred.
+
+## Final web correction and completed acceptance
+
+- Current web source **7d0b894**; target image config
+  `sha256:d2ae5b01745a7bc8bd5ae2bd482122ecfde4e085f333ce49ba6f855bbc685464`,
+  source-engine OCI manifest
+  `sha256:3cf5c9a55f6b90cae225821ba4b22ae9251a44388d2d8235f364435fc1b6fbc4`.
+  Code-only export117,050,368bytes, SHA256
+  `1c85d55a7de1d647c2b2fad10ba7bc9b2a9e7f94569ea3763d10a9fa1735b680`.
+  Every blob/eleven rootfs diff IDs, actual compiled correction and six unchanged
+  qualified assets verified. No production checkout build/pull was used.
+- Correction: durable non-sliding two-minute notice wait for transient deadline
+  timing verification, cancel on signed recovery/protection. Enforcement stays
+  immediate; delay does not imply a student violation. Full626 application tests,
+  two opt-in real root CLI/TLS cases, five affected alert UI browsers, typecheck,
+  build and private image schema11/24→33 smokes PASS. Native artifacts unchanged;
+  prior exact-artifact native races/kernel16students/64panes qualification applies.
+  SMTP/browser fixture limits and retained failures: deadline-timing-notifications.md.
+- Both actual human tests PASS with real jump MFA/display/camera/fullscreen/keyboard,
+  normal UID guards, zero-clock preflight, explicit300s Begin, two verified frozen
+  scopes, reviewed Continue preserving SSH/Nano, protected expiration, reviewed
+  NEW180s saved-work grant with durable native source retention, exact restored
+  bytes/modes/mtimes, early protected finish and actual ordinary SSH denied/released
+  at the unchanged original deadline. Both synthetic dashboard rows secured with
+  correct lineage. Instructor confirmed one controlled email. Exact timing,
+  checksums and explicit private class-key bootstrap seam: live-acceptance-split-identity.md.
+- Fresh native backup on csc-sys:
+  `/var/backups/ssh-exam/web-correction-20261028-ti3g6cx8`,203,694,080bytes/4,029members,
+  SHA256`7f8d070f9315efe487be28b2725cc9315264acb0a89e518c3afd0b7bcab1415a`.
+  State lock held during copy; all174 authoritative histories unchanged afterward.
+  Canonical/watchdog PIDs210732/210730 remained running; one socket owner,
+  reconciler active/enabled, both temporary services absent. No native restart.
+- Fresh full web backup on marco:
+  `/var/backups/ssh-exam/web-correction-20261028-obhnu9rq`,13,570,232,320bytes/
+  153,801members, SHA256`ee0a81527b421ccc1786c2c01e4c3b410a6b31a6b2b9598c8291a07dc59b1266`.
+  Data/config/secrets/media/env/unit/site/current image kept root-private on marco;
+  SQLite integrity/FKs pass. Socket-ignored notice is only the live SMTP socket.
+  All110 attempts (108 original+2 synthetic),2grants/claims and1source retention
+  preserved. Only EXAM_IMAGE env line changed; schema33 unchanged. All38 durable
+  tables equal before/after in both directions, previous audit preserved. Fresh
+  post-start signed canonical callback, native readiness and actual root CLI pass.
+- Exact qualified standard site hash
+  `1d9b11f5d88128ef58509bc740f23d1f1d55777410c7f12a82e9636ad50be787`;
+  full target nginx syntax then reload only, other sites/TLS/security preserved.
+  Public health200/productionReady true, maintenance/loginOnly/functionalTest false,
+  browserSSH true; six public assets unchanged, normal auth initialization200,
+  unauthenticated preflight/Begin/session401. Final receipt06:15:24 UTC:
+  outbox108sent/20cancelled and33incidents unchanged, no unfinished attempts or
+  authenticated sessions. One false historical timing mail is retained/resolved,
+  not erased or described as a new student incident.
+- Test credential authorization/local key and exact owned browser/profiles/tunnels
+  removed after legitimate hold release; instructor signed out. UID28027/name
+  reserved/password locked. Reviewed CLI archive requestfad35204… keeps the two
+  protected submissions, grants, source pins and audit. No account/history deletion.
+
+The earlier snapshots/procedure below retain the executed initial rollout evidence;
+they are historical where superseded by this final result. Aggregate receipts and
+owned operation scripts are in MAIN var/collection-tests/production-cutover.td6oq2x6
+(`timing-fix-*`); production secrets/data were not downloaded. Original dirty
+screenshots/stashes remain byte-identical. Compatible image-only rollback retains
+schema33/current DB/native state; never restore older backups over newer authority.
 
 ## Actual deployed result and evidence
 
-- Web: qualified815a895 image, OCI manifest4d969bbe…/config46244c89…, actual marco
+- Initial web activation: qualified815a895 image, OCI manifest4d969bbe…/config46244c89…, actual marco
   image ID `sha256:46244c89f91cd635d6b7836d7693ca40f4293e605c0ba76b2af59c9fc547bcb3`.
   Actual DB11→33. Before live migration, actual private production-copy startup
   preserved all18 old data tables exactly with no network/production credentials.
@@ -46,7 +106,7 @@ they do not override this current result. No further human test step is pending.
   current help/queue boundaries are supported. One authorized notification test,
   same durable request/outbox on retry, SMTP accepted; instructor confirmed inbox
   receipt exactly once. Only that notice added (sent106/cancelled20); all32 existing
-  incidents unchanged, no new student incident. No actual human MFA/media test yet.
+  incidents unchanged, no new student incident. Human acceptance was completed later as recorded above.
 
 Private rollback backups, with keys/student data remaining on their owning hosts:
 marco `/var/backups/ssh-exam/cutover-20261027-vymmm77z` (data/config13,543,137,280 bytes,
@@ -57,49 +117,16 @@ and operational scripts: MAIN var/collection-tests/production-cutover.td6oq2x6;
 `{csc-sys,marco}-final-aggregate-receipts.json`. No raw production authority or keys
 were downloaded. Original dirty screenshots/stashes remain preserved.
 
-## Remaining acceptance gate
+## Completed acceptance gate
 
-October 27 evening resumption (October 28, 01:43–01:45 UTC): fresh read-only guards
-PASS on both hosts. Web schema 33, 108 historical attempts, 32 incidents and outbox
-106 sent/20 cancelled are unchanged; no unfinished attempts, active sessions,
-pending alerts/clocks, future intervals or connection workers. Native 172
-historical attempts, 50 NORMAL policy journals and 50 expired leases pass;
-installed/running command hashes agree, one socket owner and no temporary roles,
-active/enabled reconciler. Latest signed role observation was 19.2s old and ready.
-All 20 public admission probes refuse 503, including normalized/query paths and
-spoofed forwarding headers; public health 200/TLS verified. Six deployed CLI help
-workflows pass without root/configuration. No production writes/restarts occurred.
-
-The first native guard correctly refused three unfamiliar root Python processes.
-Read-only identity/path/ownership/output inspection identified the existing Azure
-Monitor daemons; the repeat matches those exact protected host processes instead
-of permitting arbitrary session scripts. No process was stopped or modified.
-Receipts in the run directory: `{marco,csc-sys}-live-readonly-guard.json`,
-`live-external-gate-refresh.json` and `deployed-acceptance-cli-help.json`.
-These checks confirm the setup remains ready for the human test; they do not
-replace ordinary-account authentication, capture or an actual timed attempt.
-
-The instructor authorized a created ordinary account, examacpt27/UID28027, with
-mcadilha used only for real sshjump MFA. Unchanged account-policy identification
-and actual pinned class SSH login pass; no pre-existing account row changed.
-The private browser-only split-identity adapter passes focused/full Go races and
-real Chromium/WASM/SSH tests. Shipped assets/login/enforcement remain unchanged;
-class authentication uses an expiring synthetic key, not an institutional password.
-The synthetic template/exam/initial300s grant are ready with finite Begin window,
-webcam required and two panes. A fresh full drain preceded a same-image gateway-only
-restart to maintenance false; external auth/preflight/Begin still503/health200.
-The owned headed browser awaits human SSH sign-in, then capture. Details, evidence
-and credential/UID-preserving teardown: live-acceptance-split-identity.md.
-Full ordinary/recovery timing, saved restore, real capture, preserved buffers through
-hold/Continue, protected finish and original/current-deadline credential/access
-restoration still need that controlled test. Email acceptance is already complete.
-Until then leave the external new-start fence in place; do not claim student admission
-is approved. Existing unused enrollments need separately reviewed NEW grants/windows;
-no bulk conversion or invented enrollment-time snapshot occurred during this rollout.
-
-The sections below retain the exact prepared artifact/inventory/procedure used for
-this rollout. Their earlier snapshots are historical, not a claim that deployment
-is still unapproved/unexecuted. The rollback boundary at the end remains binding.
+The October27 evening guards established the drained initial108 web/172 native
+history, signed readiness and20 public refusals. The authorized ordinary synthetic
+account and explicit test-browser split bootstrap subsequently supplied the real
+human workflows. Both are now complete, teardown is complete and the normal-expiry
+email correction has passed the final gate. Public admissions are open as recorded
+above. Existing unused enrollments require deliberate reviewed NEW issuance; no
+student permissions/settings were bulk modified. See the two feature documents
+for precise bootstrap, monitoring and credential-cleanup limits.
 
 ## Matched candidate and local acceptance
 
@@ -190,7 +217,7 @@ execution. The reduced non-secret storage-path inventory succeeded. No credentia
 values were exposed; future private backups must resolve/include key files on their
 owning host without printing or transferring keys to the development machine.
 
-## Authorized cutover sequence — steps1–2 executed, full step3 pending
+## Authorized cutover sequence — executed, acceptance recorded above
 
 ### 1. Close new admission, then positively drain
 

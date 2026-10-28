@@ -76,6 +76,12 @@
   Before a privileged cross-language interface run, read the actual wire producer
   and validate native probe JSON with a typed schema. Do not invent ticket fields,
   cgroup naming formats or object shapes from similarly named internal views.
+  For Docker transfers, bind the target image to manifest.json's Config digest and
+  rootfs diff IDs; a source engine may display the OCI manifest ID instead.
+  Syntax-check generated operation scripts locally. Pass structured parameters;
+  do not replace placeholder words across nested source strings. Read a failed
+  prerequisite's result before launching a dependent operation, including within
+  one orchestration cell.
   Use an exact owned test-runner process and verify its cleanup receipt; wrapper
   process exit alone does not prove a remote disposable guest has stopped.
 - Prioritize confirmed correctness/alerting defects and the critical liveness

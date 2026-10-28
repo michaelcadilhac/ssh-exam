@@ -1,14 +1,16 @@
 # ssh-exam.cadilhac.name deployment
 
-October27 authorized guarded rollout is now DEPLOYED IN MAINTENANCE: the verified
-815a895 web image runs with schema33; the old frontend overlay is retired. Installed
-checkout remains b7af387; activation used the exact loaded image/EXAM_IMAGE and
-existing no-build Compose unit, not a source pull/build. Native commands872fe80 and
-single-owner consolidation/signed callbacks are verified on csc-sys. Full live
-ordinary/recovery acceptance awaits an eligible non-admin account; admissions remain
-closed. Current evidence, private backups and compatible-rollback limits:
-[production-rollout-2026-10-27.md](production-rollout-2026-10-27.md). The old update
-recipe and deployment status below are history, not the current cutover procedure.
+October28 authorized cutover COMPLETE: qualified web7d0b894 runs online with
+schema33; public admissions reopened06:13 UTC, production readiness/TLS/assets and
+fresh root CLI PASS. Native872fe80, single-owner consolidation and signed callbacks
+remain verified on csc-sys. Real human ordinary/NEW saved-work/retained-buffer/
+access/alert acceptance and final notification-only correction are complete.
+Checkout remains b7af387 intentionally: activation used the verified immutable
+image and existing no-build Compose unit, never a source pull/build. Fresh private
+backups preserve all110 web/174 native attempts and all newer authority. Current
+receipt, explicit class-key test seam and compatible image-only rollback:
+[production-rollout-2026-10-27.md](production-rollout-2026-10-27.md).
+The old update recipe/status below is historical, not the current procedure.
 
 > Initial installation/history record. The subsequent SSH command and callback
 > architecture is now deployed on both hosts; see [the upgrade record](ssh-command-deployment.md)
