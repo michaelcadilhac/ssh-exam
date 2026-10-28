@@ -53,6 +53,26 @@ were downloaded. Original dirty screenshots/stashes remain preserved.
 
 ## Remaining acceptance gate
 
+October 27 evening resumption (October 28, 01:43–01:45 UTC): fresh read-only guards
+PASS on both hosts. Web schema 33, 108 historical attempts, 32 incidents and outbox
+106 sent/20 cancelled are unchanged; no unfinished attempts, active sessions,
+pending alerts/clocks, future intervals or connection workers. Native 172
+historical attempts, 50 NORMAL policy journals and 50 expired leases pass;
+installed/running command hashes agree, one socket owner and no temporary roles,
+active/enabled reconciler. Latest signed role observation was 19.2s old and ready.
+All 20 public admission probes refuse 503, including normalized/query paths and
+spoofed forwarding headers; public health 200/TLS verified. Six deployed CLI help
+workflows pass without root/configuration. No production writes/restarts occurred.
+
+The first native guard correctly refused three unfamiliar root Python processes.
+Read-only identity/path/ownership/output inspection identified the existing Azure
+Monitor daemons; the repeat matches those exact protected host processes instead
+of permitting arbitrary session scripts. No process was stopped or modified.
+Receipts in the run directory: `{marco,csc-sys}-live-readonly-guard.json`,
+`live-external-gate-refresh.json` and `deployed-acceptance-cli-help.json`.
+These checks confirm the setup remains ready for the human test; they do not
+replace ordinary-account authentication, capture or an actual timed attempt.
+
 The instructor selected mcadilha, which is an explicitly practice-only administrator.
 Source inspection confirmed normal account policy also refuses privileged groups
 and sudo rights: changing the static flag is insufficient. The earlier flag-only

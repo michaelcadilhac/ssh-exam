@@ -36,6 +36,14 @@ core races207.681s/CLI6.353s/vet PASS. Deployed automatic healthy signed snapsho
 1328→1330 advanced120,076ms; production_ready/roles/retained true/no missing guards.
 Timer RESUMED/active/enabled; no race/build/test process remains running.
 
+October 27 evening resumption: fresh read-only guards PASS on both hosts
+(October 28, 01:43–01:45 UTC); same history/outbox/incidents, no active attempts,
+sessions or connection workers, ready signed role observation 19.2s old. 20 external
+admission probes still 503/public health 200; six actual deployed CLI help workflows
+PASS. Existing Azure Monitor processes positively classified and preserved after
+the first conservative native guard refused them. No production writes/restarts,
+new grant/attempt or additional email. Evidence: production-rollout-2026-10-27.md.
+
 ## Remaining required answer and exact next action
 
 Full live ordinary/NEW saved-work acceptance is OPEN. Instructor selected mcadilha,

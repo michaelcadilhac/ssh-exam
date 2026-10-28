@@ -1,11 +1,18 @@
 # Deferred work
 
-October27 production preparation has started at the instructor's request; both
-production-only boxes remain OPEN. The matched qualified release is staged and
-integrity-checked locally. Automatic approval review rejected even read-only
-production inventory as outside the earlier disposable-test authorization; a new
-explicit read-only access dialog is pending. No production command ran. Current
-artifact/access/cutover gates: docs/production-rollout-2026-10-27.md.
+October 27 CURRENT: 37/38 main items are covered. The explicitly authorized guarded
+rollout and agent consolidation are deployed/verified on marco and csc-sys. The
+remaining box is controlled live exam/recovery acceptance; its email-delivery
+criterion is complete. Evening read-only checks again pass on both hosts, with
+unchanged history/notification counts, fresh signed readiness and 20 public
+admission refusals. Maintenance and the external start fence remain in force.
+The live test needs a non-admin, non-student institutional account and direct
+human SSH/MFA/capture participation; the account-name dialog is pending. No test
+attempt/grant has been created. Current evidence and exact next action:
+docs/todo-current-checkpoint.md and docs/production-rollout-2026-10-27.md.
+
+The dated progress paragraphs below are historical where superseded by this
+status and the individual checkboxes.
 
 October26 current local completion:36/38 main items (not effort/readiness). Unified
 grants, native definition reconciliation033 and reviewed manual workspace cleanup/
