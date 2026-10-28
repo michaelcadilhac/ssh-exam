@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-Current runtime contract (October27,2026; **deployed in maintenance**): negotiated v1
+Current runtime contract (October27,2026; **deployed, public starts fenced**): negotiated v1
 keeps the original viable authenticated SSH/page and per-attempt supervisor through
 policy holds. Verified stop-assisted writer/input barriers preserve shells/editor
 buffers; only fresh scoped approval/Continue restores policy-held work. Positively
@@ -22,8 +22,13 @@ below are historical; this contract supersedes their disabled/incomplete status.
 The instructor-authorized drained rollout installed matched web815a895/schema33
 and native command872fe80; consolidation and live signed readiness are verified.
 New admissions remain closed pending full human ordinary/recovery acceptance with
-an eligible non-admin identity. Existing historical intervals/protection remain
-intact. Exact status/backup/rollback: docs/production-rollout-2026-10-27.md. Dated
+the instructor-authorized created ordinary account, real mcadilha jump MFA and
+an expiring synthetic class key. This uses a private test-browser bootstrap
+adapter; shipped login and native enforcement are unchanged. Its exact limits
+are in docs/live-acceptance-split-identity.md. Gateway maintenance is false only
+for controlled loopback acceptance; the public start fence remains closed.
+Existing historical intervals/protection remain intact. Exact status/backup/
+rollback: docs/production-rollout-2026-10-27.md. Dated
 feature status paragraphs below are development history; this rollout receipt is
 current.
 

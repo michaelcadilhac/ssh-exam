@@ -2,9 +2,11 @@
 
 October27 CURRENT: guarded production rollout was explicitly authorized and
 executed on marco/csc-sys. Consolidation is DEPLOYED/VERIFIED;37/38 TODO boxes are
-covered. Full live exam/recovery acceptance is still OPEN. Web remains maintenance
-true behind the tested external new-start fence. No student start/grant/clock was
-created, no push, SSH/relay restart, host reboot or unrelated-service change.
+covered. Full live exam/recovery acceptance is still OPEN. Web maintenance is now
+false only for controlled loopback acceptance behind the tested external start
+fence. The instructor-authorized synthetic account/exam/initial grant are ready;
+no test clock has started. No student record, push, SSH/relay restart, host reboot
+or unrelated service change. Scope/limits: live-acceptance-split-identity.md.
 
 ## Actual deployed result and evidence
 
@@ -73,16 +75,21 @@ Receipts in the run directory: `{marco,csc-sys}-live-readonly-guard.json`,
 These checks confirm the setup remains ready for the human test; they do not
 replace ordinary-account authentication, capture or an actual timed attempt.
 
-The instructor selected mcadilha, which is an explicitly practice-only administrator.
-Source inspection confirmed normal account policy also refuses privileged groups
-and sudo rights: changing the static flag is insufficient. The earlier flag-only
-conversion option is withdrawn. Do not relax those guards or remove administrative
-rights as an inferred routine change. A dialog requests a non-admin, non-student
-institutional identity; credentials/MFA are entered directly, never sent to the agent.
+The instructor authorized a created ordinary account, examacpt27/UID28027, with
+mcadilha used only for real sshjump MFA. Unchanged account-policy identification
+and actual pinned class SSH login pass; no pre-existing account row changed.
+The private browser-only split-identity adapter passes focused/full Go races and
+real Chromium/WASM/SSH tests. Shipped assets/login/enforcement remain unchanged;
+class authentication uses an expiring synthetic key, not an institutional password.
+The synthetic template/exam/initial300s grant are ready with finite Begin window,
+webcam required and two panes. A fresh full drain preceded a same-image gateway-only
+restart to maintenance false; external auth/preflight/Begin still503/health200.
+The owned headed browser awaits human SSH sign-in, then capture. Details, evidence
+and credential/UID-preserving teardown: live-acceptance-split-identity.md.
 Full ordinary/recovery timing, saved restore, real capture, preserved buffers through
 hold/Continue, protected finish and original/current-deadline credential/access
 restoration still need that controlled test. Email acceptance is already complete.
-Until then leave maintenance/new-start fence in place; do not claim student admission
+Until then leave the external new-start fence in place; do not claim student admission
 is approved. Existing unused enrollments need separately reviewed NEW grants/windows;
 no bulk conversion or invented enrollment-time snapshot occurred during this rollout.
 

@@ -1,12 +1,17 @@
 # Main-bug release readiness
 
 October27 CURRENT: matched web815a895/schema33 and corrected native commands872fe80
-are DEPLOYED IN MAINTENANCE under explicit authorization. Full drain/private backups,
+are DEPLOYED with public admissions fenced under explicit authorization. Full drain/private backups,
 three-agent consolidation, protected historical comparisons, public assets/root CLI,
 automatically healthy signed role snapshots and exactly-one inbox alert PASS.
 37/38 TODO items covered. Full human normal exam/NEW saved-work acceptance still
-needs an eligible non-admin identity; mcadilha is practice-only. Do not reopen new
-student starts or treat this as final admission signoff. Current authoritative
+uses the instructor-authorized created account examacpt27 and private browser
+adapter: real mcadilha jump MFA, distinct ordinary class UID/test key, unchanged
+native guards. Local adapter races/Chromium/WASM and actual class SSH/policy pass;
+the human login/capture/timed workflow remains open. Gateway maintenance is false
+only for controlled loopback acceptance; external start fence remains closed.
+Do not treat this as final student admission signoff. Exact scope/limits:
+live-acceptance-split-identity.md. Current authoritative
 receipt/rollback: production-rollout-2026-10-27.md. Earlier dated NO-GO/artifact notes
 below are historical; native-configuration-refresh.md records the corrected context
 failure and207.681s/6.353s race qualification.

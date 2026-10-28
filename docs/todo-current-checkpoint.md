@@ -2,8 +2,9 @@
 
 October27 CURRENT:37/38 items covered. The instructor explicitly authorized the
 guarded production cutover on marco/csc-sys. Consolidation is DEPLOYED/VERIFIED;
-web remains MAINTENANCE true with external new-start fence. Do not ask again for
-deployment/local commits or send another alert. No push or student start/grant.
+web is in controlled acceptance (maintenance false) behind the external new-start
+fence. Do not ask again for deployment/local commits or send another alert.
+Only the explicitly authorized synthetic account/exam/grant were added; no push.
 
 ## Current deployed cohort and proof
 
@@ -46,26 +47,43 @@ new grant/attempt or additional email. Evidence: production-rollout-2026-10-27.m
 
 ## Remaining required answer and exact next action
 
-Full live ordinary/NEW saved-work acceptance is OPEN. Instructor selected mcadilha,
-but it is practice-only AND has sudo/admin rights; normal policy explicitly refuses
-privileged groups/sudo rights. Merely flipping its exception is insufficient. The
-earlier flag-only conversion option was withdrawn. Do not change its privilege,
-exception or guards. Latest dialog requests a NON-ADMIN NON-STUDENT institutional
-username for real SSH/MFA/media tests. Never request passwords/MFA codes.
+Full live ordinary/NEW saved-work acceptance is OPEN. Instructor explicitly
+authorized a created class account with mcadilha only on sshjump; no other person's
+MFA identity is available. This supersedes the account-name question. New account
+examacpt27/UID28027 passes unchanged policy identification and actual pinned class
+SSH login with its separate expiring test key; mcadilha stays privileged/practice-only.
+Private split-identity adapter passes local Go races and actual Chromium/WASM/SSH;
+production source/image/assets unchanged. See live-acceptance-split-identity.md for
+the exact bootstrap substitution and its qualification limits.
+
+Synthetic source installed/verified/synchronized; live-acceptance-20261027's initial
+grant c109de42-60a7-4062-b25b-c0411fb0b1ab is AVAILABLE/unclaimed:300s, webcam required,
+two panes, finite explicit two-hour Begin window. No attempt/clock yet. Fresh drain
+preceded gateway-only restart on unchanged image with maintenance false; external
+start fence still503 and live/ready health200. Native/SSH/relay not restarted.
+
+Owned headed Chromium/controller exec session56119, PID1581951, SOCKS4 port39991,
+control/tmp/sxaccept.kpoccD/control are LIVE. Exact run pointer is
+var/collection-tests/production-cutover.td6oq2x6/split-ssh-acceptance.json. It contains
+the private output/key paths (never print key bytes). Browser substitutes only its
+private test WASM; real public TLS/origin, normal host pins/native enforcement and
+real media remain. Form filled; latest dialog asks instructor to click Start SSH
+sign-in, enter mcadilha password/MFA directly and STOP AT PREFLIGHT, not Begin.
+Never read/log credentials, fake capture or discard an active test on resumption.
 
 Email criterion COMPLETE: controlled outboxe2cb1539-d6ef-4e5e-9a42-8d82c87c6ae6,
 request21f0c981-5468-4f2f-8236-82d1c3ad5c97; same-intent retry same outbox, SMTP sent,
 instructor confirmed inbox exactly once. Do not send another test.
 
-After an eligible identity is provided, follow this run's live-acceptance-run-sheet.md:
-new synthetic template/exam/grants, finite explicit Begin windows, real human
-SSH/MFA/screen/webcam, full allowance only at Begin, preserved shell/editor through
+After the human SSH/capture step, follow live-acceptance-split-identity.md and the
+run's live-acceptance-run-sheet.md: real human SSH/MFA/screen/webcam, full allowance
+only at Begin, preserved shell/editor through
 hold/approval/Continue, protected finish, verified retained source→NEW saved-work
 allowance, actual original/current-deadline account/credential cleanup, consistent
 dashboard/callbacks/no duplicates. Keep external starts fenced until all pass and
-the test is drained. Newly authored local C++ input is ready; no production test
-template, account, enrollment, attempt or grant was created. Do not use a real
-student or weaken policy to manufacture acceptance.
+the test is drained. Synthetic template/account/enrollment/initial grant already
+exist; reuse them and their exact durable intents. Never create replacements as
+retries, use a real student or weaken policy to manufacture acceptance.
 
 ## Durable records and preservation
 
@@ -79,10 +97,9 @@ verified SQLite/old image); csc-sys/var/backups/ssh-exam/cutover-20261027-ngzrkh
 (201.6MB plus pre-correction state/commands). No old DB/state restore over newer
 authority; prefer closed admissions/forward repair when compatibility is unproven.
 
-Owned headed browser/session79153 and forward46779 are CLEANED UP; port confirmed
-unreachable and the user's parent SSH connection preserved. Recreate an owned
-headed browser/loopback forward only after eligibility is known. No credentials or
-media permissions were entered. All ten original dirty screenshots/stashes remain;
+Old browser/session79153 and forward46779 are CLEANED UP. Current controlled
+browser/session56119 is LIVE as recorded above; keep it for human participation.
+All ten original dirty screenshots/stashes remain;
 hashes /tmp/ssh-exam-retained-recording-main-image-hashes.json. Local commits allowed,
 no push. No subagents; missing executable stops only if instructor must install its
 required package. Never rerun the old auto-cancelling installers or four-owner

@@ -5,10 +5,13 @@ rollout and agent consolidation are deployed/verified on marco and csc-sys. The
 remaining box is controlled live exam/recovery acceptance; its email-delivery
 criterion is complete. Evening read-only checks again pass on both hosts, with
 unchanged history/notification counts, fresh signed readiness and 20 public
-admission refusals. Maintenance and the external start fence remain in force.
-The live test needs a non-admin, non-student institutional account and direct
-human SSH/MFA/capture participation; the account-name dialog is pending. No test
-attempt/grant has been created. Current evidence and exact next action:
+admission refusals. The instructor subsequently authorized a synthetic class
+account with mcadilha used only on sshjump. That account, exact synthetic source
+and five-minute initial grant are ready; no clock has started. Controlled
+acceptance uses maintenance false with the external start fence still closed.
+The owned test browser awaits direct human SSH/MFA and capture participation.
+The private split-identity adapter is qualified; shipped login/enforcement is
+unchanged. Scope/limits: docs/live-acceptance-split-identity.md. Current next action:
 docs/todo-current-checkpoint.md and docs/production-rollout-2026-10-27.md.
 
 The dated progress paragraphs below are historical where superseded by this
@@ -2062,9 +2065,16 @@ the approval is not a production change or a completed investigation.
   chosen allowance and normal deadline/access/credential restoration remain pending.
   mcadilha is practice-only AND has administrator/sudo rights; merely changing its
   static exception cannot satisfy normal account-policy guards. No privilege or
-  account-policy rule was weakened. A dialog requests a non-admin, non-student
-  institutional account for the full test; instructor enters credentials directly.
-  Earlier offered flag-only conversion was withdrawn after inspecting the helper.
+  account-policy rule was weakened. The instructor instead authorized creation of
+  examacpt27/UID28027 and use of mcadilha only for jump MFA. Unchanged policy
+  identification and actual pinned class SSH login pass with an expiring synthetic
+  key; the owned browser's private adapter passes Go races/Chromium/WASM/SSH.
+  Synthetic source/initial300s grant are ready, no attempt/clock yet. Gateway-only
+  drained restart set maintenance false for this test; external admission remains
+  fenced. Latest dialog asks instructor to complete SSH sign-in and stop at
+  preflight, never send credentials. This is explicit test-only bootstrap wiring,
+  not a shipped alternate login mode or proof of class institutional-password auth.
+  See docs/live-acceptance-split-identity.md for the boundary and cleanup.
   External new starts remain fenced; no production-ready-for-students claim.
   Host-specific receipt/acceptance/rollback: docs/production-rollout-2026-10-27.md.
 
