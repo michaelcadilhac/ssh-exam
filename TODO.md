@@ -1,9 +1,11 @@
 # Deferred work
 
-October29 NEW WORK: instructor authorized implementing, committing, pushing and
-deploying generic examctl scripting improvements. Original38 items remain complete;
-new scope/progress: docs/examctl-scripting.md and docs/todo-current-checkpoint.md.
-No new student grant issuance is part of this development request.
+October29 scripting extension COMPLETE: implemented/tested, committed, pushed and
+deployed web07b6fa5/CLI46bcfa2. Public admissions/readiness/TLS/assets and installed
+root CLI exports/receipts PASS. Original38 items remain complete; all110 web/174
+native histories are preserved. No new student grants or native/SSH/relay restart.
+Operator workflow: docs/examctl-scripting.md; exact verification/backups/rollback:
+docs/examctl-scripting-deployment.md. Current checkpoint: docs/todo-current-checkpoint.md.
 
 October28 CURRENT: **38/38 main items covered.** The authorized rollout and
 single-agent consolidation are deployed/verified on marco/csc-sys. Real human

@@ -1,7 +1,8 @@
 # Application-host deployment
 
-For the current authorized marco/csc-sys release, live acceptance and rollback
-record, see [production rollout](production-rollout-2026-10-27.md). The commands
+For the current installed marco/csc-sys release and compatible rollback, see
+[examctl scripting rollout](examctl-scripting-deployment.md); original live
+acceptance is recorded in [production rollout](production-rollout-2026-10-27.md). The commands
 below describe installation setup; they are not permission to replace a running
 production cohort or bulk-convert unused permissions.
 

@@ -1,6 +1,24 @@
 # Native class-server installation
 
-October26 local release qualification is complete, **not deployed**. Actual
+October29 current installed release is **deployed and online**. Native872fe80
+remains installed; CLI46bcfa2 adds the generic scripting workflow documented in
+[examctl scripting](../docs/examctl-scripting.md). Run `examctl help scripting`;
+the installed pure-zsh example is
+`/usr/local/share/ssh-exam/examples/second-go.zsh`. Complete exports, exact private
+receipts, per-student settings and resumable source synchronization use existing
+authenticated/audited root management. Installation settings remain files.
+
+The current CLI/web update preserved all110 web/174 native histories and every
+deadline/hold/source, with no grant issuance or native/SSH/relay restart. Exact
+tests, versions, backups and rollback:
+[October29 release record](../docs/examctl-scripting-deployment.md).
+The October27–28 initial consolidation/human acceptance is recorded separately.
+The older staged descriptions below are historical; their undeployed/untested
+claims do not describe the current installation or authorize future changes.
+
+## Historical implementation notes
+
+October26 local release qualification was complete before rollout. Actual
 public executables now negotiate retained v1 only with matching live v2 roles and
 complete ownership/monitoring/input/writer barriers. Verified policy holds preserve
 viable SSH/editor buffers; only positive continuous coverage permits technical-only
@@ -10,7 +28,7 @@ See [exact qualification and limits](../docs/retained-release-qualification.md)
 and [proposed drained rollout/rollback](../docs/todo-rollout-plan.md). Historical
 staged notes below do not override that local status or authorize installation.
 
-Local pending CLI update: [examctl workflows](../docs/examctl-workflows.md)
+Earlier CLI update: [examctl workflows](../docs/examctl-workflows.md)
 documents command-specific help, actionable refusals and private non-overwriting
 exports. Full gateway-management coverage is still under investigation; this is
 not a deployment receipt. Use `examctl help` to discover current commands.

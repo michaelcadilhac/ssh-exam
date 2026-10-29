@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-Current runtime contract (October27,2026; **deployed, public starts fenced**): negotiated v1
+Current runtime contract (October29,2026; **deployed and publicly online**): negotiated v1
 keeps the original viable authenticated SSH/page and per-attempt supervisor through
 policy holds. Verified stop-assisted writer/input barriers preserve shells/editor
 buffers; only fresh scoped approval/Continue restores policy-held work. Positively
@@ -19,18 +19,18 @@ support before Begin/Continue; there is no environment/configuration enable bypa
 The exact release/native/kernel/browser/16-student qualification and limitations
 are in docs/retained-release-qualification.md. Earlier dated implementation notes
 below are historical; this contract supersedes their disabled/incomplete status.
-The instructor-authorized drained rollout installed matched web815a895/schema33
-and native command872fe80; consolidation and live signed readiness are verified.
-New admissions remain closed pending full human ordinary/recovery acceptance with
-the instructor-authorized created ordinary account, real mcadilha jump MFA and
-an expiring synthetic class key. This uses a private test-browser bootstrap
-adapter; shipped login and native enforcement are unchanged. Its exact limits
-are in docs/live-acceptance-split-identity.md. Gateway maintenance is false only
-for controlled loopback acceptance; the public start fence remains closed.
-Existing historical intervals/protection remain intact. Exact status/backup/
-rollback: docs/production-rollout-2026-10-27.md. Dated
-feature status paragraphs below are development history; this rollout receipt is
-current.
+Current installed versions are web07b6fa5/schema33, CLI46bcfa2 and unchanged native
+872fe80. The October29 drained scripting update preserves all110 web/174 native
+histories, source pins, grants, deadlines and account holds. Full qualification,
+installed root CLI/signed readiness/TLS/asset checks and backups pass; admissions
+are open. No grant was issued or native/SSH/relay service restarted by this update.
+Exact status/backups/rollback: docs/examctl-scripting-deployment.md. Initial
+single-agent consolidation and human ordinary/NEW saved-work acceptance completed
+in the October27–28 rollout; the temporary synthetic class key was revoked. The
+split-identity test seam and its limits remain documented in
+docs/live-acceptance-split-identity.md and docs/production-rollout-2026-10-27.md.
+Earlier feature-status paragraphs describe development history; their local-only,
+disabled, pending-acceptance and undeployed claims are superseded by this status.
 
 The capture-input recovery correction also refreshes the browser ingress gate from
 live verified conditions after a healthy sample; it cannot depend solely on a

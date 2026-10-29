@@ -1,5 +1,12 @@
 # Production rollout preparation, October 27
 
+October29 superseding release: web07b6fa5 and CLI46bcfa2 are committed, pushed and
+deployed; public admissions/readiness/TLS/assets and installed scripting workflows
+pass. Native872fe80 and all prior authority remain unchanged. Current versions,
+fresh backups and rollback are in
+[the scripting rollout](examctl-scripting-deployment.md). The October27–28 record
+below describes the base rollout and its original no-push status.
+
 October28 CURRENT: **38/38 TODO items covered; release online.** The authorized
 rollout and agent consolidation are deployed, and real human ordinary/NEW saved-work
 acceptance and synthetic instructor review PASS. A normal-expiry false timing

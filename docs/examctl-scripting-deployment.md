@@ -70,5 +70,65 @@ in the October27 rollout and is not repeated here.
 
 ## Deployment status
 
-Pending. No new production artifacts installed yet. Frozen evidence and owned
-operation scripts: `var/collection-tests/examctl-scripting.exs9o_2m`.
+**Deployed and online October 29, 2026; verified at 19:12 UTC (14:12 Chicago).**
+Source commits07b6fa5 (scripting/shared review) and46bcfa2 (empty exports) are
+committed and pushed to the existing origin/main.
+
+- Web07b6fa5 runs on marco with unchanged schema33. Installed Config digest:
+  `sha256:3549374a286f7b261bc6d75f7bc834cb1999a2ef17fb019454beaadd9d97fda5`.
+  Exported Config and every rootfs diff ID match the loaded target image. The
+  source engine reports OCI ID1f3f79c6… for those same exported blobs.
+- CLI46bcfa2 is installed on csc-sys, SHA256
+  `eb31116080c19646bb9e4b8e8c634df268f4772a6083b683ab2d92f08dc8c0a1`.
+  The protected `/etc/exam-agent/examctl.json` supplies CLI-only proxy settings.
+  `/usr/local/share/ssh-exam/examples/second-go.zsh` and matching docs are installed.
+- Native source872fe80 remains unchanged. Agent4007876, watchdog210730 and
+  relay893011 retain their PIDs. Agent configuration is byte-identical; the
+  canonical socket owner, reconciler and account/lease/cgroup guards pass.
+  No native, SSH or relay restart, migration, grant issuance or student edit.
+- All38 durable tables and prior audit compared equal at activation, preserving
+  all110 web histories. Final history hash64bbe769… remains identical. All174
+  original native histories also remain identical. Ordinary account restoration,
+  deadlines, source pins, protected submissions and existing grants are preserved.
+- Fresh signed native roles, production readiness/notification flags, verified
+  public TLS and all six packaged assets pass. The original nginx site hash
+  `1d9b11f5d88128ef58509bc740f23d1f1d55777410c7f12a82e9636ad50be787` is restored;
+  public start routes apply ordinary unauthenticated refusals instead of the
+  temporary fence. Final inventory has no unfinished attempts or pending cleanup.
+- Actual installed root CLI help, complete exams/roster/multi-exam histories,
+  empty grant list and private definition receipt pass over signed HTTPS with
+  ambient proxy variables cleared. Only aggregate counts/hashes were printed;
+  no student rows were transferred into the release evidence.
+
+Fresh root-private rollback backups remain on their owning hosts:
+
+- marco `/var/backups/ssh-exam/scripting-20261029-x1mk36_6`: full data/config/media,
+  SQLite integrity/FKs and prior image; 13,570,457,600 bytes, 153,801 members,
+  SHA256 `df9a5de96f66464cade3dd34263129b327f3043fb0ab7ad554b99ba490bdfba2`.
+- csc-sys `/var/backups/ssh-exam/scripting-cli-20261029-pmuk8m_o`: original CLI0c95fe05…,
+  intermediate CLIbf9c0064…, configuration and private history snapshot. Neither
+  native state nor submissions were rewritten. Follow the drained compatible
+  rollback plan above; never overwrite newer authority with these backups.
+
+Installed verification exposed the genuine zero-result projection defect: nil
+rows were treated as a result envelope. It was reproduced through the actual
+CLI/TLS entry, corrected in46bcfa2 and passed all-five-format regression/full CLI
+races/vet/actual gateway-zsh checks before CLI-only replacement. The final real
+empty-list probe passes. The unchanged628 application/seven packaged-browser/
+image evidence continues to apply; no web/native contract changed in that fix.
+Original failures and frozen evidence/scripts are retained in
+`var/collection-tests/examctl-scripting.exs9o_2m`. No open release blocker remains.
+
+The initial all-old-nginx-workers wait refused because two shutting-down workers
+continued unrelated requests to8181. They were preserved. A separate read-only
+proof pins their identities, requires exactly one443 HTTP/1 client and its sole
+loopback8181 current upstream per worker, no listeners/exam3001/named upstreams,
+and no configured HTTP2/HTTP3 or keepalive-minimum override. Matching installed
+nginx1.30.3 disables keepalive reuse once exiting, so these current non-exam
+requests cannot become future exam requests. All other old workers exited. This
+classifies ownership instead of terminating unrelated work; any different socket
+or configuration refuses. Basis: [nginx graceful reload](https://nginx.org/en/docs/control.html),
+[matching finalization source](https://github.com/nginx/nginx/blob/release-1.30.3/src/http/ngx_http_request.c#L2707)
+and [keepalive minimum default](https://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_min_timeout).
+Original refusal and scoped proof are retained alongside the normal full drain
+and public fence receipts.

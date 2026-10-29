@@ -1,16 +1,19 @@
 # ssh-exam.cadilhac.name deployment
 
-October28 authorized cutover COMPLETE: qualified web7d0b894 runs online with
-schema33; public admissions reopened06:13 UTC, production readiness/TLS/assets and
-fresh root CLI PASS. Native872fe80, single-owner consolidation and signed callbacks
-remain verified on csc-sys. Real human ordinary/NEW saved-work/retained-buffer/
-access/alert acceptance and final notification-only correction are complete.
-Checkout remains b7af387 intentionally: activation used the verified immutable
-image and existing no-build Compose unit, never a source pull/build. Fresh private
-backups preserve all110 web/174 native attempts and all newer authority. Current
-receipt, explicit class-key test seam and compatible image-only rollback:
-[production-rollout-2026-10-27.md](production-rollout-2026-10-27.md).
-The old update recipe/status below is historical, not the current procedure.
+October29 scripting update is deployed and online: web07b6fa5/schema33,
+Config3549374a… and csc-sys CLI46bcfa2/eb311160…; native872fe80 is unchanged.
+Public admissions, TLS/readiness/packaged assets and actual root CLI exports/
+receipts PASS. All110 web/174 native histories, deadlines, sources and holds are
+preserved. No grant issuance or native/SSH/relay restart. Activation used an exact
+locally qualified image and the existing no-build Compose unit; no production
+source pull/build. Fresh private backups and compatible rollback details:
+[examctl scripting release](examctl-scripting-deployment.md).
+
+The earlier single-agent consolidation, human ordinary/NEW saved-work acceptance,
+retained-buffer/access checks and notification correction remain complete; their
+explicit test seams are recorded in
+[the original rollout](production-rollout-2026-10-27.md).
+The older update recipe/status below is historical, not the current procedure.
 
 > Initial installation/history record. The subsequent SSH command and callback
 > architecture is now deployed on both hosts; see [the upgrade record](ssh-command-deployment.md)
