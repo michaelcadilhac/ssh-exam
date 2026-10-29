@@ -76,7 +76,13 @@ mutation and resume unknown outcomes without reissuing. Additional-grant preview
 accepts optional explicit per-student duration/webcam values, shared with the web
 review dialog; immutable issuance, finite windows, owner/checksum verification,
 durable native source retention and full allowance only at Begin remain unchanged.
-Latest-source selection belongs in the course script, not the CLI. No execution
+The local course-script follow-up resolves each student's current midterm
+duration/webcam overrides against the saved midterm defaults, then supplies both
+explicitly in its reviewed CSV. Recovery attempts supply files only; their time/
+camera configuration does not replace the midterm profile. Existing enrollment-
+change review fences and immutable receipts remain; this script change is not
+installed in production yet. Latest-source selection belongs in the course script,
+not the CLI. No execution
 wire/schema change or account/clock/hold bypass is introduced. Local qualification
 and deployment status: docs/examctl-scripting.md.
 

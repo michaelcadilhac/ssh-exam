@@ -48,15 +48,28 @@ compatible. No separate credentials are needed. The gateway still explicitly
 authorizes and audits the existing agent identity.
 
 The course-specific example is [examples/second-go.zsh](../examples/second-go.zsh).
-It uses only zsh for selection. It exports the complete midterm roster and both
-exams' attempt histories, then selects each enrolled student's latest **started**
-attempt. A missing, ambiguous or unprotected latest source refuses review rather
-than falling back to older work. Review and confirmation freshly validate the
-owner/checksum and eligibility; the export itself is not an atomic snapshot.
+The revised repository script copies each student's **current effective midterm
+duration and webcam setting**. Explicit enrollment overrides win; empty overrides
+inherit the saved midterm definition defaults. These settings do not come from
+the recovery/source attempt. Pure zsh writes the resolved seconds/boolean values
+into `sources.csv` and supplies them through `examctl --input`; no JSON parser is
+needed. `defaults.tsv` and `students.tsv` retain the captured source settings.
+
+It still exports both exams' attempt histories and selects each enrolled student's
+latest **started** attempt for saved files. A missing, ambiguous or unprotected
+latest source refuses review rather than falling back to older work. Review and
+confirmation freshly validate owner/checksum and eligibility; the export is not
+an atomic snapshot. Enrollment edits before confirmation trigger the existing
+stale-review refusal. Existing prepared reviews keep their original settings;
+updating the script never rewrites or refreshes them.
+
+This profile-copy script revision is tested locally, **not yet installed on
+csc-sys**. The commands below use its new syntax after installation. The currently
+installed release still uses the earlier shared-minutes argument.
 
 ```zsh
 sudo zsh /usr/local/share/ssh-exam/examples/second-go.zsh prepare \
-  /root/midterm-second-go 90 \
+  /root/midterm-second-go \
   '2026-11-02T09:00:00-06:00' '2026-11-06T17:00:00-06:00'
 # Inspect the printed settings/sources and private sources.csv before applying.
 sudo zsh /usr/local/share/ssh-exam/examples/second-go.zsh apply \
@@ -64,7 +77,7 @@ sudo zsh /usr/local/share/ssh-exam/examples/second-go.zsh apply \
 ```
 
 These dates are examples, not a scheduled exam. Supply the actual finite Begin
-window and allowance you choose. `prepare` creates a review only. `apply` confirms
+window; there is no shared allowance argument. `prepare` creates a review only. `apply` confirms
 that exact review and verifies each protected native source before making its
 grant available. Each new attempt receives its full allowance only at actual
 Begin; existing attempts, deadlines, holds and submissions stay unchanged.
@@ -169,3 +182,14 @@ formats with an explicit empty collection. Full CLI races, vet and actual gatewa
 zsh qualification were repeated. This CLI-only fix changes no web/native contract;
 the unchanged628 application/seven packaged-browser/image evidence remains valid.
 Current deployment status is in the linked activation record.
+
+The local midterm-profile script follow-up passes its real root-mapped zsh →
+CLI → signed gateway → native-source workflow and all14 affected integration
+checks, typecheck and zsh syntax. Explicit120-minute/no-camera and inherited
+default profiles survive preview restart/retry and produce available verified
+grants without claims or history changes, even when source-camera settings
+differ. Enrollment edits still invalidate a pending review; no guard was relaxed.
+CLI/server/native/browser code did not change, so their prior release evidence
+still applies. Evidence: `var/collection-tests/midterm-profile-script.pckce5pl`.
+This script revision is local only; the installed copy and existing reviews are
+unchanged.

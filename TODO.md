@@ -1,5 +1,12 @@
 # Deferred work
 
+October29 LOCAL follow-up: the revised second-go.zsh copies each student's
+effective midterm duration/webcam, including inherited defaults, into its reviewed
+CSV. Saved files still use the latest midterm/recovery source. Shared MINUTES is
+removed. Actual CLI/gateway/native-source regression and14 affected integration
+checks/typecheck/zsh syntax pass. Local script change only; installed copy remains
+the earlier version. Existing reviews are never silently changed.
+
 October29 scripting extension COMPLETE: implemented/tested, committed, pushed and
 deployed web07b6fa5/CLI46bcfa2. Public admissions/readiness/TLS/assets and installed
 root CLI exports/receipts PASS. Original38 items remain complete; all110 web/174

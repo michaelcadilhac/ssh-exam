@@ -1,5 +1,21 @@
 # Current TODO checkpoint
 
+October29 LOCAL FOLLOW-UP COMPLETE: examples/second-go.zsh copies each student's
+effective midterm duration/webcam into the reviewed CSV; blank overrides inherit
+saved midterm defaults. Recovery supplies files only. Shared MINUTES removed:
+prepare DIRECTORY BEGIN_FROM BEGIN_UNTIL. Actual CLI/gateway/native-source RED
+(5400 instead of7200)→GREEN;14 affected integration tests, typecheck and zsh syntax
+PASS. Includes explicit false, inherited nulls, source-camera mismatch, stable CSV
+through lost preview/restart, available native-pinned grants, no claims/history
+changes. Existing enrollment-change refusal is preserved; an initial fixture
+assumption allowing changed profiles was corrected, never the product guard.
+Evidence: var/collection-tests/midterm-profile-script.pckce5pl (scriptSHA5c96bc7c…,
+logs/receipt/refusal note). Boundary script/docs/fixture only;
+CLI/server/native/browser code unchanged, so prior qualified artifacts still apply.
+Not pushed/installed: csc-sys copy retains its earlier shared-minutes signature.
+Next deployment requires a new instruction; do not use revised syntax on old copy
+or apply an old review expecting changed settings. Original screenshots preserved.
+
 October 29, 2026, 19:12 UTC: **scripting extension deployed and online**.
 Original 38/38 release remains complete. No open design/implementation/release
 blocker. Task authorized implementation/commit/push/deploy; no student grants issued.

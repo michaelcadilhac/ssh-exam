@@ -51,9 +51,15 @@ export async function qualifyScriptingCLI(
   for (const [index, user] of users.entries())
     f.current.store.db
       .prepare(
-        "INSERT INTO enrollments(exam,username,uid,webcam) VALUES(?,?,?,?)",
+        "INSERT INTO enrollments(exam,username,uid,webcam,duration) VALUES(?,?,?,?,?)",
       )
-      .run(target, user, 29901 + index, index);
+      .run(
+        target,
+        user,
+        29901 + index,
+        index === 0 ? 0 : null,
+        index === 0 ? 7200 : null,
+      );
   const ended = Date.now() - 3600000;
   const authored = [
     {
@@ -81,7 +87,7 @@ export async function qualifyScriptingCLI(
       exam: target,
       username: users[1],
       uid: 29902,
-      settings: definitions[target],
+      settings: { ...definitions[target], webcam: !definitions[target].webcam },
       start: ended - 7200000,
       deadline: ended - 3600000,
       content: "LATEST-MIDTERM-SYNTHETIC-WORK",
@@ -171,16 +177,18 @@ export async function qualifyScriptingCLI(
   const directory = f.dir + "/scripting-run";
   loseSourceReply("preview");
   await expect(
-    executeScript("prepare", directory, ["90", earliest, latest]),
+    executeScript("prepare", directory, [earliest, latest]),
   ).rejects.toMatchObject({ code: 1 });
+  const preparedSelection = readFileSync(directory + "/sources.csv", "utf8");
   await f.restart();
   await executeScript("resume-review", directory);
   const selected = readFileSync(directory + "/sources.csv", "utf8");
+  expect(selected).toBe(preparedSelection);
   expect(selected).toContain(
-    `${users[0]},${authored[1].id},${native.attempts[authored[1].id].checksum}`,
+    `${users[0]},${authored[1].id},${native.attempts[authored[1].id].checksum},7200,false\n`,
   );
   expect(selected).toContain(
-    `${users[1]},${authored[2].id},${native.attempts[authored[2].id].checksum}`,
+    `${users[1]},${authored[2].id},${native.attempts[authored[2].id].checksum},${definitions[target].duration},${definitions[target].webcam}\n`,
   );
   expect(selected).not.toContain(authored[0].id);
   expect(
@@ -205,7 +213,13 @@ export async function qualifyScriptingCLI(
     expect(grant).toMatchObject({
       status: "AVAILABLE",
       revision: 1,
-      settings: { duration: 5400, webcam: row.username === users[1] },
+      settings:
+        row.username === users[0]
+          ? { duration: 7200, webcam: false }
+          : {
+              duration: definitions[target].duration,
+              webcam: definitions[target].webcam,
+            },
     });
     expect(grant.claims).toHaveLength(0);
   }
