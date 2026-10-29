@@ -126,6 +126,48 @@ it("reviews explicit per-student saved sources atomically, preserves settings an
     );
     expect(cancelled.statusCode, cancelled.body).toBe(200);
     expect(cancelled.json().status).toBe("CANCELLED");
+    for (const student_settings of [
+      [{ username: sources[0].username, duration: 59 }],
+      [{ username: "unselected", duration: 6000 }],
+      [
+        { username: sources[0].username, duration: 6000 },
+        { username: sources[0].username, webcam: true },
+      ],
+      [{ username: sources[0].username }],
+    ]) {
+      const refused = await preview({ ...input, student_settings });
+      expect(refused.statusCode, refused.body).toBe(400);
+      expect(grants()).toBe(0);
+    }
+    const individual = await preview({
+      ...input,
+      student_settings: [
+        { username: sources[0].username, duration: 6000, webcam: true },
+        { username: sources[1].username, duration: 7200, webcam: false },
+      ],
+    });
+    expect(individual.statusCode, individual.body).toBe(200);
+    expect(
+      individual
+        .json()
+        .rows.map((row: any) => [
+          row.username,
+          row.settings.duration,
+          row.settings.webcam,
+        ]),
+    ).toEqual([
+      [sources[0].username, 6000, true],
+      [sources[1].username, 7200, false],
+    ]);
+    expect(
+      (
+        await post(`/api/admin/grant-issuance/${individual.json().id}/cancel`, {
+          revision: individual.json().revision,
+        })
+      ).statusCode,
+    ).toBe(200);
+    for (const [index, source] of sources.entries())
+      expect(store.attempt(source.attempt)).toEqual(original[index]);
     expect(
       (
         await post(`/api/admin/grant-issuance/${first.json().id}/confirm`, {

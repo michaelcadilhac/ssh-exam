@@ -114,6 +114,7 @@ Examples:
   sudo examctl web grants revoke GRANT_UUID --revision 2 --reason 'Withdraw unused authorization'
 
 Exit status: 0 authenticated result, 1 refusal/unconfirmed operation, 2 syntax.`)
+	fmt.Fprintln(out, "Shell exports, stdin/per-student batch input, private review receipts and resumable source-sync: examctl help scripting.")
 }
 
 func webGrantsMain(args []string) int {

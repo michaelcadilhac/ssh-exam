@@ -25,16 +25,20 @@ func readGrantSavedSources(path string) ([]grantSavedSource, error) {
 	if path == "" {
 		return nil, usage
 	}
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read saved source selection: %w; %v", err, usage)
+	var input io.Reader = os.Stdin
+	if path != "-" {
+		f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read saved source selection: %w; %v", err, usage)
+		}
+		defer f.Close()
+		info, err := f.Stat()
+		if err != nil || !info.Mode().IsRegular() || info.Size() > 65536 {
+			return nil, usage
+		}
+		input = f
 	}
-	defer f.Close()
-	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > 65536 {
-		return nil, usage
-	}
-	data, err := io.ReadAll(io.LimitReader(f, 65537))
+	data, err := io.ReadAll(io.LimitReader(input, 65537))
 	if err != nil || len(data) > 65536 {
 		return nil, usage
 	}

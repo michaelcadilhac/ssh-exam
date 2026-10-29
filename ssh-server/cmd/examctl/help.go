@@ -96,6 +96,10 @@ func helpRequest(args []string) (string, bool) {
 }
 
 func printHelp(w io.Writer, topic string) bool {
+	if topic == "scripting" {
+		scriptingHelp(w)
+		return true
+	}
 	if topic == "grants" {
 		webGrantsHelp(w)
 		return true

@@ -31,6 +31,10 @@ export function GrantIssuanceDialog({
     [savedSources, setSavedSources] = useState<
       Record<string, { attempt: string; checksum: string }>
     >({}),
+    [individual, setIndividual] = useState(false),
+    [individualSettings, setIndividualSettings] = useState<
+      Record<string, { duration: string; webcam: string }>
+    >({}),
     [review, setReview] = useState<any>(null),
     [previewID, setPreviewID] = useState(""),
     [pending, setPending] = useState<{
@@ -101,6 +105,35 @@ export function GrantIssuanceDialog({
           } else {
             const work = workspaceChoice(workMode, workName, workHash);
             sourceSelection = work ? { work } : {};
+          }
+          if (individual && !practice) {
+            const settings = names.flatMap((username) => {
+              const selected = individualSettings[username];
+              if (!selected) return [];
+              const row: {
+                username: string;
+                duration?: number;
+                webcam?: boolean;
+              } = { username };
+              if (selected.duration !== "") {
+                const seconds = Number(selected.duration);
+                if (
+                  !Number.isSafeInteger(seconds) ||
+                  seconds < 60 ||
+                  seconds > 21600
+                )
+                  throw Error(
+                    `${username}: choose60..21600 explicit allowance seconds`,
+                  );
+                row.duration = seconds;
+              }
+              if (selected.webcam !== "shared")
+                row.webcam = selected.webcam === "required";
+              return row.duration !== undefined || row.webcam !== undefined
+                ? [row]
+                : [];
+            });
+            if (settings.length) sourceSelection.student_settings = settings;
           }
         }
       }
@@ -363,6 +396,91 @@ export function GrantIssuanceDialog({
                     </option>
                   </select>
                 </label>
+              )}
+              {!practice && (
+                <>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={individual}
+                      disabled={busy || !!pending}
+                      onChange={(e) => setIndividual(e.target.checked)}
+                    />
+                    Set individual student settings
+                  </label>
+                  {individual && (
+                    <fieldset>
+                      <legend>
+                        Individual allowances and webcam overrides
+                      </legend>
+                      <p>
+                        Blank allowances and shared webcam choices use the
+                        settings above. Review each saved setting before
+                        confirming.
+                      </p>
+                      {Array.from(new Set(selectedStudents))
+                        .slice(0, 200)
+                        .map((username) => (
+                          <div key={username}>
+                            <label>
+                              Allowance seconds for {username}
+                              <input
+                                type="number"
+                                min={60}
+                                max={21600}
+                                step={1}
+                                placeholder="Use shared allowance"
+                                value={
+                                  individualSettings[username]?.duration ?? ""
+                                }
+                                disabled={busy || !!pending}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setIndividualSettings((old) => ({
+                                    ...old,
+                                    [username]: {
+                                      duration: value,
+                                      webcam: old[username]?.webcam ?? "shared",
+                                    },
+                                  }));
+                                }}
+                              />
+                            </label>
+                            <label>
+                              Webcam override for {username}
+                              <select
+                                value={
+                                  individualSettings[username]?.webcam ??
+                                  "shared"
+                                }
+                                disabled={busy || !!pending}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setIndividualSettings((old) => ({
+                                    ...old,
+                                    [username]: {
+                                      duration: old[username]?.duration ?? "",
+                                      webcam: value,
+                                    },
+                                  }));
+                                }}
+                              >
+                                <option value="shared">
+                                  Use shared webcam choice
+                                </option>
+                                <option value="required">
+                                  Explicitly require webcam
+                                </option>
+                                <option value="optional">
+                                  Explicitly make webcam optional
+                                </option>
+                              </select>
+                            </label>
+                          </div>
+                        ))}
+                    </fieldset>
+                  )}
+                </>
               )}
             </>
           )}

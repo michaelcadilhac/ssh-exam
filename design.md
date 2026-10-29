@@ -69,6 +69,17 @@ docs/native-exam-reconciliation.md. Implemented/tested locally, not deployed.
 
 ## 1. Instructions to the implementing agent
 
+October29 scripting interface: generic authenticated examctl exports support
+complete pagination, explicit metadata projections and shell-friendly formats.
+Private context-bound receipts persist exact request/wire arguments before
+mutation and resume unknown outcomes without reissuing. Additional-grant preview
+accepts optional explicit per-student duration/webcam values, shared with the web
+review dialog; immutable issuance, finite windows, owner/checksum verification,
+durable native source retention and full allowance only at Begin remain unchanged.
+Latest-source selection belongs in the course script, not the CLI. No execution
+wire/schema change or account/clock/hold bypass is introduced. Local qualification
+and deployment status: docs/examctl-scripting.md.
+
 Build the application described here. This is an implementation specification, not a request for a design mockup. Implement the student application, instructor dashboard, SSH connection manager, monitoring, protected submission collection, class-server enforcement, and deployment assets.
 
 The web application must run in Docker. Provide a Dockerfile, Docker Compose configuration, a host nginx configuration, and a host systemd unit. Put everything installed on the **class SSH server** in a separate `ssh-server/` subfolder, including source code, configuration examples, service files, installation tools, and its own README.

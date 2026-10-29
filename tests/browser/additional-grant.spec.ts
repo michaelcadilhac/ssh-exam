@@ -1,6 +1,100 @@
 import { test, expect } from "@playwright/test";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
+test("individual additional settings are reviewed per student without changing shared defaults or issuing on preview", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(30000);
+  page.setDefaultTimeout(8000);
+  await page.setViewportSize({ width: 430, height: 1000 });
+  await page.goto("/admin");
+  await page.getByLabel("Username", { exact: true }).fill("instructor");
+  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByLabel("Selected exam").selectOption("additional-template");
+  await page
+    .getByRole("button", { name: "Authorize additional attempts", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Authorize additional attempts",
+    exact: true,
+  });
+  await dialog
+    .getByLabel("Additional attempt students", { exact: true })
+    .fill("extra01 extra02");
+  await dialog
+    .getByRole("combobox", { name: "Workspace initialization", exact: true })
+    .selectOption("empty");
+  await dialog
+    .getByLabel("Additional allowance seconds", { exact: true })
+    .fill("5400");
+  await dialog
+    .getByLabel("Set individual student settings", { exact: true })
+    .check();
+  await dialog
+    .getByLabel("Allowance seconds for extra01", { exact: true })
+    .fill("6000");
+  await dialog
+    .getByRole("combobox", { name: "Webcam override for extra01", exact: true })
+    .selectOption("required");
+  await dialog
+    .getByLabel("Allowance seconds for extra02", { exact: true })
+    .fill("7200");
+  await dialog
+    .getByRole("combobox", { name: "Webcam override for extra02", exact: true })
+    .selectOption("optional");
+  await dialog
+    .getByLabel("Earliest Begin (RFC3339 with zone)")
+    .fill(new Date(Date.now() - 1000).toISOString());
+  await dialog
+    .getByLabel("Latest Begin (RFC3339 with zone)")
+    .fill(new Date(Date.now() + 600000).toISOString());
+  await dialog
+    .getByLabel("Reason for additional attempt")
+    .fill("Explicit individual synthetic allowances and webcam choices");
+  const response = page.waitForResponse(
+    (r) =>
+      new URL(r.url()).pathname.endsWith("/grants/additional-preview") &&
+      r.request().method() === "POST",
+  );
+  await dialog
+    .getByRole("button", { name: "Preview additional grants", exact: true })
+    .click();
+  const reply = await response;
+  expect(reply.status()).toBe(200);
+  expect(reply.request().postDataJSON().student_settings).toEqual([
+    { username: "extra01", duration: 6000, webcam: true },
+    { username: "extra02", duration: 7200, webcam: false },
+  ]);
+  const reviewed = dialog.getByRole("region", {
+    name: "Reviewed new grants",
+    exact: true,
+  });
+  await expect(
+    reviewed
+      .getByRole("article")
+      .filter({
+        has: page.getByRole("heading", { name: "extra01", exact: true }),
+      }),
+  ).toContainText("100 minutes");
+  await expect(
+    reviewed
+      .getByRole("article")
+      .filter({
+        has: page.getByRole("heading", { name: "extra02", exact: true }),
+      }),
+  ).toContainText("120 minutes");
+  await expect(dialog).toContainText("Status: REVIEW");
+  await page.screenshot({
+    path: testInfo.outputPath("individual-settings-review.png"),
+    fullPage: true,
+  });
+  await dialog
+    .getByRole("button", { name: "Cancel review", exact: true })
+    .click();
+  await expect(dialog).toContainText("Status: CANCELLED");
+});
+
 test("additional grants outside expired defaults support reviewed recovery, multiple-grant management and explicit student selection through fresh Begin", async ({
   page,
 }, testInfo) => {

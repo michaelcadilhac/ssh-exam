@@ -32,7 +32,7 @@ func webGrantSourcesMain(args []string) int {
 		fmt.Fprintln(os.Stderr, "run source synchronization as root on the class server; instructor web issuance needs no student SSH connection")
 		return 1
 	}
-	config, err := core.LoadConfig(*path)
+	config, err := scriptLoadConfig(*path)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cannot load protected root configuration:", err)
 		return 1
@@ -44,7 +44,10 @@ func webGrantSourcesMain(args []string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		_ = json.NewEncoder(os.Stdout).Encode(row)
+		if err := json.NewEncoder(os.Stdout).Encode(row); err != nil {
+			fmt.Fprintln(os.Stderr, "Write source metadata:", err)
+			return 1
+		}
 		return 0
 	}
 	planning, err := core.ManagementCall(config, "grants.source-plan", map[string]any{"id": w[2], "revision": *revision}, "")
@@ -90,6 +93,9 @@ func webGrantSourcesMain(args []string) int {
 		fmt.Fprintln(os.Stderr, "wrong-scope/stale source acknowledgement; inspect native source-show and current web grant before retry; no success inferred")
 		return 1
 	}
-	_ = json.NewEncoder(os.Stdout).Encode(confirmed)
+	if err := json.NewEncoder(os.Stdout).Encode(confirmed); err != nil {
+		fmt.Fprintln(os.Stderr, "Write confirmed source result; inspect original grant before retry:", err)
+		return 1
+	}
 	return 0
 }

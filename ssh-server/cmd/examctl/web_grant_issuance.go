@@ -216,18 +216,19 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		return fail
 	}
 	var scope struct {
-		ID                 string             `json:"id"`
-		Exam               string             `json:"exam"`
-		Revision           string             `json:"revision"`
-		Usernames          []string           `json:"usernames"`
-		DefinitionRevision string             `json:"definition_revision"`
-		TemplateVersion    string             `json:"template_version"`
-		Earliest           int64              `json:"earliest"`
-		Latest             int64              `json:"latest"`
-		Duration           int64              `json:"duration"`
-		Webcam             *bool              `json:"webcam"`
-		Work               *grantWorkResult   `json:"work"`
-		SavedSources       []grantSavedSource `json:"saved_sources"`
+		ID                 string                  `json:"id"`
+		Exam               string                  `json:"exam"`
+		Revision           string                  `json:"revision"`
+		Usernames          []string                `json:"usernames"`
+		DefinitionRevision string                  `json:"definition_revision"`
+		TemplateVersion    string                  `json:"template_version"`
+		Earliest           int64                   `json:"earliest"`
+		Latest             int64                   `json:"latest"`
+		Duration           int64                   `json:"duration"`
+		Webcam             *bool                   `json:"webcam"`
+		Work               *grantWorkResult        `json:"work"`
+		SavedSources       []grantSavedSource      `json:"saved_sources"`
+		StudentSettings    []scriptStudentSettings `json:"student_settings"`
 	}
 	if json.Unmarshal(encoded, &scope) != nil {
 		return fail
@@ -275,6 +276,15 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 				saved[source.Username] = source
 			}
 		}
+		overrides := map[string]scriptStudentSettings{}
+		for _, setting := range scope.StudentSettings {
+			if _, exists := overrides[setting.Username]; exists || !seen[setting.Username] ||
+				(setting.Duration == nil && setting.Webcam == nil) ||
+				(setting.Duration != nil && (*setting.Duration < 60 || *setting.Duration > 21600)) {
+				return fail
+			}
+			overrides[setting.Username] = setting
+		}
 		for _, row := range result.Rows {
 			expectedWork := grantWorkResult{Kind: "template", Name: row.Settings.Template, Hash: scope.TemplateVersion}
 			if scope.Work != nil {
@@ -287,7 +297,16 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 				}
 				expectedWork = grantWorkResult{Kind: "saved", Attempt: source.Attempt, Checksum: source.Checksum}
 			}
-			if row.Work != expectedWork || row.Settings.TemplateVersion != scope.TemplateVersion || row.Settings.Earliest != scope.Earliest || row.Settings.Latest != scope.Latest || (op == "grants.additional-preview" && row.Settings.Duration != scope.Duration) || (scope.Webcam != nil && row.Settings.Webcam != *scope.Webcam) {
+			expectedDuration, expectedWebcam := scope.Duration, scope.Webcam
+			if setting, ok := overrides[row.Username]; ok {
+				if setting.Duration != nil {
+					expectedDuration = *setting.Duration
+				}
+				if setting.Webcam != nil {
+					expectedWebcam = setting.Webcam
+				}
+			}
+			if row.Work != expectedWork || row.Settings.TemplateVersion != scope.TemplateVersion || row.Settings.Earliest != scope.Earliest || row.Settings.Latest != scope.Latest || (op == "grants.additional-preview" && row.Settings.Duration != expectedDuration) || (expectedWebcam != nil && row.Settings.Webcam != *expectedWebcam) {
 				return fail
 			}
 		}

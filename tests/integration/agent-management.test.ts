@@ -7,6 +7,7 @@ import { qualifyMonitoringCLI } from "../fixtures/management-monitoring.js";
 import { qualifyTemplateCLI } from "../fixtures/management-templates.js";
 import { qualifyAdministratorCLI } from "../fixtures/management-administrators.js";
 import { qualifyNativeRetirementCLI } from "../fixtures/management-native-retirement.js";
+import { qualifyScriptingCLI } from "../fixtures/management-scripting.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import { MonitoringManagement } from "../../apps/server/src/monitoring-management.js";
 import sharp from "sharp";
@@ -826,6 +827,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       let corruptNativeRetirement: "drop" | "scope" | null = null;
       let corruptAdministrator: "drop" | "scope" | "refusal" | null = null;
       let corruptSavedSelection: "swap" | "drop-confirm" | null = null;
+      let corruptScriptingSource: "preview" | "source" | null = null;
       server = https.createServer(
         { key: readFileSync(key), cert: readFileSync(cert) },
         (req, res) => {
@@ -847,7 +849,8 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                     corruptAdministrator ||
                     corruptRetirement ||
                     corruptNativeRetirement ||
-                    corruptSavedSelection) &&
+                    corruptSavedSelection ||
+                    corruptScriptingSource) &&
                   req.url === "/api/agent/management"
                 ) {
                   const frame = JSON.parse(raw.toString());
@@ -855,6 +858,18 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
                     Buffer.from(frame.payload, "base64").toString(),
                   );
                   let changed = false;
+                  if (
+                    corruptScriptingSource &&
+                    payload.operation ===
+                      (corruptScriptingSource === "preview"
+                        ? "grants.additional-preview"
+                        : "grants.source-confirm") &&
+                    payload.ok
+                  ) {
+                    corruptScriptingSource = null;
+                    res.destroy();
+                    return;
+                  }
                   if (
                     corruptSavedSelection === "drop-confirm" &&
                     payload.operation === "grants.issue-confirm" &&
@@ -2253,13 +2268,23 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           corruptNativeRetirement = mode;
         },
       );
+      await qualifyScriptingCLI(
+        f,
+        binary,
+        configPath,
+        invoke,
+        run,
+        (operation: "preview" | "source" = "source") => {
+          corruptScriptingSource = operation;
+        },
+      );
     } finally {
       if (server)
         await new Promise<void>((resolve) => server!.close(() => resolve()));
       await f.close();
     }
   },
-  45000,
+  90000,
 );
 
 it("keeps signed image retries payload-free, scopes reads and fences deletion after an async result before publication", async () => {

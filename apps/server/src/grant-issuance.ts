@@ -62,6 +62,9 @@ export class GrantIssuance {
       webcam?: boolean;
       work?: z.infer<typeof grantAdditionalPreview>["work"];
       saved_sources?: z.infer<typeof grantAdditionalPreview>["saved_sources"];
+      student_settings?: z.infer<
+        typeof grantAdditionalPreview
+      >["student_settings"];
     },
     actor: string,
     additional: boolean,
@@ -92,24 +95,30 @@ export class GrantIssuance {
             "Choose an explicit finite Begin window that has not closed; no grant issued",
           );
         const sources = new Map(b.saved_sources?.map((s) => [s.username, s]));
+        const overrides = new Map(
+          b.student_settings?.map((s) => [s.username, s]),
+        );
         const rows = [...b.usernames].sort().map((username) => {
           const enrollment = this.eligible(b.exam, username, additional);
           const source = sources.get(username);
+          const override = overrides.get(username);
           const value = this.grants.snapshot(
             {
               ...definition.exam,
               earliest: b.earliest,
               latest: b.latest,
               duration: additional
-                ? b.duration!
+                ? (override?.duration ?? b.duration!)
                 : (enrollment.duration ?? definition.exam.duration),
               webcam: isSandbox(b.exam)
                 ? false
-                : additional && b.webcam !== undefined
-                  ? b.webcam
-                  : enrollment.webcam === null
-                    ? definition.exam.webcam
-                    : !!enrollment.webcam,
+                : additional && override?.webcam !== undefined
+                  ? override.webcam
+                  : additional && b.webcam !== undefined
+                    ? b.webcam
+                    : enrollment.webcam === null
+                      ? definition.exam.webcam
+                      : !!enrollment.webcam,
             },
             source
               ? {

@@ -79,6 +79,7 @@ Examples:
   sudo examctl web students remove midterm student01 --confirm student01
 
 Exit status: 0 confirmed result, 1 refusal/operational failure, 2 invalid syntax.`)
+	fmt.Fprintln(out, "Complete shell-friendly exports: examctl help scripting (--all/--format/--fields/--username).")
 }
 
 func webStudentsMain(args []string) int {

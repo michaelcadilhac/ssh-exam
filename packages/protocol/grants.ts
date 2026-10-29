@@ -115,6 +115,23 @@ export const grantAdditionalPreview = grantIssuePreview
     duration: z.number().int().min(60).max(21600),
     webcam: z.boolean().optional(),
     work: grantWorkspace.optional(),
+    student_settings: z
+      .array(
+        z
+          .object({
+            username,
+            duration: z.number().int().min(60).max(21600).optional(),
+            webcam: z.boolean().optional(),
+          })
+          .strict()
+          .refine(
+            (row) => row.duration !== undefined || row.webcam !== undefined,
+            "Name an explicit per-student setting",
+          ),
+      )
+      .min(1)
+      .max(200)
+      .optional(),
     saved_sources: z
       .array(
         z
@@ -131,6 +148,18 @@ export const grantAdditionalPreview = grantIssuePreview
   })
   .strict()
   .superRefine((b, ctx) => {
+    if (b.student_settings) {
+      const names = new Set(b.student_settings.map((row) => row.username));
+      if (
+        names.size !== b.student_settings.length ||
+        b.student_settings.some((row) => !b.usernames.includes(row.username))
+      )
+        ctx.addIssue({
+          code: "custom",
+          path: ["student_settings"],
+          message: "Per-student settings must name distinct selected students",
+        });
+    }
     if (!b.saved_sources) return;
     if (b.work !== undefined)
       ctx.addIssue({

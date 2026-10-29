@@ -27,6 +27,16 @@ type ManagementResult struct {
 	Result    json.RawMessage `json:"result,omitempty"`
 }
 
+// Preserve authenticated refusal versus an unavailable/unverified outcome for
+// CLI automation. Existing human-readable error text remains compatible.
+type ManagementFailure struct {
+	Code, Outcome, Retry, Message string
+	Cause                         error
+}
+
+func (e *ManagementFailure) Error() string { return e.Message }
+func (e *ManagementFailure) Unwrap() error { return e.Cause }
+
 func ManagementID() string {
 	s := []byte(Token()[:32])
 	s[12], s[16] = '4', '8'
@@ -142,7 +152,7 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	req.Header.Set("X-Exam-Signature", base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload)))
 	response, err := client.Do(req)
 	if err != nil {
-		return result, fmt.Errorf("gateway reply unavailable; outcome not confirmed; retry with --request %s: %w", requestID, err)
+		return result, &ManagementFailure{Code: "transport", Outcome: "unknown", Retry: "same_request_or_receipt", Message: fmt.Sprintf("gateway reply unavailable; outcome not confirmed; retry with --request %s: %v", requestID, err), Cause: err}
 	}
 	defer response.Body.Close()
 	b, err := io.ReadAll(io.LimitReader(response.Body, 16*1024*1024+1))
@@ -179,7 +189,7 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 		if strings.HasPrefix(operation, "administrators.") {
 			return result, fmt.Errorf("gateway refused administrator management (HTTP %d): %s; no change confirmed. Inspect examctl web administrators list/show, the named operation authorization and current intent; retry a creation with the original password and --request %s. Never overwrite/reset an existing account to reconcile a lost reply", reply.Status, administratorPublicRefusal(reply.Error), requestID)
 		}
-		return result, fmt.Errorf("gateway refused management (%d): %s", reply.Status, reply.Error)
+		return result, &ManagementFailure{Code: "gateway_refused", Outcome: "refused", Retry: "new_intent_after_review", Message: fmt.Sprintf("gateway refused management (%d): %s", reply.Status, reply.Error)}
 	}
 	if reply.Status != 200 || len(reply.Result) == 0 {
 		return result, errors.New("incomplete gateway management result; outcome not confirmed")

@@ -1,5 +1,31 @@
 # Current TODO checkpoint
 
+October29 ACTIVE: generic examctl scripting improvements implemented/tested locally;
+instructor explicitly authorized commit, push and guarded deployment. Original38
+items remain complete. Operator workflow/state review: docs/examctl-scripting.md.
+Complete exports/projections, private exact-wire resumable receipts, bounded stdin/
+per-student settings, partial native source synchronization and pure-zsh course
+example work through actual root CLI → signed gateway → protected archives.
+Shared web review has matching individual settings; execution protocol/schema33
+unchanged. No new student grants are authorized by this development task.
+
+Verification: full628 application tests/111files (including real root CLI opt-ins),
+6 focused CLI process regressions, full CLI race, affected source/transport races,
+typecheck/vet/all-native+application builds,7 affected browser workflows PASS.
+Exact image1f3f79c61c5c… startup/schema24→33/all-assets smoke and7 browsers PASS
+(split isolated batches to respect the5/min instructor login limit). Initial fixture-publication race and
+label locator failures were corrected without weakening product enforcement.
+No source changes after qualification except docs/test-only vet cleanup.
+
+Next: freeze manifest, commit/push, stage code-
+only artifacts, then fence/positive drain/private backups and matched web+CLI
+activation. Do not restart native/SSH/relay; no DB migration. Read-only inventories
+PASS: marco110 histories/0unfinished, csc174/0unfinished; active canonicalPID4007876,
+watchdog210730, old CLI0c95fe05…; no production writes yet. Repeat guards at cutover.
+Progress/artifacts/owned scripts: var/collection-tests/examctl-scripting.exs9o_2m
+(pointer /tmp/ssh-exam-scripting-run.json). git origin/main e0921593 is ancestor of
+HEAD6a48a42. All ten original dirty screenshots remain untouched/uncommitted.
+
 October28,06:15 UTC: **38/38 main TODO items covered. Release deployed and online.**
 Public admissions reopened06:13 UTC (01:13 Chicago) after the explicitly authorized
 guarded cutover and completed human acceptance. No open design/implementation/

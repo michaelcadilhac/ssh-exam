@@ -1,5 +1,10 @@
 # Deferred work
 
+October29 NEW WORK: instructor authorized implementing, committing, pushing and
+deploying generic examctl scripting improvements. Original38 items remain complete;
+new scope/progress: docs/examctl-scripting.md and docs/todo-current-checkpoint.md.
+No new student grant issuance is part of this development request.
+
 October28 CURRENT: **38/38 main items covered.** The authorized rollout and
 single-agent consolidation are deployed/verified on marco/csc-sys. Real human
 ordinary and NEW saved-work acceptance, retained SSH/Nano through reviewed hold,

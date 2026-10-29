@@ -51,6 +51,7 @@ Examples:
   sudo examctl info ATTEMPT
 
 Exit status: 0 authenticated metadata, 1 refusal/failure, 2 invalid syntax.`)
+	fmt.Fprintln(out, "Complete multi-exam exports, exact username filters and TSV/JSONL projections: examctl help scripting.")
 }
 
 func webAttemptsMain(args []string) int {

@@ -156,6 +156,7 @@ Unknown/unverified replies never imply success; retain the request ID for retry.
 	fmt.Fprintln(out, "Gateway attempt/clock workflows: examctl web attempts help; examctl web clocks help.")
 	fmt.Fprintln(out, "Interruption review/authorization: examctl web interruptions help.")
 	fmt.Fprintln(out, "Private monitoring metadata/images/replay/complete export/deletion/purge status: examctl web monitoring help.")
+	fmt.Fprintln(out, "Shell-friendly complete exports, private review receipts and resumable batch source synchronization: examctl help scripting.")
 }
 
 func webCategory(args []string) string {
@@ -175,6 +176,9 @@ func webCategory(args []string) string {
 }
 
 func webMain(args []string) int {
+	if scriptingRequested(args) {
+		return webScriptingMain(args)
+	}
 	if webCategory(args) == "administrators" {
 		return webAdministratorsMain(args)
 	}
@@ -433,7 +437,7 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		fmt.Fprintln(os.Stderr, "Run examctl as root on the class server with its existing agent identity; see examctl web help")
 		return 1
 	}
-	c, err := core.LoadConfig(config)
+	c, err := scriptLoadConfig(config)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Load root agent configuration:", err)
 		return 1
