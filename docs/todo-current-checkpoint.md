@@ -1,5 +1,25 @@
 # Current TODO checkpoint
 
+October29 LOCAL GRADING FOLLOW-UP COMPLETE: examples/grade-midterm.zsh run
+CLASS_SSH_HOST NEW_DIRECTORY exports the latest started midterm/recovery source
+per username across both rosters/history and publishes USERNAME,GRADE. Instructor
+approved zero for no submission; unsafe/uncertain/export/runner failures stay
+blank with errors.tsv. Existing native protected-export verifies/audits bytes;
+the unchanged authored SHA8b90975b… grader runs only in isolated local Docker.
+Acceptance milestones complete: inspect actual materials/export contract;
+integrate select/fetch/isolate/CSV; qualify real entry/cancellation and document.
+Final focused7/7 (including null/zero unstarted preparations), affected20/20 plus
+separately enabled root CLI/TLS journey, native export race, typecheck and syntax
+PASS. Actual course grader synthetic0/20 and absent0 PASS. Grading SSH transport
+is mocked. Cancellation initially published CSV after cleanup; durable marker and
+late-create barrier fix pass; failure retained. No application/native/browser
+runtime edits, package install, real student export/grading or record writes.
+Operator instructions/state review: docs/offline-midterm-grading.md. Exact artifact
+hashes/receipts/logs: var/collection-tests/midterm-grading.9040z4q6/final-receipt.json.
+Local commit only; not pushed, installed or deployed. No open design choice or
+implementation blocker. Next: instructor may run on a separate Docker machine
+with the usual authenticated class SSH session; nothing further is authorized.
+
 October29 LOCAL FOLLOW-UP COMPLETE: examples/second-go.zsh copies each student's
 effective midterm duration/webcam into the reviewed CSV; blank overrides inherit
 saved midterm defaults. Recovery supplies files only. Shared MINUTES removed:

@@ -94,6 +94,12 @@ N` workflows remain available for deliberate repair and source retirement.
 
 ## Generic data and input contracts
 
+The separate [offline midterm grading example](offline-midterm-grading.md) reuses
+these exports and native protected-export to write a reviewable CSV. It runs the
+supplied grader in disposable local containers, with zero for no submission and
+separate error reports. No application grading service or student-record edit is
+introduced; that script is tested locally and not installed on production hosts.
+
 `web exams/students/attempts/grants list --all` follows every page, including empty
 filtered pages. Repeated `--exam` selects multiple attempt histories. `--username`
 matches one exact account; `--q` remains substring search. Use `--format

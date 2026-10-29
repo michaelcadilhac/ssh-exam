@@ -86,6 +86,18 @@ not the CLI. No execution
 wire/schema change or account/clock/hold bypass is introduced. Local qualification
 and deployment status: docs/examctl-scripting.md.
 
+The separate local operator example examples/grade-midterm.zsh uses these complete
+exports plus existing audited native protected-export to select each student's
+latest started midterm/recovery submission. It runs the unchanged supplied course
+grader in a bounded unprivileged networkless container on the instructor machine,
+then publishes a reviewable USERNAME,GRADE CSV. The instructor explicitly chose
+zero for no submission; export/runner failures and uncertain latest work stay
+blank with separate errors. This is an offline example, not application grading
+or a new web/CLI grading service. It changes no attempts, deadlines, holds or
+student records. Trusted authored grader/checksum, exact selection and container
+provenance are retained; submitted Makefiles/graders are not used. Local synthetic
+qualification and workflow: docs/offline-midterm-grading.md. Not deployed.
+
 Build the application described here. This is an implementation specification, not a request for a design mockup. Implement the student application, instructor dashboard, SSH connection manager, monitoring, protected submission collection, class-server enforcement, and deployment assets.
 
 The web application must run in Docker. Provide a Dockerfile, Docker Compose configuration, a host nginx configuration, and a host systemd unit. Put everything installed on the **class SSH server** in a separate `ssh-server/` subfolder, including source code, configuration examples, service files, installation tools, and its own README.

@@ -1,5 +1,14 @@
 # Deferred work
 
+October29 LOCAL grading follow-up COMPLETE: examples/grade-midterm.zsh exports
+the latest started midterm/recovery submission for the union of both rosters and
+historical owners, runs the unchanged supplied grader in isolated local Docker,
+and writes USERNAME,GRADE. Instructor-approved no-submission zero; export/runner/
+uncertain latest failures stay blank with separate errors. Actual synthetic Docker
+selection/grade/cancellation checks and actual course-grader0/20 checks pass.
+Operator instructions/evidence: docs/offline-midterm-grading.md. No real student
+archives graded, student records changed, push, installation or deployment.
+
 October29 LOCAL follow-up: the revised second-go.zsh copies each student's
 effective midterm duration/webcam, including inherited defaults, into its reviewed
 CSV. Saved files still use the latest midterm/recovery source. Shared MINUTES is
