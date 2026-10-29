@@ -1,6 +1,6 @@
 # Current TODO checkpoint
 
-October29 LOCAL GRADING FOLLOW-UP COMPLETE: examples/grade-midterm.zsh run
+October29 GRADING FOLLOW-UP COMPLETE: examples/grade-midterm.zsh run
 CLASS_SSH_HOST NEW_DIRECTORY exports the latest started midterm/recovery source
 per username across both rosters/history and publishes USERNAME,GRADE. Instructor
 approved zero for no submission; unsafe/uncertain/export/runner failures stay
@@ -16,9 +16,19 @@ late-create barrier fix pass; failure retained. No application/native/browser
 runtime edits, package install, real student export/grading or record writes.
 Operator instructions/state review: docs/offline-midterm-grading.md. Exact artifact
 hashes/receipts/logs: var/collection-tests/midterm-grading.9040z4q6/final-receipt.json.
-Local commit only; not pushed, installed or deployed. No open design choice or
-implementation blocker. Next: instructor may run on a separate Docker machine
-with the usual authenticated class SSH session; nothing further is authorized.
+Subsequent explicit installation instruction completed: qualified script/helper
+installed on csc-sys under /usr/local/share/ssh-exam/examples/, matching guide
+under ../docs/. Root-owned/parent0700, script0700/helper0644; installed syntax/help
+PASS. Actual installed help exposed zsh's function-name $0; saving the script name
+fixes the displayed command path. New focused regression/full7 Docker cases,
+typecheck and syntax requalify this help-only edit. Root-private remote receipt:
+/var/tmp/ssh-exam-offline-grading-install.4sztdsx5/receipt.json; local receipt:
+var/collection-tests/offline-grading-install.ubqrrcf8/receipt.json. Targets were
+absent; rollback removes only these new files after exact-hash verification.
+second-go copy/application/native/services/configuration/records unchanged. No
+push, package/image install or real grading run. No open implementation/design
+blocker. Next: instructor may run on a separate Docker machine with the usual
+authenticated class SSH session; no grading or further deployment authorized here.
 
 October29 LOCAL FOLLOW-UP COMPLETE: examples/second-go.zsh copies each student's
 effective midterm duration/webcam into the reviewed CSV; blank overrides inherit

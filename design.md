@@ -96,7 +96,11 @@ blank with separate errors. This is an offline example, not application grading
 or a new web/CLI grading service. It changes no attempts, deadlines, holds or
 student records. Trusted authored grader/checksum, exact selection and container
 provenance are retained; submitted Makefiles/graders are not used. Local synthetic
-qualification and workflow: docs/offline-midterm-grading.md. Not deployed.
+qualification and workflow: docs/offline-midterm-grading.md. The instructor
+subsequently authorized installation of the script/helper on csc-sys; qualified
+code and matching guide are installed with syntax/help verified, including a
+regression for zsh's function-name expansion in help. No
+grading run, application deployment or service/configuration change occurred.
 
 Build the application described here. This is an implementation specification, not a request for a design mockup. Implement the student application, instructor dashboard, SSH connection manager, monitoring, protected submission collection, class-server enforcement, and deployment assets.
 

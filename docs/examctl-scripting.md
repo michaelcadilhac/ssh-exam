@@ -98,7 +98,9 @@ The separate [offline midterm grading example](offline-midterm-grading.md) reuse
 these exports and native protected-export to write a reviewable CSV. It runs the
 supplied grader in disposable local containers, with zero for no submission and
 separate error reports. No application grading service or student-record edit is
-introduced; that script is tested locally and not installed on production hosts.
+introduced. Its qualified script/helper are now installed on csc-sys under
+`/usr/local/share/ssh-exam/examples/` by separate instruction; grading itself runs
+on an instructor Docker machine and has not been run on real submissions.
 
 `web exams/students/attempts/grants list --all` follows every page, including empty
 filtered pages. Repeated `--exam` selects multiple attempt histories. `--username`

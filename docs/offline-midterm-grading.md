@@ -4,7 +4,16 @@ The locally tested [grade-midterm.zsh](../examples/grade-midterm.zsh) exports ea
 student's latest **started** attempt across `midterm` and `midterm-recovery`, runs
 the supplied course grader, and writes `USERNAME,GRADE`. Run it on an instructor's
 Docker machine; keep [grading-extract.py](../examples/grading-extract.py) beside it.
-It is not installed on either production server and has not graded real students.
+On October 29 the instructor authorized installation of the script/helper on
+`csc-sys`, under `/usr/local/share/ssh-exam/examples/`, with this guide under
+`/usr/local/share/ssh-exam/docs/`. These directories remain root-private. Only
+files are installed: no service restart, package/image installation or grading
+run is included. No real students have been graded by this workflow.
+
+```zsh
+# On csc-sys: inspect the installed command without running a grading job.
+sudo zsh /usr/local/share/ssh-exam/examples/grade-midterm.zsh --help
+```
 
 ```zsh
 cd /path/to/ssh-exam
@@ -140,4 +149,5 @@ metadata/grant integration tests, native protected-export race regression,
 typecheck and script/helper syntax checks accompany this workflow. SSH transport
 is mocked for grading qualification; no real student archive was fetched or graded.
 Evidence: `var/collection-tests/midterm-grading.9040z4q6`. Application/native/browser
-runtime code is unchanged, so this adds no deployment, migration or service restart.
+runtime code is unchanged. The separately authorized script/helper installation
+changes no application deployment, schema, account policy or running service.

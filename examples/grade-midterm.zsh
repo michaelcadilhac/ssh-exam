@@ -4,12 +4,13 @@ emulate -R zsh
 setopt ERR_EXIT NO_UNSET PIPE_FAIL
 umask 077
 export LC_ALL=C
+script_name=$0
 
 die() { print -ru2 -- "$*"; exit 1; }
 usage() {
     print -ru2 -- "Usage:
-  $0 run CLASS_SSH_HOST NEW_OUTPUT_DIRECTORY
-  $0 cleanup OUTPUT_DIRECTORY
+  $script_name run CLASS_SSH_HOST NEW_OUTPUT_DIRECTORY
+  $script_name cleanup OUTPUT_DIRECTORY
 
 Grades the latest started midterm/midterm-recovery attempt per student, including
 both rosters and historical attempt owners. No submission => 0 (instructor policy).

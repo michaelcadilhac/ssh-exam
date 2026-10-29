@@ -1,5 +1,14 @@
 # Deferred work
 
+October29 grading-script installation COMPLETE under new explicit instruction:
+csc-sys /usr/local/share/ssh-exam/examples/grade-midterm.zsh and its required
+helper are root-owned in root-private parent directories; syntax/help checks
+PASS. Public help exposed zsh's function-name $0; a focused regression and saved
+script-name correction preserve the executable's actual path. Matching guide
+installed under ../docs/. No grading,
+packages/images, services, configuration or student records changed; no push.
+Receipt: var/collection-tests/offline-grading-install.ubqrrcf8/receipt.json.
+
 October29 LOCAL grading follow-up COMPLETE: examples/grade-midterm.zsh exports
 the latest started midterm/recovery submission for the union of both rosters and
 historical owners, runs the unchanged supplied grader in isolated local Docker,

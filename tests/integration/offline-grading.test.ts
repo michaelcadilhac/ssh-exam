@@ -59,6 +59,8 @@ test("offline grader help is discoverable without SSH or Docker", () => {
     encoding: "utf8",
   });
   expect(result.status).toBe(0);
+  expect(result.stderr).toContain(`${script} run CLASS_SSH_HOST`);
+  expect(result.stderr).not.toContain("  usage run ");
   expect(result.stderr).toContain("USERNAME,GRADE");
   expect(result.stderr).toContain("cleanup OUTPUT_DIRECTORY");
 });
