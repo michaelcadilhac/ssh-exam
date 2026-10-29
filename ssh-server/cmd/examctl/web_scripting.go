@@ -541,7 +541,9 @@ func scriptExport(c core.Config, o scriptOptions, operation string, body map[str
 	if key == "students" {
 		key = "students"
 	}
-	var rows []map[string]any
+	// A non-nil empty collection is a valid completed export. nil tells the
+	// formatter to derive a single operation row from its result envelope.
+	rows := make([]map[string]any, 0)
 	var finalNext *string
 	var lastRequest string
 	started := time.Now().UnixMilli()

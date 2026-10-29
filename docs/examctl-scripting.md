@@ -1,9 +1,10 @@
 # Shell scripting with examctl
 
-October 29, 2026: local qualification in progress. The instructor explicitly authorized
-implementation, local commits, push and deployment. No new student grants or
-record changes are authorized by this development task. The previous 38-item
-release remains deployed; these are new scripting improvements.
+October 29, 2026: generic scripting improvements. The instructor authorized
+implementation, commit, push and deployment; this development task issues no
+student grants. These extend the completed 38-item release. Current installed
+versions and activation/rollback receipts are in
+[examctl-scripting-deployment.md](examctl-scripting-deployment.md).
 
 ## Bounded delivery plan
 
@@ -141,7 +142,7 @@ signed plan, and refuses changed/revoked authority without converting retention
 into release. Pending grants remain unavailable until durable native confirmation.
 An expired/consumed/changed review cannot bypass ordinary admission/Begin checks.
 
-Six focused real-process signed TLS regressions, actual root-mapped zsh → gateway →
+Seven focused real-process signed TLS regressions, actual root-mapped zsh → gateway →
 native protected archives, and shared web per-student settings tests pass locally.
 They cover empty pages/no partial exports, unsafe/private metadata, stdin,
 projection/output failure, lost preview/confirmation/source replies and restart,
@@ -161,4 +162,10 @@ then reached the unchanged five-per-minute instructor login limit; the other two
 passed in a fresh isolated fixture. Failure contexts/logs are retained. None of
 these fixture corrections required a product-policy change.
 
-Deployment and final verification remain pending. No new code is deployed yet.
+Installed read-only verification exposed a zero-row export defect: a nil slice
+was mistaken for an operation envelope, causing absent-field errors or a spurious
+JSONL row. The actual CLI/TLS regression reproduced it, then passed for all five
+formats with an explicit empty collection. Full CLI races, vet and actual gateway/
+zsh qualification were repeated. This CLI-only fix changes no web/native contract;
+the unchanged628 application/seven packaged-browser/image evidence remains valid.
+Current deployment status is in the linked activation record.

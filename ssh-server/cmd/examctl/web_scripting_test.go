@@ -400,6 +400,37 @@ func TestScriptingActualCLICompleteExportsAndNoPartialOutput(t *testing.T) {
 	}
 }
 
+func TestScriptingActualCLIEmptyFinalExportIsEmptyRowsNotEnvelope(t *testing.T) {
+	f := newScriptCLIFixture(t, func(r map[string]any) (any, string, bool) {
+		if r["operation"] != "grants.list" {
+			t.Error("unexpected operation")
+		}
+		return map[string]any{"grants": []any{}, "next": nil}, "", false
+	})
+	for _, format := range []string{"tsv", "csv", "table", "jsonl", "json"} {
+		args := []string{"grants", "list", "midterm", "--all", "--format", format, "--fields", "id,status,username"}
+		if format != "json" && format != "jsonl" {
+			args = append(args, "--no-header")
+		}
+		out, stderr, code := f.invoke(args...)
+		if code != 0 {
+			t.Fatalf("empty %s export refused: %d %s %s", format, code, out, stderr)
+		}
+		if format == "json" {
+			var result struct {
+				Result struct {
+					Grants []any `json:"grants"`
+				} `json:"result"`
+			}
+			if json.Unmarshal([]byte(out), &result) != nil || result.Result.Grants == nil || len(result.Result.Grants) != 0 {
+				t.Fatal("empty export lost its array", out)
+			}
+		} else if out != "" {
+			t.Fatal("empty export emitted an envelope as a row", format, out)
+		}
+	}
+}
+
 func TestScriptingActualCLIDurableReceiptLostReplyAndConfirmedRefusal(t *testing.T) {
 	var mu sync.Mutex
 	calls, confirmations := 0, 0
