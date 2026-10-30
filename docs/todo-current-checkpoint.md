@@ -1,5 +1,13 @@
 # Current TODO checkpoint
 
+October 30 sandbox setup COMPLETE/CONFIGURED. Exact existing sample starter is
+published, attested and selected; new practice is open through 23:59 tonight
+America/Chicago. Automatic grants remain five minutes/no webcam/four terminals.
+15 integration and 2 browser checks plus installed/signed verification PASS;
+all 174 native attempts and installation/configuration hashes unchanged, no
+restart. Next: instructor retries sandbox sign-in; no manual grant is needed.
+Window editing, receipts and rollback limits: sandbox-setup-2026-10-30.md.
+
 October30 starter-fallback correction COMPLETE, DEPLOYED and CONFIGURED.
 Students with no started midterm/recovery attempt receive the exact starter;
 positive started history still needs its latest protected saved work (no unsafe/

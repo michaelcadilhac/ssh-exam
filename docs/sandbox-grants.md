@@ -1,5 +1,11 @@
 # Unified sandbox practice grants (C14)
 
+Current production setup: the instructor explicitly requested completion on
+October 30. Existing sample files are now published/selected and practice has a
+finite window through tonight at 23:59 Chicago. Sign-in/preflight automatically
+issues eligible practice grants. See [current setup and operator workflow](sandbox-setup-2026-10-30.md).
+The dated implementation/qualification notes below describe earlier stages.
+
 Implemented/tested locally, October23,2026; not deployed. Evidence, retained
 failures, artifact identity and privileged limits are below.
 

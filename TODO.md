@@ -1,5 +1,12 @@
 # Deferred work
 
+October 30 sandbox setup COMPLETE/CONFIGURED under the instructor's explicit
+"Fix this then" instruction. Existing sample files are published/attested and
+selected with a finite practice window through tonight at 23:59 Chicago. Automatic
+five-minute/no-webcam grants need no manual enrollment or issuance. Installed
+verification, 15 integration checks and 2 browser checks PASS; no restart or
+existing native attempt change. See docs/sandbox-setup-2026-10-30.md.
+
 October30 starter-fallback correction COMPLETE/DEPLOYED. Instructor approved
 starter files for students with no started midterm/recovery attempt; script now
 prepares separate saved/starter reviews with effective midterm time/webcam,

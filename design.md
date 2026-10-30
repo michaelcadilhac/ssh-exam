@@ -1668,6 +1668,11 @@ readable terminal names; show missing webcam evidence only when webcam is requir
 
 ## Reserved sandbox exam
 
+October 30 production setup: existing sample files are now pinned to a verified
+immutable version and the instructor-requested practice window closes tonight
+at 23:59 America/Chicago. Automatic saved grants retain the fixed practice policy.
+See docs/sandbox-setup-2026-10-30.md; dated implementation notes below are historical.
+
 October22 C14 approved policy change: replace indefinite new admission with an
 explicit finite operator-configured Begin window. Within it, automatically issue
 repeatable five-minute/no-webcam grants with saved settings. The local window
