@@ -4,6 +4,79 @@ The instructor explicitly authorized implementation, commit, push and deployment
 The new workflow is documented in [examctl-scripting.md](examctl-scripting.md).
 No real student grants are part of this development/release task.
 
+## October 30 starter fallback and approved exact source
+
+The instructor explicitly requested starter files for students with no started
+midterm/recovery attempt and separately approved this exact existing staff source:
+`sys1-midterm-a`, SHA256
+`af76dd3a110aad9fc2277f93633f798fc80cee17157c2157293c11b2901c4341`.
+Native validation/import/verification found31files/80,994bytes in43entries. The
+legacy work/materials tree was not edited. Source install request
+`070a1617-3ac3-4c39-a860-a270e09e58be`; attestation request
+`55112f68-5462-4c14-874c-d6d3ec61e105`; source-selection request
+`07043ec5-9d8b-4a97-aece-2aff5ff27026`.
+
+Matched activation replaces only the root CLI, course script and guide:
+
+- CLI SHA6981448210c50ca676a4773bc8aeccf8369c4a029126df24e33f8aa39ee5a393
+  fixes irrelevant saved-work fields in template/empty --input and loads the
+  protected CLI transport for native templates sync. Web/native-agent protocols,
+  strict server validation and source/Begin enforcement remain unchanged.
+- Script SHAcabfd0c7311efbb8a701edbef09bb956378e3f27ed911b67a61b81dff8c40edc
+  partitions saved/starter groups, copies effective midterm time/webcam, freezes
+  their inputs/window/definition, supports missing-group review resume and retries
+  partial confirmations without reissuing. Old saved-only receipts remain scoped
+  to their original students; a failed old preparation needs a new directory.
+- Guide SHAa4a3f0cff49831eae5f591536f05b65b459aac1670a7ff4904189c2e97a76592.
+
+Final14/14 affected application integrations include the actual root-mapped
+zsh→CLI→signed gateway/native saved-source path for mixed, all-starter, all-saved,
+unstarted, legacy retry, changed/incomplete plan and strict bad-source/tie cases.
+The full CLI race suite **with EXAM_MANAGEMENT_USERNS=1** passes25.141s, including
+actual process tests for template/empty wire shape and native sync proxy loading.
+Earlier runs without that opt-in do not qualify those process cases. Typecheck,
+vet/static build and syntax checks pass. Unchanged web/browser/native-enforcement
+artifacts keep their prior qualification; no UI/app/schema replacement is involved.
+
+Production install verifies priors, new bytes/modes/ownership, help/syntax and a
+fresh authenticated definition read. Source synchronization verifies actual native
+bytes, then signed gateway acknowledgement; pinning uses the exact saved definition
+revision. Fresh installed projection e5091b0a-f6de-4b17-851a-6c183bd224d1 returns
+the expected template/hash plus unchanged5400-second default/optional webcam.
+Per-student overrides remain untouched and will be copied by prepare. All174
+existing native attempt objects match the pre-publication authority hash.
+
+The approved source update also materializes previously omitted collection
+defaults as128MiB/file and512MiB total. `examSchema`/`collectionSettings` already
+use those approved defaults for future grants. This is explicit legacy-definition
+normalization, not a rewrite of historical attempt limits. An initial raw-field
+preservation assertion caught it; read-only verification accepted only these two
+documented defaults and the requested template_version. No second update was sent.
+Final definition revision33d34be6d318fd6a013e67f54d31bb8e573ecbf23e8dbb5ac17c6d52e3280680.
+
+Failures preserved in `var/collection-tests/second-go-starters.irzl5snv`: original
+no-start refusal, strict server rejecting extra serialized work fields, actual
+proxy-entry RED, and a fixture uniqueness violation (fixed by modeling a tie
+across exams, never deleting history or weakening constraints). Initial native
+sync timed out because it ignored examctl.json; the exact SAME request/name/hash/
+reason succeeded after the CLI fix. The timeout note is reconstructed from the
+tool observation; original phase files were overwritten by retry and are not
+misrepresented as retained raw failure logs.
+
+Private csc-sys backups/receipts:
+
+- Files: `/var/backups/ssh-exam/second-go-starters-deploy-20261030.g07834ad`.
+- Approved source plan, original definition, requests, before/after evidence:
+  `/var/backups/ssh-exam/second-go-starters-source-20261030.ngvokke2`.
+
+No production grant/review was created, source clock consumed, service restarted,
+server/proxy file edited or student record rewritten. No push. Rollback restores
+only exact matching CLI/script/guide files; prefer forward repair because old CLI
+reintroduces both bugs. Normally retain the approved immutable catalog and source
+selection. Any deliberate future-default reversal needs a separately reviewed
+definition update, never DB/native-state restore, catalog deletion or modification
+of newer grants/deadlines/holds. Instructor prepare/review/apply remains separate.
+
 ## October 30 profile-copy example activation
 
 By new explicit instruction, only the installed `second-go.zsh` and matching

@@ -167,7 +167,13 @@ func scriptBatchInput(path string, users *[]string, body map[string]any) error {
 	if len(sources) > 0 {
 		body["saved_sources"] = sources
 	} else {
-		body["work"] = commonWork
+		// The strict workspace union accepts only fields for this source kind.
+		// grantWorkResult is a reply decoder and includes empty saved-work fields.
+		work := map[string]any{"kind": commonWork.Kind}
+		if commonWork.Kind == "template" {
+			work["name"], work["hash"] = commonWork.Name, commonWork.Hash
+		}
+		body["work"] = work
 	}
 	if len(overrides) > 0 {
 		body["student_settings"] = overrides

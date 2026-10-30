@@ -52,29 +52,44 @@ The revised repository script copies each student's **current effective midterm
 duration and webcam setting**. Explicit enrollment overrides win; empty overrides
 inherit the saved midterm definition defaults. These settings do not come from
 the recovery/source attempt. Pure zsh writes the resolved seconds/boolean values
-into `sources.csv` and supplies them through `examctl --input`; no JSON parser is
-needed. `defaults.tsv` and `students.tsv` retain the captured source settings.
+into `sources.csv` (saved work) and `starters.jsonl` (starter files), supplied
+through `examctl --input`. JSONL is generated with zsh, not parsed. `defaults.tsv`
+and `students.tsv` retain the captured source settings and exact starter version.
 
 It still exports both exams' attempt histories and selects each enrolled student's
-latest **started** attempt for saved files. A missing, ambiguous or unprotected
-latest source refuses review rather than falling back to older work. Review and
+latest **started** attempt for saved files. By explicit October30 policy, students
+with **no positive start timestamp** in either exam receive the pinned midterm
+starter template. No history and cancelled/unstarted preparations qualify; no
+old attempt, workspace or account hold is removed or reopened. Existing started
+history with an ambiguous, missing-checksum or unprotected latest source still
+refuses, with no starter/older-work fallback. Review and
 confirmation freshly validate owner/checksum and eligibility; the export is not
 an atomic snapshot. Enrollment edits before confirmation trigger the existing
 stale-review refusal. Existing prepared reviews keep their original settings;
 updating the script never rewrites or refreshes them.
 
-The profile-copy revision is installed on csc-sys by explicit instruction on
-October 30. It uses `prepare DIRECTORY BEGIN_FROM BEGIN_UNTIL`; the former shared
-minutes argument is removed. Existing review directories retain their original
-settings. Use a new directory for this second-take window.
+The matched script and CLI are deployed together. The CLI now serializes
+template/empty input using only its strict workspace-union fields; native
+`templates sync` also honors the same protected CLI proxy settings as other
+outbound management. No web/agent/schema change or service restart is needed.
+
+The midterm definition must select an exact installed/attested template version.
+The instructor approved the existing staff snapshot `sys1-midterm-a` version
+`af76dd3a110aad9fc2277f93633f798fc80cee17157c2157293c11b2901c4341`
+(31 files, 80,994 bytes). Source publication/selection is separately audited;
+the script never chooses mutable/latest content or changes the definition.
+
+Use `prepare DIRECTORY BEGIN_FROM BEGIN_UNTIL`, without a shared minutes argument.
+Use a **new directory**, including after the former `no started attempt` failure;
+preserve failed preparations and any existing review/confirmation receipts.
 
 ```zsh
 sudo zsh /usr/local/share/ssh-exam/examples/second-go.zsh prepare \
-  /root/midterm-second-go-20261030 \
+  /root/midterm-second-go-20261030-starters \
   "$(date --iso-8601=seconds)" '2026-11-06T23:42:00-06:00'
-# Inspect the printed settings/sources and private sources.csv before applying.
+# Inspect BOTH displayed groups, sources.csv and starters.jsonl before applying.
 sudo zsh /usr/local/share/ssh-exam/examples/second-go.zsh apply \
-  /root/midterm-second-go-20261030
+  /root/midterm-second-go-20261030-starters
 ```
 
 This is the requested window from command execution until Friday November 6,
@@ -88,15 +103,36 @@ that exact review and verifies each protected native source before making its
 grant available. Each new attempt receives its full allowance only at actual
 Begin; existing attempts, deadlines, holds and submissions stay unchanged.
 
-If a preview reply is lost, use `resume-review DIRECTORY`. If apply is interrupted
+Saved-work and starter groups use existing separate CLI reviews. `groups.tsv`
+records which exist; `window.tsv`, `plan.version` and `plan.sha256` retain/check
+the original settings/source selection. Saved reviews keep `review.receipt`,
+`issued.receipt`, `synchronization.receipt`; starter reviews use
+`starter-review.receipt` and `starter-issued.receipt`. Starter grants need no
+saved-archive pin, while every saved grant still requires native source-sync
+before availability. Neither kind consumes time or claims an account at issuance.
+
+If a preview reply is lost, use `resume-review DIRECTORY`. It retries an existing
+intent or creates a missing group's review from the original hashed plan; it
+does not re-export/reclassify students or adopt new defaults. Changed/incomplete
+plans refuse. If apply is interrupted
 or a source acknowledgement is lost, repeat `apply DIRECTORY`. Preserve the whole
 directory: its request IDs distinguish a retry from another grant issuance.
+The two groups are not one atomic issuance: failures can leave one confirmed or
+available and another pending. Inspect the receipts and repeat **apply in the
+same directory**; never use a new preparation to retry an unknown confirmation.
+Old saved-only review directories retain their original scope and arguments;
+upgrading never retroactively adds starter students to them. If an old preparation
+failed before creating a review, choose a new directory rather than deleting it.
 Confirmed policy refusals stay refused. Inspect `issue-show --from-receipt
 REVIEW --format table`, repair the cause, and deliberately create a new reviewed
 intent where appropriate. An expired review cannot be renewed by replaying it.
 For a partial source-sync refusal, inspect each grant/pin; do not blindly issue
 another batch. The original single-grant `source-show/source-sync GRANT --revision
 N` workflows remain available for deliberate repair and source retirement.
+For either group, `examctl web grants issue-show --from-receipt REVIEW --format
+table` inspects it; the matching `issue-cancel --from-receipt REVIEW --receipt
+CANCEL_RECEIPT` cancels only an unconfirmed review. Confirmed grants need their
+normal explicit revoke workflow and saved-source retention rules.
 
 ## Generic data and input contracts
 

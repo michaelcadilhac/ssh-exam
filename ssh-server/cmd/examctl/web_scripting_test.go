@@ -640,6 +640,26 @@ func TestScriptingPrivateReceiptsAndTransportConfiguration(t *testing.T) {
 	}
 }
 
+func TestTemplateSyncActualCLIHonorsProtectedProxyBeforeNativeWork(t *testing.T) {
+	f := newScriptCLIFixture(t, func(map[string]any) (any, string, bool) {
+		return nil, "unexpected network operation", false
+	})
+	proxy := filepath.Join(f.dir, "examctl.json")
+	if err := os.WriteFile(proxy, []byte(`{"https_proxy":"http://unsafe_proxy_secret@127.0.0.1:3128"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	words := []string{"--user", "--map-root-user", os.Args[0], "-test.run=^TestCLIEntry$", "--", "--config", f.config,
+		"templates", "sync", "midterm", strings.Repeat("a", 64), "--reason", "Synthetic protected proxy refusal"}
+	cmd := exec.CommandContext(ctx, "/usr/bin/unshare", words...)
+	cmd.Env = append(os.Environ(), "EXAMCTL_TEST_ENTRY=1", "GORACE=atexit_sleep_ms=0")
+	out, err := cmd.CombinedOutput()
+	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 1 || !strings.Contains(string(out), "examctl.json requires HTTP(S) proxy origin without credentials or paths") || strings.Contains(string(out), "unsafe_proxy_secret") {
+		t.Fatalf("native template sync ignored protected CLI transport or leaked it: %v %s", err, out)
+	}
+}
+
 func TestScriptingActualCLIStdinProjectionAndOutputFailure(t *testing.T) {
 	var mu sync.Mutex
 	calls := 0
@@ -654,8 +674,27 @@ func TestScriptingActualCLIStdinProjectionAndOutputFailure(t *testing.T) {
 		if r["operation"] != "grants.additional-preview" {
 			t.Error("unexpected operation")
 		}
-		if b["duration"] != float64(6000) || len(b["saved_sources"].([]any)) != 1 {
+		if b["duration"] != float64(6000) {
 			t.Error("stdin source/settings lost", b)
+		}
+		if work, ok := b["work"].(map[string]any); ok {
+			if _, saved := b["saved_sources"]; saved {
+				t.Error("shared starter also sent saved sources", b)
+			}
+			switch work["kind"] {
+			case "empty":
+				if len(work) != 1 {
+					t.Error("empty source leaked other source fields", work)
+				}
+			case "template":
+				if len(work) != 3 || work["name"] != "v1" || work["hash"] != strings.Repeat("b", 64) {
+					t.Error("template source does not match strict wire union", work)
+				}
+			default:
+				t.Error("unexpected starter", work)
+			}
+		} else if sources, ok := b["saved_sources"].([]any); !ok || len(sources) != 1 {
+			t.Error("saved source lost", b)
 		}
 		if rows, ok := b["student_settings"].([]any); ok {
 			row := rows[0].(map[string]any)
@@ -668,7 +707,9 @@ func TestScriptingActualCLIStdinProjectionAndOutputFailure(t *testing.T) {
 	args := []string{"grants", "additional-preview", "midterm", "--definition-revision", strings.Repeat("a", 64), "--template-version", strings.Repeat("b", 64), "--earliest", time.Now().Add(-time.Minute).Format(time.RFC3339), "--latest", time.Now().Add(time.Hour).Format(time.RFC3339), "--reason", "Synthetic stdin source review", "--format", "table"}
 	csvInput := "username,attempt,checksum,duration_seconds,require_webcam\nalice,22222222-1234-4234-8234-123456789abc," + strings.Repeat("a", 64) + ",6000,false\n"
 	jsonInput := `{"username":"alice","settings":{"duration":6000,"webcam":false},"work":{"kind":"saved","attempt":"22222222-1234-4234-8234-123456789abc","checksum":"` + strings.Repeat("a", 64) + `"}}`
-	for _, input := range []string{csvInput, jsonInput} {
+	templateInput := `{"username":"alice","settings":{"duration":6000,"webcam":false},"work":{"kind":"template","name":"v1","hash":"` + strings.Repeat("b", 64) + `"}}`
+	emptyInput := `{"username":"alice","settings":{"duration":6000,"webcam":false},"work":{"kind":"empty"}}`
+	for _, input := range []string{csvInput, jsonInput, templateInput, emptyInput} {
 		var out strings.Builder
 		stderr, code := f.streams(strings.NewReader(input), &out, append(append([]string{}, args...), "--input", "-")...)
 		if code != 1 || out.Len() != 0 || !strings.Contains(stderr, "synthetic exact input") {
@@ -686,7 +727,7 @@ func TestScriptingActualCLIStdinProjectionAndOutputFailure(t *testing.T) {
 		t.Fatal(code, stderr)
 	}
 	mu.Lock()
-	if calls != 3 {
+	if calls != 5 {
 		t.Error("malformed input reached authority", calls)
 	}
 	mu.Unlock()

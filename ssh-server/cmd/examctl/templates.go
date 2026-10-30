@@ -226,7 +226,13 @@ func templatesMain(args []string) int {
 		fmt.Fprintln(os.Stderr, "Template management requires real/effective root on the class server. Run sudo examctl with identical arguments; help needs no privilege.")
 		return 1
 	}
-	c, err := core.LoadConfig(*config)
+	// Only sync uses outbound HTTPS; honor the same protected CLI transport
+	// settings as web management while keeping native offline reads independent.
+	loadConfig := core.LoadConfig
+	if b.Action == "sync" {
+		loadConfig = scriptLoadConfig
+	}
+	c, err := loadConfig(*config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot load root configuration %q: %v; inspect --config FILE and templates help\n", *config, err)
 		return 1

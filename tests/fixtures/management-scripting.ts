@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 import { randomUUID } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { managementOperations } from "../../packages/protocol/management.js";
 
 // Real zsh -> compiled root-mapped CLI -> real signed gateway, real protected
@@ -45,10 +45,11 @@ export async function qualifyScriptingCLI(
     [target]: (await get("exams", ["show", target])).exam,
     [recovery]: (await get("exams", ["show", recovery])).exam,
   };
-  const users = ["shell01", "shell02"];
+  const users = ["shell01", "shell02"],
+    starterUsers = ["fresh01", "fresh02"];
   // These represent pre-grant historical enrollments, so no enrollment-time
   // grant is invented. Every source below actually has a native collected archive.
-  for (const [index, user] of users.entries())
+  for (const [index, user] of [...users, ...starterUsers].entries())
     f.current.store.db
       .prepare(
         "INSERT INTO enrollments(exam,username,uid,webcam,duration) VALUES(?,?,?,?,?)",
@@ -57,9 +58,22 @@ export async function qualifyScriptingCLI(
         target,
         user,
         29901 + index,
-        index === 0 ? 0 : null,
-        index === 0 ? 7200 : null,
+        index === 0 || index === 3 ? 0 : index === 2 ? 1 : null,
+        index === 0 ? 7200 : index === 2 ? 3600 : null,
       );
+  const unstarted = randomUUID();
+  f.current.store.db
+    .prepare(
+      "INSERT INTO attempts(id,exam,username,uid,state,settings,access_state,policy_state) VALUES(?,?,?,?,'CANCELLED_BEFORE_START',?,'RELEASED','NORMAL')",
+    )
+    .run(
+      unstarted,
+      target,
+      starterUsers[1],
+      29904,
+      JSON.stringify(definitions[target]),
+    );
+  const unstartedHistory = f.current.store.attempt(unstarted);
   const ended = Date.now() - 3600000;
   const authored = [
     {
@@ -151,6 +165,8 @@ export async function qualifyScriptingCLI(
     mode: "prepare" | "resume-review" | "apply",
     directory: string,
     extra: string[] = [],
+    selectedExam = target,
+    selectedSources = `${target} ${recovery}`,
   ) =>
     run(
       "/usr/bin/unshare",
@@ -169,8 +185,8 @@ export async function qualifyScriptingCLI(
           ...process.env,
           EXAMCTL_BIN: binary,
           EXAMCTL_CONFIG: nativeConfig,
-          EXAMCTL_EXAM: target,
-          EXAMCTL_SOURCE_EXAMS: `${target} ${recovery}`,
+          EXAMCTL_EXAM: selectedExam,
+          EXAMCTL_SOURCE_EXAMS: selectedSources,
         },
       },
     );
@@ -178,8 +194,25 @@ export async function qualifyScriptingCLI(
   loseSourceReply("preview");
   await expect(
     executeScript("prepare", directory, [earliest, latest]),
-  ).rejects.toMatchObject({ code: 1 });
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.not.stringContaining("no started attempt"),
+  });
   const preparedSelection = readFileSync(directory + "/sources.csv", "utf8");
+  await expect(executeScript("apply", directory)).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("Preparation incomplete"),
+  });
+  expect(
+    f.current.store.db
+      .prepare("SELECT count(*) n FROM attempt_grants WHERE exam=?")
+      .get(target),
+  ).toEqual({ n: 0 });
+  writeFileSync(directory + "/sources.csv", preparedSelection + "changed\n");
+  await expect(executeScript("resume-review", directory)).rejects.toMatchObject(
+    { code: 1, stderr: expect.stringContaining("Prepared inputs changed") },
+  );
+  writeFileSync(directory + "/sources.csv", preparedSelection);
   await f.restart();
   await executeScript("resume-review", directory);
   const selected = readFileSync(directory + "/sources.csv", "utf8");
@@ -191,6 +224,22 @@ export async function qualifyScriptingCLI(
     `${users[1]},${authored[2].id},${native.attempts[authored[2].id].checksum},${definitions[target].duration},${definitions[target].webcam}\n`,
   );
   expect(selected).not.toContain(authored[0].id);
+  const starters = readFileSync(directory + "/starters.jsonl", "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
+  expect(starters).toEqual([
+    {
+      username: starterUsers[0],
+      settings: { duration: 3600, webcam: true },
+      work: { kind: "template", name: "v1", hash: "a".repeat(64) },
+    },
+    {
+      username: starterUsers[1],
+      settings: { duration: definitions[target].duration, webcam: false },
+      work: { kind: "template", name: "v1", hash: "a".repeat(64) },
+    },
+  ]);
   expect(
     f.current.store.db
       .prepare("SELECT count(*) n FROM attempt_grants WHERE exam=?")
@@ -208,6 +257,28 @@ export async function qualifyScriptingCLI(
   expect(confirmed.outcome).toBe("confirmed");
   const issued = confirmed.result.result.issued;
   expect(issued).toHaveLength(2);
+  const starterIssued = JSON.parse(
+    readFileSync(directory + "/starter-issued.receipt", "utf8"),
+  ).result.result.issued;
+  expect(starterIssued).toHaveLength(2);
+  for (const row of starterIssued) {
+    const grant = await get("grants", ["show", row.grant]);
+    expect(grant).toMatchObject({
+      status: "AVAILABLE",
+      revision: 1,
+      work: { kind: "template", name: "v1", hash: "a".repeat(64) },
+      settings: {
+        duration:
+          row.username === starterUsers[0]
+            ? 3600
+            : definitions[target].duration,
+        webcam: row.username === starterUsers[0],
+        earliest: Date.parse(earliest),
+        latest: Date.parse(latest),
+      },
+    });
+    expect(grant.claims).toHaveLength(0);
+  }
   for (const row of issued) {
     const grant = await get("grants", ["show", row.grant]);
     expect(grant).toMatchObject({
@@ -228,7 +299,7 @@ export async function qualifyScriptingCLI(
     f.current.store.db
       .prepare("SELECT count(*) n FROM attempt_grants WHERE exam=?")
       .get(target),
-  ).toEqual({ n: 2 });
+  ).toEqual({ n: 4 });
   expect(
     f.current.store.db
       .prepare(
@@ -238,9 +309,182 @@ export async function qualifyScriptingCLI(
   ).toEqual({ n: 2 });
   for (const [index, row] of authored.entries())
     expect(f.current.store.attempt(row.id)).toEqual(history[index]);
+  expect(f.current.store.attempt(unstarted)).toEqual(unstartedHistory);
   expect(
     JSON.parse(readFileSync(configuration.state + "/state.json", "utf8")),
   ).toEqual(native);
+
+  // Old reviewed saved-only directories retain their exact intent. A new script
+  // must not retroactively add starter students to an already reviewed batch.
+  const legacyDirectory = f.dir + "/scripting-legacy-retry";
+  mkdirSync(legacyDirectory, { mode: 0o700 });
+  for (const name of [
+    "review.receipt",
+    "issued.receipt",
+    "synchronization.receipt",
+  ])
+    copyFileSync(directory + "/" + name, legacyDirectory + "/" + name);
+  await executeScript("resume-review", legacyDirectory);
+  await executeScript("apply", legacyDirectory);
+  expect(
+    f.current.store.db
+      .prepare("SELECT count(*) n FROM attempt_grants WHERE exam=?")
+      .get(target),
+  ).toEqual({ n: 4 });
+
+  // Empty saved-group and empty starter-group are real public workflows too.
+  for (const [selectedExam, selectedUsers] of [
+    ["scripting-only-starters", starterUsers],
+    ["scripting-only-saved", users],
+  ] as const) {
+    await get("exams", [
+      "create",
+      selectedExam,
+      "--template",
+      "v1",
+      "--template-version",
+      "a".repeat(64),
+      "--earliest",
+      earliest,
+      "--latest",
+      latest,
+    ]);
+    for (const user of selectedUsers) {
+      const enrollment = f.current.store.db
+        .prepare(
+          "SELECT uid,duration,webcam FROM enrollments WHERE exam=? AND username=?",
+        )
+        .get(target, user) as any;
+      f.current.store.db
+        .prepare(
+          "INSERT INTO enrollments(exam,username,uid,duration,webcam) VALUES(?,?,?,?,?)",
+        )
+        .run(
+          selectedExam,
+          user,
+          enrollment.uid,
+          enrollment.duration,
+          enrollment.webcam,
+        );
+    }
+    const onlyDirectory = f.dir + "/" + selectedExam;
+    const onlyKind = selectedUsers === starterUsers ? "starter" : "saved";
+    await executeScript(
+      "prepare",
+      onlyDirectory,
+      [earliest, latest],
+      selectedExam,
+    );
+    expect(readFileSync(onlyDirectory + "/groups.tsv", "utf8")).toBe(
+      onlyKind + "\n",
+    );
+    const pinsBefore = (
+      f.current.store.db
+        .prepare("SELECT count(*) n FROM grant_source_retentions")
+        .get() as any
+    ).n;
+    await executeScript("apply", onlyDirectory, [], selectedExam);
+    await executeScript("apply", onlyDirectory, [], selectedExam);
+    const onlyReceipt = JSON.parse(
+      readFileSync(
+        onlyDirectory +
+          (onlyKind === "starter"
+            ? "/starter-issued.receipt"
+            : "/issued.receipt"),
+        "utf8",
+      ),
+    );
+    expect(onlyReceipt.result.result.issued).toHaveLength(2);
+    for (const item of onlyReceipt.result.result.issued) {
+      const grant = await get("grants", ["show", item.grant]);
+      expect(grant.status).toBe("AVAILABLE");
+      expect(grant.work.kind).toBe(
+        onlyKind === "starter" ? "template" : "saved",
+      );
+      expect(grant.claims).toHaveLength(0);
+    }
+    expect(
+      f.current.store.db
+        .prepare("SELECT count(*) n FROM attempt_grants WHERE exam=?")
+        .get(selectedExam),
+    ).toEqual({ n: 2 });
+    expect(
+      (
+        f.current.store.db
+          .prepare("SELECT count(*) n FROM grant_source_retentions")
+          .get() as any
+      ).n,
+    ).toBe(pinsBefore + (onlyKind === "saved" ? 2 : 0));
+  }
+
+  // A real started-but-unprotected source refuses instead of obtaining starter
+  // files; a later equal-time ambiguity also refuses before any grant review.
+  const strictExam = "scripting-strict-source",
+    strictUser = "strict01",
+    strictStart = ended - 1000;
+  await get("exams", [
+    "create",
+    strictExam,
+    "--template",
+    "v1",
+    "--template-version",
+    "a".repeat(64),
+    "--earliest",
+    earliest,
+    "--latest",
+    latest,
+  ]);
+  f.current.store.db
+    .prepare("INSERT INTO enrollments(exam,username,uid) VALUES(?,?,?)")
+    .run(strictExam, strictUser, 29905);
+  const insertStrict = (checksum: string, sourceExam = strictExam) =>
+    f.current.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended,protected,checksum,access_state,policy_state) VALUES(?,?,?,?,'COMPLETED',?,?,?,?,?,0,?,'RELEASED','NORMAL')",
+      )
+      .run(
+        randomUUID(),
+        sourceExam,
+        strictUser,
+        29905,
+        JSON.stringify({ ...definitions[target], id: sourceExam }),
+        strictStart,
+        ended,
+        ended,
+        ended,
+        checksum,
+      );
+  insertStrict("");
+  await expect(
+    executeScript(
+      "prepare",
+      f.dir + "/strict-missing-source",
+      [earliest, latest],
+      strictExam,
+      strictExam,
+    ),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("no starter/older-work fallback"),
+  });
+  insertStrict("e".repeat(64), recovery);
+  await expect(
+    executeScript(
+      "prepare",
+      f.dir + "/strict-tie",
+      [earliest, latest],
+      strictExam,
+      `${strictExam} ${recovery}`,
+    ),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("ambiguous latest attempt"),
+  });
+  expect(
+    f.current.store.db
+      .prepare("SELECT count(*) n FROM attempt_grants WHERE exam=?")
+      .get(strictExam),
+  ).toEqual({ n: 0 });
 
   // The same shared review accepts explicit per-student accommodations without
   // mutating defaults or old attempt settings. CSV is directly shell-friendly.

@@ -1,5 +1,43 @@
 # Current TODO checkpoint
 
+October30 starter-fallback correction COMPLETE, DEPLOYED and CONFIGURED.
+Students with no started midterm/recovery attempt receive the exact starter;
+positive started history still needs its latest protected saved work (no unsafe/
+ambiguous-source fallback). Same effective midterm duration/webcam, finite Begin
+window, account/deadline/history protections. Script uses separate existing saved/
+starter reviews under one hashed plan, no new backend states. Resumable mixed,
+all-starter/all-saved, cancelled-unstarted, legacy retry, changed/incomplete plan
+and invalid latest/tie workflows pass through actual root CLI/TLS/native sources.
+CLI fixes strict non-saved input fields and protected proxy loading for native
+sync. No web/app/native-agent or execution-protocol change or service restart.
+
+Final14/14 affected integrations, full CLI races WITH root opt-in25.141s (including
+real input/proxy process regressions), typecheck/vet/build/syntax PASS. Installed
+help/hash/modes and fresh signed definition projection PASS. No production review/
+grant issued, clock consumed, student record rewritten or push. Ten dirty PNGs
+unchanged. User explicitly APPROVED exact staff starter snapshot af76dd3a…;
+31files/80994bytes installed, verified, attested and pinned for future midterm
+permissions. Time/webcam unchanged; legacy definition materialized already-approved
+128/512MiB future defaults. All174 native attempt objects hash-identical. Original
+source-sync timeout retried SAME55112f68… after CLI proxy fix; source pin confirmed
+once07043ec5…; raw-field assertion normalized only documented default fields.
+
+Installed CLI69814482… / scriptcabfd0c7… / guidea4a3f0cf…; exact receipts/logs:
+var/collection-tests/second-go-starters.irzl5snv/final-receipt.json. Private backups:
+/var/backups/ssh-exam/second-go-starters-deploy-20261030.g07834ad and
+/var/backups/ssh-exam/second-go-starters-source-20261030.ngvokke2.
+Definition revision33d34be6…; template hashaf76dd3a110aad9fc2277f93633f798fc80cee17157c2157293c11b2901c4341.
+Rollback only exact matching executable/script/guide files; normally keep approved
+source/catalog. No older DB/native-state restore, catalog deletion or changes to
+newer grants/holds. Operator workflow: docs/examctl-scripting.md. Detailed scope,
+retained failures and normalization proof: docs/examctl-scripting-deployment.md.
+
+No remaining decision/blocker or deployment action. Instructor must prepare in a
+NEW directory (e.g. /root/midterm-second-go-20261030-starters), inspect both groups,
+then apply. Window can start at command execution and end2026-11-06T23:42:00-06:00
+(latest Begin, not absolute finish). Old failed/reviewed directories remain intact;
+unknown/partial confirmations retry SAME directory and receipts, never reissue.
+
 October30 second-go profile-copy script DEPLOYED by explicit instruction. Exact
 095c1cf/SHA5c96bc7c… replaces the earlier shared-minutes copy on csc-sys, alongside
 the matching guide. Syntax/signature/owner/mode/hash and fresh14/14 affected local

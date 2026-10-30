@@ -1,5 +1,20 @@
 # Deferred work
 
+October30 starter-fallback correction COMPLETE/DEPLOYED. Instructor approved
+starter files for students with no started midterm/recovery attempt; script now
+prepares separate saved/starter reviews with effective midterm time/webcam,
+frozen plan checks and resumable partial outcomes. Started unsafe/ambiguous sources
+still refuse, with no starter/older fallback. Matched CLI fixes strict template/
+empty --input fields and native templates-sync protected proxy loading. Final14
+affected real CLI/TLS integrations, full opted-in CLI races25.141s, typecheck,
+vet/build/syntax and installed authenticated read/hash checks PASS. Approved
+sys1-midterm-a snapshot af76dd3a… (31files/80994bytes) installed, attested and
+pinned for future midterm grants. Time/webcam unchanged; existing128/512MiB future
+defaults materialized explicitly. All174 native histories unchanged. No grants,
+service restart, server/proxy configuration changes or push. Receipts/backups:
+docs/examctl-scripting-deployment.md and var/collection-tests/second-go-starters.irzl5snv.
+Use a NEW preparation directory; prior failed/reviewed directories are preserved.
+
 October30 second-go profile-copy deployment COMPLETE under new explicit
 instruction. Installed exact095c1cf script/SHA5c96bc7c… and matching operator
 guide on csc-sys; per-student effective midterm time/webcam and latest midterm/

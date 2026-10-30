@@ -88,6 +88,20 @@ not the CLI. No execution
 wire/schema change or account/clock/hold bypass is introduced. Local qualification
 and deployment status: docs/examctl-scripting.md.
 
+October30 intentional second-take policy: an enrollment with no started attempt
+in midterm/recovery receives the exact pinned starter template, with its same
+effective midterm duration/webcam and the explicitly chosen finite Begin window.
+Cancelled/unstarted histories remain intact. Started history still requires its
+latest protected saved source; ambiguous/damaged/missing-checksum sources never
+fall back to starters. Separate existing saved/template reviews share one frozen,
+hashed local plan; retries preserve original intents across partial outcomes.
+No automatic grant issuance, clock consumption, account release or rewriting of
+old reviews is added. The instructor separately approved publication/selection of
+the existing sys1-midterm-a starter snapshot SHAaf76dd3a… for future grants.
+Narrow CLI fixes remove irrelevant saved-source fields from template/empty input
+and load protected outbound proxy settings for native templates sync. Web and
+native execution protocols are unchanged.
+
 The separate local operator example examples/grade-midterm.zsh uses these complete
 exports plus existing audited native protected-export to select each student's
 latest started midterm/recovery submission. By explicit instructor correction it
