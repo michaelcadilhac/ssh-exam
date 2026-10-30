@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -54,7 +55,7 @@ function hash(path: string) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-test("offline grader help is discoverable without SSH or Docker", () => {
+test("offline grader help is discoverable without SSH or sandbox tools", () => {
   const result = spawnSync("/usr/bin/zsh", [script, "--help"], {
     encoding: "utf8",
   });
@@ -111,30 +112,49 @@ test("archive validator strips submitted privileges and excludes collection meta
   expect(existsSync(join(output, "MANIFEST.json"))).toBe(false);
 });
 
-test.skipIf(process.env.EXAM_GRADING_DOCKER !== "1")(
-  "actual zsh workflow selects latest, compiles in isolated containers, writes CSV/zeroes/errors and proves cleanup",
+test.skipIf(process.env.EXAM_GRADING_BWRAP !== "1")(
+  "actual zsh workflow grades in bounded bwrap namespaces and cancels active or delayed jobs",
   async () => {
-    const dir = mkdtempSync(join(tmpdir(), "offline-grading-"));
+    const dir = mkdtempSync(join(tmpdir(), "offline-grading-bwrap-"));
     chmodSync(dir, 0o700);
     const run = join(dir, "private run");
     const grade = `#!/bin/sh
-set -u
+set -eu
+python3 - <<'CHECK'
+import os,pathlib
+assert os.getuid()!=0
+status=pathlib.Path('/proc/self/status').read_text()
+assert 'NoNewPrivs:\\t1' in status
+assert 'CapEff:\\t0000000000000000' in status
+assert not pathlib.Path('${dir}/host-secret').exists()
+assert not pathlib.Path('/home/micha').exists()
+assert not pathlib.Path('/etc/shadow').exists()
+assert not pathlib.Path('/sys/fs/cgroup').exists()
+try:
+ pathlib.Path('/materials/grade').write_text('bad')
+ raise RuntimeError('materials writable')
+except OSError:pass
+print('NETNS: '+os.readlink('/proc/self/ns/net'))
+print('SANDBOX: nonroot, empty capabilities, nnp, private files, readonly materials')
+CHECK
 points=0
 if [ -f /work/answer.c ] && gcc -std=gnu2x /work/answer.c -o /tmp/answer >/tmp/build.log 2>&1; then
  if /tmp/answer; then points=20; fi
 fi
 printf 'TOTAL: %s/100\\n' "$points"
-echo 'Checks only: synthetic public grader'
 `;
+    writeFileSync(join(dir, "host-secret"), "private host sentinel", {
+      mode: 0o600,
+    });
     const materials = join(dir, "materials.tar.gz");
     pack(materials, {
       grade,
-      "scoring.tsv": "A1\ttest\t100\town\t1\tSynthetic\n",
+      "scoring.tsv": "A1\\ttest\\t100\\town\\t1\\tSynthetic\\n",
     });
     const attempts: (string | number | null)[][] = [];
     const exports: Record<string, string | null> = {};
-    const good = "int main(void) { return 0; }";
-    const bad = "int main(void) { return 1; }";
+    const good = "int main(void) { return 0; }",
+      bad = "int main(void) { return 1; }";
     const add = (
       user: string,
       exam: string,
@@ -162,12 +182,12 @@ echo 'Checks only: synthetic public grader'
       exports[id] = special === "export" ? null : archive;
       return id;
     };
-    const aliceNew = add("alice", "midterm-recovery", 2000, good);
-    const aliceOld = add("alice", "midterm", 1000, bad);
-    const bobNew = add("bob", "midterm", 3000, bad);
-    const bobOld = add("bob", "midterm-recovery", 1000, good);
+    const aliceNew = add("alice", "midterm-recovery", 2000, good),
+      aliceOld = add("alice", "midterm", 1000, bad);
+    const bobNew = add("bob", "midterm", 3000, bad),
+      bobOld = add("bob", "midterm-recovery", 1000, good);
     const bobPreflight = add("bob", "midterm-recovery", 0, good, "active");
-    attempts.at(-1)![2] = null; // Real unstarted exports use an empty TSV start.
+    attempts.at(-1)![2] = null;
     add("charlie", "midterm", 0, good, "active");
     add("dave", "midterm", 1000, good, "export");
     add("erin", "midterm-recovery", 5000, good, "active");
@@ -183,12 +203,14 @@ echo 'Checks only: synthetic public grader'
       1000,
       '#include <stdio.h>\nint main(void) { puts("TOTAL: 100/100"); return 0; }',
     );
-    const fixture = join(dir, "fixture.json");
-    const trace = join(dir, "ssh-trace.jsonl");
-    writeFileSync(
-      fixture,
-      JSON.stringify({ attempts, exports, materials, trace }),
-    );
+    const fixture = join(dir, "fixture.json"),
+      trace = join(dir, "ssh-trace.jsonl");
+    const saveFixture = (rows = attempts) =>
+      writeFileSync(
+        fixture,
+        JSON.stringify({ attempts: rows, exports, materials, trace }),
+      );
+    saveFixture();
     const ssh = join(dir, "ssh");
     writeFileSync(
       ssh,
@@ -215,40 +237,33 @@ else:raise RuntimeError('Unexpected SSH command')
 `,
       { mode: 0o700 },
     );
-    const docker = join(dir, "docker");
-    const sandboxAudit = join(dir, "sandbox.jsonl");
+    const systemd = join(dir, "systemd-run");
     writeFileSync(
-      docker,
+      systemd,
       `#!/usr/bin/env python3
-import json,os,subprocess,sys,time
+import json,os,sys,time
 from pathlib import Path
+with open(os.environ['EXAM_GRADE_SYSTEMD_TRACE'],'a') as f:f.write(json.dumps(sys.argv[1:])+'\\n')
+control=os.environ.get('EXAM_GRADE_BLOCK_START')
+if control:
+ Path(control+'.ready').write_text('before StartTransientUnit')
+ until=time.monotonic()+10
+ while not Path(control+'.release').exists():
+  if time.monotonic()>until:sys.exit(71)
+  time.sleep(.02)
 a=sys.argv[1:]
-action=a[2:] if a[:1]==['--host'] else a
-with open(os.environ['EXAM_GRADE_ENGINE_TRACE'],'a') as f:f.write(json.dumps(action)+'\\n')
-if action[:2]==['container','create']:
- control=os.environ.get('EXAM_GRADE_BLOCK_CREATE')
- if control:
-  Path(control+'.ready').write_text('registered, before Docker create')
-  until=time.monotonic()+10
-  while not Path(control+'.release').exists():
-   if time.monotonic()>until:sys.exit(71)
-   time.sleep(.02)
- r=subprocess.run(['/usr/bin/docker',*a],capture_output=True);sys.stderr.buffer.write(r.stderr)
- if r.returncode:sys.exit(r.returncode)
- cid=r.stdout.decode().strip();v=json.loads(subprocess.check_output(['/usr/bin/docker','container','inspect',cid]))[0]
- with open(os.environ['EXAM_GRADE_SANDBOX_AUDIT'],'a') as f:f.write(json.dumps(v)+'\\n')
- sys.stdout.buffer.write(r.stdout)
-else:os.execv('/usr/bin/docker',['docker',*a])
+if os.environ.get('EXAM_GRADE_BAD_BOUND'):
+ a=['--property=MemoryMax=128M' if v=='--property=MemoryMax=1G' else v for v in a]
+os.execv('/usr/bin/systemd-run',['systemd-run',*a])
 `,
       { mode: 0o700 },
     );
     const env = {
       ...process.env,
       EXAM_GRADE_SSH_BIN: ssh,
-      EXAM_GRADE_DOCKER_BIN: docker,
+      EXAM_GRADE_SYSTEMD_RUN_BIN: systemd,
       EXAM_GRADE_FIXTURE: fixture,
-      EXAM_GRADE_SANDBOX_AUDIT: sandboxAudit,
-      EXAM_GRADE_ENGINE_TRACE: join(dir, "engine-commands.jsonl"),
+      EXAM_GRADE_SYSTEMD_TRACE: join(dir, "systemd-trace.jsonl"),
       EXAM_GRADE_GRADER_SHA256: createHash("sha256")
         .update(grade)
         .digest("hex"),
@@ -258,12 +273,7 @@ else:os.execv('/usr/bin/docker',['docker',*a])
     const result = spawnSync(
       "/usr/bin/zsh",
       [script, "run", "synthetic-class", run],
-      {
-        env,
-        encoding: "utf8",
-        timeout: 100000,
-        maxBuffer: 1024 * 1024,
-      },
+      { env, encoding: "utf8", timeout: 100000 },
     );
     expect(result.status, result.stdout + result.stderr).toBe(1);
     expect(readFileSync(join(run, "grades.csv"), "utf8")).toBe(
@@ -286,141 +296,221 @@ else:os.execv('/usr/bin/docker',['docker',*a])
     const fetched = requests.filter((r) => r[3] === "export").map((r) => r[4]);
     expect(fetched).toContain(aliceNew);
     expect(fetched).toContain(bobNew);
-    expect(fetched).not.toContain(aliceOld);
-    expect(fetched).not.toContain(bobOld);
-    expect(fetched).not.toContain(bobPreflight);
-    const containers = readFileSync(sandboxAudit, "utf8")
-      .trim()
-      .split("\n")
-      .map((r) => JSON.parse(r));
-    expect(containers.length).toBeGreaterThan(3);
-    for (const c of containers) {
-      expect(c.Config.User).toBe("65534:65534");
-      expect(c.HostConfig.NetworkMode).toBe("none");
-      expect(c.HostConfig.ReadonlyRootfs).toBe(true);
-      expect(c.HostConfig.Privileged).toBe(false);
-      expect(c.HostConfig.CapDrop).toEqual(["ALL"]);
-      expect(c.HostConfig.SecurityOpt).toContain("no-new-privileges");
-      expect(c.HostConfig.PidsLimit).toBe(128);
-      expect(c.HostConfig.Memory).toBe(1024 ** 3);
-      expect(c.HostConfig.MemorySwap).toBe(c.HostConfig.Memory);
-      expect(
-        c.Mounts.filter((m: any) => m.Type === "bind").every(
-          (m: any) => m.RW === false,
-        ),
-      ).toBe(true);
-      expect(Object.keys(c.HostConfig.Tmpfs).sort()).toEqual(["/tmp", "/work"]);
-    }
+    for (const old of [aliceOld, bobOld, bobPreflight])
+      expect(fetched).not.toContain(old);
     expect(existsSync(join(run, "jobs/escape"))).toBe(false);
+    const logs = readFileSync(join(run, "jobs/alice/grader.log"), "utf8");
+    expect(logs).toContain("SANDBOX: nonroot");
+    expect(logs).toContain("Verified grading cgroup: memory=1GiB");
+    expect(logs).not.toContain("NETNS: " + readlinkSync("/proc/self/ns/net"));
     expect(
-      readFileSync(join(run, "jobs/iris/engine-state.txt"), "utf8"),
-    ).toContain("exited 124 false");
+      readFileSync(join(run, "jobs/iris/sandbox-exit.txt"), "utf8").trim(),
+    ).not.toBe("0");
+    expect(
+      readFileSync(join(run, "jobs/iris/unit-state.txt"), "utf8"),
+    ).toContain("Result=timeout");
     for (const user of ["alice", "bob", "hank", "iris", "jack"])
       expect(
         readFileSync(join(run, "jobs", user, "cleanup.receipt"), "utf8"),
-      ).toContain("absent");
-    const check = spawnSync(
-      "/usr/bin/docker",
-      [
-        "container",
-        "ls",
-        "--all",
-        "--filter",
-        `label=ssh-exam.offline-run=${readFileSync(join(run, "run-id"), "utf8").trim()}`,
-        "--format",
-        "{{.ID}}",
-      ],
-      { encoding: "utf8" },
-    );
-    expect(check.status).toBe(0);
-    expect(check.stdout).toBe("");
+      ).toContain("cgroup empty or removed");
+    const commands = readFileSync(env.EXAM_GRADE_SYSTEMD_TRACE, "utf8")
+      .trim()
+      .split("\n")
+      .map((r) => JSON.parse(r));
+    for (const command of commands) {
+      for (const prop of [
+        "MemoryMax=1G",
+        "MemorySwapMax=0",
+        "TasksMax=128",
+        "CPUQuota=100%",
+        "KillMode=control-group",
+        "NoNewPrivileges=yes",
+      ])
+        expect(command).toContain("--property=" + prop);
+      expect(command).toContain("--unshare-user");
+      expect(command).toContain("--disable-userns");
+    }
 
-    // Cancellation acts on the exact live grading namespace, not just its
-    // client process. Preserve the preceding CSV and prove the owned PID dies.
-    const cancelRun = join(dir, "cancel run");
+    // Exercise local class-server invocation without SSH, through a synthetic
+    // examctl executable. The sandbox and compiler remain real.
+    const localMaterials = join(dir, "local-materials");
+    mkdirSync(localMaterials);
+    for (const path of ["include", "tests"])
+      mkdirSync(join(localMaterials, path));
+    writeFileSync(join(localMaterials, "grade"), grade);
+    writeFileSync(join(localMaterials, "scoring.tsv"), "synthetic");
+    const ec = join(dir, "examctl");
     writeFileSync(
-      fixture,
-      JSON.stringify({
-        attempts: attempts.filter((row) => row[0] === "iris"),
-        exports,
-        materials,
-        trace,
-      }),
+      ec,
+      `#!/usr/bin/env python3
+import os,sys,shlex
+os.execv(${JSON.stringify(ssh)},[${JSON.stringify(ssh)},shlex.join(['sudo','-n','/usr/local/sbin/examctl',*sys.argv[1:]])])
+`,
+      { mode: 0o700 },
     );
-    const cancelEnv = { ...env, EXAM_GRADE_SECONDS: "20" };
+    const localRun = join(dir, "local run");
+    const localEnv = {
+      ...env,
+      EXAM_GRADE_EXAMCTL_BIN: ec,
+      EXAM_GRADE_MATERIALS: localMaterials,
+    };
+    roots.push({ run: localRun, env: localEnv });
+    saveFixture(attempts.filter((r) => r[0] === "alice"));
+    const local = spawnSync(
+      "/usr/bin/zsh",
+      [script, "run", "--local", localRun],
+      { env: localEnv, encoding: "utf8", timeout: 20000 },
+    );
+    expect(local.status, local.stdout + local.stderr).toBe(0);
+    expect(readFileSync(join(localRun, "grades.csv"), "utf8")).toContain(
+      "alice,20",
+    );
+
+    // A real kernel limit differing from the requested properties must refuse
+    // before the supplied grader or any submitted program is executed.
+    const badRun = join(dir, "wrong kernel bound");
+    const badEnv = { ...env, EXAM_GRADE_BAD_BOUND: "1" };
+    roots.push({ run: badRun, env: badEnv });
+    const badLimit = spawnSync(
+      "/usr/bin/zsh",
+      [script, "run", "synthetic-class", badRun],
+      {
+        env: badEnv,
+        encoding: "utf8",
+        timeout: 20000,
+      },
+    );
+    expect(badLimit.status, badLimit.stdout + badLimit.stderr).toBe(1);
+    expect(readFileSync(join(badRun, "grades.csv"), "utf8")).toContain(
+      "alice,\n",
+    );
+    const badLog = readFileSync(join(badRun, "jobs/alice/grader.log"), "utf8");
+    expect(badLog).toContain("kernel bound mismatch: memory.max");
+    expect(badLog).not.toContain("SANDBOX:");
+    expect(badLog).not.toContain("TOTAL:");
+
+    const mode = process.getuid!() === 0 ? "--system" : "--user";
+    function status(unit: string) {
+      const result = spawnSync(
+        "/usr/bin/systemctl",
+        [
+          mode,
+          "show",
+          unit,
+          "--no-pager",
+          "--property=ActiveState,MainPID,ControlGroup,MemoryMax,MemorySwapMax,TasksMax,CPUQuotaPerSecUSec",
+        ],
+        { encoding: "utf8", timeout: 5000 },
+      );
+      expect(result.status, result.stderr).toBe(0);
+      return Object.fromEntries(
+        result.stdout
+          .trim()
+          .split("\n")
+          .map((line) => line.split("=")),
+      );
+    }
+    const ctl = join(dir, "systemctl");
+    const stopRace = join(dir, "stop-race.txt");
+    writeFileSync(
+      ctl,
+      `#!/usr/bin/env python3
+import os,subprocess,sys,time
+from pathlib import Path
+a=sys.argv[1:]
+if len(a)>=3 and a[1]=='stop':
+ assert a[2].startswith('exam-grade-')
+ subprocess.run(['/usr/bin/systemctl',*a],capture_output=True)
+ subprocess.run(['/usr/bin/systemctl',a[0],'reset-failed',a[2]],capture_output=True)
+ until=time.monotonic()+5
+ while time.monotonic()<until:
+  state=subprocess.check_output(['/usr/bin/systemctl',a[0],'show',a[2],'--property=LoadState','--value'],text=True).strip()
+  if state=='not-found':break
+  time.sleep(.01)
+ else:raise RuntimeError('peer cleanup did not unload exact unit')
+ result=subprocess.run(['/usr/bin/systemctl',*a],capture_output=True)
+ assert result.returncode!=0 and b'not loaded' in result.stderr
+ Path(${JSON.stringify(stopRace)}).write_text(result.stderr.decode())
+ sys.stderr.buffer.write(result.stderr);sys.exit(result.returncode)
+os.execv('/usr/bin/systemctl',['systemctl',*a])
+`,
+      { mode: 0o700 },
+    );
+    const cancelRun = join(dir, "cancel run"),
+      cancelEnv = {
+        ...env,
+        EXAM_GRADE_SECONDS: "20",
+        EXAM_GRADE_SYSTEMCTL_BIN: ctl,
+      };
     roots.push({ run: cancelRun, env: cancelEnv });
+    saveFixture(attempts.filter((row) => row[0] === "iris"));
     const child = spawn(
       "/usr/bin/zsh",
       [script, "run", "synthetic-class", cancelRun],
       { env: cancelEnv },
     );
-    let cancelOutput = "";
-    child.stdout.on("data", (chunk) => (cancelOutput += chunk.toString()));
-    child.stderr.on("data", (chunk) => (cancelOutput += chunk.toString()));
+    let output = "";
+    child.stdout.on("data", (c) => (output += c));
+    child.stderr.on("data", (c) => (output += c));
     const closed = new Promise<number | null>((resolve) =>
       child.on("close", resolve),
     );
-    const namePath = join(cancelRun, "jobs/iris/container.name");
-    let running: any;
-    const until = Date.now() + 15000;
-    while (Date.now() < until) {
-      if (existsSync(namePath)) {
-        const name = readFileSync(namePath, "utf8").trim();
-        const inspect = spawnSync(
-          "/usr/bin/docker",
-          ["container", "inspect", name],
-          { encoding: "utf8", timeout: 5000 },
-        );
-        if (inspect.status === 0) {
-          const current = JSON.parse(inspect.stdout)[0];
-          if (current.State.Running) {
-            running = current;
-            break;
+    const unitPath = join(cancelRun, "jobs/iris/unit.name");
+    let live: Record<string, string> | undefined;
+    await expect
+      .poll(
+        () => {
+          if (!existsSync(unitPath)) return false;
+          const state = status(readFileSync(unitPath, "utf8").trim());
+          if (state.ActiveState === "active" && state.MainPID !== "0") {
+            live = state;
+            return true;
           }
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    expect(
-      running,
-      "grading worker ended before running checkpoint: " + cancelOutput,
-    ).toBeTruthy();
-    const pidStat = `/proc/${running.State.Pid}/stat`;
-    const identity = readFileSync(pidStat, "utf8")
-      .split(")")[1]
-      .trim()
-      .split(/\s+/)[19];
+          return false;
+        },
+        { timeout: 15000 },
+      )
+      .toBe(true);
+    expect(live!.MemoryMax).toBe(String(1024 ** 3));
+    expect(live!.MemorySwapMax).toBe("0");
+    expect(live!.TasksMax).toBe("128");
+    const group = join("/sys/fs/cgroup", live!.ControlGroup);
+    expect(readFileSync(join(group, "memory.max"), "utf8").trim()).toBe(
+      String(1024 ** 3),
+    );
+    expect(readFileSync(join(group, "pids.max"), "utf8").trim()).toBe("128");
+    const pidStat = "/proc/" + live!.MainPID + "/stat";
+    const started = (path: string) =>
+      readFileSync(path, "utf8").split(")").at(-1)!.trim().split(/\s+/)[19];
+    const identity = started(pidStat);
     const cleanup = spawnSync("/usr/bin/zsh", [script, "cleanup", cancelRun], {
       env: cancelEnv,
       encoding: "utf8",
       timeout: 15000,
     });
     expect(cleanup.status, cleanup.stdout + cleanup.stderr).toBe(0);
+    expect(readFileSync(stopRace, "utf8")).toContain("not loaded");
     const outcome = await Promise.race([
       closed,
       new Promise((_, reject) =>
         setTimeout(
-          () => reject(Error("controller did not observe cancelled namespace")),
+          () => reject(Error("controller did not cancel: " + output)),
           10000,
         ),
       ),
     ]);
-    expect(outcome, cancelOutput).toBe(1);
-    if (existsSync(pidStat))
-      expect(
-        readFileSync(pidStat, "utf8").split(")")[1].trim().split(/\s+/)[19],
-      ).not.toBe(identity);
+    expect(outcome, output).toBe(1);
+    if (existsSync(pidStat)) expect(started(pidStat)).not.toBe(identity);
+    if (existsSync(join(group, "cgroup.events")))
+      expect(readFileSync(join(group, "cgroup.events"), "utf8")).toContain(
+        "populated 0",
+      );
     expect(existsSync(join(cancelRun, "grades.csv"))).toBe(false);
-    expect(
-      readFileSync(join(cancelRun, "jobs/iris/cleanup.receipt"), "utf8"),
-    ).toContain("absent");
     expect(readFileSync(join(run, "grades.csv"), "utf8")).toContain("alice,20");
 
-    // Force cancellation while create is blocked: absence at the cleanup RPC
-    // is insufficient, so the controller must refuse its later start as well.
     const blockedRun = join(dir, "blocked run"),
-      control = join(dir, "create-control");
-    const blockedEnv = { ...cancelEnv, EXAM_GRADE_BLOCK_CREATE: control };
+      control = join(dir, "start-control");
+    const blockedEnv = { ...cancelEnv, EXAM_GRADE_BLOCK_START: control };
     roots.push({ run: blockedRun, env: blockedEnv });
     const blocked = spawn(
       "/usr/bin/zsh",
@@ -428,52 +518,82 @@ else:os.execv('/usr/bin/docker',['docker',*a])
       { env: blockedEnv },
     );
     let blockedOutput = "";
-    blocked.stdout.on("data", (chunk) => (blockedOutput += chunk.toString()));
-    blocked.stderr.on("data", (chunk) => (blockedOutput += chunk.toString()));
+    blocked.stdout.on("data", (c) => (blockedOutput += c));
+    blocked.stderr.on("data", (c) => (blockedOutput += c));
     const blockedClosed = new Promise<number | null>((resolve) =>
       blocked.on("close", resolve),
     );
     await expect
       .poll(() => existsSync(control + ".ready"), { timeout: 15000 })
       .toBe(true);
-    const blockedName = readFileSync(
-      join(blockedRun, "jobs/iris/container.name"),
-      "utf8",
-    ).trim();
     const cancelled = spawnSync(
       "/usr/bin/zsh",
       [script, "cleanup", blockedRun],
       { env: blockedEnv, encoding: "utf8", timeout: 15000 },
     );
     expect(cancelled.status, cancelled.stdout + cancelled.stderr).toBe(0);
-    writeFileSync(control + ".release", "allow exact create to finish");
+    writeFileSync(control + ".release", "release exact StartTransientUnit");
     const blockedOutcome = await Promise.race([
       blockedClosed,
       new Promise((_, reject) =>
-        setTimeout(
-          () => reject(Error("cancelled create did not resolve")),
-          10000,
-        ),
+        setTimeout(() => reject(Error("late start did not cancel")), 10000),
       ),
     ]);
     expect(blockedOutcome, blockedOutput).toBe(1);
-    expect(blockedOutput).toContain("cancelled before execution");
-    const engineCommands = readFileSync(env.EXAM_GRADE_ENGINE_TRACE, "utf8")
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line));
-    expect(
-      engineCommands.filter(
-        (args) =>
-          args[0] === "container" &&
-          args[1] === "start" &&
-          args.includes(blockedName),
-      ),
-    ).toHaveLength(0);
+    const lateLog = readFileSync(
+      join(blockedRun, "jobs/iris/grader.log"),
+      "utf8",
+    );
+    expect(lateLog).not.toContain("SANDBOX:");
+    expect(lateLog).not.toContain("TOTAL:");
     expect(
       readFileSync(join(blockedRun, "jobs/iris/cleanup.receipt"), "utf8"),
-    ).toContain("absent");
+    ).toContain("cgroup empty or removed");
     expect(existsSync(join(blockedRun, "grades.csv"))).toBe(false);
+
+    // The service deadline is independent of the controller. Verify an exact
+    // controller SIGKILL and kernel teardown, not just a failed command.
+    const crashRun = join(dir, "controller death");
+    roots.push({ run: crashRun, env });
+    const crashed = spawn(
+      "/usr/bin/zsh",
+      [script, "run", "synthetic-class", crashRun],
+      { env },
+    );
+    const crashedClosed = new Promise<{
+      code: number | null;
+      signal: NodeJS.Signals | null;
+    }>((resolve) =>
+      crashed.on("close", (code, signal) => resolve({ code, signal })),
+    );
+    const crashUnitPath = join(crashRun, "jobs/iris/unit.name");
+    let crashUnit = "";
+    let crashGroup = "";
+    await expect
+      .poll(
+        () => {
+          if (!existsSync(crashUnitPath)) return false;
+          crashUnit = readFileSync(crashUnitPath, "utf8").trim();
+          const current = status(crashUnit);
+          if (current.ActiveState !== "active") return false;
+          crashGroup = current.ControlGroup;
+          return true;
+        },
+        { timeout: 15000 },
+      )
+      .toBe(true);
+    crashed.kill("SIGKILL");
+    expect(await crashedClosed).toEqual({ code: null, signal: "SIGKILL" });
+    await expect
+      .poll(
+        () => ["inactive", "failed"].includes(status(crashUnit).ActiveState),
+        { timeout: 8000 },
+      )
+      .toBe(true);
+    const crashEvents = join("/sys/fs/cgroup", crashGroup, "cgroup.events");
+    if (existsSync(crashEvents))
+      expect(readFileSync(crashEvents, "utf8")).toContain("populated 0");
+    expect(existsSync(join(crashRun, "grades.csv"))).toBe(false);
   },
   120000,
 );

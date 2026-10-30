@@ -96,11 +96,13 @@ N` workflows remain available for deliberate repair and source retirement.
 
 The separate [offline midterm grading example](offline-midterm-grading.md) reuses
 these exports and native protected-export to write a reviewable CSV. It runs the
-supplied grader in disposable local containers, with zero for no submission and
+supplied grader in disposable bwrap sandboxes, with zero for no submission and
 separate error reports. No application grading service or student-record edit is
-introduced. Its qualified script/helper are now installed on csc-sys under
-`/usr/local/share/ssh-exam/examples/` by separate instruction; grading itself runs
-on an instructor Docker machine and has not been run on real submissions.
+introduced. Its qualified script/helpers are installed on csc-sys under
+`/usr/local/share/ssh-exam/examples/` by separate instruction. The instructor
+rejected Docker: grading uses bwrap and transient resource limits, with direct
+`run --local DIRECTORY` on the class server or remote SSH mode. No real submissions
+have been graded during development/installation.
 
 `web exams/students/attempts/grants list --all` follows every page, including empty
 filtered pages. Repeated `--exam` selects multiple attempt histories. `--username`

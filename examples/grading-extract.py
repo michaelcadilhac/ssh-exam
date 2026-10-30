@@ -2,7 +2,7 @@
 """Bounded extraction for the offline grading example; never use tar.extractall.
 
 Authored materials are extracted on the controller; student archives are extracted
-only by the unprivileged container. No JSON/student programs are evaluated here.
+only by the unprivileged sandbox. No JSON/student programs are evaluated here.
 """
 import argparse
 import os

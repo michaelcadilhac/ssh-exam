@@ -1,5 +1,19 @@
 # Deferred work
 
+October29 CURRENT grading correction COMPLETE and INSTALLED: Docker rejected by
+the instructor; grading now uses bwrap and transient systemd cgroup limits on
+csc-sys, with direct run --local DIRECTORY (no SSH loopback). Each unprivileged
+job verifies actual kernel bounds before execution; absent0/blank errors and
+protected exports stay intact. Final21/21 affected integration/root CLI/TLS checks,
+typecheck/syntax, exact guarded root candidate AND installed-entry synthetic
+course-grader0/20/absent0 checks PASS. Includes cancellation, delayed launch,
+controller SIGKILL, wrong kernel limits and concurrent cleanup regression. No
+Docker/packages/images installed, real submissions graded or existing services/
+configuration/student records changed. Original38 release items unchanged.
+Guide: docs/offline-midterm-grading.md. Receipts/backups/current artifact hashes:
+var/collection-tests/grading-bwrap.bop5j63c. The earlier Docker notes below are
+historical and superseded for grading.
+
 October29 grading-script installation COMPLETE under new explicit instruction:
 csc-sys /usr/local/share/ssh-exam/examples/grade-midterm.zsh and its required
 helper are root-owned in root-private parent directories; syntax/help checks

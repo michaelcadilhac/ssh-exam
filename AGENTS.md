@@ -94,6 +94,10 @@
 - Work on one bounded end-to-end milestone at a time. Name its actual CLI/web/
   student entry point, intended outcome, required tests and stopping boundary
   before editing. Tests must exercise that entry point, not only private helpers.
+- Check the intended operator host before selecting runtime dependencies. Offline
+  grading uses bwrap and lightweight native resource controls; Docker is explicitly
+  rejected for this task. Installing files and checking help/syntax alone do not
+  establish that the operator workflow runs on its intended host.
 - Before adding a new abstraction/helper/prototype, identify its runtime caller
   and integration step in the current milestone. If those are not achievable in
   that milestone, justify and explicitly defer it; do not keep extending an

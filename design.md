@@ -88,19 +88,24 @@ and deployment status: docs/examctl-scripting.md.
 
 The separate local operator example examples/grade-midterm.zsh uses these complete
 exports plus existing audited native protected-export to select each student's
-latest started midterm/recovery submission. It runs the unchanged supplied course
-grader in a bounded unprivileged networkless container on the instructor machine,
+latest started midterm/recovery submission. By explicit instructor correction it
+uses bwrap and transient systemd resource limits, with no Docker dependency. Local
+class-server mode invokes examctl directly; remote mode fetches over existing SSH.
+It runs the unchanged supplied course grader with an unprivileged host UID in
+private namespaces and verifies actual kernel bounds before execution,
 then publishes a reviewable USERNAME,GRADE CSV. The instructor explicitly chose
 zero for no submission; export/runner failures and uncertain latest work stay
 blank with separate errors. This is an offline example, not application grading
 or a new web/CLI grading service. It changes no attempts, deadlines, holds or
-student records. Trusted authored grader/checksum, exact selection and container
+student records. Trusted authored grader/checksum, exact selection and sandbox
 provenance are retained; submitted Makefiles/graders are not used. Local synthetic
 qualification and workflow: docs/offline-midterm-grading.md. The instructor
-subsequently authorized installation of the script/helper on csc-sys; qualified
-code and matching guide are installed with syntax/help verified, including a
-regression for zsh's function-name expansion in help. No
-grading run, application deployment or service/configuration change occurred.
+authorized installation on csc-sys. Candidate qualification uses actual bwrap,
+kernel controls and the supplied grader with synthetic 0/20 inputs; installed
+entry verification is separate. Root jobs use transient DynamicUser credentials,
+with no permanent account changes. Whole-cgroup cleanup, delayed cancellation,
+manager refusal, timeout and controller death retain the error/absence policy.
+No real grading, application deployment or existing-service change is included.
 
 Build the application described here. This is an implementation specification, not a request for a design mockup. Implement the student application, instructor dashboard, SSH connection manager, monitoring, protected submission collection, class-server enforcement, and deployment assets.
 

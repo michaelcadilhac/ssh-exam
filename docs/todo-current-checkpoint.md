@@ -1,34 +1,37 @@
 # Current TODO checkpoint
 
-October29 GRADING FOLLOW-UP COMPLETE: examples/grade-midterm.zsh run
-CLASS_SSH_HOST NEW_DIRECTORY exports the latest started midterm/recovery source
-per username across both rosters/history and publishes USERNAME,GRADE. Instructor
-approved zero for no submission; unsafe/uncertain/export/runner failures stay
-blank with errors.tsv. Existing native protected-export verifies/audits bytes;
-the unchanged authored SHA8b90975b… grader runs only in isolated local Docker.
-Acceptance milestones complete: inspect actual materials/export contract;
-integrate select/fetch/isolate/CSV; qualify real entry/cancellation and document.
-Final focused7/7 (including null/zero unstarted preparations), affected20/20 plus
-separately enabled root CLI/TLS journey, native export race, typecheck and syntax
-PASS. Actual course grader synthetic0/20 and absent0 PASS. Grading SSH transport
-is mocked. Cancellation initially published CSV after cleanup; durable marker and
-late-create barrier fix pass; failure retained. No application/native/browser
-runtime edits, package install, real student export/grading or record writes.
-Operator instructions/state review: docs/offline-midterm-grading.md. Exact artifact
-hashes/receipts/logs: var/collection-tests/midterm-grading.9040z4q6/final-receipt.json.
-Subsequent explicit installation instruction completed: qualified script/helper
-installed on csc-sys under /usr/local/share/ssh-exam/examples/, matching guide
-under ../docs/. Root-owned/parent0700, script0700/helper0644; installed syntax/help
-PASS. Actual installed help exposed zsh's function-name $0; saving the script name
-fixes the displayed command path. New focused regression/full7 Docker cases,
-typecheck and syntax requalify this help-only edit. Root-private remote receipt:
-/var/tmp/ssh-exam-offline-grading-install.4sztdsx5/receipt.json; local receipt:
-var/collection-tests/offline-grading-install.ubqrrcf8/receipt.json. Targets were
-absent; rollback removes only these new files after exact-hash verification.
-second-go copy/application/native/services/configuration/records unchanged. No
-push, package/image install or real grading run. No open implementation/design
-blocker. Next: instructor may run on a separate Docker machine with the usual
-authenticated class SSH session; no grading or further deployment authorized here.
+October29 lightweight grading correction COMPLETE and INSTALLED on csc-sys.
+Instructor rejects Docker; examples/grade-midterm.zsh now uses bwrap plus native
+transient systemd cgroups. Direct run --local DIRECTORY invokes installed examctl
+and copies authored materials without SSH loopback; remote SSH mode remains.
+Supplied grader unchanged; latest started midterm/recovery selection, protected
+checksums/export audit, absent0 and blank/error failures are preserved. Root jobs
+use DynamicUser (no permanent accounts), private namespaces/read-only inputs and
+verified kernel1GiB/no-swap/128task/1CPU limits with independent bounded runtime.
+
+Final focused7/7 and affected21/21 including root CLI/TLS PASS; typecheck/shell/
+Python syntax PASS. Covers live and delayed-launch cancellation, exact controller
+SIGKILL, timeout, real wrong kernel-bound refusal and concurrent stop/unload race.
+Strict guarded root candidate AND actual installed public entry pass real supplied
+course-grader synthetic0/20/absent0 plus namespace/UID/live resource/cleanup checks.
+All native attempt authority and installed production binaries/config preserved;
+no real exports/grading, package/image install, existing-service action or push.
+Earlier root bind quoting failure and broad cleanup race are retained and fixed;
+Docker qualification is historical, superseded. AGENTS records the dependency/
+intended-host lesson. No application/native/browser runtime/protocol change, so
+unchanged production qualification applies; second-go installed copy untouched.
+
+Installed SHA: maincc764f7c… / extractor2c5d20fb… / runner9391363b…; root-private
+parents, script0700/helpers0644. Exact artifacts/logs/installed receipts:
+var/collection-tests/grading-bwrap.bop5j63c/final-receipt.json. Private backup:
+/var/backups/ssh-exam/grading-bwrap-20261029.vgvlskfm. Installed-entry qualification:
+/var/tmp/ssh-exam-grading-bwrap-qualification.7oir73d1/receipt.json. Rollback restores
+only matching grading files (new runner absent before); preserve newer DB/native
+history/holds and student data. Prefer forward repair over rejected Docker code.
+Operator command: sudo zsh /usr/local/share/ssh-exam/examples/grade-midterm.zsh
+run --local /root/NEW-DIRECTORY. Guide: docs/offline-midterm-grading.md.
+No open decision/blocker or remaining action for this correction. No real grading
+is authorized by installation/testing. Original ten dirty screenshots unchanged.
 
 October29 LOCAL FOLLOW-UP COMPLETE: examples/second-go.zsh copies each student's
 effective midterm duration/webcam into the reviewed CSV; blank overrides inherit

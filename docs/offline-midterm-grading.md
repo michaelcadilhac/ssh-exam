@@ -1,153 +1,165 @@
-# Offline midterm grading
+# Midterm grading with bwrap
 
-The locally tested [grade-midterm.zsh](../examples/grade-midterm.zsh) exports each
-student's latest **started** attempt across `midterm` and `midterm-recovery`, runs
-the supplied course grader, and writes `USERNAME,GRADE`. Run it on an instructor's
-Docker machine; keep [grading-extract.py](../examples/grading-extract.py) beside it.
-On October 29 the instructor authorized installation of the script/helper on
-`csc-sys`, under `/usr/local/share/ssh-exam/examples/`, with this guide under
-`/usr/local/share/ssh-exam/docs/`. These directories remain root-private. Only
-files are installed: no service restart, package/image installation or grading
-run is included. No real students have been graded by this workflow.
+[grade-midterm.zsh](../examples/grade-midterm.zsh) exports each student's latest
+**started** attempt across `midterm` and `midterm-recovery`, invokes the unchanged
+supplied course grader in a lightweight bwrap sandbox, and writes `USERNAME,GRADE`.
+Docker is not used or required. The instructor explicitly rejected that dependency;
+the original Docker runner and its qualification are superseded by this version.
+
+## Run on csc-sys
 
 ```zsh
-# On csc-sys: inspect the installed command without running a grading job.
-sudo zsh /usr/local/share/ssh-exam/examples/grade-midterm.zsh --help
+sudo zsh /usr/local/share/ssh-exam/examples/grade-midterm.zsh run --local \
+  /root/midterm-grades-20261029
 ```
 
+Choose a **new** output directory. This creates private reports and grading copies;
+it does not import grades or change student records. `--local` directly invokes the
+installed root `examctl` and reads the authored materials on this machine. No SSH
+connection back into the same server, new credentials, image or package is needed.
+Review `grades.csv`, `errors.tsv` and the exit status before using the results.
+
+The installed script, [grading-sandbox.py](../examples/grading-sandbox.py) and
+[grading-extract.py](../examples/grading-extract.py) live together in
+`/usr/local/share/ssh-exam/examples/`; the guide lives under `../docs/`.
+Installation parents remain root-private. Script/help and the actual privileged
+sandbox workflow are verified separately. No real student grading is performed
+as part of installation or qualification.
+
+Alternatively, run from a separate Linux machine with the same tools:
+
 ```zsh
-cd /path/to/ssh-exam
 zsh examples/grade-midterm.zsh run csc-sys "$HOME/midterm-grades-20261029"
 ```
 
-Choose a **new** output directory each time. The script refuses to overwrite an
-existing run. Establish your normal SSH/MFA shared connection first: noninteractive
-SSH and `sudo -n /usr/local/sbin/examctl` on the class server must work. The
-controller uses the installed generic CLI exports and protected `examctl export
-UUID`; it never requests passwords or runs submitted code on the class server.
-Export performs its normal integrity verification and administrator audit.
-
-Required local tools are zsh, Python 3, Docker, SSH, GNU timeout and coreutils.
-The default local Docker socket is `/var/run/docker.sock`. The already-loaded
-Linux amd64 image must provide GCC, Python 3, nm, awk, grep and timeout:
-
-```text
-golang:1.27.2-bookworm@sha256:55395706e9703db746cc507abfc4eb2aea75918f8a8024e4848e2cb81004f5ad
-```
-
-There are no automatic image pulls or package installations. `EXAM_GRADE_IMAGE`
-may select another explicitly digest-pinned, separately qualified compiler image.
-`EXAM_GRADE_DOCKER_HOST` may select another existing **local Unix socket**, such
-as a rootless engine. Remote Docker contexts are not used; bind mounts refer to
-the instructor machine's private files. Docker access is needed locally; the
-controller itself does not need to run as root.
+That mode needs the usual working SSH/MFA shared connection and noninteractive
+`sudo -n /usr/local/sbin/examctl` on csc-sys. Local non-root execution uses the
+caller's systemd user manager; root execution uses the system manager. Missing
+namespaces, bus or resource controllers fail rather than silently dropping limits.
+Required installed tools: zsh, Python 3, bwrap, systemd-run/systemctl, x86-64 GCC,
+nm, awk, grep, tar and coreutils. csc-sys already supplies these tools. No automatic
+package installation or toolchain download occurs. The host compiler is used and
+its version/hash, bwrap version/hash and runner hashes are recorded in `toolchain.txt`.
 
 ## Selection and grades
 
 The population is the union of both rosters and historical attempt owners.
-Complete paginated TSV exports are read with zsh; there is no JSON metadata parser.
+Complete paginated TSV exports are read with zsh; metadata needs no JSON parser.
 For each username, the greatest positive start timestamp chooses the submission,
-regardless of which of the two exams it belongs to. Unstarted preparations do not
-replace submitted work. This selects the **latest**, rather than the best grade.
+regardless of which exam it belongs to. Unstarted preparations do not replace
+submitted work. This selects the **latest**, rather than the best grade.
 
 - No started attempt: **0**, as explicitly requested by the instructor.
 - Successful grader: its earned points out of 100, including a legitimate zero.
 - Unprotected/incomplete latest attempt, equal-time ambiguity, missing/corrupt
   export, unsafe archive, timeout or invalid grader output: **blank**, with the
-  reason in `errors.tsv`. No fallback to an older attempt and no accidental zero.
+  reason in `errors.tsv`. No fallback to an older attempt or accidental zero.
 
-`grades.csv` has exactly the header `USERNAME,GRADE`, followed by one sorted row
-per username. Successful completion exits 0; per-student failures still publish
-the complete CSV with blanks and exit 1. A global prerequisite failure can abort
-before publishing a CSV. Inspect both the exit status and `errors.tsv` before
-using the grades. These are candidate grades for instructor review; the script
-does not import grades or modify student records.
+`grades.csv` has exactly the header `USERNAME,GRADE` and one sorted row per
+username. Completion exits 0; per-student failures publish the complete CSV with
+blanks and exit 1. A global prerequisite/cleanup failure can abort before a CSV is
+published. The grader's individual compilation/test failures retain its normal
+scoring rules; sandbox/export failures do not become grades.
 
 Metadata is a recorded selection, not an atomic server snapshot. Run after the
-relevant attempts have finished. An active latest attempt is reported as an error;
-the script never collects live work, starts clocks or changes account restrictions.
+relevant attempts finish. Active latest work is an error. No live-work collection,
+clock change, attempt grant or account-restriction change is performed. Protected
+`examctl export UUID` retains its normal verification and administrator audit.
 
-## Supplied grader and isolation
+## Grader and lightweight isolation
 
-Both definitions use the authored `sys1-midterm-a` materials. The script fetches
-only `grade`, `scoring.tsv`, `include` and `tests` from
-`/var/lib/exam-agent/templates/sys1-midterm-a/materials`. It requires this official
-grader SHA256:
+Both definitions use authored `sys1-midterm-a` materials. Only `grade`,
+`scoring.tsv`, `include` and `tests` are copied from
+`/var/lib/exam-agent/templates/sys1-midterm-a/materials`. The official grader SHA256
+must match:
 
 ```text
 8b90975bebbe6165cbf7c886c85d029109038201114ce8be3eca9456a98a7d50
 ```
 
-It invokes the unmodified `/materials/grade --work /work`, whose final score is
-`TOTAL: EARNED/100`. Submitted graders and Makefiles are never invoked. The supplied
-grader compiles fixed source names using its supplied object files and rubric;
-its GDB exercise checks the saved answer file, rather than launching GDB. Duplicate
-or malformed totals fail instead of being accepted as grades. This preserves the
-student-facing scoring rules; it adds no hidden tests or new grading policy.
+The unmodified `/materials/grade --work /work` compiles fixed source names with
+the supplied object files and rubric. Its GDB exercise checks the saved answer
+file. Submitted graders and Makefiles are never invoked. Exactly one final
+`TOTAL: EARNED/100` is required; forged duplicate/malformed totals fail. No new
+hidden tests or scoring policy are introduced.
 
-Each submission is checksum-verified before a fresh, unprivileged container
-extracts it. Extraction rejects traversal, links, special files and duplicate
-names, strips privileged metadata, and limits files to 128 MiB and totals to
-512 MiB. The protected collection manifest is excluded from the grading tree.
-Only the current archive, trusted materials and extraction helper are mounted,
-all read-only. The container has no network, a read-only root, dropped
-capabilities, no-new-privileges, one CPU, 1 GiB memory with no swap, 128 processes,
-and bounded writable tmpfs. No Docker socket, credentials, home directory, sibling
-submission or live student workspace is mounted. Output is limited to 1 MiB.
+Each export is checksum-verified before extraction. Extraction takes place inside
+bwrap, rejects traversal, links, special files and duplicates, strips privileged
+metadata, and bounds files to 128 MiB and totals to 512 MiB. The collection manifest
+is excluded. Only the current archive, trusted materials, extractor and a narrow
+read-only cancellation directory are mounted alongside read-only host software.
+Home directories, host configuration, student storage, sockets and other jobs are
+absent. Work/tmp are private bounded tmpfs (640/256 MiB). User, PID, network, mount,
+IPC and other namespaces are private; capabilities are dropped, nested user
+namespaces disabled, privileges cannot be gained, and no controlling terminal is
+inherited. Root launches use a transient unprivileged DynamicUser; they never run
+student programs as host root and create no permanent account records.
 
-Default execution timeout is 300 seconds per student, with an in-container timeout
-and an independent bounded attached client. `EXAM_GRADE_SECONDS` accepts 1–3600.
-Nonzero exit, OOM or timeout never becomes a zero grade. The exact owned container
-must be removed and its absence verified before accepting a score.
+A uniquely named **transient** systemd unit bounds the whole process tree to
+1 GiB RAM, no swap, 128 tasks, one CPU and 300 seconds by default. It is not a new
+installed daemon or persistent service configuration. `EXAM_GRADE_SECONDS` accepts
+1–3600. A trusted worker verifies its actual kernel memory/swap/task/CPU limits
+before executing bwrap; unsupported or mismatched controls refuse execution.
+Runtime expiry, OOM, cancellation and main-process exit remove descendants
+through `KillMode=control-group`; controller death does not remove the independent
+service deadline. Output is limited to 1 MiB. Cleanup must confirm the exact owned
+unit is inactive and its cgroup is empty/removed before a score is accepted.
 
-For a deliberate future grader revision, inspect the authored materials and set
-`EXAM_GRADE_MATERIALS` and `EXAM_GRADE_GRADER_SHA256` explicitly. Do not select a
-student-edited grader or replace the expected hash merely to bypass a refusal.
+For an intentional future grader revision, inspect the authored package and set
+`EXAM_GRADE_MATERIALS` and `EXAM_GRADE_GRADER_SHA256` explicitly. Never point these at
+a student-edited grader or bypass an unexplained checksum refusal.
 
-## Reports and interrupted runs
+## Reports and cancellation
 
-The private output directory retains rosters, `attempts.tsv`, `selections.tsv`
-(username/UUID/checksum/outcome), authored materials/digest, exact image ID, and
-per-student archives, logs, engine state and cleanup receipts. Preserve it for
-review under your submission-retention policy. Successful CSV publication is
-atomic; partial output remains `.grades.partial` after interruption.
+The output retains rosters, `attempts.tsv`, `selections.tsv` (username/UUID/checksum/
+outcome), authored materials/digest, toolchain provenance, and per-user archives,
+grading logs, exact sandbox command, exit/unit state and cleanup receipts.
+`unit-state.txt` distinguishes systemd timeout/OOM/setup failures where available.
+Treat exported copies according to the submission-retention policy. Successful
+CSV publication is atomic; interrupted results remain `.grades.partial`.
 
 ```zsh
-zsh examples/grade-midterm.zsh cleanup "$HOME/midterm-grades-20261029"
+sudo zsh /usr/local/share/ssh-exam/examples/grade-midterm.zsh cleanup \
+  /root/midterm-grades-20261029
 ```
 
-Cleanup durably cancels that run and removes only containers with its exact run
-identity. It preserves archives, reports and any completed CSV. The controller
-checks cancellation before each student, after container creation, after execution
-and before publishing results. A delayed create cannot start after cancellation.
-INT/TERM attempt immediate owned cleanup; after controller death, use this command
-to confirm absence before discarding the directory. Engine unavailability is an
-unconfirmed cleanup, never evidence of absence. Rerun grading in a new directory;
-there is no resume that mixes an old selection with fresh server metadata.
+Cleanup first writes a persistent cancellation marker, then stops only units
+matching the recorded UUID, manager and description. Archives, reports and any
+completed CSV remain. The sandbox checks that marker before extraction: even a
+StartTransientUnit request delayed until after cleanup cannot run the grader.
+Manager errors are unconfirmed cleanup, never proof of absence. After INT/TERM
+or controller death use cleanup to confirm the owned jobs stopped. Rerun into a
+new directory; there is no resume that mixes a previous selection with fresh
+metadata. New cleanup deliberately refuses older Docker-run directories.
 
-## Local verification
+## Verification and rollback
 
-`EXAM_GRADING_DOCKER=1 npm test -- tests/integration/offline-grading.test.ts`
-exercises the actual script, compiler and Docker isolation with synthetic archives
-and mocked SSH transport. It covers newer recovery/midterm selection, zero absence,
-failed exports, active latest work, ties, checksum mismatch, malicious archive
-names, timeout, forged duplicate score output, live cancellation and cancellation
-while create is blocked. Kernel container state and owned process death/absence
-are checked, not just the controller's exit.
+`EXAM_GRADING_BWRAP=1 npm test -- tests/integration/offline-grading.test.ts` uses
+actual bwrap, GCC and systemd/kernel resource controls with synthetic inputs and
+mocked metadata/export transport. It covers latest selection in both exams,
+null/zero preflights, absence zero, export/checksum/active/tie errors, unsafe
+archives, timeout, forged totals, direct local mode, capabilities/filesystem/network
+isolation, actual kernel limits, live cancellation, delayed startup cancellation
+and exact controller SIGKILL followed by independent bounded process teardown.
+An intentionally wrong kernel memory limit refuses before the grader executes.
 
-The cancellation test initially exposed publication of a CSV after external
-cleanup. A durable cancellation marker and post-create/pre-publication checks fix
-that gap; the regression also blocks Docker create before allowing the late reply.
-The initial failed receipt is preserved in `initial-cancel-check.log` in the run
-directory below. No native pending state, account reservation or execution grant
-is added: all new state is private operator output, and cancelled runs require a
-new directory rather than silently resuming stale metadata.
+Guarded disposable root qualification on csc-sys separately uses the actual course
+grader, synthetic submissions/CLI and real DynamicUser/input mounts. It verifies
+expected 0/20 and absent0, non-root credentials, private files/capabilities and live
+memory/swap/task limits, with continuous host-idle checks and preserved installed
+binaries/configuration/attempt authority. The first root run refused mount setup
+because the bind separator was quoted; quoting each path component fixes it.
+That failed receipt is retained, not counted as successful grading.
+The broader run also exposed concurrent controller/manual cleanup finding an
+already unloaded unit. A forced real stop race now verifies a fresh manager reply
+and empty cgroup before accepting absence; unknown manager errors still refuse.
+Final affected integration/root CLI/TLS checks pass all 21 cases, and typecheck,
+shell/Python syntax and guarded root qualification pass.
 
-The actual supplied grader also returned the expected 0 and 20 points for private
-synthetic submissions, plus zero for an absent submission. Existing affected
-metadata/grant integration tests, native protected-export race regression,
-typecheck and script/helper syntax checks accompany this workflow. SSH transport
-is mocked for grading qualification; no real student archive was fetched or graded.
-Evidence: `var/collection-tests/midterm-grading.9040z4q6`. Application/native/browser
-runtime code is unchanged. The separately authorized script/helper installation
-changes no application deployment, schema, account policy or running service.
+Evidence and installed artifact receipts: `var/collection-tests/grading-bwrap.bop5j63c`.
+The earlier Docker evidence remains historical. No application/native/browser
+runtime or protocol changes are involved; their existing qualification still
+applies. Installation updates only the grading example/helpers/guide, with exact
+previous hashes and private backups. Rollback may restore only those matching
+files; never restore older databases, native authority or student data. Prefer
+forward repair because the earlier Docker version has a rejected dependency.
