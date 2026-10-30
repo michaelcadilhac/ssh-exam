@@ -13,22 +13,22 @@ async function begin(page: Page, username: string) {
     (await (await page.request.get("/api/login-test")).json()).browserSSH,
   ).toBe(true);
   await page.getByLabel("Exam ID", { exact: true }).fill("retained-restart");
-  await page.getByLabel("Enrolled username").fill(username);
+  await page.getByLabel("Username").fill(username);
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click({ timeout: 10000 });
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 10000 });
   await expect(page.locator(".xterm-rows")).toContainText(
     "DISPOSABLE DEVELOPMENT FIXTURE",
@@ -554,7 +554,7 @@ test("proxy failure and gateway restart preserve a policy hold and its scoped ap
   );
   expect(approval.ok(), await approval.text()).toBe(true);
   await expect(
-    page.getByRole("heading", { name: "Continuation approved", exact: true }),
+    page.getByRole("heading", { name: "Resume approved", exact: true }),
   ).toBeVisible({ timeout: 10000 });
   const { serverNow: approvedAt, ...approved } = await (
     await request.get(`/api/admin/attempts/${original.id}/interruption`)
@@ -589,7 +589,7 @@ test("proxy failure and gateway restart preserve a policy hold and its scoped ap
   expect(inspectedAt).toBeGreaterThanOrEqual(approvedAt);
   expect(afterProxy).toEqual(approved);
   await expect(
-    page.getByRole("heading", { name: "Continuation approved", exact: true }),
+    page.getByRole("heading", { name: "Resume approved", exact: true }),
   ).toBeVisible();
   await restart(page, before.pid);
   await expect
@@ -609,7 +609,7 @@ test("proxy failure and gateway restart preserve a policy hold and its scoped ap
     .attempt;
   expect(held).toMatchObject({ ...sameInterval(paused), state: "LOCKED" });
   await expect(
-    page.getByRole("heading", { name: "Continuation approved", exact: true }),
+    page.getByRole("heading", { name: "Resume approved", exact: true }),
   ).toBeVisible();
   expect((await runtime(page)).authenticationCalls).toEqual(
     before.authenticationCalls,
@@ -649,7 +649,7 @@ test("proxy failure and gateway restart preserve a policy hold and its scoped ap
   );
   await page
     .getByRole("button", {
-      name: "Continue exam after authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click();
@@ -948,7 +948,7 @@ test("gateway recovery completes a durably recorded policy pause rejected by nat
   );
   await page
     .getByRole("button", {
-      name: "Continue exam after authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click();

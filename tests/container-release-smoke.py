@@ -85,11 +85,12 @@ const hash = b => createHash('sha256').update(b).digest('hex');
   }
   assert.deepEqual(db.prepare('SELECT * FROM enrollments ORDER BY username').all(), expected.enrollments);
   assert.equal(db.prepare('SELECT config FROM exams WHERE id=?').get('release-smoke').config, expected.exam_config);
-  assert.equal(db.prepare('SELECT max(version) AS v FROM schema_version').get().v, 33);
+  assert.equal(db.prepare('SELECT max(version) AS v FROM schema_version').get().v, 35);
   assert.equal(db.prepare('SELECT count(*) AS n FROM exam_native_reconciliations').get().n, 0);
   assert.deepEqual(db.pragma('foreign_key_check'), []);
   assert.equal(db.prepare('SELECT count(*) AS n FROM attempts').get().n, expected.attempts.length);
   assert.equal(db.prepare('SELECT count(*) AS n FROM attempt_grants').get().n, 0);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM grant_source_setup').get().n, 0);
   db.close();
   for (const file of ['config.json','gateway.key','callback.pub','metadata.sqlite','expected.json']) {
     const st = fs.lstatSync('/opt/release-smoke/' + file);
@@ -110,7 +111,7 @@ const hash = b => createHash('sha256').update(b).digest('hex');
     if (path.endsWith('.wasm')) assert.deepEqual([...bytes.subarray(0,4)], [0,97,115,109]);
     assets[path] = hash(bytes);
   }
-  console.log(JSON.stringify({uid:process.getuid(), productionMaintenance:true, schema:33,
+  console.log(JSON.stringify({uid:process.getuid(), productionMaintenance:true, schema:35,
     historicalAttemptsPreserved:expected.attempts.length, enrollmentSettingsPreserved:true,
     noInventedGrants:true, nativeBootClock:true, assets}));
 })().catch(error => { console.error(error); process.exit(1); });

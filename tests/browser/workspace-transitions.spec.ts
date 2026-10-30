@@ -77,15 +77,15 @@ test("opening preflight retains the summary until ready and never reports a fres
   try {
     await page.goto("/");
     await page
-      .getByRole("button", { name: "Open preflight & practice" })
+      .getByRole("button", { name: "Check setup and practice" })
       .waitFor();
     await resetScreens(page);
     await page
-      .getByRole("button", { name: "Open preflight & practice" })
+      .getByRole("button", { name: "Check setup and practice" })
       .click();
     await expect.poll(() => seen).toBe(true);
     await expect(
-      page.getByRole("button", { name: "Opening preflight…" }),
+      page.getByRole("button", { name: "Opening setup…" }),
     ).toBeDisabled();
     await onlyScreens(page, ["summary"]);
     response.release();
@@ -138,11 +138,11 @@ test("preflight sign-out keeps its confirmation throughout a delayed request and
     await onlyScreens(page, ["Sign out of the workspace?"]);
     response.release();
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam" }),
+      page.getByRole("heading", { name: "Sign in to your exam" }),
     ).toBeVisible();
     await onlyScreens(page, [
       "Sign out of the workspace?",
-      "Connect to your exam",
+      "Sign in to your exam",
     ]);
   } finally {
     response.release();
@@ -166,11 +166,11 @@ test("a restored paused exam is covered from its first frame; continuation ignor
   try {
     await page.goto("/");
     await page
-      .getByRole("button", { name: "Restore page", exact: true })
+      .getByRole("button", { name: "Resume exam", exact: true })
       .waitFor();
     await resetScreens(page);
     await page
-      .getByRole("button", { name: "Restore page", exact: true })
+      .getByRole("button", { name: "Resume exam", exact: true })
       .click();
     await expect.poll(() => claimSeen).toBe(true);
     await expect(
@@ -180,9 +180,9 @@ test("a restored paused exam is covered from its first frame; continuation ignor
     claim.release();
     await expect.poll(() => f.model.bindSeen).toBe(true);
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
-    await onlyScreens(page, ["summary", "Exam paused"]);
+    await onlyScreens(page, ["summary", "Work paused"]);
     f.model.bind.release();
     await page.getByRole("button", { name: "Restore screen sharing" }).click();
     await page
@@ -211,18 +211,18 @@ test("a restored paused exam is covered from its first frame; continuation ignor
       await route.fulfill({ json: f.snapshot() });
     };
     await page
-      .getByRole("button", { name: "Continue exam", exact: true })
+      .getByRole("button", { name: "Resume exam", exact: true })
       .click();
     await expect(page.getByRole("alert")).toContainText(
       "Continuation unavailable",
     );
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
     fail = false;
     await resetScreens(page);
     await page
-      .getByRole("button", { name: "Continue exam", exact: true })
+      .getByRole("button", { name: "Resume exam", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Finish exam", exact: true }),
@@ -234,16 +234,16 @@ test("a restored paused exam is covered from its first frame; continuation ignor
           requestAnimationFrame(() => requestAnimationFrame(() => r())),
         ),
     );
-    await onlyScreens(page, ["Exam paused", "active"]);
+    await onlyScreens(page, ["Work paused", "active"]);
     f.model.socket!.send(JSON.stringify({ type: "state", ...oldStatus }));
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toHaveCount(0);
     f.model.attempt.state = "LOCKED";
     f.model.attempt.generation++;
     f.send();
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
   } finally {
     claim.release();
@@ -302,33 +302,33 @@ test("finish stays on collection through stale active replies, early secured eve
       incidents,
     );
     stale.release();
-    await onlyScreens(page, ["Finish exam?", "Protecting your submission"]);
+    await onlyScreens(page, ["Finish exam?", "Saving your files"]);
     f.model.attempt.state = "COMPLETED";
     f.model.attempt.protected = true;
     f.send();
     await expect(
-      page.getByRole("heading", { name: "Protecting your submission" }),
+      page.getByRole("heading", { name: "Saving your files" }),
     ).toBeVisible();
     expect(f.model.logoutCalls).toBe(0);
-    await onlyScreens(page, ["Finish exam?", "Protecting your submission"]);
+    await onlyScreens(page, ["Finish exam?", "Saving your files"]);
     finish.release();
     await expect.poll(() => logoutSeen).toBe(true);
     await expect(page.getByRole("alert")).toContainText("Sign-out unavailable");
     await expect(
-      page.getByRole("heading", { name: "Submission secured", exact: true }),
+      page.getByRole("heading", { name: "Files saved", exact: true }),
     ).toHaveCount(0);
     failLogout = false;
     await page.getByRole("button", { name: "Retry sign out" }).click();
     await expect.poll(() => f.model.logoutCalls).toBe(2);
-    await onlyScreens(page, ["Finish exam?", "Protecting your submission"]);
+    await onlyScreens(page, ["Finish exam?", "Saving your files"]);
     logout.release();
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam" }),
+      page.getByRole("heading", { name: "Sign in to your exam" }),
     ).toBeVisible();
     await onlyScreens(page, [
       "Finish exam?",
-      "Protecting your submission",
-      "Connect to your exam",
+      "Saving your files",
+      "Sign in to your exam",
     ]);
     expect(f.model.finishCalls).toBe(1);
   } finally {
@@ -360,17 +360,19 @@ test("an unconfirmed finish is retryable in place and a failed collection never 
   );
   f.send({ ...f.model.attempt, state: "ACTIVE" });
   await expect(
-    page.getByRole("heading", { name: "Protecting your submission" }),
+    page.getByRole("heading", { name: "Saving your files" }),
   ).toBeVisible();
   fail = false;
   await page.getByRole("button", { name: "Retry finishing" }).click();
   await expect(
-    page.getByRole("heading", { name: "Collection requires recovery" }),
+    page.getByRole("heading", {
+      name: "Your files need administrator attention",
+    }),
   ).toBeVisible();
   await onlyScreens(page, [
     "Finish exam?",
-    "Protecting your submission",
-    "Collection requires recovery",
+    "Saving your files",
+    "Your files need administrator attention",
   ]);
   expect(f.model.logoutCalls).toBe(0);
 });

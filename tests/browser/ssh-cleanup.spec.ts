@@ -3,12 +3,12 @@ import { simulatedMedia, ready } from "./transition-fixture.js";
 async function login(page: Page, username: string) {
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
-  await page.getByLabel("Enrolled username").fill(username);
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByLabel("Username").fill(username);
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page.getByRole("button", { name: "Respond to this host" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   const preflightOpened = Date.now();
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
   ).toBeEnabled();
@@ -34,10 +34,10 @@ async function command(page: Page, text: string) {
 }
 async function start(page: Page) {
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
 }
@@ -67,7 +67,7 @@ test("real SSH shells can exit repeatedly, close one pane, log out, log back in 
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
   expect((await page.request.get("/api/session")).status()).toBe(401);
   await login(page, "cleanup01");
@@ -91,7 +91,7 @@ test("real SSH shells can exit repeatedly, close one pane, log out, log back in 
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
   await expect(page.locator(".winbox")).toHaveCount(0);
   expect((await page.request.get("/api/session")).status()).toBe(401);
@@ -117,7 +117,7 @@ test("direct logout with active SSH panes pauses the attempt and preserves its d
   expect((await page.request.get("/api/session")).status()).toBe(401);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
   const admin = await request.post("/api/admin/login", {
     headers: { origin: "http://localhost:3100" },

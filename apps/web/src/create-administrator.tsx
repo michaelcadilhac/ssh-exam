@@ -73,7 +73,7 @@ export function CreateAdministrator({
         }}
       >
         <label>
-          Administrator username
+          Username
           <input
             name="username"
             autoComplete="off"
@@ -119,7 +119,7 @@ export function CreateAdministrator({
             Cancel
           </button>
           <button type="submit" className="primary" disabled={busy}>
-            {busy ? "Creating…" : "Create administrator"}
+            {busy ? "Adding…" : "Add administrator"}
           </button>
         </div>
       </form>

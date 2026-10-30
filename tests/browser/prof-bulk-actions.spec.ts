@@ -282,7 +282,7 @@ test("add time has one dialog and names selected students whose clocks will not 
   );
   await dialog.getByLabel("Minutes to add", { exact: true }).fill("15");
   await dialog
-    .getByRole("button", { name: "Apply extension", exact: true })
+    .getByRole("button", { name: "Add time", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   expect(s.calls).toHaveLength(1);

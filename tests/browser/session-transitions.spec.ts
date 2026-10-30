@@ -17,7 +17,7 @@ async function watchSignIn(page: Page) {
       if (!(window as any).__watchSignIn) return;
       for (const heading of document.querySelectorAll("form h2")) {
         if (
-          /^(Connect to your exam|Instructor sign-in|Test your SSH login)$/.test(
+          /^(Sign in to your exam|Instructor sign-in|Test your SSH login)$/.test(
             heading.textContent || "",
           )
         )
@@ -116,7 +116,7 @@ test("restoring a student waits for exam details and does not mistake service fa
     await noSignIn(page);
     details.release();
     await expect(
-      page.getByRole("heading", { name: "Both SSH hosts authenticated" }),
+      page.getByRole("heading", { name: "SSH sign-in succeeded" }),
     ).toBeVisible();
     await noSignIn(page);
   } finally {
@@ -148,7 +148,7 @@ test("signed-out startup waits for configuration before choosing the correct sig
     ).toBeVisible();
     expect(
       await page.evaluate(() => (window as any).__signInFrames),
-    ).not.toContain("Connect to your exam");
+    ).not.toContain("Sign in to your exam");
     await expect(page.getByLabel("Exam ID", { exact: true })).toHaveCount(0);
   } finally {
     settings.release();
@@ -186,12 +186,12 @@ test("SSH completion retains its dialog through delayed session/exam loading and
   });
   const stillAuthenticating = async () => {
     await expect(
-      page.getByRole("heading", { name: "SSH authentication" }),
+      page.getByRole("heading", { name: "Server sign-in" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam" }),
+      page.getByRole("heading", { name: "Sign in to your exam" }),
     ).toHaveCount(0);
-    await expect(page.getByLabel("Enrolled username")).toHaveCount(0);
+    await expect(page.getByLabel("Username")).toHaveCount(0);
     await expect(
       page.getByText("Signed in as student10", { exact: true }),
     ).toHaveCount(0);
@@ -202,13 +202,13 @@ test("SSH completion retains its dialog through delayed session/exam loading and
   try {
     await page.goto("/");
     await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
-    await page.getByLabel("Enrolled username").fill("student10");
-    await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+    await page.getByLabel("Username").fill("student10");
+    await page.getByRole("button", { name: "Sign in" }).click();
     await page.getByLabel("Shared SSH password").fill("shared-password");
     await page.evaluate(() => {
       (window as any).__signInFrames = [];
     });
-    await page.getByRole("button", { name: "Respond to this host" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Host authentication messages")).toContainText(
       "Enter number 42",
     );
@@ -230,18 +230,18 @@ test("SSH completion retains its dialog through delayed session/exam loading and
     await stillAuthenticating();
     retryDetails.release();
     await expect(
-      page.getByRole("button", { name: "Open preflight & practice" }),
+      page.getByRole("button", { name: "Check setup and practice" }),
     ).toBeVisible();
     expect(completeRequests).toBe(1);
     expect(await page.evaluate(() => (window as any).__signInFrames)).toEqual(
       [],
     );
     await expect(
-      page.getByRole("heading", { name: "SSH authentication" }),
+      page.getByRole("heading", { name: "Server sign-in" }),
     ).toHaveCount(0);
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam" }),
+      page.getByRole("heading", { name: "Sign in to your exam" }),
     ).toBeVisible();
   } finally {
     complete.release();

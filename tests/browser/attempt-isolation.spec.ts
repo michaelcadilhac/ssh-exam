@@ -1,36 +1,32 @@
 import { test, expect, type Page } from "@playwright/test";
-import { simulatedMedia, ready } from "./transition-fixture.js";
+import { simulatedMedia, ready, readyTerminal } from "./transition-fixture.js";
 const origin = "http://localhost:3100";
 async function signIn(page: Page, exam: string, username: string) {
   await page.getByLabel("Exam ID", { exact: true }).fill(exam);
-  await page.getByLabel("Enrolled username").fill(username);
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill(username);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 }
 async function begin(page: Page, exam: string, user: string) {
   await simulatedMedia(page);
   await page.goto("/");
   await signIn(page, exam, user);
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
-  await expect(page.locator(".winbox")).toHaveCount(1);
+  await readyTerminal(page, 1);
   return (await (await page.request.get("/api/student/exam")).json()).attempt;
 }
 async function echo(page: Page, word: string) {
-  await page.locator(".xterm-helper-textarea").last().focus();
+  const pane = await readyTerminal(page, 1);
   await page.keyboard.type(`probe-${word}`);
   await page.keyboard.press("Enter");
-  await expect(page.locator(".xterm-rows")).toContainText(
+  await expect(pane.locator(".xterm-rows")).toContainText(
     `Echo: probe-${word}`,
   );
 }
@@ -70,12 +66,19 @@ async function restore(page: Page, admin: Page, headers: any, id: string) {
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
   await signIn(page, "isolation-a", "isolation01");
+  const claimed = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname === `/api/student/attempts/${id}/claim`,
+  );
   await page
     .getByRole("button", {
-      name: "Restore page after instructor authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click();
+  expect((await claimed).status()).toBe(200);
+  await expect(page.locator(".lock-overlay")).toBeVisible();
   await expect(page.locator(".winbox")).toHaveCount(0);
   for (const name of [
     "Restore screen sharing",
@@ -83,14 +86,21 @@ async function restore(page: Page, admin: Page, headers: any, id: string) {
     "Restore keyboard lock",
   ])
     await page.getByRole("button", { name, exact: true }).click();
+  const continued = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname === `/api/student/attempts/${id}/continue`,
+  );
   await page
     .getByRole("button", {
-      name: "Continue exam after authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click();
+  expect((await continued).status()).toBe(200);
+  await expect(page.locator(".lock-overlay")).toHaveCount(0);
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
-  await expect(page.locator(".winbox")).toHaveCount(1);
+  await readyTerminal(page, 1);
   const resumed = (await history()).at(-1);
   expect(resumed.id).toBe(approved.id);
   expect(resumed.outcome).toBe("resumed");
@@ -237,10 +247,14 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
         deadline: originalA.deadline,
         original_deadline: originalA.original_deadline,
       });
-      await alice.locator(".xterm-helper-textarea").focus();
+      const pane = await readyTerminal(alice, 1);
       await alice.keyboard.type("cat");
       await alice.keyboard.press("Enter");
-      await expect(alice.locator(".xterm-rows")).toContainText("saved answer");
+      await expect(pane.locator(".xterm-rows")).toContainText("saved answer");
+      await expect(alice.locator(".winbox")).toHaveCount(1);
+      expect(
+        (await runtime()).panes.filter((p: any) => p.attempt === originalA.id),
+      ).toHaveLength(1);
     }
     const final = await runtime();
     expect(final.pid).toBe(initial.pid);

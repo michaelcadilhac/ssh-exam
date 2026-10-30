@@ -7,6 +7,7 @@ import {
 import {
   simulatedMedia,
   ready,
+  readyTerminal,
   observeScreens,
   onlyScreens,
 } from "./transition-fixture.js";
@@ -30,38 +31,32 @@ async function attempt(request: APIRequestContext, id: string) {
 }
 async function login(page: Page, exam: string, username: string) {
   await page.getByLabel("Exam ID", { exact: true }).fill(exam);
-  await page.getByLabel("Enrolled username").fill(username);
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill(username);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
 }
 async function begin(page: Page, exam: string, username: string) {
   await page.goto("/");
   await login(page, exam, username);
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
-  await expect(page.locator(".winbox")).toHaveCount(1);
+  await readyTerminal(page, 1);
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
-  await expect(page.locator(".winbox")).toHaveCount(2);
+  await readyTerminal(page, 2);
   return (await (await page.request.get("/api/student/exam")).json()).attempt;
 }
-async function type(page: Page, text: string) {
-  await page
-    .locator(".winbox")
-    .last()
-    .locator(".xterm-helper-textarea")
-    .focus();
+async function type(page: Page, text: string, count = 1) {
+  const pane = await readyTerminal(page, count);
   await page.keyboard.type(text);
   await page.keyboard.press("Enter");
+  await expect(page.locator(".winbox")).toHaveCount(count);
+  return pane;
 }
 async function deny(page: Page) {
   await expect(page.locator(".workspace,form")).toHaveCount(0);
@@ -102,12 +97,20 @@ async function restore(
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
   await login(page, exam, user);
+  const claimed = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname ===
+        `/api/student/attempts/${original.id}/claim`,
+  );
   await page
     .getByRole("button", {
-      name: "Restore page after instructor authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click();
+  expect((await claimed).status()).toBe(200);
+  await expect(page.locator(".lock-overlay")).toBeVisible();
   await expect(page.locator(".winbox")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
@@ -121,17 +124,25 @@ async function restore(
   await page
     .getByRole("button", { name: "Restore keyboard lock", exact: true })
     .click();
+  const continued = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname ===
+        `/api/student/attempts/${original.id}/continue`,
+  );
   await page
     .getByRole("button", {
-      name: "Continue exam after authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click();
+  expect((await continued).status()).toBe(200);
+  await expect(page.locator(".lock-overlay")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
   ).toBeEnabled();
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
-  await expect(page.locator(".winbox")).toHaveCount(1);
+  await readyTerminal(page, 1);
   expect(
     (await (await page.request.get("/api/student/exam")).json()).attempt,
   ).toMatchObject({
@@ -193,10 +204,10 @@ test.describe.serial("browser abandonment and recovery", () => {
     });
     try {
       const original = await begin(page, "closure", "closure01");
-      await type(page, "save preserved closure answer");
-      await expect(
-        page.locator(".winbox").last().locator(".xterm-rows"),
-      ).toContainText("Saved fixture text");
+      const savedPane = await type(page, "save preserved closure answer", 2);
+      await expect(savedPane.locator(".xterm-rows")).toContainText(
+        "Saved fixture text",
+      );
       const oldPanes = (await runtime(request)).panes
         .filter((p: any) => p.attempt === original.id)
         .map((p: any) => p.pane);
@@ -242,8 +253,8 @@ test.describe.serial("browser abandonment and recovery", () => {
       await oldControlRejected(page, token);
       await restore(page, request, headers, original, "closure", "closure01");
       await oldControlRejected(page, token);
-      await type(page, "cat");
-      await expect(page.locator(".xterm-rows")).toContainText(
+      const restoredPane = await type(page, "cat");
+      await expect(restoredPane.locator(".xterm-rows")).toContainText(
         "preserved closure answer",
       );
       const active = (await runtime(request)).panes.filter(
@@ -318,10 +329,10 @@ test.describe.serial("browser abandonment and recovery", () => {
       });
     });
     const original = await begin(page, "reload-opening", "closure02");
-    await type(page, "save preserved reload answer");
-    await expect(
-      page.locator(".winbox").last().locator(".xterm-rows"),
-    ).toContainText("Saved fixture text");
+    const savedPane = await type(page, "save preserved reload answer", 2);
+    await expect(savedPane.locator(".xterm-rows")).toContainText(
+      "Saved fixture text",
+    );
     hold = true;
     await page
       .getByRole("button", { name: "New terminal", exact: true })
@@ -354,8 +365,8 @@ test.describe.serial("browser abandonment and recovery", () => {
       "reload-opening",
       "closure02",
     );
-    await type(page, "cat");
-    await expect(page.locator(".xterm-rows")).toContainText(
+    const restoredPane = await type(page, "cat");
+    await expect(restoredPane.locator(".xterm-rows")).toContainText(
       "preserved reload answer",
     );
     expect((await runtime(request)).pid).toBe(serverPid);
@@ -367,17 +378,15 @@ test.describe.serial("browser abandonment and recovery", () => {
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam" }),
+      page.getByRole("heading", { name: "Sign in to your exam" }),
     ).toBeVisible();
     expect(await attempt(request, original.id)).toMatchObject({
       state: "COMPLETED",
       protected: 1,
     });
     await page.getByLabel("Exam ID", { exact: true }).fill("reload-opening");
-    await page.getByLabel("Enrolled username").fill("closure02");
-    await page
-      .getByRole("button", { name: "Start SSH sign-in", exact: true })
-      .click();
+    await page.getByLabel("Username").fill("closure02");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText("already completed");
     await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
     await expect(page.locator(".winbox")).toHaveCount(0);

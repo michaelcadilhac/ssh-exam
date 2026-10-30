@@ -56,15 +56,15 @@ test("DePaul number matching requires an explicit phone approval acknowledgment 
   });
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("test");
-  await page.getByLabel("Enrolled username", { exact: true }).fill("student01");
+  await page.getByLabel("Username", { exact: true }).fill("student01");
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click();
   await page
     .getByLabel("Shared SSH password", { exact: true })
     .fill("fixture-secret");
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   const approve = page.getByRole("button", {
     name: "Continue after phone approval",
@@ -77,7 +77,7 @@ test("DePaul number matching requires an explicit phone approval acknowledgment 
   await expect.poll(() => answers.length).toBe(2);
   expect(answers[1]).toEqual([""]);
   await expect(
-    page.getByRole("button", { name: "Waiting for host…", exact: true }),
+    page.getByRole("button", { name: "Waiting for server…", exact: true }),
   ).toBeDisabled();
   await expect(page.locator("body")).not.toContainText("fixture-secret");
 });
@@ -122,26 +122,26 @@ for (const explicit of [true, false]) {
     await page.goto("/");
     await page.getByLabel("Exam ID", { exact: true }).fill("test");
     await page
-      .getByLabel("Enrolled username", { exact: true })
+      .getByLabel("Username", { exact: true })
       .fill("student01");
     await page
-      .getByRole("button", { name: "Start SSH sign-in", exact: true })
+      .getByRole("button", { name: "Sign in", exact: true })
       .click();
     const alert = page.getByRole("alert");
     await expect(alert).toContainText(
       explicit
         ? "SSH sign-in succeeded"
-        : "connection closed before exam sign-in completed",
+        : "Sign-in did not finish",
     );
-    await expect(alert).toContainText("No new exam was started");
+    await expect(alert).toContainText(explicit ? "No new exam was started" : "No new attempt was started");
     await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue(
       "test",
     );
     await expect(
-      page.getByLabel("Enrolled username", { exact: true }),
+      page.getByLabel("Username", { exact: true }),
     ).toHaveValue("student01");
     await expect(
-      page.getByRole("button", { name: "Start SSH sign-in", exact: true }),
+      page.getByRole("button", { name: "Sign in", exact: true }),
     ).toBeEnabled();
   });
 }
@@ -211,16 +211,16 @@ for (const explicit of [true, false]) {
     await page.goto("/");
     await page.getByLabel("Exam ID", { exact: true }).fill("test");
     await page
-      .getByLabel("Enrolled username", { exact: true })
+      .getByLabel("Username", { exact: true })
       .fill("student01");
     await page
-      .getByRole("button", { name: "Start SSH sign-in", exact: true })
+      .getByRole("button", { name: "Sign in", exact: true })
       .click();
     await page
       .getByLabel("Shared SSH password", { exact: true })
       .fill("test-secret-must-disappear");
     await page
-      .getByRole("button", { name: "Respond to this host", exact: true })
+      .getByRole("button", { name: "Continue", exact: true })
       .click();
     const alert = page.getByRole("alert");
     await expect(alert).toBeVisible();
@@ -247,7 +247,7 @@ for (const explicit of [true, false]) {
       ).toHaveCount(0);
     }
     await page
-      .getByRole("button", { name: "Start SSH sign-in", exact: true })
+      .getByRole("button", { name: "Sign in", exact: true })
       .click();
     await expect(
       page.getByLabel("Shared SSH password", { exact: true }),

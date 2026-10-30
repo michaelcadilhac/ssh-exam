@@ -1,4 +1,5 @@
 import { test, expect, request, type Page } from "@playwright/test";
+import { readyTerminal } from "./transition-fixture.js";
 async function adminCommand(page: Page, command: string) {
   await page
     .getByRole("button", { name: "Administration", exact: true })
@@ -14,16 +15,16 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
 }) => {
   await simulatedMedia(page);
   await studentSignIn(page, "sandbox", "student04");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page
     .getByRole("button", { name: "3. Lock keyboard", exact: true })
     .click();
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Finish exam", exact: true }),
@@ -38,7 +39,7 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     expect(originalOwner).not.toBeNull();
   await page.evaluate(() => document.exitFullscreen());
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   await expect
     .poll(
@@ -51,10 +52,10 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
-  await studentSignIn(page, "sandbox", "student04", "Restore page");
-  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await studentSignIn(page, "sandbox", "student04", "Resume exam");
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
   await page
     .getByRole("button", { name: "Restore screen sharing", exact: true })
     .click();
@@ -64,10 +65,8 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
   await page
     .getByRole("button", { name: "Restore keyboard lock", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Continue exam", exact: true })
-    .click();
-  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Work paused" })).toHaveCount(
     0,
   );
   const resumed = (await (await page.request.get("/api/student/exam")).json())
@@ -95,8 +94,8 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
       })
     ).ok(),
   ).toBe(true);
-  await studentSignIn(page, "sandbox", "student04", "Restore page");
-  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await studentSignIn(page, "sandbox", "student04", "Resume exam");
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
   await page
     .getByRole("button", { name: "Restore screen sharing", exact: true })
     .click();
@@ -106,10 +105,8 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
   await page
     .getByRole("button", { name: "Restore keyboard lock", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Continue exam", exact: true })
-    .click();
-  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Work paused" })).toHaveCount(
     0,
   );
   const relogged = (await (await page.request.get("/api/student/exam")).json())
@@ -128,19 +125,19 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
   expect((await page.request.get("/api/session")).status()).toBe(401);
   await studentSignIn(page, "sandbox", "student04");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(page.locator(".empty-workspace")).toContainText(
     "try your tools before the exam",
   );
   await expect(page.locator(".exam-toolbar")).not.toContainText(
-    /ordinary access|Screen|Camera|\/work/,
+    /ordinary access|Screen|Webcam|\/work/,
   );
   await expect(
-    page.getByRole("button", { name: "1. Share entire display" }),
+    page.getByRole("button", { name: "1. Share entire screen" }),
   ).toBeVisible();
   const repeat = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
@@ -211,16 +208,18 @@ for (const [index, missing] of [
     });
     await page.goto("/");
     await expect(page.getByRole("alert")).toContainText(
-      "This browser cannot run an exam",
+      "Use desktop Chrome, Edge or Chromium for this exam",
     );
     await expect(page.getByRole("alert")).toContainText(
-      "desktop Chrome, Edge or Chromium",
+      missing === "embedding policy"
+        ? "screen sharing"
+        : missing === "denied permission"
+          ? "Allow keyboard lock"
+          : missing,
     );
-    await expect(
-      page.getByRole("button", { name: "Start SSH sign-in" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Sign in" })).toHaveCount(0);
     await expect(page.getByLabel("Exam ID", { exact: true })).toHaveCount(0);
-    await expect(page.getByLabel("Enrolled username")).toHaveCount(0);
+    await expect(page.getByLabel("Username")).toHaveCount(0);
     await expect(page.locator(".sign-in form, .sign-in input")).toHaveCount(0);
     expect(authenticationRequests).toBe(0);
     await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
@@ -244,12 +243,12 @@ test("student notice and authentication are accessible and self-hosted", async (
   });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
   await expect(
     page.getByText("No audio or raw keystrokes.", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByLabel("Enrolled username")).toBeVisible();
+  await expect(page.getByLabel("Username")).toBeVisible();
   await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue("");
   await expect(page.locator(".intro, .landing footer")).toHaveCount(0);
   await expect(
@@ -276,15 +275,19 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue("");
   await page.getByLabel("Exam ID", { exact: true }).fill("admin-created");
   await page
-    .getByLabel("Immutable template hash (optional)")
-    .fill("a".repeat(64));
+    .getByRole("combobox", { name: "Exam files", exact: true })
+    .selectOption(`sample-exam@${"a".repeat(64)}`);
   await page.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(
     "admin-created",
   );
   await page.getByRole("button", { name: "Add student", exact: true }).click();
-  await page.getByLabel("Student username", { exact: true }).fill("student02");
-  await page.getByLabel("Webcam for this student").selectOption("false");
+  await page
+    .getByRole("textbox", { name: "Username", exact: true })
+    .fill("student02");
+  await page
+    .getByRole("combobox", { name: "Webcam", exact: true })
+    .selectOption("false");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Add student", exact: true })
@@ -292,7 +295,7 @@ test("instructor can add, remove and import students, cancel removal with Escape
   const roster = page.getByRole("table", { name: "Students and attempts" });
   await expect(
     roster.getByRole("row").filter({ hasText: "student02" }),
-  ).toContainText("Not required");
+  ).toContainText("Optional");
   await rowCommand(page, "Actions for student student02", "Remove from exam…");
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
@@ -351,15 +354,17 @@ test("instructor can add, remove and import students, cancel removal with Escape
     exact: true,
   });
   await settings.getByRole("checkbox", { name: /Use exam default/ }).uncheck();
-  await settings.getByLabel("Duration (minutes)", { exact: true }).fill("120");
   await settings
-    .getByRole("button", { name: "Apply settings", exact: true })
+    .getByLabel("Time limit (minutes)", { exact: true })
+    .fill("120");
+  await settings
+    .getByRole("button", { name: "Save defaults", exact: true })
     .click();
   await expect(settings).toHaveCount(0);
   for (const name of ["student01", "student03"])
     await expect(
       roster.getByRole("rowgroup", { name, exact: true }),
-    ).toContainText("Duration: 120 minutes");
+    ).toContainText("Time limit: 120 min");
   await page
     .getByRole("checkbox", { name: "Select student student01", exact: true })
     .check();
@@ -377,14 +382,16 @@ test("instructor can add, remove and import students, cancel removal with Escape
     name: "Future webcam settings",
     exact: true,
   });
-  await settings.getByLabel("Webcam requirement").selectOption("false");
   await settings
-    .getByRole("button", { name: "Apply settings", exact: true })
+    .getByRole("combobox", { name: "Webcam", exact: true })
+    .selectOption("false");
+  await settings
+    .getByRole("button", { name: "Save defaults", exact: true })
     .click();
   await expect(settings).toHaveCount(0);
   await expect(
     roster.getByRole("rowgroup", { name: "student03", exact: true }),
-  ).toContainText("Not required");
+  ).toContainText("Optional");
   await expect(page.getByRole("link", { name: /Download/ })).toHaveCount(0);
   await page.screenshot({
     path: test.info().outputPath("instructor-dashboard.png"),
@@ -558,9 +565,7 @@ test("instructor creates an administrator with confirmation, cancellation and du
   const add = { click: () => adminCommand(page, "Add administrator") };
   await add.click();
   let dialog = page.getByRole("dialog", { name: "Add administrator" });
-  await dialog
-    .getByLabel("Administrator username", { exact: true })
-    .fill("cancelled-admin");
+  await dialog.getByLabel("Username", { exact: true }).fill("cancelled-admin");
   await dialog
     .getByLabel("Password", { exact: true })
     .fill("cancelled-password");
@@ -572,12 +577,8 @@ test("instructor creates an administrator with confirmation, cancellation and du
   await add.click();
   dialog = page.getByRole("dialog", { name: "Add administrator" });
   await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue("");
-  await expect(
-    dialog.getByLabel("Administrator username", { exact: true }),
-  ).toHaveValue("");
-  await dialog
-    .getByLabel("Administrator username", { exact: true })
-    .fill("helper-admin");
+  await expect(dialog.getByLabel("Username", { exact: true })).toHaveValue("");
+  await dialog.getByLabel("Username", { exact: true }).fill("helper-admin");
   await dialog
     .getByLabel("Password", { exact: true })
     .fill("helper-admin-password");
@@ -585,7 +586,7 @@ test("instructor creates an administrator with confirmation, cancellation and du
     .getByLabel("Confirm password", { exact: true })
     .fill("mismatched-password");
   await dialog
-    .getByRole("button", { name: "Create administrator", exact: true })
+    .getByRole("button", { name: "Add administrator", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toContainText(
     "Passwords do not match",
@@ -610,10 +611,10 @@ test("instructor creates an administrator with confirmation, cancellation and du
   });
   try {
     await dialog
-      .getByRole("button", { name: "Create administrator", exact: true })
+      .getByRole("button", { name: "Add administrator", exact: true })
       .click();
     await expect(
-      dialog.getByRole("button", { name: "Creating…", exact: true }),
+      dialog.getByRole("button", { name: "Adding…", exact: true }),
     ).toBeDisabled();
     await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue(
       "",
@@ -632,9 +633,7 @@ test("instructor creates an administrator with confirmation, cancellation and du
   ).toBeVisible();
   await page.unroute("**/api/admin/administrators");
   await add.click();
-  await dialog
-    .getByLabel("Administrator username", { exact: true })
-    .fill("helper-admin");
+  await dialog.getByLabel("Username", { exact: true }).fill("helper-admin");
   await dialog
     .getByLabel("Password", { exact: true })
     .fill("different-admin-password");
@@ -642,7 +641,7 @@ test("instructor creates an administrator with confirmation, cancellation and du
     .getByLabel("Confirm password", { exact: true })
     .fill("different-admin-password");
   await dialog
-    .getByRole("button", { name: "Create administrator", exact: true })
+    .getByRole("button", { name: "Add administrator", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toContainText("already exists");
   await expect(dialog.getByLabel("Password", { exact: true })).toHaveValue("");
@@ -686,14 +685,12 @@ test("administrator creation reconciles a committed lost reply using the same in
       await route.abort("failed");
     } else await route.continue();
   });
-  await dialog
-    .getByLabel("Administrator username", { exact: true })
-    .fill(username);
+  await dialog.getByLabel("Username", { exact: true }).fill(username);
   const submit = async () => {
     await dialog.getByLabel("Password", { exact: true }).fill(password);
     await dialog.getByLabel("Confirm password", { exact: true }).fill(password);
     await dialog
-      .getByRole("button", { name: "Create administrator", exact: true })
+      .getByRole("button", { name: "Add administrator", exact: true })
       .click();
   };
   await submit();
@@ -728,14 +725,14 @@ async function studentSignIn(
   page: import("@playwright/test").Page,
   exam = "sample",
   username = "student01",
-  readyButton = "Open preflight & practice",
+  readyButton = "Check setup and practice",
 ) {
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill(exam);
-  await page.getByLabel("Enrolled username").fill(username);
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByLabel("Username").fill(username);
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page.getByRole("button", { name: "Respond to this host" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByLabel("Host authentication messages")).toContainText(
     "Enter number 42",
   );
@@ -751,11 +748,11 @@ test("practice terminals accept typing, stay floating, change maximize icon, clo
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await studentSignIn(page);
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await page
     .getByRole("button", { name: "Practice terminal", exact: true })
     .click();
-  const first = page.locator(".winbox").first();
+  const first = await readyTerminal(page, 1);
   await expect(first).not.toHaveClass(/\bmax\b/);
   await expect(page.locator(".directory, .taskbar")).toHaveCount(0);
   await page
@@ -849,7 +846,7 @@ test("practice terminals accept typing, stay floating, change maximize icon, clo
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -871,7 +868,7 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
     server = route.connectToServer();
   });
   await studentSignIn(page, "recovery", "student03");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   const practice = page.getByRole("button", {
     name: "Practice terminal",
     exact: true,
@@ -890,7 +887,7 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
     await page.waitForTimeout(30);
   }
   await expect(
-    page.getByRole("heading", { name: "Preflight connection lost" }),
+    page.getByRole("heading", { name: "Setup connection lost" }),
   ).toBeVisible();
   await expect(
     page.getByText("Connection unavailable · retrying", { exact: true }),
@@ -901,7 +898,7 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
   await page.clock.runFor(5000);
   await expect(practice).toBeEnabled();
   await expect(
-    page.getByRole("heading", { name: "Preflight connection lost" }),
+    page.getByRole("heading", { name: "Setup connection lost" }),
   ).toHaveCount(0);
 
   const attempt = (await (await page.request.get("/api/student/exam")).json())
@@ -924,13 +921,11 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
     }),
   );
   await expect(
-    page.getByRole("heading", { name: "Preflight connection lost" }),
+    page.getByRole("heading", { name: "Setup connection lost" }),
   ).toBeVisible();
+  await expect(page.getByText("Sign in again", { exact: true })).toBeVisible();
   await expect(
-    page.getByText("SSH sign-in required", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Your exam has not started. No exam time has elapsed.", {
+    page.getByText("Your exam has not started.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -940,13 +935,11 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
   await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue(
     "recovery",
   );
-  await expect(page.getByLabel("Enrolled username")).toHaveValue("student03");
-  await expect(
-    page.getByRole("button", { name: "Start SSH sign-in" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Username")).toHaveValue("student03");
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await page.unroute("**/api/student/attempts/*/status");
   await studentSignIn(page, "recovery", "student03");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(practice).toBeEnabled();
   const fresh = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
@@ -958,9 +951,7 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
     .getByRole("dialog")
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
-  await expect(
-    page.getByRole("button", { name: "Start SSH sign-in" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 });
 
 test("preflight errors stay visible inside fullscreen and keyboard lock can be retried", async ({
@@ -968,8 +959,8 @@ test("preflight errors stay visible inside fullscreen and keyboard lock can be r
 }) => {
   await simulatedMedia(page);
   await studentSignIn(page, "sandbox", "student08");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page.evaluate(() => {
     (navigator as any).keyboard.lock = async () => {
@@ -998,7 +989,7 @@ test("preflight errors stay visible inside fullscreen and keyboard lock can be r
   ).toBe(true);
   await expect(lock).toHaveAttribute("aria-pressed", "false");
   await expect(
-    page.getByRole("button", { name: "Begin exam", exact: true }),
+    page.getByRole("button", { name: "Start exam", exact: true }),
   ).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(error).toHaveCount(0);
@@ -1010,7 +1001,7 @@ test("preflight errors stay visible inside fullscreen and keyboard lock can be r
   await lock.click();
   await expect(lock).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.getByRole("button", { name: "Begin exam", exact: true }),
+    page.getByRole("button", { name: "Start exam", exact: true }),
   ).toBeEnabled();
 
   // Server failures after a confirmation use the same fullscreen error path.
@@ -1020,10 +1011,10 @@ test("preflight errors stay visible inside fullscreen and keyboard lock can be r
       json: { error: "Exam cannot start right now." },
     }),
   );
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   const startError = page.getByRole("dialog", { name: "Workspace error" });
   await expect(startError).toBeVisible();
@@ -1078,9 +1069,9 @@ test("webcam preflight uses consecutive steps and student can sign out before st
 }) => {
   await simulatedMedia(page);
   await studentSignIn(page, "camera", "student02");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(
-    page.getByRole("button", { name: "1. Share entire display", exact: true }),
+    page.getByRole("button", { name: "1. Share entire screen", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "2. Enable webcam", exact: true }),
@@ -1091,9 +1082,9 @@ test("webcam preflight uses consecutive steps and student can sign out before st
   await expect(
     page.getByRole("button", { name: "4. Lock keyboard", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await expect(
-    page.getByRole("button", { name: "Begin exam", exact: true }),
+    page.getByRole("button", { name: "Start exam", exact: true }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "2. Enable webcam" }).click();
   await expect(page.locator("#camera-preview")).toBeVisible();
@@ -1103,7 +1094,7 @@ test("webcam preflight uses consecutive steps and student can sign out before st
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
 });
 
@@ -1111,24 +1102,36 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   page,
 }) => {
   await page.addInitScript(() => {
-    const send = WebSocket.prototype.send;
-    WebSocket.prototype.send = function (data) {
-      if (typeof data === "string" && JSON.parse(data).type === "resize") {
-        (window as any).__lateTerminalResize = () => send.call(this, data);
+    const NativeResizeObserver = window.ResizeObserver;
+    window.ResizeObserver = class extends NativeResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        super(callback);
+        const observe = this.observe.bind(this);
+        this.observe = (target, options) => {
+          if (target.matches(".terminal[aria-busy]")) {
+            (window as any).__lateTerminalResizeTarget = target;
+            (window as any).__lateTerminalResize = () => {
+              const connected = target.isConnected;
+              callback([], this);
+              return { connected };
+            };
+          }
+          observe(target, options);
+        };
       }
-      return send.call(this, data);
     };
   });
-  page.on("pageerror", (error) => console.error(error.message));
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("sample");
-  await page.getByLabel("Enrolled username").fill("student01");
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByLabel("Username").fill("student01");
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page.getByRole("button", { name: "Respond to this host" }).click();
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page
     .getByRole("button", { name: "Practice terminal", exact: true })
@@ -1137,15 +1140,15 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   await page
     .getByRole("button", { name: "3. Lock keyboard", exact: true })
     .click();
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
   ).toBeVisible();
-  const first = page.locator(".winbox").first();
+  const first = await readyTerminal(page, 1);
   await expect(first).not.toHaveClass(/\bmax\b/);
   await first.locator(".xterm-helper-textarea").focus();
   await page.keyboard.type("save active answer");
@@ -1232,7 +1235,7 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
   await expect(page.locator(".winbox")).toHaveCount(2);
   await page.getByRole("button", { name: "Arrange terminals" }).click();
-  const second = page.locator(".winbox").last();
+  const second = await readyTerminal(page, 2);
   await second
     .locator(".terminal:not(.xterm)")
     .click({ button: "right", position: { x: 60, y: 60 } });
@@ -1249,7 +1252,10 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   });
   await page.evaluate(() => document.exitFullscreen());
   await expect(
-    page.getByRole("heading", { name: "Instructor review required" }),
+    page.getByRole("heading", {
+      name: "Instructor review required",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(menu).toHaveCount(0);
   await expect(
@@ -1305,17 +1311,12 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
     // Wait for reauthentication to revoke the old browser session before the
     // helper navigates, otherwise navigation can cancel that in-flight request.
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam" }),
+      page.getByRole("heading", { name: "Sign in to your exam" }),
     ).toBeVisible();
-    await studentSignIn(
-      page,
-      "sample",
-      "student01",
-      "Restore page after instructor authorization",
-    );
+    await studentSignIn(page, "sample", "student01", "Resume exam");
     await page
       .getByRole("button", {
-        name: "Restore page after instructor authorization",
+        name: "Resume exam",
         exact: true,
       })
       .click();
@@ -1330,12 +1331,14 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
       .click();
     await page
       .getByRole("button", {
-        name: "Continue exam after authorization",
+        name: "Resume exam",
         exact: true,
       })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Instructor review required" }),
+      page.getByRole("heading", {
+        name: /^(Work paused|Instructor review required)$/,
+      }),
     ).toHaveCount(0);
     await page
       .getByRole("button", { name: "New terminal", exact: true })
@@ -1352,11 +1355,20 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
     await expect(
       page.getByRole("button", { name: "Sign out", exact: true }),
     ).toHaveCount(0);
+    expect(
+      await page.evaluate(() => ({
+        armed: typeof (window as any).__lateTerminalResize === "function",
+        current:
+          (window as any).__lateTerminalResizeTarget ===
+          document.querySelector(".winbox .terminal[aria-busy]"),
+        connected: (window as any).__lateTerminalResizeTarget?.isConnected,
+      })),
+    ).toEqual({ armed: true, current: true, connected: true });
     await page
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
     await expect(page.getByRole("dialog")).toContainText(
-      "Finishing is irreversible",
+      "You cannot reopen this attempt",
     );
     await page.keyboard.press("Escape");
     expect(
@@ -1374,13 +1386,16 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+      page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
     ).toBeVisible();
-    await page.evaluate(() => (window as any).__lateTerminalResize());
+    expect(
+      await page.evaluate(() => (window as any).__lateTerminalResize()),
+    ).toEqual({ connected: false });
     await page.waitForTimeout(200);
     await expect(
       page.getByRole("dialog", { name: "Terminal error" }),
     ).toHaveCount(0);
+    expect(pageErrors).toEqual([]);
     expect((await page.request.get("/api/session")).status()).toBe(401);
     const submission = await admin.get(
       `/api/admin/attempts/${attempt.id}/submission`,
@@ -1401,14 +1416,14 @@ test("one Finish exam action confirms, secures work and signs out; cancellation 
 }) => {
   await simulatedMedia(page);
   await studentSignIn(page, "logout", "student03");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page.getByRole("button", { name: "3. Lock keyboard" }).click();
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
@@ -1420,8 +1435,9 @@ test("one Finish exam action confirms, secures work and signs out; cancellation 
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Finish exam", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText(
-    "Finishing is irreversible and signs you out",
+    "You cannot reopen this attempt",
   );
+  await expect(page.getByRole("dialog")).toContainText("signs you out");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
@@ -1439,7 +1455,7 @@ test("one Finish exam action confirms, secures work and signs out; cancellation 
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();
   await expect(page.locator(".winbox")).toHaveCount(0);
   expect((await page.request.get("/api/session")).status()).toBe(401);
@@ -1471,16 +1487,16 @@ test("completed and locked exam sign-in failures describe the attempt instead of
 }) => {
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("sample");
-  await page.getByLabel("Enrolled username").fill("student01");
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByLabel("Username").fill("student01");
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Your exam is already completed",
   );
   await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
   await page.getByRole("button", { name: "Dismiss", exact: true }).click();
   await page.getByLabel("Exam ID", { exact: true }).fill("locked");
-  await page.getByLabel("Enrolled username").fill("student05");
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByLabel("Username").fill("student05");
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Ask your instructor to authorize continuation",
   );
@@ -1505,9 +1521,9 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
     (window as any).dropPreflightContact = true;
   });
   await studentSignIn(page, "expiry", "student02");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(
-    page.getByRole("heading", { name: "Preflight ended before starting" }),
+    page.getByRole("heading", { name: "Setup ended before starting" }),
   ).toBeVisible({ timeout: 18000 });
   const oldAttempt = (
     await (await page.request.get("/api/student/exam")).json()
@@ -1515,8 +1531,10 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
   expect(oldAttempt.start).toBeNull();
   expect(oldAttempt.deadline).toBeNull();
   const receipt = page.locator(".lock-overlay");
-  await expect(receipt).toContainText("no exam time was consumed");
-  await expect(receipt).not.toContainText("Collection requires recovery");
+  await expect(receipt).toContainText("used no exam time");
+  await expect(receipt).not.toContainText(
+    "Your files need administrator attention",
+  );
   await expect(receipt).not.toContainText("Checksum");
   await page.screenshot({
     path: test.info().outputPath("preflight-expired.png"),
@@ -1524,10 +1542,10 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
   });
   await page.reload();
   await expect(
-    page.getByText("Your SSH connection has ended.", { exact: false }),
+    page.getByText("Your connection has ended.", { exact: false }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Open preflight & practice" }),
+    page.getByRole("button", { name: "Check setup and practice" }),
   ).toHaveCount(0);
   await page
     .getByRole("button", { name: "Sign out and sign in again" })
@@ -1538,13 +1556,16 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
     (window as any).dropPreflightContact = false;
   });
   await expect(
-    page.getByText("You can retry without consuming exam time.", {
-      exact: false,
-    }),
+    page.getByText(
+      "Setup ended before your exam started. No exam time was used.",
+      {
+        exact: false,
+      },
+    ),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(
-    page.getByRole("button", { name: "1. Share entire display" }),
+    page.getByRole("button", { name: "1. Share entire screen" }),
   ).toBeVisible();
   const newAttempt = (
     await (await page.request.get("/api/student/exam")).json()
@@ -1554,7 +1575,7 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
   expect(newAttempt.deadline).toBeNull();
   await page.waitForTimeout(12000);
   await expect(
-    page.getByRole("button", { name: "1. Share entire display" }),
+    page.getByRole("button", { name: "1. Share entire screen" }),
   ).toBeVisible();
   await expect(page.locator(".lock-overlay")).toHaveCount(0);
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
@@ -1562,13 +1583,11 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
     .getByRole("dialog")
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
-  await expect(
-    page.getByRole("button", { name: "Start SSH sign-in" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await studentSignIn(page, "expiry", "student02");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(
-    page.getByRole("button", { name: "1. Share entire display" }),
+    page.getByRole("button", { name: "1. Share entire screen" }),
   ).toBeVisible();
 });
 
@@ -1590,10 +1609,10 @@ test("login-only interface identifies real hosts and displays authentication suc
   await expect(
     page.getByRole("heading", { name: "Test your SSH login" }),
   ).toBeVisible();
-  await expect(page.getByLabel("SSH username")).toBeVisible();
+  await expect(page.getByLabel("Username", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Exam ID", { exact: true })).toHaveCount(0);
   await expect(
-    page.getByText("Login test only; no exam or recording starts.", {
+    page.getByText("Sign-in test only. No exam or recording starts.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -1612,13 +1631,15 @@ test("login-only interface identifies real hosts and displays authentication suc
   );
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Both SSH hosts authenticated" }),
+    page.getByRole("heading", { name: "SSH sign-in succeeded" }),
   ).toBeVisible();
   await expect(
-    page.getByText("The SSH connections have been closed.", { exact: false }),
+    page.getByText("Connections closed. No new attempt was started.", {
+      exact: false,
+    }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Open preflight & practice" }),
+    page.getByRole("button", { name: "Check setup and practice" }),
   ).toHaveCount(0);
   await expect(page.locator("footer")).toHaveCount(0);
   await page.screenshot({
@@ -1653,8 +1674,8 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
   });
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("sample");
-  await page.getByLabel("Enrolled username").fill("student01");
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByLabel("Username").fill("student01");
+  await page.getByRole("button", { name: "Sign in" }).click();
   const banner = page.getByLabel("Host authentication messages");
   const prose = banner.locator("p").first();
   await expect(prose).toHaveText(
@@ -1676,7 +1697,7 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
     fullPage: true,
   });
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page.getByRole("button", { name: "Respond to this host" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByLabel("Shared SSH password")).toHaveValue("");
   await expect(page.getByLabel("Shared SSH password")).toBeDisabled();
   await expect
@@ -1749,13 +1770,13 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
   await expect(messages).not.toContainText("42");
   await expect(messages).not.toContainText("123456");
   await expect(page.getByLabel("Verification code")).toHaveValue("123456");
-  await page.getByRole("button", { name: "Respond to this host" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByLabel("Verification code")).toHaveValue("");
   await expect
     .poll(() => sent.filter((m) => m.type === "answers").at(-1)?.round)
     .toBe("verification-code-round");
   await expect(
-    page.getByRole("button", { name: "Waiting for host…" }),
+    page.getByRole("button", { name: "Waiting for server…" }),
   ).toBeDisabled();
   await page.screenshot({
     path: test.info().outputPath("ssh-authentication-messages.png"),
@@ -1763,7 +1784,7 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
   });
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.getByLabel("Host authentication messages")).toHaveCount(0);
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByLabel("Shared SSH password")).toBeVisible();
   await expect(
     page.getByLabel("Host authentication messages"),
@@ -1799,17 +1820,17 @@ test("instructor sees a working student and live clock, resets time without disc
     await simulatedMedia(page);
     await studentSignIn(page, "sandbox", "student06");
     await page
-      .getByRole("button", { name: "Open preflight & practice" })
+      .getByRole("button", { name: "Check setup and practice" })
       .click();
-    await page.getByRole("button", { name: "1. Share entire display" }).click();
+    await page.getByRole("button", { name: "1. Share entire screen" }).click();
     await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
     await page
       .getByRole("button", { name: "3. Lock keyboard", exact: true })
       .click();
-    await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+    await page.getByRole("button", { name: "Start exam", exact: true }).click();
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Begin exam", exact: true })
+      .getByRole("button", { name: "Start exam", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "New terminal", exact: true }),
@@ -1831,7 +1852,7 @@ test("instructor sees a working student and live clock, resets time without disc
       "Actions for student06 attempt 1",
       "Reset time remaining",
     );
-    await expect(instructor.getByRole("dialog")).toContainText("→ 5 minutes");
+    await expect(instructor.getByRole("dialog")).toContainText("→ 5 min");
     await instructor.keyboard.press("Escape");
     await expect(instructor.getByRole("dialog")).toHaveCount(0);
     await rowCommand(
@@ -1875,7 +1896,7 @@ test("instructor sees a working student and live clock, resets time without disc
       .click();
     await instructor.getByLabel("Minutes to add", { exact: true }).fill("3");
     await instructor
-      .getByRole("button", { name: "Apply extension", exact: true })
+      .getByRole("button", { name: "Add time", exact: true })
       .click();
     await expect(instructor.getByRole("dialog")).toHaveCount(0);
     await expect
@@ -1897,7 +1918,7 @@ test("instructor sees a working student and live clock, resets time without disc
     await expect
       .poll(() => row.locator("tr.attempt-row .attempt-clock").innerText())
       .not.toBe(clockText);
-    const terminal = page.locator(".winbox").first();
+    const terminal = await readyTerminal(page, 1);
     await terminal.locator(".xterm-helper-textarea").focus();
     await page.keyboard.type("echo still-connected");
     await page.keyboard.press("Enter");
@@ -1905,7 +1926,7 @@ test("instructor sees a working student and live clock, resets time without disc
       "still-connected",
     );
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toHaveCount(0);
     await page
       .getByRole("button", { name: "Finish exam", exact: true })
@@ -1914,7 +1935,7 @@ test("instructor sees a working student and live clock, resets time without disc
       .getByRole("dialog")
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
-    await expect(row).toContainText("Submission secured", { timeout: 10000 });
+    await expect(row).toContainText("Files saved", { timeout: 10000 });
     const attempts = instructor.getByRole("table", {
       name: "Students and attempts",
     });
@@ -1952,16 +1973,16 @@ async function startFocusGraceExam(
     };
   });
   await studentSignIn(page, "sandbox", username);
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page
     .getByRole("button", { name: "3. Lock keyboard", exact: true })
     .click();
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
@@ -1990,7 +2011,7 @@ test("focus grace counts down, survives 15 seconds, clears on return, and expire
   await expect(warning).toContainText("20s before lock");
   await page.waitForTimeout(2200);
   await expect(warning).toContainText(/1[67]s before lock/);
-  await page.screenshot({ path: "/tmp/ssh-exam-focus-warning.png" });
+  await page.screenshot({ path: test.info().outputPath("focus-warning.png") });
   await setExamFocus(page, true);
   await expect(warning).toHaveCount(0);
   await expect
@@ -2004,7 +2025,7 @@ test("focus grace counts down, survives 15 seconds, clears on return, and expire
   expect(returned.attempt.state).toBe("ACTIVE");
   expect(returned.attempt.deadline).toBe(initial.deadline);
   expect(returned.sshConnected).toBe(true);
-  const terminal = page.locator(".winbox").first();
+  const terminal = await readyTerminal(page, 1);
   await terminal.locator(".xterm-helper-textarea").focus();
   await page.keyboard.type("echo focus-returned");
   await page.keyboard.press("Enter");
@@ -2038,7 +2059,7 @@ test("focus grace counts down, survives 15 seconds, clears on return, and expire
     )
     .toBe("LOCKED");
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   const locked = await (await page.request.get("/api/student/exam")).json();
   expect(locked.attempt.reason).toBe(
@@ -2073,7 +2094,7 @@ for (const [violation, username] of [
         document.dispatchEvent(new Event("visibilitychange"));
       });
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible({ timeout: 3000 });
     await expect(
       page.getByRole("alert").filter({ hasText: "Return to the exam" }),
@@ -2090,16 +2111,16 @@ test("active page reload requires one instructor grant and fresh SSH before rest
   await observeScreens(page);
   await simulatedMedia(page);
   await studentSignIn(page, "reload", "student11");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page
     .getByRole("button", { name: "3. Lock keyboard", exact: true })
     .click();
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
   const original = (await (await page.request.get("/api/student/exam")).json())
@@ -2171,37 +2192,37 @@ test("active page reload requires one instructor grant and fresh SSH before rest
     await page
       .getByRole("button", { name: "Reconnect SSH", exact: true })
       .click();
-    await expect(
-      page.getByRole("button", { name: "Start SSH sign-in" }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
     await resetScreens(page);
-    await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+    await page.getByRole("button", { name: "Sign in" }).click();
     await page.getByLabel("Shared SSH password").fill("shared-password");
-    await page.getByRole("button", { name: "Respond to this host" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Host authentication messages")).toContainText(
       "Enter number 42",
     );
     await expect(
       page.getByRole("button", {
-        name: "Restore page after instructor authorization",
+        name: "Resume exam",
         exact: true,
       }),
     ).toBeVisible();
-    await onlyScreens(page, ["SSH authentication", "summary"]);
+    await onlyScreens(page, ["Server sign-in", "summary"]);
     await resetScreens(page);
     await page
       .getByRole("button", {
-        name: "Restore page after instructor authorization",
+        name: "Resume exam",
         exact: true,
       })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Instructor review required" }),
+      page.locator(".lock-overlay").getByRole("heading", {
+        name: /^(Instructor review required|Resume approved)$/,
+      }),
     ).toBeVisible();
     await onlyScreens(page, [
       "summary",
       "Instructor review required",
-      "Continuation approved",
+      "Resume approved",
     ]);
     await page
       .getByRole("button", { name: "Restore screen sharing", exact: true })
@@ -2214,23 +2235,26 @@ test("active page reload requires one instructor grant and fresh SSH before rest
       .click();
     await page
       .getByRole("button", {
-        name: "Continue exam after authorization",
+        name: "Resume exam",
         exact: true,
       })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Instructor review required" }),
+      page.getByRole("heading", {
+        name: /^(Work paused|Instructor review required)$/,
+      }),
     ).toHaveCount(0);
     await page
       .getByRole("button", { name: "New terminal", exact: true })
       .click();
     await expect(page.locator(".winbox")).toHaveCount(1);
-    await page.locator(".xterm-helper-textarea").focus();
+    const restoredTerminal = await readyTerminal(page, 1);
     await page.keyboard.type("reloaded answer");
     await page.keyboard.press("Enter");
-    await expect(page.locator(".xterm-rows")).toContainText(
+    await expect(restoredTerminal.locator(".xterm-rows")).toContainText(
       "Echo: reloaded answer",
     );
+    await expect(page.locator(".winbox")).toHaveCount(1);
     const active = (await (await page.request.get("/api/student/exam")).json())
       .attempt;
     expect(active).toMatchObject({
@@ -2273,22 +2297,22 @@ test("browser SSH control recovery keeps input blocked until both channels are r
     });
   });
   await studentSignIn(page, "sandbox", "student12");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page
     .getByRole("button", { name: "3. Lock keyboard", exact: true })
     .click();
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
-  await page.locator(".xterm-helper-textarea").focus();
+  const terminal = await readyTerminal(page, 1);
   await page.keyboard.type("before");
   await page.keyboard.press("Enter");
-  await expect(page.locator(".xterm-rows")).toContainText("Echo: before");
+  await expect(terminal.locator(".xterm-rows")).toContainText("Echo: before");
   await resetScreens(page);
   try {
     control!.close({ code: 1012 });
@@ -2314,11 +2338,14 @@ test("browser SSH control recovery keeps input blocked until both channels are r
     await expect(
       page.getByText("Reconnecting · input blocked", { exact: true }),
     ).toHaveCount(0);
-    await page.locator(".xterm-helper-textarea").focus();
+    await readyTerminal(page, 1);
     await page.keyboard.type("after");
     await page.keyboard.press("Enter");
-    await expect(page.locator(".xterm-rows")).toContainText("Echo: after");
-    await expect(page.locator(".xterm-rows")).not.toContainText("discarded");
+    await expect(terminal.locator(".xterm-rows")).toContainText("Echo: after");
+    await expect(terminal.locator(".xterm-rows")).not.toContainText(
+      "discarded",
+    );
+    await expect(page.locator(".winbox")).toHaveCount(1);
     await onlyScreens(page, ["active", "Reconnecting"]);
     expect(
       (await (await page.request.get("/api/student/exam")).json()).attempt

@@ -83,22 +83,18 @@ test("real WASM keeps captured input epochs across a delayed write and same-pane
     "This workflow requires EXAM_BROWSER_SSH=1; Node fallback cannot qualify WASM framing",
   ).toBe(true);
   await page.getByLabel("Exam ID", { exact: true }).fill("framed-input");
-  await page.getByLabel("Enrolled username").fill("framed01");
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill("framed01");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".xterm-rows")).toContainText(
     "DISPOSABLE DEVELOPMENT FIXTURE",
@@ -253,9 +249,11 @@ test("real WASM keeps captured input epochs across a delayed write and same-pane
     "STALE_SHOULD_NOT_EXECUTE",
   );
   await expect(page.locator(".winbox")).toHaveCount(1);
-  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("heading", {
+      name: /^(Work paused|Instructor review required)$/,
+    }),
+  ).toHaveCount(0);
   const current = await (await page.request.get("/api/student/exam")).json();
   expect(current.attempt).toMatchObject({
     id: initial.attempt.id,

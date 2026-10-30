@@ -236,22 +236,22 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
-  await page.getByLabel("Enrolled username").fill("examq");
+  await page.getByLabel("Username").fill("examq");
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   const current = async () =>
     (await (await page.request.get("/api/student/exam")).json()).attempt;
@@ -439,7 +439,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     );
     expect(approval.ok(), await approval.text()).toBe(true);
     await expect(
-      page.getByRole("heading", { name: "Continuation approved", exact: true }),
+      page.getByRole("heading", { name: "Resume approved", exact: true }),
     ).toBeVisible();
     expect(
       (await native()).kernel.every((entry: any) => entry.frozen === "1"),
@@ -448,7 +448,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
       await restart(policyCycle === 1 ? "graceful" : "kill", true);
       await expect(
         page.getByRole("heading", {
-          name: "Continuation approved",
+          name: "Resume approved",
           exact: true,
         }),
       ).toBeVisible();
@@ -523,7 +523,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     );
     await page
       .getByRole("button", {
-        name: "Continue exam after authorization",
+        name: "Resume exam",
         exact: true,
       })
       .click();

@@ -5,11 +5,13 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  className = "",
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   wide?: boolean;
+  className?: string;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -57,7 +59,7 @@ export function Modal({
     <div className="dialog-backdrop">
       <div
         ref={root}
-        className={`card${wide ? " review" : ""}`}
+        className={`card${wide ? " review" : ""}${className ? ` ${className}` : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

@@ -15,9 +15,9 @@ export function interruptionSeconds(
 }
 export function authorizationStatus(grant: any, clock: number): string {
   if (grant.used_at || grant.consumed) return "Used to resume";
-  if (grant.replaced_at) return "Replaced by a later approval";
-  if (grant.revoked_at) return "Revoked";
-  if (grant.historical) return "Resumption not recorded";
+  if (grant.replaced_at) return "Replaced";
+  if (grant.revoked_at) return "Cancelled";
+  if (grant.historical) return "Resume not recorded";
   if (grant.expires && grant.expires <= clock)
     return "Expired without resuming";
   return "Awaiting resume";

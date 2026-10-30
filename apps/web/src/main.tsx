@@ -1,6 +1,8 @@
+import { hasProtectedFiles } from "../../../packages/protocol/admin.js";
 import React, { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { api, setCsrf, socket, chicago } from "./api.js";
+import { timeLimit } from "./local-date-time.js";
 import { Workspace } from "./workspace.js";
 import { Admin } from "./admin.js";
 import {
@@ -273,7 +275,7 @@ function App() {
       if (!receivedError) {
         retainAuthMessages();
         setError(
-          "The connection closed before exam sign-in completed. Please sign in again; if this repeats, contact your instructor. No new exam was started.",
+          "Sign-in did not finish. Sign in again. No new attempt was started.",
         );
       }
       setAuthPhase("idle");
@@ -351,7 +353,7 @@ function App() {
         <>
           {loginTest?.functionalTest && (
             <p className="notice">
-              Administrator test · ordinary server access retained.
+              Administrator test · server access retained.
             </p>
           )}
           {loginTest?.maintenance && (
@@ -359,7 +361,7 @@ function App() {
               Exam starts are paused for maintenance.
             </p>
           )}
-          <Admin onError={setError} onSignOut={logout} />
+          <Admin actor={user.username} onError={setError} onSignOut={logout} />
         </>
       ) : reservation ? (
         <Workspace
@@ -400,7 +402,7 @@ function App() {
             )}
             {loginTest?.functionalTest && (
               <p className="notice">
-                Administrator test · ordinary server access retained.
+                Administrator test · server access retained.
               </p>
             )}
             {signInNotice && (
@@ -417,14 +419,12 @@ function App() {
               {user && info ? (
                 info.loginOnly ? (
                   <>
-                    <h2>Both SSH hosts authenticated</h2>
+                    <h2>SSH sign-in succeeded</h2>
                     <p>
                       Signed in as {user.username} through {info.jump} to{" "}
                       {info.class}.
                     </p>
-                    <p>
-                      The SSH connections have been closed. No exam was started.
-                    </p>
+                    <p>Connections closed. No new attempt was started.</p>
                     <button onClick={() => action(logout)}>
                       Sign out and test again
                     </button>
@@ -435,13 +435,13 @@ function App() {
                     <h2>{info.settings?.name ?? info.exam.name}</h2>
                     {info.previous_attempt && (
                       <p>
-                        Your earlier submission remains saved. This
-                        authorization starts a separate attempt.
+                        Your earlier files are saved. This starts a separate
+                        attempt.
                       </p>
                     )}
                     {!info.attempt && info.grants?.length > 1 && (
                       <label>
-                        Attempt authorization
+                        Choose an attempt
                         <select
                           value={info.selected_grant ?? ""}
                           onChange={(e) => {
@@ -458,19 +458,18 @@ function App() {
                             });
                           }}
                         >
-                          <option value="">
-                            Choose an unused authorization
-                          </option>
+                          <option value="">Choose an unused attempt</option>
                           {info.grants.map((g: any) => (
                             <option key={g.id} value={g.id}>
                               {g.issuance === "ADDITIONAL_TEMPLATE"
-                                ? "Additional"
+                                ? "Extra attempt"
                                 : g.issuance === "PRACTICE"
-                                  ? "Practice"
-                                  : "Initial"}{" "}
-                              · {g.settings.duration / 60} minutes ·{" "}
+                                  ? "Practice attempt"
+                                  : "First attempt"}{" "}
+                              · {timeLimit(g.settings.duration)} ·{" "}
                               {chicago(g.settings.earliest)} –{" "}
-                              {chicago(g.settings.latest)} · {g.id.slice(-8)}
+                              {chicago(g.settings.latest)} · Created{" "}
+                              {chicago(g.issued_at)}
                             </option>
                           ))}
                         </select>
@@ -478,8 +477,8 @@ function App() {
                     )}
                     {grantSelectionRequired ? (
                       <p>
-                        Choose an authorization to see its saved allowance,
-                        webcam requirement and Begin window.
+                        Choose an attempt to see its time limit and start
+                        window.
                       </p>
                     ) : (
                       <>
@@ -487,26 +486,29 @@ function App() {
                           <p role="status">{info.practice_blocked.message}</p>
                         )}
                         {info.selected_grant && (
-                          <p style={{ overflowWrap: "anywhere" }}>
-                            Workspace:{" "}
-                            {(() => {
-                              const work = info.grants.find(
-                                (g: any) => g.id === info.selected_grant,
-                              )?.work;
-                              return work?.kind === "empty"
-                                ? "Empty workspace"
-                                : work
-                                  ? `${work.name} · ${work.hash}`
-                                  : "Inspect saved authorization";
-                            })()}
-                          </p>
+                          <details className="exam-details">
+                            <summary>Starting files</summary>
+                            <p>
+                              {(() => {
+                                const work = info.grants.find(
+                                  (g: any) => g.id === info.selected_grant,
+                                )?.work;
+                                return work?.kind === "empty"
+                                  ? "Empty folder"
+                                  : work?.kind === "saved"
+                                    ? "Saved work"
+                                    : work
+                                      ? `Starter files: ${work.name}`
+                                      : "Starting files unavailable";
+                              })()}
+                            </p>
+                          </details>
                         )}
                         {isSandbox(info.exam.id) &&
                         !hasSandboxWindow(info.exam) ? (
                           <p>
-                            Sandbox practice awaits an operator-configured
-                            finite Begin window. Existing started attempts keep
-                            their deadlines.
+                            Practice is closed. Ask your instructor to open a
+                            start window.
                           </p>
                         ) : (
                           <details className="exam-details">
@@ -524,16 +526,18 @@ function App() {
                           </details>
                         )}
                         <p>
-                          {(info.settings?.duration ??
-                            info.enrollment.duration ??
-                            info.exam.duration) / 60}{" "}
-                          minutes · Webcam:{" "}
+                          {timeLimit(
+                            info.settings?.duration ??
+                              info.enrollment.duration ??
+                              info.exam.duration,
+                          )}{" "}
+                          · Webcam:{" "}
                           {(info.settings?.webcam ??
                           (info.enrollment.webcam === null
                             ? info.exam.webcam
                             : info.enrollment.webcam))
                             ? "Required"
-                            : "Not required"}
+                            : "Optional"}
                         </p>
                       </>
                     )}
@@ -542,11 +546,12 @@ function App() {
                       info.attempt.state,
                     ) ? (
                       <p>
-                        {info.attempt.state === "COMPLETED"
-                          ? "Your exam has ended and your saved work was collected."
+                        {info.attempt.state === "COMPLETED" &&
+                        hasProtectedFiles(info.attempt)
+                          ? "Your exam has ended. Your files are saved."
                           : info.attempt.state === "FINALIZING"
-                            ? "Your exam has ended. Automatic collection is in progress; no submission action is required."
-                            : "Your exam has ended. Automatic collection needs instructor recovery; no submission action is required."}
+                            ? "Your exam has ended. Files are being saved; you do not need to submit anything."
+                            : "Your exam has ended. File protection is not confirmed. Ask your instructor to check."}
                       </p>
                     ) : info.attempt &&
                       !["PREPARING", "CANCELLED_BEFORE_START"].includes(
@@ -555,10 +560,10 @@ function App() {
                       <>
                         <p className="warn">
                           {info.attempt.monitoring_mode === "v1"
-                            ? "This page cannot take over your earlier attempt. Ask your instructor for a reviewed new attempt from verified saved work, with an allowance and finite Begin window they choose. The earlier attempt's clock, history and account restrictions remain."
+                            ? "This session cannot resume. Ask your instructor for another attempt from saved files. The original clock and server restrictions still apply."
                             : isSandbox(info.exam.id)
-                              ? "Resume this sandbox attempt; its original clock continues."
-                              : `Attempt ${info.attempt.state}. A reload requires instructor approval. The clock continues.`}
+                              ? "Resume this practice attempt. The clock keeps running."
+                              : "Resuming after a reload needs instructor approval. The clock keeps running."}
                         </p>
                         {!isSandbox(info.exam.id) && (
                           <>
@@ -578,8 +583,8 @@ function App() {
                               }
                             >
                               {info.attempt.monitoring_mode === "v1"
-                                ? "Request a new-attempt review"
-                                : "Request instructor review"}
+                                ? "Request another attempt"
+                                : "Ask your instructor to review"}
                             </button>
                           </>
                         )}
@@ -621,9 +626,7 @@ function App() {
                               >
                                 {navigation === "restore"
                                   ? "Restoring exam…"
-                                  : isSandbox(info.exam.id)
-                                    ? "Restore page"
-                                    : "Restore page after instructor authorization"}
+                                  : "Resume exam"}
                               </button>
                             </>
                           ))}
@@ -632,15 +635,15 @@ function App() {
                       <>
                         {info.attempt?.state === "CANCELLED_BEFORE_START" && (
                           <p>
-                            Preflight ended before your exam started. You can
-                            retry without consuming exam time.
+                            Setup ended before your exam started. No exam time
+                            was used.
                           </p>
                         )}
                         {!info.sshConnected ? (
                           <>
                             <p>
-                              Your SSH connection has ended. Sign out and sign
-                              in again to reopen preflight.
+                              Your connection has ended. Sign out and sign in
+                              again to retry setup.
                             </p>
                             <button onClick={() => action(logout)}>
                               Sign out and sign in again
@@ -672,8 +675,8 @@ function App() {
                             }
                           >
                             {navigation === "preflight"
-                              ? "Opening preflight…"
-                              : "Open preflight & practice"}
+                              ? "Opening setup…"
+                              : "Check setup and practice"}
                           </button>
                         )}
                       </>
@@ -751,7 +754,7 @@ function App() {
                   }}
                 >
                   {challenge && <small>{challenge.host}</small>}
-                  <h2>SSH authentication</h2>
+                  <h2>Server sign-in</h2>
                   {!!challenge?.instructions?.length && (
                     <div
                       className="challenge"
@@ -802,16 +805,16 @@ function App() {
                   ) : challenge?.prompts.length ? (
                     <button className="primary" disabled={responding}>
                       {responding
-                        ? "Waiting for host…"
+                        ? "Waiting for server…"
                         : isPhoneApprovalChallenge(challenge)
                           ? "Continue after phone approval"
-                          : "Respond to this host"}
+                          : "Continue"}
                     </button>
                   ) : (
                     <p>
                       {challenge
-                        ? "Waiting for this host. Complete phone approval if requested above…"
-                        : "Connecting to SSH…"}
+                        ? "Waiting for the server. Complete phone approval if requested…"
+                        : "Connecting to the server…"}
                     </p>
                   )}
                   {authPhase === "connecting" && (
@@ -846,7 +849,7 @@ function App() {
                   <h2>
                     {loginTest?.loginOnly
                       ? "Test your SSH login"
-                      : "Connect to your exam"}
+                      : "Sign in to your exam"}
                   </h2>
                   {loginTest?.loginOnly && (
                     <p>
@@ -866,9 +869,7 @@ function App() {
                     </label>
                   )}
                   <label>
-                    {loginTest?.loginOnly
-                      ? "SSH username"
-                      : "Enrolled username"}
+                    Username
                     <input
                       required
                       disabled={browserBlocked || !!navigation}
@@ -878,24 +879,22 @@ function App() {
                     />
                   </label>
                   <p className="login-note">
-                    Enter your SSH password once. It is held temporarily in
-                    {loginTest?.browserSSH ? " browser" : " server"} memory,
-                    reused for both servers, then discarded. Phone MFA is
-                    unchanged.
+                    Your password is used for both SSH servers and discarded
+                    after sign-in. Complete phone approval when prompted.
                   </p>
                   <button
                     className="primary"
                     disabled={!!authSocket || browserBlocked}
                   >
-                    Start SSH sign-in
+                    Sign in
                   </button>
                 </form>
               )}
               {!admin && !user && !browserBlocked && authPhase === "idle" && (
                 <p className="login-note">
                   {loginTest?.loginOnly
-                    ? "Login test only; no exam or recording starts."
-                    : "Desktop Chrome, Edge or Chromium required, with fullscreen and entire-display sharing. During the exam: screen images every five seconds, webcam when required, and terminal output. No audio or raw keystrokes. Monitoring is deleted after 60 days; submissions are retained separately."}
+                    ? "Sign-in test only. No exam or recording starts."
+                    : "Use desktop Chrome, Edge or Chromium. Exams require fullscreen and sharing your entire screen. We record screen images every 5 seconds, webcam images when required, and terminal output. No audio or raw keystrokes. Recordings are deleted after 60 days; submissions are kept separately."}
                 </p>
               )}
             </section>

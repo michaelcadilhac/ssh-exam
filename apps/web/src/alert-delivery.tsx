@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, chicago } from "./api.js";
 
+const deliveryLabels: Record<string, string> = {
+  all: "All messages",
+  pending: "Queued",
+  sent: "Accepted by mail server",
+  failed: "Failed",
+  cancelled: "Cancelled",
+};
+
 // Operational metadata only. Selection captures the reviewed revision; polling
 // must not silently advance it under an unsent/retried manual reminder.
 export function AlertDelivery() {
@@ -108,9 +116,7 @@ export function AlertDelivery() {
       }
       if (mounted.current) {
         setOutboxQuery(result.outbox);
-        setNotice(
-          `Email queued, not confirmed delivered. Outbox ${result.outbox}; inspect delivery status below.`,
-        );
+        setNotice("Email queued. Delivery is not confirmed.");
         setRefresh((v) => v + 1);
       }
     } catch (e) {
@@ -125,9 +131,8 @@ export function AlertDelivery() {
     <section aria-label="Email delivery">
       <h3>Email delivery</h3>
       <p>
-        Queued is not delivered. Sent means SMTP accepted, not read. No
-        automatic reminders. Desktop permission and sound apply only to this
-        browser.
+        Mail-server acceptance does not confirm inbox delivery. Reminders are
+        sent only when you request one.
       </p>
       {error && <p role="alert">{error}</p>}
       {loadError && <p role="alert">{loadError}</p>}
@@ -137,18 +142,14 @@ export function AlertDelivery() {
         </p>
       )}
       {stale && (
-        <p role="status">
-          Delivery data is loading or stale; refresh before choosing a reminder.
-        </p>
+        <p role="status">Updates paused. Refresh before sending a reminder.</p>
       )}
-      {data && !data.smtpConfigured && (
-        <p>SMTP is not configured; no email can be delivered.</p>
-      )}
+      {data && !data.smtpConfigured && <p>Email is not configured.</p>}
       <button
         disabled={busy || stale || !data?.smtpConfigured}
         onClick={() => void execute("test")}
       >
-        Test email alert
+        Send test email
       </button>
       <label>
         Delivery status{" "}
@@ -163,7 +164,9 @@ export function AlertDelivery() {
           }}
         >
           {["all", "pending", "sent", "failed", "cancelled"].map((v) => (
-            <option key={v}>{v}</option>
+            <option key={v} value={v}>
+              {deliveryLabels[v]}
+            </option>
           ))}
         </select>
       </label>
@@ -174,44 +177,48 @@ export function AlertDelivery() {
           setRefresh((v) => v + 1);
         }}
       >
-        Refresh delivery
+        Refresh
       </button>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setError("");
-          setLookup(outboxQuery.trim());
-          setRefresh((v) => v + 1);
-        }}
-      >
-        <label>
-          Outbox ID{" "}
-          <input
-            required
-            minLength={36}
-            maxLength={36}
-            pattern="[a-f0-9-]{36}"
-            value={outboxQuery}
-            onChange={(e) => setOutboxQuery(e.target.value)}
-            disabled={busy}
-          />
-        </label>
-        <button type="submit" disabled={busy}>
-          Inspect message
-        </button>
-        {lookup && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setLookup("");
-              setCursor("");
-            }}
-          >
-            Return to delivery list
+      <details>
+        <summary>Technical details</summary>
+        <p>Desktop alerts and sound apply only to this browser.</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError("");
+            setLookup(outboxQuery.trim());
+            setRefresh((v) => v + 1);
+          }}
+        >
+          <label>
+            Outbox ID{" "}
+            <input
+              required
+              minLength={36}
+              maxLength={36}
+              pattern="[a-f0-9-]{36}"
+              value={outboxQuery}
+              onChange={(e) => setOutboxQuery(e.target.value)}
+              disabled={busy}
+            />
+          </label>
+          <button type="submit" disabled={busy}>
+            Inspect message
           </button>
-        )}
-      </form>
+          {lookup && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setLookup("");
+                setCursor("");
+              }}
+            >
+              Back to messages
+            </button>
+          )}
+        </form>
+      </details>
       {selected && (
         <form
           onSubmit={(e) => {
@@ -219,14 +226,12 @@ export function AlertDelivery() {
             void execute("remind");
           }}
         >
-          <h4>Manual reminder</h4>
+          <h4>Send reminder</h4>
           <p>
-            {selected.subject}. This sends a deliberate new email to configured
-            recipients. It cannot authorize continuation, reset a clock or
-            reopen an incident.
+            Send another email about {selected.subject} to the alert recipients?
           </p>
           <label>
-            Reminder reason{" "}
+            Reason{" "}
             <textarea
               required
               minLength={8}
@@ -236,15 +241,12 @@ export function AlertDelivery() {
               disabled={busy}
             />
           </label>
-          <p>
-            The reviewed episode revision is fixed. If it changes, cancel,
-            refresh and review it again.
-          </p>
+          <p>If this alert changes, cancel and review it again.</p>
           <button
             type="submit"
             disabled={busy || stale || reason.trim().length < 8}
           >
-            Queue reminder
+            Send reminder
           </button>
           <button
             type="button"
@@ -255,7 +257,7 @@ export function AlertDelivery() {
               setError("");
             }}
           >
-            Cancel reminder
+            Cancel
           </button>
         </form>
       )}
@@ -263,18 +265,22 @@ export function AlertDelivery() {
         {(data?.alerts || []).map((row: any) => (
           <li key={row.id} style={{ overflowWrap: "anywhere" }}>
             <h4>{row.subject}</h4>
-            <p>
-              Outbox {row.id}: {row.status}; retries {row.tries}
-              {row.status === "pending" ? `; next ${chicago(row.next)}` : ""}.
-            </p>
-            {row.episode && (
+            <p>{deliveryLabels[row.status] ?? "Status unavailable"}</p>
+            <details>
+              <summary>Details</summary>
               <p>
-                Episode {row.episode.id}: {row.episode.event}; generation{" "}
-                {row.episode.generation};{" "}
-                {row.episode.resolved === null ? "unresolved" : "resolved"};{" "}
-                {row.episode.reminderCount} manual reminders.
+                Outbox {row.id}: {row.status}; retries {row.tries}
+                {row.status === "pending" ? `; next ${chicago(row.next)}` : ""}.
               </p>
-            )}
+              {row.episode && (
+                <p>
+                  Episode {row.episode.id}: {row.episode.event}; generation{" "}
+                  {row.episode.generation};{" "}
+                  {row.episode.resolved === null ? "unresolved" : "resolved"};{" "}
+                  {row.episode.reminderCount} manual reminders.
+                </p>
+              )}
+            </details>
             {row.refusal && <p>{row.refusal}</p>}
             <button
               disabled={busy || stale || !row.remindable}
@@ -284,20 +290,20 @@ export function AlertDelivery() {
                 setError("");
               }}
             >
-              Remind: {row.subject}
+              Send reminder
             </button>
           </li>
         ))}
       </ul>
-      {data && !data.alerts.length && <p>No messages in this delivery view.</p>}
+      {data && !data.alerts.length && <p>No messages.</p>}
       {cursor && (
         <button disabled={busy} onClick={() => setCursor("")}>
-          First delivery page
+          First page
         </button>
       )}
       {data?.next && (
         <button disabled={busy || stale} onClick={() => setCursor(data.next)}>
-          Next delivery page
+          Next page
         </button>
       )}
     </section>

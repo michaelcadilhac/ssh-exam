@@ -295,17 +295,46 @@ export async function openPreflight(
 ) {
   f.model.bind.release();
   await page.goto("/");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
   ).toBeEnabled();
 }
 export async function ready(page: Page) {
-  await page.getByRole("button", { name: "1. Share entire display" }).click();
+  await page.getByRole("button", { name: "1. Share entire screen" }).click();
   await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
   await page
     .getByRole("button", { name: "3. Lock keyboard", exact: true })
     .click();
+}
+// Window creation precedes the verified open/input acknowledgment. Pin the
+// intended windows and wait for that real boundary before driving a keyboard.
+export async function readyTerminal(
+  page: Page,
+  count: number,
+  index = count - 1,
+) {
+  const windows = page.locator(".winbox");
+  await expect(windows).toHaveCount(count);
+  const ids = await windows.evaluateAll((elements) =>
+    elements.map((e) => e.id),
+  );
+  expect(new Set(ids).size).toBe(count);
+  for (const id of ids) {
+    expect(id).toMatch(/^[a-zA-Z0-9_-]+$/);
+    const pane = page.locator(`.winbox[id="${id}"]`);
+    await expect(pane.locator(".terminal[aria-busy]")).toHaveAttribute(
+      "aria-busy",
+      "false",
+      { timeout: 10000 },
+    );
+    await expect(pane.locator(".xterm-helper-textarea")).toBeEnabled();
+  }
+  const pane = page.locator(`.winbox[id="${ids[index]}"]`);
+  await pane.locator(".xterm-screen").click();
+  await expect(pane.locator(".xterm-helper-textarea")).toBeFocused();
+  await expect(windows).toHaveCount(count);
+  return pane;
 }
 export async function begin(
   page: Page,
@@ -313,10 +342,10 @@ export async function begin(
 ) {
   await openPreflight(page, f);
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Finish exam", exact: true }),
@@ -330,6 +359,6 @@ export async function confirmFinish(page: Page) {
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Protecting your submission" }),
+    page.getByRole("heading", { name: "Saving your files" }),
   ).toBeVisible();
 }

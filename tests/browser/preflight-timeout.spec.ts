@@ -3,11 +3,11 @@ import { expect, test, type Page } from "@playwright/test";
 async function signIn(page: Page) {
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("preflight-limit");
-  await page.getByLabel("Enrolled username").fill("preflight01");
-  await page.getByRole("button", { name: "Start SSH sign-in" }).click();
+  await page.getByLabel("Username").fill("preflight01");
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page.getByRole("button", { name: "Respond to this host" }).click();
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
   ).toBeEnabled();
@@ -22,7 +22,7 @@ test("fifteen-minute age ends a connected preflight, closes SSH and practice, th
   await signIn(page);
   await expect(
     page.getByText(
-      "Preflight expires after 15 minutes; you can sign in again.",
+      "Setup expires after 15 minutes. You can sign in again.",
     ),
   ).toBeVisible();
   await page
@@ -44,13 +44,12 @@ test("fifteen-minute age ends a connected preflight, closes SSH and practice, th
     ).ok(),
   ).toBe(true);
   await expect(
-    page.getByRole("heading", { name: "Preflight ended before starting" }),
+    page.getByRole("heading", { name: "Setup ended before starting" }),
   ).toBeVisible({ timeout: 15000 });
+  await page.locator(".lock-overlay").getByText("Details",{exact:true}).click();
+  await expect(page.locator(".lock-overlay")).toContainText("Preflight expired after 15 minutes");
   await expect(page.locator(".lock-overlay")).toContainText(
-    "Preflight expired after 15 minutes",
-  );
-  await expect(page.locator(".lock-overlay")).toContainText(
-    "no exam time was consumed",
+    "used no exam time",
   );
   await expect
     .poll(
@@ -75,7 +74,7 @@ test("fifteen-minute age ends a connected preflight, closes SSH and practice, th
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Start SSH sign-in" }),
+    page.getByRole("button", { name: "Sign in" }),
   ).toBeVisible();
   await signIn(page);
   const fresh = (await (await page.request.get("/api/student/exam")).json())

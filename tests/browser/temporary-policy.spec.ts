@@ -26,21 +26,21 @@ test("account setup stays in the same preflight without a second sign-in screen"
   });
   await openPreflight(page, f);
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await resetScreens(page);
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam" }),
+    page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toHaveCount(0);
   expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
   wait.release();
   await expect(
     page.getByRole("button", { name: "Finish exam", exact: true }),
   ).toBeEnabled();
-  await onlyScreens(page, ["Begin your timed exam?", "preflight", "active"]);
+  await onlyScreens(page, ["Start your exam?", "preflight", "active"]);
 });
 
 // Actual WASM SSH, signed receipts, certificate authentication and HTTP routes.
@@ -59,16 +59,14 @@ test("one password and MFA sign-in, one preflight, automatic protected SSH hando
   });
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("temporary-access");
-  await page.getByLabel("Enrolled username").fill("policytest01");
+  await page.getByLabel("Username").fill("policytest01");
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await ready(page);
   await page
@@ -78,10 +76,10 @@ test("one password and MFA sign-in, one preflight, automatic protected SSH hando
   const initial = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(initial.start).toBeNull();
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Finish exam", exact: true }),
@@ -104,7 +102,7 @@ test("one password and MFA sign-in, one preflight, automatic protected SSH hando
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
 });
 
@@ -125,10 +123,10 @@ test("brief focus loss during slow activation gets the existing grace period", a
   });
   await openPreflight(page, f);
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await page.evaluate(() => {
     Object.defineProperty(document, "hasFocus", {
@@ -171,10 +169,10 @@ test("activation reports the specific lost condition in the UI and incident log"
   });
   await openPreflight(page, f);
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await page.evaluate(() => document.exitFullscreen());
   // The fullscreen promise may settle before fullscreenchange clears Keyboard

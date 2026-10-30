@@ -24,6 +24,13 @@ const h = await hosts({
 const timezoneAccounts = Object.fromEntries(
   Array.from({ length: 7 }, (_, i) => [`timezone${i + 1}`, 11001 + i]),
 );
+// Capacity sign-in must not reuse retained tests' deliberately held accounts.
+const capacityAccounts = Object.fromEntries(
+  Array.from({ length: 16 }, (_, i) => [
+    `capacity${String(i + 1).padStart(2, "0")}`,
+    12020 + i,
+  ]),
+);
 // Independent identities prevent other specs' unfinished sandbox runs from
 // turning cleanup tests' fresh sign-in into an unrelated recovery flow.
 const cleanupAccounts = { cleanup01: 10013, cleanup02: 10014 };
@@ -233,6 +240,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
   if (op === "resolve-course-accounts") {
     const users: Record<string, number> = {
       ...timezoneAccounts,
+      ...capacityAccounts,
       ...cleanupAccounts,
       ...isolationAccounts,
       ...closureAccounts,
@@ -754,6 +762,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
     health: { ready: true, fixture: true },
     accounts: {
       ...timezoneAccounts,
+      ...capacityAccounts,
       ...cleanupAccounts,
       ...isolationAccounts,
       ...closureAccounts,
@@ -967,9 +976,19 @@ const watchdog = setInterval(() => {
       }).then(postStatus);
 }, 100);
 app.addHook("onClose", async () => clearInterval(watchdog));
-store.db
-  .prepare("INSERT INTO admins VALUES(?,?,?)")
-  .run("fixture", "instructor", await argon2.hash("fixture-password"));
+// Independent workflow actors preserve the real per-instructor/login limits
+// when unrelated short interface scenarios execute back-to-back.
+const fixtureAdminPassword = await argon2.hash("fixture-password");
+for (const [index, username] of [
+  "instructor",
+  "prof_additional",
+  "prof_initial",
+  "prof_practice",
+  "prof_enrollment",
+].entries())
+  store.db
+    .prepare("INSERT INTO admins VALUES(?,?,?)")
+    .run(`fixture-${index}`, username, fixtureAdminPassword);
 const exam = {
   id: "sample",
   name: "Fixture browser exam",

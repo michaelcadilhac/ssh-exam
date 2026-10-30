@@ -1,4 +1,6 @@
+import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
+import { selectedAction } from "./prof-workflow-fixture.js";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
 test("reviewed NEW legacy grants survive a lost confirmation reply and start their full saved allowance through WASM SSH", async ({
@@ -8,33 +10,23 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
   page.setDefaultTimeout(10000);
   await page.setViewportSize({ width: 430, height: 1000 });
   await simulatedMedia(page);
-  await page.goto("/admin");
-  await page.getByLabel("Username", { exact: true }).fill("instructor");
-  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await instructorSignIn(page, "prof_initial");
   await page.getByLabel("Selected exam").selectOption("legacy-grant");
-  await page
-    .getByRole("button", { name: "Issue legacy grants", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog", {
-    name: "Issue legacy grants",
-    exact: true,
-  });
+  const dialog = await selectedAction(
+    page,
+    ["legacy01", "legacy02"],
+    "Allow first attempt",
+  );
   await dialog
-    .getByLabel("Legacy unused students", { exact: true })
-    .fill("legacy01\nlegacy02");
-  await dialog
-    .getByLabel("Reason for NEW issuance")
+    .getByLabel("Reason", { exact: true })
     .fill("Review NEW grants for existing unused browser enrollments");
-  await dialog
-    .getByRole("button", { name: "Preview NEW grants", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Review", exact: true }).click();
   await expect(
     dialog.getByRole("heading", { name: "legacy01", exact: true }),
   ).toBeVisible();
-  await expect(dialog).toContainText("90 minutes · Webcam not required");
-  await expect(dialog).toContainText("75 minutes · Webcam required");
-  await expect(dialog).toContainText("Status: REVIEW");
+  await expect(dialog).toContainText("90 min · Webcam optional");
+  await expect(dialog).toContainText("75 min · Webcam required");
+  await expect(dialog).toContainText("Review attempts");
   expect(
     await dialog.evaluate(
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
@@ -60,15 +52,15 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
     }
   });
   await dialog
-    .getByRole("button", { name: "Confirm NEW grants", exact: true })
+    .getByRole("button", { name: "Allow attempts", exact: true })
     .click();
   await expect(
-    dialog.getByRole("button", { name: "Retry confirm", exact: true }),
+    dialog.getByRole("button", { name: "Retry same request", exact: true }),
   ).toBeEnabled();
   await dialog
-    .getByRole("button", { name: "Retry confirm", exact: true })
+    .getByRole("button", { name: "Retry same request", exact: true })
     .click();
-  await expect(dialog).toContainText("Status: CONFIRMED");
+  await expect(dialog).toContainText("Attempts allowed");
   expect(confirmations).toBe(2);
   const grants = await (
     await page.request.get("/api/admin/exams/legacy-grant/grants")
@@ -82,19 +74,15 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
   await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("legacy-grant");
-  await page.getByLabel("Enrolled username").fill("legacy01");
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill("legacy01");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Reviewed browser grant", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
@@ -108,10 +96,10 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
     grant_id: expect.any(String),
   });
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
   const active = (await (await page.request.get("/api/student/exam")).json())
@@ -124,6 +112,6 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
 });

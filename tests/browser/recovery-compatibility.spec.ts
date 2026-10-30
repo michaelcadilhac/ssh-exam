@@ -30,23 +30,23 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
   await page
     .getByLabel("Exam ID", { exact: true })
     .fill("recovery-compatibility");
-  await page.getByLabel("Enrolled username").fill("recovery01");
+  await page.getByLabel("Username").fill("recovery01");
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   await expect(
     page.getByRole("button", {
-      name: "Open preflight & practice",
+      name: "Check setup and practice",
       exact: true,
     }),
   ).toBeVisible({ timeout: 10000 });
   await role(true);
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await expect(
     page.getByText(/Class server lacks recovery allowance synchronization/),
@@ -57,7 +57,7 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
   expect(refused.operations).not.toContain("prepare-attempt");
   await role(false);
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await ready(page);
   const before = (await read()).web[0];
@@ -69,11 +69,11 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
   });
   const begin = async () => {
     await page
-      .getByRole("button", { name: "Begin exam", exact: true })
+      .getByRole("button", { name: "Start exam", exact: true })
       .click({ timeout: 5000 });
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Begin exam", exact: true })
+      .getByRole("button", { name: "Start exam", exact: true })
       .click({ timeout: 5000 });
   };
   await role(true);
@@ -109,6 +109,6 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
   expect(active.deadline - active.start).toBe(5400000);
   await confirmFinish(page);
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
 });

@@ -45,15 +45,17 @@ sudo examctl web exams create midterm --template v1 --template-version SOURCE-HA
 sudo examctl web exams update midterm --revision DEFINITION-REVISION --template-version SOURCE-HASH --reason 'Reviewed exact source for future preparations'
 ```
 
-Web Exam settings has the separate **Immutable template hash (optional)** field.
+October30 local UI candidate: **Exam settings → Exam files** retrieves published
+name/version pairs directly; exact hashes remain in File details. The CLI still
+accepts explicit version flags.
 The shared writer requires a catalog acknowledgement for the configured class
 agent and exact name/hash. Historical acknowledgement does not prove present
 availability: loaded native capabilities and actual bytes are checked during
 preflight/Begin. Missing/damaged sources refuse; never fall back to mutable or
 latest. Template-name edits preserve the hash and must select a matching version.
 
-To explicitly return future defaults to legacy mutable source semantics, clear
-that browser field or use `--template-version legacy`. This never changes saved
+To explicitly return future defaults to legacy mutable source semantics, use `--template-version legacy` in the CLI (the current web picker offers
+published versions). This never changes saved
 preparations, started intervals, histories or submissions. No grant is issued or
 revised by editing a definition; enrollment-time issuance/migration remains open.
 

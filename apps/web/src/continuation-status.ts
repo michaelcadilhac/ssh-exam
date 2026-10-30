@@ -101,27 +101,27 @@ export function continuationNotice(
   switch (view.state) {
     case "approved":
       return authenticationGap
-        ? "Continuation approved. SSH is disconnected: reconnect first, then restore monitoring and choose Continue. The clock continues."
-        : "Continuation approved. Restore any missing conditions below, then choose Continue. Reconnect SSH only if it is actually disconnected; approval alone does not enable input.";
+        ? "Resume approved. Sign in again, restore the checks, then choose Resume exam. The clock keeps running."
+        : "Resume approved. Restore any missing checks, then choose Resume exam.";
     case "completing":
-      return "The class server accepted this continuation. Keep this page open and choose Continue to finish terminal agreement. Input stays blocked until it succeeds; no new approval or clock is created.";
+      return "Resume approved. Keep this page open and choose Resume exam to finish reconnecting. Input stays paused until it succeeds.";
     case "expired":
-      return "Your continuation approval has expired. Request a new instructor review before continuing; no time is added.";
+      return "Approval expired. Ask your instructor to approve resuming again. No time is added.";
     case "revoked":
-      return "Your earlier approval is no longer valid. Request a new review for the current interruption.";
+      return "Approval was cancelled. Ask your instructor to review this interruption.";
     case "superseded":
-      return "An earlier approval does not cover this interruption. Request a new instructor review.";
+      return "This interruption needs a new instructor approval.";
     case "used":
-      return "Your earlier approval has already been used. This interruption needs a new instructor review.";
+      return "The earlier approval was used. This interruption needs a new instructor approval.";
     case "unknown":
-      return "Checking the current approval. Keep this page open; if this persists, ask your instructor to inspect the current interruption.";
+      return "Checking approval… Keep this page open. Ask your instructor if this continues.";
     case "resumed":
-      return "Exam resumed. The clock continues.";
+      return "Exam resumed. The clock keeps running.";
     case "not-paused":
-      return "Checking the current attempt state; this message does not enable input.";
+      return "Checking exam status… Input remains paused.";
     case "unavailable":
-      return "This attempt cannot continue in its current state. Check the current exam status with your instructor; approval cannot reopen ended work or add time.";
+      return "This attempt cannot resume. Ask your instructor to check its status. Approval cannot reopen it or add time.";
     default:
-      return "Waiting for instructor approval. You can request review below; your exam clock continues.";
+      return "Waiting for instructor approval. The clock keeps running.";
   }
 }

@@ -1,94 +1,65 @@
+import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
 import { simulatedMedia, ready } from "./transition-fixture.js";
+import {
+  additionalDraft,
+  previewAdditional,
+  manageStudent,
+  cancelUnused,
+  selectedAction,
+  chooseSavedSource,
+} from "./prof-workflow-fixture.js";
 
+async function admin(page: import("@playwright/test").Page) {
+  await instructorSignIn(page, "prof_additional");
+  await page.getByLabel("Selected exam").selectOption("additional-template");
+}
 test("individual additional settings are reviewed per student without changing shared defaults or issuing on preview", async ({
   page,
-}, testInfo) => {
-  test.setTimeout(30000);
+}, info) => {
   page.setDefaultTimeout(8000);
   await page.setViewportSize({ width: 430, height: 1000 });
-  await page.goto("/admin");
-  await page.getByLabel("Username", { exact: true }).fill("instructor");
-  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Selected exam").selectOption("additional-template");
-  await page
-    .getByRole("button", { name: "Authorize additional attempts", exact: true })
+  await admin(page);
+  const dialog = await additionalDraft(page, ["extra01", "extra02"]);
+  await dialog
+    .getByText("Individual time and webcam settings", { exact: true })
     .click();
-  const dialog = page.getByRole("dialog", {
-    name: "Authorize additional attempts",
-    exact: true,
-  });
-  await dialog
-    .getByLabel("Additional attempt students", { exact: true })
-    .fill("extra01 extra02");
-  await dialog
-    .getByRole("combobox", { name: "Workspace initialization", exact: true })
-    .selectOption("empty");
-  await dialog
-    .getByLabel("Additional allowance seconds", { exact: true })
-    .fill("5400");
-  await dialog
-    .getByLabel("Set individual student settings", { exact: true })
-    .check();
-  await dialog
-    .getByLabel("Allowance seconds for extra01", { exact: true })
-    .fill("6000");
-  await dialog
-    .getByRole("combobox", { name: "Webcam override for extra01", exact: true })
-    .selectOption("required");
-  await dialog
-    .getByLabel("Allowance seconds for extra02", { exact: true })
-    .fill("7200");
-  await dialog
-    .getByRole("combobox", { name: "Webcam override for extra02", exact: true })
-    .selectOption("optional");
-  await dialog
-    .getByLabel("Earliest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() - 1000).toISOString());
-  await dialog
-    .getByLabel("Latest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() + 600000).toISOString());
-  await dialog
-    .getByLabel("Reason for additional attempt")
-    .fill("Explicit individual synthetic allowances and webcam choices");
-  const response = page.waitForResponse(
-    (r) =>
-      new URL(r.url()).pathname.endsWith("/grants/additional-preview") &&
-      r.request().method() === "POST",
-  );
-  await dialog
-    .getByRole("button", { name: "Preview additional grants", exact: true })
-    .click();
-  const reply = await response;
-  expect(reply.status()).toBe(200);
+  for (const [username, minutes, webcam] of [
+    ["extra01", "100", "required"],
+    ["extra02", "120", "optional"],
+  ]) {
+    await dialog
+      .getByLabel(`Time limit for ${username} (minutes)`, { exact: true })
+      .fill(minutes);
+    await dialog
+      .getByRole("combobox", { name: `Webcam for ${username}`, exact: true })
+      .selectOption(webcam);
+  }
+  const { reply, review } = await previewAdditional(page, dialog);
   expect(reply.request().postDataJSON().student_settings).toEqual([
     { username: "extra01", duration: 6000, webcam: true },
     { username: "extra02", duration: 7200, webcam: false },
   ]);
-  const reviewed = dialog.getByRole("region", {
-    name: "Reviewed new grants",
-    exact: true,
-  });
-  await expect(
-    reviewed.getByRole("article").filter({
-      has: page.getByRole("heading", { name: "extra01", exact: true }),
-    }),
-  ).toContainText("100 minutes");
-  await expect(
-    reviewed.getByRole("article").filter({
-      has: page.getByRole("heading", { name: "extra02", exact: true }),
-    }),
-  ).toContainText("120 minutes");
-  await expect(dialog).toContainText("Status: REVIEW");
+  expect(review.issued).toHaveLength(0);
+  for (const [username, time] of [
+    ["extra01", "100 min"],
+    ["extra02", "120 min"],
+  ])
+    await expect(
+      dialog.getByRole("article").filter({
+        has: page.getByRole("heading", { name: username, exact: true }),
+      }),
+    ).toContainText(time);
   await page.screenshot({
-    path: testInfo.outputPath("individual-settings-review.png"),
+    path: info.outputPath("individual-settings-review.png"),
     fullPage: true,
   });
   await dialog
-    .getByRole("button", { name: "Cancel review", exact: true })
+    .getByRole("button", { name: "Cancel request", exact: true })
     .click();
-  await expect(dialog).toContainText("Status: CANCELLED");
+  await expect(
+    dialog.getByRole("heading", { name: "Request cancelled", exact: true }),
+  ).toBeVisible();
 });
 
 test("additional grants outside expired defaults support reviewed recovery, multiple-grant management and explicit student selection through fresh Begin", async ({
@@ -97,17 +68,13 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   test.setTimeout(90000);
   page.setDefaultTimeout(10000);
   await page.setViewportSize({ width: 430, height: 1000 });
+  expect(
+    (await (await page.request.get("/api/login-test")).json()).browserSSH,
+  ).toBe(true);
   await simulatedMedia(page);
-  const admin = async () => {
-    await page.goto("/admin");
-    await page.getByLabel("Username", { exact: true }).fill("instructor");
-    await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByLabel("Selected exam").selectOption("additional-template");
-  };
-  await admin();
+  await admin(page);
   const dashboard = async () =>
-    await (
+    (
       await page.request.get("/api/admin/exams/additional-template/dashboard")
     ).json();
   const original = (await dashboard()).students.find(
@@ -120,43 +87,11 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     deadline: expect.any(Number),
   });
   expect(original.deadline - original.start).toBe(5400000);
-  const from = new Date(Date.now() - 60000).toISOString(),
-    until = new Date(Date.now() + 600000).toISOString();
-  const draft = async (seconds: string) => {
-    await page
-      .getByRole("button", {
-        name: "Authorize additional attempts",
-        exact: true,
-      })
-      .click();
-    const dialog = page.getByRole("dialog", {
-      name: "Authorize additional attempts",
-      exact: true,
-    });
-    await dialog
-      .getByLabel("Additional attempt students", { exact: true })
-      .fill("extra01");
-    await dialog.getByLabel("Additional allowance seconds").fill(seconds);
-    await dialog
-      .getByRole("combobox", { name: "Workspace initialization", exact: true })
-      .selectOption("empty");
-    await dialog.getByLabel("Earliest Begin (RFC3339 with zone)").fill(from);
-    await dialog.getByLabel("Latest Begin (RFC3339 with zone)").fill(until);
-    await dialog
-      .getByLabel("Reason for additional attempt")
-      .fill(
-        "Explicit additional template allowance after original completed exam",
-      );
-    await dialog
-      .getByRole("button", { name: "Preview additional grants", exact: true })
-      .click();
-    await expect(dialog).toContainText("Status: REVIEW");
-    return dialog;
-  };
-  let dialog = await draft("5400");
-  await expect(dialog).toContainText("90 minutes · Webcam not required");
-  await expect(dialog).toContainText("Workspace: Empty workspace");
-  const reviewID = await dialog.getByLabel("Saved review ID").inputValue();
+  let dialog = await additionalDraft(page, ["extra01"]);
+  const { review } = await previewAdditional(page, dialog),
+    reviewID = review.id;
+  await expect(dialog).toContainText("90 min · Webcam optional");
+  await expect(dialog).toContainText("Empty folder");
   let lost = 0;
   await page.route(
     `**/api/admin/grant-issuance/${reviewID}/confirm`,
@@ -168,25 +103,17 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     },
   );
   await dialog
-    .getByRole("button", { name: "Confirm additional grants", exact: true })
+    .getByRole("button", { name: "Allow attempt", exact: true })
     .click();
   await expect(
-    dialog.getByRole("button", { name: "Retry confirm", exact: true }),
+    dialog.getByRole("button", { name: "Retry same request", exact: true }),
   ).toBeEnabled();
   await page.reload();
   await page.getByLabel("Selected exam").selectOption("additional-template");
-  await page
-    .getByRole("button", { name: "Authorize additional attempts", exact: true })
-    .click();
-  dialog = page.getByRole("dialog", {
-    name: "Authorize additional attempts",
-    exact: true,
-  });
-  await dialog.getByLabel("Saved review ID").fill(reviewID);
-  await dialog
-    .getByRole("button", { name: "Inspect saved review", exact: true })
-    .click();
-  await expect(dialog).toContainText("Status: CONFIRMED");
+  dialog = await selectedAction(page, ["extra01"], "Allow another attempt");
+  await expect(
+    dialog.getByRole("heading", { name: "Attempt allowed", exact: true }),
+  ).toBeVisible();
   expect(lost).toBe(1);
   const receipt = await (
       await page.request.get(`/api/admin/grant-issuance/${reviewID}`)
@@ -194,12 +121,14 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     ninety = receipt.issued[0].grant;
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await page.unroute(`**/api/admin/grant-issuance/${reviewID}/confirm`);
-  dialog = await draft("4500");
-  await expect(dialog).toContainText("1 existing unused or pending grants");
+  dialog = await additionalDraft(page, ["extra01"], "75");
+  await previewAdditional(page, dialog);
   await dialog
-    .getByRole("button", { name: "Confirm additional grants", exact: true })
+    .getByRole("button", { name: "Allow attempt", exact: true })
     .click();
-  await expect(dialog).toContainText("Status: CONFIRMED");
+  await expect(
+    dialog.getByRole("heading", { name: "Attempt allowed", exact: true }),
+  ).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   const records = (
     await (
@@ -210,83 +139,75 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   ).grants;
   expect(records).toHaveLength(2);
   const other = records.find((g: any) => g.id !== ninety);
-  await page
-    .getByRole("button", { name: "Actions for student extra01", exact: true })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
-    .click();
-  const grants = page.getByRole("dialog", {
-    name: "Attempt grants for extra01",
-    exact: true,
-  });
+  const grants = await manageStudent(page, "extra01");
+  const otherRow = grants.getByRole("article").filter({ hasText: other.id });
+  await otherRow.getByRole("checkbox").check();
+  await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
   await grants
-    .getByRole("combobox", { name: "Saved grant", exact: true })
-    .selectOption(other.id);
-  await expect(grants).toContainText("Saved allowance: 75 minutes");
-  await grants.getByLabel("Allowance seconds", { exact: true }).fill("3600");
-  await grants
-    .getByRole("combobox", { name: "Workspace initialization", exact: true })
+    .getByRole("combobox", { name: "Starting files", exact: true })
     .selectOption("template");
-  await grants.getByLabel("Starter template name", { exact: true }).fill("v1");
   await grants
-    .getByLabel("Starter template version", { exact: true })
-    .fill("a".repeat(64));
-  await grants
-    .getByLabel("Reason", { exact: true })
-    .fill("Explicit revision of this selected unused additional grant");
-  await grants
-    .getByRole("button", { name: "Revise unused grant", exact: true })
-    .click();
-  await expect(grants.getByRole("alert")).toContainText(
-    "No authenticated source attestation",
+    .getByRole("combobox", { name: "Starter files", exact: true })
+    .selectOption(`sample-exam@${"a".repeat(64)}`);
+  // Simulate a catalog selection losing its native attestation before save.
+  // The real gateway, not the browser locator, must refuse the exact pair.
+  await page.route(
+    "**/api/admin/exams/additional-template/grants/change",
+    async (route) => {
+      const body = route.request().postDataJSON();
+      body.rows[0].body.work.name = "v1";
+      const response = await route.fetch({ postData: body });
+      await route.fulfill({ response });
+    },
   );
-  await expect(
-    grants.getByLabel("Starter template name", { exact: true }),
-  ).toBeEnabled();
-  await expect(grants).toContainText("Saved allowance: 75 minutes");
   await grants
-    .getByLabel("Starter template name", { exact: true })
-    .fill("sample-exam");
-  await grants
-    .getByRole("button", { name: "Revise unused grant", exact: true })
+    .getByRole("button", { name: "Review changes", exact: true })
     .click();
-  await expect(grants).toContainText("Saved allowance: 60 minutes");
-  await expect(grants).toContainText(
-    `Saved workspace: sample-exam · ${"a".repeat(64)}`,
-  );
-  await expect(
-    grants.getByRole("combobox", { name: "Saved grant", exact: true }),
-  ).toHaveValue(other.id);
   await grants
-    .getByRole("combobox", { name: "Saved grant", exact: true })
-    .selectOption(ninety);
-  await expect(grants).toContainText("Saved allowance: 90 minutes");
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await expect(grants.getByText("Not changed", { exact: true })).toBeVisible();
+  expect(
+    (await (await page.request.get(`/api/admin/grants/${other.id}`)).json())
+      .settings.duration,
+  ).toBe(4500);
+  await page.unroute("**/api/admin/exams/additional-template/grants/change");
+  await grants
+    .getByRole("button", { name: "Edit remaining changes", exact: true })
+    .click();
+  await grants
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click();
+  await grants
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await expect(
+    grants.getByText("Settings saved", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await (await page.request.get(`/api/admin/grants/${other.id}`)).json(),
+  ).toMatchObject({
+    settings: { duration: 3600 },
+    work: { kind: "template", name: "sample-exam", hash: "a".repeat(64) },
+  });
   expect(
     await grants.evaluate(
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
     ),
   ).toBe(true);
-  await grants
-    .getByRole("heading", { name: "Attempt grants for extra01", exact: true })
-    .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: testInfo.outputPath("additional-grants-management-430.png"),
     fullPage: true,
   });
-  await grants
-    .getByRole("button", { name: "Close grants", exact: true })
-    .click();
+  await grants.getByRole("button", { name: "Close", exact: true }).click();
   await page
     .getByRole("button", { name: "Administration", exact: true })
     .click();
   await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("additional-template");
-  await page.getByLabel("Enrolled username").fill("extra01");
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill("extra01");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
   // SSH authentication, HTTP session completion and destination loading are
   // separate stages. Bound the actual summary response before asserting its
@@ -295,9 +216,7 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     (response) => new URL(response.url()).pathname === "/api/student/exam",
     { timeout: 15000 },
   );
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   const summaryResponse = await summaryReady;
   expect(summaryResponse.status()).toBe(200);
   const summary = await summaryResponse.json();
@@ -305,20 +224,18 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     [ninety, other.id].sort(),
   );
   await expect(
-    page.getByRole("combobox", { name: "Attempt authorization", exact: true }),
+    page.getByRole("combobox", { name: "Choose an attempt", exact: true }),
   ).toBeVisible();
   const open = page.getByRole("button", {
-    name: "Open preflight & practice",
+    name: "Check setup and practice",
     exact: true,
   });
   await expect(open).toBeDisabled();
   await page
-    .getByRole("combobox", { name: "Attempt authorization", exact: true })
+    .getByRole("combobox", { name: "Choose an attempt", exact: true })
     .selectOption(ninety);
   await expect(open).toBeEnabled();
-  await expect(page.locator("main")).toContainText(
-    "90 minutes · Webcam: Not required",
-  );
+  await expect(page.locator("main")).toContainText("90 min · Webcam: Optional");
   await open.click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
@@ -334,10 +251,10 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     grant_work: '{"kind":"empty"}',
   });
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
   const active = (await (await page.request.get("/api/student/exam")).json())
@@ -351,9 +268,9 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
-  await admin();
+  await admin(page);
   const kept = (await dashboard()).students
     .find((s: any) => s.username === "extra01")
     .attempts.find((a: any) => a.id === original.id);
@@ -373,11 +290,7 @@ test("saved-work review stays pending without native confirmation and can be can
 }) => {
   test.setTimeout(45000);
   page.setDefaultTimeout(8000);
-  await page.goto("/admin");
-  await page.getByLabel("Username", { exact: true }).fill("instructor");
-  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Selected exam").selectOption("additional-template");
+  await admin(page);
   const source = "aaaaaaaa-1234-4234-8234-123456789abc";
   const history = async () =>
     (
@@ -389,98 +302,53 @@ test("saved-work review stays pending without native confirmation and can be can
       .attempts.find((a: any) => a.id === source);
   const before = await history();
   expect(before.protected).toBeTruthy();
-  await page
-    .getByRole("button", { name: "Authorize additional attempts", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog", {
-    name: "Authorize additional attempts",
-    exact: true,
+  const dialog = await additionalDraft(page, ["extra01"], "90", "latest");
+  await chooseSavedSource(dialog, "extra01", source);
+  const { review } = await previewAdditional(page, dialog);
+  expect(review.rows[0].work).toMatchObject({
+    kind: "saved",
+    attempt: source,
+    checksum: "b".repeat(64),
   });
   await dialog
-    .getByLabel("Additional attempt students", { exact: true })
-    .fill("extra01");
-  await dialog.getByLabel("Additional allowance seconds").fill("5400");
-  await dialog
-    .getByRole("combobox", { name: "Workspace initialization", exact: true })
-    .selectOption("saved");
-  await dialog.getByLabel("Protected source attempt UUID").fill(source);
-  await dialog
-    .getByLabel("Protected source archive checksum")
-    .fill("b".repeat(64));
-  await dialog
-    .getByLabel("Earliest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() - 1000).toISOString());
-  await dialog
-    .getByLabel("Latest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() + 600000).toISOString());
-  await dialog
-    .getByLabel("Reason for additional attempt")
-    .fill(
-      "Explicit new saved-work browser grant awaiting durable native protection",
-    );
-  await dialog
-    .getByRole("button", { name: "Preview additional grants", exact: true })
+    .getByRole("button", { name: "Allow attempt", exact: true })
     .click();
-  await expect(dialog).toContainText("90 minutes · Webcam not required");
-  await expect(dialog).toContainText(`Protected attempt ${source}`);
-  await dialog
-    .getByRole("button", { name: "Confirm additional grants", exact: true })
-    .click();
-  await expect(dialog).toContainText("Status: CONFIRMED");
+  await expect(dialog).toContainText("Preparing saved work");
+  await expect(dialog).not.toContainText("sudo examctl");
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  const grants = (
+  const saved = (
     await (
       await page.request.get(
         "/api/admin/exams/additional-template/grants?username=extra01",
       )
     ).json()
-  ).grants;
-  const saved = grants.find(
+  ).grants.find(
     (g: any) => g.work.kind === "saved" && g.status === "PENDING_NATIVE",
   );
   expect(saved).toBeTruthy();
-  await page
-    .getByRole("button", { name: "Actions for student extra01", exact: true })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
-    .click();
-  const management = page.getByRole("dialog", {
-    name: "Attempt grants for extra01",
-    exact: true,
-  });
+  expect(saved.claims).toHaveLength(0);
+  const management = await manageStudent(page, "extra01");
   await management
-    .getByRole("combobox", { name: "Saved grant", exact: true })
-    .selectOption(saved.id);
-  await expect(management).toContainText(
-    "Waiting for durable class-server source retention confirmation",
-  );
-  await expect(management).toContainText("reserves no account or exam time");
-  await expect(management).toContainText(
-    `sudo examctl web grants source-sync ${saved.id} --revision ${saved.revision}`,
-  );
-  await expect(management).toContainText("inspect source-show and retry");
-  await management
-    .getByLabel("Reason", { exact: true })
-    .fill("Cancel unconfirmed saved-source grant with history intact");
-  await management
-    .getByRole("button", { name: "Revoke unused grant", exact: true })
-    .click();
-  await expect(management).toContainText("REVOKED");
+    .getByRole("article")
+    .filter({ hasText: saved.id })
+    .getByRole("checkbox")
+    .check();
+  await expect(management).toContainText("Preparing saved work");
+  await cancelUnused(management);
+  expect(
+    (await (await page.request.get(`/api/admin/grants/${saved.id}`)).json())
+      .status,
+  ).toBe("REVOKED");
   expect(await history()).toEqual(before);
 });
 
 test("bulk saved work requires each student's own source and preserves the exact review through correction and a lost confirmation", async ({
   page,
-}, testInfo) => {
+}, info) => {
   test.setTimeout(60000);
   page.setDefaultTimeout(8000);
   await page.setViewportSize({ width: 430, height: 1000 });
-  await page.goto("/admin");
-  await page.getByLabel("Username", { exact: true }).fill("instructor");
-  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Selected exam").selectOption("additional-template");
+  await admin(page);
   const sources = [
     {
       username: "extra01",
@@ -494,110 +362,64 @@ test("bulk saved work requires each student's own source and preserves the exact
     },
   ];
   const histories = async () => {
-    const dashboard = await (
+    const d = await (
       await page.request.get("/api/admin/exams/additional-template/dashboard")
     ).json();
     return sources.map((s) =>
-      dashboard.students
+      d.students
         .find((u: any) => u.username === s.username)
         .attempts.find((a: any) => a.id === s.attempt),
     );
   };
   const original = await histories();
-  await page
-    .getByRole("button", { name: "Authorize additional attempts", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog", {
-    name: "Authorize additional attempts",
-    exact: true,
-  });
-  await dialog
-    .getByLabel("Additional attempt students", { exact: true })
-    .fill("extra01\nextra02");
-  await dialog.getByLabel("Additional allowance seconds").fill("5400");
-  await dialog
-    .getByRole("combobox", { name: "Workspace initialization", exact: true })
-    .selectOption("saved");
-  await expect(
-    dialog.getByLabel("Protected source attempt UUID", { exact: true }),
-  ).toHaveCount(0);
-  for (const source of sources) {
-    await dialog
-      .getByLabel(`Protected source attempt for ${source.username}`, {
-        exact: true,
-      })
-      .fill(source.attempt);
-    await dialog
-      .getByLabel(`Protected source checksum for ${source.username}`, {
-        exact: true,
-      })
-      .fill(source.checksum);
-  }
-  await dialog
-    .getByLabel("Earliest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() - 1000).toISOString());
-  await dialog
-    .getByLabel("Latest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() + 600000).toISOString());
-  await dialog
-    .getByLabel("Reason for additional attempt")
-    .fill(
-      "Explicit bulk ninety-minute attempts from separately selected student archives",
-    );
-  await dialog
-    .getByLabel("Protected source attempt for extra02", { exact: true })
-    .fill(sources[0].attempt);
-  await dialog
-    .getByLabel("Protected source checksum for extra02", { exact: true })
-    .fill(sources[0].checksum);
-  const refused = page.waitForResponse(
-    (r) =>
-      new URL(r.url()).pathname.endsWith("/grants/additional-preview") &&
-      r.status() === 409,
+  const dialog = await additionalDraft(
+    page,
+    ["extra01", "extra02"],
+    "90",
+    "latest",
   );
-  await dialog
-    .getByRole("button", { name: "Preview additional grants", exact: true })
-    .click();
-  await refused;
-  await expect(dialog.getByRole("alert")).toContainText("protected");
+  for (const source of sources)
+    await chooseSavedSource(dialog, source.username, source.attempt);
+  // Retrieved metadata cannot allow the wrong owner's archive to be issued.
+  await page.route(
+    "**/api/admin/exams/additional-template/grants/additional-preview",
+    async (route) => {
+      const body = route.request().postDataJSON();
+      body.work_sources[1].work = { ...body.work_sources[0].work };
+      const response = await route.fetch({ postData: body });
+      expect(response.status()).toBe(409);
+      await route.fulfill({ response });
+    },
+  );
+  await dialog.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(
-    dialog.getByLabel("Protected source attempt for extra02", { exact: true }),
+    dialog.getByLabel("Time limit (minutes)", { exact: true }),
   ).toBeEnabled();
-  await dialog
-    .getByLabel("Protected source attempt for extra02", { exact: true })
-    .fill(sources[1].attempt);
-  await dialog
-    .getByLabel("Protected source checksum for extra02", { exact: true })
-    .fill(sources[1].checksum);
-  await dialog
-    .getByRole("button", { name: "Preview additional grants", exact: true })
-    .click();
-  await expect(dialog).toContainText("Status: REVIEW");
-  const reviewed = dialog.getByRole("region", {
-    name: "Reviewed new grants",
-    exact: true,
-  });
-  for (const [index, source] of sources.entries()) {
-    const row = reviewed.getByRole("article").filter({
-      has: page.getByRole("heading", { name: source.username, exact: true }),
+  await page.unroute(
+    "**/api/admin/exams/additional-template/grants/additional-preview",
+  );
+  const { review } = await previewAdditional(page, dialog),
+    reviewID = review.id;
+  for (const [i, source] of sources.entries()) {
+    expect(review.rows[i].work).toMatchObject({
+      kind: "saved",
+      attempt: source.attempt,
+      checksum: source.checksum,
     });
-    await expect(row).toContainText(
-      `Protected attempt ${source.attempt} · ${source.checksum}`,
-    );
-    await expect(row).toContainText(
-      `90 minutes · Webcam ${index ? "required" : "not required"}`,
-    );
+    await expect(
+      dialog.getByRole("article").filter({
+        has: page.getByRole("heading", {
+          name: source.username,
+          exact: true,
+        }),
+      }),
+    ).toContainText(`90 min · Webcam ${i ? "required" : "optional"}`);
   }
-  expect(
-    await dialog.evaluate(
-      (el) => el.getBoundingClientRect().right <= innerWidth + 1,
-    ),
-  ).toBe(true);
   await page.screenshot({
-    path: testInfo.outputPath("bulk-saved-source-review-430.png"),
+    path: info.outputPath("bulk-saved-source-review-430.png"),
     fullPage: true,
   });
-  const reviewID = await dialog.getByLabel("Saved review ID").inputValue();
   let lost = 0;
   await page.route(
     `**/api/admin/grant-issuance/${reviewID}/confirm`,
@@ -609,63 +431,49 @@ test("bulk saved work requires each student's own source and preserves the exact
     },
   );
   await dialog
-    .getByRole("button", { name: "Confirm additional grants", exact: true })
+    .getByRole("button", { name: "Allow attempts", exact: true })
     .click();
   await expect(
-    dialog.getByRole("button", { name: "Retry confirm", exact: true }),
+    dialog.getByRole("button", { name: "Retry same request", exact: true }),
   ).toBeEnabled();
   await page.unroute(`**/api/admin/grant-issuance/${reviewID}/confirm`);
   await dialog
-    .getByRole("button", { name: "Retry confirm", exact: true })
+    .getByRole("button", { name: "Retry same request", exact: true })
     .click();
-  await expect(dialog).toContainText("Status: CONFIRMED");
+  await expect(
+    dialog.getByRole("heading", { name: "Attempts allowed", exact: true }),
+  ).toBeVisible();
   expect(lost).toBe(1);
   const receipt = await (
     await page.request.get(`/api/admin/grant-issuance/${reviewID}`)
   ).json();
   expect(receipt.issued).toHaveLength(2);
-  for (const [index, source] of sources.entries()) {
+  for (const [i, source] of sources.entries()) {
     const id = receipt.issued.find(
-        (g: any) => g.username === source.username,
-      ).grant,
-      grant = await (await page.request.get(`/api/admin/grants/${id}`)).json();
-    expect(grant).toMatchObject({
+      (g: any) => g.username === source.username,
+    ).grant;
+    expect(
+      await (await page.request.get(`/api/admin/grants/${id}`)).json(),
+    ).toMatchObject({
       status: "PENDING_NATIVE",
       work: {
         kind: "saved",
         attempt: source.attempt,
         checksum: source.checksum,
       },
-      settings: { duration: 5400, webcam: !!index },
+      settings: { duration: 5400, webcam: !!i },
       claims: [],
     });
   }
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Actions for student extra02", exact: true })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
-    .click();
-  const management = page.getByRole("dialog", {
-      name: "Attempt grants for extra02",
-      exact: true,
-    }),
+  const management = await manageStudent(page, "extra02"),
     secondID = receipt.issued.find((g: any) => g.username === "extra02").grant;
-  await expect(management.getByText(secondID, { exact: true })).toBeVisible();
-  await expect(
-    management.getByRole("combobox", { name: "Saved grant", exact: true }),
-  ).toHaveCount(0);
-  await expect(management).toContainText(
-    `sudo examctl web grants source-sync ${secondID} --revision 1`,
-  );
   await management
-    .getByLabel("Reason", { exact: true })
-    .fill("Cancel only this unused bulk saved grant with all history retained");
-  await management
-    .getByRole("button", { name: "Revoke unused grant", exact: true })
-    .click();
-  await expect(management).toContainText("REVOKED");
+    .getByRole("article")
+    .filter({ hasText: secondID })
+    .getByRole("checkbox")
+    .check();
+  await cancelUnused(management);
   expect(
     (
       await (

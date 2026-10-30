@@ -1,5 +1,21 @@
 # Independent grant workspace sources
 
+October30 local UI candidate: select students and **Allow another attempt**;
+the form fetches their own saved-file choices and preserves effective time/webcam
+settings unless changed. Students who never started can receive the exact exam
+starter files; an invalid latest started source never silently falls back.
+Review → Allow attempts is one two-stage workflow for mixed starting files.
+The approved separate retain-only worker automates verification/protection and
+is not installed/enabled. Pending saved-work permissions remain unavailable until
+native confirmation; their own Allowed attempts screen has status/Retry setup
+without changing settings. No source pin, history, deadline or account restriction
+is removed automatically. CLI source-sync remains available for explicit manual
+retention/retirement; source-worker/status/retry are documented in
+[automatic-saved-work-setup.md](automatic-saved-work-setup.md).
+The staged manual-only descriptions below are retained history and do not describe
+this new candidate or authorize its deployment.
+
+
 Local investigation/development, October 24, 2026. Nothing deployed.
 
 The validated first C18 increment (bcc88e9) provides reviewed saved-source issuance through the real

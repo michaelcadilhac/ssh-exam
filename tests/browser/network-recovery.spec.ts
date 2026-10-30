@@ -66,8 +66,7 @@ test("retained coordination timeout requests one fresh bind without a policy inc
     ).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Instructor review required",
-        exact: true,
+        name: /^(Work paused|Instructor review required)$/,
       }),
     ).toHaveCount(0);
     expect(f.model.messages.filter((m) => m.type === "incident")).toEqual([]);
@@ -160,19 +159,19 @@ test("an open but unacknowledged reconnect cannot outlive recovery grace or repl
     await type(page, "blocked");
     await page.clock.runFor(16000);
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
     ack.release();
     await type(page, "late");
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
     expect(inputs(f)).toBe("");
     expect(f.model.attempt.deadline).toBe(original.deadline);
     expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(
       1,
     );
-    await onlyScreens(page, ["active", "Reconnecting", "Exam paused"]);
+    await onlyScreens(page, ["active", "Reconnecting", "Work paused"]);
     // Recovery cannot bypass the instructor's decision even after a late bind ACK.
     f.model.continuation = async (route) =>
       route.fulfill({
@@ -180,7 +179,7 @@ test("an open but unacknowledged reconnect cannot outlive recovery grace or repl
         json: { error: "Instructor authorization required" },
       });
     await page
-      .getByRole("button", { name: "Continue exam", exact: true })
+      .getByRole("button", { name: "Resume exam", exact: true })
       .click();
     await expect(page.getByRole("alert")).toContainText(
       "Instructor authorization required",
@@ -202,12 +201,12 @@ test("a silent open connection with no heartbeat acknowledgments expires without
   await resetScreens(page);
   await page.clock.runFor(15250);
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   f.send();
   await type(page, "blocked");
   expect(inputs(f)).toBe("");
-  await onlyScreens(page, ["active", "Reconnecting", "Exam paused"]);
+  await onlyScreens(page, ["active", "Reconnecting", "Work paused"]);
 });
 
 test("reloading ACTIVE waits for server-side recovery, preserves the deadline and renders only the recovery destination", async ({
@@ -246,7 +245,7 @@ test("reloading ACTIVE waits for server-side recovery, preserves the deadline an
     fail = false;
     await page.getByRole("button", { name: "Retry loading" }).click();
     await expect(
-      page.getByRole("button", { name: "Restore page", exact: true }),
+      page.getByRole("button", { name: "Resume exam", exact: true }),
     ).toBeVisible();
     expect(f.model.attempt.deadline).toBe(deadline);
     await expect(page.locator(".workspace, form")).toHaveCount(0);
@@ -263,9 +262,9 @@ test("a delayed authorized continuation cannot unlock after a second interruptio
     response = gate();
   f.model.bind.release();
   await page.goto("/");
-  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Restore screen sharing", exact: true })
@@ -286,7 +285,7 @@ test("a delayed authorized continuation cannot unlock after a second interruptio
   try {
     await resetScreens(page);
     await page
-      .getByRole("button", { name: "Continue exam", exact: true })
+      .getByRole("button", { name: "Resume exam", exact: true })
       .click();
     await expect.poll(() => seen).toBe(true);
     await page.evaluate(() => window.dispatchEvent(new Event("offline")));
@@ -297,17 +296,17 @@ test("a delayed authorized continuation cannot unlock after a second interruptio
       "connection interrupted during setup",
     );
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "New terminal", exact: true }),
     ).toBeDisabled();
     f.send();
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
     expect(inputs(f)).toBe("");
-    await onlyScreens(page, ["Exam paused"]);
+    await onlyScreens(page, ["Work paused"]);
   } finally {
     response.release();
   }
@@ -346,10 +345,10 @@ test("fresh delayed monitoring replies remain live when HTTP snapshots arrive fi
     await expect(
       page.getByRole("button", { name: "Practice terminal", exact: true }),
     ).toBeEnabled();
-    await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+    await page.getByRole("button", { name: "Start exam", exact: true }).click();
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Begin exam", exact: true })
+      .getByRole("button", { name: "Start exam", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Finish exam", exact: true }),
@@ -417,7 +416,7 @@ test("a new server pause clears feedback from a successful continuation and keep
   const f = await fixture(page, "LOCKED");
   f.model.bind.release();
   await page.goto("/");
-  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
   await page
     .getByRole("button", { name: "Restore screen sharing", exact: true })
     .click();
@@ -427,10 +426,8 @@ test("a new server pause clears feedback from a successful continuation and keep
   await page
     .getByRole("button", { name: "Restore keyboard lock", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Continue exam", exact: true })
-    .click();
-  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Work paused" })).toHaveCount(
     0,
   );
   await expect(
@@ -442,12 +439,14 @@ test("a new server pause clears feedback from a successful continuation and keep
   f.model.authenticationGap = true;
   f.model.socket!.send(JSON.stringify({ type: "state", ...f.snapshot() }));
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Reconnect SSH", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Exam resumed.", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Exam resumed. The clock continues.", { exact: true }),
+  ).toHaveCount(0);
   await expect(page.locator(".recovery-feedback")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
@@ -461,7 +460,7 @@ test("repeated disconnected status preserves a rejected reconnect until a new pa
   const f = await fixture(page, "LOCKED");
   f.model.bind.release();
   await page.goto("/");
-  await page.getByRole("button", { name: "Restore page", exact: true }).click();
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
   await expect.poll(() => Boolean(f.model.socket)).toBe(true);
   f.model.authenticationGap = true;
   f.model.socket!.send(JSON.stringify({ type: "state", ...f.snapshot() }));

@@ -31,6 +31,9 @@ Keep protocol terms, internal states, references and exact hashes in Details.
 Keep short material consequences visible: irreversible finish, the running clock,
 saved versus unsaved files, real capture/retention facts and actual access holds.
 Never describe a timeout as misconduct or mail-server acceptance as delivery.
+Ordinary exams awaiting approval retain the direct instruction **Instructor review
+required**; sandbox pauses say **Work paused**. The state and required action must
+remain clear in their actual context.
 
 Keep the useful overview filters. Show one compact selection-action menu when
 students are selected. Another-attempt form → review/result is two screens; reuse
@@ -80,8 +83,8 @@ roster import and a real-WASM SSH clock workflow: all pass 45.0s. Three real HTT
 additional-grant regressions, typecheck and fresh builds also pass. Mocked API
 cases qualify UI orchestration; the real HTTP/WASM checks are separate evidence.
 
-Prof's later copy-pass request remains open: compact repeated dates and put each
-outcome before its row details. This acceptance is not whole-app completion.
+Prof's later request is addressed by the common start-window summary and placing
+each outcome before its row details. Final acceptance is recorded below.
 
 ## Dependency-ordered milestones
 
@@ -101,11 +104,54 @@ outcome before its row details. This acceptance is not whole-app completion.
    Keep screenshots per run and preserve original dirty documentation images.
    Commit validated increments locally; report production/migration steps only.
 
-## Current state
+## Current local result
 
-Prof explicitly accepted the above UI scope and safety constraints before product
-edits. Detailed source/copy inventory and test receipts are under
-`var/collection-tests/prof-ui.hGHi2EWM`. The first selection/cancellation increment
-is validated; milestone 1 continues with another attempts, source/version retrieval
-and unused settings. The automatic saved-work service is approved but not
-implemented. No new behavior is deployed.
+Prof accepted the source/copy review and the rendered mobile/desktop workflows.
+The final-focus context ledger classifies every candidate in 49 web/shared/HTML files;
+its 2,353 overlapping extraction candidates are not a sentence count. Before and
+final inventories are separate immutable artifacts. Exact final verdict and
+screenshots are in `var/collection-tests/prof-ui.hGHi2EWM`.
+
+The final another-attempt and unused-settings screens pass eleven packaged-browser
+scenarios (39.9s, `prof-inline-setup-focused-browser.log`). They cover finite dates,
+repeated DST minutes, exact seconds, per-student settings, mixed fetched files,
+no-op revisions, partial/unknown outcomes, storage faults and exact retry across
+reload. Prof viewed the actual mobile review and desktop partial-result images.
+The final reset preview also formats exact seconds consistently. Selected existing
+saved-work permissions show setup status/retry in place, without a settings change,
+per-row polling or another dialog. Task success alone never displays Ready.
+
+Shared display status now requires positive `true`/`1` protection before saying
+Files saved. Unknown or stale contact says Connection unconfirmed. Neither change
+alters admission, enforcement or historical data. Material warnings about time,
+file protection, capture, retention and account restrictions remain visible;
+technical references and complete diagnostics are available in Details.
+
+Unused changes use existing per-grant transactions, not an all-or-nothing batch:
+the review shows each outcome independently. Only named fields change; blank fields
+stay unchanged, and true no-ops create no revision. A missing reply retains each
+original request ID across close/reload. Current status never proves that an
+unknown exact request succeeded. History and setup retry are available in the same
+screen. Existing CLI list/revise/revoke workflows provide the same capabilities.
+
+The retain-only service is committed locally as503bd9c, with actual signed
+CLI/gateway/archive, coordinator-death, resource-containment and race evidence in
+`automatic-saved-work-setup.md`. It remains uninstalled. The clean application run
+passes643 checks (3 deliberate skips). Segmented qualification against the same
+q3 runtime/assets covers all204 declared browser cases:192 unique passes and12
+deliberate native-bundle/measurement skips. `browser-qualification-reconciled.json`
+retains each case's failed and final passing receipts without double counting.
+The final ten-case oracle run passes nine; its one test-only stale resize hook was
+then corrected, and both actual callback/sign-out and completed-attempt checks
+pass17.8s. No product change was needed: the test captures the actual native
+ResizeObserver callback for the current pane, verifies its connected ownership,
+then invokes it after disposal with no page errors or access restoration.
+
+The final350 source/test/config inputs and six exact packaged assets are unchanged
+after qualification. All50 logged owned browser processes exited and both fixed
+fixture ports closed. The ten original dirty documentation images remain byte
+identical. Native/CLI code remains503bd9c, so its existing signed gateway/archive,
+resource and race evidence still applies. Exact root-service mount/LSM qualification
+remains a separate pre-enable release gate; current browser fixtures simulate shell
+and media and do not claim that privileged proof. No candidate behavior is
+deployed, pushed or enabled.

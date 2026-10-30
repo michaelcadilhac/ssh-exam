@@ -1,4 +1,10 @@
+import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
+import {
+  additionalDraft,
+  manageStudent,
+  cancelUnused,
+} from "./prof-workflow-fixture.js";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
 test("saved practice grants support cancellation, explicit revocation/new review and separate full repeat attempts through WASM SSH", async ({
@@ -11,23 +17,16 @@ test("saved practice grants support cancellation, explicit revocation/new review
   const student = async () => {
     await page.goto("/");
     await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
-    await page.getByLabel("Enrolled username").fill("practice01");
-    await page
-      .getByRole("button", { name: "Start SSH sign-in", exact: true })
-      .click();
+    await page.getByLabel("Username").fill("practice01");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.getByLabel("Shared SSH password").fill("shared-password");
-    await page
-      .getByRole("button", { name: "Respond to this host", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "sandbox", exact: true }),
     ).toBeVisible();
   };
   const admin = async () => {
-    await page.goto("/admin");
-    await page.getByLabel("Username", { exact: true }).fill("instructor");
-    await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await instructorSignIn(page, "prof_practice");
     await page.getByLabel("Selected exam").selectOption("sandbox");
   };
   const adminOut = async () => {
@@ -40,7 +39,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
     (await page.request.get("/api/student/exam")).json();
   const preflight = async () => {
     await page
-      .getByRole("button", { name: "Open preflight & practice", exact: true })
+      .getByRole("button", { name: "Check setup and practice", exact: true })
       .click();
     await expect(
       page.getByRole("button", { name: "Practice terminal", exact: true }),
@@ -49,10 +48,10 @@ test("saved practice grants support cancellation, explicit revocation/new review
   };
   const begin = async () => {
     await ready(page);
-    await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+    await page.getByRole("button", { name: "Start exam", exact: true }).click();
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Begin exam", exact: true })
+      .getByRole("button", { name: "Start exam", exact: true })
       .click();
     await expect(page.locator(".winbox")).toHaveCount(1);
     return (await portal()).attempt;
@@ -66,7 +65,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
       .getByRole("button", { name: "Finish exam", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+      page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
     ).toBeVisible();
   };
   await student();
@@ -84,33 +83,13 @@ test("saved practice grants support cancellation, explicit revocation/new review
     .getByRole("button", { name: "Sign out", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
   await admin();
-  await page
-    .getByRole("button", {
-      name: "Actions for student practice01",
-      exact: true,
-    })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
-    .click();
-  let dialog = page.getByRole("dialog", {
-    name: "Attempt grants for practice01",
-    exact: true,
-  });
-  await expect(dialog).toContainText("Saved allowance: 5 minutes");
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Explicit withdrawal of unused practice after logout");
-  await dialog
-    .getByRole("button", { name: "Revoke unused grant", exact: true })
-    .click();
-  await expect(dialog).toContainText("REVOKED");
-  await dialog
-    .getByRole("button", { name: "Close grants", exact: true })
-    .click();
+  let dialog = await manageStudent(page, "practice01");
+  await expect(dialog).toContainText("5 min");
+  await cancelUnused(dialog);
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await adminOut();
   await student();
   await expect(page.locator("main")).toContainText(
@@ -118,7 +97,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
   );
   await expect(
     page.getByRole("button", {
-      name: "Open preflight & practice",
+      name: "Check setup and practice",
       exact: true,
     }),
   ).toBeDisabled();
@@ -128,51 +107,28 @@ test("saved practice grants support cancellation, explicit revocation/new review
   });
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await admin();
-  await page
-    .getByRole("button", { name: "Authorize practice grant", exact: true })
-    .click();
-  dialog = page.getByRole("dialog", {
-    name: "Authorize practice grant",
-    exact: true,
-  });
-  await dialog
-    .getByLabel("Additional attempt students", { exact: true })
-    .fill("practice01");
-  await expect(dialog.getByLabel("Additional allowance seconds")).toHaveValue(
-    "300",
+  dialog = await additionalDraft(page, ["practice01"], "", "materials");
+  await expect(dialog).toContainText(
+    "Five minutes · Webcam optional · Four terminals",
   );
   await expect(
-    dialog.getByLabel("Additional allowance seconds"),
-  ).toHaveAttribute("readonly", "");
-  await dialog
-    .getByLabel("Earliest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() - 60000).toISOString());
-  await dialog
-    .getByLabel("Latest Begin (RFC3339 with zone)")
-    .fill(new Date(Date.now() + 600000).toISOString());
-  await dialog
-    .getByLabel("Reason for additional attempt")
-    .fill("Reviewed NEW finite practice grant after revocation");
-  await dialog
-    .getByRole("button", { name: "Preview practice grant", exact: true })
-    .click();
-  await expect(dialog).toContainText("5 minutes · Webcam not required");
+    dialog.getByLabel("Time limit (minutes)", { exact: true }),
+  ).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(dialog).toContainText("5 min · Webcam optional");
   expect(
     await dialog.evaluate(
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
     ),
   ).toBe(true);
-  await dialog
-    .getByRole("heading", { name: "Authorize practice grant", exact: true })
-    .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: testInfo.outputPath("practice-grant-review-430.png"),
     fullPage: true,
   });
   await dialog
-    .getByRole("button", { name: "Confirm practice grant", exact: true })
+    .getByRole("button", { name: "Allow attempt", exact: true })
     .click();
-  await expect(dialog).toContainText("Status: CONFIRMED");
+  await expect(dialog).toContainText("Attempt allowed");
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await adminOut();
   await student();

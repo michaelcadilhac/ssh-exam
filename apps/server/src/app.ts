@@ -40,7 +40,11 @@ import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js"
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { GrantIssuance } from "./grant-issuance.js";
 import { SourceSetup } from "./source-setup.js";
-import { grantBinding } from "../../../packages/protocol/grants.js";
+import {
+  grantBinding,
+  grantChangeBatch,
+  grantStatusBatch,
+} from "../../../packages/protocol/grants.js";
 import type { ConnectionHandle as Connection } from "./connection-process.js";
 import {
   IsolatedConnection,
@@ -2584,6 +2588,59 @@ export async function createApp(
       { ...req.body, id: req.params.id },
       actor.username,
     );
+  });
+  app.post("/api/admin/exams/:exam/grants/status", async (req: any) => {
+    principal(req, "admin");
+    const b = grantStatusBatch.parse(req.body);
+    for (const row of b.rows)
+      if (grants.show({ id: row.id }).exam !== req.params.exam)
+        throw Object.assign(
+          Error("Attempt selection changed exam. Refresh before continuing."),
+          { statusCode: 409 },
+        );
+    return { rows: b.rows.map((row) => sourceSetup.presentation(row)) };
+  });
+  app.post("/api/admin/exams/:exam/grants/change", async (req: any) => {
+    const actor = principal(req, "admin"),
+      b = grantChangeBatch.parse(req.body);
+    // Validate the complete scope before the first per-item transaction. Stale
+    // revisions and claims still produce explicit independent row refusals.
+    for (const row of b.rows)
+      if (grants.show({ id: row.id }).exam !== req.params.exam)
+        throw Object.assign(
+          Error("Attempt selection changed exam. Refresh before continuing."),
+          { statusCode: 409 },
+        );
+    return {
+      results: b.rows.map((row, index) => {
+        try {
+          // The schema validates the whole request, but its partial settings
+          // projection can contain create defaults. Preserve original named keys
+          // when delegating to the existing revision transaction.
+          const original = req.body.rows[index].body;
+          return {
+            id: row.id,
+            request: row.body.request,
+            outcome: "saved",
+            grant:
+              row.operation === "revise"
+                ? grants.revise(row.id, original, actor.username)
+                : grants.revoke(row.id, original, actor.username),
+          };
+        } catch (error) {
+          const code = (error as any).statusCode ?? 500;
+          return {
+            id: row.id,
+            request: row.body.request,
+            outcome: [400, 403, 404, 409].includes(code)
+              ? "refused"
+              : "unknown",
+            code,
+            error: (error as Error).message,
+          };
+        }
+      }),
+    };
   });
   app.post("/api/admin/grants/:id/revise", async (req: any) => {
     const actor = principal(req, "admin");

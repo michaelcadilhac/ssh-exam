@@ -81,7 +81,7 @@ test("mobile unused deletion retries the identical reviewed request after the re
     .getByLabel("Reason", { exact: true })
     .fill("Remove reviewed synthetic unused exam");
   await dialog
-    .getByRole("button", { name: "Delete unused definition", exact: true })
+    .getByRole("button", { name: "Delete unused exam", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   const list = await (
@@ -89,7 +89,7 @@ test("mobile unused deletion retries the identical reviewed request after the re
   ).json();
   expect(list.some((e: any) => e.id === definition.id)).toBe(false);
   await dialog
-    .getByRole("button", { name: "Delete unused definition", exact: true })
+    .getByRole("button", { name: "Delete unused exam", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   expect(writes).toHaveLength(2);
@@ -117,7 +117,7 @@ test("stale review requires explicit refresh and a failed refresh cannot submit 
     requestID: randomUUID(),
   });
   await dialog
-    .getByRole("button", { name: "Delete unused definition", exact: true })
+    .getByRole("button", { name: "Delete unused exam", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toContainText("changed");
   await page.route(
@@ -128,25 +128,21 @@ test("stale review requires explicit refresh and a failed refresh cannot submit 
         json: { error: "Synthetic review temporarily unavailable" },
       }),
   );
-  await dialog
-    .getByRole("button", { name: "Refresh review", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog.getByRole("alert")).toContainText(
     "temporarily unavailable",
   );
   await expect(
     dialog.getByRole("button", {
-      name: "Delete unused definition",
+      name: "Delete unused exam",
       exact: true,
     }),
   ).toBeDisabled();
   await page.unroute(`**/api/admin/exams/${definition.id}/retirement-preview`);
-  await dialog
-    .getByRole("button", { name: "Refresh review", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog).toContainText("Concurrent synthetic edit");
   await dialog
-    .getByRole("button", { name: "Delete unused definition", exact: true })
+    .getByRole("button", { name: "Delete unused exam", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
 });
@@ -163,7 +159,7 @@ test("archive and restoration retain real historical attempts and disable new-au
   await expect(dialog.getByRole("alert")).toContainText("history");
   await expect(
     dialog.getByRole("button", {
-      name: "Delete unused definition",
+      name: "Delete unused exam",
       exact: true,
     }),
   ).toBeDisabled();
@@ -173,7 +169,7 @@ test("archive and restoration retain real historical attempts and disable new-au
     .getByLabel("Reason", { exact: true })
     .fill("Archive protected synthetic exam history");
   await dialog
-    .getByRole("button", { name: "Archive definition", exact: true })
+    .getByRole("button", { name: "Archive exam", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   await page.getByLabel("Exam visibility").selectOption("archived");
@@ -203,7 +199,7 @@ test("archive and restoration retain real historical attempts and disable new-au
     .getByLabel("Reason", { exact: true })
     .fill("Restore visibility preserving all original history");
   await dialog
-    .getByRole("button", { name: "Restore definition", exact: true })
+    .getByRole("button", { name: "Restore exam", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   await page.getByLabel("Exam visibility").selectOption("active");
@@ -225,11 +221,12 @@ test("legacy retirement exposes native review status and archives native-only hi
     .getByLabel("Selected exam")
     .selectOption("retirement-legacy-required");
   let dialog = await open(page, "Delete unused exam");
+  await dialog.getByText("Details", { exact: true }).click();
   await expect(dialog.getByText("Required", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("alert")).toContainText("native-review");
   await expect(
     dialog.getByRole("button", {
-      name: "Delete unused definition",
+      name: "Delete unused exam",
       exact: true,
     }),
   ).toBeDisabled();
@@ -238,6 +235,7 @@ test("legacy retirement exposes native review status and archives native-only hi
     .getByLabel("Selected exam")
     .selectOption("retirement-legacy-native");
   dialog = await open(page, "Delete unused exam");
+  await dialog.getByText("Details", { exact: true }).click();
   await expect(
     dialog.getByText("Verified for this review", { exact: true }),
   ).toBeVisible();
@@ -246,12 +244,13 @@ test("legacy retirement exposes native review status and archives native-only hi
   );
   await expect(
     dialog.getByRole("button", {
-      name: "Delete unused definition",
+      name: "Delete unused exam",
       exact: true,
     }),
   ).toBeDisabled();
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   dialog = await open(page, "Archive exam");
+  await dialog.getByText("Details", { exact: true }).click();
   await expect(
     dialog.getByText("Verified for this review", { exact: true }),
   ).toBeVisible();
@@ -262,7 +261,7 @@ test("legacy retirement exposes native review status and archives native-only hi
     path: test.info().outputPath("native-retirement-review.png"),
   });
   await dialog
-    .getByRole("button", { name: "Archive definition", exact: true })
+    .getByRole("button", { name: "Archive exam", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   await page.getByLabel("Exam visibility").selectOption("archived");
@@ -288,7 +287,7 @@ test("unused grants block archive without silently cancelling or consuming them"
   const dialog = await open(page, "Archive exam");
   await expect(dialog.getByRole("alert")).toContainText("Unused grants remain");
   await expect(
-    dialog.getByRole("button", { name: "Archive definition", exact: true }),
+    dialog.getByRole("button", { name: "Archive exam", exact: true }),
   ).toBeDisabled();
   expect(
     await (

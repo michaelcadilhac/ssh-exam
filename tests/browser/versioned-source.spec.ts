@@ -14,16 +14,16 @@ test("actual WASM SSH preflight and Begin retain the selected hash with no legac
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("versioned-source");
-  await page.getByLabel("Enrolled username").fill("version01");
+  await page.getByLabel("Username").fill("version01");
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await ready(page);
   await page
@@ -35,10 +35,10 @@ test("actual WASM SSH preflight and Begin retain the selected hash with no legac
   const before = await read();
   expect(before.start).toBeNull();
   expect(JSON.parse(before.settings).template_version).toBe("a".repeat(64));
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Finish exam", exact: true }),
@@ -53,7 +53,7 @@ test("actual WASM SSH preflight and Begin retain the selected hash with no legac
   expect(active.deadline - active.start).toBe(5400000);
   await confirmFinish(page);
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });

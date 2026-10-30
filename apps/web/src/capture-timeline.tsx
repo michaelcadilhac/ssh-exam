@@ -90,7 +90,7 @@ export function CaptureTimeline({
                   className={live ? "live-selected" : ""}
                   aria-label={`Live ${source}`}
                   aria-pressed={live}
-                  title="Follow incoming captures"
+                  title="Follow live images"
                   onClick={() => setSelection("live")}
                 >
                   Live
@@ -117,7 +117,9 @@ export function CaptureTimeline({
           </div>
         </>
       ) : (
-        <p className="monitoring-empty">No {source} images received.</p>
+        <p className="monitoring-empty">
+          No {label.toLowerCase()} images received.
+        </p>
       )}
     </figure>
   );

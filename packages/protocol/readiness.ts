@@ -1,7 +1,7 @@
 export function readinessMessage(
   input: unknown,
   requireWebcam: boolean,
-  action = "continuing",
+  action = "resuming",
 ) {
   const ready = (input && typeof input === "object" ? input : {}) as Record<
     string,
@@ -13,7 +13,7 @@ export function readinessMessage(
     ["screen", "screen sharing"],
     ["focus", "browser focus"],
     ["visible", "a visible exam page"],
-    ...(requireWebcam ? [["webcam", "camera sharing"]] : []),
+    ...(requireWebcam ? [["webcam", "webcam sharing"]] : []),
   ];
   const missing = required
     .filter(([key]) => ready[key] !== true)

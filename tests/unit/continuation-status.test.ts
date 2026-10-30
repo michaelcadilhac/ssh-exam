@@ -234,10 +234,13 @@ it("does not replace revocation with an older approval or confuse a new interrup
 it("gives distinct current/expired/revoked instructions and never asks a retained path to sign in solely for approval", () => {
   expect(
     continuationNotice({ state: "approved", expires: 400000 }, true),
-  ).toContain("SSH is disconnected");
+  ).toContain("Sign in again");
   expect(
     continuationNotice({ state: "approved", expires: 400000 }, false),
-  ).toContain("only if it is actually disconnected");
+  ).toContain("choose Resume exam");
+  expect(
+    continuationNotice({ state: "approved", expires: 400000 }, false),
+  ).not.toContain("Sign in again");
   for (const state of [
     "waiting",
     "expired",

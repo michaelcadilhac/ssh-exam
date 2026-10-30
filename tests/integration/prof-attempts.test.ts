@@ -26,6 +26,134 @@ async function savedGrant(f: Awaited<ReturnType<typeof fixture>>) {
     .grant as string;
 }
 
+it("bulk unused changes preserve independent refusals, exact retries, named fields and whole-request scope", async () => {
+  const f = await fixture();
+  try {
+    const saved = await savedGrant(f),
+      starter = f.store.db
+        .prepare(
+          "SELECT id FROM attempt_grants WHERE username='starterstudent'",
+        )
+        .get() as { id: string };
+    const revision = await f.post(`/api/admin/grants/${saved}/revise`, {
+      revision: 1,
+      changes: { webcam: true },
+      reason: "Synthetic concurrent instructor change",
+      request: randomUUID(),
+    });
+    expect(revision.statusCode, revision.body).toBe(200);
+    const body = {
+      rows: [
+        {
+          id: saved,
+          operation: "revise",
+          body: {
+            revision: 1,
+            changes: { webcam: false },
+            reason: "Change selected unused webcam setting",
+            request: randomUUID(),
+          },
+        },
+        {
+          id: starter.id,
+          operation: "revise",
+          body: {
+            revision: 1,
+            changes: { webcam: false },
+            reason: "Change selected unused webcam setting",
+            request: randomUUID(),
+          },
+        },
+      ],
+    };
+    const url = `/api/admin/exams/${f.exam}/grants/change`;
+    const response = await f.post(url, body);
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json().results.map((row: any) => row.outcome)).toEqual([
+      "refused",
+      "saved",
+    ]);
+    expect(response.json().results[0]).toMatchObject({
+      id: saved,
+      request: body.rows[0].body.request,
+      code: 409,
+    });
+    expect(response.json().results[1].grant).toMatchObject({
+      id: starter.id,
+      revision: 2,
+      settings: { duration: 900, webcam: false },
+      work: {
+        kind: "template",
+        name: f.settings.template,
+        hash: f.settings.template_version,
+      },
+    });
+    const retried = await f.post(url, body);
+    expect(retried.json()).toEqual(response.json());
+    expect(
+      f.store.db
+        .prepare("SELECT count(*) n FROM grant_revisions WHERE grant_id=?")
+        .get(starter.id),
+    ).toEqual({ n: 2 });
+    const status = await f.post(`/api/admin/exams/${f.exam}/grants/status`, {
+      rows: [
+        { id: saved, revision: 1 },
+        { id: starter.id, revision: 2 },
+      ],
+    });
+    expect(status.statusCode, status.body).toBe(200);
+    expect(
+      status.json().rows.find((row: any) => row.id === saved),
+    ).toMatchObject({
+      current_revision: 2,
+      grant: { revision: 2, settings: { duration: 95 } },
+    });
+    expect(
+      status.json().rows.find((row: any) => row.id === starter.id),
+    ).toMatchObject({
+      grant: {
+        revision: 2,
+        username: "starterstudent",
+        work: { kind: "template" },
+        settings: { duration: 900 },
+      },
+    });
+    const original = f.store.db
+      .prepare("SELECT count(*) n FROM grant_revisions")
+      .get();
+    const invalid = await f.post(url, { rows: [body.rows[0], body.rows[0]] });
+    expect(invalid.statusCode, invalid.body).toBe(400);
+    const wrongScope = await f.post(
+      "/api/admin/exams/other-exam/grants/change",
+      {
+        rows: [
+          {
+            ...body.rows[1],
+            body: { ...body.rows[1].body, revision: 2, request: randomUUID() },
+          },
+        ],
+      },
+    );
+    expect(wrongScope.statusCode, wrongScope.body).toBe(409);
+    expect(
+      f.store.db.prepare("SELECT count(*) n FROM grant_revisions").get(),
+    ).toEqual(original);
+    expect(f.store.attempt(f.source)).toEqual(f.original);
+    expect(
+      f.store.db.prepare("SELECT count(*) n FROM grant_claims").get(),
+    ).toEqual({ n: 0 });
+    expect(
+      f.store.db
+        .prepare(
+          "SELECT duration,webcam FROM enrollments WHERE username='starterstudent'",
+        )
+        .get(),
+    ).toEqual({ duration: 900, webcam: null });
+  } finally {
+    await f.close();
+  }
+});
+
 it("one actor-bound review status read projects a consistent cohort without exposing another instructor's request", async () => {
   const f = await fixture();
   try {

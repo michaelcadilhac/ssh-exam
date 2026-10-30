@@ -32,7 +32,7 @@ export function ExamRetirement({
       if (!live.current) return;
       if (result.id !== exam.id || result.action !== action)
         throw Error(
-          "Exam review changed target; close this dialog and inspect the intended exam.",
+          "This review does not match the exam. Close it and open the intended exam.",
         );
       setReview(result);
     } catch (e) {
@@ -84,7 +84,7 @@ export function ExamRetirement({
             });
             if (result.id !== exam.id || result.action !== action)
               throw Error(
-                "Retirement outcome did not match this exam. Preserve the request and inspect current state before another action.",
+                "The result could not be confirmed for this exam. Keep this review open to retry.",
               );
             await onDone(result);
           } catch (e) {
@@ -98,58 +98,63 @@ export function ExamRetirement({
           <strong>{review?.exam?.name || exam.name}</strong> · {exam.id}
         </p>
         {loading ? (
-          <p role="status">Loading current exam and dependencies…</p>
+          <p role="status">Checking the exam…</p>
         ) : (
           review && (
             <>
               <p>
                 {action === "delete"
-                  ? "Permanently remove this unused definition. Audit and request history remain."
+                  ? "Permanently delete this unused exam. Audit history is kept."
                   : action === "archive"
-                    ? "Hide this definition from the current exam list. Preserve all student history, grants, submissions and restrictions."
-                    : "Restore this definition to the current exam list. Completed attempts and elapsed Begin windows stay unchanged."}
+                    ? "Hide this exam from the current list. Attempts, saved files, history and access restrictions are kept."
+                    : "Show this exam in the current list again. Existing attempts and start windows stay unchanged."}
               </p>
               <dl className="admin-review-summary">
-                <dt>Roster records</dt>
+                <dt>Students</dt>
                 <dd>{review.counts.enrollments}</dd>
-                <dt>Attempt records</dt>
+                <dt>Attempts</dt>
                 <dd>{review.counts.attempts}</dd>
-                <dt>Grant records</dt>
-                <dd>{review.counts.grants}</dd>
-                <dt>Grant claims</dt>
-                <dd>{review.counts.claims}</dd>
-                <dt>Saved-work expectations</dt>
-                <dd>{review.counts.recoverySources}</dd>
-                <dt>Allowance authorizations</dt>
-                <dd>{review.counts.allowanceEdits}</dd>
-                <dt>Retained grant modes</dt>
-                <dd>{review.counts.modes}</dd>
-                <dt>Import and grant reviews</dt>
-                <dd>
-                  {review.counts.rosterPreviews + review.counts.grantPreviews}
-                </dd>
-                {review.native && review.native.status !== "not-required" && (
-                  <>
-                    <dt>Class-server check</dt>
-                    <dd>
-                      {(
-                        {
-                          required: "Required",
-                          stale: "Needs refresh",
-                          verified: "Verified for this review",
-                        } as Record<string, string>
-                      )[review.native.status] || "Unavailable"}
-                    </dd>
-                    <dt>Native attempt records</dt>
-                    <dd>{review.native.attempts}</dd>
-                    <dt>Legacy permission records</dt>
-                    <dd>{review.native.permissions}</dd>
-                  </>
-                )}
               </dl>
+              <details>
+                <summary>Details</summary>
+                <dl className="admin-review-summary">
+                  <dt>Allowed attempts</dt>
+                  <dd>{review.counts.grants}</dd>
+                  <dt>Attempt setup records</dt>
+                  <dd>{review.counts.claims}</dd>
+                  <dt>Saved-work references</dt>
+                  <dd>{review.counts.recoverySources}</dd>
+                  <dt>Recovery time changes</dt>
+                  <dd>{review.counts.allowanceEdits}</dd>
+                  <dt>Compatibility records</dt>
+                  <dd>{review.counts.modes}</dd>
+                  <dt>Reviews</dt>
+                  <dd>
+                    {review.counts.rosterPreviews + review.counts.grantPreviews}
+                  </dd>
+                  {review.native && review.native.status !== "not-required" && (
+                    <>
+                      <dt>Exam server check</dt>
+                      <dd>
+                        {(
+                          {
+                            required: "Required",
+                            stale: "Needs refresh",
+                            verified: "Verified for this review",
+                          } as Record<string, string>
+                        )[review.native.status] || "Unavailable"}
+                      </dd>
+                      <dt>Exam server attempts</dt>
+                      <dd>{review.native.attempts}</dd>
+                      <dt>Earlier permissions</dt>
+                      <dd>{review.native.permissions}</dd>
+                    </>
+                  )}
+                </dl>
+              </details>
               {!review.allowed && (
                 <div role="alert">
-                  <p>This action is unavailable:</p>
+                  <p>This action is blocked:</p>
                   <ul>
                     {review.blockers.map((message: string) => (
                       <li key={message}>{message}</li>
@@ -178,10 +183,15 @@ export function ExamRetirement({
           <div role="alert">
             <p>{error}</p>
             {intent.current.request && (
-              <p>
-                Keep this review open to retry the same request:{" "}
-                <code>{intent.current.request}</code>.
-              </p>
+              <>
+                <p>Keep this review open to retry the same request.</p>
+                <details>
+                  <summary>Details</summary>
+                  <p>
+                    Reference: <code>{intent.current.request}</code>
+                  </p>
+                </details>
+              </>
             )}
           </div>
         )}
@@ -194,7 +204,7 @@ export function ExamRetirement({
             disabled={busy || loading}
             onClick={() => void load()}
           >
-            Refresh review
+            Refresh
           </button>
           <button
             className={action === "delete" ? "danger" : "primary"}
@@ -205,10 +215,10 @@ export function ExamRetirement({
             {busy
               ? "Saving…"
               : action === "delete"
-                ? "Delete unused definition"
+                ? "Delete unused exam"
                 : action === "archive"
-                  ? "Archive definition"
-                  : "Restore definition"}
+                  ? "Archive exam"
+                  : "Restore exam"}
           </button>
         </div>
       </form>

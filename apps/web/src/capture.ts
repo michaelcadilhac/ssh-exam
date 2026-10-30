@@ -41,7 +41,7 @@ export class Capture {
       track.getSettings().displaySurface !== "monitor"
     ) {
       stream.getTracks().forEach((t) => t.stop());
-      throw Error("Select an entire display, not a window or tab.");
+      throw Error("Choose Entire Screen in the sharing prompt.");
     }
     track.onended = () => {
       if (!this.stopped) this.incident(`${source} track ended`);
@@ -157,7 +157,7 @@ export class Capture {
     await Promise.all(sources.map((source) => this.busy.get(source)));
     if (this.stopped)
       throw Error(
-        "Capture stopped; restore preflight before Begin. The exam has not started.",
+        "Restore screen sharing and any required webcam, then try Start exam again. Your exam has not started.",
       );
     await Promise.all(sources.map((source) => this.sample(source)));
     const result = await api(
@@ -168,7 +168,7 @@ export class Capture {
     );
     if (!result.complete)
       throw Error(
-        "Fresh required capture could not be verified. Restore preflight and retry Begin; the exam has not started.",
+        "Sharing could not be verified. Restore screen sharing and any required webcam, then try Start exam again. Your exam has not started.",
       );
   }
   stop() {

@@ -1,5 +1,48 @@
 # Instructor operations
 
+## October30 UI candidate — local only
+
+The UI reviewed with Prof is not deployed. Select students in the roster, then
+open **Selected students**:
+
+- **Allow another attempt**: keep each student's effective time/webcam setting,
+  choose a finite start window and starting files, then Review → Allow attempts.
+  The latest started saved work must be protected and unambiguous; otherwise choose
+  explicitly or investigate. Students who never started can use the exam's pinned
+  starter files. The closing time limits when they can start, not when they finish.
+- **Add time** changes eligible current clocks in one dialog. Excluded students are
+  named. Future defaults and unused attempts have separate controls.
+- **Change unused attempts**: select permissions, change only the desired fields,
+  then Review changes → Apply changes. Blank means unchanged. Results are per
+  attempt; a failure for one student does not undo another student's saved change.
+- **Cancel extra attempts** reviews unused extras in one dialog. First permissions,
+  preparations, started work and historical attempts are preserved. **Allowed
+  attempts…** on a student's menu also offers explicit unused-setting changes,
+  cancellation and history.
+
+Do not re-create an action after a missing reply. Reopen its review and use the
+retained retry. **Change unconfirmed** means the result is unknown; refreshing
+current status does not prove that exact request succeeded. Dates use the browser's
+shown time zone; a repeated daylight-saving minute asks which occurrence you mean.
+
+Saved work remains **Preparing saved work** until the class server confirms its
+archive protection. **Retry setup** retries that exact permission/revision. It
+starts no clock and reserves no account. The new separate worker is uninstalled;
+its qualification and future installation steps are in
+[automatic-saved-work-setup.md](automatic-saved-work-setup.md). Native source pins
+still require explicit retirement; cancellation does not delete submissions.
+
+Choose published files directly in **Exam settings → Exam files**. Names and exact
+versions are retrieved; hashes remain in File details. The read-only catalog is
+**Administration → Starter files**. Routine web workflows require no copied
+usernames, IDs, hashes or shell commands. CLI counterparts remain discoverable in
+`examctl web grants help`, `web clocks help`, `web exams help` and
+`web interruptions help`; list commands support scripting without JSON parsing.
+Installation settings (mail, paths, addresses and worker limits) remain files.
+
+The dated implementation notes below are historical; use the current release
+checkpoint and feature documents to establish installed behavior.
+
 Current October26 local release (not deployed): retained v1 policy holds keep
 the same viable page/SSH/editor buffers; authorize the scoped interruption using
 web review or `examctl web interruptions authorize`, then the student explicitly

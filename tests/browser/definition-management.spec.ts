@@ -32,6 +32,36 @@ async function fixture(
       });
     if (path === "/api/login-test")
       return route.fulfill({ json: { loginOnly: false } });
+    if (path === "/api/admin/templates")
+      return route.fulfill({
+        json: {
+          agent: "class",
+          next: null,
+          observed: Date.now(),
+          note: "Synthetic published metadata",
+          sources: [
+            ["v1", "c"],
+            ["v1", "d"],
+            ["different-name", "e"],
+          ].map(([name, digit]) => ({
+            schema: 1,
+            agent: "class",
+            name,
+            hash: digit.repeat(64),
+            entries: 4,
+            files: 2,
+            bytes: 30,
+            max_file_bytes: 20,
+            first_native_created: 1000,
+            last_native_created: 1000,
+            first_acknowledged_at: 1000,
+            last_attested_at: 2000,
+            last_acknowledged_at: 2000,
+            last_request: "12345678-1234-4234-8234-123456789abc",
+            revision: "b".repeat(64),
+          })),
+        },
+      });
     if (path === "/api/admin/exams" || path === "/api/admin/exams/versioned") {
       if (route.request().method() === "POST") {
         const body = route.request().postDataJSON();
@@ -97,6 +127,11 @@ async function fixture(
   await page
     .getByRole("button", { name: "Exam settings", exact: true })
     .click();
+  if (!version)
+    await page
+      .getByRole("dialog")
+      .getByRole("combobox", { name: "Exam files", exact: true })
+      .selectOption(`v1@${"c".repeat(64)}`);
   return state;
 }
 
@@ -108,14 +143,14 @@ test("sandbox exposes an explicit finite window without inventing legacy default
     name: "Exam settings",
     exact: true,
   });
-  await expect(dialog.getByLabel("Earliest start")).toHaveValue("");
-  await expect(dialog.getByLabel("Latest start")).toHaveValue("");
+  await expect(dialog.getByLabel("Opens")).toHaveValue("");
+  await expect(dialog.getByLabel("Closes")).toHaveValue("");
   await expect(
     dialog.getByLabel("Default webcam requirement"),
   ).not.toBeChecked();
   await expect(dialog.getByLabel("Default webcam requirement")).toBeDisabled();
-  await dialog.getByLabel("Earliest start").fill("2026-10-22T09:00");
-  await dialog.getByLabel("Latest start").fill("2026-10-22T17:00");
+  await dialog.getByLabel("Opens").fill("2026-10-22T09:00");
+  await dialog.getByLabel("Closes").fill("2026-10-22T17:00");
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
@@ -131,12 +166,14 @@ test("exact source survives a lost save and name edits never silently clear the 
   const s = await fixture(page),
     hash = "c".repeat(64);
   let dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
-  await dialog.getByLabel("Immutable template hash (optional)").fill(hash);
+  await dialog
+    .getByRole("combobox", { name: "Exam files", exact: true })
+    .selectOption(`v1@${hash}`);
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(
-    dialog.getByLabel("Immutable template hash (optional)"),
-  ).toHaveValue(hash);
+    dialog.getByRole("combobox", { name: "Exam files", exact: true }),
+  ).toHaveValue(`v1@${hash}`);
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(s.paths).toEqual([
@@ -149,21 +186,21 @@ test("exact source survives a lost save and name edits never silently clear the 
     .click();
   dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
   await expect(
-    dialog.getByLabel("Immutable template hash (optional)"),
-  ).toHaveValue(hash);
+    dialog.getByRole("combobox", { name: "Exam files", exact: true }),
+  ).toHaveValue(`v1@${hash}`);
   await dialog
-    .getByLabel("Materials template", { exact: true })
-    .fill("different-name");
+    .getByRole("combobox", { name: "Exam files", exact: true })
+    .selectOption(`different-name@${"e".repeat(64)}`);
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog.getByRole("alert")).toContainText("exact name/hash");
   await expect(
-    dialog.getByLabel("Immutable template hash (optional)"),
-  ).toHaveValue(hash);
+    dialog.getByRole("combobox", { name: "Exam files", exact: true }),
+  ).toHaveValue(`different-name@${"e".repeat(64)}`);
   expect(s.paths.at(-1)).toBe("/api/admin/exams/versioned");
   expect(s.definition.template).toBe("v1");
 });
 
-test("explicit legacy default selection clears only the future hash and stays retryable", async ({
+test("selecting a different published version changes only the future source and stays retryable", async ({
   page,
 }) => {
   const s = await fixture(page, false, "midterm", false, "c".repeat(64));
@@ -171,15 +208,20 @@ test("explicit legacy default selection clears only the future hash and stays re
     name: "Exam settings",
     exact: true,
   });
-  await dialog.getByLabel("Immutable template hash (optional)").fill("");
+  await dialog
+    .getByRole("combobox", { name: "Exam files", exact: true })
+    .selectOption(`v1@${"d".repeat(64)}`);
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  expect(s.writes[0].template_version).toBe("");
+  expect(s.writes[0].template_version).toBe("d".repeat(64));
   expect(s.writes[1]).toEqual(s.writes[0]);
-  expect(s.paths).toEqual(["/api/admin/exams", "/api/admin/exams"]);
-  expect(s.definition).not.toHaveProperty("template_version");
+  expect(s.paths).toEqual([
+    "/api/admin/exams/versioned",
+    "/api/admin/exams/versioned",
+  ]);
+  expect(s.definition.template_version).toBe("d".repeat(64));
 });
 
 test("versioned creation refuses an old gateway without falling back to mutable creation", async ({
@@ -194,17 +236,16 @@ test("versioned creation refuses an old gateway without falling back to mutable 
   await page.getByRole("button", { name: "New exam", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New exam", exact: true });
   await dialog.getByLabel("Exam ID", { exact: true }).fill("new-versioned");
-  await dialog.getByLabel("Materials template", { exact: true }).fill("v1");
   await dialog
-    .getByLabel("Immutable template hash (optional)")
-    .fill("c".repeat(64));
+    .getByRole("combobox", { name: "Exam files", exact: true })
+    .selectOption(`v1@${"c".repeat(64)}`);
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog.getByRole("alert")).toContainText("matching gateway");
   expect(s.paths).toEqual(["/api/admin/exams/versioned"]);
   expect(s.definition.id).toBe("midterm");
   await expect(
-    dialog.getByLabel("Immutable template hash (optional)"),
-  ).toHaveValue("c".repeat(64));
+    dialog.getByRole("combobox", { name: "Exam files", exact: true }),
+  ).toHaveValue(`v1@${"c".repeat(64)}`);
 });
 
 test("lost definition reply preserves form and reuses the same revision/request on retry", async ({
@@ -216,12 +257,13 @@ test("lost definition reply preserves form and reuses the same revision/request 
     exact: true,
   });
   await dialog.getByLabel("Name", { exact: true }).fill("Edited midterm");
-  await expect(dialog.getByLabel("Maximum file (MiB)")).toHaveValue("128");
-  await expect(dialog.getByLabel("Maximum submission (MiB)")).toHaveValue(
+  await dialog.getByText("File limits", { exact: true }).first().click();
+  await expect(dialog.getByLabel("Maximum file size (MiB)")).toHaveValue("128");
+  await expect(dialog.getByLabel("Maximum total size (MiB)")).toHaveValue(
     "512",
   );
-  await dialog.getByLabel("Maximum file (MiB)").fill("256");
-  await dialog.getByLabel("Maximum submission (MiB)").fill("1024");
+  await dialog.getByLabel("Maximum file size (MiB)").fill("256");
+  await dialog.getByLabel("Maximum total size (MiB)").fill("1024");
   await dialog.getByRole("button", { name: "Save exam", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue(

@@ -11,18 +11,18 @@ async function prepareRetained(page: Page, username: string) {
   await page
     .getByLabel("Exam ID", { exact: true })
     .fill("retained-control", { timeout: 5000 });
-  await page.getByLabel("Enrolled username").fill(username, { timeout: 5000 });
+  await page.getByLabel("Username").fill(username, { timeout: 5000 });
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click({ timeout: 10000 });
   await page
     .getByLabel("Shared SSH password")
     .fill("shared-password", { timeout: 10000 });
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
     .click({ timeout: 10000 });
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click({ timeout: 10000 });
   await ready(page);
 }
@@ -30,11 +30,11 @@ async function prepareRetained(page: Page, username: string) {
 async function beginRetained(page: Page, username: string) {
   await prepareRetained(page, username);
   await page
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 10000 });
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 10000 });
   await expect(page.locator(".xterm-rows")).toContainText(
     "DISPOSABLE DEVELOPMENT FIXTURE",
@@ -169,7 +169,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   );
   expect(approval.ok(), await approval.text()).toBe(true);
   await expect(
-    page.getByRole("heading", { name: "Continuation approved", exact: true }),
+    page.getByRole("heading", { name: "Resume approved", exact: true }),
   ).toBeVisible({ timeout: 10000 });
   await page
     .getByRole("button", { name: "Restore fullscreen", exact: true })
@@ -211,7 +211,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   );
   await page
     .getByRole("button", {
-      name: "Continue exam after authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click({ timeout: 10000 });
@@ -290,12 +290,11 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Instructor review required",
-      exact: true,
+      name: /^(Work paused|Instructor review required)$/,
     }),
   ).toHaveCount(0);
   await expect(
-    page.getByText("Terminal input is disabled while reconnecting.", {
+    page.getByText("Reconnecting. Terminal input is paused.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -450,8 +449,7 @@ test("retained WASM SSH control recovery preserves its authenticated worker and 
   expect(ownPanes(held)).toEqual(ownPanes(runtime));
   await expect(
     page.getByRole("heading", {
-      name: "Instructor review required",
-      exact: true,
+      name: /^(Work paused|Instructor review required)$/,
     }),
   ).toHaveCount(0);
   denyBindings = false;
@@ -540,11 +538,11 @@ test("missing loaded JS control agreement refuses actual Begin before native sta
     { timeout: 10000 },
   );
   await page
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 5000 });
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 5000 });
   const refused = await result;
   expect(refused.status(), await refused.text()).toBe(400);

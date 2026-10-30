@@ -220,24 +220,24 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
       });
       await page.goto(origin);
       await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
-      await page.getByLabel("Enrolled username").fill(student.username);
+      await page.getByLabel("Username").fill(student.username);
       await page
-        .getByRole("button", { name: "Start SSH sign-in", exact: true })
+        .getByRole("button", { name: "Sign in", exact: true })
         .click();
       await page.getByLabel("Shared SSH password").fill("shared-password");
       await page
-        .getByRole("button", { name: "Respond to this host", exact: true })
+        .getByRole("button", { name: "Continue", exact: true })
         .click();
       await page
-        .getByRole("button", { name: "Open preflight & practice", exact: true })
+        .getByRole("button", { name: "Check setup and practice", exact: true })
         .click();
       await ready(page);
       await page
-        .getByRole("button", { name: "Begin exam", exact: true })
+        .getByRole("button", { name: "Start exam", exact: true })
         .click();
       await page
         .getByRole("dialog")
-        .getByRole("button", { name: "Begin exam", exact: true })
+        .getByRole("button", { name: "Start exam", exact: true })
         .click();
       await expect
         .poll(

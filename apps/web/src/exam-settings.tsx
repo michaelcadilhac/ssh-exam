@@ -1,6 +1,15 @@
 import React, { useState, useRef } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
+import { TemplatePicker } from "./template-picker.js";
+import { LocalDateTimeInput } from "./local-date-time-input.js";
+import {
+  deviceTimeZone,
+  localDateTime,
+  localOccurrence,
+  parseLocalDateTime,
+  timeLimit,
+} from "./local-date-time.js";
 import {
   isSandbox,
   hasSandboxWindow,
@@ -39,14 +48,21 @@ export function ExamSettings({
       : {}),
   });
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [durationDraft, setDurationDraft] = useState(
+      initial.id && !Number.isInteger(initial.duration / 60)
+        ? ""
+        : String((initial.duration ?? 5400) / 60),
+    ),
+    [earliestDraft, setEarliestDraft] = useState(localDateTime(form.earliest)),
+    [latestDraft, setLatestDraft] = useState(localDateTime(form.latest));
+  const [earliestOccurrence, setEarliestOccurrence] = useState(
+      localOccurrence(form.earliest),
+    ),
+    [latestOccurrence, setLatestOccurrence] = useState(
+      localOccurrence(form.latest),
+    );
   const intent = useRef({ fingerprint: "", requestID: "" });
-  const dateValue = (n: number) =>
-    Number.isFinite(n)
-      ? new Date(n - new Date(n).getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16)
-      : "";
   return (
     <Modal
       title={initial.id ? "Exam settings" : "New exam"}
@@ -62,13 +78,30 @@ export function ExamSettings({
           setBusy(true);
           setError("");
           try {
-            const fingerprint = JSON.stringify(form);
+            const changes = {
+              ...form,
+              earliest:
+                Number.isFinite(form.earliest) &&
+                earliestDraft === localDateTime(form.earliest) &&
+                earliestOccurrence === localOccurrence(form.earliest)
+                  ? form.earliest
+                  : parseLocalDateTime(earliestDraft, earliestOccurrence),
+              latest:
+                Number.isFinite(form.latest) &&
+                latestDraft === localDateTime(form.latest) &&
+                latestOccurrence === localOccurrence(form.latest)
+                  ? form.latest
+                  : parseLocalDateTime(latestDraft, latestOccurrence),
+            };
+            if (changes.latest <= changes.earliest)
+              throw Error("Latest start must be after earliest start.");
+            const fingerprint = JSON.stringify(changes);
             if (intent.current.fingerprint !== fingerprint)
               intent.current = { fingerprint, requestID: crypto.randomUUID() };
             const result = await api(
               form.template_version ? "/admin/exams/versioned" : "/admin/exams",
               {
-                ...form,
+                ...changes,
                 requestID: intent.current.requestID,
               },
             );
@@ -102,99 +135,65 @@ export function ExamSettings({
             />
           </label>
         </div>
-        <label>
-          Materials template
-          <input
-            required
-            pattern="[a-zA-Z0-9_\-]{1,64}"
-            disabled={busy}
-            value={form.template}
-            onChange={(e) => setForm({ ...form, template: e.target.value })}
-          />
-        </label>
-        <small className="admin-field-help">
-          Name of the exam template installed on the SSH server.
-        </small>
-        <label>
-          Immutable template hash (optional)
-          <input
-            value={form.template_version ?? ""}
-            disabled={busy}
-            pattern="([a-f0-9]{64})?"
-            maxLength={64}
-            placeholder="Empty selects the legacy mutable source"
-            onChange={(e) =>
-              setForm({ ...form, template_version: e.target.value })
-            }
-          />
-        </label>
-        <small className="admin-field-help">
-          Copy an exact hash for this template from Administration → Template
-          catalog after root installation and sync. This pins future preparation
-          settings; the class server must still verify actual bytes before
-          Begin. Changing the name does not clear its hash. Clearing the hash
-          explicitly selects legacy defaults; saved preparations and history
-          stay unchanged. This does not issue or revise an attempt grant.
-        </small>
+        <TemplatePicker
+          label="Exam files"
+          name={form.template}
+          hash={form.template_version ?? ""}
+          disabled={busy}
+          onChange={(template, template_version) =>
+            setForm({ ...form, template, template_version })
+          }
+        />
         <fieldset className="admin-form-group">
           <legend>Start window</legend>
           <div className="admin-form-grid">
-            <label>
-              Earliest start
-              <input
-                required
-                disabled={busy}
-                type="datetime-local"
-                value={dateValue(form.earliest)}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    earliest: new Date(e.target.value).getTime(),
-                  })
-                }
-              />
-            </label>
-            <label>
-              Latest start
-              <input
-                required
-                disabled={busy}
-                type="datetime-local"
-                value={dateValue(form.latest)}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    latest: new Date(e.target.value).getTime(),
-                  })
-                }
-              />
-            </label>
+            <LocalDateTimeInput
+              label="Opens"
+              value={earliestDraft}
+              onChange={setEarliestDraft}
+              occurrence={earliestOccurrence}
+              onOccurrence={setEarliestOccurrence}
+              disabled={busy}
+            />
+            <LocalDateTimeInput
+              label="Closes"
+              value={latestDraft}
+              onChange={setLatestDraft}
+              occurrence={latestOccurrence}
+              onOccurrence={setLatestOccurrence}
+              disabled={busy}
+            />
           </div>
           <small>
-            Times use your device timezone. This sets when students may begin.
-            {isSandbox(form.id) &&
-              " Required for repeatable practice; no new Begin outside this finite window. Existing started attempts keep their deadlines."}
+            Times in {deviceTimeZone()}. Students may start between these times.
           </small>
         </fieldset>
         {isSandbox(form.id) && (
-          <p>
-            Repeatable within the configured window · 5 minutes · no webcam ·
-            automatic recovery approval
-          </p>
+          <p>Practice: 5 minutes, no webcam, 4 terminals.</p>
         )}
         <div className="admin-form-grid">
           <label>
-            Duration (minutes)
+            Time limit (minutes)
             <input
-              required
+              required={!initial.id || Number.isInteger(initial.duration / 60)}
               type="number"
               min={1}
               max={360}
               disabled={busy || isSandbox(form.id)}
-              value={isSandbox(form.id) ? 5 : form.duration / 60}
-              onChange={(e) =>
-                setForm({ ...form, duration: Number(e.target.value) * 60 })
+              value={isSandbox(form.id) ? 5 : durationDraft}
+              placeholder={
+                initial.id ? `Keep ${timeLimit(initial.duration)}` : "90"
               }
+              onChange={(e) => {
+                setDurationDraft(e.target.value);
+                setForm({
+                  ...form,
+                  duration:
+                    e.target.value === "" && initial.id
+                      ? initial.duration
+                      : Number(e.target.value) * 60,
+                });
+              }}
             />
           </label>
           <label>
@@ -204,7 +203,7 @@ export function ExamSettings({
               type="number"
               min={1}
               max={4}
-              disabled={busy}
+              disabled={busy || isSandbox(form.id)}
               value={form.terminals}
               onChange={(e) =>
                 setForm({ ...form, terminals: Number(e.target.value) })
@@ -221,54 +220,49 @@ export function ExamSettings({
           />{" "}
           Default webcam requirement
         </label>
-        <fieldset className="admin-form-group">
-          <legend>Protected collection limits</legend>
-          <div className="admin-form-grid">
-            <label>
-              Maximum file (MiB)
-              <input
-                required
-                type="number"
-                min={1}
-                max={MAX_COLLECTION_FILE_MIB}
-                disabled={busy}
-                value={form.collection_file_mib}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    collection_file_mib: Number(e.target.value),
-                  })
-                }
-              />
-            </label>
-            <label>
-              Maximum submission (MiB)
-              <input
-                required
-                type="number"
-                min={form.collection_file_mib}
-                max={MAX_COLLECTION_TOTAL_MIB}
-                disabled={busy}
-                value={form.collection_total_mib}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    collection_total_mib: Number(e.target.value),
-                  })
-                }
-              />
-            </label>
-          </div>
-          <small>
-            Logical saved-file sizes; 1 MiB = 1,048,576 bytes. Entry/depth
-            limits remain 10,000/32. These are not live disk quotas or
-            monitoring limits. Qualify storage/runtime capacity before raising
-            them.
-          </small>
-        </fieldset>
-        <p>
-          Attempts already prepared keep their settings and collection limits.
-        </p>
+        <details>
+          <summary>File limits</summary>
+          <fieldset className="admin-form-group">
+            <legend>File limits</legend>
+            <div className="admin-form-grid">
+              <label>
+                Maximum file size (MiB)
+                <input
+                  required
+                  type="number"
+                  min={1}
+                  max={MAX_COLLECTION_FILE_MIB}
+                  disabled={busy}
+                  value={form.collection_file_mib}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      collection_file_mib: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Maximum total size (MiB)
+                <input
+                  required
+                  type="number"
+                  min={form.collection_file_mib}
+                  max={MAX_COLLECTION_TOTAL_MIB}
+                  disabled={busy}
+                  value={form.collection_total_mib}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      collection_total_mib: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+            </div>
+          </fieldset>
+        </details>
+        <p>Existing attempts keep their settings.</p>
         {error && (
           <p role="alert" className="warn">
             {error}

@@ -58,6 +58,12 @@
   Do not infer argument order or invent setter names. Bound individual browser
   actions and use observed accessible roles so a bad locator cannot consume the
   whole workflow timeout. A locator failure is not a product refusal oracle.
+  A terminal window can exist while its input is still disabled. Before typing,
+  await its verified-open marker, enabled input and focus on the intended stable
+  pane; Enter on a still-focused toolbar button is not terminal input.
+  When renaming UI text, migrate both positive and negative interface expectations;
+  an absent old heading can silently weaken a refusal check. Scope repeated CSS
+  classes to their named section rather than choosing the first matching element.
   Before interactive MFA/media acceptance, establish which computer the instructor
   can see and use. A headed browser on the development host is not visible to a
   remote Codex operator. Use an explicitly authorized separate profile on the
@@ -67,6 +73,10 @@
   never clear history or relax source permissions to fit a prepared legacy base.
   Before broad browser qualification, compare synthetic exam/account names across
   the selected files; an isolated focus run can hide reuse of consumed grants.
+  Give independent rapid management workflows separate synthetic instructors too:
+  limits can be per authenticated actor, not IP/session. Diagnose an HTTP 429
+  from its response before treating a later selector timeout as a product defect;
+  never reset or relax rate limits to make qualification pass.
   Verify the requested browser fixture mode through public status before testing
   a protocol: real WASM checks require EXAM_BROWSER_SSH=1, not the Node fallback.
   Browser fixtures serve dist/web: rebuild after browser source changes before

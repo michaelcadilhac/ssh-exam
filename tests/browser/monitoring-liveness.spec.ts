@@ -15,7 +15,7 @@ for (const error of [
       page.getByRole("dialog").filter({ hasText: error }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Exam paused" }),
+      page.getByRole("heading", { name: "Work paused" }),
     ).toHaveCount(0);
     expect(f.model.messages.filter((m) => m.type === "incident")).toEqual([]);
     expect(f.model.attempt.state).toBe("ACTIVE");
@@ -35,7 +35,7 @@ test("explicit ownership error retains the existing local ownership interruption
     }),
   );
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   await expect
     .poll(() => f.model.messages.filter((m) => m.type === "incident").length)
@@ -57,13 +57,13 @@ test("contact-only acknowledgements cannot bind a page or substitute for initial
     );
   };
   await page.goto("/");
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect.poll(() => f.model.bindSeen).toBe(true);
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Begin exam", exact: true }),
+    page.getByRole("button", { name: "Start exam", exact: true }),
   ).toBeDisabled();
   const last = f.model.bindings.at(-1)!;
   last.socket.send(
@@ -98,12 +98,12 @@ test("contact-only acknowledgements never thaw a policy lock", async ({
   f.model.state = "LOCKED";
   f.send();
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   const previous = f.model.messages.length;
   await expect.poll(() => f.model.messages.length).toBeGreaterThan(previous);
   await expect(
-    page.getByRole("heading", { name: "Exam paused" }),
+    page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   expect(f.model.messages.filter((m) => m.type === "input")).toEqual([]);
 });
@@ -139,20 +139,16 @@ test("real browser SSH keeps contact and terminal input when only final heartbea
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("monitoring-liveness");
-  await page.getByLabel("Enrolled username").fill("monitoring01");
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill("monitoring01");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
   const original = (await (await page.request.get("/api/student/exam")).json())
@@ -173,9 +169,11 @@ test("real browser SSH keeps contact and terminal input when only final heartbea
     deadline: original.deadline,
     original_deadline: original.original_deadline,
   });
-  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("heading", {
+      name: /^(Work paused|Instructor review required)$/,
+    }),
+  ).toHaveCount(0);
   await page.locator(".xterm-helper-textarea").last().focus();
   await page.keyboard.type("contact-independent-terminal");
   await page.keyboard.press("Enter");

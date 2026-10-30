@@ -1,57 +1,58 @@
-# Current checkpoint — Prof UI review
+# Current checkpoint — Prof UI review complete locally
 
-October 30, 2026. Active user task: review every web sentence and streamline exam
-administration with the requested professor agent Prof. Agree fixes with Prof
-before implementation; routine tasks take at most two decision screens. Local
-changes/tests/commits only. No push, deployment, production edits or restarts.
+October30,2026. Local development/testing/commits only. NO push, deploy, production
+configuration/student changes or restarts. No user decision or local implementation
+task remains open. Automatic saved-work setup was approved for local development.
 
-Agreed plan and scenarios: docs/ui-prof-review.md. Prof accepted the terminology,
-selection-based workflows, concise material warnings and technical Details.
-The instructor APPROVED a separate, narrowly scoped class-server background
-service for automatic saved-work setup, development/testing only. No open user
-question. Prof remains the reviewer; use collaboration.followup_task if idle.
+The UI milestone is committed with this checkpoint; use git log -1 to resolve its
+revision. Earlier local commits:2ec0562 selection/cancellation;503bd9c retain-only
+worker, migrations034/035 and CLI;195e3a9 grading-only Docker scope clarification.
+Native/CLI code remains503bd9c. Original38/38 deployed release is separate.
 
-Audit: var/collection-tests/prof-ui.hGHi2EWM. All 32 web source modules inventoried:
-copy-before.tsv/json and source-before.json. Prof categorized all 1,854 candidates
-(includes duplicated JSX/internal strings, NOT a sentence count); 163 exact text
-replacements in prof-copy-decisions.tsv; notes in prof-copy-review-notes.txt.
-Never overwrite this baseline when generating the after inventory.
+Prof agreed the fixes before implementation and accepted the final desktop/mobile
+workflows. Another/first attempts and unused-setting changes take two screens;
+adding time and cancelling unused extras each take one dialog. Students/settings/
+source versions are retrieved. Saved-work setup/retry stays in the current screen;
+only durable native confirmation can make it Ready. Per-row unknown requests keep
+their identities; current status never substitutes for an exact mutation receipt.
+History, sources, original deadlines, holds and monitoring enforcement remain intact.
 
-Current increment: always-visible student selection, selection-only action menu,
-one-dialog cancellation of unused extra attempts and explicit time-change scope.
-Files: admin.tsx, student-actions.tsx, cancel-extra-attempts.tsx, grant-options.ts;
-new focused browser tests: tests/browser/prof-bulk-actions.spec.ts.
-Prof's initial seven objections are corrected; parent-held unknown cancellation
-intents survive close/reopen, current REVOKED reads reconcile safely, started
-history is disclosed, missing students named, diagnostics in Details. Additional
-edge fixes cover consumed-during-close and malformed claims. Add time names
-selected students omitted from its eligible current-clock targets.
+Evidence: var/collection-tests/prof-ui.hGHi2EWM. Final-focus ledger covers49 web/
+shared/HTML files,2353 overlapping extraction candidates (NOT sentences), zero open
+issues; earlier snapshots remain immutable. Full details: docs/ui-prof-review.md
+and docs/automatic-saved-work-setup.md. Operator guide updated alongside code.
 
-Validated first increment: Prof VIEWED and ACCEPTED the 430px partial-result
-screen. Four focused browser cases pass 7.3s. Final 12 browser regressions pass 45.0s
-(new cases + desktop/mobile selection, retry/reset, roster import and actual
-WASM SSH clock workflow). Three actual HTTP additional-grant regressions pass 1.10s;
-typecheck and fresh builds pass. First mobile Select all failure is retained in
-bulk-browser.log; the control is now outside the hidden responsive table header.
-Evidence: bulk-regression.log/results, bulk-browser-final.log/results,
-bulk-http.log, bulk-existing-typecheck.log and bulk-existing-build.log. Original
-raw copy inventory remains untouched. No application/native protocol change.
+Verification complete:
 
-NEXT: streamline the another-attempt
-and stored-source/template selection workflows. Existing affected bulk-browser
-checks have been migrated and public callers pass. No test runner remains active.
-Ask Prof to review each next scenario/rendered result before calling it complete.
-Prof accepted the RETAIN-ONLY worker design: no automatic archive retirement;
-existing native pins from cancelled/stale work remain protected for explicit
-operator cleanup. Detailed acceptance is in docs/ui-prof-review.md.
+- Clean full application run:643pass/3deliberate skips,330.59s;
+  prof-final-full-app.log. Clock built/verified before direct Vitest. Backend,
+  protocol and native inputs unchanged since that run; no unnecessary rerun.
+- browser-qualification-reconciled.json accounts for all204 declared cases:
+  192unique passes,12deliberate native-bundle/measurement skips, no uncovered cases
+  beyond those skips. Segmented runs use unchanged q3 runtime/assets. Failed
+  copy/branch/fixture receipts remain; no guard/history cleanup obtained a pass.
+  Ordinary and sandbox headings stay branch-correct; generic no-pause guards
+  reject both. Real late ResizeObserver callback/sign-out/access checks pass.
+- Real packaged-WASM sixteen-account sign-in passes after a prior retained account
+  remains held. Capacity owns fresh synthetic identities; zero starts/deadlines.
+- Actual signed CLI/gateway/archive, reply loss/revocation/coordinator SIGKILL,
+  kernel resource containment and opted-in CLI races pass; source-worker feature
+  document records exact receipts and limitations. Early-Enter public red/green
+  and actual-WASM fault/closure/later-health regressions also pass.
+- Private image4d68e4b8…: schema11/24→35, clock ABI, exact assets, unchanged attempts/
+  enrollments and no invented grants pass. Owned image fixtures removed; private
+  base image kept. post-signout-final-frozen-inputs.json pins350 source/test/config
+  files and6 exact assets. No source/asset drift after final qualification.
+- No runner remains. final-browser-cleanup.json verifies50 logged owned processes
+  exited and ports3100/3101 closed. All10 original dirty docs/screenshots PNGs are
+  byte-identical to examctl-scripting.exs9o_2m/original-image-hashes.json and remain
+  UNCOMMITTED workspace data, excluded from this milestone.
 
-Next increments: streamline another-attempt/source/template selection and unused
-settings; deliver the approved isolated saved-work service through supported CLI
-and web entries; apply the complete copy ledger and obtain final Prof acceptance.
-No pending operation may reserve an account, consume time, hide an unknown result,
-weaken protected history/deadlines/holds or claim Ready before native confirmation.
-
-Prior production setup remains as recorded in docs/sandbox-setup-2026-10-30.md
-and docs/examctl-scripting-deployment.md. Latest prior local commit 941d776; full
-prior checkpoint is in that commit. Sandbox starter/window setup is complete,
-not part of this UI release. All ten original dirty PNGs must remain untouched.
+The new worker is NOT installed/enabled. Exact root-service mount/LSM qualification
+in a disposable privileged environment remains a pre-enable release gate; the
+user-systemd resource proof is not that test. Browser fixtures simulate shell/media,
+so the12 native skips do not establish new privileged/MFA/human-capture proof.
+No production enablement is authorized. Next action only after a new instruction:
+follow the matched rollout/migration/rollback plan in automatic-saved-work-setup.md,
+qualify the exact root unit, and perform synthetic web→pin→Ready→fresh Begin
+acceptance before enablement. Existing agent consolidation needs no change.

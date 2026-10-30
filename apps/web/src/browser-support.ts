@@ -1,5 +1,4 @@
-const requirement =
-  "This browser cannot run an exam. Open this page in desktop Chrome, Edge or Chromium with fullscreen, screen sharing and keyboard lock enabled.";
+const requirement = "Use desktop Chrome, Edge or Chromium for this exam.";
 
 function deniedByPolicy(feature: string) {
   const policy =
@@ -31,7 +30,7 @@ export function examBrowserIssue(): string | null {
   )
     missing.push("keyboard lock");
   return missing.length
-    ? `${requirement} Unavailable here: ${missing.join(", ")}.`
+    ? `${requirement} Unavailable: ${missing.join(", ")}.`
     : null;
 }
 
@@ -48,7 +47,7 @@ export async function checkExamBrowser(): Promise<string | null> {
         name: name as PermissionName,
       });
       if (permission.state === "denied")
-        return `${requirement} Permission denied: ${label}.`;
+        return `${requirement} Allow ${label} in browser settings, then reload.`;
     } catch {
       // Unsupported permission queries do not mean an otherwise supported API
       // is denied. Preflight still checks the actual grant before Begin.

@@ -12,7 +12,10 @@ import {
   AttemptProvenance,
   type SourceAttemptLink,
 } from "./attempt-provenance.js";
-import { GrantIssuanceDialog } from "./grant-issuance.js";
+import {
+  GrantIssuanceDialog,
+  clearGrantReviewCache,
+} from "./grant-issuance.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
@@ -25,6 +28,7 @@ import {
   type CancellationIntents,
 } from "./cancel-extra-attempts.js";
 import { grantStatus } from "./grant-options.js";
+import { timeLimit } from "./local-date-time.js";
 import {
   attemptStatus,
   attemptElapsed,
@@ -37,16 +41,16 @@ const filterLabels: [DashboardView, string][] = [
   ["", "All students"],
   ["working", "Working"],
   ["attention", "Needs attention"],
-  ["secured", "Submission secured"],
-  ["PREPARING", "Preflight"],
+  ["secured", "Files saved"],
+  ["PREPARING", "Setup"],
   ["ACTIVE", "Active attempts"],
-  ["LOCKED", "Paused"],
-  ["FINALIZING", "Collecting"],
+  ["LOCKED", "Work paused"],
+  ["FINALIZING", "Finishing"],
   ["COMPLETED", "Completed"],
-  ["COLLECTION_FAILED", "Collection failed"],
-  ["CANCELLED_BEFORE_START", "Cancelled"],
+  ["COLLECTION_FAILED", "File collection needs attention"],
+  ["CANCELLED_BEFORE_START", "Setup cancelled"],
   ["camera", "Webcam required"],
-  ["no-camera", "Webcam not required"],
+  ["no-camera", "Webcam optional"],
 ];
 const startFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Chicago",
@@ -59,9 +63,11 @@ const startFormat = new Intl.DateTimeFormat("en-US", {
 });
 const attemptStarted = (n: number) => startFormat.format(n);
 export function Admin({
+  actor,
   onError,
   onSignOut,
 }: {
+  actor: string;
   onError: (s: string) => void;
   onSignOut: () => Promise<void>;
 }) {
@@ -104,10 +110,12 @@ export function Admin({
   const [alertsError, setAlertsError] = useState("");
   const [templateCatalog, setTemplateCatalog] = useState(false);
   const [grantsFor, setGrantsFor] = useState<string | null>(null);
+  const [unusedStudents, setUnusedStudents] = useState<string[] | null>(null);
   const [grantFocus, setGrantFocus] = useState<string | null>(null);
-  const [issuingGrants, setIssuingGrants] = useState<
-    "initial" | "additional" | null
-  >(null);
+  const [issuingGrants, setIssuingGrants] = useState<{
+    kind: "initial" | "additional";
+    students: any[];
+  } | null>(null);
   const [permission, setPermission] = useState(
     typeof Notification === "undefined"
       ? "unavailable"
@@ -246,6 +254,7 @@ export function Admin({
   const chooseExam = (id: string) => {
     clearView();
     setGrantsFor(null);
+    setUnusedStudents(null);
     setIssuingGrants(null);
     setCancelExtras(null);
     query.current = {
@@ -360,6 +369,7 @@ export function Admin({
     setSigningOut(true);
     try {
       await onSignOut();
+      clearGrantReviewCache();
     } catch (e) {
       setSigningOut(false);
       onError((e as Error).message);
@@ -417,7 +427,7 @@ export function Admin({
               },
             },
             {
-              label: "Template catalog",
+              label: "Starter files",
               onSelect: () => setTemplateCatalog(true),
             },
             {
@@ -490,7 +500,7 @@ export function Admin({
               <h2>{current?.name || exam}</h2>
               <p>
                 {current
-                  ? `${current.duration / 60} minutes · Webcam ${current.webcam ? "required" : "not required"} by default`
+                  ? `${timeLimit(current.duration)} · Webcam ${current.webcam ? "required" : "optional"} by default`
                   : "Loading exam settings…"}
               </p>
             </div>
@@ -507,24 +517,6 @@ export function Admin({
                 disabled={!current || current.lifecycle === "archived"}
               >
                 Add student
-              </button>
-              {exam !== "sandbox" && (
-                <button
-                  onClick={() => setIssuingGrants("initial")}
-                  disabled={
-                    !current || stale || current.lifecycle === "archived"
-                  }
-                >
-                  Issue legacy grants
-                </button>
-              )}
-              <button
-                onClick={() => setIssuingGrants("additional")}
-                disabled={!current || stale || current.lifecycle === "archived"}
-              >
-                {exam === "sandbox"
-                  ? "Authorize practice grant"
-                  : "Authorize additional attempts"}
               </button>
               <AdminMenu
                 label="Exam actions"
@@ -581,7 +573,7 @@ export function Admin({
                     "Needs attention",
                     data?.counts.attention ?? data?.counts.locked,
                   ],
-                  ["secured", "Secured", data?.counts.collected],
+                  ["secured", "Files saved", data?.counts.collected],
                 ] as const
               ).map(([value, label, count]) => (
                 <button
@@ -674,6 +666,34 @@ export function Admin({
                   label="Selected students"
                   actions={[
                     {
+                      label: "Allow another attempt",
+                      disabled:
+                        stale ||
+                        chosen.length > 200 ||
+                        current?.lifecycle === "archived",
+                      onSelect: () =>
+                        setIssuingGrants({
+                          kind: "additional",
+                          students: chosen.map((s: any) => ({ ...s })),
+                        }),
+                    },
+                    ...(exam === "sandbox"
+                      ? []
+                      : [
+                          {
+                            label: "Allow first attempt",
+                            disabled:
+                              stale ||
+                              chosen.length > 200 ||
+                              current?.lifecycle === "archived",
+                            onSelect: () =>
+                              setIssuingGrants({
+                                kind: "initial" as const,
+                                students: chosen.map((s: any) => ({ ...s })),
+                              }),
+                          },
+                        ]),
+                    {
                       label: "Add time",
                       disabled:
                         stale ||
@@ -712,6 +732,12 @@ export function Admin({
                             )
                             .map((s: any) => s.username),
                         ),
+                    },
+                    {
+                      label: "Change unused attempts",
+                      disabled: stale,
+                      onSelect: () =>
+                        setUnusedStudents(chosen.map((s: any) => s.username)),
                     },
                     {
                       label: "Cancel extra attempts",
@@ -826,7 +852,7 @@ export function Admin({
                                 {s.grant && (
                                   <small>
                                     First attempt:{" "}
-                                    {s.grant.settings.duration / 60} min ·{" "}
+                                    {timeLimit(s.grant.settings.duration)} ·{" "}
                                     {grantStatus(s.grant)}
                                   </small>
                                 )}
@@ -856,7 +882,7 @@ export function Admin({
                                             ? `${s.unusedGrants.pendingNative} preparing saved work`
                                             : "",
                                           s.unusedGrants.closed
-                                            ? `${s.unusedGrants.closed} expired unused ${s.unusedGrants.closed === 1 ? "attempt" : "attempts"}`
+                                            ? `${s.unusedGrants.closed} start ${s.unusedGrants.closed === 1 ? "window closed" : "windows closed"}`
                                             : "",
                                           s.unusedGrants.more
                                             ? "More attempts in Details"
@@ -992,7 +1018,7 @@ export function Admin({
                                         )}
                                       {a.interruptionHistoryDeleted ? (
                                         <small className="interruption-summary">
-                                          History deleted
+                                          Interruption history deleted
                                         </small>
                                       ) : a.interruptions?.length ? (
                                         <button
@@ -1033,7 +1059,7 @@ export function Admin({
                                         ? "Unknown"
                                         : webcam
                                           ? "Required"
-                                          : "Not required"}
+                                          : "Optional"}
                                     </td>
                                     <td
                                       role="cell"
@@ -1041,7 +1067,7 @@ export function Admin({
                                         ["ACTIVE", "LOCKED"].includes(a.state)
                                           ? "Time remaining"
                                           : a.ended && a.start
-                                            ? "Time taken"
+                                            ? "Time used"
                                             : "Time"
                                       }
                                       className="attempt-clock"
@@ -1057,7 +1083,7 @@ export function Admin({
                                           ? remaining(a.deadline, clock)
                                           : a.ended &&
                                               attemptElapsed(a, clock) !== null
-                                            ? `${formatDuration(attemptElapsed(a, clock)!)} taken`
+                                            ? `${formatDuration(attemptElapsed(a, clock)!)} used`
                                             : "—"}
                                       </time>
                                       {![
@@ -1183,26 +1209,40 @@ export function Admin({
       )}
       {issuingGrants && current && (
         <GrantIssuanceDialog
-          key={`${exam}:${issuingGrants}`}
+          key={`${exam}:${issuingGrants.kind}`}
           initial={current}
-          additional={issuingGrants === "additional"}
+          actor={actor}
+          students={issuingGrants.students}
+          onAdoptStudents={(names) => {
+            setSelection(new Set(names));
+            setIssuingGrants({
+              kind: issuingGrants.kind,
+              students: names.map((username) => ({ username })),
+            });
+          }}
+          additional={issuingGrants.kind === "additional"}
           onClose={() => setIssuingGrants(null)}
           onChanged={refresh}
         />
       )}
-      {grantsFor && (
+      {(grantsFor || unusedStudents) && (
         <AttemptGrantsDialog
-          key={`${exam}:${grantsFor}:${grantFocus ?? "list"}`}
+          key={`${exam}:${grantsFor ?? JSON.stringify(unusedStudents)}:${grantFocus ?? "list"}`}
           exam={exam}
-          username={grantsFor}
+          actor={actor}
+          username={grantsFor ?? undefined}
+          students={unusedStudents ?? undefined}
           initialGrantId={grantFocus ?? undefined}
-          onClose={() => setGrantsFor(null)}
+          onClose={() => {
+            setGrantsFor(null);
+            setUnusedStudents(null);
+          }}
           onChanged={refresh}
         />
       )}
       {templateCatalog && (
         <Modal
-          title="Template catalog"
+          title="Starter files"
           wide
           onClose={() => setTemplateCatalog(false)}
         >
@@ -1283,8 +1323,8 @@ export function Admin({
           }}
         >
           <p>
-            Enrollment is removed. Current attempts, history, monitoring and
-            submissions are kept.
+            Removing enrollment keeps current attempts, history, recordings and
+            submissions.
           </p>
           {removingError && (
             <p role="alert" className="warn">

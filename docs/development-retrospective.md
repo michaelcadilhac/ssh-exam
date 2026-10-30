@@ -446,3 +446,72 @@ refusal and timeout fail. It waits for the actual durable phase before testing
 live inspection. Corrected repeats and the later archive/no-start/restore checks
 pass. AGENTS now records this specific rule. This was a test-design failure;
 no production incident is explained and no monitoring enforcement is relaxed.
+
+October30 Prof UI qualification found two avoidable test-migration mistakes.
+Exact getByLabel selectors for newly fetched select controls included their option
+text and timed out. The actual accessible combobox names were already observable;
+using those roles and opening the existing Details before choosing fixed the
+fixtures. Old copy assertions were updated while preserving refusal, timing,
+input and negative reauthentication checks. A selector timeout was never counted
+as a product refusal or justification to remove a test.
+
+Rapid unrelated management workflows also shared one synthetic instructor. They
+correctly hit both the five-login/minute and180-request/minute limits. Reusing a
+valid session fixed login churn but could not fix an authenticated-actor bucket;
+the actual keyGenerator should have been read before proposing that correction.
+Independent synthetic instructor identities now isolate those workflows, while
+real authentication, CSRF, rate enforcement and audit remain enabled. No counters,
+student history, consumed grants or limits were cleared to obtain a pass.
+
+An automatic review additionally misread the grading-only Docker prohibition as
+covering the application's existing release-image checks. Reading the scoped
+instructions and release procedure resolved it without a new instructor approval.
+AGENTS now names offline grading explicitly. Keep permission scope and fixture
+failures separate from product defects; collect focused completion and teardown
+before broader runs, then qualify the exact packaged artifact once inputs freeze.
+
+The later terminal regressions also distinguished a real UI defect from those
+fixture errors. A WinBox appears before its matching open acknowledgment enables
+input. A disabled textarea cannot take focus; early Enter could therefore activate
+the still-focused New terminal button again. A held-acknowledgment public-browser
+regression reproduced exactly three windows instead of two before any product fix.
+The bounded correction focuses the waiting window without enabling or buffering
+input. The matching acknowledgment restores focus only for the active pane, with
+the original dialog/covered guards. The green regression verifies zero early
+input and the first fresh key reaching that exact pane.
+
+The fault fixtures now await the actual outer terminal's aria-busy marker, enabled
+input and focus on a stable window ID, retaining exact global/native counts and
+saved-file/clock/peer/alert assertions. An initial helper selector matched both
+outer and inner .terminal elements; narrowing to the producer's [aria-busy]
+element fixed that fixture without hiding extra panes. Failed ordinary and trace
+runs remain evidence; unreadable trace archives are not treated as qualification.
+
+The full copy regression also exposed stale controls outside the initially focused
+specs, including negative assertions that would silently accept a new pause screen.
+Prof reviewed the complete22-definition interface file; positive and negative
+checks now use the agreed labels, and timezone checks target Start window rather
+than every details panel. Qualification reuses unchanged passing cases against the
+same pinned runtime/assets and records unique cases, instead of repeating the
+expensive unchanged prefix after each test-copy correction.
+
+The capacity scenario reused retained01 after a preceding test deliberately left
+its account held. A composed diagnostic captured the actual admission refusal,
+"Your exam is locked or already in progress," before any fixture correction.
+Capacity sign-in now owns16 fresh synthetic identities. No hold/history cleanup,
+rate-limit reset or admission exception is justified by that fixture collision.
+
+The interface migration also generalized the sandbox heading to ordinary exams,
+although the source ledger explicitly retained Instructor review required there.
+That failed before cleanup and caused a later completed-attempt check to encounter
+a legitimately locked account. Correct the branch-specific test expectation; do
+not clear history or change a reviewed product heading to satisfy a mechanical
+replacement. Ordinary no-pause guards now reject both headings.
+
+Finally, the legacy late-resize test intercepted WebSocket JSON, while the real
+WASM path sends worker operations. Its hook never armed. The corrected test uses
+the producer's actual native ResizeObserver, verifies the callback belongs to the
+current connected terminal, then invokes it after sign-out and checks disposal,
+no page errors and the original401/404 refusals. It preserves native observation
+and disconnect behavior. This is a fixture correction, not a product or safety
+policy change.

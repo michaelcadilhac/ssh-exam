@@ -107,12 +107,12 @@ async function fixture(
     .getByRole("button", { name: "Administration", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Template catalog", exact: true })
+    .getByRole("menuitem", { name: "Starter files", exact: true })
     .click();
   return {
     state,
     sources,
-    dialog: page.getByRole("dialog", { name: "Template catalog", exact: true }),
+    dialog: page.getByRole("dialog", { name: "Starter files", exact: true }),
   };
 }
 
@@ -122,25 +122,24 @@ test("catalog inspection is read-only, exact-version scoped, timestamped and acc
   const { state, sources, dialog } = await fixture(page);
   await expect(dialog.getByRole("table")).toBeVisible();
   await expect(dialog).toContainText(
-    "not live filesystem probes or availability guarantees",
+    "Starter files are verified again before an exam starts",
   );
-  await expect(dialog).toContainText(
-    "does not select a template, issue an attempt grant",
-  );
+  expect(state.writes).toEqual([]);
   await dialog
     .getByRole("button", {
-      name: `Inspect ${sources[1].name} ${sources[1].hash.slice(0, 12)}`,
+      name: new RegExp(`^Details for ${sources[1].name} published `),
       exact: true,
     })
     .click();
-  const detail = dialog.getByRole("region", { name: "Exact source details" });
+  const detail = dialog.getByRole("region", { name: "Starter details" });
   await expect(detail).toBeVisible();
   await expect(
-    dialog.getByRole("button", { name: "Back to sources", exact: true }),
+    dialog.getByRole("button", { name: "Back", exact: true }),
   ).toBeFocused();
   await expect(
     detail.getByRole("heading", { name: "midterm", exact: true }),
   ).toBeInViewport();
+  await detail.getByText("Technical details", { exact: true }).click();
   await expect(detail).toContainText(sources[1].hash);
   await expect(detail).toContainText("1969");
   await expect(detail).toContainText("CDT");
@@ -159,12 +158,10 @@ test("catalog inspection is read-only, exact-version scoped, timestamped and acc
   expect(box!.x + box!.width).toBeLessThanOrEqual(391);
   if (screenshots)
     await page.screenshot({ path: join(screenshots, "mobile.png") });
-  await dialog
-    .getByRole("button", { name: "Back to sources", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Back", exact: true }).click();
   await expect(
     dialog.getByRole("button", {
-      name: `Inspect ${sources[1].name} ${sources[1].hash.slice(0, 12)}`,
+      name: new RegExp(`^Details for ${sources[1].name} published `),
       exact: true,
     }),
   ).toBeFocused();
@@ -189,17 +186,15 @@ test("source pages retain exact cursor/filter and return to earlier pages withou
     .getByRole("button", { name: "Previous page", exact: true })
     .click();
   await expect(dialog.getByRole("row")).toHaveCount(51);
-  await dialog.getByLabel("Template name", { exact: true }).fill("bad/name");
-  await dialog
-    .getByRole("button", { name: "Filter sources", exact: true })
-    .click();
-  await expect(dialog.getByRole("alert")).toContainText("exact template name");
-  await dialog.getByLabel("Template name", { exact: true }).fill("absent");
-  await dialog
-    .getByRole("button", { name: "Filter sources", exact: true })
-    .click();
+  await dialog.getByLabel("Starter name", { exact: true }).fill("bad/name");
+  await dialog.getByRole("button", { name: "Filter", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "letters, numbers, underscores or hyphens",
+  );
+  await dialog.getByLabel("Starter name", { exact: true }).fill("absent");
+  await dialog.getByRole("button", { name: "Filter", exact: true }).click();
   await expect(dialog).toContainText(
-    "No attested template sources match this name",
+    "No published starter files match this name",
   );
   expect(state.reads.at(-1)).toContain("name=absent");
   expect(state.reads.at(-1)).not.toContain("after=");
@@ -212,7 +207,7 @@ test("wrong-target details refuse without exposing an unrelated source", async (
   const { sources, dialog } = await fixture(page, { wrongDetail: true });
   await dialog
     .getByRole("button", {
-      name: `Inspect ${sources[0].name} ${sources[0].hash.slice(0, 12)}`,
+      name: new RegExp(`^Details for ${sources[0].name} published `),
       exact: true,
     })
     .click();
@@ -220,7 +215,7 @@ test("wrong-target details refuse without exposing an unrelated source", async (
     "does not match the selected exact source",
   );
   await expect(
-    dialog.getByRole("region", { name: "Exact source details" }),
+    dialog.getByRole("region", { name: "Starter details" }),
   ).toHaveCount(0);
   await expect(dialog).not.toContainText("f".repeat(64));
 });
@@ -229,21 +224,15 @@ test("unavailable metadata can be retried and empty state distinguishes local in
   page,
 }) => {
   const { state, dialog } = await fixture(page, { empty: true });
-  await expect(dialog).toContainText(
-    "A local installation alone is not a gateway acknowledgement",
-  );
+  await expect(dialog).toContainText("No published starter files yet");
   state.fail = true;
-  await dialog
-    .getByRole("button", { name: "Refresh metadata", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog.getByRole("alert")).toContainText(
-    "No source availability or grant is confirmed",
+    "Synthetic catalog unavailable",
   );
   state.fail = false;
-  await dialog
-    .getByRole("button", { name: "Refresh metadata", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog.getByRole("alert")).toHaveCount(0);
-  await expect(dialog).toContainText("No attested template sources yet");
+  await expect(dialog).toContainText("No published starter files yet");
   expect(state.writes).toEqual([]);
 });

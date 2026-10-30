@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 import { fixture, begin, gate } from "./transition-fixture.js";
 
 for (const framed of [false, true]) {
@@ -100,3 +101,65 @@ for (const input of [
     expect(f.model.messages.filter((m) => m.type === "input")).toEqual([]);
   });
 }
+
+test("Enter while a new terminal is opening cannot activate New terminal again", async ({
+  page,
+}, info) => {
+  const f = await fixture(page),
+    reply = gate();
+  const opened: string[] = [];
+  f.model.onOpen = async (socket, message) => {
+    opened.push(message.pane);
+    await reply.promise;
+    socket.send(JSON.stringify({ type: "opened", pane: message.pane }));
+  };
+  try {
+    await begin(page, f);
+    await page
+      .getByRole("button", { name: "New terminal", exact: true })
+      .click();
+    await expect(page.locator(".winbox")).toHaveCount(2);
+    await expect.poll(() => opened.length).toBe(2);
+    const input = page
+      .locator(".winbox")
+      .last()
+      .locator(".xterm-helper-textarea");
+    await expect(input).toBeDisabled();
+    await input.focus();
+    const focusReceipt = JSON.stringify(
+      await page.evaluate(() => ({
+        focusedTag: document.activeElement?.tagName,
+        focusedText: document.activeElement?.textContent?.slice(0, 120),
+        panes: [...document.querySelectorAll(".winbox")].map((box) => ({
+          id: box.id,
+          busy: box.querySelector(".terminal")?.getAttribute("aria-busy"),
+          inputDisabled: box.querySelector<HTMLTextAreaElement>(
+            ".xterm-helper-textarea",
+          )?.disabled,
+          terminalInert: (box.querySelector(".terminal") as HTMLElement)?.inert,
+        })),
+      })),
+    );
+    await writeFile(info.outputPath("opening-focus.json"), focusReceipt + "\n");
+    await page.keyboard.type("early");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".winbox")).toHaveCount(2);
+    expect(f.model.messages.filter((m) => m.type === "input")).toEqual([]);
+    reply.release();
+    await expect(input).toBeEnabled();
+    await expect(input).toBeFocused();
+    await page.keyboard.type("p");
+    const inputs = () => f.model.messages.filter((m) => m.type === "input");
+    await expect
+      .poll(() =>
+        inputs()
+          .map((m) => m.data)
+          .join(""),
+      )
+      .toBe("p");
+    expect(inputs().every((m) => m.pane === opened[1])).toBe(true);
+    await expect(page.locator(".winbox")).toHaveCount(2);
+  } finally {
+    reply.release();
+  }
+});

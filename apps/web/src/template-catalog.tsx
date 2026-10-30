@@ -147,26 +147,15 @@ export function TemplateCatalogView() {
     };
   }, [selected]);
   return (
-    <section
-      className="template-catalog-view"
-      aria-label="Recorded template sources"
-    >
+    <section className="template-catalog-view" aria-label="Starter files">
       {!selected ? (
-        <p>
-          Authenticated class-server source attestations, not live filesystem
-          probes or availability guarantees. Reading or syncing this catalog
-          does not select a template, issue an attempt grant, or change existing
-          work or deadlines.
-        </p>
+        <p>Starter files are verified again before an exam starts.</p>
       ) : (
-        <p>
-          Exact recorded source metadata, not a live availability check or
-          attempt grant. Times shown in Chicago.
-        </p>
+        <p>Published starter details. Times shown in Chicago.</p>
       )}
       {selected && (
         <button ref={back} type="button" onClick={() => setSelected(null)}>
-          Back to sources
+          Back
         </button>
       )}
       <div hidden={!!selected}>
@@ -177,7 +166,7 @@ export function TemplateCatalogView() {
             const value = draft.trim();
             if (value && !/^[a-zA-Z0-9_-]{1,64}$/.test(value)) {
               setFilterError(
-                "Use the exact template name: 1–64 letters, digits, underscores or hyphens.",
+                "Use 1–64 letters, numbers, underscores or hyphens.",
               );
               return;
             }
@@ -189,80 +178,73 @@ export function TemplateCatalogView() {
           }}
         >
           <label>
-            Template name{" "}
+            Starter name{" "}
             <input
               value={draft}
               maxLength={64}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="All template names"
+              placeholder="All starter names"
             />
           </label>
-          <button type="submit">Filter sources</button>
+          <button type="submit">Filter</button>
           <button
             type="button"
             disabled={loading}
             onClick={() => setRefresh((n) => n + 1)}
           >
-            Refresh metadata
+            Refresh
           </button>
         </form>
         {filterError && <p role="alert">{filterError}</p>}
         {error && (
-          <p role="alert">
-            {error} No source availability or grant is confirmed by this failed
-            read.
-          </p>
+          <p role="alert">{error} Refresh to load published starter choices.</p>
         )}
-        {loading && <p role="status">Loading recorded source metadata…</p>}
+        {loading && <p role="status">Loading starter files…</p>}
         {data && (
           <>
             <p className="muted">
-              Metadata read {timestamp(data.observed)}. Times shown in Chicago.
-              Native byte verification still happens before Begin. There is no
-              implicit “latest” version.
+              Information retrieved {timestamp(data.observed)}. Times shown in
+              Chicago.
             </p>
             {data.sources.length === 0 ? (
               <p>
-                No attested template sources{name ? " match this name" : " yet"}
-                . A local installation alone is not a gateway acknowledgement.
+                No published starter files{name ? " match this name" : " yet"}.
+                Ask the server administrator to publish starter files.
               </p>
             ) : (
               <div className="template-catalog-table">
                 <table>
                   <thead>
                     <tr>
-                      <th>Exact source</th>
-                      <th>Saved file content</th>
-                      <th>Last gateway acknowledgement</th>
-                      <th>Inspect</th>
+                      <th>Starter files</th>
+                      <th>Files</th>
+                      <th>Published</th>
+                      <th>Details</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.sources.map((source) => (
                       <tr key={key(source)}>
-                        <td data-label="Exact source">
+                        <td data-label="Starter files">
                           <strong>{source.name}</strong>
-                          <code className="template-catalog-hash">
-                            {source.hash}
-                          </code>
                         </td>
-                        <td data-label="Saved file content">
+                        <td data-label="Files">
                           {source.files.toLocaleString()} files ·{" "}
                           {source.bytes.toLocaleString()} bytes
                         </td>
-                        <td data-label="Last gateway acknowledgement">
-                          {timestamp(source.last_acknowledged_at)}
+                        <td data-label="Published">
+                          {timestamp(source.first_acknowledged_at)}
                         </td>
-                        <td data-label="Inspect">
+                        <td data-label="Details">
                           <button
                             type="button"
                             onClick={(event) => {
                               inspected.current = event.currentTarget;
                               setSelected(source);
                             }}
-                            aria-label={`Inspect ${source.name} ${source.hash.slice(0, 12)}`}
+                            aria-label={`Details for ${source.name} published ${timestamp(source.first_acknowledged_at)}`}
                           >
-                            Inspect
+                            Details
                           </button>
                         </td>
                       </tr>
@@ -273,7 +255,7 @@ export function TemplateCatalogView() {
             )}
             <nav
               className="template-catalog-pages"
-              aria-label="Template source pages"
+              aria-label="Starter file pages"
             >
               <button
                 disabled={loading || page === 0}
@@ -295,67 +277,65 @@ export function TemplateCatalogView() {
           </>
         )}
       </div>
-      {detailLoading && <p role="status">Loading exact source details…</p>}
+      {detailLoading && <p role="status">Loading starter details…</p>}
       {detailError && <p role="alert">{detailError}</p>}
       {detail && (
         <section
           className="template-catalog-detail"
-          aria-label="Exact source details"
+          aria-label="Starter details"
         >
           <h3>{detail.name}</h3>
-          <code className="template-catalog-hash">{detail.hash}</code>
-          <dl>
-            <dt>Class agent</dt>
-            <dd>{detail.agent}</dd>
-            <dt>Files / total entries</dt>
-            <dd>
-              {detail.files} / {detail.entries}
-            </dd>
-            <dt>Logical file content</dt>
-            <dd>
-              {detail.bytes.toLocaleString()} bytes; largest file{" "}
-              {detail.max_file_bytes.toLocaleString()} bytes
-            </dd>
-            <dt>First gateway acknowledgement</dt>
-            <dd>{timestamp(detail.first_acknowledged_at)}</dd>
-            <dt>Latest root attestation</dt>
-            <dd>{timestamp(detail.last_attested_at)}</dd>
-            <dt>Latest gateway acknowledgement</dt>
-            <dd>{timestamp(detail.last_acknowledged_at)}</dd>
-            <dt>Native creation (last reported)</dt>
-            <dd>{timestamp(detail.last_native_created)}</dd>
-          </dl>
           <p>
-            Record or refresh the source observation from root on the class
-            server:
+            {detail.files} files · {detail.bytes.toLocaleString()} bytes ·
+            Published {timestamp(detail.first_acknowledged_at)}
           </p>
-          <code className="template-catalog-command">
-            sudo examctl templates sync {detail.name} {detail.hash} --reason
-            'Reviewed installed source version'
-          </code>
-          <p>
-            Exact retries keep the original acknowledgement; a new request
-            refreshes it. This is not a grant or a fresh native availability
-            check.
-          </p>
-          <button onClick={() => setSelected(null)}>
-            Close source details
-          </button>
+          <details>
+            <summary>Technical details</summary>
+            <code className="template-catalog-hash">{detail.hash}</code>
+            <dl>
+              <dt>Exam server</dt>
+              <dd>{detail.agent}</dd>
+              <dt>Files / entries</dt>
+              <dd>
+                {detail.files} / {detail.entries}
+              </dd>
+              <dt>File sizes</dt>
+              <dd>
+                {detail.bytes.toLocaleString()} bytes; largest file{" "}
+                {detail.max_file_bytes.toLocaleString()} bytes
+              </dd>
+              <dt>First published</dt>
+              <dd>{timestamp(detail.first_acknowledged_at)}</dd>
+              <dt>Last verified on the exam server</dt>
+              <dd>{timestamp(detail.last_attested_at)}</dd>
+              <dt>Last web confirmation</dt>
+              <dd>{timestamp(detail.last_acknowledged_at)}</dd>
+              <dt>Installed (last reported)</dt>
+              <dd>{timestamp(detail.last_native_created)}</dd>
+            </dl>
+            <p>Refresh this publication from the exam server:</p>
+            <code className="template-catalog-command">
+              sudo examctl templates sync {detail.name} {detail.hash} --reason
+              'Reviewed installed source version'
+            </code>
+            <p>
+              Exact retries keep the original confirmation. A new request
+              refreshes it.
+            </p>
+          </details>
         </section>
       )}
       <details>
-        <summary>Install and synchronize a source</summary>
+        <summary>Server setup</summary>
         <p>
           Run <code>examctl templates help</code> on the class server for
-          validate/install/verify/sync. Native installation is separate from
-          gateway acknowledgement. No file upload, contents download, source
-          deletion or grant creation is available here.
+          instructions. New starter files are published by the server
+          administrator.
         </p>
         <p>
-          For recorded metadata from the CLI, use{" "}
-          <code>examctl web templates list</code> and{" "}
-          <code>examctl web templates show NAME HASH</code>. These reads do not
-          access class files.
+          Inspect publications with <code>examctl web templates list</code> and{" "}
+          <code>examctl web templates show NAME HASH</code>. These commands read
+          published metadata.
         </p>
       </details>
     </section>

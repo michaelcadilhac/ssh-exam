@@ -83,41 +83,51 @@ rows in one existing atomic confirmation.
 
 Evidence is under `var/collection-tests/prof-ui.hGHi2EWM`:
 
-- Actual signed root-mapped CLI/native archive tests cover durable pin before
-  acknowledgement, lost reply, retry identity, revoked plans and exact coordinator
-  SIGKILL with child death and unchanged native state/pin. Final focus:
-  `source-worker-native-final-focused.log`. Full opted-in CLI races pass26.287s:
-  `source-worker-cli-race.log`.
-- The existing real-gateway/compiled-root-CLI fixture now completes newly issued
-  saved-work permissions through the actual queue → isolated archive child →
-  native confirmation. Both become AVAILABLE with empty claims/consumers and
-  byte-identical native attempt state and unchanged web source history. It
-  reconciles older synthetic tasks without clearing them. This joined case passes
-  in 10.14s: `source-worker-joined-gateway.log` (one selected test, 12 unrelated
-  cases deliberately skipped). All 26 affected grant HTTP interfaces also pass:
-  `source-grants-interface-regression.log`, 91.21s.
-- An owned disposable user-systemd service runs the actual worker and archive
-  child. Live kernel bounds are verified: memory256MiB, swap0, tasks32, CPU50%,
-  OOM group1; cleanup is empty. `source-worker-resource-final.log` passes1.700s.
-  This qualifies resource containment, not the production root unit's mount/LSM
-  context. No installed service or student account was changed.
-- Real HTTP tests cover atomic mixed sources, exact-second/effective settings,
-  stale review refusal, metadata privacy, actor-bound retrieval, task lease loss,
-  zero-exit-without-proof refusal, expiry/revoke/revision, late failure after native
-  confirmation and no claim/time/source changes. Current focused status/date/HTTP
-  checks pass14 cases: `another-polish-focused.log`; typecheck passes.
-- Four final rebuilt Chromium scenarios pass32.6s:
-  `another-footer-final-browser.log`. They cover two screens, native form
-  validation through the fixed footer, fetched mixed sources, reload/exact retries,
-  invalid latest work, zero-source guidance and bounded cohort polling. Their API
-  projections are simulated; actual HTTP/native boundaries are tested separately.
-  The original failed browser helper forgot to reselect its exam after reload;
-  that failure remains in `another-browser-focused.log`.
+- Actual signed root-mapped CLI/native archive tests verify durable pin before
+  acknowledgement, lost-reply retry identity, revocation and exact coordinator
+  SIGKILL/child death with unchanged native state. Full opted-in CLI races pass
+  26.287s: `source-worker-cli-race.log`.
+- The joined real gateway → compiled CLI → archive child → native confirmation
+  test passes10.14s with both grants AVAILABLE, empty claims/consumers, unchanged
+  source history and byte-identical native attempt state:
+  `source-worker-joined-gateway.log`. All26 affected grant HTTP interfaces also
+  pass (`source-grants-interface-regression.log`). Bounded unused-setting batches
+  retain independent per-row transactions/request IDs and original named fields;
+  the regression preserves900 seconds when only webcam is changed.
+- The actual worker/child in one owned user-systemd service verifies live kernel
+  memory256MiB, swap0, tasks32, CPU50%, OOMgroup1 and empty cleanup:
+  `source-worker-resource-final.log`. This proves resource containment, not the
+  exact production root unit's mount/LSM context. That remains a pre-enable gate.
+- The clean full application run passes643 checks (3 deliberate skips) in330.59s:
+  `prof-final-full-app.log`. Typecheck/build pass. Final private application
+  image4d68e4b8… passes synthetic schema11/24→35 startup, native clock ABI, exact
+  assets and unchanged attempts/enrollments/no invented grants:
+  `prof-release3-schema11.log` and `prof-release3-schema24.log`. All owned fixture
+  containers, images, keys and data are removed; the private base image is kept.
+- Eleven another/unused UI cases pass39.9s. Selected existing saved-work permissions
+  expose setup/retry in their own screen, including another instructor's grants.
+  One bounded cohort reader (at most200) supplies explicit snapshots; no per-row
+  poller or settings revision is needed to retry. Task READY while the grant is
+  PENDING_NATIVE still says Preparing saved work; only positive current grant
+  availability can say Ready. Prof viewed and accepted the actual desktop/mobile
+  screens. The source/copy ledger has zero pending issues.
+- Five terminal-readiness cases pass8.8s after a public red regression reproduced
+  early Enter creating an unintended third terminal. Waiting focus now moves to
+  the window without enabling/buffering input; the matching opened acknowledgment
+  returns focus to the intended pane, and its first fresh key is verified.
+  Four actual-WASM SSH fault/browser-close/unacknowledged-open/later-health
+  workflows pass4min with all saved-file/deadline/peer/alert checks preserved:
+  `prof-real-faults-ready.log`.
 
-Prof accepted the actual final mobile review and fixed footer. Remaining
-unused-settings/copy work and affected broad application/browser/package checks
-are still pending. Do not enable the
-service on production on the strength of these partial release checks.
+The browser server uses a simulated shell and media; these checks do not claim
+native containment, institutional MFA or human camera acceptance. Those boundaries
+are separate from the actual Go archive/resource evidence above. Segmented checks
+against the exact unchanged image assets cover204 declared browser cases:192
+unique passes and12 deliberate native-bundle/measurement skips. The reconciled
+receipt retains earlier failures and corrected results without duplicate counts:
+`browser-qualification-reconciled.json`. No candidate behavior is deployed.
+Do not enable the new service before exact root-service qualification and a
+separate deployment instruction.
 
 ## Proposed rollout and rollback — do not execute
 

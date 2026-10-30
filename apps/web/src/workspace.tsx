@@ -1,3 +1,5 @@
+import { hasProtectedFiles } from "../../../packages/protocol/admin.js";
+import { timeLimit } from "./local-date-time.js";
 import { decodeTerminalClipboard } from "./terminal-clipboard.js";
 import { terminalInputChunks } from "./terminal-input.js";
 import React, { useEffect, useRef, useState } from "react";
@@ -201,7 +203,7 @@ export function Workspace({
   const replacementRequired =
     attempt.monitoring_mode === "v1" && !!attempt.start && authenticationGap;
   const replacementMessage =
-    "Your SSH connection has ended. Ask your instructor for a reviewed new attempt from verified saved work, with an allowance and Begin window they choose. This attempt's clock, history and account restrictions remain. Unsaved editor buffers cannot be restored after the connection is lost.";
+    "Your connection ended. Ask your instructor for another attempt from saved files. Unsaved edits cannot be restored. The original clock and server restrictions still apply.";
   const preflightRecovery =
     attempt.state === "PREPARING" && (authenticationGap || recoveryExpired);
   const covered =
@@ -249,7 +251,7 @@ export function Workspace({
     if (!p.input) return undefined; // Explicit legacy pane.
     if (p.input.sequence >= Number.MAX_SAFE_INTEGER) {
       setMessage(
-        "Terminal input counter is exhausted; input remains blocked. Preserve this pane and ask the operator to inspect it.",
+        "Terminal input is unavailable. Keep this page open and ask your instructor to check the server.",
       );
       return null;
     }
@@ -452,6 +454,20 @@ export function Workspace({
     });
     const name = `Terminal ${nextTerminal.current++}`;
     let box: any;
+    const focusPane = () => {
+      const pane = panes.current.get(paneId);
+      if (
+        !pane ||
+        active.current !== paneId ||
+        dialogRef.current ||
+        coveredRef.current
+      )
+        return;
+      // Disabled input cannot take focus. Keep early Enter away from the
+      // New terminal button until the matching open agreement enables input.
+      if (pane.opened) pane.term.focus();
+      else pane.box.dom.focus();
+    };
     const resize = () => {
       if (
         !box ||
@@ -501,14 +517,7 @@ export function Workspace({
       class: ["no-full", "no-animation"],
       onfocus: () => {
         active.current = paneId;
-        requestAnimationFrame(() => {
-          if (
-            panes.current.has(paneId) &&
-            !dialogRef.current &&
-            !coveredRef.current
-          )
-            term.focus();
-        });
+        requestAnimationFrame(focusPane);
       },
       onclose: () => {
         setDialog({ kind: "close", pane: paneId });
@@ -527,6 +536,7 @@ export function Workspace({
       onminimize: () => requestAnimationFrame(updateControls),
       onresize: () => requestAnimationFrame(resize),
     });
+    box.dom.tabIndex = -1;
     const observer = new ResizeObserver(resize);
     observer.observe(el);
     const pane: Pane = {
@@ -593,8 +603,9 @@ export function Workspace({
         }
       });
     }
-    requestAnimationFrame(() => term.focus());
     active.current = paneId;
+    focusPane();
+    requestAnimationFrame(focusPane);
     resize();
     setCount(panes.current.size);
   };
@@ -677,7 +688,7 @@ export function Workspace({
       await onSignOut();
     } catch (e) {
       setFinishError(
-        `Your submission is secured, but sign-out failed: ${(e as Error).message}`,
+        `Your files are saved, but sign-out failed: ${(e as Error).message}`,
       );
     }
   };
@@ -924,7 +935,7 @@ export function Workspace({
               p.opening.textContent = "Terminal input unavailable";
               p.element.append(p.opening);
               setMessage(
-                "Native terminal input agreement is unsupported. Preserve this pane and ask the operator to inspect matching versions.",
+                "Terminal input is unavailable. Keep this page open and ask your instructor to check the server.",
               );
               return;
             }
@@ -1116,9 +1127,7 @@ export function Workspace({
         const pending = { ...attemptRef.current, state: "FINALIZING" };
         attemptRef.current = pending;
         setAttempt(pending);
-        setMessage(
-          "Time expired. Saved work is being protected automatically.",
-        );
+        setMessage("Time is up. Saving your files…");
       }
       const left =
         (attemptRef.current.deadline || Infinity) -
@@ -1130,9 +1139,7 @@ export function Workspace({
           !warnings.current.has(seconds)
         ) {
           warnings.current.add(seconds);
-          setMessage(
-            `${seconds / 60} minute warning: save your work in /work.`,
-          );
+          setMessage(`${seconds / 60} min left. Save your files in /work.`);
         }
     }, 250);
     const statusTimer = setInterval(() => {
@@ -1285,7 +1292,7 @@ export function Workspace({
       await (navigator as any).keyboard.lock();
     } catch (error) {
       throw Error(
-        "Keyboard lock could not be enabled. Try again and approve any browser permission prompt. If it still fails, open this page in a standalone desktop Chrome, Edge or Chromium window. " +
+        "Keyboard lock failed. Allow it in the browser prompt and try again. Use a standalone desktop Chrome, Edge or Chromium window if needed. " +
           `Browser message: ${(error as Error).message}`,
       );
     }
@@ -1337,7 +1344,7 @@ export function Workspace({
   const begin = async () => {
     if (!interaction())
       throw Error(
-        "Monitoring connection is not confirmed. Wait for it to reconnect before starting; the exam has not started.",
+        "Waiting for the connection check. Your exam has not started.",
       );
     const epoch = activationEpoch.current;
     ++snapshotEpoch.current;
@@ -1386,7 +1393,7 @@ export function Workspace({
       const error = e as Error;
       const text =
         error.name === "NotAllowedError"
-          ? "Permission was cancelled or denied. Try the restore action again and approve the browser permission."
+          ? "Allow the browser permission, then try restoring again."
           : error.message;
       setRecoveryFeedback({ error: true, text });
     } finally {
@@ -1405,7 +1412,7 @@ export function Workspace({
   const continueExam = async (automaticTechnical = false) => {
     const epoch = activationEpoch.current;
     if (automaticTechnical && !automaticReady())
-      throw Error("Waiting for current monitoring and SSH verification.");
+      throw Error("Checking the connection…");
     const readiness = readinessMessage(conditions(), settings.webcam);
     if (readiness) throw Error(readiness);
     ++snapshotEpoch.current;
@@ -1453,7 +1460,7 @@ export function Workspace({
         !automaticReady() ||
         attemptRef.current.state !== "ACTIVE"
       )
-        throw Error("Waiting for current monitoring and input agreement.");
+        throw Error("Checking the connection…");
     } else confirmActivation(epoch);
     setClock(serverClock.current.now);
     localLocked.current = false;
@@ -1538,7 +1545,7 @@ export function Workspace({
               {authenticationGap
                 ? replacementRequired
                   ? "New attempt needs review"
-                  : "SSH sign-in required"
+                  : "Sign in again"
                 : connected
                   ? "Connected"
                   : recoveryExpired
@@ -1550,18 +1557,18 @@ export function Workspace({
             {attempt.start && (
               <span className="status">
                 Screen {screen ? "on" : "off"}
-                {settings.webcam ? ` · Camera ${camera ? "on" : "off"}` : ""}
+                {settings.webcam ? ` · Webcam ${camera ? "on" : "off"}` : ""}
               </span>
             )}
             {captureDelayed && (
               <span className="warn" role="status">
-                Monitoring verification delayed · input blocked
+                Monitoring check delayed · input paused
               </span>
             )}
           </small>
         </div>
         <div className="time" hidden={!attempt.start}>
-          <span>Remaining</span>
+          <span>Time remaining</span>
           <b>{remaining(attempt.deadline, clock)}</b>
         </div>
         <button
@@ -1660,7 +1667,7 @@ export function Workspace({
               })
             }
           >
-            1. Share entire display
+            1. Share entire screen
           </button>
           {settings.webcam && (
             <button
@@ -1708,13 +1715,13 @@ export function Workspace({
             }
             onClick={() => setDialog({ kind: "begin" })}
           >
-            Begin exam
+            Start exam
           </button>
           {settings.webcam && (
             <video id="camera-preview" muted autoPlay playsInline />
           )}
           <span>
-            Preflight expires after {PREFLIGHT_TIMEOUT_MINUTES} minutes; you can
+            Setup expires after {PREFLIGHT_TIMEOUT_MINUTES} minutes. You can
             sign in again.
           </span>
         </div>
@@ -1738,13 +1745,13 @@ export function Workspace({
       {preflightRecovery && (
         <div className="lock-overlay">
           <div className="card">
-            <h1>Preflight connection lost</h1>
+            <h1>Setup connection lost</h1>
             <p>
               {authenticationGap
                 ? "Your SSH connection has ended. Sign in again to reconnect."
                 : "The server connection is unavailable. Retrying automatically; you can also sign in again."}
             </p>
-            <p>Your exam has not started. No exam time has elapsed.</p>
+            <p>Your exam has not started.</p>
             <button
               className="primary"
               onClick={() =>
@@ -1768,11 +1775,11 @@ export function Workspace({
               <h1>
                 {locked
                   ? sandbox
-                    ? "Exam paused"
+                    ? "Work paused"
                     : approval.state === "approved"
-                      ? "Continuation approved"
+                      ? "Resume approved"
                       : approval.state === "completing"
-                        ? "Complete continuation"
+                        ? "Resume approved"
                         : approval.state === "expired"
                           ? "Approval expired"
                           : "Instructor review required"
@@ -1780,11 +1787,12 @@ export function Workspace({
               </h1>
               <p>
                 {locked
-                  ? message || "Terminal input is disabled while reconnecting."
-                  : "Terminal input is disabled while reconnecting."}
+                  ? message || "Reconnecting. Terminal input is paused."
+                  : "Reconnecting. Terminal input is paused."}
               </p>
               <b>
-                {remaining(attempt.deadline, clock)} remaining · clock continues
+                {remaining(attempt.deadline, clock)} remaining · time keeps
+                running
               </b>
 
               {locked && (
@@ -1801,7 +1809,7 @@ export function Workspace({
                       data-continuation-state={approval.state}
                     >
                       {replacementRequired
-                        ? "Continuation approval applies only to the original page and SSH connection. It cannot authorize a replacement connection or a new attempt."
+                        ? "This approval applies only to your original page and connection. Ask your instructor for another attempt if either is lost."
                         : continuationNotice(approval, authenticationGap)}
                       {!replacementRequired &&
                         approval.state === "approved" &&
@@ -1840,7 +1848,7 @@ export function Workspace({
                   <div
                     className="recovery-checks"
                     hidden={authenticationGap}
-                    aria-label="Recovery conditions"
+                    aria-label="Setup checks"
                   >
                     <div>
                       <span>Fullscreen</span>
@@ -1862,7 +1870,7 @@ export function Workspace({
                     </div>
                     {settings.webcam && (
                       <div>
-                        <span>Camera</span>
+                        <span>Webcam</span>
                         <b className={camera ? "status" : "warn"}>
                           {camera ? "Active" : "Missing"}
                         </b>
@@ -1908,8 +1916,8 @@ export function Workspace({
                         disabled={!!restoring || authenticationGap}
                         onClick={() =>
                           void recoveryAction(
-                            "Restoring camera",
-                            "Camera sharing is active.",
+                            "Restoring webcam",
+                            "Webcam sharing is active.",
                             async () => {
                               await capture.current!.setup("webcam");
                               setCamera(capture.current!.healthy("webcam"));
@@ -1917,7 +1925,7 @@ export function Workspace({
                           )
                         }
                       >
-                        Restore camera
+                        Restore webcam
                       </button>
                     )}
                     <button
@@ -1962,16 +1970,10 @@ export function Workspace({
                     disabled={!!restoring}
                     hidden={authenticationGap}
                     onClick={() =>
-                      void recoveryAction(
-                        "Checking continuation",
-                        "",
-                        continueExam,
-                      )
+                      void recoveryAction("Checking resume", "", continueExam)
                     }
                   >
-                    {sandbox
-                      ? "Continue exam"
-                      : "Continue exam after authorization"}
+                    Resume exam
                   </button>
                   <button
                     hidden={!authenticationGap || replacementRequired}
@@ -2003,13 +2005,13 @@ export function Workspace({
           <div className="card">
             <h1>
               {attempt.reason?.includes("timing verification")
-                ? "Collection pending"
-                : "Protecting your submission"}
+                ? "Checking exam timing"
+                : "Saving your files"}
             </h1>
             <p>
               {attempt.reason?.includes("timing verification")
-                ? "Work is frozen while exam timing is verified. Your instructor can see this status."
-                : "Terminal access has ended. Saved files are being collected; wait for confirmation."}
+                ? "Your work is paused while the server checks exam timing. Your instructor can see this status."
+                : "Terminal access has ended. Saving your files; wait for confirmation."}
             </p>
             {finishError && (
               <>
@@ -2034,48 +2036,55 @@ export function Workspace({
         <div className="lock-overlay">
           <div className="card">
             <h1>
-              {attempt.state === "COMPLETED"
-                ? "Submission secured"
+              {attempt.state === "COMPLETED" && hasProtectedFiles(attempt)
+                ? "Files saved"
                 : attempt.state === "CANCELLED_BEFORE_START"
-                  ? "Preflight ended before starting"
-                  : attempt.protected
-                    ? "Submission secured; cleanup requires recovery"
-                    : "Collection requires recovery"}
+                  ? "Setup ended before starting"
+                  : hasProtectedFiles(attempt)
+                    ? "Files saved; cleanup needs attention"
+                    : "Your files need administrator attention"}
             </h1>
             <p>
-              {attempt.state === "COMPLETED"
-                ? "Your saved files have been protected on the class server."
+              {attempt.state === "COMPLETED" && hasProtectedFiles(attempt)
+                ? "Your saved files are stored on the exam server."
                 : attempt.state === "CANCELLED_BEFORE_START"
-                  ? `${attempt.reason?.match(/^Preflight expired after \d+ minutes\./)?.[0] || ""} Your exam has not started and no exam time was consumed. Sign out and sign in again to retry preflight.`.trim()
-                  : attempt.protected
-                    ? "Your saved files are protected. The instructor must review workload cleanup."
-                    : "Your attempt has ended. Automatic collection is pending or failed. Your instructor has been alerted; no submission action is required from you."}
+                  ? "This attempt used no exam time. Sign out and sign in again to retry setup."
+                  : hasProtectedFiles(attempt)
+                    ? "Your files are saved. Your instructor must check server cleanup."
+                    : "Your attempt has ended. File protection is not confirmed. Your instructor can see this status; you do not need to submit anything."}
             </p>
             {attempt.start &&
               !functionalTest &&
               !reservation.administratorSandbox && (
                 <p>
-                  Ordinary server access remains blocked until{" "}
+                  Server access remains blocked until{" "}
                   {chicago(
                     Math.max(
                       attempt.original_deadline || 0,
                       attempt.deadline || 0,
                     ),
                   )}{" "}
-                  and secured collection. This attempt cannot be reopened.
+                  and file collection is confirmed. This attempt cannot be
+                  reopened.
                 </p>
               )}
             <button onClick={() => action(onSignOut)}>Sign out</button>
+            {attempt.state === "CANCELLED_BEFORE_START" && attempt.reason && (
+              <details>
+                <summary>Details</summary>
+                <p>{attempt.reason}</p>
+              </details>
+            )}
             {attempt.state !== "CANCELLED_BEFORE_START" && (
               <details>
-                <summary>Submission details</summary>
+                <summary>Details</summary>
                 <p>
                   Attempt <code>{id}</code>
                 </p>
                 <p>
                   Checksum <code>{attempt.checksum || "Pending"}</code>
                 </p>
-                <p>Submission retained on the class server.</p>
+                <p>Saved files stay on the exam server.</p>
               </details>
             )}
           </div>
@@ -2088,7 +2097,7 @@ export function Workspace({
           }}
           title={
             dialog.kind === "begin"
-              ? "Begin your timed exam?"
+              ? "Start your exam?"
               : dialog.kind === "finish"
                 ? "Finish exam?"
                 : dialog.kind === "close"
@@ -2102,39 +2111,45 @@ export function Workspace({
         >
           {dialog.kind === "signout" && (
             <p>
-              Your exam has not started. Your practice terminals will
-              disconnect. You can sign in again when you are ready.
+              Your exam has not started. Signing out closes your practice
+              terminals. You can sign in again.
             </p>
           )}
           {dialog.kind === "close" && (
             <p>
               Save your files before closing{" "}
-              {panes.current.get(dialog.pane)?.name || "this terminal"}. Running
-              programs in this pane will end. Saved files remain available and
-              are collected automatically when time expires or you finish the
-              exam.
+              {panes.current.get(dialog.pane)?.name || "this terminal"}.
+              Programs in this terminal will stop.
             </p>
           )}
           {dialog.kind === "begin" && (
             <p>
               {!functionalTest &&
                 !reservation.administratorSandbox &&
-                "Starting closes other server sessions and processes; save their work first. "}
-              You have {settings.duration / 60} minutes; the clock never pauses.
-              Saved files in {directory} are collected automatically when time
-              expires or you finish the exam. Unsaved editor buffers are not
-              included.
+                "Starting closes your other server sessions and processes; save their work first. "}
+              You have {timeLimit(settings.duration)}. The clock never pauses.
+              Saved files in {directory} are collected when time ends or you
+              finish. Unsaved edits are excluded.
             </p>
           )}
           {dialog.kind === "finish" && (
             <p>
-              Finishing is irreversible and signs you out. Save your files
-              first: this ends terminal access and automatically collects saved
-              files in {directory}. Unsaved editor buffers are not included. You
-              can also let time expire for automatic collection.
-              {!functionalTest &&
-                !reservation.administratorSandbox &&
-                " Ordinary server access stays blocked until the original and current deadlines have elapsed and collection is secured."}
+              Save your files first. Finishing closes your terminals, collects
+              saved files in {directory} and signs you out. Unsaved edits are
+              excluded. You cannot reopen this attempt.
+              {!functionalTest && !reservation.administratorSandbox && (
+                <>
+                  {" "}
+                  Server access stays blocked until{" "}
+                  {chicago(
+                    Math.max(
+                      attempt.original_deadline || 0,
+                      attempt.deadline || 0,
+                    ),
+                  )}{" "}
+                  and file collection is confirmed.
+                </>
+              )}
             </p>
           )}
           {dialog.kind === "error" && <p>{dialog.message}</p>}
@@ -2202,7 +2217,7 @@ export function Workspace({
                 {dialog.kind === "begin"
                   ? dialogBusy
                     ? "Preparing exam…"
-                    : "Begin exam"
+                    : "Start exam"
                   : dialog.kind === "finish"
                     ? "Finish exam"
                     : dialog.kind === "close"

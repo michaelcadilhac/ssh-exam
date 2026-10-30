@@ -2,6 +2,13 @@ import React, { useState } from "react";
 import { api, remaining } from "./api.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import { timeLimit } from "./local-date-time.js";
+const clockResultLabels: Record<string, string> = {
+  confirmed: "Applied",
+  pending: "Awaiting confirmation",
+  failed: "Needs attention",
+};
+
 export type StudentAction = {
   kind: "duration" | "webcam" | "reset" | "extend";
   students: any[];
@@ -64,7 +71,7 @@ export function StudentActions({
                       webcam: webcam === "inherit" ? null : webcam === "true",
                     }),
               });
-              await onDone("Student settings updated.");
+              await onDone("Future defaults saved.");
               onClose();
             } else {
               const r = await api(`/admin/exams/${exam.id}/attempts/clocks`, {
@@ -81,7 +88,7 @@ export function StudentActions({
               });
               setResults(r.results);
               await onDone(
-                "Clock changes requested. Pending changes await agent confirmation.",
+                "Time changes requested. Pending changes need exam server confirmation.",
               );
               if (r.results.every((r: any) => r.status !== "failed")) onClose();
             }
@@ -98,7 +105,7 @@ export function StudentActions({
               ? `${op.students.length} ${op.students.length === 1 ? "student" : "students"}`
               : `${op.attempts.length} ${op.attempts.length === 1 ? "attempt" : "attempts"}`}
           </strong>{" "}
-          · {settings ? "Student settings" : "Current clocks"}
+          · {settings ? "Future defaults" : "Current clocks"}
         </p>
         <ul className="admin-target-list">
           {(settings ? op.students : op.attempts).map((a) => (
@@ -108,7 +115,7 @@ export function StudentActions({
                 <span>
                   Attempt {a.attempt_number || 1} ·{" "}
                   {remaining(a.deadline, clock)} remaining
-                  {op.kind === "reset" ? ` → ${a.allowance} minutes` : ""}
+                  {op.kind === "reset" ? ` → ${timeLimit(a.allowance * 60)}` : ""}
                 </span>
               )}
             </li>
@@ -119,7 +126,19 @@ export function StudentActions({
             Time will not change for: {op.excluded.join(", ")}.
           </p>
         )}
-        {settings && <p>Current attempts keep their existing settings.</p>}
+        {settings && (
+          <p>
+            Existing attempts keep their settings. Change unused attempts
+            separately.
+          </p>
+        )}
+        {op.kind === "duration" && (
+          <p>
+            For older unused recovery attempts, saving this time limit also
+            authorizes updates at the student's next setup. Changing exam
+            defaults does not.
+          </p>
+        )}
         {op.kind === "duration" && (
           <>
             <label>
@@ -129,10 +148,10 @@ export function StudentActions({
                 disabled={busy || isSandbox(exam.id)}
                 onChange={(e) => setInherit(e.target.checked)}
               />{" "}
-              Use exam default ({exam.duration / 60} minutes)
+              Use exam default ({timeLimit(exam.duration)})
             </label>
             <label>
-              Duration (minutes)
+              Time limit (minutes)
               <input
                 type="number"
                 min={1}
@@ -151,25 +170,25 @@ export function StudentActions({
         )}
         {op.kind === "webcam" && (
           <label>
-            Webcam requirement
+            Webcam
             <select
               value={webcam}
               disabled={busy}
               onChange={(e) => setWebcam(e.target.value)}
             >
               <option value="inherit">
-                Exam default ({exam.webcam ? "required" : "not required"})
+                Exam default ({exam.webcam ? "required" : "optional"})
               </option>
               <option value="true">Required</option>
-              <option value="false">Not required</option>
+              <option value="false">Optional</option>
             </select>
           </label>
         )}
         {op.kind === "reset" && (
           <p>
-            Reset each selected clock to that student’s configured allowance, or
-            the exam default ({exam.duration / 60} minutes). The countdown
-            starts when you apply the reset.
+            Reset each selected clock to the student’s time limit or the exam
+            default ({timeLimit(exam.duration)}). The countdown starts when you
+            apply the reset.
           </p>
         )}
         {op.kind === "extend" && (
@@ -190,8 +209,9 @@ export function StudentActions({
         {!settings && (
           <>
             <p>
-              Clock changes do not disconnect students or authorize recovery.
-              Changes remain pending until the exam server confirms them.
+              Time changes do not disconnect students. Resume approval and
+              another attempt are separate. Pending changes need exam server
+              confirmation.
             </p>
           </>
         )}
@@ -199,8 +219,14 @@ export function StudentActions({
           <ul>
             {results.map((r) => (
               <li key={r.id} className={r.status === "failed" ? "warn" : ""}>
-                {op.attempts.find((a) => a.id === r.id)?.username}: {r.status}
-                {r.error && ` · ${r.error}`}
+                {op.attempts.find((a) => a.id === r.id)?.username}:{" "}
+                {clockResultLabels[r.status] ?? "Status unconfirmed"}
+                {r.error && (
+                  <details>
+                    <summary>Details</summary>
+                    <p>{r.error}</p>
+                  </details>
+                )}
               </li>
             ))}
           </ul>
@@ -222,8 +248,8 @@ export function StudentActions({
                 : op.kind === "reset"
                   ? "Apply reset"
                   : op.kind === "extend"
-                    ? "Apply extension"
-                    : "Apply settings"}
+                    ? "Add time"
+                    : "Save defaults"}
           </button>
         </div>
       </form>

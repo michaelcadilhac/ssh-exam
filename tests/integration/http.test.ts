@@ -465,7 +465,7 @@ it("continuation failures explain recovery conditions, instructor approval and e
     });
     expect(missing.statusCode).toBe(400);
     expect(missing.json().error).toBe(
-      "Restore fullscreen and keyboard lock before continuing.",
+      "Restore fullscreen and keyboard lock before resuming.",
     );
     const unapproved = await request(ready);
     expect(unapproved.json().error).toContain(

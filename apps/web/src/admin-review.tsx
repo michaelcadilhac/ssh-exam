@@ -11,6 +11,7 @@ import {
 } from "./attempt-provenance.js";
 import {
   attemptStatus,
+  hasProtectedFiles,
   attemptElapsed,
   preflightElapsed,
   webcamRequired,
@@ -18,23 +19,23 @@ import {
 
 function accessDescription(a: any) {
   if (a.functional_test)
-    return "Administrator test: normal SSH access is retained.";
+    return "Administrator test: server access is retained.";
   if (a.policy_state === "RESTORE_FAILED")
     return `Account restoration failed: ${a.policy_error || "administrator recovery required"}.`;
   if (["RESTORE_PENDING", "RESTORING"].includes(a.policy_state))
-    return "Submission secured; ordinary account policy is being restored.";
+    return "Restoring normal server access.";
   if (
     ["APPLYING", "READY", "APPLY_FAILED"].includes(a.policy_state) &&
     !a.start
   )
     return `Temporary access setup: ${a.policy_state.toLowerCase().replaceAll("_", " ")}. The exam clock has not started.`;
   if (a.access_state === "OVERRIDDEN")
-    return "Normal server access was released by an administrator override.";
+    return "An administrator restored normal server access.";
   if (a.access_state === "RELEASED")
     return "Normal server access has been restored.";
   if (a.start)
     return `Normal server access remains blocked until at least ${chicago(Math.max(a.original_deadline || 0, a.deadline || 0))} and secured collection. Finishing early does not release this restriction.`;
-  return "The server access restriction has not started.";
+  return "Server access is not restricted.";
 }
 // One request at a time; reconnecting or returning to the page refreshes immediately.
 function useReviewRefresh(
@@ -356,11 +357,11 @@ export function AdminReview({
                 })
               }
             >
-              Authorize resume
+              Allow resume
             </button>
           )}
           <button disabled={busy || loading} onClick={() => void load()}>
-            Refresh monitoring
+            Refresh
           </button>
           <button data-initial-focus disabled={busy} onClick={onClose}>
             Close review
@@ -371,23 +372,27 @@ export function AdminReview({
         <fieldset
           className="continuation-confirmation"
           disabled={busy}
-          aria-label="Confirm continuation authorization"
+          aria-label="Confirm resume approval"
         >
-          <legend>
-            Authorize {a.username} · generation {authorization.generation}
-          </legend>
+          <legend>Allow {a.username} to resume?</legend>
           <p>
-            Reviewed revision {authorization.revision}, fixed despite background
-            updates. Approval lasts at most five minutes or until the deadline.
-            The clock continues.{" "}
+            Approval lasts up to five minutes, or until the deadline. The clock
+            keeps running.{" "}
             {a.monitoring_mode === "v1"
-              ? "Keep the original page and SSH connection. The student must restore monitoring and explicitly Continue. If that page or SSH is lost, use a reviewed new attempt from verified saved work; this approval cannot transfer to a replacement connection."
-              : "Fresh SSH and monitoring are still required."}
+              ? "The student must restore the checks and choose Resume exam on the same page and connection. A lost session needs another attempt."
+              : "The student must sign in again and restore the checks."}
           </p>
+          <details>
+            <summary>Details</summary>
+            <p>
+              Reviewed revision {authorization.revision} · generation{" "}
+              {authorization.generation}
+            </p>
+          </details>
           <label>
-            Authorization reason
+            Reason
             <small>
-              Permanently audited. Do not copy private student messages.
+              Recorded in audit history. Omit private student details.
             </small>
             <textarea
               autoFocus
@@ -424,15 +429,15 @@ export function AdminReview({
                   );
                   setAuthorization(null);
                   await onChanged();
-                  return `Resume authorized until ${chicago(result.expires)}. ${
+                  return `Resume allowed until ${chicago(result.expires)}. ${
                     a.monitoring_mode === "v1"
-                      ? "The student restores monitoring and chooses Continue on the same page and SSH connection."
-                      : "The student must reconnect and restore monitoring."
+                      ? "The student must restore the checks and choose Resume exam on the same page and connection."
+                      : "The student must sign in again and restore the checks."
                   }`;
                 })
               }
             >
-              Confirm authorization
+              Allow resume
             </button>
             <button
               onClick={() => {
@@ -441,7 +446,7 @@ export function AdminReview({
                 setTimeout(() => authorizeButton.current?.focus(), 0);
               }}
             >
-              Cancel authorization
+              Cancel
             </button>
           </div>
         </fieldset>
@@ -449,13 +454,17 @@ export function AdminReview({
       {a.reason && <p className="review-reason">{a.reason}</p>}
       <AttemptProvenance attempt={a} onGrant={onGrant} onSource={onSource} />
       {(a.access_error || a.policy_error) && (
-        <p className="warn" role="alert">
-          Server access needs attention: {a.policy_error || a.access_error}
-        </p>
+        <div className="warn" role="alert">
+          <p>Server access needs attention.</p>
+          <details>
+            <summary>Details</summary>
+            <p>{a.policy_error || a.access_error}</p>
+          </details>
+        </div>
       )}
       <dl className="review-facts review-overview" aria-label="Attempt timing">
         <div>
-          <dt>Preflight started</dt>
+          <dt>Setup started</dt>
           <dd>
             {a.preflight_started_at
               ? chicago(a.preflight_started_at)
@@ -467,12 +476,12 @@ export function AdminReview({
           <dd>{chicago(a.start)}</dd>
         </div>
         <div>
-          <dt>{a.start ? "Exam ended" : "Preflight ended"}</dt>
+          <dt>{a.start ? "Exam ended" : "Setup ended"}</dt>
           <dd>{chicago(a.ended)}</dd>
         </div>
         <div>
           <dt>
-            {a.ended || a.state === "COMPLETED" ? "Time taken" : "Exam elapsed"}
+            {a.ended || a.state === "COMPLETED" ? "Time used" : "Time used"}
           </dt>
           <dd>
             {attemptElapsed(a, clock) === null
@@ -483,13 +492,13 @@ export function AdminReview({
           </dd>
         </div>
         <div>
-          <dt>Current deadline</dt>
+          <dt>Deadline</dt>
           <dd>{chicago(a.deadline)}</dd>
         </div>
         <div>
           <dt>Connection</dt>
           <dd>
-            {a.connected ? "Connected" : "Disconnected"}
+            {a.connected === true ? "Connected" : "Connection unconfirmed"}
             {Number.isFinite(a.terminalCount)
               ? ` · ${a.terminalCount} ${a.terminalCount === 1 ? "terminal" : "terminals"}`
               : ""}
@@ -497,10 +506,10 @@ export function AdminReview({
         </div>
       </dl>
       <details className="review-timing-details">
-        <summary>Timing and monitoring details</summary>
+        <summary>Timing details</summary>
         <dl className="review-facts">
           <div>
-            <dt>Preflight duration</dt>
+            <dt>Setup time</dt>
             <dd>
               {preflightElapsed(a, clock) === null
                 ? "Not recorded"
@@ -508,7 +517,7 @@ export function AdminReview({
             </dd>
           </div>
           <div>
-            <dt>Exam duration</dt>
+            <dt>Time limit</dt>
             <dd>{duration === null ? "—" : formatDuration(duration)}</dd>
           </div>
           <div>
@@ -526,19 +535,16 @@ export function AdminReview({
                 ? "Unknown"
                 : webcamRequired(a)
                   ? "Required"
-                  : "Not required"}
+                  : "Optional"}
             </dd>
           </div>
           <div>
-            <dt>Clock changes</dt>
+            <dt>Time changes</dt>
             <dd>{a.clock_revision || 0}</dd>
           </div>
         </dl>
         {!!clockChanges.length && (
-          <ol
-            className="clock-change-history"
-            aria-label="Clock change history"
-          >
+          <ol className="clock-change-history" aria-label="Time-change history">
             {clockChanges.map((change, i) => (
               <li key={change.id || i}>
                 <strong>
@@ -561,13 +567,13 @@ export function AdminReview({
       </details>
       {a.pendingClockReset && (
         <p className="warn" role="status">
-          Clock change pending confirmation. The displayed deadline remains in
-          force.
+          Time change awaiting server confirmation. The displayed deadline still
+          applies.
         </p>
       )}
       {stale && (
         <p className="warn" role="status">
-          Dashboard updates are paused. Reconnect before authorizing recovery.
+          Updates paused. Refresh before allowing resume.
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
@@ -575,7 +581,7 @@ export function AdminReview({
         <p className="warn" role="alert">
           {(!authorization && error) || refreshError}{" "}
           <button disabled={busy} onClick={() => void load()}>
-            Retry monitoring
+            Retry
           </button>
         </p>
       )}
@@ -590,14 +596,14 @@ export function AdminReview({
             aria-pressed={section === name}
             onClick={() => setSection(name)}
           >
-            {name}
+            {name === "Monitoring" ? "Recordings" : name}
             {name === "Activity" && activityCount ? ` (${activityCount})` : ""}
           </button>
         ))}
       </div>
       {(section === "Monitoring" || media) && (
-        <section aria-label="Monitoring" hidden={section !== "Monitoring"}>
-          {loading && !media && <p role="status">Loading monitoring…</p>}
+        <section aria-label="Recordings" hidden={section !== "Monitoring"}>
+          {loading && !media && <p role="status">Loading recordings…</p>}
           {media && (
             <>
               <div className="review-images">
@@ -658,18 +664,18 @@ export function AdminReview({
               )}
               {!!a.ended && (
                 <details className="monitoring-deletion">
-                  <summary>Monitoring retention</summary>
+                  <summary>Recording retention</summary>
                   <p>
-                    Monitoring is deleted after 60 days. Submissions have
-                    separate retention.
+                    Recordings are deleted after 60 days. Submissions are kept
+                    separately.
                   </p>
                   {media.monitoringDeleted && (
                     <p role="status">
-                      Monitoring access is deleted. Physical purge:{" "}
+                      Recordings are inaccessible. File deletion:{" "}
                       {media.physicalPurge?.status || "not verified"}.
                       {media.physicalPurge?.status === "verified-absent"
-                        ? " The current private monitoring directory was verified absent; backups have separate retention."
-                        : " Removal is pending or needs retry; deletion remains in force."}
+                        ? " The recording files were confirmed absent; backups have separate retention."
+                        : " File deletion is pending or needs retry; access remains blocked."}
                     </p>
                   )}
                   {!deleting ? (
@@ -691,21 +697,21 @@ export function AdminReview({
                         })
                       }
                     >
-                      Delete monitoring…
+                      Delete recordings…
                     </button>
                   ) : (
-                    <div role="group" aria-label="Confirm monitoring deletion">
+                    <div role="group" aria-label="Confirm recording deletion">
                       <p>
-                        Permanently delete monitoring for {a.username}, attempt{" "}
-                        {a.attempt_number || 1}? The submission is kept.
+                        Permanently delete recordings for {a.username}, attempt{" "}
+                        {a.attempt_number || 1}? Saved submissions are kept.
                       </p>
                       <p>
-                        Access is deleted immediately; physical removal is
-                        queued and verified separately. Late callbacks are
-                        rejected. Clocks and account restrictions do not change.
+                        Recordings become inaccessible now; file deletion is
+                        completed separately. Time limits and server
+                        restrictions stay unchanged.
                       </p>
                       <label>
-                        Monitoring deletion reason
+                        Reason
                         <textarea
                           value={deleting.reason}
                           disabled={busy || deleting.sent}
@@ -718,9 +724,8 @@ export function AdminReview({
                       </label>
                       {deleting.sent && (
                         <p>
-                          Retry keeps this exact intent and reason. For a
-                          different action, cancel and inspect current status
-                          first.
+                          Retry repeats the same deletion request. To change it,
+                          cancel and review again.
                         </p>
                       )}
                       <div className="actions">
@@ -794,41 +799,38 @@ export function AdminReview({
       {section === "Submission" && (
         <section aria-label="Submission and server access">
           {a.state === "CANCELLED_BEFORE_START" ? (
-            <p>
-              Preflight ended before the exam started. No exam time was
-              consumed.
-            </p>
+            <p>Setup ended before the exam started. No exam time was used.</p>
           ) : (
             <>
               <p
-                className={`collection-summary ${a.protected ? "good" : a.state === "COLLECTION_FAILED" ? "danger" : ""}`}
+                className={`collection-summary ${hasProtectedFiles(a) ? "good" : a.state === "COLLECTION_FAILED" ? "danger" : ""}`}
               >
-                {a.protected
-                  ? "Submission secured"
+                {hasProtectedFiles(a)
+                  ? "Files saved"
                   : a.state === "COLLECTION_FAILED"
-                    ? "Collection failed — administrator attention required"
+                    ? "Files need administrator attention"
                     : a.state === "FINALIZING" || a.ended
-                      ? "Collection pending — a protected copy is not yet confirmed"
-                      : "Collection occurs when time expires or the student finishes."}
+                      ? "File protection is not confirmed"
+                      : "Files are collected when time ends or the student finishes."}
               </p>
-              <p>Submissions are retained on the SSH server.</p>
+              <p>Saved files stay on the exam server.</p>
               <dl className="review-facts">
                 <div>
-                  <dt>Collection reason</dt>
+                  <dt>Reason</dt>
                   <dd>
                     {a.reason || (a.ended ? "Not recorded" : "Not ended")}
                   </dd>
                 </div>
                 <div>
-                  <dt>Execution ended</dt>
+                  <dt>Work ended</dt>
                   <dd>{chicago(a.completed_at)}</dd>
                 </div>
                 <div>
-                  <dt>Collected</dt>
+                  <dt>Files collected</dt>
                   <dd>{chicago(a.collected_at)}</dd>
                 </div>
                 <div>
-                  <dt>Secured</dt>
+                  <dt>Files protected</dt>
                   <dd>{chicago(a.secured_at)}</dd>
                 </div>
               </dl>
@@ -866,7 +868,7 @@ export function AdminReview({
                 </div>
               )}
               <details>
-                <summary>Collection details</summary>
+                <summary>File details</summary>
                 <p>Source: {a.work_path || "/work"}</p>
                 {a.checksum && (
                   <p>
@@ -875,7 +877,7 @@ export function AdminReview({
                 )}
                 {media?.manifest && (
                   <details>
-                    <summary>Raw manifest (technical)</summary>
+                    <summary>Technical manifest</summary>
                     <p>
                       Raw timestamps are Unix milliseconds. Duration,
                       remaining_seconds and extend_seconds are in seconds.
@@ -891,7 +893,7 @@ export function AdminReview({
             <p>{accessDescription(a)}</p>
             {a.access_override && <p>Audited override: {a.access_override}</p>}
             {a.access_error && (
-              <p className="warn">Access recovery: {a.access_error}</p>
+              <p className="warn">Server access error: {a.access_error}</p>
             )}
             <dl className="review-facts">
               <div>

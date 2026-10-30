@@ -51,36 +51,49 @@ export function matchesDashboardView(a: any, view: DashboardView): boolean {
       return a.state === view;
   }
 }
+// Presentation only: recognize an explicit protected marker in our projections.
+// This does not verify an archive or authorize work.
+export function hasProtectedFiles(
+  attempt: { protected?: unknown } | null | undefined,
+): boolean {
+  return attempt?.protected === true || attempt?.protected === 1;
+}
 export function attemptStatus(a: any): { label: string; tone: string } {
   if (a.policy_state === "RESTORE_FAILED")
-    return { label: "Access recovery required", tone: "danger" };
+    return { label: "Server access needs attention", tone: "danger" };
   if (a.policy_state === "APPLY_FAILED")
-    return { label: "Access setup failed", tone: "danger" };
+    return { label: "Server setup failed", tone: "danger" };
   if (["RESTORE_PENDING", "RESTORING"].includes(a.policy_state))
-    return { label: "Restoring access", tone: "warning" };
+    return { label: "Restoring server access", tone: "warning" };
   if (a.policy_state === "APPLYING")
-    return { label: "Securing access", tone: "neutral" };
+    return { label: "Setting up server access", tone: "neutral" };
   if (a.state === "ACTIVE")
     return {
-      label: a.working ? "Working" : "Disconnected",
-      tone: a.working ? "good" : "warning",
+      label: a.working === true
+        ? "Working"
+        : a.connected === true
+          ? "Status updating"
+          : "Connection unconfirmed",
+      tone: a.working === true ? "good" : "warning",
     };
-  if (a.state === "LOCKED") return { label: "Paused", tone: "warning" };
+  if (a.state === "LOCKED") return { label: "Work paused", tone: "warning" };
   if (a.state === "COLLECTION_FAILED")
-    return { label: "Collection failed", tone: "danger" };
+    return { label: hasProtectedFiles(a)
+        ? "Files saved; cleanup needs attention"
+        : "File collection needs attention", tone: "danger" };
   if (a.state === "COMPLETED")
     return {
-      label: a.protected ? "Submission secured" : "Collection pending",
-      tone: a.protected ? "good" : "warning",
+      label: hasProtectedFiles(a) ? "Files saved" : "File protection unconfirmed",
+      tone: hasProtectedFiles(a) ? "good" : "warning",
     };
   return {
     label:
       (
         {
-          PREPARING: "Preflight",
+          PREPARING: "Setup",
           ACTIVATING: "Starting",
-          FINALIZING: "Collecting",
-          CANCELLED_BEFORE_START: "Cancelled",
+          FINALIZING: "Finishing",
+          CANCELLED_BEFORE_START: "Setup cancelled",
         } as Record<string, string>
       )[a.state] || "Status unavailable",
     tone: "neutral",

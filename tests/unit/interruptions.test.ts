@@ -141,7 +141,7 @@ it("reports approval separately from resumption, including expiration and automa
     e = t.store.interruptions.list("a")[0];
     expect(e.authorizations[1].replaced_at).toBe(31000);
     expect(authorizationStatus(e.authorizations[1], 31000)).toBe(
-      "Replaced by a later approval",
+      "Replaced",
     );
 
     expect(

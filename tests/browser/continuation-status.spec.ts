@@ -70,9 +70,7 @@ test("retained SSH loss requests a new-attempt review without offering replaceme
       replacementRequests.push(request.url());
   });
   await expect(
-    page.getByText(
-      /Ask your instructor for a reviewed new attempt from verified saved work/,
-    ),
+    page.getByText(/Ask your instructor for another attempt from saved files/),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Reconnect SSH", exact: true }),
@@ -81,11 +79,9 @@ test("retained SSH loss requests a new-attempt review without offering replaceme
   await expect(
     page.locator('[data-continuation-state="approved"]'),
   ).toContainText(
-    "It cannot authorize a replacement connection or a new attempt",
+    "This approval applies only to your original page and connection",
   );
-  await expect(
-    page.getByRole("button", { name: /Continue exam/ }),
-  ).toBeHidden();
+  await expect(page.getByRole("button", { name: /Resume exam/ })).toBeHidden();
   await expect(
     page.getByText("Request instructor review", { exact: true }).first(),
   ).toBeVisible();
@@ -104,14 +100,12 @@ test("a reloaded retained attempt offers a new-attempt review instead of restori
       requests.push({ path, body: request.postDataJSON() });
   });
   await page.goto("/");
+  await expect(page.getByText(/This session cannot resume/)).toBeVisible();
   await expect(
-    page.getByText(/This page cannot take over your earlier attempt/),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Reconnect SSH|Restore page/ }),
+    page.getByRole("button", { name: /Reconnect SSH|Resume exam/ }),
   ).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Request a new-attempt review", exact: true })
+    .getByRole("button", { name: "Request another attempt", exact: true })
     .click();
   await expect
     .poll(() => requests)
@@ -168,10 +162,9 @@ test("retained Continue keeps editor output visible while blocked and adopts fre
       });
     },
   );
-  const delayed = page.getByText(
-    "Monitoring verification delayed · input blocked",
-    { exact: true },
-  );
+  const delayed = page.getByText("Monitoring check delayed · input paused", {
+    exact: true,
+  });
   await expect(delayed).toBeVisible({ timeout: 7000 });
   const inputs = f.model.messages.filter((m) => m.type === "input").length;
   await page.keyboard.type("NO_INPUT_DURING_TECHNICAL_GAP");
@@ -220,11 +213,11 @@ test("retained Continue keeps editor output visible while blocked and adopts fre
     });
   };
   await expect(
-    page.getByRole("heading", { name: "Complete continuation", exact: true }),
+    page.getByRole("heading", { name: "Resume approved", exact: true }),
   ).toBeVisible();
   await expect(
     page.locator('[data-continuation-state="completing"]'),
-  ).toContainText("Input stays blocked");
+  ).toContainText("Input stays paused");
   await expect(
     page.getByText("Request instructor review", { exact: true }),
   ).toHaveCount(0);
@@ -245,7 +238,7 @@ test("retained Continue keeps editor output visible while blocked and adopts fre
   };
   await page
     .getByRole("button", {
-      name: "Continue exam after authorization",
+      name: "Resume exam",
       exact: true,
     })
     .click();
@@ -297,16 +290,14 @@ for (const width of [1280, 430])
       p.update("approved", Date.now() + 60000);
       await expect(
         page.getByRole("heading", {
-          name: "Continuation approved",
+          name: "Resume approved",
           exact: true,
         }),
       ).toBeVisible();
       await expect(
         page.locator('[data-continuation-state="approved"]'),
       ).toContainText(
-        authenticationGap
-          ? "SSH is disconnected"
-          : "only if it is actually disconnected",
+        authenticationGap ? "Sign in again" : "Restore any missing checks",
       );
       await expect(
         page.getByText("Request instructor review", { exact: true }),
@@ -324,17 +315,20 @@ for (const width of [1280, 430])
         ).toBeVisible();
       else {
         await expect(
+          page.locator('[data-continuation-state="approved"]'),
+        ).not.toContainText("Sign in again");
+        await expect(
           page.getByRole("button", { name: "Reconnect SSH", exact: true }),
         ).toBeHidden();
         await expect(
           page.getByRole("button", {
-            name: "Continue exam after authorization",
+            name: "Resume exam",
             exact: true,
           }),
         ).toBeVisible();
         await page
           .getByRole("button", {
-            name: "Continue exam after authorization",
+            name: "Resume exam",
             exact: true,
           })
           .click();
@@ -359,7 +353,7 @@ test("expired and revoked approvals stay explicit, and stale revision/new-genera
   const p = await paused(page, false);
   p.update("approved", Date.now() + 3000);
   await expect(
-    page.getByRole("heading", { name: "Continuation approved", exact: true }),
+    page.getByRole("heading", { name: "Resume approved", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Approval expired", exact: true }),
@@ -373,7 +367,7 @@ test("expired and revoked approvals stay explicit, and stale revision/new-genera
   p.update("revoked", Date.now() + 60000);
   await expect(
     page.locator('[data-continuation-state="revoked"]'),
-  ).toContainText("no longer valid");
+  ).toContainText("Approval was cancelled");
   // Newer envelope time cannot make an older review revision current.
   p.f.model.status = async (route) => {
     const serverNow = Date.now() + 1000;
@@ -402,7 +396,7 @@ test("expired and revoked approvals stay explicit, and stale revision/new-genera
   p.f.send();
   await expect(
     page.locator('[data-continuation-state="superseded"]'),
-  ).toContainText("does not cover");
+  ).toContainText("needs a new instructor approval");
   await expect(page.locator(".lock-overlay")).toBeVisible();
 });
 
@@ -414,20 +408,16 @@ test("real gateway approval reaches the paused WASM SSH page without reload, rep
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("approval-feedback");
-  await page.getByLabel("Enrolled username").fill("approval01");
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill("approval01");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
   const original = (await (await page.request.get("/api/student/exam")).json())
@@ -469,16 +459,16 @@ test("real gateway approval reaches the paused WASM SSH page without reload, rep
     ).ok(),
   ).toBe(true);
   await expect(
-    page.getByRole("heading", { name: "Continuation approved", exact: true }),
+    page.getByRole("heading", { name: "Resume approved", exact: true }),
   ).toBeVisible();
   await expect(
     page.locator('[data-continuation-state="approved"]'),
-  ).toContainText("SSH is disconnected");
+  ).toContainText("Sign in again");
   await expect(
     page.getByRole("button", { name: "Reconnect SSH", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toHaveCount(0);
   await page.screenshot({
     path: test.info().outputPath("continuation-approved.png"),

@@ -1,13 +1,12 @@
+import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
+import { manageStudent, cancelUnused } from "./prof-workflow-fixture.js";
 import { readFile } from "node:fs/promises";
 
 test("Add student contains single entry and CSV upload with a downloadable example, safe replacement and Escape", async ({
   page,
 }, testInfo) => {
-  await page.goto("/admin");
-  await page.getByLabel("Username", { exact: true }).fill("instructor");
-  await page.getByLabel("Password", { exact: true }).fill("fixture-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await instructorSignIn(page, "prof_enrollment");
   await page
     .getByLabel("Selected exam", { exact: true })
     .selectOption("versioned-source");
@@ -19,7 +18,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     exact: true,
   });
   await expect(
-    dialog.getByLabel("Student username", { exact: true }),
+    dialog.getByRole("textbox", {name:"Username",exact:true}),
   ).toBeVisible();
   await expect(
     dialog.getByRole("button", { name: "One student", exact: true }),
@@ -29,7 +28,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     .getByRole("button", { name: "CSV file", exact: true })
     .click();
   await expect(
-    dialog.getByLabel("Student username", { exact: true }),
+    dialog.getByRole("textbox", {name:"Username",exact:true}),
   ).toHaveCount(0);
   await expect(dialog.locator("textarea")).toHaveCount(0);
   const confirm = dialog.getByRole("button", {
@@ -65,7 +64,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     .click();
   await expect(confirm).toBeEnabled();
   await expect(dialog.locator(".preview")).toContainText(
-    "student02 · duration 120 minutes · webcam not required",
+    "student02 · time limit 120 min · webcam optional",
   );
   // Invalid replacement must not leave a previous valid import confirmable.
   await upload.setInputFiles({
@@ -98,11 +97,11 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     .getByRole("table", { name: "Students and attempts" })
     .getByRole("row")
     .filter({ hasText: "student02" });
-  await expect(row).toContainText("Duration: 120 minutes");
-  await expect(row).toContainText("Not required");
+  await expect(row).toContainText("120 min");
+  await expect(row).toContainText("Optional");
   await add.click();
   await expect(
-    dialog.getByLabel("Student username", { exact: true }),
+    dialog.getByRole("textbox", {name:"Username",exact:true}),
   ).toHaveValue("");
   await dialog
     .getByRole("group", { name: "Add students using" })
@@ -114,74 +113,74 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(add).toBeFocused();
-  // This exact-version exam exercises actual enrollment-time grant issuance,
-  // not a mocked catalog or automatic legacy backfill.
+  // Enrollment-time issuance remains the real gateway transaction.
   await page.setViewportSize({ width: 430, height: 1000 });
-  await row
-    .getByRole("button", { name: "Actions for student student02", exact: true })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Attempt grants…", exact: true })
-    .click();
-  const grants = page.getByRole("dialog", {
-    name: "Attempt grants for student02",
-    exact: true,
+  let grants = await manageStudent(page, "student02");
+  await expect(grants).toContainText("120 min");
+  const issued = (
+    await (
+      await page.request.get(
+        "/api/admin/exams/versioned-source/grants?username=student02",
+      )
+    ).json()
+  ).grants[0];
+  expect(issued).toMatchObject({
+    revision: 1,
+    settings: { duration: 7200, template_version: "a".repeat(64) },
   });
-  await expect(grants).toContainText("Saved allowance: 120 minutes");
-  await expect(grants).toContainText("revision 1");
   expect(
     await grants.evaluate(
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
     ),
   ).toBe(true);
-  await expect(
-    grants.getByLabel("Exact attested template hash", { exact: true }),
-  ).toHaveValue("a".repeat(64));
-  await grants.getByLabel("Allowance seconds", { exact: true }).fill("5400");
-  await grants
-    .getByLabel("Reason", { exact: true })
-    .fill("Explicit unused browser grant revision");
+  await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("90");
   let lost = false;
   const requests: any[] = [];
-  await page.route("**/api/admin/grants/*/revise", async (route) => {
-    requests.push(route.request().postDataJSON());
-    const reply = await route.fetch();
-    if (!lost) {
-      lost = true;
-      await route.abort("connectionreset");
-      return;
-    }
-    await route.fulfill({ response: reply });
-  });
+  await page.route(
+    "**/api/admin/exams/versioned-source/grants/change",
+    async (route) => {
+      requests.push(route.request().postDataJSON());
+      const reply = await route.fetch();
+      if (!lost) {
+        lost = true;
+        await route.abort("connectionreset");
+        return;
+      }
+      await route.fulfill({ response: reply });
+    },
+  );
   await grants
-    .getByRole("button", { name: "Revise unused grant", exact: true })
+    .getByRole("button", { name: "Review changes", exact: true })
     .click();
-  await expect(grants.getByRole("alert")).toBeVisible();
+  await grants
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
   await expect(
-    grants.getByLabel("Allowance seconds", { exact: true }),
-  ).toBeDisabled();
-  await grants
-    .getByRole("button", { name: "Retry original revision", exact: true })
-    .click();
-  await expect(grants).toContainText("revision 2");
-  await expect(grants).toContainText("Saved allowance: 90 minutes");
-  expect(requests).toHaveLength(2);
-  expect(requests[1]).toEqual(requests[0]);
-  await grants.getByText("Immutable revision history", { exact: true }).click();
-  await expect(grants.locator("details li")).toHaveCount(2);
-  await grants
-    .getByLabel("Reason", { exact: true })
-    .fill("Withdraw this unused browser grant");
-  await grants
-    .getByRole("button", { name: "Revoke unused grant", exact: true })
-    .click();
-  await expect(grants).toContainText("REVOKED");
+    grants.getByText("Change unconfirmed", { exact: true }),
+  ).toBeVisible();
   await expect(
-    grants.getByRole("button", { name: "Revise unused grant", exact: true }),
+    grants.getByLabel("Time limit (minutes)", { exact: true }),
   ).toHaveCount(0);
   await grants
-    .getByRole("button", { name: "Close grants", exact: true })
+    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
     .click();
-  await expect(row).toContainText("Duration: 120 minutes");
-  await expect(row).toContainText("Initial grant: 90 min · REVOKED");
+  await expect(
+    grants.getByText("Settings saved", { exact: true }),
+  ).toBeVisible();
+  expect(requests).toHaveLength(2);
+  expect(requests[1]).toEqual(requests[0]);
+  await grants.getByRole("button", { name: "Close", exact: true }).click();
+  grants = await manageStudent(page, "student02");
+  await expect(grants).toContainText("90 min");
+  await grants.getByText("Details and history", { exact: true }).click();
+  await expect(grants).toContainText("Revision 2");
+  await expect(grants).toContainText("120 min");
+  await cancelUnused(grants);
+  expect(
+    (await (await page.request.get(`/api/admin/grants/${issued.id}`)).json())
+      .status,
+  ).toBe("REVOKED");
+  await grants.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(row).toContainText("120 min");
+  await expect(row).toContainText("First attempt: 90 min · Cancelled");
 });

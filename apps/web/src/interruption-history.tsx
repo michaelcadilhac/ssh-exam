@@ -16,7 +16,7 @@ export function InterruptionHistory({
   if (attempt.interruptionHistoryDeleted)
     return (
       <p className="interruption-empty">
-        Interruption history was deleted with monitoring.
+        Interruption history was deleted with recordings.
       </p>
     );
   if (!entries.length)
@@ -46,7 +46,7 @@ export function InterruptionHistory({
                 {entry.outcome === "resumed"
                   ? "Resumed"
                   : entry.outcome === "attempt-ended"
-                    ? "Ended with exam"
+                    ? "Attempt ended"
                     : entry.outcome === "historical"
                       ? "Past interruption"
                       : "Ongoing"}
@@ -78,15 +78,15 @@ export function InterruptionHistory({
                 )}
               </div>
               <div>
-                <strong>Authorization</strong>
+                <strong>Permission to resume</strong>
                 {entry.authorizations.length ? (
                   <ul>
                     {entry.authorizations.map((grant: any, i: number) => (
                       <li key={i}>
                         <span>
                           {grant.automatic
-                            ? "Automatically authorized"
-                            : `Authorized by ${grant.actor}`}{" "}
+                            ? "Allowed automatically"
+                            : `Allowed by ${grant.actor}`}{" "}
                           · {chicago(grant.at)}
                         </span>
                         <small>
@@ -105,7 +105,11 @@ export function InterruptionHistory({
                     ))}
                   </ul>
                 ) : (
-                  <p>{entry.historical ? "Not recorded" : "Not authorized"}</p>
+                  <p>
+                    {entry.historical
+                      ? "Not recorded"
+                      : "No permission recorded"}
+                  </p>
                 )}
               </div>
             </div>

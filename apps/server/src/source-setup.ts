@@ -145,10 +145,15 @@ export class SourceSetup {
         ...setup,
         grant: {
           id: b.id,
+          exam: row.exam,
+          username: row.username,
           revision: row.revision,
           status: row.status,
+          issuance: row.issuance,
+          issued_at: row.issued_at,
+          work: JSON.parse(row.work),
           claims,
-          settings: { earliest: settings.earliest, latest: settings.latest },
+          settings,
         },
         source: this.source(work, row.username),
       };

@@ -204,6 +204,32 @@ async function fixture(
       return json({ grants: [], next: null }); // Exact historical selection may be outside the first page.
     if (provenance && path === `/api/admin/grants/${grant.id}`)
       return json(grant);
+    if (path === "/api/admin/templates")
+      return json({
+        agent: "class",
+        sources: [
+          {
+            schema: 1,
+            agent: "class",
+            name: "sample-exam",
+            hash: "a".repeat(64),
+            entries: 4,
+            files: 2,
+            bytes: 30,
+            max_file_bytes: 20,
+            first_native_created: 1000,
+            last_native_created: 1000,
+            first_acknowledged_at: 1000,
+            last_attested_at: 1000,
+            last_acknowledged_at: 1000,
+            last_request: "12345678-1234-4234-8234-123456789abc",
+            revision: "b".repeat(64),
+          },
+        ],
+        next: null,
+        observed: Date.now(),
+        note: "Synthetic published files",
+      });
     if (path === "/api/admin/exams")
       return json(
         ["alpha", "beta"].map((id) => ({
@@ -213,6 +239,10 @@ async function fixture(
           webcam: false,
           terminals: 4,
           template: "sample-exam",
+          template_version: "a".repeat(64),
+          revision: 1,
+          earliest: Date.now() - 60000,
+          latest: Date.now() + 3600000,
         })),
       );
     if (path.endsWith("/dashboard")) {
@@ -419,21 +449,21 @@ for (const width of [1280, 430])
     await expect(amy).toContainText("1 attempt ready");
     await expect(amy).toContainText("1 preparing saved work");
     await expect(amy).toContainText("1 available later");
-    await expect(amy).toContainText("1 expired unused attempt");
+    await expect(amy).toContainText("1 start window closed");
     await amy
       .getByRole("button", {
-        name: "Inspect grant for amy attempt 2",
+        name: "View settings for amy attempt 2",
         exact: true,
       })
       .click({ timeout: 5000 });
     const grants = page.getByRole("dialog", {
-      name: "Attempt grants for amy",
+      name: "Allowed attempts for amy",
       exact: true,
     });
-    await expect(grants).toContainText("revision 2");
-    await expect(grants).toContainText("Saved allowance: 75 minutes");
+    await expect(grants).toContainText("Revision 2");
+    await expect(grants).toContainText("75 min · Webcam optional");
     await grants
-      .getByRole("button", { name: "Close grants", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .click({ timeout: 5000 });
     await amy
       .getByRole("button", { name: "Review", exact: true })
@@ -443,19 +473,21 @@ for (const width of [1280, 430])
       name: "amy · Attempt 2",
       exact: true,
     });
-    const provenance = review.getByRole("region", {
-      name: "Grant and workspace",
-      exact: true,
-    });
+    const provenance = review.locator(".grant-provenance");
+    await provenance
+      .getByText("Starting files and settings", { exact: true })
+      .click();
     await expect(provenance).toContainText(
-      "This attempt used revision 1. The grant is now revision 2",
+      "This attempt keeps its saved settings despite later changes",
     );
+    await provenance.getByText("Technical details", { exact: true }).click();
+    await expect(provenance).toContainText("c".repeat(64));
     await expect(provenance).toContainText("90 minutes · webcam optional");
     await expect(provenance).toContainText(
       "Explicit recovery from the selected protected source",
     );
     await expect(provenance).toContainText("Saved work · beta · Attempt 1");
-    await expect(provenance).toContainText("submission recorded secured");
+    await expect(provenance).toContainText("files recorded protected");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -467,19 +499,23 @@ for (const width of [1280, 430])
     });
     await provenance
       .getByRole("button", {
-        name: "Inspect grant for amy attempt 2",
+        name: "View settings for amy attempt 2",
         exact: true,
       })
       .click({ timeout: 5000 });
     await expect(grants).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(1);
     await grants
-      .getByRole("button", { name: "Close grants", exact: true })
+      .getByRole("button", { name: "Close", exact: true })
       .click({ timeout: 5000 });
     await amy
       .getByRole("button", { name: "Review", exact: true })
       .first()
       .click({ timeout: 5000 });
+    await provenance
+      .getByText("Starting files and settings", { exact: true })
+      .click();
+    await provenance.getByText("Technical details", { exact: true }).click();
     await provenance
       .getByRole("button", {
         name: "Review saved source attempt 1 for amy",
@@ -493,12 +529,14 @@ for (const width of [1280, 430])
       name: "amy · Attempt 1",
       exact: true,
     });
+    await source
+      .locator(".attempt-grant-summary")
+      .getByText("Details", { exact: true })
+      .click();
     await expect(source).toContainText(
-      "Legacy attempt · no grant snapshot recorded",
+      "Earlier attempt · saved settings unavailable",
     );
-    await expect(
-      source.getByRole("region", { name: "Grant and workspace", exact: true }),
-    ).toHaveCount(0);
+    await expect(source.locator(".grant-provenance")).toHaveCount(0);
   });
 test("unavailable source history stays inspectable without offering a misleading source link", async ({
   page,
@@ -516,23 +554,22 @@ test("unavailable source history stays inspectable without offering a misleading
     .getByRole("button", { name: "Review", exact: true })
     .first()
     .click({ timeout: 5000 });
-  const provenance = page.getByRole("region", {
-    name: "Grant and workspace",
-    exact: true,
-  });
+  const provenance = page.getByRole("dialog").locator(".grant-provenance");
+  await provenance
+    .getByText("Starting files and settings", { exact: true })
+    .click();
+  await expect(provenance).toContainText("Source history is unavailable");
   await expect(provenance).toContainText(
-    "Source gateway history is unavailable or differs from this account",
+    "An administrator must check the saved files",
   );
-  await expect(provenance).toContainText(
-    "this does not establish archive loss",
-  );
+  await provenance.getByText("Technical details", { exact: true }).click();
   await expect(provenance).toContainText(applied.work.attempt);
   await expect(
     provenance.getByRole("button", { name: /Review saved source/ }),
   ).toHaveCount(0);
   await expect(
     provenance.getByRole("button", {
-      name: "Inspect grant for amy attempt 2",
+      name: "View settings for amy attempt 2",
       exact: true,
     }),
   ).toBeVisible();
@@ -614,9 +651,7 @@ test("student selection names excluded students and changes only eligible curren
     "Time will not change for: carol, dave, eve.",
   );
   await dialog.getByLabel("Minutes to add", { exact: true }).fill("10");
-  await dialog
-    .getByRole("button", { name: "Apply extension", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Add time", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(s.calls).toHaveLength(1);
   expect(s.calls[0].body.action).toBe("extend");
@@ -721,22 +756,19 @@ test("retained instructor authorization preserves the original page and SSH rath
     exact: true,
   });
   await dialog
-    .getByRole("button", { name: "Authorize resume", exact: true })
+    .getByRole("button", { name: "Allow resume", exact: true })
     .click();
-  await expect(dialog).toContainText(
-    "Keep the original page and SSH connection",
-  );
-  await expect(dialog).toContainText(
-    "reviewed new attempt from verified saved work",
-  );
+  await expect(dialog).toContainText("on the same page and connection");
+  await expect(dialog).toContainText("A lost session needs another attempt");
   await dialog
-    .getByRole("textbox", { name: /^Authorization reason/ })
+    .getByRole("textbox", { name: /^Reason/ })
     .fill("Reviewed same-page monitoring restoration");
   await dialog
-    .getByRole("button", { name: "Confirm authorization", exact: true })
+    .getByRole("group", { name: "Confirm resume approval", exact: true })
+    .getByRole("button", { name: "Allow resume", exact: true })
     .click();
   await expect(dialog).toContainText(
-    "The student restores monitoring and chooses Continue on the same page and SSH connection",
+    "The student must restore the checks and choose Resume exam on the same page and connection",
   );
   await expect(dialog).not.toContainText("must reconnect");
 });
@@ -759,16 +791,17 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
   await expect(dialog).toContainText("Ready to reconnect");
   s.slow = 500; // A refresh must not publish success while Escape is still blocked.
   await dialog
-    .getByRole("button", { name: "Authorize resume", exact: true })
+    .getByRole("button", { name: "Allow resume", exact: true })
     .click();
   expect(s.calls).toHaveLength(0);
   await dialog
-    .getByRole("textbox", { name: /^Authorization reason/ })
+    .getByRole("textbox", { name: /^Reason/ })
     .fill("Reviewed monitoring interruption");
   await dialog
-    .getByRole("button", { name: "Confirm authorization", exact: true })
+    .getByRole("group", { name: "Confirm resume approval", exact: true })
+    .getByRole("button", { name: "Allow resume", exact: true })
     .click();
-  await expect(dialog).toContainText("Resume authorized");
+  await expect(dialog).toContainText("Resume allowed");
   expect(
     await dialog
       .getByRole("button", { name: "Close review", exact: true })
@@ -789,7 +822,7 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
     timeout: 8000,
   });
   await expect(
-    dialog.getByRole("button", { name: "Authorize resume", exact: true }),
+    dialog.getByRole("button", { name: "Allow resume", exact: true }),
   ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.getByLabel("Filter attempts", { exact: true }).selectOption("");
@@ -804,8 +837,8 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
   await pending
     .getByRole("button", { name: "Submission", exact: true })
     .click();
-  await expect(pending).toContainText("Collection pending");
-  await expect(pending).not.toContainText("Submission secured");
+  await expect(pending).toContainText("File protection is not confirmed");
+  await expect(pending).not.toContainText("Files saved");
   await expect(pending.getByRole("link", { name: /Download/ })).toHaveCount(0);
 });
 for (const width of [1280, 430])
@@ -824,16 +857,17 @@ for (const width of [1280, 430])
       exact: true,
     });
     await dialog
-      .getByRole("button", { name: "Authorize resume", exact: true })
+      .getByRole("button", { name: "Allow resume", exact: true })
       .click();
     const reason = dialog.getByRole("textbox", {
-      name: /^Authorization reason/,
+      name: /^Reason/,
     });
     await expect(reason).toBeFocused();
     await reason.fill("Reviewed screen-sharing restoration");
     s.lostAuthorization = true;
     await dialog
-      .getByRole("button", { name: "Confirm authorization", exact: true })
+      .getByRole("group", { name: "Confirm resume approval", exact: true })
+      .getByRole("button", { name: "Allow resume", exact: true })
       .click();
     await expect(dialog.getByRole("alert")).toContainText(/fetch|network/i);
     expect(s.calls).toHaveLength(1);
@@ -856,13 +890,14 @@ for (const width of [1280, 430])
     await expect(reason).toHaveValue(original.reason);
     if (width === 430)
       await page.screenshot({
-        path: "/tmp/ssh-exam-interruption-confirmation-mobile.png",
+        path: test.info().outputPath("interruption-confirmation-mobile.png"),
         fullPage: true,
       });
     await dialog
-      .getByRole("button", { name: "Confirm authorization", exact: true })
+      .getByRole("group", { name: "Confirm resume approval", exact: true })
+      .getByRole("button", { name: "Allow resume", exact: true })
       .click();
-    await expect(dialog).toContainText("Resume authorized until");
+    await expect(dialog).toContainText("Resume allowed until");
     expect(s.calls[1].body).toEqual(original);
     expect(s.authorizationReplies.size).toBe(1);
     expect(bob.state).toBe("LOCKED");
@@ -883,10 +918,10 @@ test("continuation confirmation cannot silently adopt a new generation or same-g
   });
   for (const changeGeneration of [false, true]) {
     await dialog
-      .getByRole("button", { name: "Authorize resume", exact: true })
+      .getByRole("button", { name: "Allow resume", exact: true })
       .click();
     const reason = dialog.getByRole("textbox", {
-      name: /^Authorization reason/,
+      name: /^Reason/,
     });
     await reason.fill("Reviewed original interruption");
     const selectedRevision = bob.continuation_revision;
@@ -903,7 +938,8 @@ test("continuation confirmation cannot silently adopt a new generation or same-g
       { timeout: 10000 },
     );
     await dialog
-      .getByRole("button", { name: "Confirm authorization", exact: true })
+      .getByRole("group", { name: "Confirm resume approval", exact: true })
+      .getByRole("button", { name: "Allow resume", exact: true })
       .click();
     await expect(dialog.getByRole("alert")).toContainText(
       "Interruption changed after review",
@@ -911,11 +947,9 @@ test("continuation confirmation cannot silently adopt a new generation or same-g
     expect(s.calls.at(-1)!.body.revision).toBe(selectedRevision);
     expect(s.authorizationReplies.size).toBe(0);
     await expect(reason).toHaveValue("Reviewed original interruption");
-    await dialog
-      .getByRole("button", { name: "Cancel authorization", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
-      dialog.getByRole("button", { name: "Authorize resume", exact: true }),
+      dialog.getByRole("button", { name: "Allow resume", exact: true }),
     ).toBeFocused();
   }
 });
@@ -938,9 +972,7 @@ test("monitoring errors stay inside review and retry without an empty or wrong s
     "Monitoring unavailable",
   );
   s.failReview = false;
-  await dialog
-    .getByRole("button", { name: "Retry monitoring", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(dialog.getByRole("alert")).toHaveCount(0);
   await expect(dialog).toContainText("No screen images received");
 });
@@ -952,7 +984,7 @@ test("slow dashboard responses complete, stale data blocks clock edits, and exam
   s.rows[0].enrollment.duration = 7200;
   await expect(
     page.getByRole("rowgroup", { name: "amy", exact: true }),
-  ).toContainText("Duration: 120 minutes", { timeout: 15000 });
+  ).toContainText("Time limit: 120 min", { timeout: 15000 });
   s.slow = 0;
   s.failDashboard = true;
   await expect(page.getByRole("alert")).toContainText("Updates paused", {
@@ -998,10 +1030,8 @@ test("partial clock failures stay reviewable and retries reuse the same request 
     .click();
   await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
-  await dialog
-    .getByRole("button", { name: "Apply extension", exact: true })
-    .click();
-  await expect(dialog).toContainText("bob: failed");
+  await dialog.getByRole("button", { name: "Add time", exact: true }).click();
+  await expect(dialog).toContainText("bob: Needs attention");
   await expect(dialog).toContainText("Clock request could not be delivered");
   await expect(
     dialog.getByLabel("Minutes to add", { exact: true }),
@@ -1030,9 +1060,7 @@ test("default reset keeps the displayed allowance fixed across background roster
     name: "Reset time remaining",
     exact: true,
   });
-  await expect(dialog.locator(".admin-target-list")).toContainText(
-    "90 minutes",
-  );
+  await expect(dialog.locator(".admin-target-list")).toContainText("90 min");
   const updated = page.waitForResponse(
     async (response) => {
       if (
@@ -1072,9 +1100,7 @@ test("default reset keeps the displayed allowance fixed across background roster
     .click();
   await expect(dialog).toContainText("Default allowance changed");
   expect(sent.targets[0].expectedSeconds).toBe(5400);
-  await expect(dialog.locator(".admin-target-list")).toContainText(
-    "90 minutes",
-  );
+  await expect(dialog.locator(".admin-target-list")).toContainText("90 min");
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
 });
 test("monitoring deletion requires named confirmation and leaves submission review available", async ({
@@ -1090,19 +1116,19 @@ test("monitoring deletion requires named confirmation and leaves submission revi
     name: "amy · Attempt 1",
     exact: true,
   });
-  await dialog.getByText("Monitoring retention", { exact: true }).click();
+  await dialog.getByText("Recording retention", { exact: true }).click();
   await dialog
-    .getByRole("button", { name: "Delete monitoring…", exact: true })
+    .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
   await expect(
-    dialog.getByRole("group", { name: "Confirm monitoring deletion" }),
+    dialog.getByRole("group", { name: "Confirm recording deletion" }),
   ).toContainText("amy, attempt 1");
   await dialog
     .getByRole("button", { name: "Cancel deletion", exact: true })
     .click();
   expect(s.calls).toHaveLength(0);
   await dialog
-    .getByRole("button", { name: "Delete monitoring…", exact: true })
+    .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
   await expect(
     dialog.getByRole("button", {
@@ -1110,14 +1136,12 @@ test("monitoring deletion requires named confirmation and leaves submission revi
       exact: true,
     }),
   ).toBeDisabled();
-  await dialog
-    .getByLabel("Monitoring deletion reason")
-    .fill("Reviewed retention request");
+  await dialog.getByLabel("Reason").fill("Reviewed retention request");
   await dialog
     .getByRole("button", { name: "Permanently delete monitoring", exact: true })
     .click();
   await expect(
-    dialog.getByRole("group", { name: "Confirm monitoring deletion" }),
+    dialog.getByRole("group", { name: "Confirm recording deletion" }),
   ).toHaveCount(0);
   expect(s.calls).toHaveLength(1);
   expect(s.calls[0].path).toContain("/delete-monitoring");
@@ -1127,18 +1151,16 @@ test("monitoring deletion requires named confirmation and leaves submission revi
     reason: "Reviewed retention request",
     requestID: expect.any(String),
   });
-  await expect(dialog).toContainText("Physical purge: retry");
-  await expect(dialog).toContainText("deletion remains in force");
+  await expect(dialog).toContainText("File deletion: retry");
+  await expect(dialog).toContainText("access remains blocked");
   s.media.physicalPurge = { status: "verified-absent", verified: Date.now() };
-  await expect(dialog).toContainText("Physical purge: verified-absent", {
+  await expect(dialog).toContainText("File deletion: verified-absent", {
     timeout: 10000,
   });
   await expect(dialog).toContainText("backups have separate retention");
   await dialog.getByRole("button", { name: "Submission", exact: true }).click();
-  await expect(dialog).toContainText("Submission secured");
-  await expect(dialog).toContainText(
-    "Submissions are retained on the SSH server",
-  );
+  await expect(dialog).toContainText("Files saved");
+  await expect(dialog).toContainText("Saved files stay on the exam server");
 });
 
 for (const width of [1280, 390])
@@ -1156,12 +1178,12 @@ for (const width of [1280, 390])
       name: "amy · Attempt 1",
       exact: true,
     });
-    await dialog.getByText("Monitoring retention", { exact: true }).click();
+    await dialog.getByText("Recording retention", { exact: true }).click();
     await dialog
-      .getByRole("button", { name: "Delete monitoring…", exact: true })
+      .getByRole("button", { name: "Delete recordings…", exact: true })
       .click();
     await dialog
-      .getByLabel("Monitoring deletion reason")
+      .getByLabel("Reason")
       .fill("Reviewed immutable deletion intent");
     s.lostDeletion = true;
     await dialog
@@ -1171,14 +1193,12 @@ for (const width of [1280, 390])
       })
       .click();
     await expect(
-      dialog.getByText("Retry keeps this exact intent and reason.", {
+      dialog.getByText("Retry repeats the same deletion request.", {
         exact: false,
       }),
     ).toBeVisible();
     await expect(dialog.getByRole("alert")).toBeVisible();
-    await expect(
-      dialog.getByLabel("Monitoring deletion reason"),
-    ).toBeDisabled();
+    await expect(dialog.getByLabel("Reason")).toBeDisabled();
     const original = s.calls[0].body;
     await dialog
       .getByRole("button", {
@@ -1187,12 +1207,12 @@ for (const width of [1280, 390])
       })
       .click();
     await expect(
-      dialog.getByRole("group", { name: "Confirm monitoring deletion" }),
+      dialog.getByRole("group", { name: "Confirm recording deletion" }),
     ).toHaveCount(0);
     expect(s.calls).toHaveLength(2);
     expect(s.calls[1].body).toEqual(original);
     expect(s.deletionReplies.size).toBe(1);
-    await expect(dialog).toContainText("Physical purge: retry");
+    await expect(dialog).toContainText("File deletion: retry");
   });
 
 test("monitoring deletion refuses a changed review without silently adopting it", async ({
@@ -1208,17 +1228,13 @@ test("monitoring deletion refuses a changed review without silently adopting it"
     name: "amy · Attempt 1",
     exact: true,
   });
-  await dialog.getByText("Monitoring retention", { exact: true }).click();
+  await dialog.getByText("Recording retention", { exact: true }).click();
   await dialog
-    .getByRole("button", { name: "Delete monitoring…", exact: true })
+    .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
-  await dialog
-    .getByLabel("Monitoring deletion reason")
-    .fill("Reviewed original deletion target");
+  await dialog.getByLabel("Reason").fill("Reviewed original deletion target");
   s.monitoringRevision = "c".repeat(64);
-  await dialog
-    .getByRole("button", { name: "Refresh monitoring", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await dialog
     .getByRole("button", { name: "Permanently delete monitoring", exact: true })
     .click();
@@ -1229,16 +1245,14 @@ test("monitoring deletion refuses a changed review without silently adopting it"
     .getByRole("button", { name: "Cancel deletion", exact: true })
     .click();
   await dialog
-    .getByRole("button", { name: "Delete monitoring…", exact: true })
+    .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
-  await dialog
-    .getByLabel("Monitoring deletion reason")
-    .fill("Reviewed changed deletion target");
+  await dialog.getByLabel("Reason").fill("Reviewed changed deletion target");
   await dialog
     .getByRole("button", { name: "Permanently delete monitoring", exact: true })
     .click();
   await expect(
-    dialog.getByRole("group", { name: "Confirm monitoring deletion" }),
+    dialog.getByRole("group", { name: "Confirm recording deletion" }),
   ).toHaveCount(0);
   expect(s.calls[1].body.revision).toBe("c".repeat(64));
   expect(s.calls[1].body.requestID).not.toBe(s.calls[0].body.requestID);
@@ -1262,8 +1276,8 @@ test("editing an exam focuses an editable field and fits a narrow dialog", async
   await expect(dialog.getByLabel("Exam ID", { exact: true })).toBeDisabled();
   await expect(dialog.getByLabel("Name", { exact: true })).toBeFocused();
   await expect(
-    dialog.getByLabel("Materials template", { exact: true }),
-  ).toHaveValue("sample-exam");
+    dialog.getByRole("combobox", { name: "Exam files", exact: true }),
+  ).toHaveValue(`sample-exam@${"a".repeat(64)}`);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -1362,7 +1376,7 @@ test("open review updates images, activity and incremental replay without moving
   ).toHaveAttribute("aria-pressed", "true");
   await expect(dialog).toContainText("New activity");
   expect(s.replayOffsets).toHaveLength(originalOffset);
-  await dialog.getByRole("button", { name: "Monitoring", exact: true }).click();
+  await dialog.getByRole("button", { name: "Recordings", exact: true }).click();
   await expect
     .poll(() => s.replayOffsets.length)
     .toBeGreaterThan(originalOffset);
@@ -1386,9 +1400,7 @@ test("open review updates images, activity and incremental replay without moving
         document.querySelector(".admin-replay .xterm"),
     ),
   ).toBe(true);
-  await dialog
-    .getByRole("button", { name: "Refresh monitoring", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(timeline).toHaveValue("0");
   await expect(slider).toHaveValue("1");
   await dialog
@@ -1492,9 +1504,7 @@ for (const ended of [false, true]) {
       dialog.getByRole("combobox", { name: "Terminal replay", exact: true }),
     ).toHaveCount(0);
     expect(s.replayOffsets).toHaveLength(0);
-    await dialog
-      .getByRole("button", { name: "Refresh monitoring", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
     expect(s.replayOffsets).toHaveLength(0);
     await dialog
       .getByRole("button", { name: "Open terminal replay", exact: true })
@@ -1562,7 +1572,7 @@ for (const width of [1280, 430])
     const s = await fixture(page);
     const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
     const duration = amy.getByRole("button", {
-      name: "Edit duration for amy",
+      name: "Edit future time limit for amy",
       exact: true,
     });
     const started = amy.locator(".attempt-row time").first();
@@ -1579,37 +1589,41 @@ for (const width of [1280, 430])
     await duration.focus();
     await duration.press("Enter");
     let editor = amy.getByRole("form", {
-      name: "Edit duration for amy",
+      name: "Edit future time limit for amy",
       exact: true,
     });
-    await expect(editor.getByLabel("Minutes", { exact: true })).toBeFocused();
-    await expect(editor).toContainText("unused saved-work recovery");
-    await expect(editor).toContainText("Exam default edits do not revise it");
+    await expect(
+      editor.getByRole("checkbox", { name: /Exam default/ }),
+    ).toBeFocused();
+    await expect(editor).toContainText("older unused recovery attempts");
+    await expect(editor).toContainText("Changing exam defaults does not");
+    await editor.getByRole("checkbox", { name: /Exam default/ }).uncheck();
     await editor.getByLabel("Minutes", { exact: true }).fill("123");
     await page.keyboard.press("Escape");
     await expect(duration).toBeFocused();
     expect(s.calls).toHaveLength(0);
     await duration.click();
     editor = amy.getByRole("form", {
-      name: "Edit duration for amy",
+      name: "Edit future time limit for amy",
       exact: true,
     });
+    await editor.getByRole("checkbox", { name: /Exam default/ }).uncheck();
     await editor.getByLabel("Minutes", { exact: true }).fill("120");
     await page.screenshot({
       path: info.outputPath(`inline-editor-${width}.png`),
       fullPage: true,
     });
     await editor.getByLabel("Minutes", { exact: true }).press("Enter");
-    await expect(duration).toHaveText("Duration: 120 minutes");
+    await expect(duration).toHaveText("Time limit: 120 min");
     expect(s.calls[0].body).toEqual({ usernames: ["amy"], duration: 7200 });
     await amy
       .getByRole("button", {
-        name: "Edit webcam requirement for amy",
+        name: "Edit future webcam setting for amy",
         exact: true,
       })
       .click();
     let webcam = amy.getByRole("form", {
-      name: "Edit webcam requirement for amy",
+      name: "Edit future webcam setting for amy",
       exact: true,
     });
     await webcam
@@ -1618,14 +1632,14 @@ for (const width of [1280, 430])
     await webcam.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
       amy.getByRole("button", {
-        name: "Edit webcam requirement for amy",
+        name: "Edit future webcam setting for amy",
         exact: true,
       }),
     ).toHaveText("Required");
     expect(s.calls[1].body).toEqual({ usernames: ["amy"], webcam: true });
     await expect(
       amy.locator('.attempt-row [data-label="Webcam"]').first(),
-    ).toHaveText("Not required");
+    ).toHaveText("Optional");
     expect(s.rows[0].attempts[0].settings).toBe(
       JSON.stringify({ webcam: false }),
     );
@@ -1634,21 +1648,21 @@ for (const width of [1280, 430])
     ).toBe(true);
     await duration.click();
     editor = amy.getByRole("form", {
-      name: "Edit duration for amy",
+      name: "Edit future time limit for amy",
       exact: true,
     });
     await editor.getByRole("checkbox", { name: /Exam default/ }).check();
     await editor.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(duration).toHaveText("Duration: 90 minutes");
+    await expect(duration).toHaveText("Time limit: 90 min");
     expect(s.calls[2].body).toEqual({ usernames: ["amy"], duration: null });
     await amy
       .getByRole("button", {
-        name: "Edit webcam requirement for amy",
+        name: "Edit future webcam setting for amy",
         exact: true,
       })
       .click();
     webcam = amy.getByRole("form", {
-      name: "Edit webcam requirement for amy",
+      name: "Edit future webcam setting for amy",
       exact: true,
     });
     await webcam
@@ -1657,10 +1671,10 @@ for (const width of [1280, 430])
     await webcam.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
       amy.getByRole("button", {
-        name: "Edit webcam requirement for amy",
+        name: "Edit future webcam setting for amy",
         exact: true,
       }),
-    ).toHaveText("Not required");
+    ).toHaveText("Optional");
     expect(s.calls[3].body).toEqual({ usernames: ["amy"], webcam: null });
     expect(
       await page.evaluate(
@@ -1679,14 +1693,15 @@ test("inline setting failures preserve edits for retry and cancellation", async 
   const s = await fixture(page);
   const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
   const duration = amy.getByRole("button", {
-    name: "Edit duration for amy",
+    name: "Edit future time limit for amy",
     exact: true,
   });
   await duration.click();
   const editor = amy.getByRole("form", {
-    name: "Edit duration for amy",
+    name: "Edit future time limit for amy",
     exact: true,
   });
+  await editor.getByRole("checkbox", { name: /Exam default/ }).uncheck();
   await editor.getByLabel("Minutes", { exact: true }).fill("125");
   s.failSettings = true;
   await editor.getByRole("button", { name: "Save", exact: true }).click();
@@ -1698,11 +1713,11 @@ test("inline setting failures preserve edits for retry and cancellation", async 
   );
   s.failSettings = false;
   await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(duration).toHaveText("Duration: 125 minutes");
+  await expect(duration).toHaveText("Time limit: 125 min");
   await duration.click();
   await editor.getByLabel("Minutes", { exact: true }).fill("140");
   await editor.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(duration).toHaveText("Duration: 125 minutes");
+  await expect(duration).toHaveText("Time limit: 125 min");
   await expect(duration).toBeFocused();
   expect(s.calls).toHaveLength(2);
 });
@@ -1760,22 +1775,20 @@ for (const width of [1280, 430])
     await dialog
       .getByRole("button", { name: "Submission", exact: true })
       .click();
-    await dialog
-      .getByText("Timing and monitoring details", { exact: true })
-      .click();
+    await dialog.getByText("Timing details", { exact: true }).click();
     await expect(
       dialog
-        .getByText("Exam duration", { exact: true })
+        .getByText("Time limit", { exact: true })
         .locator("..")
         .locator("dd"),
     ).toHaveText("1h 30min");
-    await dialog.getByText("Collection details", { exact: true }).click();
+    await dialog.getByText("File details", { exact: true }).click();
     await expect(dialog.locator("pre")).not.toBeVisible();
     await page.screenshot({
       path: info.outputPath(`time-review-${width}.png`),
       fullPage: true,
     });
-    await dialog.getByText("Raw manifest (technical)", { exact: true }).click();
+    await dialog.getByText("Technical manifest", { exact: true }).click();
     await expect(dialog.locator("pre")).toBeVisible();
     await expect(dialog).toContainText(
       "remaining_seconds and extend_seconds are in seconds",
@@ -1868,9 +1881,7 @@ test("capture sliders are independent, keyboard accessible, and stop following w
     captured: now + 1000,
     received: now + 1000,
   });
-  await dialog
-    .getByRole("button", { name: "Refresh monitoring", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
     "src",
     "/api/admin/media/webcam-2",
@@ -1924,7 +1935,7 @@ test("review shows preflight, finished duration, access failures, clock changes 
   await page.getByLabel("Selected exam", { exact: true }).selectOption("beta");
   await page.getByLabel("Selected exam", { exact: true }).selectOption("alpha");
   const group = page.getByRole("rowgroup", { name: "amy", exact: true });
-  await expect(group).toContainText("40min taken");
+  await expect(group).toContainText("40min used");
   await expect(group).toContainText("Ended Oct 19, 2026");
   await group
     .getByRole("button", { name: "Review", exact: true })
@@ -1932,27 +1943,25 @@ test("review shows preflight, finished duration, access failures, clock changes 
     .click();
   const dialog = page.getByRole("dialog");
   await expect(
-    dialog.getByText("Preflight started", { exact: true }).locator(".."),
+    dialog.getByText("Setup started", { exact: true }).locator(".."),
   ).toContainText("9:58:00 AM CDT");
   await expect(
     dialog.getByText("Exam ended", { exact: true }).locator(".."),
   ).toContainText("10:40:00 AM CDT");
   await expect(
-    dialog.getByText("Time taken", { exact: true }).locator(".."),
+    dialog.getByText("Time used", { exact: true }).locator(".."),
   ).toContainText("40min");
   await expect(dialog.getByRole("alert")).toContainText(
     "Writer remains active",
   );
-  await dialog
-    .getByText("Timing and monitoring details", { exact: true })
-    .click();
+  await dialog.getByText("Timing details", { exact: true }).click();
   await expect(
-    dialog.getByText("Preflight duration", { exact: true }).locator(".."),
+    dialog.getByText("Setup time", { exact: true }).locator(".."),
   ).toContainText("2min");
-  await expect(dialog.getByLabel("Clock change history")).toContainText(
+  await expect(dialog.getByLabel("Time-change history")).toContainText(
     "Reset to 1h",
   );
-  await expect(dialog.getByLabel("Clock change history")).toContainText(
+  await expect(dialog.getByLabel("Time-change history")).toContainText(
     "instructor",
   );
   await dialog.getByRole("button", { name: "Submission", exact: true }).click();
@@ -1965,7 +1974,7 @@ test("review shows preflight, finished duration, access failures, clock changes 
   a.ended = null; // A historical end can be missing; never keep it ticking.
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(
-    dialog.getByText("Time taken", { exact: true }).locator(".."),
+    dialog.getByText("Time used", { exact: true }).locator(".."),
   ).toContainText("Not recorded");
 });
 
@@ -2047,7 +2056,7 @@ for (const width of [1280, 390])
     await expect(history).toContainText("Awaiting resume");
     await expect(history).toContainText("Screen sharing ended");
     await expect(history).toContainText("SSH disconnected");
-    await expect(history).toContainText("Authorized by teacher");
+    await expect(history).toContainText("Allowed by teacher");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

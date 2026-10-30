@@ -1,12 +1,23 @@
 # Deferred work
 
-October 30 NEW Prof UI review is IN PROGRESS, locally only. Prof reviewed all
-web text surfaces and agreed the scenario/terminology/two-screen design before
-implementation. First student-selection/cancellation/time-scope increment is
-implemented/tested locally and accepted by Prof after rendered review. Another
-attempts, unused settings, automatic saved-work setup and the full copy pass
-remain open. The instructor approved the separate retain-only setup service for
-local development/testing; no deployment is authorized. See docs/ui-prof-review.md.
+October30 NEW Prof UI and automatic saved-work candidate is COMPLETE AND TESTED
+LOCALLY, not deployed. Prof agreed the fixes and accepted the rendered desktop/
+mobile workflows and complete context ledger. Selected-student another/first
+attempts and unused changes take two screens; adding time/cancelling extras each
+take one. Starting files and effective time/webcam are retrieved automatically.
+The separate retain-only worker passes actual CLI/gateway/archive, reply-loss,
+revocation, coordinator-death, resource and race tests; only durable native
+confirmation can make saved work Ready. Clean full app:643pass/3skip. Segmented
+qualification of the unchanged packaged candidate:192 unique browser cases pass,
+12 native-bundle/measurement cases deliberately skipped, none unverified beyond
+those stated skips. The reproduced early-Enter focus bug is fixed without early
+input; actual-WASM fault/closure/later-health checks pass. Image schema11/24→35,
+exact assets, clock and history checks pass. Worker installation/enablement still
+requires exact root-service mount/LSM qualification and a separate deployment
+instruction. No deployment is authorized; the worker remains uninstalled.
+See docs/ui-prof-review.md and
+docs/automatic-saved-work-setup.md; these additions do not change the original
+38-item release completion count.
 
 October 30 sandbox setup COMPLETE/CONFIGURED under the instructor's explicit
 "Fix this then" instruction. Existing sample files are published/attested and

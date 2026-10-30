@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import { timeLimit } from "./local-date-time.js";
 export function StudentImport({
   exam,
   defaultWebcam = false,
@@ -85,7 +86,7 @@ export function StudentImport({
           }}
         >
           <label>
-            Student username
+            Username
             <input
               required
               disabled={busy}
@@ -95,17 +96,17 @@ export function StudentImport({
             />
           </label>
           <label>
-            Webcam for this student
+            Webcam
             <select
               disabled={busy}
               value={webcam}
               onChange={(e) => setWebcam(e.target.value)}
             >
               <option value="inherit">
-                Exam default ({defaultWebcam ? "required" : "not required"})
+                Exam default ({defaultWebcam ? "required" : "optional"})
               </option>
               <option value="true">Required</option>
-              <option value="false">Not required</option>
+              <option value="false">Optional</option>
             </select>
           </label>
           <label>
@@ -115,10 +116,10 @@ export function StudentImport({
               disabled={busy || isSandbox(exam)}
               onChange={(e) => setInherit(e.target.checked)}
             />{" "}
-            Use exam duration ({defaultDuration / 60} minutes)
+            Use exam time limit ({timeLimit(defaultDuration)})
           </label>
           <label>
-            Duration (minutes)
+            Time limit (minutes)
             <input
               type="number"
               min={1}
@@ -130,7 +131,7 @@ export function StudentImport({
               onChange={(e) => setDuration(Number(e.target.value))}
             />
           </label>
-          <p>Use an existing course-server account.</p>
+          <p>Use an existing exam-server account.</p>
           {error && (
             <p className="warn" role="alert">
               {error}
@@ -151,9 +152,8 @@ export function StudentImport({
             <a href={`/api/admin/exams/${exam}/roster/example`}>
               Download example CSV
             </a>{" "}
-            and replace the example usernames with course-server accounts.
-            Optional duration and webcam settings do not change existing
-            attempts.
+            with usernames and optional time limits or webcam settings. Existing
+            attempts keep their settings.
           </p>
           <label>
             CSV file
@@ -190,17 +190,17 @@ export function StudentImport({
             <>
               <p role="status">
                 {preview.total} validated {preview.total === 1 ? "row" : "rows"}
-                . Current attempts are unchanged.
+                . Existing attempts keep their settings.
               </p>
               <div className="preview" aria-label="Import preview">
                 {preview.rows.slice(0, 100).map((r: any) => (
                   <p key={r.username}>
-                    {r.action}: {r.username} · duration{" "}
+                    {r.action}: {r.username} · time limit{" "}
                     {r.duration === undefined
                       ? "unchanged"
                       : r.duration === null
                         ? "exam default"
-                        : `${r.duration / 60} minutes`}{" "}
+                        : timeLimit(r.duration)}{" "}
                     · webcam{" "}
                     {r.webcam === undefined
                       ? "unchanged"
@@ -208,7 +208,7 @@ export function StudentImport({
                         ? "exam default"
                         : r.webcam
                           ? "required"
-                          : "not required"}
+                          : "optional"}
                   </p>
                 ))}
               </div>

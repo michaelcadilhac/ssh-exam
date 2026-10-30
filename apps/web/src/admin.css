@@ -1,4 +1,30 @@
 /* Instructor workspace. Student exam and sign-in styling is unchanged. */
+.grant-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+.grant-dialog-content {
+  min-height: 0;
+  overflow: auto;
+  scroll-padding-block: 0.75rem;
+}
+.grant-dialog-actions {
+  flex-shrink: 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid #34455e;
+}
+.grant-review .clock-batch-row {
+  padding-block: 0.65rem;
+  border-bottom: 1px solid #34455e;
+}
+.grant-review .clock-batch-row h4 {
+  margin: 0 0 0.25rem;
+}
+.grant-review .clock-batch-row p {
+  margin: 0.25rem 0;
+  line-height: 1.45;
+}
 .continuation-confirmation {
   min-width: 0;
   margin: 16px 0;

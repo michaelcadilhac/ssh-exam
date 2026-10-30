@@ -94,9 +94,9 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
     await simulatedMedia(page);
     await page.goto(origin);
     await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
-    await page.getByLabel("Enrolled username").fill("examq");
+    await page.getByLabel("Username").fill("examq");
     await page
-      .getByRole("button", { name: "Start SSH sign-in", exact: true })
+      .getByRole("button", { name: "Sign in", exact: true })
       .click();
     await page.getByLabel("Shared SSH password").fill("shared-password");
     const summaryReady = page.waitForResponse(
@@ -106,18 +106,18 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
       { timeout: 20000 },
     );
     await page
-      .getByRole("button", { name: "Respond to this host", exact: true })
+      .getByRole("button", { name: "Continue", exact: true })
       .click();
     const summary = await (await summaryReady).json();
     const open = page.getByRole("button", {
-      name: "Open preflight & practice",
+      name: "Check setup and practice",
       exact: true,
     });
     await expect(open).toBeVisible();
     if (grant) {
       expect(summary.grants.map((g: { id: string }) => g.id)).toContain(grant);
       const chooser = page.getByRole("combobox", {
-        name: "Attempt authorization",
+        name: "Choose an attempt",
         exact: true,
       });
       if (await chooser.count()) await chooser.selectOption(grant);
@@ -136,10 +136,10 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
     return { page, prepared };
   };
   const begin = async (page: Page) => {
-    await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+    await page.getByRole("button", { name: "Start exam", exact: true }).click();
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Begin exam", exact: true })
+      .getByRole("button", { name: "Start exam", exact: true })
       .click();
     await expect
       .poll(

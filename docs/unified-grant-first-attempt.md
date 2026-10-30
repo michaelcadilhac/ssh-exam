@@ -1,5 +1,18 @@
 # Unified grants: first ordinary attempt milestone
 
+October30 local UI candidate: select existing students in the roster, then
+**Selected students → Allow first attempt** to review and create their first
+permission to start. Normal Add student/CSV enrollment still saves the initial
+settings immediately. Later default edits do not change those permissions; use
+**Change unused attempts** for explicit revisions. Time limits display in minutes
+and seconds, dates use the shown device time zone, and published files are fetched.
+CLI issue-preview/show/confirm/list and revise/revoke remain supported. These UI
+changes are not deployed; the original first-attempt runtime and approved authority
+placement have already progressed beyond the historical first-milestone notes
+below. See release-readiness.md for installed status and ui-prof-review.md for the
+current candidate; no policy question is reopened by the older text.
+
+
 Local development only, not deployed. Approved policy: C1/C2/C5/C15; initial
 settings snapshot at enrollment/import. C17 legacy recovery allowance
 synchronization is validated/committed locally as32e1eec; C16 authority

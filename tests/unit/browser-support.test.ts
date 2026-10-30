@@ -51,12 +51,12 @@ it("honors policy restrictions but ignores unrecognized policy feature names", (
     documentMock.featurePolicy.allowsFeature,
   ).toHaveBeenCalledExactlyOnceWith("fullscreen");
   documentMock.featurePolicy.allowsFeature.mockReturnValue(false);
-  expect(examBrowserIssue()).toContain("Unavailable here: fullscreen");
+  expect(examBrowserIssue()).toContain("Unavailable: fullscreen");
 });
 it("rejects an already-denied keyboard permission and allows a later settings change", async () => {
   navigatorMock.permissions.query.mockResolvedValue({ state: "denied" });
   expect(await checkExamBrowser()).toContain(
-    "Permission denied: keyboard lock",
+    "Allow keyboard lock in browser settings, then reload",
   );
   navigatorMock.permissions.query.mockResolvedValue({ state: "prompt" });
   expect(await checkExamBrowser()).toBeNull();

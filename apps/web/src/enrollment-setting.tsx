@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
+import { timeLimit } from "./local-date-time.js";
 
 export function EnrollmentSetting({
   exam,
@@ -24,6 +25,7 @@ export function EnrollmentSetting({
     [error, setError] = useState("");
   const trigger = useRef<HTMLButtonElement>(null),
     control = useRef<HTMLInputElement | HTMLSelectElement | null>(null),
+    inheritControl = useRef<HTMLInputElement | null>(null),
     mounted = useRef(true);
   useEffect(() => setConfirmed(value), [value]);
   useEffect(() => {
@@ -34,17 +36,22 @@ export function EnrollmentSetting({
   }, []);
   useEffect(() => {
     if (!editing) return;
+    if (kind === "duration" && inherit) {
+      inheritControl.current?.focus();
+      return;
+    }
     control.current?.focus();
     if (control.current instanceof HTMLInputElement) control.current.select();
   }, [editing]);
-  const name = kind === "duration" ? "duration" : "webcam requirement";
+  const name =
+    kind === "duration" ? "future time limit" : "future webcam setting";
   const effective = confirmed ?? exam[kind];
   const text =
     kind === "duration"
-      ? `Duration: ${Number(effective) / 60} minutes`
+      ? `Time limit: ${timeLimit(Number(effective))}`
       : effective
         ? "Required"
-        : "Not required";
+        : "Optional";
   const locked = kind === "duration" && isSandbox(exam.id);
   const close = () => {
     setEditing(false);
@@ -65,7 +72,7 @@ export function EnrollmentSetting({
             disabled={disabled || locked}
             title={
               locked
-                ? "Sandbox duration is fixed at five minutes"
+                ? "Sandbox time limit is fixed at five minutes"
                 : `Edit ${name}`
             }
             onClick={() => {
@@ -140,7 +147,7 @@ export function EnrollmentSetting({
                   step={1}
                   required
                   value={draft}
-                  disabled={disabled || busy}
+                  disabled={disabled || busy || inherit}
                   onChange={(e) => {
                     setDraft(e.target.value);
                     setInherit(false);
@@ -150,6 +157,7 @@ export function EnrollmentSetting({
               <label className="setting-inherit">
                 <input
                   type="checkbox"
+                  ref={inheritControl}
                   checked={inherit}
                   disabled={disabled || busy}
                   onChange={(e) => {
@@ -159,7 +167,7 @@ export function EnrollmentSetting({
                       requestAnimationFrame(() => control.current?.focus());
                   }}
                 />
-                Exam default ({exam.duration / 60} min)
+                Exam default ({timeLimit(exam.duration)})
               </label>
             </>
           ) : (
@@ -174,19 +182,18 @@ export function EnrollmentSetting({
                 onChange={(e) => setDraft(e.target.value)}
               >
                 <option value="inherit">
-                  Exam default ({exam.webcam ? "required" : "not required"})
+                  Exam default ({exam.webcam ? "required" : "optional"})
                 </option>
                 <option value="true">Required</option>
-                <option value="false">Not required</option>
+                <option value="false">Optional</option>
               </select>
             </label>
           )}
           <small>
-            Current attempts keep their settings.
-            {student.grant &&
-              " Issued initial grants also keep their saved settings; use Attempt grants for an explicit unused revision."}
+            Existing attempts keep their settings.
+            {student.grant && " Change unused attempts separately."}
             {kind === "duration" &&
-              " Saving an allowance also authorizes duration-only synchronization of unused saved-work recovery at the student's next preflight. Exam default edits do not revise it."}
+              " For older unused recovery attempts, saving this time limit also authorizes updates at the student's next setup. Changing exam defaults does not."}
           </small>
           {error && (
             <span className="warn" role="alert">

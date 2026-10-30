@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, chicago } from "./api.js";
 import { allGrants, grantStatus, grantUnused } from "./grant-options.js";
 import { Modal } from "./modal.js";
+import { timeLimit } from "./local-date-time.js";
 
 type Outcome = {
   state: "cancelled" | "unknown" | "refused";
@@ -217,7 +218,7 @@ export function CancelExtraAttempts({
                   }
                 />
                 <strong>{row.username}</strong> · Extra attempt ·{" "}
-                {row.settings.duration / 60} minutes
+                {timeLimit(row.settings.duration)}
               </label>
               <p>
                 Created {chicago(row.issued_at)} ·{" "}

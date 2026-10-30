@@ -1,6 +1,13 @@
 import React from "react";
 import { chicago } from "./api.js";
 
+const permissionLabels: Record<string, string> = {
+  AVAILABLE: "Unused",
+  PENDING_NATIVE: "Preparing saved work",
+  REVOKED: "Cancelled",
+  CONSUMED: "Started",
+};
+
 export type SourceAttemptLink = { id: string; exam: string };
 export function AttemptProvenance({
   attempt,
@@ -17,38 +24,43 @@ export function AttemptProvenance({
   if (!g) return null; // Older cached metadata remains readable.
   if (g.state === "legacy")
     return (
-      <small className="attempt-grant-summary">
-        Legacy attempt · no grant snapshot recorded
-      </small>
+      <details className="attempt-grant-summary">
+        <summary>Details</summary>
+        <small>Earlier attempt · saved settings unavailable</small>
+      </details>
     );
   if (g.state !== "recorded")
     return (
-      <small className="attempt-grant-summary warn">
-        Grant linkage requires inspection{!compact && <span>{g.message}</span>}
-      </small>
+      <div className="attempt-grant-summary warn">
+        <small>Attempt settings need review</small>
+        {!compact && (
+          <details>
+            <summary>Details</summary>
+            <p>{g.message}</p>
+          </details>
+        )}
+      </div>
     );
   const source = g.source_attempt;
   const label =
     g.work.kind === "empty"
-      ? "Empty work folder"
+      ? "Empty folder"
       : g.work.kind === "template"
-        ? `Template ${g.work.name} · ${g.work.hash.slice(0, 12)}`
+        ? `Starter files: ${g.work.name}`
         : source?.available_in_gateway
           ? `Saved work · ${source.exam} · Attempt ${source.attempt_number}`
-          : `Saved work · ${g.work.attempt}`;
+          : "Saved work · source details unavailable";
   const grantButton = onGrant ? (
     <button
       type="button"
-      title={`Grant ${g.id}`}
+      title="Attempt settings"
       onClick={() => onGrant(g.id)}
-      aria-label={`Inspect grant for ${attempt.username} attempt ${attempt.attempt_number || 1}`}
+      aria-label={`View settings for ${attempt.username} attempt ${attempt.attempt_number || 1}`}
     >
-      Grant {g.issuance_order} · revision {g.revision}
+      Attempt settings
     </button>
   ) : (
-    <span>
-      Grant {g.issuance_order} · revision {g.revision}
-    </span>
+    <span>Attempt settings</span>
   );
   const sourceButton =
     source?.available_in_gateway && onSource ? (
@@ -57,7 +69,7 @@ export function AttemptProvenance({
         onClick={() => onSource({ id: source.id, exam: source.exam })}
         aria-label={`Review saved source attempt ${source.attempt_number} for ${attempt.username}`}
       >
-        Review source attempt
+        View previous attempt
       </button>
     ) : null;
   if (compact)
@@ -66,87 +78,92 @@ export function AttemptProvenance({
         {grantButton}
         <span>{label}</span>
         {sourceButton}
-        <span className="grant-reason" title={g.reason}>
-          Granted: {g.reason}
-        </span>
       </div>
     );
   return (
-    <section className="grant-provenance" aria-label="Grant and workspace">
-      <h3>Grant and workspace</h3>
+    <details className="grant-provenance">
+      <summary>Starting files and settings</summary>
       <p>
-        {grantButton} · Current grant status:{" "}
-        {String(g.current_status).toLowerCase().replaceAll("_", " ")}
+        {grantButton} · Current permission status:{" "}
+        {permissionLabels[g.current_status] ?? "Needs review"}
       </p>
       {g.current_revision !== g.revision && (
-        <p>
-          This attempt used revision {g.revision}. The grant is now revision{" "}
-          {g.current_revision}; later changes do not rewrite this attempt.
-        </p>
+        <p>This attempt keeps its saved settings despite later changes.</p>
       )}
-      <dl className="review-facts">
-        <div>
-          <dt>Grant ID</dt>
-          <dd>
-            <code>{g.id}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>Applied revision hash</dt>
-          <dd>
-            <code>{g.hash}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>Granted allowance</dt>
-          <dd>
-            {g.settings.duration / 60} minutes · webcam{" "}
-            {g.settings.webcam ? "required" : "optional"}
-          </dd>
-        </div>
-        <div>
-          <dt>Applied Begin window</dt>
-          <dd>
-            {chicago(g.settings.earliest)} — {chicago(g.settings.latest)}
-          </dd>
-        </div>
-        <div>
-          <dt>Issued</dt>
-          <dd>
-            {chicago(g.issued_at)} · {g.actor}
-          </dd>
-        </div>
-        <div>
-          <dt>Authorization reason</dt>
-          <dd>{g.reason}</dd>
-        </div>
-        {g.revision > 1 && (
+      <details>
+        <summary>Technical details</summary>
+        <dl className="review-facts">
           <div>
-            <dt>Applied revision reason</dt>
-            <dd>{g.revision_reason}</dd>
-          </div>
-        )}
-        <div>
-          <dt>Workspace source</dt>
-          <dd>
-            {label} {sourceButton}
-          </dd>
-        </div>
-        {g.work.kind === "saved" && (
-          <div>
-            <dt>Source archive checksum</dt>
+            <dt>Permission reference</dt>
             <dd>
-              <code>{g.work.checksum}</code>
+              <code>{g.id}</code>
             </dd>
           </div>
-        )}
-        <div>
-          <dt>Materials</dt>
-          <dd>
-            {g.settings.template} · <code>{g.settings.template_version}</code>
-          </dd>
-        </div>
-      </dl>
+          <div>
+            <dt>Saved revision hash</dt>
+            <dd>
+              <code>{g.hash}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Time limit</dt>
+            <dd>
+              {g.settings.duration / 60} minutes · webcam{" "}
+              {g.settings.webcam ? "required" : "optional"}
+            </dd>
+          </div>
+          <div>
+            <dt>Start window</dt>
+            <dd>
+              {chicago(g.settings.earliest)} — {chicago(g.settings.latest)}
+            </dd>
+          </div>
+          <div>
+            <dt>Issued</dt>
+            <dd>
+              {chicago(g.issued_at)} · {g.actor}
+            </dd>
+          </div>
+          <div>
+            <dt>Reason</dt>
+            <dd>{g.reason}</dd>
+          </div>
+          {g.revision > 1 && (
+            <div>
+              <dt>Setting-change reason</dt>
+              <dd>{g.revision_reason}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Starting files</dt>
+            <dd>
+              {label} {sourceButton}
+            </dd>
+          </div>
+          {g.work.kind === "saved" && (
+            <div>
+              <dt>Archive checksum</dt>
+              <dd>
+                <code>{g.work.checksum}</code>
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt>Materials</dt>
+            <dd>
+              {g.settings.template} · <code>{g.settings.template_version}</code>
+            </dd>
+          </div>
+          {g.work.kind === "saved" && (
+            <div>
+              <dt>Previous attempt reference</dt>
+              <dd>
+                <code>{g.work.attempt}</code>
+              </dd>
+            </div>
+          )}
+        </dl>
+      </details>
       {source?.available_in_gateway && (
         <p>
           Source history:{" "}
@@ -155,25 +172,23 @@ export function AttemptProvenance({
             .replaceAll("_", " ")}{" "}
           ·{" "}
           {source.recorded_protected
-            ? "submission recorded secured"
-            : "submission protection not recorded"}
+            ? "files recorded protected"
+            : "file protection not confirmed"}
           {!source.checksum_matches &&
-            " · recorded checksum differs; inspect source history"}
+            " · verification differs; check source history"}
           .
         </p>
       )}
       {g.work.kind === "saved" && !source?.available_in_gateway && (
         <p className="warn">
-          Source gateway history is unavailable or differs from this account.
-          Preserve the source ID and inspect the native archive; this does not
-          establish archive loss.
+          Source history is unavailable. An administrator must check the saved
+          files.
         </p>
       )}
       <small>
-        Recorded grant and history metadata. The original/current attempt
-        deadlines govern its clock; native archive integrity and availability
-        require fresh verification.
+        These are saved settings. Files are verified again before a new attempt
+        starts.
       </small>
-    </section>
+    </details>
   );
 }

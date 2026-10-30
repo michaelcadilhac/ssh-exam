@@ -1,5 +1,15 @@
 # Exact template selection (implemented/tested locally; not deployed)
 
+October30 local UI candidate: **Exam settings → Exam files** retrieves published
+name/version pairs; exact hashes are in File details. **Administration → Starter
+files** is the read-only catalog. Instructors do not copy a hash or type a source
+path. CLI flags and native exact-source verification are unchanged. Explicit
+legacy-source defaults remain a CLI compatibility operation, not a web-picker
+choice. This UI candidate is not deployed. The dated milestone description below
+is historical; current local workflow is in instructor-operations.md and installed
+release status is in release-readiness.md.
+
+
 Actual workflow: root installs/verifies/syncs a catalog name/hash; an operator
 selects it with `examctl web exams create/update --template-version HASH` or the
 separate Immutable template hash field in Exam settings. The shared writer

@@ -1,462 +1,1349 @@
-import React, { useEffect, useRef, useState } from "react";
-import { api, chicago } from "./api.js";
+import { useEffect, useId, useState } from "react";
+import { api } from "./api.js";
 import { Modal } from "./modal.js";
-import { GrantWorkspaceFields, workspaceChoice } from "./grant-workspace.js";
+import { allGrants, grantStatus, grantUnused } from "./grant-options.js";
+import { TemplatePicker } from "./template-picker.js";
+import { SavedWorkSetup } from "./saved-work-setup.js";
+import { workspaceChoice } from "./grant-workspace.js";
+import {
+  attemptsForExam,
+  latestStarted,
+  savedWorkLabel,
+  savedWorkUsable,
+} from "./exam-file-options.js";
+import {
+  deviceTimeZone,
+  parseLocalDateTime,
+  shortDateTime,
+  timeLimit,
+  utcOffset,
+  windowLabel,
+} from "./local-date-time.js";
+import { LocalDateTimeInput } from "./local-date-time-input.js";
+import {
+  MAX_COLLECTION_FILE_MIB,
+  MAX_COLLECTION_TOTAL_MIB,
+} from "../../../packages/protocol/collection-limits.js";
 
-const fields = [
-  ["name", "Saved exam name"],
-  ["duration", "Allowance seconds"],
-  ["earliest", "Earliest Begin (RFC3339 with zone)"],
-  ["latest", "Latest Begin (RFC3339 with zone)"],
-  ["terminals", "Terminal limit"],
-  ["template", "Materials template"],
-  ["template_version", "Exact attested template hash"],
-  ["collection_file_mib", "Per-file limit MiB"],
-  ["collection_total_mib", "Total limit MiB"],
+type ChangeRow = {
+  grant: any;
+  operation: "revise" | "revoke";
+  body: any;
+  state: "review" | "noop" | "applying" | "saved" | "refused" | "unknown";
+  error?: string;
+  result?: any;
+};
+const prefix = "exam-admin-unused:";
+const uuid =
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+const title = (g: any) =>
+  ["ENROLLMENT", "REVIEWED_NEW"].includes(g.issuance)
+    ? "First attempt"
+    : g.issuance === "PRACTICE"
+      ? "Practice attempt"
+      : "Extra attempt";
+const sameWork = (a: any, b: any) =>
+  a?.kind === b?.kind &&
+  (a.kind === "empty" || a.kind === "saved"
+    ? a.kind === "empty" ||
+      (a.attempt === b.attempt && a.checksum === b.checksum)
+    : a.name === b.name && a.hash === b.hash);
+const numeric = [
+  ["terminals", "Terminals", 1, 4],
+  [
+    "collection_file_mib",
+    "Maximum file size (MiB)",
+    1,
+    MAX_COLLECTION_FILE_MIB,
+  ],
+  [
+    "collection_total_mib",
+    "Maximum total size (MiB)",
+    1,
+    MAX_COLLECTION_TOTAL_MIB,
+  ],
 ] as const;
-export function beginTime(value: string) {
-  const parts =
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/.exec(
-      value,
-    );
-  if (!parts)
-    throw Error(
-      "Begin dates require full RFC3339 date/time with Z or an explicit offset",
-    );
-  const [year, month, day, hour, minute, second] = parts
-      .slice(1, 7)
-      .map(Number),
-    date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day ||
-    date.getUTCHours() !== hour ||
-    date.getUTCMinutes() !== minute ||
-    date.getUTCSeconds() !== second
-  )
-    throw Error("Invalid Begin calendar date/time");
-  const at = Date.parse(value);
-  if (!Number.isSafeInteger(at))
-    throw Error("Invalid explicit Begin time zone");
-  return at;
+const compactGrant = (g: any) =>
+  g
+    ? Object.fromEntries(
+        [
+          "id",
+          "exam",
+          "username",
+          "revision",
+          "status",
+          "issuance",
+          "issued_at",
+          "settings",
+          "work",
+        ].map((key) => [key, g[key]]),
+      )
+    : undefined;
+function restored(
+  key: string,
+  exam: string,
+  names: string[],
+): ChangeRow[] | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(key) || "null");
+    if (
+      !Array.isArray(value) ||
+      !value.length ||
+      value.length > 200 ||
+      new Set(value.map((r) => r.grant.id)).size !== value.length ||
+      value.some(
+        (r) =>
+          !uuid.test(r.grant?.id) ||
+          r.grant.exam !== exam ||
+          !names.includes(r.grant.username) ||
+          !["revise", "revoke"].includes(r.operation) ||
+          !uuid.test(r.body?.request) ||
+          r.body.revision !== r.grant.revision ||
+          ![
+            "review",
+            "noop",
+            "applying",
+            "saved",
+            "refused",
+            "unknown",
+          ].includes(r.state),
+      )
+    )
+      return null;
+    return value.map((r) => ({
+      ...r,
+      state: r.state === "applying" ? "unknown" : r.state,
+    }));
+  } catch {
+    return null;
+  }
 }
+function workLabel(work: any, sources: any[]) {
+  if (work.kind === "empty") return "Empty folder";
+  if (work.kind === "template") return `Starter files: ${work.name}`;
+  const source = sources.find((s) => s?.id === work.attempt);
+  return source
+    ? `Saved work: ${savedWorkLabel(source, sources)}`
+    : "Saved work";
+}
+function valueLabel(key: string, value: any) {
+  if (key === "duration") return timeLimit(value);
+  if (key === "webcam") return value ? "Required" : "Optional";
+  if (key === "earliest" || key === "latest")
+    return `${shortDateTime(value)} (${utcOffset(value)})`;
+  return String(value);
+}
+
 export function AttemptGrantsDialog({
   exam,
   username,
+  students,
+  actor,
+  initialGrantId,
   onClose,
   onChanged,
-  initialGrantId,
 }: {
   exam: string;
-  username: string;
+  username?: string;
+  students?: string[];
+  actor: string;
+  initialGrantId?: string;
   onClose: () => void;
   onChanged: () => Promise<void>;
-  initialGrantId?: string;
 }) {
-  const [grant, setGrant] = useState<any>(null),
-    [loaded, setLoaded] = useState(false),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [draft, setDraft] = useState<Record<string, string>>({}),
-    [work, setWork] = useState<any>({ kind: "empty" }),
-    [reason, setReason] = useState(""),
-    [pending, setPending] = useState<{ operation: string; body: any } | null>(
-      null,
-    );
-  const alive = useRef(true);
-  const selectedGrant = useRef<string | null>(initialGrantId ?? null),
-    catalogRef = useRef<any[]>([]);
+  const names = [...new Set(students ?? (username ? [username] : []))].sort(),
+    cacheKey = prefix + JSON.stringify([actor, exam, names]),
+    formId = useId();
   const [catalog, setCatalog] = useState<any[]>([]),
-    [next, setNext] = useState<string | null>(null);
-  const inspect = async (
-    signal: AbortSignal,
-    choice = selectedGrant.current,
-    after?: string,
-  ) => {
-    const page = await api(
-      `/admin/exams/${encodeURIComponent(exam)}/grants?username=${encodeURIComponent(username)}${after ? `&after=${encodeURIComponent(after)}` : ""}`,
-      undefined,
-      undefined,
-      signal,
-    );
-    if (!alive.current) return;
-    const options = after
-      ? [
-          ...catalogRef.current,
-          ...page.grants.filter(
-            (g: any) => !catalogRef.current.some((c) => c.id === g.id),
-          ),
-        ]
-      : page.grants;
-    if (after) {
-      catalogRef.current = options;
-      setCatalog(options);
-      setNext(page.next);
-      return;
-    }
-    const currentID = choice ?? options[0]?.id;
-    const current = currentID
-      ? await api(`/admin/grants/${currentID}`, undefined, undefined, signal)
-      : null;
-    if (!alive.current) return;
-    if (current && (current.exam !== exam || current.username !== username))
-      throw Error(
-        "Grant belongs to a different exam or student. Preserve the original attempt and inspect its grant linkage.",
+    [selected, setSelected] = useState(new Set<string>()),
+    [loaded, setLoaded] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [review, setReview] = useState<ChangeRow[] | null>(() =>
+      restored(cacheKey, exam, names),
+    ),
+    [draft, setDraft] = useState<Record<string, string>>({}),
+    [webcam, setWebcam] = useState("keep"),
+    [windowMode, setWindowMode] = useState("keep"),
+    [opens, setOpens] = useState(""),
+    [closes, setCloses] = useState(""),
+    [openOccurrence, setOpenOccurrence] = useState(0),
+    [closeOccurrence, setCloseOccurrence] = useState(0),
+    [workMode, setWorkMode] = useState("keep"),
+    [workName, setWorkName] = useState(""),
+    [workHash, setWorkHash] = useState(""),
+    [materialChange, setMaterialChange] = useState(false),
+    [materialName, setMaterialName] = useState(""),
+    [materialHash, setMaterialHash] = useState(""),
+    [reason, setReason] = useState("Change selected unused attempt settings"),
+    [exams, setExams] = useState<any[]>([]),
+    [examError, setExamError] = useState(""),
+    [sourceExam, setSourceExam] = useState(exam),
+    [sources, setSources] = useState<any[]>([]),
+    [sourceReload, setSourceReload] = useState(0),
+    [savedChoices, setSavedChoices] = useState<Record<string, string>>({}),
+    [sourceError, setSourceError] = useState(""),
+    [sourceLoading, setSourceLoading] = useState(false),
+    [snapshots, setSnapshots] = useState<Record<string, any>>({}),
+    [statusRefresh, setStatusRefresh] = useState(0),
+    [histories, setHistories] = useState<Record<string, any>>({});
+  const load = async (signal?: AbortSignal) => {
+    const values = await allGrants(exam, names, signal);
+    if (initialGrantId && !values.some((g) => g.id === initialGrantId)) {
+      const g = await api(
+        `/admin/grants/${initialGrantId}`,
+        undefined,
+        undefined,
+        signal,
       );
-    if (current && !options.some((g: any) => g.id === current.id))
-      options.push(current);
-    catalogRef.current = options;
-    setCatalog(options);
-    setNext(page.next);
-    selectedGrant.current = current?.id ?? null;
-    setGrant(current);
-    setWork(current?.work ?? { kind: "empty" });
+      if (g.exam !== exam || !names.includes(g.username))
+        throw Error("The selected settings belong to another student or exam.");
+      values.push(g);
+    }
+    if (signal?.aborted) return;
+    setCatalog(values);
     setLoaded(true);
-    setError("");
-    setPending(null);
-    setReason("");
-    setDraft(
-      current
-        ? Object.fromEntries([
-            ...fields.map(([k]) => [
-              k,
-              ["earliest", "latest"].includes(k)
-                ? new Date(current.settings[k]).toISOString()
-                : String(current.settings[k]),
-            ]),
-            ["webcam", String(current.settings.webcam)],
-          ])
-        : {},
-    );
+    const labels = values
+      .filter(
+        (g) =>
+          g.work.kind === "saved" &&
+          (grantUnused(g) || g.id === initialGrantId),
+      )
+      .slice(0, 200);
+    if (labels.length) {
+      const snapshots = await readStatus(
+        labels.map((g) => ({ id: g.id, revision: g.revision })),
+        signal,
+      );
+      if (!signal?.aborted) setSnapshots((old) => ({ ...old, ...snapshots }));
+    }
+    setSelected((old) => {
+      const eligible = values.filter(grantUnused),
+        current = new Set(
+          [...old].filter((id) => eligible.some((g) => g.id === id)),
+        );
+      if (
+        !old.size &&
+        initialGrantId &&
+        eligible.some((g) => g.id === initialGrantId)
+      )
+        current.add(initialGrantId);
+      else if (!old.size && names.length === 1 && eligible.length === 1)
+        current.add(eligible[0].id);
+      return current;
+    });
   };
-  const browse = (choice = selectedGrant.current, after?: string) => {
-    if (busy || pending) return;
-    setBusy(true);
-    void inspect(new AbortController().signal, choice, after)
-      .catch((e) => setError(e.message))
-      .finally(() => setBusy(false));
+  const loadExams = async (signal?: AbortSignal) => {
+    try {
+      const value = await api(
+        "/admin/exams?lifecycle=all",
+        undefined,
+        undefined,
+        signal,
+      );
+      if (!Array.isArray(value)) throw Error("Could not read the exam list.");
+      if (!signal?.aborted) {
+        setExams(value);
+        setExamError("");
+      }
+    } catch (e) {
+      if (!signal?.aborted) setExamError((e as Error).message);
+    }
   };
   useEffect(() => {
     const abort = new AbortController();
-    alive.current = true;
-    void inspect(abort.signal).catch((e) => {
-      if (alive.current) {
+    void load(abort.signal).catch((e) => {
+      if (!abort.signal.aborted) {
         setError(e.message);
         setLoaded(true);
       }
     });
-    return () => {
-      alive.current = false;
-      abort.abort();
-    };
-  }, [exam, username]);
-  const submit = async (operation: string) => {
-    if (!grant || busy) return;
-    setError("");
-    let intent = pending;
-    try {
-      if (!intent) {
-        const changes: Record<string, unknown> = {};
-        if (operation === "revise") {
-          for (const [key] of fields) {
-            const value = ["earliest", "latest"].includes(key)
-              ? beginTime(draft[key])
-              : [
-                    "duration",
-                    "terminals",
-                    "collection_file_mib",
-                    "collection_total_mib",
-                  ].includes(key)
-                ? Number(draft[key])
-                : draft[key];
-            if (typeof value === "number" && !Number.isSafeInteger(value))
-              throw Error(
-                "Enter complete finite settings; Begin dates require an explicit time zone",
-              );
-            if (value !== grant.settings[key]) changes[key] = value;
-          }
-          if ((draft.webcam === "true") !== grant.settings.webcam)
-            changes.webcam = draft.webcam === "true";
-          if (
-            !Object.keys(changes).length &&
-            JSON.stringify(work) === JSON.stringify(grant.work)
-          )
-            throw Error("Choose an explicit setting to revise");
+    void loadExams(abort.signal);
+    return () => abort.abort();
+  }, []);
+  useEffect(() => {
+    if (workMode !== "saved") return;
+    const abort = new AbortController();
+    setSourceLoading(true);
+    setSourceError("");
+    setSources([]);
+    void attemptsForExam(sourceExam, undefined, abort.signal)
+      .then((value) => {
+        if (!abort.signal.aborted) {
+          setSources(value);
+          setSourceLoading(false);
         }
-        intent = {
-          operation,
-          body: {
-            revision: grant.revision,
-            reason,
-            request: crypto.randomUUID(),
-            ...(operation === "revise"
-              ? {
-                  changes,
-                  work: workspaceChoice(
-                    work.kind,
-                    work.kind === "saved" ? work.attempt : (work.name ?? ""),
-                    work.kind === "saved" ? work.checksum : (work.hash ?? ""),
-                  ),
-                }
-              : {}),
-          },
-        };
-        setPending(intent);
+      })
+      .catch((e) => {
+        if (!abort.signal.aborted) {
+          setSourceError(e.message);
+          setSourceLoading(false);
+        }
+      });
+    return () => abort.abort();
+  }, [sourceExam, workMode, sourceReload]);
+  const saveReview = (rows: ChangeRow[]) => {
+    sessionStorage.setItem(
+      cacheKey,
+      JSON.stringify(
+        rows.map((row) => ({
+          ...row,
+          grant: compactGrant(row.grant),
+          result: compactGrant(row.result),
+        })),
+      ),
+    );
+    setReview(rows);
+  };
+  const readStatus = async (
+    refs: { id: string; revision: number }[],
+    signal?: AbortSignal,
+  ) => {
+    const value = await api(
+      `/admin/exams/${encodeURIComponent(exam)}/grants/status`,
+      { rows: refs },
+      undefined,
+      signal,
+    );
+    if (
+      !Array.isArray(value.rows) ||
+      value.rows.length !== refs.length ||
+      new Set(value.rows.map((r: any) => r.id)).size !== refs.length ||
+      value.rows.some(
+        (r: any) =>
+          !refs.some((ref) => ref.id === r.id && ref.revision === r.revision) ||
+          r.grant?.id !== r.id ||
+          r.grant.exam !== exam ||
+          !names.includes(r.grant.username),
+      )
+    )
+      throw Error(
+        "Attempt status differs from the selection. Refresh before continuing.",
+      );
+    return Object.fromEntries(value.rows.map((r: any) => [r.id, r]));
+  };
+  const observed = review
+    ? review.map((row) => ({
+        id: row.grant.id,
+        revision: row.result?.revision ?? row.grant.revision,
+      }))
+    : catalog
+        .filter(
+          (g) =>
+            selected.has(g.id) && g.work.kind === "saved" && grantUnused(g),
+        )
+        .map((g) => ({ id: g.id, revision: g.revision }));
+  useEffect(() => {
+    if (!observed.length || observed.length > 200) return;
+    const abort = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const value = await readStatus(observed, abort.signal);
+        if (abort.signal.aborted) return;
+        setSnapshots((old) => ({ ...old, ...value }));
+        if (
+          Object.values(value).some(
+            (s: any) =>
+              s.grant_status === "PENDING_NATIVE" &&
+              ["QUEUED", "RUNNING", "READY"].includes(s.status),
+          )
+        )
+          timer = setTimeout(() => void poll(), 3000);
+      } catch (e) {
+        if (!abort.signal.aborted)
+          setSnapshots((old) => ({
+            ...old,
+            ...Object.fromEntries(
+              observed.map((ref) => [
+                ref.id,
+                { read_error: (e as Error).message },
+              ]),
+            ),
+          }));
       }
-      setBusy(true);
-      const result = await api(
-        `/admin/grants/${grant.id}/${intent.operation}`,
-        intent.body,
+    };
+    void poll();
+    return () => {
+      abort.abort();
+      clearTimeout(timer);
+    };
+  }, [JSON.stringify([observed, review?.map((r) => r.state)]), statusRefresh]);
+  const selectedGrants = catalog.filter((g) => selected.has(g.id)),
+    selectedNames = [...new Set(selectedGrants.map((g) => g.username))];
+  const savedSource = (name: string) => {
+    if (sourceLoading || sourceError)
+      throw Error("Load the saved-work list before reviewing.");
+    const last = savedChoices[name]
+      ? sources.find((s) => s.id === savedChoices[name] && s.username === name)
+      : latestStarted(sources, name);
+    if (!last || !savedWorkUsable(last))
+      throw Error(
+        `${name}: choose protected saved work. No older source was selected automatically.`,
+      );
+    return last;
+  };
+  const makeReview = async (operation: "revise" | "revoke") => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (!selectedGrants.length || selectedGrants.length > 200)
+        throw Error("Choose from 1 to 200 unused attempts.");
+      if (reason.trim().length < 8 || reason.trim().length > 1000)
+        throw Error("Use a reason from 8 to 1,000 characters.");
+      const current = await readStatus(
+        selectedGrants.map((g) => ({ id: g.id, revision: g.revision })),
+        new AbortController().signal,
+      );
+      setSnapshots(current);
+      const changed = selectedGrants.filter(
+        (g) =>
+          current[g.id].grant.revision !== g.revision ||
+          !grantUnused(current[g.id].grant),
+      );
+      if (changed.length)
+        throw Error(
+          `Settings changed or setup started for ${[...new Set(changed.map((g) => g.username))].join(", ")}. Refresh the selection and review again.`,
+        );
+      const rows: ChangeRow[] = selectedGrants.map((old) => {
+        const grant = current[old.id].grant,
+          changes: Record<string, any> = {};
+        let work: any;
+        if (operation === "revise") {
+          if (draft.duration) {
+            const n = Number(draft.duration);
+            if (!/^\d+$/.test(draft.duration) || n < 1 || n > 360)
+              throw Error("Choose a time limit from 1 to 360 whole minutes.");
+            if (n * 60 !== grant.settings.duration) changes.duration = n * 60;
+          }
+          if (
+            webcam !== "keep" &&
+            (webcam === "true") !== grant.settings.webcam
+          )
+            changes.webcam = webcam === "true";
+          if (windowMode === "set")
+            for (const [key, value, occurrence] of [
+              ["earliest", opens, openOccurrence],
+              ["latest", closes, closeOccurrence],
+            ] as const) {
+              if (value) {
+                const at = parseLocalDateTime(value, occurrence);
+                if (at !== grant.settings[key]) changes[key] = at;
+              }
+            }
+          for (const [key, label, min, max] of numeric)
+            if (draft[key]) {
+              const n = Number(draft[key]);
+              if (
+                !/^\d+$/.test(draft[key]) ||
+                !Number.isSafeInteger(n) ||
+                n < min ||
+                n > max
+              )
+                throw Error(
+                  `${label}: choose a whole number from ${min} to ${max}.`,
+                );
+              if (n !== grant.settings[key]) changes[key] = n;
+            }
+          if (draft.name?.trim() && draft.name.trim() !== grant.settings.name)
+            changes.name = draft.name.trim();
+          if (materialChange) {
+            workspaceChoice("template", materialName, materialHash);
+            if (materialName !== grant.settings.template)
+              changes.template = materialName;
+            if (materialHash !== grant.settings.template_version)
+              changes.template_version = materialHash;
+          }
+          if (
+            (changes.latest ?? grant.settings.latest) <=
+            (changes.earliest ?? grant.settings.earliest)
+          )
+            throw Error(
+              `${grant.username}: closing time must be after opening time.`,
+            );
+          if (
+            (changes.collection_total_mib ??
+              grant.settings.collection_total_mib) <
+            (changes.collection_file_mib ?? grant.settings.collection_file_mib)
+          )
+            throw Error(
+              `${grant.username}: total file limit must be at least the per-file limit.`,
+            );
+          if (workMode === "saved") {
+            const source = savedSource(grant.username);
+            work = workspaceChoice("saved", source.id, source.checksum);
+          } else if (workMode !== "keep")
+            work = workspaceChoice(workMode, workName, workHash);
+          if (work && sameWork(work, grant.work)) work = undefined;
+        }
+        const body = {
+          revision: grant.revision,
+          reason: reason.trim(),
+          request: crypto.randomUUID(),
+          ...(operation === "revise"
+            ? { changes, ...(work ? { work } : {}) }
+            : {}),
+        };
+        return {
+          grant,
+          operation,
+          body,
+          state:
+            operation === "revise" && !Object.keys(changes).length && !work
+              ? "noop"
+              : "review",
+        };
+      });
+      saveReview(rows);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const apply = async () => {
+    if (!review || busy) return;
+    const pending = review.filter((r) =>
+      ["review", "unknown"].includes(r.state),
+    );
+    if (!pending.length) return;
+    setBusy(true);
+    setError("");
+    try {
+      const identity = await api("/session");
+      if (identity.role !== "admin" || identity.username !== actor)
+        throw Error(
+          "Instructor sign-in changed. Return to the original sign-in before retrying these requests.",
+        );
+      const applying = review.map((r) =>
+        pending.includes(r) ? { ...r, state: "applying" as const } : r,
+      );
+      saveReview(applying);
+      let next: ChangeRow[];
+      try {
+        const response = await api(
+          `/admin/exams/${encodeURIComponent(exam)}/grants/change`,
+          {
+            rows: pending.map((r) => ({
+              id: r.grant.id,
+              operation: r.operation,
+              body: r.body,
+            })),
+          },
+          undefined,
+          new AbortController().signal,
+        );
+        if (
+          !Array.isArray(response.results) ||
+          response.results.length !== pending.length ||
+          new Set(response.results.map((r: any) => r.id)).size !==
+            pending.length ||
+          response.results.some(
+            (r: any) =>
+              !pending.some(
+                (p) => p.grant.id === r.id && p.body.request === r.request,
+              ) || !["saved", "refused", "unknown"].includes(r.outcome),
+          )
+        )
+          throw Error("Change results do not match the original requests.");
+        next = review.map((row) => {
+          if (!pending.includes(row)) return row;
+          const result = response.results.find(
+            (r: any) => r.id === row.grant.id,
+          );
+          if (result.outcome === "saved") {
+            const g = result.grant;
+            const expected = {
+              ...row.grant.settings,
+              ...(row.body.changes ?? {}),
+            };
+            if (
+              !g ||
+              !g.settings ||
+              g.id !== row.grant.id ||
+              g.exam !== exam ||
+              g.username !== row.grant.username ||
+              g.revision !==
+                row.grant.revision + (row.operation === "revise" ? 1 : 0) ||
+              (row.operation === "revoke" && g.status !== "REVOKED") ||
+              Object.keys({ ...expected, ...g.settings }).some(
+                (key) => expected[key] !== g.settings[key],
+              ) ||
+              !sameWork(row.body.work ?? row.grant.work, g.work)
+            )
+              return {
+                ...row,
+                state: "unknown",
+                error: "The result did not confirm this exact change.",
+              };
+            return { ...row, state: "saved", result: g, error: "" };
+          }
+          return {
+            ...row,
+            state:
+              result.outcome === "refused" && row.state !== "unknown"
+                ? "refused"
+                : "unknown",
+            error: result.error || "The change was not confirmed.",
+          };
+        });
+      } catch (e) {
+        next = review.map((row) =>
+          pending.includes(row)
+            ? {
+                ...row,
+                state:
+                  row.state !== "unknown" &&
+                  [400, 403, 404, 409].includes((e as any).status)
+                    ? "refused"
+                    : "unknown",
+                error: (e as Error).message,
+              }
+            : row,
+        );
+      }
+      try {
+        saveReview(next);
+      } catch {
+        setReview(next);
+        setError(
+          "Results are shown, but this browser could not save them for reopening.",
+        );
+      }
+      await onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const loadHistory = async (grant: any, before?: number) => {
+    try {
+      const value = await api(
+        `/admin/grants/${grant.id}${before ? `?before=${before}` : ""}`,
+        undefined,
         undefined,
         new AbortController().signal,
       );
-      if (!alive.current) return;
-      setGrant(result);
-      setPending(null);
-      setReason("");
-      await onChanged();
-      await inspect(new AbortController().signal);
+      if (
+        value.id !== grant.id ||
+        value.username !== grant.username ||
+        value.exam !== exam
+      )
+        throw Error("History differs from this attempt.");
+      setHistories((old) => ({
+        ...old,
+        [grant.id]: {
+          rows: before
+            ? [...(old[grant.id]?.rows ?? []), ...value.history]
+            : value.history,
+          next: value.history_next,
+        },
+      }));
+      if (grant.work.kind === "saved" && !snapshots[grant.id]?.source) {
+        const status = await readStatus([
+          { id: grant.id, revision: grant.revision },
+        ]);
+        setSnapshots((old) => ({ ...old, ...status }));
+      }
     } catch (e) {
-      if ([400, 403, 404, 409].includes((e as any).status)) setPending(null);
-      if (alive.current) setError((e as Error).message);
-    } finally {
-      if (alive.current) setBusy(false);
+      setHistories((old) => ({
+        ...old,
+        [grant.id]: { ...old[grant.id], error: (e as Error).message },
+      }));
     }
   };
-  return (
-    <Modal title={`Attempt grants for ${username}`} wide onClose={onClose}>
-      <p>
-        Issued settings are fixed. Default or enrollment edits do not revise
-        them. Inspect or explicitly revise/revoke an unused initial or
-        additional grant. Use the selected exam's issuance workflows to
-        authorize a new grant; historical attempts and submissions remain
-        protected.
-      </p>
-      {!loaded && <p role="status">Loading saved grant…</p>}
-      {error && (
-        <p role="alert" className="warn">
-          {error}
-        </p>
-      )}
-      {loaded && !grant && !error && (
+  const grantRow = (g: any) => {
+    const setupSelected =
+      selected.has(g.id) &&
+      selected.size <= 200 &&
+      g.work.kind === "saved" &&
+      grantUnused(g);
+    return (
+      <article key={g.id} className="clock-batch-row">
+        <label>
+          <input
+            type="checkbox"
+            disabled={busy || !grantUnused(g)}
+            checked={selected.has(g.id)}
+            onChange={(e) =>
+              setSelected((old) => {
+                const value = new Set(old);
+                e.target.checked ? value.add(g.id) : value.delete(g.id);
+                return value;
+              })
+            }
+          />
+          {title(g)} · {shortDateTime(g.issued_at)}
+          {!setupSelected && ` · ${grantStatus(g)}`}
+        </label>
         <p>
-          No grant is recorded. Existing legacy enrollment/history is not
-          automatically backfilled.
+          {timeLimit(g.settings.duration)} · Webcam{" "}
+          {g.settings.webcam ? "required" : "optional"}
         </p>
-      )}
-      {grant && (
-        <>
-          {catalog.length > 1 && (
-            <label>
-              Saved grant
-              <select
-                value={grant.id}
-                disabled={busy || !!pending}
-                onChange={(e) => browse(e.target.value)}
-              >
-                {catalog.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.issuance === "ADDITIONAL_TEMPLATE"
-                      ? "Additional"
-                      : g.issuance === "PRACTICE"
-                        ? "Practice"
-                        : "Initial"}{" "}
-                    · {g.status} · {g.settings.duration / 60} minutes · {g.id}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <p>
+          {workLabel(
+            g.work,
+            [...sources, snapshots[g.id]?.source].filter(Boolean),
           )}
-          {next && (
+        </p>
+        {setupSelected && (
+          <SavedWorkSetup
+            id={g.id}
+            revision={g.revision}
+            snapshot={snapshots[g.id] ?? null}
+            onRefresh={() => setStatusRefresh((n) => n + 1)}
+          />
+        )}
+        <details
+          open={g.id === initialGrantId}
+          onToggle={(e) => {
+            if (e.currentTarget.open && !histories[g.id]) void loadHistory(g);
+          }}
+        >
+          <summary>Details and history</summary>
+          <p>{windowLabel(g.settings.earliest, g.settings.latest)}</p>
+          <p>
+            Reference {g.id} · Revision {g.revision}
+          </p>
+          {histories[g.id]?.rows?.map((h: any) => (
+            <p key={h.revision}>
+              {timeLimit(h.settings.duration)} · Webcam{" "}
+              {h.settings.webcam ? "required" : "optional"} · {h.actor}:{" "}
+              {h.reason}
+            </p>
+          ))}
+          {histories[g.id]?.error && (
+            <>
+              <p role="alert">{histories[g.id].error}</p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void loadHistory(g)}
+              >
+                Retry history
+              </button>
+            </>
+          )}
+          {histories[g.id]?.next && (
             <button
-              disabled={busy || !!pending}
-              onClick={() => browse(selectedGrant.current, next)}
+              type="button"
+              disabled={busy}
+              onClick={() => void loadHistory(g, histories[g.id].next)}
             >
-              Load more grants
+              Load earlier changes
             </button>
           )}
-          <p style={{ overflowWrap: "anywhere" }}>
-            Grant <code>{grant.id}</code> · revision {grant.revision} ·{" "}
-            {grant.status}
+        </details>
+      </article>
+    );
+  };
+  const close = () => {
+    if (busy) return;
+    if (
+      review &&
+      review.every((r) => ["noop", "saved", "refused"].includes(r.state))
+    ) {
+      try {
+        sessionStorage.removeItem(cacheKey);
+      } catch {
+        /* The original persisted request remains safe to retry. */
+      }
+    }
+    onClose();
+  };
+  const editAgain = async () => {
+    if (busy || review?.some((r) => ["unknown", "applying"].includes(r.state)))
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      await load();
+      setSelected(
+        new Set(
+          review?.filter((r) => r.state !== "saved").map((r) => r.grant.id),
+        ),
+      );
+      try {
+        sessionStorage.removeItem(cacheKey);
+      } catch {
+        /* A new dispatch still requires successful persistence. */
+      }
+      setReview(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const visibleChanges = (row: ChangeRow) => {
+    if (row.operation === "revoke")
+      return (
+        <p>Cancel this unused attempt. Saved files and history are kept.</p>
+      );
+    const labels: Record<string, string> = {
+      duration: "Time limit",
+      webcam: "Webcam",
+      earliest: "Opens",
+      latest: "Closes",
+      name: "Exam name",
+      terminals: "Terminals",
+      collection_file_mib: "Per-file MiB",
+      collection_total_mib: "Total MiB",
+    };
+    const changes = row.body.changes,
+      allSources = [
+        ...sources,
+        ...Object.values(snapshots)
+          .map((s: any) => s?.source)
+          .filter(Boolean),
+      ];
+    return (
+      <ul>
+        {Object.entries(changes)
+          .filter(([key]) => !["template", "template_version"].includes(key))
+          .map(([key, value]) => (
+            <li key={key}>
+              {labels[key] ?? key}: {valueLabel(key, row.grant.settings[key])} →{" "}
+              {valueLabel(key, value)}
+            </li>
+          ))}
+        {("template" in changes || "template_version" in changes) && (
+          <li>
+            Exam files: {row.grant.settings.template} →{" "}
+            {changes.template ?? row.grant.settings.template}
+            {changes.template_version ? " (new version)" : ""}
+          </li>
+        )}
+        {row.body.work && (
+          <li>
+            Starting files: {workLabel(row.grant.work, allSources)} →{" "}
+            {workLabel(row.body.work, allSources)}
+            {row.body.work.kind === "template" &&
+            row.grant.work.kind === "template" &&
+            row.body.work.name === row.grant.work.name
+              ? " (new version)"
+              : ""}
+          </li>
+        )}
+      </ul>
+    );
+  };
+  const noUnused = loaded
+    ? names.filter(
+        (name) => !catalog.some((g) => g.username === name && grantUnused(g)),
+      )
+    : [];
+  const attemptGroups = names.map((name) => (
+    <section key={name} aria-label={`Attempts for ${name}`}>
+      <h3>{name}</h3>
+      {catalog
+        .filter(
+          (g) =>
+            g.username === name && (grantUnused(g) || g.id === initialGrantId),
+        )
+        .map(grantRow)}
+      {catalog.some(
+        (g) =>
+          g.username === name && !grantUnused(g) && g.id !== initialGrantId,
+      ) && (
+        <details>
+          <summary>Unavailable attempts and history</summary>
+          {catalog
+            .filter(
+              (g) =>
+                g.username === name &&
+                !grantUnused(g) &&
+                g.id !== initialGrantId,
+            )
+            .map(grantRow)}
+        </details>
+      )}
+    </section>
+  ));
+  const currentStatus = (row: ChangeRow) =>
+    snapshots[row.grant.id]?.grant ? (
+      <p>
+        Current status: {grantStatus(snapshots[row.grant.id].grant)}
+        {snapshots[row.grant.id].grant.revision !==
+        (row.result?.revision ?? row.grant.revision)
+          ? " · Settings changed since review"
+          : ""}
+      </p>
+    ) : null;
+  const needsCurrentStatus = (row: ChangeRow) =>
+    ["unknown", "refused"].includes(row.state) ||
+    (snapshots[row.grant.id]?.grant &&
+      snapshots[row.grant.id].grant.revision !==
+        (row.result?.revision ?? row.grant.revision));
+  const dateChanges = review?.some(
+    (row) =>
+      row.body.changes?.earliest !== undefined ||
+      row.body.changes?.latest !== undefined,
+  );
+  const pendingRows =
+      review?.filter((r) => ["review", "unknown"].includes(r.state)) ?? [],
+    unknown = review?.some((r) => r.state === "unknown");
+  return (
+    <Modal
+      title={
+        username ? `Allowed attempts for ${username}` : "Change unused attempts"
+      }
+      wide
+      className="grant-dialog"
+      onClose={close}
+    >
+      <div className="grant-dialog-content">
+        {error && (
+          <p role="alert" className="warn">
+            {error}
           </p>
-          <p>
-            Saved allowance: {grant.settings.duration / 60} minutes. Webcam{" "}
-            {grant.settings.webcam ? "required" : "not required"}. Begin{" "}
-            {chicago(grant.settings.earliest)} through{" "}
-            {chicago(grant.settings.latest)}; the full allowance starts only at
-            Begin.
-          </p>
-          <p>
-            Unresolved preparation/Begin or consumption blocks
-            revision/revocation. A timeout never proves no start. Inspect the
-            original native attempt; positively cancel only an unstarted
-            preparation before making a new change.
-          </p>
-          <ul>
-            {grant.claims.map((claim: any) => (
-              <li key={claim.attempt} style={{ overflowWrap: "anywhere" }}>
-                {claim.state} · attempt <code>{claim.attempt}</code>
-              </li>
-            ))}
-          </ul>
-          <p style={{ overflowWrap: "anywhere" }}>
-            Saved workspace:{" "}
-            {grant.work.kind === "empty"
-              ? "Empty workspace"
-              : grant.work.kind === "saved"
-                ? `Protected attempt ${grant.work.attempt} · ${grant.work.checksum}`
-                : `${grant.work.name} · ${grant.work.hash}`}
-          </p>
-          {grant.status === "PENDING_NATIVE" && (
+        )}
+        {!review && (
+          <form
+            id={formId}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void makeReview("revise");
+            }}
+          >
+            {!loaded && <p role="status">Loading allowed attempts…</p>}
             <p>
-              Waiting for durable class-server source retention confirmation.
-              This grant cannot begin and reserves no account or exam time.
-              Complete on the class server:{" "}
-              <code>
-                sudo examctl web grants source-sync {grant.id} --revision{" "}
-                {grant.revision}
-              </code>
-              . Then refresh this grant. A failed synchronization stays pending;
-              inspect source-show and retry the same revision.
+              Started attempts keep their settings. These changes apply only to
+              the unused attempts you select.
             </p>
-          )}
-          {["AVAILABLE", "PENDING_NATIVE"].includes(grant.status) && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void submit("revise");
-              }}
-            >
-              <fieldset disabled={busy || !!pending}>
-                <legend>Explicit unused-grant revision</legend>
-                <GrantWorkspaceFields
-                  mode={work.kind}
-                  name={
-                    work.kind === "saved" ? work.attempt : (work.name ?? "")
-                  }
-                  hash={
-                    work.kind === "saved" ? work.checksum : (work.hash ?? "")
-                  }
-                  onChange={(kind, name, hash) =>
-                    setWork(
-                      kind === "empty"
-                        ? { kind }
-                        : kind === "saved"
-                          ? { kind, attempt: name, checksum: hash }
-                          : { kind, name, hash },
-                    )
+            <div className="actions">
+              <button
+                type="button"
+                disabled={
+                  busy ||
+                  !catalog.some(grantUnused) ||
+                  catalog.filter(grantUnused).length > 200
+                }
+                onClick={() =>
+                  setSelected(
+                    new Set(catalog.filter(grantUnused).map((g) => g.id)),
+                  )
+                }
+              >
+                Select unused attempts
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setSelected(new Set())}
+              >
+                Clear selection
+              </button>
+            </div>
+            <p>
+              {selectedGrants.length} attempts for {selectedNames.length}{" "}
+              students selected
+            </p>
+            {selectedGrants.length > 200 && (
+              <p role="alert">Choose up to 200 unused attempts.</p>
+            )}
+            {!!noUnused.length && (
+              <p>No unused attempts for: {noUnused.join(", ")}.</p>
+            )}
+            <fieldset disabled={busy || !selectedGrants.length}>
+              {exam === "sandbox" && (
+                <p>
+                  Practice uses five minutes, optional webcam and four
+                  terminals.
+                </p>
+              )}
+              <label>
+                Time limit (minutes)
+                <input
+                  type="number"
+                  min={1}
+                  max={360}
+                  step={1}
+                  placeholder={exam === "sandbox" ? "Fixed at 5" : "Unchanged"}
+                  disabled={exam === "sandbox"}
+                  value={draft.duration ?? ""}
+                  onChange={(e) =>
+                    setDraft({ ...draft, duration: e.target.value })
                   }
                 />
-                {fields.map(([key, label]) => (
-                  <label key={key} style={{ display: "block" }}>
+              </label>
+              <label>
+                Webcam
+                <select
+                  disabled={exam === "sandbox"}
+                  value={webcam}
+                  onChange={(e) => setWebcam(e.target.value)}
+                >
+                  <option value="keep">Unchanged</option>
+                  <option value="true">Required</option>
+                  <option value="false">Optional</option>
+                </select>
+              </label>
+              <label>
+                Start window
+                <select
+                  value={windowMode}
+                  onChange={(e) => setWindowMode(e.target.value)}
+                >
+                  <option value="keep">Unchanged</option>
+                  <option value="set">Set dates</option>
+                </select>
+              </label>
+              {windowMode === "set" && (
+                <fieldset>
+                  <legend>Start window</legend>
+                  <LocalDateTimeInput
+                    label="Opens"
+                    value={opens}
+                    onChange={setOpens}
+                    occurrence={openOccurrence}
+                    onOccurrence={setOpenOccurrence}
+                    required={false}
+                  />
+                  <LocalDateTimeInput
+                    label="Closes"
+                    value={closes}
+                    onChange={setCloses}
+                    occurrence={closeOccurrence}
+                    onOccurrence={setCloseOccurrence}
+                    required={false}
+                  />
+                  <small>
+                    Leave either date blank to keep it. Dates shown in{" "}
+                    {deviceTimeZone()}.
+                  </small>
+                </fieldset>
+              )}
+              <label>
+                Starting files
+                <select
+                  value={workMode}
+                  onChange={(e) => {
+                    if (e.target.value === "saved" && workMode !== "saved")
+                      setSourceLoading(true);
+                    setWorkMode(e.target.value);
+                  }}
+                >
+                  <option value="keep">Unchanged</option>
+                  <option value="empty">Empty folder</option>
+                  <option value="template">Published starter files</option>
+                  <option value="saved">Saved work</option>
+                </select>
+              </label>
+              {workMode === "template" && (
+                <TemplatePicker
+                  name={workName}
+                  hash={workHash}
+                  onChange={(name, hash) => {
+                    setWorkName(name);
+                    setWorkHash(hash);
+                  }}
+                />
+              )}
+              {workMode === "saved" && (
+                <>
+                  <label>
+                    Saved work from
+                    <select
+                      value={sourceExam}
+                      onChange={(e) => {
+                        setSourceLoading(true);
+                        setSources([]);
+                        setSourceExam(e.target.value);
+                        setSavedChoices({});
+                      }}
+                    >
+                      {(exams.length ? exams : [{ id: exam, name: exam }]).map(
+                        (e) => (
+                          <option key={e.id} value={e.id}>
+                            {e.name || e.id}
+                            {exams.filter((other) => other.name === e.name)
+                              .length > 1
+                              ? ` (${e.id})`
+                              : ""}
+                            {e.lifecycle === "archived" ? " · Archived" : ""}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+                  {examError && (
+                    <div role="alert">
+                      <p>Could not load exam choices.</p>
+                      <button type="button" onClick={() => void loadExams()}>
+                        Refresh exams
+                      </button>
+                      <details>
+                        <summary>Details</summary>
+                        <p>{examError}</p>
+                      </details>
+                    </div>
+                  )}
+                  {sourceLoading && <p role="status">Loading saved work…</p>}
+                  {sourceError && (
+                    <div role="alert">
+                      <p>Could not load saved work.</p>
+                      <details>
+                        <summary>Details</summary>
+                        <p>{sourceError}</p>
+                      </details>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    disabled={sourceLoading}
+                    onClick={() => {
+                      setSourceLoading(true);
+                      setSources([]);
+                      setSourceReload((n) => n + 1);
+                    }}
+                  >
+                    Refresh saved work
+                  </button>
+                  {selectedNames.map((name) => {
+                    let automatic: any = null;
+                    try {
+                      automatic = latestStarted(sources, name);
+                    } catch {
+                      /* Explicit choice required for ties. */
+                    }
+                    return (
+                      <label key={name}>
+                        Saved work for {name}
+                        <select
+                          required
+                          disabled={sourceLoading || !!sourceError}
+                          value={
+                            savedChoices[name] ??
+                            (automatic && savedWorkUsable(automatic)
+                              ? automatic.id
+                              : "")
+                          }
+                          onChange={(e) =>
+                            setSavedChoices((old) => ({
+                              ...old,
+                              [name]: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">Choose protected saved work</option>
+                          {sources
+                            .filter(
+                              (s) => s.username === name && savedWorkUsable(s),
+                            )
+                            .map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {savedWorkLabel(s, sources)}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    );
+                  })}
+                </>
+              )}
+              <details>
+                <summary>More settings</summary>
+                <label>
+                  Exam name
+                  <input
+                    maxLength={120}
+                    placeholder="Unchanged"
+                    value={draft.name ?? ""}
+                    onChange={(e) =>
+                      setDraft({ ...draft, name: e.target.value })
+                    }
+                  />
+                </label>
+                {numeric.map(([key, label, min, max]) => (
+                  <label key={key}>
                     {label}
                     <input
+                      type="number"
+                      min={min}
+                      max={max}
+                      step={1}
+                      disabled={exam === "sandbox" && key === "terminals"}
+                      placeholder="Unchanged"
                       value={draft[key] ?? ""}
                       onChange={(e) =>
                         setDraft({ ...draft, [key]: e.target.value })
                       }
-                      required
-                      readOnly={
-                        grant.exam === "sandbox" &&
-                        ["duration", "terminals"].includes(key)
-                      }
-                      style={{ width: "100%", minWidth: 0 }}
                     />
                   </label>
                 ))}
                 <label>
-                  Saved webcam requirement
-                  <select
-                    value={draft.webcam}
-                    disabled={grant.exam === "sandbox"}
-                    onChange={(e) =>
-                      setDraft({ ...draft, webcam: e.target.value })
-                    }
-                  >
-                    <option value="true">Required</option>
-                    <option value="false">Not required</option>
-                  </select>
-                </label>
-                <label>
-                  Reason
                   <input
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    required
-                    minLength={8}
-                    maxLength={1000}
+                    type="checkbox"
+                    checked={materialChange}
+                    onChange={(e) => setMaterialChange(e.target.checked)}
                   />
+                  Change exam files
                 </label>
-              </fieldset>
-              {pending && (
-                <p style={{ overflowWrap: "anywhere" }}>
-                  Original {pending.operation} request{" "}
-                  <code>{pending.body.request}</code>. Retry this exact intent
-                  or inspect current grant before another change.
+                {materialChange && (
+                  <TemplatePicker
+                    label="Exam files"
+                    name={materialName}
+                    hash={materialHash}
+                    onChange={(name, hash) => {
+                      setMaterialName(name);
+                      setMaterialHash(hash);
+                    }}
+                  />
+                )}
+              </details>
+              <label>
+                Reason
+                <input
+                  required
+                  minLength={8}
+                  maxLength={1000}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+              </label>
+            </fieldset>
+            {attemptGroups}
+          </form>
+        )}
+        {review && (
+          <section className="grant-review" aria-label="Review unused changes">
+            <h3>
+              {review.some((r) => r.state === "review")
+                ? "Review changes"
+                : "Change results"}
+            </h3>
+            <p>
+              {review.length} attempts
+              {dateChanges ? ` · Dates shown in ${deviceTimeZone()}` : ""}
+            </p>
+            {review.map((row) => (
+              <article key={row.grant.id} className="clock-batch-row">
+                <p role="status">
+                  {
+                    {
+                      review: "Not applied",
+                      noop: "No changes",
+                      applying: "Applying…",
+                      saved:
+                        row.operation === "revoke"
+                          ? "Cancelled"
+                          : "Settings saved",
+                      refused: "Not changed",
+                      unknown: "Change unconfirmed",
+                    }[row.state]
+                  }
                 </p>
-              )}
-              <div className="actions">
-                <button
-                  type="submit"
-                  disabled={
-                    busy || (!!pending && pending.operation !== "revise")
-                  }
-                >
-                  {busy
-                    ? "Confirming…"
-                    : pending
-                      ? "Retry original revision"
-                      : "Revise unused grant"}
-                </button>
-                <button
-                  type="button"
-                  disabled={
-                    busy ||
-                    (!pending && reason.trim().length < 8) ||
-                    (!!pending && pending.operation !== "revoke")
-                  }
-                  onClick={() => void submit("revoke")}
-                >
-                  {pending?.operation === "revoke"
-                    ? "Retry original revocation"
-                    : "Revoke unused grant"}
-                </button>
-              </div>
-            </form>
-          )}
-          <details>
-            <summary>Immutable revision history</summary>
-            <ol>
-              {grant.history.map((r: any) => (
-                <li key={r.revision}>
-                  Revision {r.revision}: {r.settings.duration / 60} minutes ·
-                  webcam {r.settings.webcam ? "required" : "not required"} ·{" "}
-                  {r.actor} · {r.reason}
-                </li>
-              ))}
-            </ol>
-            {grant.history_next && (
-              <p>
-                Older revisions: examctl web grants show {grant.id} --before{" "}
-                {grant.history_next}
-              </p>
-            )}
-          </details>
-        </>
-      )}
-      <div className="actions">
-        <button
-          disabled={busy}
-          onClick={() =>
-            void inspect(new AbortController().signal).catch((e) =>
-              setError(e.message),
-            )
-          }
-        >
-          Inspect current grant
+                <h4>
+                  {row.grant.username} · {title(row.grant)}
+                </h4>
+                {row.state !== "noop" && visibleChanges(row)}
+                {needsCurrentStatus(row) && currentStatus(row)}
+                {snapshots[row.grant.id]?.read_error && (
+                  <p className="warn">
+                    Current status unconfirmed. Refresh status to retry.
+                  </p>
+                )}
+                {row.state === "saved" &&
+                  row.result?.work.kind === "saved" &&
+                  row.operation === "revise" && (
+                    <SavedWorkSetup
+                      id={row.grant.id}
+                      revision={row.result.revision}
+                      snapshot={snapshots[row.grant.id] ?? null}
+                      onRefresh={() => setStatusRefresh((n) => n + 1)}
+                    />
+                  )}
+                <details>
+                  <summary>Details</summary>
+                  {!needsCurrentStatus(row) && currentStatus(row)}
+                  {row.error && <p>{row.error}</p>}
+                  <pre
+                    style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                  >
+                    {JSON.stringify(
+                      {
+                        reference: row.grant.id,
+                        request: row.body,
+                        previous: row.grant.settings,
+                        previous_files: row.grant.work,
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </details>
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
+      <div className="actions grant-dialog-actions">
+        {!review && (
+          <>
+            <button
+              form={formId}
+              type="submit"
+              className="primary"
+              disabled={
+                busy ||
+                !selectedGrants.length ||
+                selectedGrants.length > 200 ||
+                (workMode === "saved" && (sourceLoading || !!sourceError))
+              }
+            >
+              Review changes
+            </button>
+            <button
+              disabled={
+                busy || !selectedGrants.length || selectedGrants.length > 200
+              }
+              onClick={() => void makeReview("revoke")}
+            >
+              Review cancellation
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => {
+                setError("");
+                void load().catch((e) => setError(e.message));
+              }}
+            >
+              Refresh
+            </button>
+          </>
+        )}
+        {review && !!pendingRows.length && (
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={() => void apply()}
+          >
+            {unknown
+              ? "Retry unconfirmed changes"
+              : review[0].operation === "revoke"
+                ? "Cancel selected attempts"
+                : "Apply changes"}
+          </button>
+        )}
+        {review && !unknown && (
+          <button disabled={busy} onClick={() => void editAgain()}>
+            Edit remaining changes
+          </button>
+        )}
+        {review && (
+          <button
+            disabled={busy}
+            onClick={() => setStatusRefresh((n) => n + 1)}
+          >
+            Refresh status
+          </button>
+        )}
+        <button disabled={busy} onClick={close}>
+          Close
         </button>
-        <button onClick={onClose}>Close grants</button>
       </div>
     </Modal>
   );

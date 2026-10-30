@@ -9,26 +9,26 @@ async function begin(page: Page, username: string) {
     (await (await page.request.get("/api/login-test")).json()).browserSSH,
   ).toBe(true);
   await page.getByLabel("Exam ID", { exact: true }).fill("retained-loss");
-  await page.getByLabel("Enrolled username").fill(username);
+  await page.getByLabel("Username").fill(username);
   await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
+    .getByRole("button", { name: "Sign in", exact: true })
     .click({ timeout: 10000 });
   await page
     .getByLabel("Shared SSH password")
     .fill("shared-password", { timeout: 10000 });
   await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
+    .getByRole("button", { name: "Continue", exact: true })
     .click({ timeout: 10000 });
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click({ timeout: 10000 });
   await ready(page);
   await page
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 10000 });
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 10000 });
   await expect(page.locator(".xterm-rows")).toContainText(
     "DISPOSABLE DEVELOPMENT FIXTURE",

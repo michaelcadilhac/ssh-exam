@@ -14,8 +14,23 @@ cleanup remains manual and start windows/clocks/holds remain authoritative.
 Mixed starting files and preserved effective time/webcam use one existing atomic
 review; recent requests are actor-bound. Local CLI/gateway/archive, resource and
 browser evidence plus future rollout/rollback are in
-docs/automatic-saved-work-setup.md. The UI review remains in progress; nothing
-from this candidate is deployed.
+docs/automatic-saved-work-setup.md. Prof accepted the copy and rendered desktop/
+mobile workflows. Roster selection supplies students; published versions and
+owned saved-work metadata supply starting files. Routine extra-attempt issuance
+and unused-setting changes take form → review/result; adding time and cancelling
+unused extras each use one dialog. Local start dates preserve exact unchanged
+instants and ask which occurrence to use for a repeated daylight-saving minute.
+Unused changes delegate validated original named fields to the existing per-grant
+transactions, preserving omitted fields and true no-ops. Each result is independent;
+unknown replies retain exact request identities across close/reload. Current status
+cannot prove an unknown request succeeded. Positive protection is required before
+displaying Files saved, and unknown contact is Connection unconfirmed. These are
+presentation/management changes; admission, original deadlines, archive protection,
+account holds and monitoring enforcement are unchanged. Local qualification passes
+643 application checks and192 unique packaged-browser cases;12 native-bundle/
+measurement cases are deliberately skipped. Exact image migration/asset checks
+pass; root-service hardening remains a pre-enable release gate. Nothing from this
+candidate is deployed.
 
 Current runtime contract (October29,2026; **deployed and publicly online**): negotiated v1
 keeps the original viable authenticated SSH/page and per-attempt supervisor through

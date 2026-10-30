@@ -8,20 +8,16 @@ test("real WASM SSH recovers dropped native renewal replies and retires only the
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("monitoring-receipt");
-  await page.getByLabel("Enrolled username").fill("receipt01");
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill("receipt01");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Open preflight & practice" }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(page.locator(".winbox")).toHaveCount(1);
   // Window allocation is not exec. Observe real SSH output before freezing the
@@ -61,7 +57,9 @@ test("real WASM SSH recovers dropped native renewal replies and retires only the
   const after = await (await page.request.get("/api/fixture/runtime")).json();
   expect(after.authenticationCalls).toEqual(baseline.authenticationCalls);
   expect(after.renewalReceipts.maxActiveCommands).toBeLessThanOrEqual(4);
-  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("heading", {
+      name: /^(Work paused|Instructor review required)$/,
+    }),
+  ).toHaveCount(0);
 });

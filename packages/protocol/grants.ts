@@ -91,6 +91,49 @@ export const grantRevision = z
 export const grantRevocation = grantRevision
   .omit({ changes: true, work: true })
   .strict();
+// Bounded transport only: each row retains its existing independent transaction
+// and request identity. This does not promise atomic batch changes.
+export const grantChangeBatch = z
+  .object({
+    rows: z
+      .array(
+        z.discriminatedUnion("operation", [
+          z
+            .object({
+              id: z.string().uuid(),
+              operation: z.literal("revise"),
+              body: grantRevision.extend({ request: z.string().uuid() }),
+            })
+            .strict(),
+          z
+            .object({
+              id: z.string().uuid(),
+              operation: z.literal("revoke"),
+              body: grantRevocation.extend({ request: z.string().uuid() }),
+            })
+            .strict(),
+        ]),
+      )
+      .min(1)
+      .max(200)
+      .refine(
+        (rows) => new Set(rows.map((row) => row.id)).size === rows.length,
+        "Choose each attempt once",
+      ),
+  })
+  .strict();
+export const grantStatusBatch = z
+  .object({
+    rows: z
+      .array(grantSourceRequest)
+      .min(1)
+      .max(200)
+      .refine(
+        (rows) => new Set(rows.map((row) => row.id)).size === rows.length,
+        "Choose each attempt once",
+      ),
+  })
+  .strict();
 export const grantIssuePreview = z
   .object({
     exam: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),

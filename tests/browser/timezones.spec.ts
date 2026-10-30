@@ -1,4 +1,5 @@
 import { test, expect, request } from "@playwright/test";
+import { publishedSource } from "./prof-workflow-fixture.js";
 import { randomUUID } from "node:crypto";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
@@ -26,7 +27,20 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
           });
         if (path === "/api/login-test")
           return route.fulfill({ json: { loginOnly: false } });
-        if (path === "/api/admin/exams") {
+        if (path === "/api/admin/templates")
+          return route.fulfill({
+            json: {
+              agent: "class",
+              sources: [publishedSource()],
+              next: null,
+              observed: Date.now(),
+              note: "Synthetic published metadata",
+            },
+          });
+        if (
+          path === "/api/admin/exams" ||
+          path === "/api/admin/exams/versioned"
+        ) {
           if (route.request().method() === "POST") {
             saved = route.request().postDataJSON();
             return route.fulfill({ json: saved });
@@ -51,10 +65,13 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         .getByLabel("Exam ID", { exact: true })
         .fill(`zone-settings-${index}`);
       await dialog
-        .getByLabel("Earliest start", { exact: true })
+        .getByRole("combobox", { name: "Exam files", exact: true })
+        .selectOption(`sample-exam@${"a".repeat(64)}`);
+      await dialog
+        .getByLabel("Opens", { exact: true })
         .fill("2026-07-17T09:15");
       await dialog
-        .getByLabel("Latest start", { exact: true })
+        .getByLabel("Closes", { exact: true })
         .fill("2026-07-17T10:15");
       await dialog
         .getByRole("button", { name: "Save exam", exact: true })
@@ -132,38 +149,42 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
           ),
         ).toBe(timezoneId === "Asia/Kathmandu" ? "Asia/Katmandu" : timezoneId);
         await page.getByLabel("Exam ID", { exact: true }).fill(exam);
-        await page.getByLabel("Enrolled username").fill(username);
+        await page.getByLabel("Username").fill(username);
         await page
-          .getByRole("button", { name: "Start SSH sign-in", exact: true })
+          .getByRole("button", { name: "Sign in", exact: true })
           .click();
         await page.getByLabel("Shared SSH password").fill("shared-password");
         await page
-          .getByRole("button", { name: "Respond to this host", exact: true })
+          .getByRole("button", { name: "Continue", exact: true })
           .click();
         await expect(
           page.getByLabel("Host authentication messages"),
         ).toContainText("Enter number 42");
         await expect(
           page.getByRole("button", {
-            name: "Open preflight & practice",
+            name: "Check setup and practice",
             exact: true,
           }),
         ).toBeVisible();
-        await page.getByText("Start window", { exact: true }).click();
-        await expect(page.locator(".exam-details")).toContainText(/C[SD]T/);
+        const startWindow = page.locator("details").filter({
+          has: page.getByText("Start window", { exact: true }),
+        });
+        await expect(startWindow).toHaveCount(1);
+        await startWindow.locator("summary").click();
+        await expect(startWindow).toContainText(/C[SD]T/);
         await page
           .getByRole("button", {
-            name: "Open preflight & practice",
+            name: "Check setup and practice",
             exact: true,
           })
           .click();
         await ready(page);
         await page
-          .getByRole("button", { name: "Begin exam", exact: true })
+          .getByRole("button", { name: "Start exam", exact: true })
           .click();
         await page
           .getByRole("dialog")
-          .getByRole("button", { name: "Begin exam", exact: true })
+          .getByRole("button", { name: "Start exam", exact: true })
           .click();
         await expect(page.locator(".winbox")).toHaveCount(1);
         // A window exists before its signed pane ACK. Clock edits must test an
@@ -247,7 +268,7 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
           .click();
         await expect(
           page.getByRole("heading", {
-            name: "Connect to your exam",
+            name: "Sign in to your exam",
             exact: true,
           }),
         ).toBeVisible();

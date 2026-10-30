@@ -37,20 +37,14 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   await simulatedMedia(page);
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("initial-grant");
-  await page.getByLabel("Enrolled username").fill("grant01");
-  await page
-    .getByRole("button", { name: "Start SSH sign-in", exact: true })
-    .click();
+  await page.getByLabel("Username").fill("grant01");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Respond to this host", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Initial browser grant", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("main")).toContainText(
-    "90 minutes · Webcam: Not required",
-  );
+  await expect(page.locator("main")).toContainText("90 min · Webcam: Optional");
   const portal = await (await page.request.get("/api/student/exam")).json();
   expect(portal.exam).toMatchObject({ duration: 3600, webcam: true });
   expect(portal.settings).toMatchObject({
@@ -59,7 +53,7 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
     template_version: "a".repeat(64),
   });
   await page
-    .getByRole("button", { name: "Open preflight & practice", exact: true })
+    .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
@@ -78,15 +72,15 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
     .poll(() => challengedUploads, { timeout: 10000 })
     .toBeGreaterThan(0);
   await expect(
-    page.getByRole("button", { name: "Begin exam", exact: true }),
+    page.getByRole("button", { name: "Start exam", exact: true }),
   ).toBeEnabled({ timeout: 5000 });
   failChallenges = true;
   await page
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 3000 });
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click({ timeout: 3000 });
   await expect(page.getByRole("dialog")).toContainText(
     "Synthetic capture verification unavailable",
@@ -102,15 +96,17 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
     deadline: null,
     grant_begin_intent: null,
   });
-  await expect(page.getByRole("heading", { name: "Exam paused" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("heading", {
+      name: /^(Work paused|Instructor review required)$/,
+    }),
+  ).toHaveCount(0);
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Close", exact: true })
     .click({ timeout: 3000 });
   failChallenges = false;
-  await page.getByRole("button", { name: "Begin exam", exact: true }).click();
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
   const begin = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -119,7 +115,7 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   );
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Begin exam", exact: true })
+    .getByRole("button", { name: "Start exam", exact: true })
     .click();
   const started = await begin;
   expect(
@@ -156,7 +152,7 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
     .getByRole("button", { name: "Finish exam", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Connect to your exam", exact: true }),
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
   expect((await page.request.get("/api/session")).status()).toBe(401);
 });

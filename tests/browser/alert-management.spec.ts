@@ -99,26 +99,33 @@ for (const width of [1280, 430])
     const dialog = page.getByRole("dialog", { name: "Alerts", exact: true });
     await dialog
       .getByRole("button", {
-        name: "Remind: Synthetic collection failure",
+        name: "Send reminder",
         exact: true,
       })
       .click();
     await dialog
-      .getByLabel("Reminder reason")
+      .getByLabel("Reason")
       .fill("Explicit instructor reminder after review");
     await dialog
-      .getByRole("button", { name: "Queue reminder", exact: true })
+      .locator("form")
+      .filter({
+        has: page.getByRole("textbox", { name: "Reason", exact: true }),
+      })
+      .getByRole("button", { name: "Send reminder", exact: true })
       .click();
     await expect(dialog.getByRole("alert")).toBeVisible();
-    await dialog
-      .getByRole("button", { name: "Refresh delivery", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+    await dialog.getByText("Details", { exact: true }).click();
     await expect(dialog.getByText(/1 manual reminders/)).toBeVisible();
     await dialog
-      .getByRole("button", { name: "Queue reminder", exact: true })
+      .locator("form")
+      .filter({
+        has: page.getByRole("textbox", { name: "Reason", exact: true }),
+      })
+      .getByRole("button", { name: "Send reminder", exact: true })
       .click();
     await expect(
-      dialog.getByText(/Email queued, not confirmed delivered/),
+      dialog.getByText(/Email queued. Delivery is not confirmed./),
     ).toBeVisible();
     expect(state.reminders).toHaveLength(2);
     expect(state.reminders[1]).toEqual(state.reminders[0]);
@@ -127,7 +134,7 @@ for (const width of [1280, 430])
       reason: "Explicit instructor reminder after review",
     });
     expect(state.reminders[0].requestID).toMatch(/^[a-f0-9-]{36}$/);
-    await expect(dialog.getByLabel("Reminder reason")).toHaveCount(0);
+    await expect(dialog.getByLabel("Reason")).toHaveCount(0);
     expect(
       await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
@@ -140,37 +147,33 @@ test("resolved/stale reminder stays fenced, retains edits and can be cancelled",
   const dialog = page.getByRole("dialog", { name: "Alerts", exact: true });
   await dialog
     .getByRole("button", {
-      name: "Remind: Synthetic collection failure",
+      name: "Send reminder",
       exact: true,
     })
     .click();
-  await dialog
-    .getByLabel("Reminder reason")
-    .fill("Retain this reviewed reason");
+  await dialog.getByLabel("Reason").fill("Retain this reviewed reason");
   state.rejectReminder = true;
   state.row.episode.resolved = Date.now();
   state.row.episode.revision = "b".repeat(64);
   state.row.remindable = false;
   state.row.refusal = "Episode is resolved";
   await dialog
-    .getByRole("button", { name: "Queue reminder", exact: true })
+    .locator("form")
+    .filter({ has: page.getByRole("textbox", { name: "Reason", exact: true }) })
+    .getByRole("button", { name: "Send reminder", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toContainText("episode changed");
-  await expect(dialog.getByLabel("Reminder reason")).toHaveValue(
+  await expect(dialog.getByLabel("Reason")).toHaveValue(
     "Retain this reviewed reason",
   );
-  await dialog
-    .getByRole("button", { name: "Cancel reminder", exact: true })
-    .click();
-  await dialog
-    .getByRole("button", { name: "Refresh delivery", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(
     dialog.getByText("Episode is resolved", { exact: true }),
   ).toBeVisible();
   await expect(
     dialog.getByRole("button", {
-      name: "Remind: Synthetic collection failure",
+      name: "Send reminder",
       exact: true,
     }),
   ).toBeDisabled();
@@ -183,38 +186,34 @@ test("test email retries one intent and delivery inspection recovers without cla
   const state = await fixture(page);
   const dialog = page.getByRole("dialog", { name: "Alerts", exact: true });
   await dialog
-    .getByRole("button", { name: "Test email alert", exact: true })
+    .getByRole("button", { name: "Send test email", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await dialog
-    .getByRole("button", { name: "Test email alert", exact: true })
+    .getByRole("button", { name: "Send test email", exact: true })
     .click();
   await expect(
-    dialog.getByText(/Email queued, not confirmed delivered/),
+    dialog.getByText(/Email queued. Delivery is not confirmed./),
   ).toBeVisible();
   expect(state.tests).toHaveLength(2);
   expect(state.tests[1]).toEqual(state.tests[0]);
   state.failRead = true;
-  await dialog
-    .getByRole("button", { name: "Refresh delivery", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog.getByRole("alert")).toContainText(
     "inspection unavailable",
   );
   await expect(
     dialog.getByRole("button", {
-      name: "Remind: Synthetic collection failure",
+      name: "Send reminder",
       exact: true,
     }),
   ).toBeDisabled();
   state.failRead = false;
-  await dialog
-    .getByRole("button", { name: "Refresh delivery", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog.getByRole("alert")).toHaveCount(0);
   await expect(
     dialog.getByRole("button", {
-      name: "Remind: Synthetic collection failure",
+      name: "Send reminder",
       exact: true,
     }),
   ).toBeEnabled();
@@ -225,20 +224,20 @@ test("inspects an exact outbox ID without relying on the current history page", 
 }) => {
   const state = await fixture(page);
   const dialog = page.getByRole("dialog", { name: "Alerts", exact: true });
+  await dialog.getByText("Technical details", { exact: true }).click();
   await dialog.getByLabel("Outbox ID", { exact: true }).fill(outbox);
   await dialog
     .getByRole("button", { name: "Inspect message", exact: true })
     .click();
   await expect(
     dialog.getByRole("button", {
-      name: "Return to delivery list",
+      name: "Back to messages",
       exact: true,
     }),
   ).toBeVisible();
+  await dialog.getByText("Details", { exact: true }).click();
   await expect(dialog.getByText(new RegExp(`${outbox}: failed`))).toBeVisible();
   state.row.status = "sent";
-  await dialog
-    .getByRole("button", { name: "Refresh delivery", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(dialog.getByText(new RegExp(`${outbox}: sent`))).toBeVisible();
 });
