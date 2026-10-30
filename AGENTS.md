@@ -96,8 +96,11 @@
   before editing. Tests must exercise that entry point, not only private helpers.
 - Check the intended operator host before selecting runtime dependencies. Offline
   grading uses bwrap and lightweight native resource controls; Docker is explicitly
-  rejected for this task. Installing files and checking help/syntax alone do not
-  establish that the operator workflow runs on its intended host.
+  rejected for offline grading. This restriction does not apply to the existing
+  local application-release image qualification in docs/release-readiness.md.
+  Keep those task scopes distinct when reviewing tools. Installing files and
+  checking help/syntax alone do not establish that the operator workflow runs on
+  its intended host.
 - Before adding a new abstraction/helper/prototype, identify its runtime caller
   and integration step in the current milestone. If those are not achievable in
   that milestone, justify and explicitly defer it; do not keep extending an
