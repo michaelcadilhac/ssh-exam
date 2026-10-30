@@ -4,6 +4,30 @@ The instructor explicitly authorized implementation, commit, push and deployment
 The new workflow is documented in [examctl-scripting.md](examctl-scripting.md).
 No real student grants are part of this development/release task.
 
+## October 30 profile-copy example activation
+
+By new explicit instruction, only the installed `second-go.zsh` and matching
+`examctl-scripting.md` guide were replaced. Exact script source095c1cf,
+SHA256 `5c96bc7cc88e7a54f1ec5cad2db56887c4ef75ba7af10c7b851ef007ee139657`;
+previous installed script SHAeabfbbaf… is preserved privately. New syntax is
+`prepare DIRECTORY BEGIN_FROM BEGIN_UNTIL`, with each student's effective midterm
+time/webcam saved into the reviewed CSV and latest midterm/recovery files.
+
+Fresh14/14 affected local root-mapped CLI/TLS and native saved-source interface
+checks, typecheck and zsh syntax pass. Installed hashes, ownership, modes and
+no-minutes usage signature pass. A fresh real root CLI authenticated read-only
+definition projection also passes (request9fdf43df-3ef1-4020-8bdc-cad5bd1d9445).
+No production review/grant was created, and no application/CLI/agent/configuration,
+grading code, service, deadline, hold or student record was changed.
+
+Backup/receipt: csc-sys `/var/backups/ssh-exam/second-go-profile-20261030.16fljfy6`.
+Local exact manifest/operation/logs: `var/collection-tests/second-go-profile-install.2te3lu7s`.
+Rollback restores only the matching two previous files after checking current
+hashes; never restore DB/native authority or alter existing reviewed intents.
+The original release evidence below remains valid for unchanged runtime code.
+Issuance is a separate instructor prepare/review/apply action. The requested
+November6,23:42 CST cutoff controls Begin; it does not shorten started allowances.
+
 ## Qualified local result
 
 The release adds complete metadata exports/projections, private resumable exact

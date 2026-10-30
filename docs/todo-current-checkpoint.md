@@ -1,5 +1,19 @@
 # Current TODO checkpoint
 
+October30 second-go profile-copy script DEPLOYED by explicit instruction. Exact
+095c1cf/SHA5c96bc7c… replaces the earlier shared-minutes copy on csc-sys, alongside
+the matching guide. Syntax/signature/owner/mode/hash and fresh14/14 affected local
+synthetic root CLI/TLS/saved-source workflow, plus typecheck, PASS. No grant/review
+prepared or issued, service restart, CLI/agent/config/grading-code change or push.
+Private backup: /var/backups/ssh-exam/second-go-profile-20261030.16fljfy6;
+receipts/logs: var/collection-tests/second-go-profile-install.2te3lu7s. Use installed
+second-go.zsh prepare NEW_DIRECTORY "$(date --iso-8601=seconds)"
+'2026-11-06T23:42:00-06:00'; inspect settings/sources, then apply same directory.
+This is a Begin cutoff, not an absolute finish deadline. No shared MINUTES value;
+effective midterm time/webcam copied, latest midterm/recovery work retained. Older
+profile-copy "not installed" status below is superseded. No remaining deployment
+action for this task; actual student grant issuance belongs to the instructor.
+
 October29 lightweight grading correction COMPLETE and INSTALLED on csc-sys.
 Instructor rejects Docker; examples/grade-midterm.zsh now uses bwrap plus native
 transient systemd cgroups. Direct run --local DIRECTORY invokes installed examctl

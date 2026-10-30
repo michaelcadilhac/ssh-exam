@@ -80,8 +80,10 @@ The local course-script follow-up resolves each student's current midterm
 duration/webcam overrides against the saved midterm defaults, then supplies both
 explicitly in its reviewed CSV. Recovery attempts supply files only; their time/
 camera configuration does not replace the midterm profile. Existing enrollment-
-change review fences and immutable receipts remain; this script change is not
-installed in production yet. Latest-source selection belongs in the course script,
+change review fences and immutable receipts remain. The exact profile-copy script
+was installed on csc-sys October30 with matching guide and private file backups;
+installed CLI/agent/configuration remain unchanged and no student grant is issued
+by installation. Latest-source selection belongs in the course script,
 not the CLI. No execution
 wire/schema change or account/clock/hold bypass is introduced. Local qualification
 and deployment status: docs/examctl-scripting.md.

@@ -63,21 +63,27 @@ an atomic snapshot. Enrollment edits before confirmation trigger the existing
 stale-review refusal. Existing prepared reviews keep their original settings;
 updating the script never rewrites or refreshes them.
 
-This profile-copy script revision is tested locally, **not yet installed on
-csc-sys**. The commands below use its new syntax after installation. The currently
-installed release still uses the earlier shared-minutes argument.
+The profile-copy revision is installed on csc-sys by explicit instruction on
+October 30. It uses `prepare DIRECTORY BEGIN_FROM BEGIN_UNTIL`; the former shared
+minutes argument is removed. Existing review directories retain their original
+settings. Use a new directory for this second-take window.
 
 ```zsh
 sudo zsh /usr/local/share/ssh-exam/examples/second-go.zsh prepare \
-  /root/midterm-second-go \
-  '2026-11-02T09:00:00-06:00' '2026-11-06T17:00:00-06:00'
+  /root/midterm-second-go-20261030 \
+  "$(date --iso-8601=seconds)" '2026-11-06T23:42:00-06:00'
 # Inspect the printed settings/sources and private sources.csv before applying.
 sudo zsh /usr/local/share/ssh-exam/examples/second-go.zsh apply \
-  /root/midterm-second-go
+  /root/midterm-second-go-20261030
 ```
 
-These dates are examples, not a scheduled exam. Supply the actual finite Begin
-window; there is no shared allowance argument. `prepare` creates a review only. `apply` confirms
+This is the requested window from command execution until Friday November 6,
+2026 at 11:42pm America/Chicago (CST, UTC-06:00). Deployment itself neither
+schedules nor issues grants: only the operator's prepare/review/apply does.
+The cutoff governs **Begin**, so a student starting shortly before it receives
+the full allowance and may finish afterward. Supply the actual finite Begin
+window for future use; there is no shared allowance argument. `prepare` creates
+a review only. `apply` confirms
 that exact review and verifies each protected native source before making its
 grant available. Each new attempt receives its full allowance only at actual
 Begin; existing attempts, deadlines, holds and submissions stay unchanged.

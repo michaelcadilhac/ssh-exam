@@ -1,5 +1,16 @@
 # Deferred work
 
+October30 second-go profile-copy deployment COMPLETE under new explicit
+instruction. Installed exact095c1cf script/SHA5c96bc7c… and matching operator
+guide on csc-sys; per-student effective midterm time/webcam and latest midterm/
+recovery files, with no shared MINUTES argument. Fresh14/14 affected synthetic
+integration/root CLI/TLS tests, typecheck and installed syntax/signature/hash/
+permissions checks PASS. Only script/guide replaced with private backups; no
+grants/reviews, agent/CLI/config/grading scripts or services changed. Receipt:
+var/collection-tests/second-go-profile-install.2te3lu7s. Operator prepare/review/
+apply opens the chosen Begin window; deployment does not schedule it. Older
+"not installed" profile-copy notes below are superseded.
+
 October29 CURRENT grading correction COMPLETE and INSTALLED: Docker rejected by
 the instructor; grading now uses bwrap and transient systemd cgroup limits on
 csc-sys, with direct run --local DIRECTORY (no SSH loopback). Each unprivileged
