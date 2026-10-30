@@ -416,10 +416,10 @@ for (const width of [1280, 430])
     await page.setViewportSize({ width, height: 900 });
     await fixture(page, false, true);
     const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
-    await expect(amy).toContainText("1 grant available");
-    await expect(amy).toContainText("1 awaiting source confirmation");
-    await expect(amy).toContainText("1 with a future Begin window");
-    await expect(amy).toContainText("1 unused with closed Begin windows");
+    await expect(amy).toContainText("1 attempt ready");
+    await expect(amy).toContainText("1 preparing saved work");
+    await expect(amy).toContainText("1 available later");
+    await expect(amy).toContainText("1 expired unused attempt");
     await amy
       .getByRole("button", {
         name: "Inspect grant for amy attempt 2",
@@ -545,7 +545,7 @@ for (const width of [1280, 430])
     await fixture(page, true);
     await expect(page.locator(".attempt-row")).toHaveCount(25);
     await expect(page.locator(".student-row")).toHaveCount(25);
-    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expect(page.getByRole("checkbox")).toHaveCount(26);
     await expect(
       page.getByRole("button", { name: "Administration", exact: true }),
     ).toBeVisible();
@@ -556,12 +556,9 @@ for (const width of [1280, 430])
       ),
     ).toBe(true);
     await page.screenshot({ path: info.outputPath(`admin-${width}.png`) });
-    await page
-      .getByLabel("Bulk action", { exact: true })
-      .selectOption("extend");
     await expect(
       page.getByRole("checkbox", {
-        name: "Select all attempts on this page",
+        name: "Select all students on this page",
         exact: true,
       }),
     ).toBeVisible();
@@ -589,39 +586,33 @@ for (const width of [1280, 430])
     ).toBe(true);
     await page.keyboard.press("Escape");
   });
-test("bulk action comes first, switches clear selection, and clock requests name only eligible attempts", async ({
+test("student selection names excluded students and changes only eligible current clocks", async ({
   page,
 }) => {
   const s = await fixture(page);
-  await page
-    .getByLabel("Bulk action", { exact: true })
-    .selectOption("duration");
-  await page
-    .getByRole("checkbox", { name: "Select student amy", exact: true })
-    .check();
   await expect(
     page.getByRole("region", { name: "Bulk selection" }),
-  ).toContainText("1 student selected");
-  await page.getByLabel("Bulk action", { exact: true }).selectOption("extend");
-  await expect(
-    page.getByRole("region", { name: "Bulk selection" }),
-  ).toContainText("0 attempts selected");
-  await expect(
-    page.getByRole("checkbox", { name: "Select student amy", exact: true }),
   ).toHaveCount(0);
   await page
     .getByRole("checkbox", {
-      name: "Select all attempts on this page",
+      name: "Select all students on this page",
       exact: true,
     })
     .check();
+  await expect(
+    page.getByRole("region", { name: "Bulk selection" }),
+  ).toContainText("5 students selected");
   await page
-    .getByRole("button", { name: "Apply to 2 attempts", exact: true })
+    .getByRole("button", { name: "Selected students", exact: true })
     .click();
-  const dialog = page.getByRole("dialog", { name: "Extend time", exact: true });
-  await expect(dialog).toContainText("amy");
-  await expect(dialog).toContainText("bob");
-  await expect(dialog).not.toContainText("carol");
+  await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(dialog.getByRole("list")).toContainText("amy");
+  await expect(dialog.getByRole("list")).toContainText("bob");
+  await expect(dialog).toContainText(
+    "Time will not change for: carol, dave, eve.",
+  );
   await dialog.getByLabel("Minutes to add", { exact: true }).fill("10");
   await dialog
     .getByRole("button", { name: "Apply extension", exact: true })
@@ -634,11 +625,14 @@ test("bulk action comes first, switches clear selection, and clock requests name
     s.rows[0].attempts[0].id,
     s.rows[1].attempts[0].id,
   ]);
+  await page
+    .getByRole("checkbox", { name: "Select student amy", exact: true })
+    .check();
+  await page
+    .getByRole("button", { name: "Selected students", exact: true })
+    .click();
   await expect(
-    page.getByRole("checkbox", {
-      name: `Select attempt ${s.rows[0].attempts[0].id}`,
-      exact: true,
-    }),
+    page.getByRole("menuitem", { name: "Add time", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole("rowgroup", { name: "amy", exact: true }),
@@ -655,7 +649,7 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
   await trigger.focus();
   await trigger.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Attempt grants…", exact: true }),
+    page.getByRole("menuitem", { name: "Allowed attempts…", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(
@@ -663,7 +657,7 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
   ).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Attempt grants…", exact: true }),
+    page.getByRole("menuitem", { name: "Allowed attempts…", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
@@ -706,7 +700,7 @@ test("row menus ignore queued scroll at the same anchor but dismiss after actual
   await page.evaluate(() => dispatchEvent(new Event("scroll")));
   await expect(menu).toBeVisible();
   await expect(
-    menu.getByRole("menuitem", { name: "Attempt grants…", exact: true }),
+    menu.getByRole("menuitem", { name: "Allowed attempts…", exact: true }),
   ).toBeFocused();
   const previous = await page.evaluate(() => scrollY);
   await page.evaluate(() => scrollBy(0, 100));
@@ -968,7 +962,7 @@ test("slow dashboard responses complete, stale data blocks clock edits, and exam
     .getByRole("button", { name: "Actions for amy attempt 2", exact: true })
     .click();
   await expect(
-    page.getByRole("menuitem", { name: "Reset clock", exact: true }),
+    page.getByRole("menuitem", { name: "Reset time remaining", exact: true }),
   ).toBeDisabled();
   await page.keyboard.press("Escape");
   s.failDashboard = false;
@@ -993,17 +987,17 @@ test("partial clock failures stay reviewable and retries reuse the same request 
 }) => {
   const s = await fixture(page);
   s.failedClock = s.rows[1].attempts[0].id;
-  await page.getByLabel("Bulk action", { exact: true }).selectOption("extend");
   await page
     .getByRole("checkbox", {
-      name: "Select all attempts on this page",
+      name: "Select all students on this page",
       exact: true,
     })
     .check();
   await page
-    .getByRole("button", { name: "Apply to 2 attempts", exact: true })
+    .getByRole("button", { name: "Selected students", exact: true })
     .click();
-  const dialog = page.getByRole("dialog", { name: "Extend time", exact: true });
+  await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
   await dialog
     .getByRole("button", { name: "Apply extension", exact: true })
     .click();
@@ -1030,9 +1024,12 @@ test("default reset keeps the displayed allowance fixed across background roster
     .getByRole("button", { name: "Actions for amy attempt 2", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Reset clock", exact: true })
+    .getByRole("menuitem", { name: "Reset time remaining", exact: true })
     .click();
-  const dialog = page.getByRole("dialog", { name: "Reset clock", exact: true });
+  const dialog = page.getByRole("dialog", {
+    name: "Reset time remaining",
+    exact: true,
+  });
   await expect(dialog.locator(".admin-target-list")).toContainText(
     "90 minutes",
   );
@@ -1790,7 +1787,7 @@ for (const width of [1280, 430])
       .getByRole("button", { name: "Actions for amy attempt 2", exact: true })
       .click();
     await page
-      .getByRole("menuitem", { name: "Reset clock", exact: true })
+      .getByRole("menuitem", { name: "Reset time remaining", exact: true })
       .click();
     const clock = page.getByRole("dialog").locator(".admin-target-list");
     const before = await clock.innerText();

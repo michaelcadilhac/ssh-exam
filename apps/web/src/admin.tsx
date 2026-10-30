@@ -21,6 +21,11 @@ import { AdminReview } from "./admin-review.js";
 import { AlertDelivery } from "./alert-delivery.js";
 import { TemplateCatalogView } from "./template-catalog.js";
 import {
+  CancelExtraAttempts,
+  type CancellationIntents,
+} from "./cancel-extra-attempts.js";
+import { grantStatus } from "./grant-options.js";
+import {
   attemptStatus,
   attemptElapsed,
   clockEditable,
@@ -82,8 +87,12 @@ export function Admin({
     [editingExam, setEditingExam] = useState<any>(null),
     [addingStudent, setAddingStudent] = useState(false),
     [alerts, setAlerts] = useState(false);
-  const [bulkKind, setBulkKind] = useState(""),
-    [selection, setSelection] = useState(new Set<string>());
+  const [selection, setSelection] = useState(new Set<string>());
+  const cancellationIntents = useRef<CancellationIntents>(new Map());
+  const [cancelExtras, setCancelExtras] = useState<{
+    exam: string;
+    students: string[];
+  } | null>(null);
   const [operation, setOperation] = useState<StudentAction | null>(null),
     [removing, setRemoving] = useState<string | null>(null),
     [removingBusy, setRemovingBusy] = useState(false),
@@ -238,6 +247,7 @@ export function Admin({
     clearView();
     setGrantsFor(null);
     setIssuingGrants(null);
+    setCancelExtras(null);
     query.current = {
       ...query.current,
       exam: id,
@@ -249,7 +259,6 @@ export function Admin({
     setSearch("");
     setFilter("");
     setOffset(0);
-    setBulkKind("");
     selectedRef.current = null;
     setSelected(null);
     setOperation(null);
@@ -308,30 +317,33 @@ export function Admin({
       attempts: s.attempts.filter((a: any) => matchesDashboardView(a, filter)),
     }))
     .filter((s: any) => !filter || s.attempts.length);
-  const studentSettings = bulkKind === "duration" || bulkKind === "webcam";
-  const candidates = studentSettings
-    ? visible.filter((s: any) => s.enrollment)
-    : visible.flatMap((s: any) =>
-        s.attempts.filter((a: any) => clockEditable(a, clock)),
-      );
-  const keyOf = (a: any) => (studentSettings ? a.username : a.id);
+  const candidates = visible.filter((s: any) => s.enrollment);
+  const keyOf = (a: any) => a.username;
   const chosen = candidates.filter((a: any) => selection.has(keyOf(a)));
+  const selectedClocks = chosen.flatMap((s: any) =>
+    s.attempts.filter((a: any) => clockEditable(a, clock)),
+  );
   useEffect(() => {
     const valid = new Set(candidates.map(keyOf));
     setSelection((old) => {
       const next = new Set([...old].filter((id) => valid.has(id)));
       return next.size === old.size ? old : next;
     });
-  }, [data, clock, bulkKind]);
+  }, [data]);
   const toggle = (id: string) =>
     setSelection((old) => {
       const next = new Set(old);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  const openOperation = (kind: string, targets: any[]) =>
+  const openOperation = (
+    kind: string,
+    targets: any[],
+    excluded: string[] = [],
+  ) =>
     setOperation({
       kind: kind as StudentAction["kind"],
+      excluded,
       students: kind === "duration" || kind === "webcam" ? targets : [],
       attempts:
         kind === "reset" || kind === "extend"
@@ -353,7 +365,6 @@ export function Admin({
       onError((e as Error).message);
     }
   };
-  const bulkType = studentSettings ? "students" : "attempts";
   return (
     <main className="admin admin-redesign">
       <header className="admin-header">
@@ -625,29 +636,29 @@ export function Admin({
                   ))}
                 </select>
               </label>
-              <label className="admin-bulk-picker">
-                <span className="visually-hidden">Bulk action</span>
-                <select
-                  aria-label="Bulk action"
-                  value={bulkKind}
-                  onChange={(e) => {
-                    setBulkKind(e.target.value);
-                    setSelection(new Set());
+              <label className="admin-select-page">
+                <input
+                  type="checkbox"
+                  aria-label="Select all students on this page"
+                  checked={
+                    !!candidates.length && chosen.length === candidates.length
+                  }
+                  ref={(el) => {
+                    if (el)
+                      el.indeterminate =
+                        chosen.length > 0 && chosen.length < candidates.length;
                   }}
-                >
-                  <option value="">Bulk actions…</option>
-                  <optgroup label="Student settings">
-                    <option value="duration">Set duration</option>
-                    <option value="webcam">Set webcam requirement</option>
-                  </optgroup>
-                  <optgroup label="Current attempt clocks">
-                    <option value="reset">Reset clock</option>
-                    <option value="extend">Extend time</option>
-                  </optgroup>
-                </select>
+                  disabled={!candidates.length || stale}
+                  onChange={(e) =>
+                    setSelection(
+                      new Set(e.target.checked ? candidates.map(keyOf) : []),
+                    )
+                  }
+                />
+                Select page
               </label>
             </div>
-            {bulkKind && (
+            {!!chosen.length && (
               <div
                 className="admin-selection-bar"
                 role="region"
@@ -656,59 +667,81 @@ export function Admin({
                 <span>
                   <strong>
                     {chosen.length}{" "}
-                    {chosen.length === 1 ? bulkType.slice(0, -1) : bulkType}{" "}
-                    selected
-                  </strong>{" "}
-                  · {studentSettings ? "Student settings" : "Current clocks"}
+                    {chosen.length === 1 ? "student" : "students"} selected
+                  </strong>
                 </span>
-                <label className="admin-select-page">
-                  <input
-                    type="checkbox"
-                    aria-label={`Select all ${bulkType} on this page`}
-                    checked={
-                      !!candidates.length && chosen.length === candidates.length
-                    }
-                    ref={(el) => {
-                      if (el)
-                        el.indeterminate =
-                          chosen.length > 0 &&
-                          chosen.length < candidates.length;
-                    }}
-                    onChange={(e) =>
-                      setSelection(
-                        new Set(e.target.checked ? candidates.map(keyOf) : []),
-                      )
-                    }
-                    disabled={!candidates.length || stale}
-                  />
-                  Select page
-                </label>
+                <AdminMenu
+                  label="Selected students"
+                  actions={[
+                    {
+                      label: "Add time",
+                      disabled:
+                        stale ||
+                        !selectedClocks.length ||
+                        selectedClocks.length > 100,
+                      onSelect: () =>
+                        openOperation(
+                          "extend",
+                          selectedClocks,
+                          chosen
+                            .filter(
+                              (s: any) =>
+                                !selectedClocks.some(
+                                  (a: any) => a.username === s.username,
+                                ),
+                            )
+                            .map((s: any) => s.username),
+                        ),
+                    },
+                    {
+                      label: "Reset time remaining",
+                      disabled:
+                        stale ||
+                        !selectedClocks.length ||
+                        selectedClocks.length > 100,
+                      onSelect: () =>
+                        openOperation(
+                          "reset",
+                          selectedClocks,
+                          chosen
+                            .filter(
+                              (s: any) =>
+                                !selectedClocks.some(
+                                  (a: any) => a.username === s.username,
+                                ),
+                            )
+                            .map((s: any) => s.username),
+                        ),
+                    },
+                    {
+                      label: "Cancel extra attempts",
+                      disabled: stale,
+                      onSelect: () =>
+                        setCancelExtras({
+                          exam,
+                          students: chosen.map((s: any) => s.username),
+                        }),
+                    },
+                    {
+                      label: "Future time limits",
+                      disabled: stale,
+                      onSelect: () => openOperation("duration", chosen),
+                    },
+                    {
+                      label: "Future webcam settings",
+                      disabled: stale,
+                      onSelect: () => openOperation("webcam", chosen),
+                    },
+                  ]}
+                >
+                  Actions
+                </AdminMenu>
                 <button
                   className="quiet-button"
-                  onClick={() => {
-                    setBulkKind("");
-                    setSelection(new Set());
-                  }}
+                  onClick={() => setSelection(new Set())}
                 >
-                  Cancel selection
+                  Clear selection
                 </button>
-                <button
-                  className="primary"
-                  disabled={
-                    !chosen.length ||
-                    stale ||
-                    (!studentSettings && chosen.length > 100)
-                  }
-                  onClick={() => openOperation(bulkKind, chosen)}
-                >
-                  Apply to {chosen.length}{" "}
-                  {chosen.length === 1 ? bulkType.slice(0, -1) : bulkType}
-                </button>
-                {!studentSettings && chosen.length > 100 && (
-                  <span className="warn">
-                    Select at most 100 current attempts.
-                  </span>
-                )}
               </div>
             )}
             {loading && !data ? (
@@ -752,19 +785,15 @@ export function Admin({
                   ) : (
                     <div className="admin-roster-scroll">
                       <table
-                        className={bulkKind ? "selecting" : undefined}
+                        className="selecting"
                         aria-label="Students and attempts"
                         role="table"
                       >
                         <thead>
                           <tr role="row">
-                            {bulkKind && (
-                              <th className="selection-cell">
-                                <span className="visually-hidden">
-                                  Selection
-                                </span>
-                              </th>
-                            )}
+                            <th className="selection-cell">
+                              <span className="visually-hidden">Selection</span>
+                            </th>
                             <th>Student / attempt</th>
                             <th>Status</th>
                             <th>Webcam</th>
@@ -781,31 +810,29 @@ export function Admin({
                             aria-label={s.username}
                           >
                             <tr className="student-row" role="row">
-                              {bulkKind && (
-                                <td className="selection-cell" role="cell">
-                                  {studentSettings && s.enrollment && (
-                                    <input
-                                      type="checkbox"
-                                      aria-label={`Select student ${s.username}`}
-                                      checked={selection.has(s.username)}
-                                      disabled={stale}
-                                      onChange={() => toggle(s.username)}
-                                    />
-                                  )}
-                                </td>
-                              )}
+                              <td className="selection-cell" role="cell">
+                                {s.enrollment && (
+                                  <input
+                                    type="checkbox"
+                                    aria-label={`Select student ${s.username}`}
+                                    checked={selection.has(s.username)}
+                                    disabled={stale}
+                                    onChange={() => toggle(s.username)}
+                                  />
+                                )}
+                              </td>
                               <td className="student-identity" role="cell">
                                 <strong title={s.username}>{s.username}</strong>
                                 {s.grant && (
                                   <small>
-                                    Initial grant:{" "}
+                                    First attempt:{" "}
                                     {s.grant.settings.duration / 60} min ·{" "}
-                                    {s.grant.status}
+                                    {grantStatus(s.grant)}
                                   </small>
                                 )}
                                 {s.grantError && (
                                   <small className="warn">
-                                    Grant requires inspection
+                                    Attempt settings need review
                                   </small>
                                 )}
                                 {s.unusedGrants && (
@@ -817,22 +844,22 @@ export function Admin({
                                     }
                                   >
                                     {s.unusedGrants.unavailable
-                                      ? "Grant summary requires inspection"
+                                      ? "Attempt settings need review"
                                       : [
                                           s.unusedGrants.available
-                                            ? `${s.unusedGrants.available} grant${s.unusedGrants.available === 1 ? "" : "s"} available`
+                                            ? `${s.unusedGrants.available} ${s.unusedGrants.available === 1 ? "attempt" : "attempts"} ready`
                                             : "",
                                           s.unusedGrants.future
-                                            ? `${s.unusedGrants.future} with a future Begin window`
+                                            ? `${s.unusedGrants.future} available later`
                                             : "",
                                           s.unusedGrants.pendingNative
-                                            ? `${s.unusedGrants.pendingNative} awaiting source confirmation`
+                                            ? `${s.unusedGrants.pendingNative} preparing saved work`
                                             : "",
                                           s.unusedGrants.closed
-                                            ? `${s.unusedGrants.closed} unused with closed Begin windows`
+                                            ? `${s.unusedGrants.closed} expired unused ${s.unusedGrants.closed === 1 ? "attempt" : "attempts"}`
                                             : "",
                                           s.unusedGrants.more
-                                            ? "More grants to inspect"
+                                            ? "More attempts in Details"
                                             : "",
                                         ]
                                           .filter(Boolean)
@@ -869,7 +896,7 @@ export function Admin({
                                     label={`Actions for student ${s.username}`}
                                     actions={[
                                       {
-                                        label: "Attempt grants…",
+                                        label: "Allowed attempts…",
                                         disabled: stale,
                                         onSelect: () => openGrants(s.username),
                                       },
@@ -894,27 +921,10 @@ export function Admin({
                               return (
                                 <React.Fragment key={a.id}>
                                   <tr className="attempt-row" role="row">
-                                    {bulkKind && (
-                                      <td
-                                        className="selection-cell"
-                                        role="cell"
-                                      >
-                                        {!studentSettings &&
-                                          ["ACTIVE", "LOCKED"].includes(
-                                            a.state,
-                                          ) && (
-                                            <input
-                                              type="checkbox"
-                                              aria-label={`Select attempt ${a.id}`}
-                                              checked={
-                                                editable && selection.has(a.id)
-                                              }
-                                              disabled={!editable}
-                                              onChange={() => toggle(a.id)}
-                                            />
-                                          )}
-                                      </td>
-                                    )}
+                                    <td
+                                      className="selection-cell"
+                                      role="cell"
+                                    />
                                     <td
                                       className="attempt-identity"
                                       role="cell"
@@ -937,7 +947,7 @@ export function Admin({
                                             a.preflight_started_at,
                                           )}
                                         >
-                                          Preflight{" "}
+                                          Setup{" "}
                                           {attemptStarted(
                                             a.preflight_started_at,
                                           )}
@@ -1088,13 +1098,13 @@ export function Admin({
                                           children="More"
                                           actions={[
                                             {
-                                              label: "Reset clock",
+                                              label: "Reset time remaining",
                                               disabled: !editable,
                                               onSelect: () =>
                                                 openOperation("reset", [a]),
                                             },
                                             {
-                                              label: "Extend time",
+                                              label: "Add time",
                                               disabled: !editable,
                                               onSelect: () =>
                                                 openOperation("extend", [a]),
@@ -1106,7 +1116,7 @@ export function Admin({
                                   </tr>
                                   {interruptionRows.has(a.id) && (
                                     <tr className="interruption-row">
-                                      <td colSpan={bulkKind ? 6 : 5}>
+                                      <td colSpan={6}>
                                         <section
                                           id={`interruptions-${a.id}`}
                                           aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
@@ -1161,6 +1171,15 @@ export function Admin({
             )}
           </section>
         </>
+      )}
+      {cancelExtras && (
+        <CancelExtraAttempts
+          exam={cancelExtras.exam}
+          students={cancelExtras.students}
+          requests={cancellationIntents.current}
+          onClose={() => setCancelExtras(null)}
+          onChanged={refresh}
+        />
       )}
       {issuingGrants && current && (
         <GrantIssuanceDialog

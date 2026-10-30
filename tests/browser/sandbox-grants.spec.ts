@@ -94,7 +94,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
     })
     .click();
   await page
-    .getByRole("menuitem", { name: "Attempt grants…", exact: true })
+    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
     .click();
   let dialog = page.getByRole("dialog", {
     name: "Attempt grants for practice01",

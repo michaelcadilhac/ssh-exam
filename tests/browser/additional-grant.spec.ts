@@ -71,18 +71,14 @@ test("individual additional settings are reviewed per student without changing s
     exact: true,
   });
   await expect(
-    reviewed
-      .getByRole("article")
-      .filter({
-        has: page.getByRole("heading", { name: "extra01", exact: true }),
-      }),
+    reviewed.getByRole("article").filter({
+      has: page.getByRole("heading", { name: "extra01", exact: true }),
+    }),
   ).toContainText("100 minutes");
   await expect(
-    reviewed
-      .getByRole("article")
-      .filter({
-        has: page.getByRole("heading", { name: "extra02", exact: true }),
-      }),
+    reviewed.getByRole("article").filter({
+      has: page.getByRole("heading", { name: "extra02", exact: true }),
+    }),
   ).toContainText("120 minutes");
   await expect(dialog).toContainText("Status: REVIEW");
   await page.screenshot({
@@ -218,7 +214,7 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     .getByRole("button", { name: "Actions for student extra01", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Attempt grants…", exact: true })
+    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
     .click();
   const grants = page.getByRole("dialog", {
     name: "Attempt grants for extra01",
@@ -447,7 +443,7 @@ test("saved-work review stays pending without native confirmation and can be can
     .getByRole("button", { name: "Actions for student extra01", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Attempt grants…", exact: true })
+    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
     .click();
   const management = page.getByRole("dialog", {
     name: "Attempt grants for extra01",
@@ -649,7 +645,7 @@ test("bulk saved work requires each student's own source and preserves the exact
     .getByRole("button", { name: "Actions for student extra02", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Attempt grants…", exact: true })
+    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
     .click();
   const management = page.getByRole("dialog", {
       name: "Attempt grants for extra02",

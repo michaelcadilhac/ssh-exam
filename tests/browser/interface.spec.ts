@@ -334,9 +334,6 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await expect(roster).toContainText("student01");
   await expect(roster).toContainText("student03");
   await page
-    .getByLabel("Bulk action", { exact: true })
-    .selectOption("duration");
-  await page
     .getByRole("checkbox", { name: "Select student student01", exact: true })
     .check();
   await page
@@ -344,10 +341,13 @@ test("instructor can add, remove and import students, cancel removal with Escape
     .check();
 
   await page
-    .getByRole("button", { name: "Apply to 2 students", exact: true })
+    .getByRole("button", { name: "Selected students", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Future time limits", exact: true })
     .click();
   let settings = page.getByRole("dialog", {
-    name: "Set duration",
+    name: "Future time limits",
     exact: true,
   });
   await settings.getByRole("checkbox", { name: /Use exam default/ }).uncheck();
@@ -360,7 +360,6 @@ test("instructor can add, remove and import students, cancel removal with Escape
     await expect(
       roster.getByRole("rowgroup", { name, exact: true }),
     ).toContainText("Duration: 120 minutes");
-  await page.getByLabel("Bulk action", { exact: true }).selectOption("webcam");
   await page
     .getByRole("checkbox", { name: "Select student student01", exact: true })
     .check();
@@ -369,10 +368,13 @@ test("instructor can add, remove and import students, cancel removal with Escape
     .check();
 
   await page
-    .getByRole("button", { name: "Apply to 2 students", exact: true })
+    .getByRole("button", { name: "Selected students", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Future webcam settings", exact: true })
     .click();
   settings = page.getByRole("dialog", {
-    name: "Set webcam requirement",
+    name: "Future webcam settings",
     exact: true,
   });
   await settings.getByLabel("Webcam requirement").selectOption("false");
@@ -1827,7 +1829,7 @@ test("instructor sees a working student and live clock, resets time without disc
     await rowCommand(
       instructor,
       "Actions for student06 attempt 1",
-      "Reset clock",
+      "Reset time remaining",
     );
     await expect(instructor.getByRole("dialog")).toContainText("→ 5 minutes");
     await instructor.keyboard.press("Escape");
@@ -1835,7 +1837,7 @@ test("instructor sees a working student and live clock, resets time without disc
     await rowCommand(
       instructor,
       "Actions for student06 attempt 1",
-      "Reset clock",
+      "Reset time remaining",
     );
     await instructor
       .getByRole("button", { name: "Apply reset", exact: true })
@@ -1857,18 +1859,19 @@ test("instructor sees a working student and live clock, resets time without disc
     expect(updated.state).toBe("ACTIVE");
     expect(updated.deadline - Date.now()).toBeGreaterThan(290000);
     expect(updated.deadline - Date.now()).toBeLessThanOrEqual(300000);
-    await instructor
-      .getByLabel("Bulk action", { exact: true })
-      .selectOption("extend");
+
     await row
       .getByRole("checkbox", {
-        name: `Select attempt ${updated.id}`,
+        name: `Select student ${updated.username}`,
         exact: true,
       })
       .check();
 
     await instructor
-      .getByRole("button", { name: "Apply to 1 attempt", exact: true })
+      .getByRole("button", { name: "Selected students", exact: true })
+      .click();
+    await instructor
+      .getByRole("menuitem", { name: "Add time", exact: true })
       .click();
     await instructor.getByLabel("Minutes to add", { exact: true }).fill("3");
     await instructor

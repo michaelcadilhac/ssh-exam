@@ -1,5 +1,13 @@
 # Deferred work
 
+October 30 NEW Prof UI review is IN PROGRESS, locally only. Prof reviewed all
+web text surfaces and agreed the scenario/terminology/two-screen design before
+implementation. First student-selection/cancellation/time-scope increment is
+implemented/tested locally and accepted by Prof after rendered review. Another
+attempts, unused settings, automatic saved-work setup and the full copy pass
+remain open. The instructor approved the separate retain-only setup service for
+local development/testing; no deployment is authorized. See docs/ui-prof-review.md.
+
 October 30 sandbox setup COMPLETE/CONFIGURED under the instructor's explicit
 "Fix this then" instruction. Existing sample files are published/attested and
 selected with a finite practice window through tonight at 23:59 Chicago. Automatic

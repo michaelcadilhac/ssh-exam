@@ -6,6 +6,7 @@ export type StudentAction = {
   kind: "duration" | "webcam" | "reset" | "extend";
   students: any[];
   attempts: any[];
+  excluded?: string[];
 };
 export function StudentActions({
   exam,
@@ -35,10 +36,10 @@ export function StudentActions({
     [error, setError] = useState(""),
     [results, setResults] = useState<any[] | null>(null);
   const title = {
-    duration: "Set duration",
-    webcam: "Set webcam requirement",
-    reset: "Reset clock",
-    extend: "Extend time",
+    duration: "Future time limits",
+    webcam: "Future webcam settings",
+    reset: "Reset time remaining",
+    extend: "Add time",
   }[op.kind];
   return (
     <Modal
@@ -113,6 +114,11 @@ export function StudentActions({
             </li>
           ))}
         </ul>
+        {!!op.excluded?.length && (
+          <p className="warn">
+            Time will not change for: {op.excluded.join(", ")}.
+          </p>
+        )}
         {settings && <p>Current attempts keep their existing settings.</p>}
         {op.kind === "duration" && (
           <>
