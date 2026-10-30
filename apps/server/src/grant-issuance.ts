@@ -4,6 +4,7 @@ import {
   grantIssuePreview,
   grantIssueIntent,
   grantAdditionalPreview,
+  grantReviewList,
 } from "../../../packages/protocol/grants.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
@@ -56,12 +57,55 @@ export class GrantIssuance {
       true,
     );
   }
+  list(input: unknown, actor: string) {
+    const b = grantReviewList.parse(input),
+      previous = b.after ? this.row(b.after, actor) : null;
+    if (previous && JSON.parse(previous.snapshot).exam !== b.exam)
+      return refuse(
+        "The request list changed exam. Refresh it before continuing.",
+      );
+    const rows = this.store.db
+      .prepare(
+        `SELECT id FROM grant_issuance_previews
+      WHERE agent=? AND actor=? AND json_extract(snapshot,'$.exam')=?
+      ${previous ? "AND (created<? OR (created=? AND id<?))" : ""}
+      ORDER BY created DESC,id DESC LIMIT ?`,
+      )
+      .all(
+        this.agent,
+        actor,
+        b.exam,
+        ...(previous ? [previous.created, previous.created, previous.id] : []),
+        b.limit + 1,
+      ) as any[];
+    const visible = rows.slice(0, b.limit);
+    return {
+      agent: this.agent,
+      exam: b.exam,
+      actor,
+      rows: visible.map((row) => {
+        const r = this.show(row.id, actor);
+        return {
+          id: r.id,
+          kind: r.kind,
+          status: r.status,
+          created: r.created,
+          expires: r.expires,
+          reason: r.reason,
+          usernames: r.rows.map((student: any) => student.username),
+        };
+      }),
+      next: rows.length > b.limit ? visible.at(-1)!.id : null,
+    };
+  }
   private previewSelection(
     b: z.infer<typeof grantIssuePreview> & {
       duration?: number;
+      preserve_duration?: true;
       webcam?: boolean;
       work?: z.infer<typeof grantAdditionalPreview>["work"];
       saved_sources?: z.infer<typeof grantAdditionalPreview>["saved_sources"];
+      work_sources?: z.infer<typeof grantAdditionalPreview>["work_sources"];
       student_settings?: z.infer<
         typeof grantAdditionalPreview
       >["student_settings"];
@@ -78,7 +122,11 @@ export class GrantIssuance {
           return refuse(
             "Sandbox uses repeatable practice; explicit NEW authority uses web grants additional-preview sandbox --duration-minutes 5, not legacy initial issuance",
           );
-        if (isSandbox(b.exam) && (b.duration !== 300 || b.webcam === true))
+        if (
+          isSandbox(b.exam) &&
+          ((b.duration !== undefined && b.duration !== 300) ||
+            b.webcam === true)
+        )
           return refuse(
             "Sandbox practice grants are fixed at five minutes/no webcam; use --duration-minutes 5 and omit webcam or select optional. No grant issued.",
           );
@@ -94,7 +142,19 @@ export class GrantIssuance {
           return refuse(
             "Choose an explicit finite Begin window that has not closed; no grant issued",
           );
-        const sources = new Map(b.saved_sources?.map((s) => [s.username, s]));
+        const sources = new Map(
+          (
+            b.work_sources ??
+            b.saved_sources?.map((s) => ({
+              username: s.username,
+              work: {
+                kind: "saved" as const,
+                attempt: s.attempt,
+                checksum: s.checksum,
+              },
+            }))
+          )?.map((s) => [s.username, s.work]),
+        );
         const overrides = new Map(
           b.student_settings?.map((s) => [s.username, s]),
         );
@@ -108,7 +168,12 @@ export class GrantIssuance {
               earliest: b.earliest,
               latest: b.latest,
               duration: additional
-                ? (override?.duration ?? b.duration!)
+                ? (override?.duration ??
+                  (b.preserve_duration
+                    ? isSandbox(b.exam)
+                      ? 300
+                      : (enrollment.duration ?? definition.exam.duration)
+                    : b.duration!))
                 : (enrollment.duration ?? definition.exam.duration),
               webcam: isSandbox(b.exam)
                 ? false
@@ -120,13 +185,7 @@ export class GrantIssuance {
                       ? definition.exam.webcam
                       : !!enrollment.webcam,
             },
-            source
-              ? {
-                  kind: "saved",
-                  attempt: source.attempt,
-                  checksum: source.checksum,
-                }
-              : b.work,
+            source ?? b.work,
             username,
           );
           return {

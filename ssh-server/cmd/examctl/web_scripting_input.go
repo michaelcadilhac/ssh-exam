@@ -27,6 +27,22 @@ type scriptInputRow struct {
 	Work grantWorkResult `json:"work"`
 }
 
+type scriptWorkSource struct {
+	Username string          `json:"username"`
+	Work     grantWorkResult `json:"work"`
+}
+
+func grantWorkInput(work grantWorkResult) map[string]any {
+	value := map[string]any{"kind": work.Kind}
+	if work.Kind == "template" {
+		value["name"], value["hash"] = work.Name, work.Hash
+	}
+	if work.Kind == "saved" {
+		value["attempt"], value["checksum"] = work.Attempt, work.Checksum
+	}
+	return value
+}
+
 func scriptBatchInput(path string, users *[]string, body map[string]any) error {
 	var input io.Reader = os.Stdin
 	if path != "-" {
@@ -123,6 +139,7 @@ func scriptBatchInput(path string, users *[]string, body map[string]any) error {
 	overrides := []scriptStudentSettings{}
 	allDurations := true
 	var commonWork *grantWorkResult
+	sharedWork := true
 	for _, row := range rows {
 		if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,31}$`).MatchString(row.Username) || selected[row.Username] || !validGrantWorkResult(row.Work) {
 			return errors.New("invalid/duplicate student or explicit work source")
@@ -141,14 +158,11 @@ func scriptBatchInput(path string, users *[]string, body map[string]any) error {
 			sources = append(sources, grantSavedSource{Username: row.Username, Attempt: row.Work.Attempt, Checksum: row.Work.Checksum})
 		} else {
 			if commonWork != nil && *commonWork != row.Work {
-				return errors.New("non-saved batch rows must share the same explicit starter")
+				sharedWork = false
 			}
 			work := row.Work
 			commonWork = &work
 		}
-	}
-	if len(sources) > 0 && len(sources) != len(rows) {
-		return errors.New("choose saved sources for every row or a shared empty/template starter")
 	}
 	if len(*users) == 0 {
 		for _, row := range rows {
@@ -164,21 +178,23 @@ func scriptBatchInput(path string, users *[]string, body map[string]any) error {
 			}
 		}
 	}
-	if len(sources) > 0 {
+	if len(sources) > 0 && len(sources) != len(rows) || !sharedWork {
+		mapped := []map[string]any{}
+		for _, row := range rows {
+			mapped = append(mapped, map[string]any{"username": row.Username, "work": grantWorkInput(row.Work)})
+		}
+		body["work_sources"] = mapped
+	} else if len(sources) > 0 {
 		body["saved_sources"] = sources
 	} else {
 		// The strict workspace union accepts only fields for this source kind.
 		// grantWorkResult is a reply decoder and includes empty saved-work fields.
-		work := map[string]any{"kind": commonWork.Kind}
-		if commonWork.Kind == "template" {
-			work["name"], work["hash"] = commonWork.Name, commonWork.Hash
-		}
-		body["work"] = work
+		body["work"] = grantWorkInput(*commonWork)
 	}
 	if len(overrides) > 0 {
 		body["student_settings"] = overrides
 	}
-	if allDurations {
+	if allDurations && body["preserve_duration"] != true {
 		body["duration"] = *rows[0].Settings.Duration
 	}
 	return nil

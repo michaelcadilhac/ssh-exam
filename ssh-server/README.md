@@ -1,5 +1,14 @@
 # Native class-server installation
 
+October30 local candidate adds the separate retain-only
+`exam-source-setup.service`: `examctl web grants source-worker` processes exact
+saved-work tasks through existing outbound authentication, with bounded child IO
+and native confirmation before availability. Inspection/retry/manual retention
+are discoverable in `examctl web grants help`. It changes no execution protocol
+and is not installed/enabled by this development work. Evidence, explicit named
+authorization, state/pin preservation and future rollout/rollback:
+[automatic saved-work setup](../docs/automatic-saved-work-setup.md).
+
 October29 current installed release is **deployed and online**. Native872fe80
 remains installed; CLI46bcfa2 adds the generic scripting workflow documented in
 [examctl scripting](../docs/examctl-scripting.md). Run `examctl help scripting`;

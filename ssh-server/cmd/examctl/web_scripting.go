@@ -155,6 +155,7 @@ func webScriptingMain(args []string) int {
 	until := f.String("latest", "", "finite latest Begin")
 	minutes := f.Int64("duration-minutes", 0, "whole minutes")
 	seconds := f.Int64("duration-seconds", 0, "exact seconds")
+	preserve := f.Bool("preserve-duration", false, "save each student's current effective time limit")
 	webcam := f.String("webcam", "", "required/optional override")
 	reason := f.String("reason", "", "audited reason")
 	saved := f.String("saved-sources", "", "exact per-student CSV FILE|-")
@@ -308,14 +309,32 @@ func webScriptingMain(args []string) int {
 			return bad("choose the exact show target")
 		}
 		body["id"] = w[2]
+	} else if op == "grants.issue-list" {
+		if len(w) != 3 || !catalogName.MatchString(w[2]) {
+			return bad("issue-list requires the exact exam")
+		}
+		if !seen["limit"] {
+			*limit = 20
+		}
+		if *limit < 1 || *limit > 20 || *after != "" && !managementUUID.MatchString(*after) {
+			return bad("recent-review pages require limit1..20 and an exact cursor")
+		}
+		allowed["limit"], allowed["after"] = true, true
+		body["exam"], body["limit"] = w[2], *limit
+		if *after != "" {
+			body["after"] = *after
+		}
 	} else if op == "grants.additional-preview" || op == "grants.issue-preview" {
 		if len(w) < 3 || !catalogName.MatchString(w[2]) {
 			return bad("choose an exact exam")
 		}
-		for _, key := range []string{"definition-from", "definition-revision", "template-version", "earliest", "latest", "reason", "saved-sources", "input", "duration-minutes", "duration-seconds", "webcam", "work", "work-template", "work-template-version", "work-attempt", "work-checksum"} {
+		for _, key := range []string{"definition-from", "definition-revision", "template-version", "earliest", "latest", "reason", "saved-sources", "input", "duration-minutes", "duration-seconds", "preserve-duration", "webcam", "work", "work-template", "work-template-version", "work-attempt", "work-checksum"} {
 			allowed[key] = true
 		}
 		body["exam"] = w[2]
+		if *preserve {
+			body["preserve_duration"] = true
+		}
 		if o.definition != "" {
 			if seen["definition-revision"] || seen["template-version"] {
 				return bad("choose --definition-from OR explicit hashes")
@@ -398,6 +417,9 @@ func webScriptingMain(args []string) int {
 			body["work"] = work
 		}
 		if op == "grants.additional-preview" {
+			if *preserve && (seen["duration-minutes"] || seen["duration-seconds"]) {
+				return bad("choose --preserve-duration OR an explicit shared duration, never both")
+			}
 			if seen["duration-minutes"] && (*minutes < 1 || *minutes > 360) {
 				return bad("minutes must be1..360")
 			}
@@ -416,17 +438,19 @@ func webScriptingMain(args []string) int {
 					duration = supplied
 				}
 			}
-			if duration < 60 || duration > 21600 {
+			if !*preserve && (duration < 60 || duration > 21600) {
 				return bad("explicit additional allowance60..21600 seconds required")
 			}
-			body["duration"] = duration
+			if !*preserve {
+				body["duration"] = duration
+			}
 			if *webcam != "" {
 				if *webcam != "required" && *webcam != "optional" {
 					return bad("webcam must be required/optional")
 				}
 				body["webcam"] = *webcam == "required"
 			}
-		} else if *saved != "" || o.input != "" || work != nil || seen["duration-minutes"] || seen["duration-seconds"] || seen["webcam"] {
+		} else if *saved != "" || o.input != "" || work != nil || seen["duration-minutes"] || seen["duration-seconds"] || seen["preserve-duration"] || seen["webcam"] {
 			return bad("saved sources/settings overrides require additional-preview")
 		}
 	} else if op == "grants.issue-show" || op == "grants.issue-confirm" || op == "grants.issue-cancel" {

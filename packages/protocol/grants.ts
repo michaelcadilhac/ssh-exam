@@ -51,6 +51,12 @@ export const grantShow = z
     before: z.number().int().positive().optional(),
   })
   .strict();
+export const grantReviewList = grantList
+  .pick({ exam: true, after: true })
+  .extend({
+    limit: z.number().int().min(1).max(20).default(20),
+  })
+  .strict();
 export const grantSourceRequest = z
   .object({
     id: z.string().uuid(),
@@ -112,7 +118,8 @@ export const grantIssueIntent = z
   .strict();
 export const grantAdditionalPreview = grantIssuePreview
   .extend({
-    duration: z.number().int().min(60).max(21600),
+    duration: z.number().int().min(60).max(21600).optional(),
+    preserve_duration: z.literal(true).optional(),
     webcam: z.boolean().optional(),
     work: grantWorkspace.optional(),
     student_settings: z
@@ -145,9 +152,20 @@ export const grantAdditionalPreview = grantIssuePreview
       .min(1)
       .max(200)
       .optional(),
+    work_sources: z
+      .array(z.object({ username, work: grantWorkspace }).strict())
+      .min(1)
+      .max(200)
+      .optional(),
   })
   .strict()
   .superRefine((b, ctx) => {
+    if ((b.duration !== undefined) === (b.preserve_duration === true))
+      ctx.addIssue({
+        code: "custom",
+        path: ["duration"],
+        message: "Choose an explicit duration OR preserve_duration, never both",
+      });
     if (b.student_settings) {
       const names = new Set(b.student_settings.map((row) => row.username));
       if (
@@ -160,25 +178,32 @@ export const grantAdditionalPreview = grantIssuePreview
           message: "Per-student settings must name distinct selected students",
         });
     }
-    if (!b.saved_sources) return;
-    if (b.work !== undefined)
-      ctx.addIssue({
-        code: "custom",
-        path: ["saved_sources"],
-        message: "Choose shared work OR explicit saved_sources, never both",
-      });
-    const selected = new Set(b.usernames),
-      mapped = new Set(b.saved_sources.map((s) => s.username));
     if (
-      mapped.size !== b.saved_sources.length ||
-      mapped.size !== selected.size ||
-      b.saved_sources.some((s) => !selected.has(s.username))
+      [b.work, b.saved_sources, b.work_sources].filter(
+        (value) => value !== undefined,
+      ).length > 1
     )
       ctx.addIssue({
         code: "custom",
-        path: ["saved_sources"],
+        path: ["work_sources"],
         message:
-          "Provide exactly one protected attempt/checksum for every selected student; no duplicates, omissions or unselected owners",
+          "Choose shared work, saved_sources OR work_sources, never more than one",
+      });
+    const sources = b.work_sources ?? b.saved_sources;
+    if (!sources) return;
+    const selected = new Set(b.usernames),
+      mapped = new Set(sources.map((s) => s.username));
+    if (
+      mapped.size !== sources.length ||
+      mapped.size !== selected.size ||
+      sources.some((s) => !selected.has(s.username))
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: [b.work_sources ? "work_sources" : "saved_sources"],
+        message: b.work_sources
+          ? "Choose starting files for every selected student exactly once"
+          : "Provide exactly one protected attempt/checksum for every selected student; no duplicates, omissions or unselected owners",
       });
   });
 export const grantBeginRequest = z

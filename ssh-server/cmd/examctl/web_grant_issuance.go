@@ -25,8 +25,11 @@ func webGrantIssuanceMain(args []string) int {
 	latest := f.String("latest", "", "finite latest Begin RFC3339")
 	reason := f.String("reason", "", "audited NEW issuance reason")
 	revision := f.String("revision", "", "reviewed preview hash")
+	limit := f.Int("limit", 20, "recent review page size1..20")
+	after := f.String("after", "", "exclusive recent-review cursor")
 	minutes := f.Int64("duration-minutes", 0, "explicit additional allowance minutes")
 	seconds := f.Int64("duration-seconds", 0, "explicit additional allowance seconds")
+	preserve := f.Bool("preserve-duration", false, "save each student's current effective time limit")
 	webcam := f.String("webcam", "", "explicit required/optional override; omitted preserves effective value")
 	workFlags := registerGrantWork(f)
 	savedSources := f.String("saved-sources", "", "CSV username,attempt,checksum selecting one protected source per student; additional-preview only")
@@ -48,6 +51,15 @@ func webGrantIssuanceMain(args []string) int {
 	f.Visit(func(v *flag.Flag) { present[v.Name] = true })
 	body := map[string]any{}
 	switch w[1] {
+	case "issue-list":
+		if len(w) != 3 || !catalogName.MatchString(w[2]) || *limit < 1 || *limit > 20 || *after != "" && !managementUUID.MatchString(*after) {
+			return usage("issue-list requires EXAM [--limit 1..20 --after REVIEW_UUID]")
+		}
+		allowed["limit"], allowed["after"] = true, true
+		body["exam"], body["limit"] = w[2], *limit
+		if *after != "" {
+			body["after"] = *after
+		}
 	case "issue-preview", "additional-preview":
 		if len(w) > 203 || !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(w[2]) {
 			return usage("choose an exam and 1..200 explicit enrolled students")
@@ -113,23 +125,32 @@ func webGrantIssuanceMain(args []string) int {
 		body["exam"], body["usernames"], body["definition_revision"], body["template_version"] = w[2], users, *definition, *source
 		body["earliest"], body["latest"], body["reason"] = from.UnixMilli(), until.UnixMilli(), *reason
 		if w[1] == "additional-preview" {
-			if present["duration-minutes"] == present["duration-seconds"] {
-				return usage("additional grants require exactly one explicit --duration-minutes or --duration-seconds")
-			}
-			duration := *seconds
-			if present["duration-minutes"] {
-				if *minutes < 1 || *minutes > 360 {
-					return usage("duration must be1..360 whole minutes")
+			if *preserve {
+				if present["duration-minutes"] || present["duration-seconds"] {
+					return usage("choose --preserve-duration OR an explicit shared duration, never both")
 				}
-				duration = *minutes * 60
-			}
-			if duration < 60 || duration > 21600 {
-				return usage("additional allowance must be60..21600 seconds")
-			}
-			if w[2] == "sandbox" && duration != 300 {
-				return usage("sandbox practice is fixed at five minutes; use --duration-minutes 5")
+				body["preserve_duration"] = true
+			} else {
+				if present["duration-minutes"] == present["duration-seconds"] {
+					return usage("additional attempts need --preserve-duration OR one explicit --duration-minutes/--duration-seconds")
+				}
+				duration := *seconds
+				if present["duration-minutes"] {
+					if *minutes < 1 || *minutes > 360 {
+						return usage("duration must be1..360 whole minutes")
+					}
+					duration = *minutes * 60
+				}
+				if duration < 60 || duration > 21600 {
+					return usage("additional allowance must be60..21600 seconds")
+				}
+				if w[2] == "sandbox" && duration != 300 {
+					return usage("sandbox practice is fixed at five minutes; use --duration-minutes 5")
+				}
+				body["duration"] = duration
 			}
 			allowed["duration-minutes"], allowed["duration-seconds"], allowed["webcam"] = true, true, true
+			allowed["preserve-duration"] = true
 			allowed["work"], allowed["work-template"], allowed["work-template-version"] = true, true, true
 			allowed["work-attempt"], allowed["work-checksum"] = true, true
 			allowed["saved-sources"] = true
@@ -140,7 +161,6 @@ func webGrantIssuanceMain(args []string) int {
 			if work != nil {
 				body["work"] = work
 			}
-			body["duration"] = duration
 			if present["webcam"] {
 				if *webcam != "required" && *webcam != "optional" {
 					return usage("webcam override must be required/optional; omit to preserve each student's effective requirement")
@@ -204,6 +224,9 @@ type grantIssuanceResult struct {
 }
 
 func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent string) error {
+	if op == "grants.issue-list" {
+		return validateGrantReviewPage(body, raw, agent)
+	}
 	fail := errors.New("Unconfirmed issuance reply scope/schema; no private output. Inspect the original issue-show preview with a fresh request; retry identical confirmation intent, never recreate authority")
 	var result grantIssuanceResult
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -225,9 +248,11 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		Earliest           int64                   `json:"earliest"`
 		Latest             int64                   `json:"latest"`
 		Duration           int64                   `json:"duration"`
+		PreserveDuration   bool                    `json:"preserve_duration"`
 		Webcam             *bool                   `json:"webcam"`
 		Work               *grantWorkResult        `json:"work"`
 		SavedSources       []grantSavedSource      `json:"saved_sources"`
+		WorkSources        []scriptWorkSource      `json:"work_sources"`
 		StudentSettings    []scriptStudentSettings `json:"student_settings"`
 	}
 	if json.Unmarshal(encoded, &scope) != nil {
@@ -245,7 +270,7 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 	}
 	seen := map[string]bool{}
 	for _, row := range result.Rows {
-		if seen[row.Username] || row.Username == "" || row.Settings.ID != result.Exam || !validGrantWorkResult(row.Work) || !digest.MatchString(row.Settings.TemplateVersion) || !digest.MatchString(row.Hash) || row.Settings.Latest <= row.Settings.Earliest || row.Settings.Duration < 60 {
+		if seen[row.Username] || row.Username == "" || row.Settings.ID != result.Exam || !validGrantWorkResult(row.Work) || !digest.MatchString(row.Settings.TemplateVersion) || !digest.MatchString(row.Hash) || row.Settings.Latest <= row.Settings.Earliest || row.Settings.Duration < 60 || row.Settings.Duration > 21600 {
 			return fail
 		}
 		seen[row.Username] = true
@@ -265,6 +290,21 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 			return fail
 		}
 		saved := map[string]grantSavedSource{}
+		workSources := map[string]grantWorkResult{}
+		if scope.PreserveDuration && scope.Duration != 0 {
+			return fail
+		}
+		if scope.WorkSources != nil {
+			if scope.Work != nil || scope.SavedSources != nil || len(scope.WorkSources) != len(scope.Usernames) {
+				return fail
+			}
+			for _, source := range scope.WorkSources {
+				if _, exists := workSources[source.Username]; exists || !validGrantWorkResult(source.Work) {
+					return fail
+				}
+				workSources[source.Username] = source.Work
+			}
+		}
 		if scope.SavedSources != nil {
 			if scope.Work != nil || len(scope.SavedSources) != len(scope.Usernames) {
 				return fail
@@ -297,16 +337,25 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 				}
 				expectedWork = grantWorkResult{Kind: "saved", Attempt: source.Attempt, Checksum: source.Checksum}
 			}
+			if scope.WorkSources != nil {
+				work, ok := workSources[row.Username]
+				if !ok {
+					return fail
+				}
+				expectedWork = work
+			}
 			expectedDuration, expectedWebcam := scope.Duration, scope.Webcam
+			checkDuration := !scope.PreserveDuration
 			if setting, ok := overrides[row.Username]; ok {
 				if setting.Duration != nil {
 					expectedDuration = *setting.Duration
+					checkDuration = true
 				}
 				if setting.Webcam != nil {
 					expectedWebcam = setting.Webcam
 				}
 			}
-			if row.Work != expectedWork || row.Settings.TemplateVersion != scope.TemplateVersion || row.Settings.Earliest != scope.Earliest || row.Settings.Latest != scope.Latest || (op == "grants.additional-preview" && row.Settings.Duration != expectedDuration) || (expectedWebcam != nil && row.Settings.Webcam != *expectedWebcam) {
+			if row.Work != expectedWork || row.Settings.TemplateVersion != scope.TemplateVersion || row.Settings.Earliest != scope.Earliest || row.Settings.Latest != scope.Latest || (op == "grants.additional-preview" && checkDuration && row.Settings.Duration != expectedDuration) || (expectedWebcam != nil && row.Settings.Webcam != *expectedWebcam) {
 				return fail
 			}
 		}

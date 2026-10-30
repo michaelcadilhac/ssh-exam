@@ -547,6 +547,119 @@ export async function qualifyScriptingCLI(
     expect(grant.status).toBe("AVAILABLE");
     expect(grant.claims).toHaveLength(0);
   }
+  // Complete NEW saved-work grants automatically through the actual worker ->
+  // bounded native child -> signed gateway queue/retention transactions. Older
+  // synthetic tasks are reconciled rather than clearing any fixture history.
+  const automaticReview = await get("grants", [
+    "additional-preview",
+    target,
+    "--input",
+    inputs,
+    "--definition-revision",
+    (await get("exams", ["show", target])).revision,
+    "--template-version",
+    "a".repeat(64),
+    "--preserve-duration",
+    "--earliest",
+    earliest,
+    "--latest",
+    latest,
+    "--reason",
+    "Automatic saved-work setup through the actual isolated worker",
+  ]);
+  const automatic = await get("grants", [
+    "issue-confirm",
+    automaticReview.id,
+    "--revision",
+    automaticReview.revision,
+  ]);
+  const tasks = (
+    f.current.store.db
+      .prepare("SELECT count(*) n FROM grant_source_setup")
+      .get() as any
+  ).n;
+  const nativeBeforeWorker = readFileSync(configuration.state + "/state.json");
+  let completed = false;
+  for (let i = 0; i <= tasks + 1; i++) {
+    const states = await Promise.all(
+      automatic.issued.map(async (row: any) =>
+        JSON.parse(
+          (
+            await invoke("grants", [
+              "source-status",
+              row.grant,
+              "--revision",
+              "1",
+            ])
+          ).stdout,
+        ),
+      ),
+    );
+    // source-status is a compact status document rather than a signed envelope.
+    if (states.every((state: any) => state?.status === "READY")) {
+      completed = true;
+      break;
+    }
+    try {
+      await run(
+        "/usr/bin/unshare",
+        [
+          "--user",
+          "--map-root-user",
+          binary,
+          "web",
+          "grants",
+          "source-worker",
+          "--once",
+          "--config",
+          nativeConfig,
+          "--worker-state",
+          f.dir + "/source-worker",
+        ],
+        {
+          timeout: 15000,
+          env: { ...process.env },
+        },
+      );
+    } catch (error) {
+      // Other earlier synthetic fixtures intentionally have no archive in this
+      // private native catalog. Their honest failure must not hide OUR failure.
+      const failure = error as { code: number; stdout: string };
+      expect(failure.code).toBe(1);
+      const outcome = JSON.parse(failure.stdout);
+      expect(outcome.status).toBe("FAILED");
+      expect(
+        automatic.issued.some((row: any) => row.grant === outcome.id),
+      ).toBe(false);
+    }
+  }
+  expect(completed).toBe(true);
+  expect(readFileSync(configuration.state + "/state.json")).toEqual(
+    nativeBeforeWorker,
+  );
+  for (const row of automatic.issued) {
+    const grant = await get("grants", ["show", row.grant]);
+    expect(grant.status).toBe("AVAILABLE");
+    expect(grant.claims).toEqual([]);
+    const pin = JSON.parse(
+      (
+        await invoke("grants", [
+          "source-show",
+          row.grant,
+          "--revision",
+          "1",
+          "--config",
+          nativeConfig,
+        ])
+      ).stdout,
+    );
+    expect(pin.phase).toBe("retained");
+    expect(pin.plan.source).toEqual({
+      attempt: grant.work.attempt,
+      checksum: grant.work.checksum,
+    });
+    expect(pin.consumers).toEqual([]);
+  }
   for (const [index, row] of authored.entries())
     expect(f.current.store.attempt(row.id)).toEqual(history[index]);
 }

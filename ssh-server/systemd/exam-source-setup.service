@@ -1,0 +1,28 @@
+[Unit]
+Description=Verify and protect saved work for new exam attempts
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/sbin/examctl web grants source-worker --config /etc/exam-agent/agent.json
+Restart=on-failure
+RestartSec=5
+RuntimeDirectory=exam-source-setup
+RuntimeDirectoryMode=0700
+UMask=0077
+ProtectSystem=strict
+ReadWritePaths=/var/lib/exam-agent /run/exam-source-setup
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=256M
+MemorySwapMax=0
+TasksMax=32
+CPUQuota=50%
+KillMode=control-group
+OOMPolicy=kill
+TimeoutStopSec=10
+[Install]
+WantedBy=multi-user.target

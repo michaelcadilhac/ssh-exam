@@ -5,6 +5,18 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+October30 UI candidate (local only): the approved separate retain-only saved-work
+service uses exact durable grant/revision jobs and existing authenticated outbound
+management. A bounded child verifies/pins archives before the existing native
+confirmation can make a grant available. No archive IO enters the exam agent.
+Worker/reply loss, stale revisions and cancellation preserve source pins/history;
+cleanup remains manual and start windows/clocks/holds remain authoritative.
+Mixed starting files and preserved effective time/webcam use one existing atomic
+review; recent requests are actor-bound. Local CLI/gateway/archive, resource and
+browser evidence plus future rollout/rollback are in
+docs/automatic-saved-work-setup.md. The UI review remains in progress; nothing
+from this candidate is deployed.
+
 Current runtime contract (October29,2026; **deployed and publicly online**): negotiated v1
 keeps the original viable authenticated SSH/page and per-attempt supervisor through
 policy holds. Verified stop-assisted writer/input barriers preserve shells/editor

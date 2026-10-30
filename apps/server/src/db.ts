@@ -223,6 +223,14 @@ export class Store {
       this.db.transaction(() =>
         this.db.exec(readFileSync("migrations/033.sql", "utf8")),
       )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=34").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/034.sql", "utf8")),
+      )();
+    if (!this.db.prepare("SELECT 1 FROM schema_version WHERE version=35").get())
+      this.db.transaction(() =>
+        this.db.exec(readFileSync("migrations/035.sql", "utf8")),
+      )();
   }
   audit(actor: string, action: string, target: string, detail = "") {
     this.db

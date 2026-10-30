@@ -20,6 +20,7 @@ import {
 } from "../../../packages/protocol/grants.js";
 import { hash, now, type Store, type Attempt } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
+import { enqueueSourceSetup } from "./source-setup.js";
 import { ExamDefinitions } from "./exam-definitions.js";
 import {
   monitoringOwner,
@@ -518,6 +519,8 @@ export class AttemptGrants {
         at,
       );
     const issued = this.view(this.row(id));
+    if (value.work.kind === "saved")
+      enqueueSourceSetup(this.store, this.agent, id, 1);
     this.store.audit(
       actor,
       issuance === "PRACTICE"
@@ -809,6 +812,8 @@ export class AttemptGrants {
         id,
         JSON.stringify({ revision, reason: b.reason, hash: value.hash }),
       );
+      if (value.work.kind === "saved")
+        enqueueSourceSetup(this.store, this.agent, id, revision);
       return this.show({ id });
     });
   }

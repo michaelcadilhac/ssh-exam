@@ -95,9 +95,9 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 		allowed = true
 	case "grants.list", "grants.show", "grants.revise", "grants.revoke":
 		allowed = true
-	case "grants.source-plan", "grants.source-confirm":
+	case "grants.source-plan", "grants.source-confirm", "grants.source-status", "grants.source-retry", "grants.source-next", "grants.source-report":
 		allowed = true
-	case "grants.issue-preview", "grants.issue-show", "grants.issue-confirm", "grants.issue-cancel":
+	case "grants.issue-preview", "grants.issue-show", "grants.issue-list", "grants.issue-confirm", "grants.issue-cancel":
 		allowed = true
 	case "grants.additional-preview":
 		allowed = true

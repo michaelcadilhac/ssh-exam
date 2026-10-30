@@ -39,6 +39,7 @@ import { AttemptGrants } from "./attempt-grants.js";
 import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { GrantIssuance } from "./grant-issuance.js";
+import { SourceSetup } from "./source-setup.js";
 import { grantBinding } from "../../../packages/protocol/grants.js";
 import type { ConnectionHandle as Connection } from "./connection-process.js";
 import {
@@ -60,6 +61,7 @@ import {
   monitoringPurges,
 } from "../../../packages/protocol/monitoring-management.js";
 import { ClockControl } from "./clock-control.js";
+import { AttemptManagement } from "./attempt-management.js";
 import { InterruptionManagement } from "./interruption-management.js";
 import { studentContinuationStatus } from "./continuation-status.js";
 import { assertClockCapabilities } from "./clock-management.js";
@@ -2484,6 +2486,25 @@ export async function createApp(
   const roster = new RosterManagement(store, describeAttempt, config.agent.id);
   const grants = new AttemptGrants(store, config.agent.id);
   const grantIssuance = new GrantIssuance(store, config.agent.id);
+  const sourceSetup = new SourceSetup(store, config.agent.id);
+  const attemptInspection = new AttemptManagement(
+    store,
+    clocks,
+    describeAttempt,
+    config.agent.id,
+  );
+  app.get("/api/admin/exams/:exam/attempts", async (req: any) => {
+    principal(req, "admin");
+    return attemptInspection.page({
+      ...req.query,
+      exam: req.params.exam,
+      ...(req.query.limit ? { limit: Number(req.query.limit) } : {}),
+    });
+  });
+  app.get("/api/admin/attempts/:id/metadata", async (req: any) => {
+    principal(req, "admin");
+    return attemptInspection.show(req.params.id);
+  });
   app.post("/api/admin/exams/:exam/grants/issue-preview", async (req: any) => {
     const actor = principal(req, "admin");
     return grantIssuance.preview(
@@ -2504,6 +2525,26 @@ export async function createApp(
   app.get("/api/admin/grant-issuance/:id", async (req: any) => {
     const actor = principal(req, "admin");
     return grantIssuance.show(req.params.id, actor.username);
+  });
+  app.get("/api/admin/grant-issuance/:id/source-setup", async (req: any) => {
+    const actor = principal(req, "admin");
+    const review = grantIssuance.show(req.params.id, actor.username);
+    return {
+      id: review.id,
+      rows: sourceSetup.cohort(review.issued),
+      sources: sourceSetup.sources(review.rows),
+    };
+  });
+  app.get("/api/admin/exams/:exam/grant-reviews", async (req: any) => {
+    const actor = principal(req, "admin");
+    return grantIssuance.list(
+      {
+        ...req.query,
+        exam: req.params.exam,
+        ...(req.query.limit ? { limit: Number(req.query.limit) } : {}),
+      },
+      actor.username,
+    );
   });
   app.post("/api/admin/grant-issuance/:id/:operation", async (req: any) => {
     const actor = principal(req, "admin");
@@ -2529,6 +2570,20 @@ export async function createApp(
       id: req.params.id,
       ...(req.query.before ? { before: Number(req.query.before) } : {}),
     });
+  });
+  app.get("/api/admin/grants/:id/source-setup", async (req: any) => {
+    principal(req, "admin");
+    return sourceSetup.presentation({
+      id: req.params.id,
+      revision: Number(req.query.revision),
+    });
+  });
+  app.post("/api/admin/grants/:id/source-setup", async (req: any) => {
+    const actor = principal(req, "admin");
+    return sourceSetup.retry(
+      { ...req.body, id: req.params.id },
+      actor.username,
+    );
   });
   app.post("/api/admin/grants/:id/revise", async (req: any) => {
     const actor = principal(req, "admin");

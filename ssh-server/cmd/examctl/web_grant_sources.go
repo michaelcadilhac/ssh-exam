@@ -25,8 +25,8 @@ func webGrantSourcesMain(args []string) int {
 		return usage("invalid source flags")
 	}
 	w := f.Args()
-	if len(w) != 3 || w[0] != "grants" || (w[1] != "source-show" && w[1] != "source-sync") || !managementUUID.MatchString(w[2]) || *revision < 1 || *revision > catalogSafeInteger || (*request != "" && !managementUUID.MatchString(*request)) {
-		return usage("select source-show/source-sync GRANT --revision N")
+	if len(w) != 3 || w[0] != "grants" || (w[1] != "source-show" && w[1] != "source-sync" && w[1] != "source-retain") || !managementUUID.MatchString(w[2]) || *revision < 1 || *revision > catalogSafeInteger || (*request != "" && !managementUUID.MatchString(*request)) {
+		return usage("select source-show/source-sync/source-retain GRANT --revision N")
 	}
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "run source synchronization as root on the class server; instructor web issuance needs no student SSH connection")
@@ -61,6 +61,10 @@ func webGrantSourcesMain(args []string) int {
 		return 1
 	}
 	var row *core.GrantSourceRetention
+	if w[1] == "source-retain" && (plan.Action != "retain" || plan.CurrentRevision != *revision) {
+		fmt.Fprintln(os.Stderr, "saved-work setup cancelled or changed; retain-only work never releases an archive pin")
+		return 1
+	}
 	if plan.Action == "retain" {
 		row, err = engine.RetainGrantSource(plan)
 	} else {

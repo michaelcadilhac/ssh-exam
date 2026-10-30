@@ -19,6 +19,7 @@ import { ExamDefinitions } from "./exam-definitions.js";
 import { RosterManagement, rosterPreview } from "./roster-management.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import { GrantIssuance } from "./grant-issuance.js";
+import { SourceSetup } from "./source-setup.js";
 import {
   parseRosterAsync,
   RosterUsernameError,
@@ -81,6 +82,7 @@ export function registerAgentManagement(
   const roster = new RosterManagement(store, describe, config.agent.id);
   const grants = new AttemptGrants(store, config.agent.id);
   const grantIssuance = new GrantIssuance(store, config.agent.id);
+  const sourceSetup = new SourceSetup(store, config.agent.id);
   const alerts = new AlertManagement(store, () => !!config.smtp);
   const interruptions = new InterruptionManagement(store);
   const administratorManagement =
@@ -462,6 +464,18 @@ export function registerAgentManagement(
                   case "grants.source-confirm":
                     value = grants.confirmSource(raw, actor);
                     break;
+                  case "grants.source-status":
+                    value = sourceSetup.show(raw);
+                    break;
+                  case "grants.source-retry":
+                    value = sourceSetup.retry(raw, actor);
+                    break;
+                  case "grants.source-next":
+                    value = sourceSetup.next(raw, actor);
+                    break;
+                  case "grants.source-report":
+                    value = sourceSetup.report(raw, actor);
+                    break;
                   case "grants.additional-preview":
                     value = grantIssuance.additional(raw, actor);
                     break;
@@ -474,6 +488,9 @@ export function registerAgentManagement(
                         .id,
                       actor,
                     );
+                    break;
+                  case "grants.issue-list":
+                    value = grantIssuance.list(raw, actor);
                     break;
                   case "grants.issue-confirm":
                   case "grants.issue-cancel": {

@@ -21,6 +21,7 @@ func webGrantsHelp(out io.Writer) {
        sudo examctl web grants revoke GRANT_UUID --revision N --reason TEXT
        sudo examctl web grants issue-preview EXAM USER... --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT
        sudo examctl web grants issue-show PREVIEW_UUID
+       sudo examctl web grants issue-list EXAM [--limit 20 --after REVIEW_UUID]
        sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH
        sudo examctl web grants issue-cancel PREVIEW_UUID --revision REVIEW_HASH
        sudo examctl web grants additional-preview EXAM USER... --duration-minutes N --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT [--webcam required|optional]
@@ -40,6 +41,9 @@ conflicts without consuming time. additional-preview explicitly authorizes a
 separate exact-template attempt and allowance under the SAME exam. Use issue-show/
 confirm/cancel for its reviewed result. Its finite window may lie outside exam
 defaults; current effective webcam is preserved unless explicitly overridden.
+issue-list shows this authenticated actor's recent requests, with an exclusive
+cursor for earlier pages. Use --format table --fields id,status,created to inspect
+them without parsing JSON; issue-show retrieves the selected complete review.
 Protected history, original deadlines and account holds remain authoritative;
 neither metadata confirmation nor another grant reopens/overrides an old attempt.
 Additional starters: --work empty, or --work template --work-template NAME
@@ -56,6 +60,10 @@ its separate durable native retention confirmation. Preserve the original CSV,
 request and review IDs after a lost reply; changed contents need a NEW review.
   sudo examctl web grants source-show GRANT --revision N
   sudo examctl web grants source-sync GRANT --revision N
+  sudo examctl web grants source-retain GRANT --revision N
+  sudo examctl web grants source-status GRANT --revision N
+  sudo examctl web grants source-retry GRANT --revision N
+  sudo examctl web grants source-worker [--once] [--worker-state PRIVATE_DIRECTORY]
 source-sync uses named grants.source-plan/source-confirm authorization, verifies
 the protected archive in this separate CLI process, durably pins it BEFORE the
 gateway can make it AVAILABLE. Lost replies retry the SAME grant/revision. After
@@ -63,6 +71,18 @@ explicit revoke/revision, synchronize the OLD source revision to release its pin
 only after every linked consumer has verified completed/no-start evidence.
 --request retries one exact confirmation. A later release is a NEW intent:
 omit --request or choose a new UUID. Never reuse the earlier retain intent ID.
+Automatic saved-work setup uses a separate exam-source-setup.service and the
+source-worker coordinator. It handles one bounded child at a time (120 seconds),
+with no archive work in the agent. source-retain ALWAYS refuses a release plan,
+including after revoke/revision. Existing pins remain for reviewed manual cleanup.
+source-status inspects the exact revision; source-retry queues failed or older
+pending setup without reserving an account or starting time. Worker leases expire
+after three minutes; a crashed coordinator can retry using the SAME confirmation
+request. READY requires durable native confirmation. Failed setup needs repair
+and explicit retry. --once processes at most one task for local/operator checks.
+Authorize grants.source-plan/source-confirm/source-next/source-report for the
+worker; source-status/source-retry for management. These named operations remain
+default-deny in the web server's managementOperations configuration.
 Cancel first to replace unused root-only legacy authority: recovery-grants revoke-preview
 EXAM USER, then recovery-grants revoke EXAM USER --review HASH --reason TEXT.
 Inspect the irreversible receipt, then separately issue the reviewed NEW grant
@@ -86,6 +106,11 @@ Settings: --duration-minutes 1..360 OR --duration-seconds 60..21600,
 --earliest RFC3339, --latest RFC3339 (finite Begin window, not latest finish),
 --template NAME, --template-version HASH (exact attested source, never legacy),
 --collection-file-mib N, --collection-total-mib N (total >= file).
+additional-preview --preserve-duration saves each student's current effective
+time limit at preview; do not combine it with a shared --duration-minutes/seconds.
+Generic --input JSONL accepts different saved/template/empty starting files per
+student in ONE atomic review. Use --preserve-duration to retain effective limits,
+with explicit per-student settings where needed. Inspect every resolved row.
 Only named fields change; settings-only revisions preserve the saved starter.
 Use the same --work flags to explicitly revise an unused source independently
 of materials. Exact templates must be attested; there is no mutable fallback.
@@ -135,6 +160,9 @@ func webGrantsMain(args []string) int {
 		}
 		if position == 1 && (strings.HasPrefix(args[i], "issue-") || args[i] == "additional-preview") {
 			return webGrantIssuanceMain(args)
+		}
+		if position == 1 && (args[i] == "source-worker" || args[i] == "source-status" || args[i] == "source-retry") {
+			return webSourceSetupMain(args)
 		}
 		if position == 1 && strings.HasPrefix(args[i], "source-") {
 			return webGrantSourcesMain(args)
