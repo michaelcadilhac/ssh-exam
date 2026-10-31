@@ -93,7 +93,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
   await adminOut();
   await student();
   await expect(page.locator("main")).toContainText(
-    "Your unused practice grant is expired or revoked",
+    "Your practice attempt is not available",
   );
   await expect(
     page.getByRole("button", {

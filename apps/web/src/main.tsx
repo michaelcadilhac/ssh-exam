@@ -11,7 +11,8 @@ import {
 } from "../../../packages/protocol/sandbox.js";
 import {
   authMessageBlocks,
-  isPhoneApprovalChallenge,
+  phoneApprovalNumber,
+  isPasswordChallenge,
   updateAuthChallenge,
   type AuthChallenge,
 } from "./auth-challenge.js";
@@ -70,6 +71,7 @@ function App() {
     authHistory.current = null;
   };
   const authFormRef = useRef<HTMLFormElement>(null);
+  const authStepRef = useRef<HTMLDivElement>(null);
   const replaceAnswers = (next: string[]) => {
     answersRef.current.fill("");
     answersRef.current = next;
@@ -304,6 +306,20 @@ function App() {
   }, [challenge, authSocket, authPhase]);
   const grantSelectionRequired =
     !!info && !info.attempt && info.grants?.length > 1 && !info.selected_grant;
+  const phoneNumber =
+    authPhase === "connecting" ? phoneApprovalNumber(challenge) : null;
+  const waitingForPhoneNumber =
+    authPhase === "connecting" &&
+    responding &&
+    challenge?.host === "sshjump.depaul.edu" &&
+    isPasswordChallenge(challenge);
+  useEffect(() => {
+    if (waitingForPhoneNumber || phoneNumber !== null)
+      authStepRef.current?.scrollIntoView({
+        block: "nearest",
+        behavior: "instant",
+      });
+  }, [waitingForPhoneNumber, phoneNumber, responding]);
   return (
     <>
       {error && (
@@ -458,7 +474,7 @@ function App() {
                             });
                           }}
                         >
-                          <option value="">Choose an unused attempt</option>
+                          <option value="">Choose an attempt to start</option>
                           {info.grants.map((g: any) => (
                             <option key={g.id} value={g.id}>
                               {g.issuance === "ADDITIONAL_TEMPLATE"
@@ -754,7 +770,53 @@ function App() {
                   }}
                 >
                   {challenge && <small>{challenge.host}</small>}
-                  <h2>Server sign-in</h2>
+                  <div ref={authStepRef}>
+                    <h2>
+                      {phoneNumber !== null
+                        ? "Approve sign-in on your phone"
+                        : "Server sign-in"}
+                    </h2>
+                    {authPhase === "connecting" && responding && (
+                      <p
+                        className="auth-progress"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        {waitingForPhoneNumber
+                          ? "Password sent. Waiting for the next sign-in step…"
+                          : "Waiting for sign-in confirmation…"}
+                      </p>
+                    )}
+                    {waitingForPhoneNumber && (
+                      <p>
+                        Keep this page open. The number for your phone app may
+                        take a moment to appear.
+                      </p>
+                    )}
+                    {phoneNumber !== null && (
+                      <>
+                        <output
+                          className="phone-approval-number"
+                          aria-label="Number for your Authenticator app"
+                        >
+                          {phoneNumber}
+                        </output>
+                        <p>
+                          Enter this number in your Authenticator app on your
+                          phone, then approve sign-in.
+                        </p>
+                        <button
+                          type="submit"
+                          className="primary"
+                          disabled={responding}
+                        >
+                          {responding
+                            ? "Waiting for server…"
+                            : "I approved on my phone"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                   {!!challenge?.instructions?.length && (
                     <div
                       className="challenge"
@@ -773,8 +835,7 @@ function App() {
                         )}
                     </div>
                   )}
-                  {(authPhase === "connecting" &&
-                  !isPhoneApprovalChallenge(challenge)
+                  {(authPhase === "connecting" && phoneNumber === null
                     ? challenge?.prompts || []
                     : []
                   ).map((p: any, i: number) => (
@@ -803,17 +864,15 @@ function App() {
                   ) : authPhase === "completing" ? (
                     <p role="status">Opening your exam…</p>
                   ) : challenge?.prompts.length ? (
-                    <button className="primary" disabled={responding}>
-                      {responding
-                        ? "Waiting for server…"
-                        : isPhoneApprovalChallenge(challenge)
-                          ? "Continue after phone approval"
-                          : "Continue"}
-                    </button>
+                    phoneNumber === null && (
+                      <button className="primary" disabled={responding}>
+                        {responding ? "Waiting for server…" : "Continue"}
+                      </button>
+                    )
                   ) : (
                     <p>
                       {challenge
-                        ? "Waiting for the server. Complete phone approval if requested…"
+                        ? "Waiting for the server’s next instruction. Keep this page open."
                         : "Connecting to the server…"}
                     </p>
                   )}

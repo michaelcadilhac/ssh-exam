@@ -726,7 +726,7 @@ it.each([
       if (scenario === "additional-saved-old-native") {
         expect(prepared.statusCode).toBe(400);
         expect(prepared.body).toContain(
-          "durable saved-source retention/staging",
+          "The exam server cannot yet verify and prepare the selected saved files. Ask your instructor to check the server and saved files. No attempt or exam time was used.",
         );
         expect(operations).not.toContain("prepare-additional-grant-attempt");
         expect(
@@ -738,7 +738,7 @@ it.each([
       if (scenario === "additional-source-old-native") {
         expect(prepared.statusCode).toBe(400);
         expect(prepared.body).toContain(
-          "independent grant workspace enforcement",
+          "The exam server cannot verify this attempt's separate working files. Ask your instructor to update and check the server. No attempt or exam time was used.",
         );
         expect(operations).not.toContain("prepare-additional-grant-attempt");
         expect(
@@ -769,7 +769,9 @@ it.each([
       }
       if (scenario === "old-ordered-role") {
         expect(prepared.statusCode).toBe(400);
-        expect(prepared.body).toContain("ordered grant authority/type support");
+        expect(prepared.body).toContain(
+          "The exam server cannot safely distinguish this attempt from earlier attempts. Ask your instructor to update and check the server. No attempt or exam time was used.",
+        );
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
         ).toEqual({ n: 0 });
@@ -780,7 +782,7 @@ it.each([
       if (scenario === "reviewed-old-native") {
         expect(prepared.statusCode).toBe(400);
         expect(prepared.body).toContain(
-          "reviewed-initial native history fences",
+          "The exam server cannot check whether you have already started this exam. Ask your instructor to update and check the server. No attempt or exam time was used.",
         );
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
@@ -1005,7 +1007,9 @@ it.each([
       if (scenario === "preflight-before-window") {
         const refused = await begin();
         expect(refused.statusCode, refused.body).toBe(400);
-        expect(refused.json().error).toContain("Outside allowed start window");
+        expect(refused.json().error).toContain(
+          "You can start only between the opening and closing times shown. These times do not change the deadline of an attempt already started.",
+        );
         expect(store.attempt(id)).toMatchObject({
           state: "PREPARING",
           start: null,

@@ -42,8 +42,8 @@ export class GrantIssuance {
     )
       return refuse(
         additional
-          ? `Student ${username} is not enrolled; inspect web students list before additional authorization. No batch issued.`
-          : `Student ${username} is not a legacy unused enrollment: enrollment required, with no grant or attempt history. Inspect web students/grants list; no batch issued.`,
+          ? `Student ${username} is not enrolled. Add them to this exam before allowing another attempt. This request allowed no attempts.`
+          : `Student ${username} must be enrolled and have no earlier allowed attempts or exam history. Check their enrollment and Allowed attempts. This request allowed no attempts.`,
       );
     return enrollment;
   }
@@ -136,11 +136,11 @@ export class GrantIssuance {
           definition.exam.template_version !== b.template_version
         )
           return refuse(
-            "Selected definition/source changed; run web exams show EXAM and review its exact current version before a new preview",
+            "The exam settings or selected files changed. Refresh them and review again. This request allowed no attempts.",
           );
         if (b.latest <= now())
           return refuse(
-            "Choose an explicit finite Begin window that has not closed; no grant issued",
+            "Choose opening and closing times with a closing time in the future. This request allowed no attempts.",
           );
         const sources = new Map(
           (
@@ -310,7 +310,7 @@ export class GrantIssuance {
         if (operation === "cancel") {
           if (row.status === "CONFIRMED")
             return refuse(
-              "Issuance already confirmed; inspect its grant IDs and explicitly revise/revoke unused grants. Cancellation cannot undo history.",
+              "These attempts were already allowed. Open Allowed attempts to change or cancel unused ones. Cancelling this review cannot remove history.",
             );
           this.store.db
             .prepare(
@@ -329,14 +329,14 @@ export class GrantIssuance {
         if (row.status === "CONFIRMED") return this.show(id, actor); // Same immutable review, never another issuance.
         if (row.status !== "REVIEW" || row.expires <= now())
           return refuse(
-            "Review cancelled or expired; create and inspect a NEW issue-preview. No allowance or account reservation was consumed.",
+            "This review was cancelled or expired. Create a new review before allowing attempts. This request did not allow attempts or reserve accounts.",
           );
         if (
           this.definitions.requireActive(saved.exam).revision !==
           saved.definition_revision
         )
           return refuse(
-            "Definition changed since review; create and inspect a NEW issue-preview. No partial batch issued.",
+            "The exam settings changed after this review. Create a new review. This request allowed no attempts.",
           );
         for (const r of saved.rows) {
           if (
@@ -349,11 +349,11 @@ export class GrantIssuance {
             ) !== r.enrollment
           )
             return refuse(
-              `Enrollment for ${r.username} changed since review; create and inspect a NEW issue-preview. No partial batch issued.`,
+              `Enrollment or settings for ${r.username} changed after this review. Create a new review. This request allowed no attempts.`,
             );
           if (r.settings.latest <= now())
             return refuse(
-              "Reviewed Begin window has closed; select a new explicit window in a NEW preview. No grant issued.",
+              "The reviewed start window has closed. Choose new opening and closing times and create a new review. This request allowed no attempts.",
             );
         }
         const issued = saved.rows.map((r: any) => {

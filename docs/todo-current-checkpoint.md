@@ -1,48 +1,45 @@
-# Current checkpoint — grant-detail UX follow-up complete locally
+# Current checkpoint — phone sign-in and plain terminology
 
-October 30, 2026. Local development/testing/commits only. No push, deployment,
-production configuration/student changes or restarts. No decision or local
-implementation task remains open. The follow-up commit contains this checkpoint;
-use git log -1 to resolve its revision. Baseline: ce33086.
+October 30, 2026. COMPLETE/TESTED LOCALLY. The commit containing this checkpoint
+(parent 976b7d5) is the validated candidate. No push, deployment, production
+configuration/student changes or restarts. No open decision or running test.
 
-Prof agreed the fixes before implementation and accepted the actual desktop/mobile
-screens. Allowed attempts now starts with individual cards: status, time limit,
-webcam, start window and starting files. Bulk editing remains fields-first. Review
-→ Starting files and settings exposes useful historical facts/source navigation
-before diagnostics. UUIDs, hashes and raw records require explicitly technical
-disclosures. Durations use `1 min 35 sec`, not decimal minutes. Date/time
-inputs remain local native controls, with minutes for limits/clock adjustments;
-exact unchanged values and DST choices are preserved. Existing edit/review stages,
-request identities, mutation semantics and all safety authority are unchanged.
+Prof agreed the fixes before implementation and accepted actual 1280px/430px
+phone screenshots. Password waiting, prominent number, Authenticator instructions
+and one **I approved on my phone** action remain visible above long raw banners.
+No answer is automatic; generic OTP still requires its typed code. Host/prompt/
+round fences and credential clearing remain unchanged. Ordinary prose uses Start
+exam, setup, attempts, time limit, opening/closing times and instructor approval.
+The finished student's IDs/checksum require Technical details. Guides now match
+setup expiry and saved-file recovery; this changes no existing policy.
 
-Evidence: var/collection-tests/prof-ux-repeat.kl_ojws9. Details/scenarios and rendered
-review: docs/ui-prof-review.md. Operator and design documentation updated.
+Evidence: var/collection-tests/prof-login-terms.g_qplfoq. Details, failure records
+and Prof's decisions are in docs/ui-prof-review.md.
 
-- Three red browser checks reproduced the old hierarchy/display problems.
-- Final six focused desktop/mobile/timing checks PASS (15.4s).
-- All 80 affected browser cases PASS (4.9min), no skips: inspection, issuance,
-  revision/cancellation, unknown/partial replies, actual-WASM grant starts and
-  all seven timezone workflows. Eight focused date/duration/view unit checks pass
-  via npm test, including the current-worktree native-clock pretest.
-- Typecheck and fresh frontend build pass. final-ui-inputs.json pins source/test
-  files and actual served assets; no post-run drift. Exact existing qualified
-  browser SSH WASM/runtime was preserved; its source/protocol did not change.
-- cleanup.json confirms 27 logged owned processes exited and ports3100/3101 closed.
-  No runner remains. All 10 original dirty documentation screenshots are unchanged
-  and UNCOMMITTED; their baseline is in this evidence directory's baseline.json.
+- Full npm test: 644 passed / 3 existing opt-in skips, 330.0s; clock pretest included.
+- All 95 selected browser scenarios covered: 94 broad passes and one separate 7.6s
+  pass after correcting two stale wording oracles. Product/assets and the 94 other
+  scenarios stayed unchanged. Actual WASM/separate gateway mode verified publicly;
+  SSH hosts/media are synthetic, not privileged class-server qualification.
+- Focused checks: 74 app (including 7 auth unit), 8 additional HTTP, 3 phone browser pass.
+  Typecheck and fresh frontend/server builds pass. Three initial phone failures
+  reproduced the old UI; final desktop/mobile/genuine-OTP checks pass.
+- Source proof: 70 public app literals plus 14 ordinary instructor messages; zero
+  other server tokens/interpolation changes. Eligibility, statuses, operations,
+  source protection, clocks, holds and stored historical reasons are unchanged.
+- Source/test/assets frozen without drift. Qualified SSH WASM/runtime preserved
+  after the last Vite build. Cleanup: 76 logged owned PIDs exited; 3100/3101 closed.
+  All 10 original dirty documentation screenshots remain unchanged and uncommitted.
 
-This follow-up changes only six frontend components, the targeted interface test
-and documentation. Backend/protocol/native/CLI remain unchanged from ce33086;
-CLI/native worker source is503bd9c. Prior 643-app/192-browser/full native/image
-receipts belong to those prior revisions as documented, not a new release image.
-Original 38/38 deployed release remains separate; no production behavior changed.
+Prior UI/automatic saved-work results remain in docs/ui-prof-review.md and
+applicable feature documents. No native/SSH/protocol/CLI code changed in this
+follow-up. The original 38-item deployed release remains separate from this local
+candidate. No original TODO completion count was inflated by this review.
 
-Remaining release-only gates: build/qualify a matched shipping image containing
-this frontend; qualify the exact root worker unit's mount/LSM behavior before
-installation/enablement. The worker is still uninstalled. User-systemd resource
-proof and simulated browser shell/media do not establish that privileged boundary.
-No deployment is authorized. Only after a new instruction, follow the matched
-backup/drain/migration/synthetic-acceptance/rollback plan in
-docs/automatic-saved-work-setup.md. Preserve pins/history/deadlines/holds and never
-restore an older database over newer authority. Existing agent consolidation
-needs no change.
+Next action: await the instructor's next task. A future separately authorized
+release needs a new matched shipping image and the exact root worker unit's
+mount/LSM qualification before installation/enablement. The retain-only worker
+remains uninstalled. Use docs/automatic-saved-work-setup.md for guarded rollout,
+backup/drain/migration/synthetic acceptance and rollback; never restore an older
+database over newer authority. Preserve history, pins, original deadlines and
+account holds. Existing deployed single-agent consolidation needs no change.

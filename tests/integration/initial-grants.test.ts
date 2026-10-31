@@ -140,14 +140,15 @@ it("enrollment saves the initial grant immediately; defaults/roster edits do not
     expect(
       (await post(`/api/admin/grants/${grant.id}/revise`, change)).json(),
     ).toEqual(revised.json());
-    expect(
-      (
-        await post(`/api/admin/grants/${grant.id}/revise`, {
-          ...change,
-          request: randomUUID(),
-        })
-      ).statusCode,
-    ).toBe(409);
+    const staleRevision = await post(`/api/admin/grants/${grant.id}/revise`, {
+      ...change,
+      request: randomUUID(),
+    });
+    expect(staleRevision.statusCode).toBe(409);
+    expect(staleRevision.json().error).toBe(
+      "This attempt is unavailable or its settings changed. Refresh its current status.",
+    );
+    expect((await show()).json()).toEqual(revised.json());
     const revoked = await post(`/api/admin/grants/${grant.id}/revoke`, {
       revision: 2,
       reason: "Withdraw this unused initial grant",

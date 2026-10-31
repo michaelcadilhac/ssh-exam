@@ -189,7 +189,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
         .getByRole("button", { name: "Reconnect SSH", exact: true })
         .click();
       await expect(alice.getByRole("alert")).toContainText(
-        "Instructor authorization required",
+        "Ask your instructor to approve resuming",
       );
       const alerts = data.outbox.filter(
         (m: any) => m.subject === "Exam connection failure: isolation01",

@@ -2,7 +2,18 @@
 
 ## October30 UI candidate — local only
 
-The UI reviewed with Prof is not deployed. Select students in the roster, then
+The UI reviewed with Prof is not deployed. An **attempt** is one timed sitting;
+**Allowed attempts** lists the sittings a student may start or has already used.
+Ordinary controls use **Start exam**, **setup**, **Resume exam** and **saved files**.
+The CLI/API retain their existing `begin`, `preflight` and `grants` names.
+
+During DePaul sign-in, the page explains the wait after sending the password.
+The phone step shows the number prominently: enter it in Authenticator on the
+phone, approve there, then choose **I approved on my phone** on the exam page.
+A different verification-code prompt still requires its typed answer. Nothing
+is answered automatically. See [student instructions](student-instructions.md).
+
+Select students in the roster, then
 open **Selected students**:
 
 - **Allow another attempt**: keep each student's effective time/webcam setting,

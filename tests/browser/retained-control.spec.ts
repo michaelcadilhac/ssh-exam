@@ -547,7 +547,7 @@ test("missing loaded JS control agreement refuses actual Begin before native sta
   const refused = await result;
   expect(refused.status(), await refused.text()).toBe(400);
   expect((await refused.json()).error).toContain(
-    "matching browser and server versions",
+    "The required monitoring could not be verified",
   );
   const after = (await (await page.request.get("/api/student/exam")).json())
     .attempt;

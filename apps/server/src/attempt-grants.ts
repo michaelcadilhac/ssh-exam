@@ -266,7 +266,7 @@ export class AttemptGrants {
       );
     if (!settings.template_version)
       return conflict(
-        "Grants require an exact authenticated template version before authorization; run templates verify/sync, then web exams update --template-version HASH. No grant or enrollment changed.",
+        "Choose a published version of the exam files in Exam settings before allowing an attempt. No attempt or enrollment changed.",
       );
     new TemplateCatalog(this.store, this.agent).show({
       name: settings.template,
@@ -300,7 +300,7 @@ export class AttemptGrants {
         !source.original_deadline
       )
         return conflict(
-          "Choose this student's completed protected attempt and exact checksum; inspect its history before issuance. No source fallback, account reservation or clock authorized.",
+          "Choose this student's completed attempt with confirmed protected files. Refresh saved work and review again. No different files were used, no account was reserved and no exam time started.",
         );
     }
     return { settings, work, hash: hash(JSON.stringify({ settings, work })) };
@@ -733,7 +733,7 @@ export class AttemptGrants {
       row.revision !== revision
     )
       return conflict(
-        "Grant is unavailable or revision changed; inspect examctl web grants show GRANT before a new intent",
+        "This attempt is unavailable or its settings changed. Refresh its current status.",
       );
     if (
       this.store.db
@@ -743,7 +743,7 @@ export class AttemptGrants {
         .get(id)
     )
       return conflict(
-        "Durable Begin consumption/interval evidence prevents unused revision or revocation; preserve grant history and inspect the original native attempt",
+        "Recorded evidence indicates this attempt has started. It cannot be changed or cancelled as unused. Check the original attempt and keep its history. No time is refunded.",
       );
     if (
       this.store.db
@@ -753,7 +753,7 @@ export class AttemptGrants {
         .get(id)
     )
       return conflict(
-        "Grant has an unresolved preparation/Begin or a committed attempt; positively cancel an unstarted preparation first, or inspect the original attempt. No withdrawal/refund confirmed.",
+        "This attempt is in setup, starting, or already started. Cancel a confirmed unstarted setup before changing it; otherwise check the original attempt. This refusal does not cancel an attempt or refund time.",
       );
     return row;
   }

@@ -256,7 +256,9 @@ it.each(["e", "versioned"])(
           payload: {},
         });
         expect(old.statusCode, old.body).toBe(400);
-        expect(old.json().error).toContain("lacks exact-template");
+        expect(old.json().error).toContain(
+          "The exam server cannot verify the selected starter-file version. Ask your instructor to check the server. Keep this setup and check its status; no start was requested by this check.",
+        );
         expect(operations).not.toContain("prepare-attempt");
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
@@ -271,7 +273,9 @@ it.each(["e", "versioned"])(
             payload: {},
           });
           expect(wrong.statusCode, wrong.body).toBe(400);
-          expect(wrong.json().error).toContain("did not retain");
+          expect(wrong.json().error).toContain(
+            "The exam server did not confirm the selected starter-file version. Keep this setup and ask your instructor to check its saved settings. Do not substitute different files; no start was requested by this check.",
+          );
           expect(operations).not.toContain("prepare-workspace");
           expect(store.attempt(remote.id).start).toBeNull();
         }

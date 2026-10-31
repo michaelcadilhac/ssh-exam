@@ -31,13 +31,9 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
     .getByLabel("Exam ID", { exact: true })
     .fill("recovery-compatibility");
   await page.getByLabel("Username").fill("recovery01");
-  await page
-    .getByRole("button", { name: "Sign in", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Shared SSH password").fill("shared-password");
-  await page
-    .getByRole("button", { name: "Continue", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("button", {
       name: "Check setup and practice",
@@ -48,9 +44,10 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
   await page
     .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
-  await expect(
-    page.getByText(/Class server lacks recovery allowance synchronization/),
-  ).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("alert")).toContainText(
+    "The exam server cannot confirm this attempt's saved time limit. Ask your instructor to check the server. Keep this setup and its saved files; this request did not start an exam or use an attempt.",
+    { timeout: 10000 },
+  );
   const refused = await read();
   expect(refused.web).toEqual([]);
   expect(refused.native).toEqual([]);
@@ -79,10 +76,11 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
   await role(true);
   await begin();
   await expect(
-    page.getByText(
-      /recovery allowance synchronization and guards could not be verified/,
-    ),
-  ).toBeVisible({ timeout: 10000 });
+    page.getByRole("dialog", { name: "Workspace error" }),
+  ).toContainText(
+    "The exam server could not confirm this saved-work attempt's time limit or safety checks. Keep the setup and saved files, and ask your instructor to check the server. This request did not start an exam or use an attempt.",
+    { timeout: 10000 },
+  );
   const blocked = await read();
   expect(blocked.web).toEqual([before]);
   expect(blocked.native).toHaveLength(1);

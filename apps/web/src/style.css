@@ -157,6 +157,20 @@ h2 {
 .exam-details {
   margin: 12px 0;
 }
+.auth-progress {
+  color: #f0f4f9;
+}
+.phone-approval-number {
+  display: block;
+  margin: 16px 0;
+  color: #77d6c7;
+  font-size: 3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
 .challenge {
   white-space: normal;
   overflow-wrap: anywhere;

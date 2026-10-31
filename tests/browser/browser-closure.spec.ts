@@ -64,7 +64,7 @@ async function deny(page: Page) {
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText(
-    "Instructor authorization required",
+    "Ask your instructor to approve resuming",
   );
   await expect(page.locator(".workspace,form")).toHaveCount(0);
 }

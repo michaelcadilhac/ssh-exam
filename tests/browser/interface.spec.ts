@@ -1275,7 +1275,7 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText(
-    "Instructor authorization required",
+    "Ask your instructor to approve resuming",
   );
   const admin = await request.newContext({
     baseURL: "http://localhost:3100",
@@ -1498,7 +1498,7 @@ test("completed and locked exam sign-in failures describe the attempt instead of
   await page.getByLabel("Username").fill("student05");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toContainText(
-    "Ask your instructor to authorize continuation",
+    "An earlier attempt still restricts this account",
   );
   await expect(page.getByRole("alert")).not.toContainText("host pins");
 });
@@ -2154,7 +2154,7 @@ test("active page reload requires one instructor grant and fresh SSH before rest
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText(
-    "Instructor authorization required",
+    "Ask your instructor to approve resuming",
   );
   await expect(page.locator(".workspace, form")).toHaveCount(0);
   const admin = await request.newContext({

@@ -1886,7 +1886,7 @@ export function Workspace({
                           SSH disconnected. Reconnect
                           {sandbox || approval.state === "approved"
                             ? ""
-                            : " after instructor authorization"}{" "}
+                            : " after instructor approval"}{" "}
                           to resume. Saved files remain. A disconnected session
                           cannot restore unsaved editor buffers.
                         </>
@@ -2077,7 +2077,7 @@ export function Workspace({
             )}
             {attempt.state !== "CANCELLED_BEFORE_START" && (
               <details>
-                <summary>Details</summary>
+                <summary>Technical details</summary>
                 <p>
                   Attempt <code>{id}</code>
                 </p>

@@ -191,12 +191,12 @@ export async function createApp(
   ) => {
     if (isSandbox(exam) && !hasSandboxWindow(settings))
       throw Error(
-        "Sandbox practice needs an operator-configured finite Begin window. Ask your instructor to configure Exam settings; an old unstarted preparation must be cancelled and recreated, not silently revised.",
+        "Practice is closed. Ask your instructor to set opening and closing times. Any setup already in progress must be cancelled before a new setup can use those times.",
       );
     const at = now();
     if (at < settings.earliest || at > settings.latest)
       throw Error(
-        "Outside allowed start window; a window controls Begin, not an existing attempt's deadline.",
+        "You can start only between the opening and closing times shown. These times do not change the deadline of an attempt already started.",
       );
   };
   const requireSandboxAgent = (exam: string, h: any) => {
@@ -206,7 +206,7 @@ export async function createApp(
       !(config.mode === "development" && h.fixture)
     )
       throw Error(
-        "Class server lacks finite sandbox Begin-window enforcement; ask the operator to verify matching native roles before new practice. No exam clock has started.",
+        "The exam server cannot check the practice opening and closing times. Ask your instructor to check the server before trying again. This check did not start an exam clock.",
       );
   };
   // Both legacy preflight and Begin call this before requesting native
@@ -214,11 +214,11 @@ export async function createApp(
   const requireLegacyRecoveryAgent = (h: any) => {
     if (!h.capabilities?.includes("recovery-allowance-sync-v1"))
       throw Error(
-        "Class server lacks recovery allowance synchronization; verify matching native roles with sudo examctl health before retrying preflight or Begin. Preserve the preparation and protected source; no new clock or grant was consumed.",
+        "The exam server cannot confirm this attempt's saved time limit. Ask your instructor to check the server. Keep this setup and its saved files; this request did not start an exam or use an attempt.",
       );
     if (!h.ready)
       throw Error(
-        "Class server guards are not ready; inspect sudo examctl health and preserve the preparation/source before retrying. No new clock was requested.",
+        "The exam server is not ready to start this attempt safely. Ask your instructor to check it. Keep this setup and its saved files; no start was requested.",
       );
   };
   const requireTemplateAgent = (settings: any, h: any) => {
@@ -231,7 +231,7 @@ export async function createApp(
       ].every((cap) => h.capabilities?.includes(cap))
     )
       throw Error(
-        "Class server lacks exact-template Begin enforcement; ask the operator to verify matching native roles. No new Begin was requested by this check; preserve the preparation and inspect its status.",
+        "The exam server cannot verify the selected starter-file version. Ask your instructor to check the server. Keep this setup and check its status; no start was requested by this check.",
       );
   };
   const requireTemplateSnapshot = (
@@ -249,7 +249,7 @@ export async function createApp(
         remote.settings?.template_version !== settings.template_version)
     )
       throw Error(
-        "Class server did not retain the selected exact template; no new Begin requested by this check. Preserve the preparation and inspect its saved settings; never substitute a mutable source.",
+        "The exam server did not confirm the selected starter-file version. Keep this setup and ask your instructor to check its saved settings. Do not substitute different files; no start was requested by this check.",
       );
   };
   const autoAuthorizeSandbox = async (id: string, gap = false) => {
@@ -803,7 +803,7 @@ export async function createApp(
         status >= 500
           ? error instanceof MonitoringMediaError
             ? error.message
-            : "Operation failed; consult operator diagnostics"
+            : "The server could not confirm this action. Check its status before trying again, or ask your instructor or server administrator."
           : err.message,
     });
   });
@@ -1322,7 +1322,7 @@ export async function createApp(
               id: initialGrant.id,
               status: initialGrant.status,
               message:
-                "Your unused practice grant is expired or revoked. Ask your instructor to inspect and explicitly revise it or authorize NEW practice; changing defaults does not replace this grant.",
+                "Your practice attempt is not available. Ask your instructor to update it or allow another attempt. Changing the exam settings alone does not update this attempt.",
             }
           : null,
       previous_attempt:
@@ -1341,10 +1341,10 @@ export async function createApp(
     if (config.maintenance)
       throw Error("Exam starts are paused for maintenance.");
     if (productionReadinessIssues(config).length)
-      throw Error("Production exam setup is awaiting operator verification.");
+      throw Error("The exam server is awaiting a safety check. Ask your instructor to check it before starting.");
     const s = principal(req, "student");
     const conn = connections.get(`${s.exam}:${s.username}`);
-    if (!conn?.alive) throw Error("Authenticate SSH first");
+    if (!conn?.alive) throw Error("Sign in to the exam server before opening setup.");
     const chosenGrant = z
       .object({ grant: z.string().uuid().optional() })
       .strict()
@@ -1361,7 +1361,7 @@ export async function createApp(
         "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
       )
       .get(s.exam, s.username) as any;
-    if (!enrollment) throw Error("Enrollment unavailable");
+    if (!enrollment) throw Error("Your enrollment could not be found. Ask your instructor to check your exam access.");
     if (!Number.isSafeInteger(enrollment.uid) || enrollment.uid < 1000)
       throw Error(
         "Sign in through SSH again to verify your course-server identity.",
@@ -1377,9 +1377,9 @@ export async function createApp(
       !h.fixture
     )
       throw Error(
-        "Class server lacks trusted browser SSH monitoring; update the agent first.",
+        "The exam server cannot verify the required browser monitoring. Ask your instructor to update and check the server before starting.",
       );
-    if (!h.ready) throw Error("Class server guards not ready");
+    if (!h.ready) throw Error("The exam server is not ready to start exams safely. Ask your instructor to check it.");
     requireSandboxAgent(s.exam, h);
     if (
       isSandbox(s.exam) &&
@@ -1394,14 +1394,14 @@ export async function createApp(
       ].every((cap) => h.capabilities?.includes(cap))
     )
       throw Error(
-        "Class server lacks saved practice grant admission and fresh Begin verification; verify matching native roles before preflight. No grant, account or clock reserved.",
+        "The exam server cannot verify a new practice attempt. Ask your instructor to update and check the server. This request did not reserve a new attempt or use exam time.",
       );
     if (
       h.functional_test &&
       (!config.functionalTest || config.mode !== "development")
     )
       throw Error(
-        "Trusted functional-test agent cannot run a production or ordinary student exam.",
+        "This server is configured for tests and cannot run this exam. Ask your instructor to check the server.",
       );
     if (
       config.mode === "production" &&
@@ -1418,7 +1418,7 @@ export async function createApp(
       ].every((cap) => h.capabilities?.includes(cap))
     )
       throw Error(
-        "Class server lacks original-deadline account isolation; update and verify the agent before running exams.",
+        "The exam server cannot verify the required account restrictions. Ask your instructor to update and check the server before starting.",
       );
     let previous = store.db
       .prepare(
@@ -1447,7 +1447,7 @@ export async function createApp(
     if (isSandbox(s.exam)) {
       if (previous?.state === "PREPARING" && !previous.grant_id)
         throw Error(
-          "This legacy unstarted practice retains its old snapshot. Sign out to positively cancel it, then reopen preflight for a NEW saved practice grant; no old clock is reopened.",
+          "This practice setup uses older settings. Sign out to cancel it, then sign in and open setup again for a new practice attempt. No earlier attempt is reopened.",
         );
       if (!previous && !chosenGrant) grants.practice(s.username);
     }
@@ -1468,11 +1468,11 @@ export async function createApp(
       chosenGrant !== previous.grant_id
     )
       throw Error(
-        "An existing preparation retains its original grant; positively cancel it before selecting another allowance",
+        "Your current setup keeps its original attempt and settings. Sign out to cancel setup before choosing another attempt.",
       );
     if (!previous && !initialGrant && choices.length > 1)
       throw Error(
-        "Choose the exact grant on your waiting page before opening preflight; no account or allowance reserved",
+        "Choose an attempt on the exam page before opening setup. No attempt was started or exam time used.",
       );
     if (
       !previous &&
@@ -1484,7 +1484,7 @@ export async function createApp(
         .get(config.agent.id, s.exam, s.username)
     )
       throw Error(
-        "No unused grant has an available finite Begin window. Ask your instructor to inspect examctl web grants list; existing consumption and history are preserved.",
+        "No attempt is available to start now. Ask your instructor to check your allowed attempts and their opening and closing times. This request did not start an exam or use an attempt.",
       );
     if (previous?.state === "COMPLETED" && initialGrant) {
       await life.reconcile(previous.id);
@@ -1494,24 +1494,24 @@ export async function createApp(
         !["RELEASED", "OVERRIDDEN"].includes(previous.access_state)
       )
         throw Error(
-          "Previous protected submission/access release is not confirmed; the additional grant cannot bypass its original restrictions",
+          "The earlier attempt's saved files or server-access cleanup are not confirmed. Ask your instructor to check it before another attempt. Existing access restrictions still apply.",
         );
       previous = undefined;
     }
     if (previous && previous.state !== "PREPARING")
-      throw Error("An attempt already exists; instructor review required");
+      throw Error("You already have an attempt for this exam. Ask your instructor to review it before trying again.");
     const id = previous?.id || randomUUID(),
       pageSecret = secret();
     if (initialGrant && !h.capabilities?.includes("ordered-template-grants-v1"))
       throw Error(
-        "Class server lacks ordered grant authority/type support; verify matching native roles before preflight. No grant or clock consumed.",
+        "The exam server cannot safely distinguish this attempt from earlier attempts. Ask your instructor to update and check the server. No attempt or exam time was used.",
       );
     if (
       initialGrant &&
       !h.capabilities?.includes("verified-preflight-cancellation-v1")
     )
       throw Error(
-        "Class server lacks verified grant cancellation/cleanup receipts; verify matching native roles before preflight. No claim or clock consumed.",
+        "The exam server cannot confirm safe setup cancellation. Ask your instructor to update and check the server. No attempt or exam time was used.",
       );
     if (
       initialGrant &&
@@ -1519,25 +1519,25 @@ export async function createApp(
       !h.capabilities?.includes("independent-workspace-grants-v1")
     )
       throw Error(
-        "Class server lacks independent grant workspace enforcement; verify matching native roles before preflight. No account, grant or clock consumed.",
+        "The exam server cannot verify this attempt's separate working files. Ask your instructor to update and check the server. No attempt or exam time was used.",
       );
     if (
       initialGrant?.work.kind === "saved" &&
       !h.capabilities?.includes("durable-saved-source-grants-v1")
     )
       throw Error(
-        "Class server lacks durable saved-source retention/staging enforcement; verify matching loaded roles and run examctl web grants source-sync before preflight. No account, claim or clock consumed.",
+        "The exam server cannot yet verify and prepare the selected saved files. Ask your instructor to check the server and saved files. No attempt or exam time was used.",
       );
     if (initialGrant && !h.capabilities?.includes("unified-initial-grants-v1"))
       throw Error(
-        "Class server requires matching grant-aware preparation and fresh outbound Begin verification; no grant or clock consumed. Inspect examctl web grants show GRANT and update matching roles.",
+        "The exam server cannot verify your allowed attempt before starting. Ask your instructor to update and check the server. No attempt or exam time was used.",
       );
     if (
       initialGrant?.issuance === "REVIEWED_NEW" &&
       !h.capabilities?.includes("reviewed-initial-grants-v1")
     )
       throw Error(
-        "Class server lacks reviewed-initial native history fences; update matching roles before this NEW grant can prepare. No clock or grant consumed.",
+        "The exam server cannot check whether you have already started this exam. Ask your instructor to update and check the server. No attempt or exam time was used.",
       );
     const settings = previous
       ? JSON.parse(previous.settings)
@@ -1584,12 +1584,12 @@ export async function createApp(
           value.uid !== enrollment.uid
         )
           throw Error(
-            "Class server recovery source identity reply differs from the authenticated enrollment",
+            "The saved files do not match the account you signed in with. Ask your instructor to check them before trying again.",
           );
         recoverySources.remember(value);
       } else if (knownRecovery) {
         throw Error(
-          "Expected saved-work recovery grant is missing. Preserve the retained source/archive and restore matching native authorization before retrying; starter-file fallback is forbidden.",
+          "The exam server could not confirm your allowed attempt from saved files. Keep the existing setup and saved files, and ask your instructor to check them. Starter files cannot be used instead.",
         );
       }
       const currentEnrollment = store.db
@@ -1608,7 +1608,7 @@ export async function createApp(
         !conn.alive
       )
         throw Error(
-          "Enrollment, allowance or SSH ownership changed during recovery checks; retry preflight. No clock has started.",
+          "Your exam settings or connection changed while saved files were being checked. Check the current attempt before retrying setup. This request did not start an exam clock.",
         );
       recovery = result.recovery;
       if (recovery) {
@@ -1619,7 +1619,7 @@ export async function createApp(
           (allowanceEdit && recovery.duration !== allowanceEdit.duration)
         )
           throw Error(
-            "Class server recovery allowance/identity reply differs from the explicit setting; preserve grant/source and inspect matching roles before retrying",
+            "The exam server did not confirm the selected time limit or account for these saved files. Keep the existing setup and saved files, and ask your instructor to check them before retrying.",
           );
         if (
           !allowanceEdit &&
@@ -1627,11 +1627,11 @@ export async function createApp(
           enrollment.duration !== recovery.duration
         )
           throw Error(
-            "Enrollment and unused recovery grant allowances differ. Explicitly save the intended student allowance in web admin or examctl web students settings, then retry preflight; no clock has started.",
+            "Your saved-work attempt and enrollment have different time limits. Ask your instructor to save the intended time limit, then open setup again. No exam time has started.",
           );
         if (previous && settings.duration !== recovery.duration)
           throw Error(
-            "The allowance changed after this web preparation. Sign out to confirm cancellation, then retry a fresh preflight; the saved preparation and clock were not changed.",
+            "The time limit changed after this setup began. Sign out to cancel setup, then sign in and open setup again. The existing setup and exam time were not changed.",
           );
         settings.duration = recovery.duration;
       }
@@ -1642,7 +1642,7 @@ export async function createApp(
       allowanceEdit.duration !== settings.duration
     )
       throw Error(
-        "Allowance edit is pending: this preparation keeps its saved allowance. Sign out and confirm cancellation before a fresh preflight; prepared grants are not revised.",
+        "A new time limit is waiting to be applied. This setup keeps its saved time limit. Sign out to cancel setup, then sign in and open setup again.",
       );
     if (isSandbox(s.exam)) {
       const {
@@ -1663,7 +1663,7 @@ export async function createApp(
           current.revision !== initialGrant.revision
         )
           throw Error(
-            "Grant revised during preflight; reload the saved settings and choose again. No allowance consumed.",
+            "The allowed attempt's settings changed during setup. Reload the exam page and choose again. No attempt or exam time was used.",
           );
       }
       if (!previous)
@@ -1732,7 +1732,7 @@ export async function createApp(
       throw Error(
         prepared.state === "CANCELLED_BEFORE_START"
           ? PREFLIGHT_EXPIRED_REASON
-          : "Preparation status changed; check the current attempt before continuing.",
+          : "Setup status changed. Check the current attempt before continuing.",
       );
     }
     const expectedPreparation = {
@@ -1747,11 +1747,11 @@ export async function createApp(
         JSON.stringify(expectedGrant)
     )
       throw Error(
-        "Native preparation did not retain its exact grant binding; no Begin authorized",
+        "The exam server did not confirm the allowed settings for this setup. Keep the setup and ask your instructor to check it. Starting was not approved.",
       );
     if (recovery && prepared.expected_recovery !== recovery.grant_hash)
       throw Error(
-        "Class server did not retain the exact saved-work grant binding; preserve source and use matching recovery-aware roles before retrying",
+        "The exam server did not confirm the selected saved files for this setup. Keep the setup and saved files, and ask your instructor to check them before retrying.",
       );
     store.db
       .prepare("UPDATE attempts SET work_path=?,functional_test=? WHERE id=?")
@@ -1764,7 +1764,7 @@ export async function createApp(
       if (staged.state !== "PREPARING" || !staged.workspace) {
         life.acceptRemote(staged, undefined, id);
         throw Error(
-          "Workspace preparation changed; check status before beginning.",
+          "File setup changed. Check the current attempt before starting.",
         );
       }
       requireTemplateSnapshot(settings, staged, expectedPreparation);
@@ -1774,11 +1774,11 @@ export async function createApp(
           JSON.stringify(expectedGrant)
       )
         throw Error(
-          "Native staged workspace lost its exact grant binding; no Begin authorized",
+          "The exam server did not confirm the allowed settings for the prepared files. Keep this setup and ask your instructor to check it. Starting was not approved.",
         );
       if (recovery && staged.expected_recovery !== recovery.grant_hash)
         throw Error(
-          "Staged recovery lost its exact grant binding; no Begin is authorized; preserve saved work and inspect matching native roles",
+          "The exam server did not confirm the selected saved files after preparing them. Keep this setup and saved files, and ask your instructor to check them. Starting was not approved.",
         );
       if (expectedGrant?.work) grants.accept(staged, store.attempt(id));
     }
@@ -1798,7 +1798,7 @@ export async function createApp(
     const a = studentAttempt(req);
     page(req, a);
     await requirePreflightTime(a);
-    if (a.state !== "PREPARING") throw Error("Practice only before starting");
+    if (a.state !== "PREPARING") throw Error("The practice terminal is available only before you start the exam.");
     const conn = connections.get(`${a.exam}:${a.username}`)!;
     for (const c of conn.panes.values()) await c.close();
     const pane = randomUUID();
@@ -1823,19 +1823,19 @@ export async function createApp(
         .prepare("SELECT 1 FROM enrollments WHERE exam=? AND username=?")
         .get(a.exam, a.username)
     )
-      throw Error("Enrollment removed; this attempt cannot begin");
-    if (config.maintenance) throw Error("Maintenance prevents new starts");
+      throw Error("You are no longer enrolled in this exam. Ask your instructor to check your access. This attempt cannot start.");
+    if (config.maintenance) throw Error("New exam starts are paused for maintenance. Try again later.");
     if (productionReadinessIssues(config).length)
-      throw Error("Production exam setup is awaiting operator verification.");
+      throw Error("The exam server is awaiting a safety check. Ask your instructor to check it before starting.");
     const settings = JSON.parse(a.settings);
     requireBeginWindow(a.exam, settings);
     monitoring.requireBeginReadiness(a);
     if ((settings.webcam && !(req.body as any).webcam) || !healthy(a))
-      throw Error("Current required images missing");
+      throw Error("Current screen or required webcam images are missing. Keep sharing and try again in a few seconds.");
     const conn = connections.get(`${a.exam}:${a.username}`);
-    if (!conn?.alive) throw Error("SSH transports lost");
+    if (!conn?.alive) throw Error("The sign-in connection is unavailable. Check the exam status and sign in again before retrying setup.");
     if (busy.has(a.id) || life.isBusy(a.id))
-      throw Error("Preparation is changing; check status before starting.");
+      throw Error("Setup is still changing. Check the current attempt before starting.");
     busy.add(a.id);
     let checkingMonitoring = false;
     let checkingLegacyRoles = false;
@@ -2005,7 +2005,7 @@ export async function createApp(
       life.activationPending.delete(a.id);
       if (checkingLegacyRoles)
         throw Error(
-          "Class server recovery allowance synchronization and guards could not be verified. Ask the operator to inspect sudo examctl health and matching native roles, then retry this preflight. Preserve the preparation/source; this request did not start a new clock or consume a grant.",
+          "The exam server could not confirm this saved-work attempt's time limit or safety checks. Keep the setup and saved files, and ask your instructor to check the server. This request did not start an exam or use an attempt.",
         );
       const reason = (e as Error).message.slice(0, 500);
       store.audit("gateway", "activation-failed", a.id, reason);
@@ -2016,7 +2016,7 @@ export async function createApp(
       await life.reconcile(a.id).catch(() => {});
       if (checkingMonitoring)
         throw Error(
-          "Monitoring readiness could not be verified. Keep this preflight, check your connection and ask the operator to verify matching browser and server versions before retrying. This request did not start a new exam clock.",
+          "The required monitoring could not be verified. Keep this setup, check your connection and ask your instructor to check the browser and server before retrying. This request did not start a new exam clock.",
         );
       throw Error(
         "Exam setup could not be confirmed. Check the current attempt status before retrying; your instructor can review the recorded failure.",
@@ -2096,7 +2096,7 @@ export async function createApp(
     { config: { rateLimit: { max: 2, timeWindow: "1 minute" } } },
     async (req) => {
       const a = studentAttempt(req);
-      if (a.state !== "LOCKED") throw Error("Attempt is not locked");
+      if (a.state !== "LOCKED") throw Error("This attempt is not paused for instructor review. Check its current status.");
       const message = z
         .object({ message: z.string().max(1000) })
         .parse(req.body).message;
@@ -2161,7 +2161,7 @@ export async function createApp(
     let a = studentAttempt(req);
     if (a.monitoring_mode === "v1")
       throw Error(
-        "A replacement SSH connection cannot reopen this attempt. Ask your instructor for a reviewed new attempt from verified saved work, with a chosen allowance and finite Begin window. The original deadline, history and account restrictions remain.",
+        "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
       );
     await autoAuthorizeSandbox(a.id, true);
     a = store.attempt(a.id);
@@ -2176,7 +2176,7 @@ export async function createApp(
       auth.expires <= now()
     )
       throw Error(
-        "Instructor authorization required for an authentication gap",
+        "Ask your instructor to approve resuming, then sign in again. Your deadline is unchanged.",
       );
     connections.get(`${a.exam}:${a.username}`)?.close();
     store.db
@@ -2190,7 +2190,7 @@ export async function createApp(
     let a = studentAttempt(req);
     if (a.monitoring_mode === "v1")
       throw Error(
-        "A replacement SSH connection cannot reopen this attempt. Ask your instructor for a reviewed new attempt from verified saved work, with a chosen allowance and finite Begin window. The original deadline, history and account restrictions remain.",
+        "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
       );
     await autoAuthorizeSandbox(a.id);
     a = store.attempt(a.id);
@@ -2204,11 +2204,11 @@ export async function createApp(
       auth.generation !== a.generation ||
       auth.expires <= now()
     )
-      throw Error("Instructor authorization required before replacing a page");
+      throw Error("Ask your instructor to approve resuming before opening another exam page. Your deadline is unchanged.");
     const conn = connections.get(`${a.exam}:${a.username}`);
     if (!conn?.alive)
       throw Error(
-        "Authenticate the same SSH account after instructor approval",
+        "Sign in again with the same account after your instructor approves resuming.",
       );
     await conn.command("attach-transport", {
       id: a.id,
@@ -2248,19 +2248,19 @@ export async function createApp(
       )
     )
       throw Error(
-        "Automatic technical recovery is unavailable for this pause. Preserve this page and request instructor review.",
+        "This pause cannot be resolved automatically. Keep this page open and ask your instructor to review it.",
       );
     if (
       !a.deadline ||
       a.deadline <= now() ||
       ["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state)
     )
-      throw Error("Your exam has ended. It can no longer be continued.");
+      throw Error("Your exam has ended. This attempt cannot resume.");
     if (
       a.state !== "LOCKED" &&
       !(a.state === "ACTIVE" && nativeContinuationOutcomeRecorded(a))
     )
-      throw Error("Your exam is not waiting for continuation.");
+      throw Error("This attempt is not waiting to resume. Check its current status.");
     const readiness = readinessMessage(req.body, JSON.parse(a.settings).webcam);
     if (readiness) throw Error(readiness);
     if (!automaticTechnical) await autoAuthorizeSandbox(a.id);
@@ -2276,19 +2276,19 @@ export async function createApp(
           !(auth.consumed && nativeContinuationOutcomeRecorded(a))))
     )
       throw Error(
-        "Instructor authorization is required. Request review and wait for approval before continuing.",
+        "Ask your instructor to approve resuming. Wait for approval before choosing Resume exam.",
       );
     if (authenticationGap(a.id))
-      throw Error("Reconnect SSH and restore your page before continuing");
+      throw Error("The connection or exam page must be restored before resuming. Keep this page open and ask your instructor to check it.");
     if (!healthy(a))
       throw Error(
         "Waiting for current screen or camera images. Keep sharing and try again in a few seconds.",
       );
     const conn = connections.get(`${a.exam}:${a.username}`);
     if (!conn?.alive)
-      throw Error("Instructor-approved reauthentication required");
+      throw Error("The connection needed to resume is unavailable. Keep this page open and ask your instructor to check it.");
     if (JSON.parse(a.settings).webcam && !(req.body as any).webcam)
-      throw Error("Camera required");
+      throw Error("Restore webcam sharing before resuming.");
     let inputEpochs:
       | Record<string, { instance: string; epoch: string }>
       | undefined;
@@ -2326,7 +2326,7 @@ export async function createApp(
           retainedConnection(current) !== conn
         )
           throw Error(
-            "The pause or page changed during continuation. Preserve the current panes and inspect fresh status.",
+            "The pause or page changed while resuming. Keep this page and its terminals open, then check the current status.",
           );
         if (
           !result?.attempt ||
@@ -2338,7 +2338,7 @@ export async function createApp(
           result.attempt.generation !== a.generation
         )
           throw Error(
-            "Native continuation is still pending. Keep this page open and retry; no new approval or clock is created.",
+            "Resuming is not yet confirmed. Keep this page open and retry Resume exam. This does not create another approval or reset the clock.",
           );
         life.acceptRemote(result.attempt);
         inputEpochs = await conn.changeInputEpochs(a.id, result.input_epochs);
@@ -2351,7 +2351,7 @@ export async function createApp(
           life.expireDeadline(a.id)
         )
           throw Error(
-            "Page or SSH ownership changed during input agreement. Preserve the current attempt and inspect its status.",
+            "The page or connection changed while terminal input was being restored. Keep this attempt open and check its current status.",
           );
       }
     } catch (error) {
@@ -3250,7 +3250,7 @@ export async function createApp(
               !grants.available(m.exam, m.username).length
             )
               throw signInError(
-                "The initial grant is revoked or consumed. Contact your instructor to inspect its original grant/attempt history; no new exam started.",
+                "Your first attempt is not available. Ask your instructor to check your exam access. No new attempt was started.",
               );
             if (
               existing?.state === "COMPLETED" &&
@@ -3291,7 +3291,7 @@ export async function createApp(
                 !authenticationGap(busyAttempt.id)
               )
                 throw signInError(
-                  "Your exam is locked or already in progress. Ask your instructor to authorize continuation before signing in again. The clock continues.",
+                  "An earlier attempt still restricts this account. Ask your instructor whether you can resume before signing in again. Its deadline and access restrictions are unchanged.",
                 );
             }
           }

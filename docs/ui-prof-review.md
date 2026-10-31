@@ -106,6 +106,76 @@ each outcome before its row details. Final acceptance is recorded below.
 
 ## Local results
 
+### Phone sign-in and terminology follow-up after 976b7d5
+
+Prof found that the password-to-phone wait was only represented by a low-contrast
+disabled button. Agree: put live progress above raw server history; show a prominent
+number only for the existing strictly recognized DePaul phone challenge, explain
+that it belongs in the phone's Authenticator app, and label the existing explicit
+empty acknowledgment **I approved on my phone**. A generic verification code still
+requires its own input. Password-only progress must not match one-time-password
+prompts. Raw SSH messages, host/round fences, response clearing and all authentication
+behavior remain unchanged; no response is automatic and no progress claims success.
+
+Use **Start exam**, **attempt/extra attempt**, **time limit**, **opening/closing
+times**, **setup**, **instructor approval** and **saved files** in ordinary prose.
+Wire/CLI operation names and audit-only diagnostics keep their exact identifiers.
+Student-facing server refusals must retain their safety facts without instructing
+students to run administrative commands. No eligibility predicate, status code,
+clock, hold or stored historical record is changed. Root and Prof agreed the exact
+70 public student/error-handler literal sites and 14 ordinary instructor refusal
+messages before implementation. New audit details can contain the shared helpers'
+clearer prose; stored reason identifiers and existing history are not rewritten.
+Instructor errors explain changed settings, stale reviews and unused-only changes
+without demanding command names, hashes or internal lifecycle terms. CLI/API names
+and technical/native receipts remain exact. The finished student's receipt labels
+its IDs/checksum **Technical details**; cancelled setup reasons remain ordinary
+Details. No new screen or management operation is introduced.
+
+Acceptance: desktop/mobile password waiting and phone instructions are readable;
+the phone number appears in the ordinary view with no Code input; no empty answer
+is sent before explicit confirmation; generic OTP still sends the typed value;
+blank/notice rounds, cancellation and raw banners remain correct. Exercise actual
+student refusal endpoints and retain their no-start/unchanged-authority checks.
+Three new phone checks reproduced the old failure, then passed after the fix.
+Prof accepted actual 1280px/430px screenshots: progress, number, phone instructions
+and one confirmation button stay in view above long synthetic banners. A genuine
+one-time-password prompt stays distinct. Seven auth unit checks and 74 focused app
+checks pass (the latter includes those seven); authority/source/clock assertions
+remain intact. The student guide now matches the current setup expiry, labels,
+saved-file recovery and original-deadline restrictions. The earlier guide's
+reload/SSH-loss wording was stale, not a newly changed policy.
+
+Final qualification: eight additional focused HTTP checks pass. Full `npm test`
+passes 644 checks, with 3 existing opt-in skips (330.0s), including the current
+worktree's native-clock pretest. Typecheck, fresh frontend build and server build
+pass. No new kernel/native race is required: native/SSH/protocol/CLI code is
+unchanged; the three server files have 84 approved public-message edits and zero
+other token changes, including unchanged template interpolations.
+
+All 95 selected browser scenarios are covered with actual WASM SSH and the separate
+gateway process, verified through public fixture status. The broad run passed 94
+(10.5min); the remaining test looked for the old recovery-role error. Its retained
+snapshot showed the intended new refusal. After collecting the run, only its two
+message oracles changed; the complete workflow then passed in 7.6s, including no-start,
+unchanged source/allowance and successful retry checks. Product/assets and the
+other 94 scenarios did not change, so their evidence remains applicable. The
+initial failure is retained. The unchanged two-minute post-cleanup health soak
+was excluded; prior qualification applies to its unchanged implementation. No
+native-bundle/privileged claim follows from this simulated host/media fixture.
+
+The strengthened legacy HTTP test also exposed an old reused cancellation request:
+it now verifies that conflict and separately uses a fresh intent to reach the
+cancelled-review refusal. No production code changed to accommodate either test.
+Source/test/served-asset manifests show no run-time drift; the exact existing
+qualified SSH WASM/runtime was restored after Vite copied its public directory,
+before browser qualification. Cleanup checks confirm all 76 logged owned processes
+exited, ports 3100/3101 closed and all 10 original dirty screenshots unchanged.
+Prof's final acceptance covers the actual desktop/mobile phone screenshots and
+the agreed plain terminology/technical disclosures. Evidence:
+var/collection-tests/prof-login-terms.g_qplfoq. Implemented/tested locally only;
+no push, deployment, production changes or open design decision.
+
 ### Second UI/UX pass requested after ce33086
 
 The follow-up found useful saved settings inside Technical details and individual

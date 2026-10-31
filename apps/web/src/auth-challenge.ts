@@ -8,16 +8,35 @@ export interface AuthChallenge {
 
 // DePaul's number-matching flow calls its final empty acknowledgment "Code:".
 // This is a user-confirmed Enter, never an automatic answer to a generic OTP.
-export function isPhoneApprovalChallenge(challenge: AuthChallenge | null) {
+export function phoneApprovalNumber(
+  challenge: AuthChallenge | null,
+): string | null {
   const instruction =
     challenge?.instruction.trim() || challenge?.instructions?.at(-1) || "";
-  return (
-    challenge?.host === "sshjump.depaul.edu" &&
+  const number =
+    /open your authenticator app,?\s+and enter the number\s+['"]?(\d+)['"]?\s+to sign in/i.exec(
+      instruction,
+    );
+  return challenge?.host === "sshjump.depaul.edu" &&
     challenge.prompts.length === 1 &&
     !challenge.prompts[0].echo &&
     /^code\s*:?$/i.test(challenge.prompts[0].prompt.trim()) &&
-    /open your authenticator app,?\s+and enter the number\s+['"]?\d+['"]?\s+to sign in/i.test(
-      instruction,
+    number
+    ? number[1]
+    : null;
+}
+
+export function isPhoneApprovalChallenge(challenge: AuthChallenge | null) {
+  return phoneApprovalNumber(challenge) !== null;
+}
+
+export function isPasswordChallenge(challenge: AuthChallenge | null) {
+  return (
+    !!challenge &&
+    challenge.prompts.length === 1 &&
+    !challenge.prompts[0].echo &&
+    /^(?:password|shared ssh password)\s*:?$/i.test(
+      challenge.prompts[0].prompt.trim(),
     )
   );
 }

@@ -1,76 +1,116 @@
 # Student instructions
 
-1. Use desktop Chrome, Edge or Chromium. Save other class-account work: beginning closes conflicting
-   sessions/processes. References are physical documents or documents through SSH terminals.
-2. Enter the exam ID and enrolled username. Enter your shared SSH password once, follow the
-   displayed number in your authentication app and wait for approval. The browser temporarily
-   reuses the password for the configured class host, then discards it. Screen capture starts only afterward.
-3. Open preflight. Share the entire display containing the exam, not a tab/window. Avoid extra
-   monitors under course rules; the app cannot verify all displays. Enable webcam only when
-   required and check framing/readability. Accepted preflight images may become initial evidence.
-4. Enter fullscreen, then click Lock keyboard as a separate action. Preflight steps are numbered
-   consecutively: three without a webcam, four when a webcam is required. Completed permissions
-   are highlighted. Practice actual editor/toolchain shortcuts including
-   Escape, Ctrl-C/Ctrl-D/Ctrl-Z and your keyboard layout. Practice does not consume exam time.
-5. Click Begin exam and confirm. The app secures server access automatically while keeping
-   your existing screen sharing, fullscreen and keyboard lock. The remaining clock uses
-   minutes:seconds, or hours:minutes:seconds when at least an hour remains. You do not enter your password
-   or approve phone MFA again. The clock starts only when setup succeeds. Save other server
-   work first: conflicting sessions and background processes are stopped. Use each terminal
-   title bar to snap left/right or rename, and Arrange to tile windows.
-6. Work normally in the configured exam directory (shown in the toolbar, normally /work).
-   Saved files in that directory are collected automatically when time expires or you finish
-   the exam. Unsaved editor buffers are not included. No submission command, upload or archive
-   creation is needed. Finish exam is optional; confirming it ends access irreversibly. Read /materials and use exam-info to redisplay deadline/path.
-7. The original timer never pauses. Focus/fullscreen/capture failure, reload or SSH loss locks
-   the attempt. Request review; time continues. An unchanged healthy page can recover a network
-   interruption within 15 seconds, but a reload cannot resume automatically.
-8. After instructor approval, restore capture/fullscreen/keyboard and click Continue after authorization.
-   Lost SSH requires approved reauthentication with capture stopped first. Saved files survive,
-   but connection/server failure may lose unsaved editor buffers.
-9. Before starting, Sign out cancels preparation and disconnects practice terminals. During
-   the exam, Finish exam ends access permanently and collects saved work immediately.
-   Closing the browser alone does not finish or pause the clock.
-10. Save before Finish exam. Expiration collects automatically. Submission secured means a
-   verified protected copy on the class server. Collection failure needs instructor recovery.
-   Capture stops when the attempt ends. Ordinary access restoration is separate and cannot
-   occur early merely because collection succeeded.
+> Instructions for the current local candidate. Its revised button labels have
+> not been deployed by this work.
 
-No audio is recorded. Monitoring normally expires after 60 days; submissions have separate
-retention. Incidents are evidence for instructor review, not automatic misconduct findings.
-Browser monitoring does not exclude other devices or compromised operating systems.
+An **attempt** is one timed sitting of an exam, with its own time limit and
+opening/closing times.
 
-Terminals initially open as floating windows. Maximize changes to a restore icon; minimize
-and restore use the title-bar controls and the terminal list in Tools. Closing a terminal asks for confirmation.
-Escape closes optional rules, rename and confirmation dialogs, but cannot dismiss an exam
-lock or a collection-status overlay. Save files before closing a terminal.
+## Sign in and check your setup
 
-Incomplete preflight stays available while the page remains connected; it does not require
-all permissions to send a preflight contact signal. If contact is lost for ten minutes,
-preparation is cancelled and its monitoring images are deleted. The exam has not started
-and no exam time is consumed. Sign out and sign in again to open a fresh preflight. Signing
-out before Begin also cancels preparation. A committed exam start always retains its
-original deadline, even if its acknowledgement was lost.
+1. Use desktop Chrome, Edge or Chromium. Save other class-account work: starting
+   closes your other server sessions and processes. Follow your instructor's
+   reference and monitor rules. References may be physical documents or files
+   read through exam terminals.
+2. Enter the exam ID and your enrolled username, then choose **Sign in**. Enter
+   your shared SSH password when asked. It is reused for the class server, then
+   discarded. Keep the page open; the number for your phone app may take a moment
+   to appear.
+3. When a phone-approval number appears, enter it in your Authenticator app on
+   your phone and approve sign-in. Then choose **I approved on my phone** on the
+   exam page. Do not type that number into the exam page. For a different
+   verification-code prompt, follow the displayed instructions instead.
+4. Check the exam name, time limit and opening/closing times. If several attempts
+   are offered, choose the one you intend to start. Choose **Check setup and
+   practice**, then complete the numbered buttons in order:
+   - **Share entire screen:** select the display containing the exam, not a tab
+     or window. Browser checks cannot verify all additional displays.
+   - **Enable webcam**, when required: check that the preview is clear and
+     correctly framed.
+   - **Enter fullscreen**, then **Lock keyboard** as a separate action.
+5. Use **Practice terminal** to check your editor and keyboard shortcuts. This
+   uses no exam time. Setup expires
+   **15 minutes after you open it**, even while connected. Before starting,
+   **Sign out** cancels setup and closes practice terminals; you can sign in again.
 
-Finishing ends your exam permanently. It does not restore ordinary class-server access early:
-the account remains restricted until your original deadline and secured collection. Signing
-out, closing the browser or leaving the classroom does not change this. A finished attempt
-cannot be reopened; an unfinished locked attempt requires instructor approval and keeps the
-same deadline.
+Capture starts after sign-in, when you enable sharing. Setup images may be retained
+if you start; abandoned setup images are deleted.
 
+## Start and work
 
-If the exam window loses focus while staying fullscreen and visible, a warning counts down
-20 seconds. Return to the exam before it reaches zero to continue without reconnecting.
-Monitoring and the exam clock continue. Staying away longer pauses the exam and requires
-normal reconnection/authorization. Leaving fullscreen or hiding the page still pauses it immediately.
+Choose **Start exam** and confirm. The server starts and enforces your clock only
+when starting succeeds; no second password or phone approval is normally needed.
+If the result is unclear, check the current status before trying again. A delayed
+reply does not reset a clock that already started.
 
-During ordinary student exams, your shell and editor settings are preserved in a
-read-only home view. Save answers in the configured exam directory. Cache, history
-and editor state use disposable storage and are discarded after your attempt’s
-processes end; they are not submitted or copied back to your real home. Administrator
-sandbox testing retains the ordinary unrestricted home.
+**The clock keeps running during pauses, disconnections and instructor review.**
+Time is not added automatically. Opening/closing times control when you can start,
+not the deadline after starting.
 
-Terminal Emacs supports the exam clipboard: **C-w cuts** the selected region and
-**M-w copies** it. Paste into another exam terminal with **Ctrl+Shift+V** or the
-terminal’s right-click **Paste** action. This clipboard stays inside the attempt;
-it does not change your computer’s clipboard. Normal Emacs yank (**C-y**) still works.
+Save answers in the directory shown in the toolbar, normally **`/work`**. Read
+provided files in **`/materials`**. Use `exam-info` to check your deadline and work
+directory. Files outside the work directory and unsaved editor changes are not
+submitted.
+
+Use terminal title bars to move, rename, maximize or minimize windows;
+**Arrange terminals** tiles them and **Terminals** lists minimized terminals. Save
+before closing a terminal: its programs will stop. Escape closes optional dialogs,
+but not paused-exam or file-saving screens.
+
+Your shell/editor settings are available through a read-only home directory.
+Temporary cache, history and editor state are discarded after the attempt's
+processes end; they are not submitted or copied back to your real home.
+
+## If work pauses
+
+Keep the original page and terminals open. **Do not reload to fix a pause.** A
+temporary update or monitoring delay may recover automatically while the original
+page and connection still work. A delay or timeout alone is not a misconduct finding.
+
+If the exam loses focus while remaining fullscreen and visible, a warning counts
+down **20 seconds**. Return before it reaches zero to avoid a pause. Leaving
+fullscreen or hiding the exam page pauses work immediately. Missing screen/webcam
+sharing or other required checks can also pause input. The exam clock continues.
+
+Request instructor review when asked. After approval, restore missing screen/webcam
+sharing, fullscreen and keyboard checks, then choose **Resume exam**. This uses the
+same attempt if the original page and connection still work; no time is added. A
+pause can preserve terminals and unsaved editor changes; save regularly anyway.
+
+If the original page or SSH connection is lost after a reload or laptop crash,
+tell your instructor. You may need a **new attempt from verified saved files**,
+with a time limit and start times your instructor chooses. This does not reopen a
+finished attempt or restore unsaved editor changes. Earlier deadlines, restrictions
+and history remain; no time is refunded automatically.
+
+## Finish and file collection
+
+Saved work-directory files are collected automatically when time expires or you
+finish. **No upload, submission command or archive is needed.** Unsaved editor
+changes are excluded.
+
+**Finish exam** is optional. Save first: confirming it closes your terminals,
+collects saved files and signs you out. That attempt cannot be reopened. Closing
+the browser alone does not finish the exam or stop its clock.
+
+**Files saved** confirms a protected copy. If saving/protection needs attention,
+contact your instructor; do not submit another copy yourself. Capture stops when
+the attempt ends.
+
+Finishing early does not restore ordinary access to your class account. Restrictions
+remain until the original deadline (or a later deadline your instructor sets) and
+confirmed file collection. Signing out, closing the browser or receiving a new
+attempt does not by itself release those restrictions.
+
+## Privacy and the exam clipboard
+
+We record screen images every five seconds, webcam images when required, and
+terminal output. We do not record audio or raw keystrokes. Monitoring normally
+expires after 60 days; saved submissions have separate retention. Recorded
+events are for instructor review, not automatic misconduct findings. Browser
+monitoring cannot rule out other devices or compromised operating systems.
+
+The exam clipboard stays within your attempt and does not change your computer's
+clipboard. Paste between exam terminals with **Ctrl+Shift+V** or right-click
+**Paste**. In terminal Emacs, **C-w** cuts and **M-w** copies the selected region;
+normal **C-y** still works.

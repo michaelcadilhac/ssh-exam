@@ -123,10 +123,14 @@ it("reviews NEW legacy-unused grants, preserves effective settings and confirms 
     store.db
       .prepare("UPDATE enrollments SET duration=4500 WHERE username='old01'")
       .run();
-    expect(
-      (await post(`/api/admin/grant-issuance/${review.id}/confirm`, change))
-        .statusCode,
-    ).toBe(409);
+    const changedEnrollment = await post(
+      `/api/admin/grant-issuance/${review.id}/confirm`,
+      change,
+    );
+    expect(changedEnrollment.statusCode).toBe(409);
+    expect(changedEnrollment.json().error).toBe(
+      "Enrollment or settings for old01 changed after this review. Create a new review. This request allowed no attempts.",
+    );
     expect(
       store.db.prepare("SELECT count(*) n FROM attempt_grants").get(),
     ).toEqual({ n: 0 });
@@ -135,23 +139,36 @@ it("reviews NEW legacy-unused grants, preserves effective settings and confirms 
         await post(`/api/admin/grant-issuance/${review.id}/cancel`, change)
       ).json().status,
     ).toBe("CANCELLED");
-    expect(
-      (await post(`/api/admin/grant-issuance/${review.id}/confirm`, change))
-        .statusCode,
-    ).toBe(409);
+    const reusedCancellationRequest = await post(
+      `/api/admin/grant-issuance/${review.id}/confirm`,
+      change,
+    );
+    expect(reusedCancellationRequest.statusCode).toBe(409);
+    expect(reusedCancellationRequest.json().error).toBe(
+      "Grant request ID conflicts with a different intent; inspect current grant and use a new request ID",
+    );
+    const cancelledReview = await post(
+      `/api/admin/grant-issuance/${review.id}/confirm`,
+      { ...change, request: randomUUID() },
+    );
+    expect(cancelledReview.statusCode).toBe(409);
+    expect(cancelledReview.json().error).toBe(
+      "This review was cancelled or expired. Create a new review before allowing attempts. This request did not allow attempts or reserve accounts.",
+    );
     const expired = (await preview()).json();
     store.db
       .prepare("UPDATE grant_issuance_previews SET expires=0 WHERE id=?")
       .run(expired.id);
     expect((await read(expired.id)).json().status).toBe("EXPIRED");
-    expect(
-      (
-        await post(`/api/admin/grant-issuance/${expired.id}/confirm`, {
-          revision: expired.revision,
-          request: randomUUID(),
-        })
-      ).statusCode,
-    ).toBe(409);
+    const expiredReview = await post(
+      `/api/admin/grant-issuance/${expired.id}/confirm`,
+      {
+        revision: expired.revision,
+        request: randomUUID(),
+      },
+    );
+    expect(expiredReview.statusCode).toBe(409);
+    expect(expiredReview.json().error).toBe(cancelledReview.json().error);
     const stale = (await preview()).json();
     definitions.update(
       "legacy",
@@ -160,14 +177,17 @@ it("reviews NEW legacy-unused grants, preserves effective settings and confirms 
       "admin",
       "Changed defaults after review",
     );
-    expect(
-      (
-        await post(`/api/admin/grant-issuance/${stale.id}/confirm`, {
-          revision: stale.revision,
-          request: randomUUID(),
-        })
-      ).statusCode,
-    ).toBe(409);
+    const changedDefinition = await post(
+      `/api/admin/grant-issuance/${stale.id}/confirm`,
+      {
+        revision: stale.revision,
+        request: randomUUID(),
+      },
+    );
+    expect(changedDefinition.statusCode).toBe(409);
+    expect(changedDefinition.json().error).toBe(
+      "The exam settings changed after this review. Create a new review. This request allowed no attempts.",
+    );
     const current = (await preview()).json(),
       confirm = { revision: current.revision, request: randomUUID() };
     const confirmed = await post(

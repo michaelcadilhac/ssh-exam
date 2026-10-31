@@ -331,7 +331,7 @@ it.each([
         expect(operations).not.toContain("prepare-recovery-attempt");
         if (firstObservation) {
           expect(prepared.json().error).toContain(
-            "recovery allowance synchronization",
+            "The exam server cannot confirm this attempt's saved time limit. Ask your instructor to check the server. Keep this setup and its saved files; this request did not start an exam or use an attempt.",
           );
           expect(operations).not.toContain("prepare-attempt");
           expect(operations).not.toContain("reconcile-recovery-allowance");
@@ -383,7 +383,7 @@ it.each([
         const retry = await preflight();
         expect(retry.statusCode, retry.body).toBe(400);
         expect(retry.json().error).toContain(
-          "starter-file fallback is forbidden",
+          "The exam server could not confirm your allowed attempt from saved files. Keep the existing setup and saved files, and ask your instructor to check them. Starter files cannot be used instead.",
         );
         expect(operations).not.toContain("prepare-attempt");
         expect(grant.consumed).toBe(false);
@@ -430,7 +430,7 @@ it.each([
       if (scenario === "role-lost-before-begin") {
         expect(begin.statusCode, begin.body).toBe(400);
         expect(begin.json().error).toContain(
-          "recovery allowance synchronization",
+          "The exam server could not confirm this saved-work attempt's time limit or safety checks. Keep the setup and saved files, and ask your instructor to check the server. This request did not start an exam or use an attempt.",
         );
         expect(operations).not.toContain("activate-recovery-attempt");
         expect(store.attempt(id)).toMatchObject({

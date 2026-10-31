@@ -334,7 +334,9 @@ it("adds and removes approved enrollments without changing attempts or allowing 
       },
     });
     expect(begin.statusCode).toBe(400);
-    expect(begin.json().error).toContain("Enrollment removed");
+    expect(begin.json().error).toContain(
+      "You are no longer enrolled in this exam. Ask your instructor to check your access. This attempt cannot start.",
+    );
     expect(store.attempt("pending").state).toBe("PREPARING");
   } finally {
     await app.close();
@@ -469,7 +471,7 @@ it("continuation failures explain recovery conditions, instructor approval and e
     );
     const unapproved = await request(ready);
     expect(unapproved.json().error).toContain(
-      "Instructor authorization is required",
+      "Ask your instructor to approve resuming. Wait for approval before choosing Resume exam.",
     );
     expect(store.attempt("locked").state).toBe("LOCKED");
     expect(store.attempt("locked").deadline).toBe(deadline);
@@ -477,7 +479,7 @@ it("continuation failures explain recovery conditions, instructor approval and e
       .prepare("UPDATE attempts SET state='COMPLETED' WHERE id='locked'")
       .run();
     expect((await request({ ...ready, fullscreen: false })).json().error).toBe(
-      "Your exam has ended. It can no longer be continued.",
+      "Your exam has ended. This attempt cannot resume.",
     );
   } finally {
     await app.close();

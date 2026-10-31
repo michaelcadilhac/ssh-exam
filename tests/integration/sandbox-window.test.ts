@@ -118,7 +118,7 @@ it("web sandbox settings preserve an explicit window, reject indefinite policy a
         },
       });
       expect(reply.statusCode).toBe(400);
-      expect(reply.json().error).toMatch(/window/i);
+      expect(reply.json().error).toMatch(/opening and closing times/i);
       expect(store.attempt("preflight")).toMatchObject({
         state: "PREPARING",
         start: null,

@@ -5,6 +5,19 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+October 30 phone/terminology follow-up after 976b7d5 (local only): sign-in progress
+explains the wait after a DePaul password. The strictly recognized phone challenge
+shows the number, Authenticator instructions and **I approved on my phone** together
+above raw server history, including on narrow screens. The existing explicit empty
+acknowledgment is sent only on confirmation; generic OTPs still require typed input.
+Host/prompt/round fences, answer clearing, authentication and raw messages remain
+unchanged. Ordinary prose uses **Start exam**, **setup**, **attempt/extra attempt**,
+**opening/closing times**, **instructor approval** and **saved files**. Public errors
+give the relevant next step without teaching students administrative commands.
+No eligibility, time, source-protection or access policy changes; protocol/CLI names
+and stored historical reasons remain intact. Current status/evidence:
+docs/ui-prof-review.md and docs/todo-current-checkpoint.md.
+
 October 30 follow-up after ce33086 (local only): useful historical attempt facts
 are separated from diagnostics. Individual Allowed attempts leads with cards and
 visible start windows; bulk editing retains its existing two-stage workflow.
@@ -575,9 +588,9 @@ Use separate buttons where browser user-activation requirements demand them; do 
 
 Preflight can be retried without consuming the attempt. A cancelled preflight that never installed account policy must receive an explicit agent acknowledgment of normal account policy, including after restart. Absence of a persisted policy generation proves the helper was never invoked; an applied or failed policy still requires verified restoration. Test images should remain ephemeral and be deleted when preflight is abandoned; if an initial image is retained with the attempt, disclose that and apply the monitoring retention policy. A disconnected preflight expires and closes its retained SSH transports after a configurable idle timeout, default ten minutes. Before activation, retry interrupted browser connections with bounded backoff; the active-exam 15-second recovery limit must not strand preflight. Only report connected after an acknowledged session bind. If SSH transports are lost, including after a gateway restart, report an authentication gap, stop capture and keyboard lock, and offer fresh SSH sign-in without instructor authorization. Explain that the exam has not started and no exam time has elapsed. Recheck preflight after fresh authentication; never retain credentials to reconnect. Active attempts retain their existing pause, authorization and original-deadline policy. Preflight terminals must have a distinct, narrowly authorized practice purpose and no access to exam templates or workspaces. Close their shell channels before activation while retaining the authenticated jump transport and automatically replacing the class transport as described below.
 
-### 6.3 Begin exam
+### 6.3 Start exam
 
-Use a deliberate **Begin exam** action. Before committing:
+Use a deliberate **Start exam** action. Before committing:
 
 - The browser reports fullscreen, focus, visibility, Keyboard Lock readiness, and healthy required capture streams.
 - Both SSH transports are authenticated and connected.
@@ -1205,7 +1218,7 @@ The exact path is configurable through trusted agent configuration. Students and
 
 Copy a configured, versioned starter template into a fresh per-attempt directory once. Make exam questions and reference materials read-only and available only when the attempt is activated. Keep hidden solutions, other variants, and future attempts inaccessible.
 
-Display the configured collected directory as `EXAM_DIR` and in the toolbar. The student UI must say: **“Saved files in [directory] are collected automatically when time expires or you finish the exam.”** Show this explanation and the unsaved-buffer warning in the Begin exam confirmation and toolbar tooltip, without a permanent notice row. Keep the exam workspace lean: no Rules button or routine copy/rename status row; terminal errors use dismissible dialogs and recovery uses its existing overlay. Students work normally and save files; they must not run a submission command, upload files, create an archive, or perform any other submission task. Work elsewhere or unsaved editor buffers are not promised as submission content. Provide a safe `exam-info` helper; automatic deadline collection must not depend on a student running a submission command.
+Display the configured collected directory as `EXAM_DIR` and in the toolbar. The student UI must say: **“Saved files in [directory] are collected automatically when time expires or you finish the exam.”** Show this explanation and the unsaved-buffer warning in the Start exam confirmation and toolbar tooltip, without a permanent notice row. Keep the exam workspace lean: no Rules button or routine copy/rename status row; terminal errors use dismissible dialogs and recovery uses its existing overlay. Students work normally and save files; they must not run a submission command, upload files, create an archive, or perform any other submission task. Work elsewhere or unsaved editor buffers are not promised as submission content. Provide a safe `exam-info` helper; automatic deadline collection must not depend on a student running a submission command.
 
 ### 15.2 Finish and expiration
 

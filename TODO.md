@@ -1,5 +1,17 @@
 # Deferred work
 
+October 30 phone sign-in/terminology follow-up COMPLETE/TESTED LOCALLY after
+976b7d5. Prof accepted desktop/mobile waiting progress, prominent phone number,
+clear Authenticator instructions and one explicit approval action. Generic code
+entry/raw SSH messages/authentication remain intact. Ordinary messages use Start
+exam, setup, attempts, opening/closing times and instructor approval; IDs/checksums
+remain technical. Student/operator guides agree with current behavior. Full app:
+644 passed / 3 existing opt-in skips. All 95 selected browser scenarios are covered:
+94 passed the broad run; the one stale wording oracle was corrected and its full
+workflow passes separately against unchanged product/assets. Typecheck and fresh
+web/server builds pass. No policy, CLI/protocol, production, push or deployment
+change; original images preserved. Details: docs/ui-prof-review.md/current checkpoint.
+
 October 30 second Prof UX review COMPLETE/TESTED LOCALLY after ce33086. Useful
 saved settings/source links now precede technical data; individual attempt cards
 come before editing controls, with start windows visible. UUIDs, hashes and raw

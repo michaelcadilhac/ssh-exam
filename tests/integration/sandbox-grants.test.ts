@@ -362,7 +362,9 @@ it.each([
       let prepared = await preflight();
       if (scenario === "manual-future-window") {
         expect(prepared.statusCode, prepared.body).toBe(400);
-        expect(prepared.body).toContain("Outside allowed start window");
+        expect(prepared.body).toContain(
+          "You can start only between the opening and closing times shown. These times do not change the deadline of an attempt already started.",
+        );
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
         ).toEqual({ n: 0 });
@@ -395,7 +397,9 @@ it.each([
       }
       if (scenario === "old-role" || scenario === "old-cleanup-role") {
         expect(prepared.statusCode).toBe(400);
-        expect(prepared.body).toContain("practice grant");
+        expect(prepared.body).toContain(
+          "The exam server cannot verify a new practice attempt. Ask your instructor to update and check the server. This request did not reserve a new attempt or use exam time.",
+        );
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
         ).toEqual({ n: 0 });

@@ -176,13 +176,16 @@ test("an open but unacknowledged reconnect cannot outlive recovery grace or repl
     f.model.continuation = async (route) =>
       route.fulfill({
         status: 403,
-        json: { error: "Instructor authorization required" },
+        json: {
+          error:
+            "Ask your instructor to approve resuming. Wait for approval before choosing Resume exam.",
+        },
       });
     await page
       .getByRole("button", { name: "Resume exam", exact: true })
       .click();
     await expect(page.getByRole("alert")).toContainText(
-      "Instructor authorization required",
+      "Ask your instructor to approve resuming",
     );
     await type(page, "unauthorized");
     expect(inputs(f)).toBe("");
@@ -468,7 +471,8 @@ test("repeated disconnected status preserves a rejected reconnect until a new pa
     route.fulfill({
       status: 403,
       json: {
-        error: "Instructor authorization required for an authentication gap",
+        error:
+          "Ask your instructor to approve resuming, then sign in again. Your deadline is unchanged.",
       },
     }),
   );
@@ -477,7 +481,7 @@ test("repeated disconnected status preserves a rejected reconnect until a new pa
     .click();
   const error = page
     .getByRole("alert")
-    .filter({ hasText: "Instructor authorization required" });
+    .filter({ hasText: "Ask your instructor to approve resuming" });
   await expect(error).toBeVisible();
   for (let i = 0; i < 3; i++) {
     f.model.socket!.send(JSON.stringify({ type: "state", ...f.snapshot() }));

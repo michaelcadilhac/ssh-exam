@@ -162,7 +162,9 @@ it("same-page retained pause keeps SSH; failed native Continue retries the same 
       payload: {},
     });
     expect(reauth.statusCode, reauth.body).toBe(400);
-    expect(reauth.json().error).toContain("reviewed new attempt");
+    expect(reauth.json().error).toContain(
+      "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
+    );
     expect(f.connection.alive).toBe(true);
     const continued = await continueAttempt();
     expect(continued.statusCode, continued.body).toBe(200);
@@ -250,7 +252,9 @@ it.each(["reauth", "claim"])(
         payload: {},
       });
       expect(refused.statusCode, refused.body).toBe(400);
-      expect(refused.json().error).toContain("reviewed new attempt");
+      expect(refused.json().error).toContain(
+        "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
+      );
       expect(close).not.toHaveBeenCalled();
       expect(command.mock.calls.some(([op]) => op === "attach-transport")).toBe(
         false,

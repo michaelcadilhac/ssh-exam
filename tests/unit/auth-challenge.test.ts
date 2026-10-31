@@ -2,6 +2,8 @@ import { expect, it } from "vitest";
 import {
   authMessageBlocks,
   isPhoneApprovalChallenge,
+  phoneApprovalNumber,
+  isPasswordChallenge,
   updateAuthChallenge,
 } from "../../apps/web/src/auth-challenge.js";
 
@@ -59,6 +61,14 @@ it("recognizes only DePaul's explicit phone number-matching empty Code acknowled
     ],
   };
   expect(isPhoneApprovalChallenge(phone)).toBe(true);
+  expect(phoneApprovalNumber(phone)).toBe("59");
+  expect(
+    phoneApprovalNumber({
+      ...phone,
+      instruction:
+        "Open your Authenticator app, and enter the number '059' to sign in.",
+    }),
+  ).toBe("059");
   expect(
     isPhoneApprovalChallenge({ ...phone, host: "other.example.edu" }),
   ).toBe(false);
@@ -91,6 +101,40 @@ it("recognizes only DePaul's explicit phone number-matching empty Code acknowled
     }),
   ).toBe(false);
   expect(isPhoneApprovalChallenge(null)).toBe(false);
+});
+it("labels only known password prompts and never one-time codes as a password wait", () => {
+  const password = challenge("Password", "sshjump.depaul.edu", [
+    { prompt: "Password:", echo: false },
+  ]);
+  expect(isPasswordChallenge(password)).toBe(true);
+  expect(
+    isPasswordChallenge({
+      ...password,
+      prompts: [{ prompt: "Shared SSH password", echo: false }],
+    }),
+  ).toBe(true);
+  for (const prompt of [
+    "One-time password:",
+    "Verification code",
+    "Code:",
+    "OTP:",
+  ])
+    expect(
+      isPasswordChallenge({ ...password, prompts: [{ prompt, echo: false }] }),
+    ).toBe(false);
+  expect(
+    isPasswordChallenge({
+      ...password,
+      prompts: [{ prompt: "Password:", echo: true }],
+    }),
+  ).toBe(false);
+  expect(
+    isPasswordChallenge({
+      ...password,
+      prompts: [...password.prompts, { prompt: "Code:", echo: false }],
+    }),
+  ).toBe(false);
+  expect(isPasswordChallenge(null)).toBe(false);
 });
 it("retains number matching across empty rounds and later notices without duplicating messages", () => {
   let state = updateAuthChallenge(
