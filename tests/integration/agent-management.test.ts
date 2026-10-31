@@ -1359,7 +1359,9 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         ]),
       ).rejects.toMatchObject({
         code: 1,
-        stderr: expect.stringContaining("revision changed"),
+        stderr: expect.stringContaining(
+          "This attempt is unavailable or its settings changed. Refresh its current status.",
+        ),
       });
       expect(
         (
@@ -1446,7 +1448,9 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         grantsCLI(["issue-cancel", review.id, "--revision", review.revision]),
       ).rejects.toMatchObject({
         code: 1,
-        stderr: expect.stringContaining("already confirmed"),
+        stderr: expect.stringContaining(
+          "These attempts were already allowed. Open Allowed attempts to change or cancel unused ones. Cancelling this review cannot remove history.",
+        ),
       });
       expect(
         (await grantsCLI(["show", issuedLegacy.issued[0].grant])).settings
