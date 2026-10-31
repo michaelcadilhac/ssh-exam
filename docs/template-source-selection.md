@@ -1,7 +1,7 @@
 # Exact template selection (implemented/tested locally; not deployed)
 
 October30 local UI candidate: **Exam settings → Exam files** retrieves published
-name/version pairs; exact hashes are in File details. **Administration → Starter
+name/version pairs; exact hashes are in Technical details. **Administration → Starter
 files** is the read-only catalog. Instructors do not copy a hash or type a source
 path. CLI flags and native exact-source verification are unchanged. Explicit
 legacy-source defaults remain a CLI compatibility operation, not a web-picker

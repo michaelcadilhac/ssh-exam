@@ -46,7 +46,7 @@ sudo examctl web exams update midterm --revision DEFINITION-REVISION --template-
 ```
 
 October30 local UI candidate: **Exam settings → Exam files** retrieves published
-name/version pairs directly; exact hashes remain in File details. The CLI still
+name/version pairs directly; exact hashes remain in Technical details. The CLI still
 accepts explicit version flags.
 The shared writer requires a catalog acknowledgement for the configured class
 agent and exact name/hash. Historical acknowledgement does not prove present

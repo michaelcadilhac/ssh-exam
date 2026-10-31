@@ -1,5 +1,6 @@
 import React from "react";
 import { chicago } from "./api.js";
+import { timeLimit } from "./local-date-time.js";
 
 const permissionLabels: Record<string, string> = {
   AVAILABLE: "Unused",
@@ -90,6 +91,48 @@ export function AttemptProvenance({
       {g.current_revision !== g.revision && (
         <p>This attempt keeps its saved settings despite later changes.</p>
       )}
+      <dl className="review-facts">
+        <div>
+          <dt>Time limit</dt>
+          <dd>{timeLimit(g.settings.duration)}</dd>
+        </div>
+        <div>
+          <dt>Webcam</dt>
+          <dd>{g.settings.webcam ? "Required" : "Optional"}</dd>
+        </div>
+        <div>
+          <dt>Start window</dt>
+          <dd>
+            {chicago(g.settings.earliest)} — {chicago(g.settings.latest)}
+          </dd>
+        </div>
+        <div>
+          <dt>Issued</dt>
+          <dd>
+            {chicago(g.issued_at)} · {g.actor}
+          </dd>
+        </div>
+        <div>
+          <dt>Reason</dt>
+          <dd>{g.reason}</dd>
+        </div>
+        {g.revision > 1 && (
+          <div>
+            <dt>Setting-change reason</dt>
+            <dd>{g.revision_reason}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Starting files</dt>
+          <dd>
+            {label} {sourceButton}
+          </dd>
+        </div>
+        <div>
+          <dt>Exam files</dt>
+          <dd>{g.settings.template}</dd>
+        </div>
+      </dl>
       <details>
         <summary>Technical details</summary>
         <dl className="review-facts">
@@ -105,41 +148,6 @@ export function AttemptProvenance({
               <code>{g.hash}</code>
             </dd>
           </div>
-          <div>
-            <dt>Time limit</dt>
-            <dd>
-              {g.settings.duration / 60} minutes · webcam{" "}
-              {g.settings.webcam ? "required" : "optional"}
-            </dd>
-          </div>
-          <div>
-            <dt>Start window</dt>
-            <dd>
-              {chicago(g.settings.earliest)} — {chicago(g.settings.latest)}
-            </dd>
-          </div>
-          <div>
-            <dt>Issued</dt>
-            <dd>
-              {chicago(g.issued_at)} · {g.actor}
-            </dd>
-          </div>
-          <div>
-            <dt>Reason</dt>
-            <dd>{g.reason}</dd>
-          </div>
-          {g.revision > 1 && (
-            <div>
-              <dt>Setting-change reason</dt>
-              <dd>{g.revision_reason}</dd>
-            </div>
-          )}
-          <div>
-            <dt>Starting files</dt>
-            <dd>
-              {label} {sourceButton}
-            </dd>
-          </div>
           {g.work.kind === "saved" && (
             <div>
               <dt>Archive checksum</dt>
@@ -149,9 +157,9 @@ export function AttemptProvenance({
             </div>
           )}
           <div>
-            <dt>Materials</dt>
+            <dt>Exam files version</dt>
             <dd>
-              {g.settings.template} · <code>{g.settings.template_version}</code>
+              <code>{g.settings.template_version}</code>
             </dd>
           </div>
           {g.work.kind === "saved" && (

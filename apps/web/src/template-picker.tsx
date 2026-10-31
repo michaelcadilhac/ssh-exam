@@ -95,7 +95,7 @@ export function TemplatePicker({
       )}
       {current && (
         <details>
-          <summary>File details</summary>
+          <summary>Technical details</summary>
           <p style={{ overflowWrap: "anywhere" }}>
             {name} · {hash}
           </p>

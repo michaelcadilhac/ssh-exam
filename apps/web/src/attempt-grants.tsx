@@ -683,6 +683,9 @@ export function AttemptGrantsDialog({
           {g.settings.webcam ? "required" : "optional"}
         </p>
         <p>
+          Start window: {windowLabel(g.settings.earliest, g.settings.latest)}
+        </p>
+        <p>
           {workLabel(
             g.work,
             [...sources, snapshots[g.id]?.source].filter(Boolean),
@@ -703,12 +706,9 @@ export function AttemptGrantsDialog({
           }}
         >
           <summary>Details and history</summary>
-          <p>{windowLabel(g.settings.earliest, g.settings.latest)}</p>
-          <p>
-            Reference {g.id} · Revision {g.revision}
-          </p>
           {histories[g.id]?.rows?.map((h: any) => (
             <p key={h.revision}>
+              {h.at ? `${shortDateTime(h.at)} · ` : ""}
               {timeLimit(h.settings.duration)} · Webcam{" "}
               {h.settings.webcam ? "required" : "optional"} · {h.actor}:{" "}
               {h.reason}
@@ -735,6 +735,12 @@ export function AttemptGrantsDialog({
               Load earlier changes
             </button>
           )}
+          <details>
+            <summary>Technical details</summary>
+            <p>
+              Reference {g.id} · Revision {g.revision}
+            </p>
+          </details>
         </details>
       </article>
     );
@@ -909,6 +915,10 @@ export function AttemptGrantsDialog({
             }}
           >
             {!loaded && <p role="status">Loading allowed attempts…</p>}
+            {!!catalog.length && (
+              <p className="muted">Times in {deviceTimeZone()}.</p>
+            )}
+            {username && attemptGroups}
             <p>
               Started attempts keep their settings. These changes apply only to
               the unused attempts you select.
@@ -938,8 +948,10 @@ export function AttemptGrantsDialog({
               </button>
             </div>
             <p>
-              {selectedGrants.length} attempts for {selectedNames.length}{" "}
-              students selected
+              {selectedGrants.length}{" "}
+              {selectedGrants.length === 1 ? "attempt" : "attempts"} for{" "}
+              {selectedNames.length}{" "}
+              {selectedNames.length === 1 ? "student" : "students"} selected
             </p>
             {selectedGrants.length > 200 && (
               <p role="alert">Choose up to 200 unused attempts.</p>
@@ -1010,10 +1022,7 @@ export function AttemptGrantsDialog({
                     onOccurrence={setCloseOccurrence}
                     required={false}
                   />
-                  <small>
-                    Leave either date blank to keep it. Dates shown in{" "}
-                    {deviceTimeZone()}.
-                  </small>
+                  <small>Leave either date blank to keep it.</small>
                 </fieldset>
               )}
               <label>
@@ -1205,7 +1214,7 @@ export function AttemptGrantsDialog({
                 />
               </label>
             </fieldset>
-            {attemptGroups}
+            {!username && attemptGroups}
           </form>
         )}
         {review && (
@@ -1260,20 +1269,26 @@ export function AttemptGrantsDialog({
                   <summary>Details</summary>
                   {!needsCurrentStatus(row) && currentStatus(row)}
                   {row.error && <p>{row.error}</p>}
-                  <pre
-                    style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
-                  >
-                    {JSON.stringify(
-                      {
-                        reference: row.grant.id,
-                        request: row.body,
-                        previous: row.grant.settings,
-                        previous_files: row.grant.work,
-                      },
-                      null,
-                      2,
-                    )}
-                  </pre>
+                  <details>
+                    <summary>Technical details</summary>
+                    <pre
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {JSON.stringify(
+                        {
+                          reference: row.grant.id,
+                          request: row.body,
+                          previous: row.grant.settings,
+                          previous_files: row.grant.work,
+                        },
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </details>
                 </details>
               </article>
             ))}

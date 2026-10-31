@@ -104,7 +104,64 @@ each outcome before its row details. Final acceptance is recorded below.
    Keep screenshots per run and preserve original dirty documentation images.
    Commit validated increments locally; report production/migration steps only.
 
-## Current local result
+## Local results
+
+### Second UI/UX pass requested after ce33086
+
+The follow-up found useful saved settings inside Technical details and individual
+attempt cards below the full edit form. Prof agreed a bounded presentation fix:
+put time limit, webcam, start window, starting files, issuer/date and reason in the
+ordinary saved-settings disclosure; keep only references/hashes/revisions in
+Technical details. Individual Allowed attempts starts with its cards and visible
+start windows, then the existing edit fields. Bulk editing stays fields-first.
+Both retain the existing form → review/result flow; no new dialog or authority.
+
+Timing details must not expose an attempt UUID alongside useful timing facts.
+Starter-file hash disclosures should explicitly say Technical details. Issuance
+review keeps its reason under Details and nests raw review/status/JSON separately.
+Exact short durations use the existing formatter, e.g. **1 min 35 sec**, not decimals.
+Local date/time pickers and minute inputs already satisfy ordinary entry; preserve
+unchanged exact instants and explicit repeated-DST choices. Human exam names/slugs,
+usernames and attempt numbers remain useful identifiers.
+
+Acceptance: desktop/mobile inspection exposes useful facts/source navigation
+without diagnostics; UUID/hash text stays invisible until Technical details is
+opened; 95 seconds reads **1 min 35 sec**; individual cards precede editing controls;
+bulk changes, cancellation and native date inputs retain their existing behavior.
+Evidence: var/collection-tests/prof-ux-repeat.kl_ojws9. This follow-up is implemented
+and tested locally; the earlier validated candidate below is ce33086. Three focused
+checks reproduced the old layout/display issues. The final six focused checks
+pass in15.4s after fresh web builds and typecheck; eight duration/date/view unit checks
+also pass. Prof viewed all four new desktop/mobile ordinary-view screenshots and
+accepted the placement, readable wrapping, source links and closed diagnostics.
+His final singular-count correction is included and tested.
+
+The earlier inspection test opened Technical details before checking the useful
+facts and used text-content assertions. That verified the data but missed the UX
+problem. The new checks require visible facts and the source link before technical
+expansion, an attempt card in the first viewport, hidden UUID/hash text until an
+explicit diagnostic action, and card-before-editor order. A separate check confirms
+native local date/time and numeric minute controls; source and timing references
+remain hidden in their ordinary views. Technical file details accurately names the
+submission's path/checksum/raw-manifest disclosure; useful collection facts remain
+outside it. No server, native, CLI, protocol or authority change is involved.
+
+All80 affected browser cases pass in4.9min, including real-WASM extra/initial/
+legacy/practice starts, unused revision/cancellation, partial/unknown replies,
+history/source navigation and all seven timezone workflows. No cases are skipped
+in this affected run. Dates, exact unchanged seconds/milliseconds and repeated-hour
+choices remain intact. final-ui-inputs.json binds the source/test files and actual
+served assets; there is no drift after qualification. The already-qualified SSH
+WASM/runtime is byte-identical; no native rebuild was needed. All27 logged test
+processes exited and both fixture ports closed. The ten original dirty screenshots
+remain byte-identical and unstaged.
+
+This is presentation-only qualification. The previous full application/native/
+release-image receipts below belong to ce33086/503bd9c as stated, rather than
+proving a new shipping image. No push/deployment occurred. A future release needs
+its matched new image and the already-documented exact root-worker hardening gate.
+
+### Prior validated candidate
 
 Prof accepted the source/copy review and the rendered mobile/desktop workflows.
 The final-focus context ledger classifies every candidate in 49 web/shared/HTML files;

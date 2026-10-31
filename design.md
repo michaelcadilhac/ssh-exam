@@ -5,6 +5,17 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+October 30 follow-up after ce33086 (local only): useful historical attempt facts
+are separated from diagnostics. Individual Allowed attempts leads with cards and
+visible start windows; bulk editing retains its existing two-stage workflow.
+References/hashes/raw records require Technical details. Dates remain native
+local calendar/time controls and durations/clock changes use minutes, with exact
+unchanged instants and DST choices preserved. No backend, native, CLI, protocol,
+authority or deployment change is introduced. Typecheck/web build,80 affected
+browser cases and8 focused unit checks pass locally. Follow-up evidence/status is in
+docs/ui-prof-review.md; the earlier candidate's full-run evidence below belongs
+to ce33086.
+
 October30 UI candidate (local only): the approved separate retain-only saved-work
 service uses exact durable grant/revision jobs and existing authenticated outbound
 management. A bounded child verifies/pins archives before the existing native

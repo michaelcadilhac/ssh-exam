@@ -561,9 +561,12 @@ export function AdminReview({
             ))}
           </ol>
         )}
-        <p className="review-attempt-id">
-          Attempt ID: <code>{a.id}</code>
-        </p>
+        <details>
+          <summary>Technical details</summary>
+          <p className="review-attempt-id">
+            Attempt ID: <code>{a.id}</code>
+          </p>
+        </details>
       </details>
       {a.pendingClockReset && (
         <p className="warn" role="status">
@@ -868,7 +871,7 @@ export function AdminReview({
                 </div>
               )}
               <details>
-                <summary>File details</summary>
+                <summary>Technical file details</summary>
                 <p>Source: {a.work_path || "/work"}</p>
                 {a.checksum && (
                   <p>

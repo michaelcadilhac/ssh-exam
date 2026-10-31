@@ -245,7 +245,7 @@ export function CancelExtraAttempts({
                 )
               )}
               <details>
-                <summary>Details</summary>
+                <summary>Technical details</summary>
                 {outcome?.detail && <p>{outcome.detail}</p>}
                 <p>
                   Reference: {row.id} · Revision {row.revision}

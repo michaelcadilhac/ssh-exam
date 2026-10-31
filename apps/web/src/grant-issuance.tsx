@@ -955,16 +955,21 @@ export function GrantIssuanceDialog({
             <details>
               <summary>Details</summary>
               <p>Reason: {review.reason}</p>
-              <p>
-                Review {review.id} · {review.status}
-              </p>
-              <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                {JSON.stringify(
-                  { issued: review.issued, rows: review.rows },
-                  null,
-                  2,
-                )}
-              </pre>
+              <details>
+                <summary>Technical details</summary>
+                <p>
+                  Review {review.id} · {review.status}
+                </p>
+                <pre
+                  style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                >
+                  {JSON.stringify(
+                    { issued: review.issued, rows: review.rows },
+                    null,
+                    2,
+                  )}
+                </pre>
+              </details>
             </details>
           </section>
         )}

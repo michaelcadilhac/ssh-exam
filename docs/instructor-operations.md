@@ -33,12 +33,25 @@ its qualification and future installation steps are in
 still require explicit retirement; cancellation does not delete submissions.
 
 Choose published files directly in **Exam settings → Exam files**. Names and exact
-versions are retrieved; hashes remain in File details. The read-only catalog is
+versions are retrieved; hashes remain in **Technical details**. The read-only catalog is
 **Administration → Starter files**. Routine web workflows require no copied
 usernames, IDs, hashes or shell commands. CLI counterparts remain discoverable in
 `examctl web grants help`, `web clocks help`, `web exams help` and
 `web interruptions help`; list commands support scripting without JSON parsing.
 Installation settings (mail, paths, addresses and worker limits) remain files.
+
+For inspection, **Allowed attempts…** starts with the student's attempt cards:
+status, time limit, webcam, start window and starting files. The existing editing
+controls follow; bulk **Change unused attempts** still starts with its controls.
+In **Review → Starting files and settings**, the displayed settings are those
+saved for that historical attempt, even if its permission was later revised.
+The previous-attempt link is beside its starting files. References, hashes and raw
+records require **Technical details**; source paths and submission checksums are
+under **Technical file details**. Neither is needed for routine management.
+
+Dates use ordinary local calendar/time controls with the shown timezone. Time
+limits and running-time adjustments use minutes. The system computes the running
+deadline; no RFC3339, Unix timestamp, hash or UID needs to be typed.
 
 The dated implementation notes below are historical; use the current release
 checkpoint and feature documents to establish installed behavior.

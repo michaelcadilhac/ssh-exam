@@ -1,5 +1,16 @@
 # Deferred work
 
+October 30 second Prof UX review COMPLETE/TESTED LOCALLY after ce33086. Useful
+saved settings/source links now precede technical data; individual attempt cards
+come before editing controls, with start windows visible. UUIDs, hashes and raw
+records require explicit technical disclosures. Exact short durations are readable;
+dates retain native local pickers and time adjustments use minutes. Prof accepted
+the actual desktop/mobile screens. Three red checks reproduced the old issues;
+final6 focused browser, all80 affected browser and8 unit checks pass, along with
+typecheck/web build. No server/native/protocol/CLI, policy or production changes.
+Original dirty images are preserved; no push/deployment. Details and remaining
+release gates: docs/ui-prof-review.md and current checkpoint.
+
 October30 NEW Prof UI and automatic saved-work candidate is COMPLETE AND TESTED
 LOCALLY, not deployed. Prof agreed the fixes and accepted the rendered desktop/
 mobile workflows and complete context ledger. Selected-student another/first

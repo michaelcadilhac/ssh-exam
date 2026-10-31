@@ -460,8 +460,30 @@ for (const width of [1280, 430])
       name: "Allowed attempts for amy",
       exact: true,
     });
-    await expect(grants).toContainText("Revision 2");
-    await expect(grants).toContainText("75 min · Webcam optional");
+    const currentGrant = grants.locator("article.clock-batch-row").filter({
+      hasText: "75 min · Webcam optional",
+    });
+    await expect(currentGrant).toHaveCount(1);
+    await expect(currentGrant).toBeInViewport();
+    await expect(
+      grants.getByText("1 attempt for 1 student selected", { exact: true }),
+    ).toBeVisible();
+    await expect(currentGrant.getByText(/^Start window:/)).toBeVisible();
+    await expect(currentGrant.getByText(/^Reference /)).not.toBeVisible();
+    const cardBox = await currentGrant.boundingBox(),
+      editBox = await grants
+        .getByLabel("Time limit (minutes)", { exact: true })
+        .boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect(editBox).not.toBeNull();
+    expect(cardBox!.y).toBeLessThan(editBox!.y);
+    await page.screenshot({
+      path: info.outputPath(`allowed-attempts-useful-${width}.png`),
+      fullPage: true,
+    });
+    await currentGrant.getByText("Technical details", { exact: true }).click();
+    await expect(currentGrant.getByText(/^Reference /)).toBeVisible();
+    await expect(currentGrant).toContainText("Revision 2");
     await grants
       .getByRole("button", { name: "Close", exact: true })
       .click({ timeout: 5000 });
@@ -480,12 +502,36 @@ for (const width of [1280, 430])
     await expect(provenance).toContainText(
       "This attempt keeps its saved settings despite later changes",
     );
+    await expect(provenance.getByText("90 min", { exact: true })).toBeVisible();
+    await expect(
+      provenance.getByText("Optional", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      provenance.getByText(
+        "Explicit recovery from the selected protected source",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      provenance.getByText("c".repeat(64), { exact: true }),
+    ).not.toBeVisible();
+    await expect(
+      provenance.getByText("d".repeat(64), { exact: true }),
+    ).not.toBeVisible();
+    await expect(
+      provenance.getByRole("button", {
+        name: "Review saved source attempt 1 for amy",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath(`attempt-useful-details-${width}.png`),
+      fullPage: true,
+    });
     await provenance.getByText("Technical details", { exact: true }).click();
-    await expect(provenance).toContainText("c".repeat(64));
-    await expect(provenance).toContainText("90 minutes · webcam optional");
-    await expect(provenance).toContainText(
-      "Explicit recovery from the selected protected source",
-    );
+    await expect(
+      provenance.getByText("c".repeat(64), { exact: true }),
+    ).toBeVisible();
     await expect(provenance).toContainText("Saved work · beta · Attempt 1");
     await expect(provenance).toContainText("files recorded protected");
     expect(
@@ -515,7 +561,6 @@ for (const width of [1280, 430])
     await provenance
       .getByText("Starting files and settings", { exact: true })
       .click();
-    await provenance.getByText("Technical details", { exact: true }).click();
     await provenance
       .getByRole("button", {
         name: "Review saved source attempt 1 for amy",
@@ -538,6 +583,72 @@ for (const width of [1280, 430])
     );
     await expect(source.locator(".grant-provenance")).toHaveCount(0);
   });
+test("saved attempt settings show exact short durations without exposing technical references", async ({
+  page,
+}) => {
+  const state = await fixture(page, false, true);
+  state.rows[0].attempts[0].grantContext.settings.duration = 95;
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  const provenance = page.getByRole("dialog").locator(".grant-provenance");
+  await provenance
+    .getByText("Starting files and settings", { exact: true })
+    .click();
+  await expect(
+    provenance.getByText("1 min 35 sec", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    provenance.getByText("c".repeat(64), { exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    provenance.getByText("22222222-2222-4222-8222-222222222222", {
+      exact: true,
+    }),
+  ).not.toBeVisible();
+});
+test("ordinary timing and date controls keep technical references out of the useful view", async ({
+  page,
+}) => {
+  const state = await fixture(page, false, true);
+  await page
+    .getByRole("button", { name: "Exam settings", exact: true })
+    .click();
+  const settings = page.getByRole("dialog");
+  await expect(settings.getByLabel("Opens", { exact: true })).toHaveAttribute(
+    "type",
+    "datetime-local",
+  );
+  await expect(settings.getByLabel("Closes", { exact: true })).toHaveAttribute(
+    "type",
+    "datetime-local",
+  );
+  await expect(
+    settings.getByLabel("Time limit (minutes)", { exact: true }),
+  ).toHaveAttribute("type", "number");
+  const fileDetails = settings.locator("details").filter({
+    has: page.locator("summary").filter({ hasText: /^Technical details$/ }),
+  });
+  await expect(fileDetails).toHaveCount(1);
+  await expect(fileDetails.locator("p")).not.toBeVisible();
+  await fileDetails.locator("summary").click();
+  await expect(fileDetails.locator("p")).toContainText("a".repeat(64));
+  await settings.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  const review = page.getByRole("dialog");
+  await review.getByText("Timing details", { exact: true }).click();
+  await expect(review.locator(".review-attempt-id")).not.toBeVisible();
+  const timing = review.locator(".review-timing-details");
+  await timing.getByText("Technical details", { exact: true }).click();
+  await expect(review.locator(".review-attempt-id")).toBeVisible();
+  expect(state.calls).toEqual([]);
+});
 test("unavailable source history stays inspectable without offering a misleading source link", async ({
   page,
 }) => {
@@ -1782,7 +1893,7 @@ for (const width of [1280, 430])
         .locator("..")
         .locator("dd"),
     ).toHaveText("1h 30min");
-    await dialog.getByText("File details", { exact: true }).click();
+    await dialog.getByText("Technical file details", { exact: true }).click();
     await expect(dialog.locator("pre")).not.toBeVisible();
     await page.screenshot({
       path: info.outputPath(`time-review-${width}.png`),
