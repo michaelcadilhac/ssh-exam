@@ -1,5 +1,15 @@
 # Shared roster and CSV management — local implementation
 
+October 31 local follow-up: **Exam defaults** is explicit in the UI; Add students
+has editable first-attempt dates. Both `students add` and `import-preview` accept
+paired `--earliest/--latest` RFC3339 dates; omitted flags preserve inheritance.
+Add optionally accepts `--definition-revision`. Explicit fields require the new
+gateway capability and `students.list` authorization before mutation. CSV review
+binds chosen dates/current definition/per-target rows; changed dependencies need
+review again, while consumed retries remain idempotent. Existing permissions and
+history stay intact. Verification/status: [enrollment-default-dates.md](enrollment-default-dates.md).
+The dated implementation record below is historical.
+
 October 21, 2026. Implemented/tested locally; **not deployed**.
 RosterManagement is shared by web administration and root examctl;
 neither interface edits active attempt snapshots, clocks or account restrictions.

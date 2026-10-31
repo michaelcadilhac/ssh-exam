@@ -1,19 +1,33 @@
 export const deviceTimeZone = () =>
   Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-export function localDateTime(at: number) {
+export type DateTimePrecision = "minute" | "exact";
+
+export function localDateTime(
+  at: number,
+  precision: DateTimePrecision = "minute",
+) {
   if (!Number.isFinite(at) || at <= 0 || at >= 8640000000000000) return "";
   const date = new Date(at);
   return new Date(at - date.getTimezoneOffset() * 60000)
     .toISOString()
-    .slice(0, 16);
+    .slice(0, precision === "exact" ? 23 : 16);
 }
 
-export function localTimeOptions(value: string) {
-  if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value))
-    throw Error("Choose a date and time.");
+export function localTimeOptions(
+  value: string,
+  precision: DateTimePrecision = "minute",
+) {
+  const format =
+    precision === "exact"
+      ? /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,3})?)?$/
+      : /^\d{4}-\d\d-\d\dT\d\d:\d\d$/;
+  if (!format.test(value)) throw Error("Choose a date and time.");
   const at = new Date(value).getTime();
-  if (!Number.isSafeInteger(at) || localDateTime(at) !== value)
+  if (
+    !Number.isSafeInteger(at) ||
+    localDateTime(at, precision).slice(0, value.length) !== value
+  )
     throw Error(
       "That time is not valid in your timezone. Choose another time.",
     );
@@ -26,20 +40,30 @@ export function localTimeOptions(value: string) {
   return [
     ...new Set([...offsets].map((other) => at + (other - offset) * 60000)),
   ]
-    .filter((candidate) => localDateTime(candidate) === value)
+    .filter(
+      (candidate) =>
+        localDateTime(candidate, precision).slice(0, value.length) === value,
+    )
     .sort((a, b) => a - b);
 }
-export function parseLocalDateTime(value: string, occurrence = 0) {
-  const choices = localTimeOptions(value);
+export function parseLocalDateTime(
+  value: string,
+  occurrence = 0,
+  precision: DateTimePrecision = "minute",
+) {
+  const choices = localTimeOptions(value, precision);
   if (!Number.isInteger(occurrence) || !choices[occurrence])
     throw Error("Choose which occurrence of this time to use.");
   return choices[occurrence];
 }
-export function localOccurrence(at: number) {
+export function localOccurrence(
+  at: number,
+  precision: DateTimePrecision = "minute",
+) {
   try {
     return Math.max(
       0,
-      localTimeOptions(localDateTime(at)).findIndex(
+      localTimeOptions(localDateTime(at, precision), precision).findIndex(
         (candidate) =>
           new Date(candidate).getTimezoneOffset() ===
           new Date(at).getTimezoneOffset(),

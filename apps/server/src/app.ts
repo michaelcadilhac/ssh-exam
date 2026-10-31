@@ -799,7 +799,10 @@ export async function createApp(
       ...(error instanceof MonitoringChallengeError
         ? { code: error.code }
         : {}),
-      ...(err.code === "ATTEMPT_UNAVAILABLE" ? { code: err.code } : {}),
+      ...(err.code === "ATTEMPT_UNAVAILABLE" ||
+      err.code === "ROSTER_REVIEW_REQUIRED"
+        ? { code: err.code }
+        : {}),
       error:
         status >= 500
           ? error instanceof MonitoringMediaError

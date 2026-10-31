@@ -385,7 +385,7 @@ test("a disabled review explains missing published exam files", async ({
     dialog.getByRole("button", { name: "Review", exact: true }),
   ).toBeDisabled();
   await expect(dialog).toContainText(
-    "Choose published starter files in Exam settings before reviewing.",
+    "Choose published starter files in Exam defaults before reviewing.",
   );
   expect(f.state.previews).toHaveLength(0);
 });

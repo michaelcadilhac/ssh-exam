@@ -178,7 +178,7 @@ test("archive and restoration retain real historical attempts and disable new-au
     page.getByRole("button", { name: "Add student", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Exam settings", exact: true }),
+    page.getByRole("button", { name: "Exam defaults", exact: true }),
   ).toBeDisabled();
   const retained = (await (await page.request.get(url)).json()).students[0]
     .attempts[0];
@@ -269,7 +269,7 @@ test("legacy retirement exposes native review status and archives native-only hi
     .getByLabel("Selected exam")
     .selectOption("retirement-legacy-native");
   await expect(
-    page.getByRole("button", { name: "Exam settings", exact: true }),
+    page.getByRole("button", { name: "Exam defaults", exact: true }),
   ).toBeDisabled();
 });
 

@@ -509,7 +509,7 @@ export function Admin({
                 onClick={() => setEditingExam(current)}
                 disabled={!current || current.lifecycle === "archived"}
               >
-                Exam settings
+                Exam defaults
               </button>
               <button
                 className="primary"
@@ -1295,6 +1295,9 @@ export function Admin({
           exam={exam}
           defaultWebcam={current.webcam}
           defaultDuration={current.duration}
+          defaultEarliest={current.earliest}
+          defaultLatest={current.latest}
+          defaultRevision={current.revision}
           onClose={() => setAddingStudent(false)}
           onDone={async () => {
             setAddingStudent(false);

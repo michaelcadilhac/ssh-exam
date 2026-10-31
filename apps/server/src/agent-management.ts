@@ -699,6 +699,7 @@ export function registerAgentManagement(
                       preparedRows,
                       hash(input.text),
                       actor,
+                      input,
                     );
                     break;
                   }

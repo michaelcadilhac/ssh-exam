@@ -875,7 +875,7 @@ export function GrantIssuanceDialog({
             </fieldset>
             {!initial.template_version && (
               <p className="warn">
-                Choose published starter files in Exam settings before
+                Choose published starter files in Exam defaults before
                 reviewing.
               </p>
             )}

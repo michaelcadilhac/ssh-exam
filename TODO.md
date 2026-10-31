@@ -1,5 +1,18 @@
 # Deferred work
 
+October 31 EXAM DEFAULTS / ENROLLMENT START DATES COMPLETE/TESTED LOCALLY:
+Exam defaults, Default start dates and Save defaults are explicit. Add students
+single/CSV has native Opens/Closes copied from exact defaults, scoped to new first
+attempts. CSV date edits/stale reviews support cached re-review; lost replies keep
+the original review ID. Saved attempts/history and sandbox practice are preserved.
+Matching examctl flags, old-gateway refusal and transaction/revision fences are
+implemented. Final application663 passed/3 existing skips; final15 affected browser
+workflows, CLI races, types/builds and focused HTTP rollback checks pass. Prof
+accepted desktop/mobile renders. Earlier broad101 browser passes cover unchanged
+interfaces; its one stale label assertion is corrected and green in the final run.
+No push/deploy or production changes. Original38-item release count is unchanged.
+Details and qualified rollback: docs/enrollment-default-dates.md/current checkpoint.
+
 October 31 DEEP UI CLARITY PASS COMPLETE/TESTED LOCALLY after ec00cba:
 certain closed-practice refusal before SSH, personalized read-only availability,
 Check again/stale-choice recovery, plain known student errors; explicit selection,

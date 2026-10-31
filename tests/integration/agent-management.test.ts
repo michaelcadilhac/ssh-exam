@@ -2821,9 +2821,18 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
       )
       .run();
     const snapshot = f.current.store.attempt("active-roster");
+    const csvWindow = {
+      earliest: Date.now() + 7200000,
+      latest: Date.now() + 10800000,
+    };
     const preview = await root("students.import-preview", {
       exam: "roster",
       text: "username\nlearner01\nlearner02\n",
+      ...csvWindow,
+    });
+    expect(preview.result).toMatchObject({
+      ...csvWindow,
+      defaults: { duration: exam.duration, webcam: exam.webcam },
     });
     expect(preview.result.rows[0]).toMatchObject({
       username: "learner01",
@@ -2846,6 +2855,17 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
         )
         .get(),
     ).toEqual({ duration: 7200, webcam: 0, uid: 29999 });
+    expect(
+      JSON.parse(
+        (
+          f.current.store.db
+            .prepare(
+              "SELECT r.settings FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.exam='roster' AND g.username='learner02'",
+            )
+            .get() as any
+        ).settings,
+      ),
+    ).toMatchObject(csvWindow);
     const inherited = await root("students.import-preview", {
       exam: "roster",
       text: "username,require_webcam,duration_minutes\nlearner01,inherit,\n",
@@ -2931,6 +2951,7 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
         .get(badID),
     ).toEqual({ outcome: expect.not.stringContaining(secretLike) });
     const page = await root("students.list", { exam: "roster", limit: 1 });
+    expect(page.result.capabilities).toContain("enrollment-dates-v1");
     expect(page.result.next).toBe("learner01");
     const next = await root("students.list", {
       exam: "roster",

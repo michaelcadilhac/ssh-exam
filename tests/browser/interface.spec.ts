@@ -364,7 +364,12 @@ test("instructor can add, remove and import students, cancel removal with Escape
   for (const name of ["student01", "student03"])
     await expect(
       roster.getByRole("rowgroup", { name, exact: true }),
-    ).toContainText("Time limit: 120 min");
+    ).toContainText("Default: 120 min");
+  // Editing future defaults must not rewrite the already saved first attempt.
+  for (const name of ["student01", "student03"])
+    await expect(
+      roster.getByRole("rowgroup", { name, exact: true }),
+    ).toContainText("First attempt: 90 min");
   await page
     .getByRole("checkbox", { name: "Select student student01", exact: true })
     .check();

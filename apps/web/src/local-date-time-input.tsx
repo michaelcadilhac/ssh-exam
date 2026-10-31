@@ -1,5 +1,9 @@
 import { useMemo } from "react";
-import { localTimeOptions, utcOffset } from "./local-date-time.js";
+import {
+  localTimeOptions,
+  utcOffset,
+  type DateTimePrecision,
+} from "./local-date-time.js";
 
 export function LocalDateTimeInput({
   label,
@@ -9,6 +13,7 @@ export function LocalDateTimeInput({
   onOccurrence,
   required = true,
   disabled = false,
+  precision = "minute",
 }: {
   label: string;
   value: string;
@@ -17,20 +22,22 @@ export function LocalDateTimeInput({
   onOccurrence: (value: number) => void;
   required?: boolean;
   disabled?: boolean;
+  precision?: DateTimePrecision;
 }) {
   const choices = useMemo(() => {
     try {
-      return localTimeOptions(value);
+      return localTimeOptions(value, precision);
     } catch {
       return [];
     }
-  }, [value]);
+  }, [value, precision]);
   return (
     <>
       <label>
         {label}
         <input
           type="datetime-local"
+          step={precision === "exact" ? "0.001" : undefined}
           disabled={disabled}
           required={required}
           value={value}

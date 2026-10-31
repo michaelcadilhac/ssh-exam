@@ -1,20 +1,23 @@
 package main
 
 import (
+	"encoding/json"
+	"examworkspace/agent/internal/core"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 func webStudentsHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl web students list EXAM [--limit 100] [--after USER]
-       sudo examctl web students add EXAM USER [--duration-minutes N|inherit] [--webcam required|optional|inherit]
+       sudo examctl web students add EXAM USER [--duration-minutes N|inherit] [--webcam required|optional|inherit] [DATES] [--definition-revision HASH]
        sudo examctl web students settings EXAM USER... SETTINGS
        sudo examctl web students remove EXAM USER --confirm USER
-       sudo examctl web students import-preview EXAM --file PATH|- [--mode csv|lines]
+       sudo examctl web students import-preview EXAM --file PATH|- [--mode csv|lines] [DATES]
        sudo examctl web students import-confirm EXAM PREVIEW_UUID
        sudo examctl web students export EXAM [--output NEW_FILE]
        sudo examctl web students example EXAM [--output NEW_FILE]
@@ -41,6 +44,20 @@ never revise an issued initial grant: use examctl web grants help for inspection
 explicit unused revision/revoke and original claim/Begin diagnostics. Reenrollment
 cannot invent another allowance; first verified claim retains its Unix UID even
 after cancellation. Extra/sandbox/migration issuance is not provided here.
+
+DATES: --earliest RFC3339 --latest RFC3339, both with explicit timezone.
+Omitting both copies Exam defaults. Supplied dates apply only to new first
+attempts; existing permissions/history remain unchanged. Past dates are allowed;
+closing must follow opening. Seconds/milliseconds are preserved. Sandbox uses
+its configured practice dates and refuses individual date overrides.
+For add, --definition-revision HASH optionally requires the reviewed exam
+definition revision; obtain it with examctl web exams show EXAM. CSV preview
+saves its chosen dates and current definition; confirm refuses changed defaults
+or changed target enrollments and requires a new preview. A consumed preview
+remains retryable. No date columns are added to CSV.
+Explicit dates/revision require an updated gateway and students.list permission
+for a fresh authenticated capability check before mutation. An older gateway
+refuses locally rather than silently substituting defaults.
 
 An explicit duration setting authorizes duration-only synchronization of unused
 native saved-work recovery at the student's next authenticated preflight. Inherit
@@ -95,6 +112,9 @@ func webStudentsMain(args []string) int {
 	after := flags.String("after", "", "username cursor")
 	duration := flags.String("duration-minutes", "", "whole minutes or inherit")
 	webcam := flags.String("webcam", "", "required/optional/inherit")
+	earliest := flags.String("earliest", "", "first-attempt opening RFC3339 with timezone; requires --latest")
+	latest := flags.String("latest", "", "first-attempt closing RFC3339 with timezone; requires --earliest")
+	definitionRevision := flags.String("definition-revision", "", "reviewed exam definition hash (add only)")
 	confirm := flags.String("confirm", "", "repeat removed username")
 	file := flags.String("file", "", "CSV/lines input path or -")
 	mode := flags.String("mode", "csv", "csv or lines")
@@ -172,6 +192,7 @@ func webStudentsMain(args []string) int {
 			allowedFlags["confirm"] = true
 		} else {
 			allowedFlags["duration-minutes"], allowedFlags["webcam"] = true, true
+			allowedFlags["earliest"], allowedFlags["latest"], allowedFlags["definition-revision"] = true, true, true
 		}
 	case "settings":
 		if len(w) < 4 || len(w)-3 > 1000 || !setting {
@@ -189,6 +210,7 @@ func webStudentsMain(args []string) int {
 			return usage("preview requires one exam, --file PATH|- and --mode csv|lines")
 		}
 		allowedFlags["file"], allowedFlags["mode"] = true, true
+		allowedFlags["earliest"], allowedFlags["latest"] = true, true
 	case "import-confirm":
 		if len(w) != 4 || !uuid.MatchString(w[3]) {
 			return usage("confirm requires EXAM and the preview UUID from import-preview")
@@ -210,6 +232,29 @@ func webStudentsMain(args []string) int {
 		if !allowedFlags[key] {
 			return usage("--" + key + " does not apply to this workflow")
 		}
+	}
+	if seen["earliest"] != seen["latest"] {
+		return usage("provide both --earliest and --latest, or omit both to use Exam defaults")
+	}
+	if seen["earliest"] {
+		start, startErr := time.Parse(time.RFC3339Nano, *earliest)
+		end, endErr := time.Parse(time.RFC3339Nano, *latest)
+		if startErr != nil || endErr != nil {
+			return usage("dates require RFC3339 with an explicit timezone, for example 2026-11-01T09:00:00-06:00")
+		}
+		if start.UnixMilli() <= 0 || end.UnixMilli() >= 8640000000000000 {
+			return usage("dates must be finite positive epoch milliseconds within the supported range")
+		}
+		if end.UnixMilli() <= start.UnixMilli() {
+			return usage("closing must be after opening")
+		}
+		b["earliest"], b["latest"] = start.UnixMilli(), end.UnixMilli()
+	}
+	if seen["definition-revision"] {
+		if !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(*definitionRevision) {
+			return usage("definition revision must be a lowercase SHA256 hash from exams show")
+		}
+		b["definition_revision"] = *definitionRevision
 	}
 	if w[1] == "import-preview" {
 		if os.Getuid() != 0 || os.Geteuid() != 0 {
@@ -239,4 +284,31 @@ func webStudentsMain(args []string) int {
 		b["text"], b["mode"] = string(text), *mode
 	}
 	return executeWeb(*config, *request, "students."+w[1], b, csv)
+}
+
+// Old gateways accepted these operations but discarded unknown fields. Never
+// let an explicitly reviewed date/revision silently become an inherited value.
+func checkEnrollmentDatesSupport(c core.Config, operation string, body any) error {
+	if operation != "students.add" && operation != "students.import-preview" {
+		return nil
+	}
+	b, ok := body.(map[string]any)
+	if !ok || (b["earliest"] == nil && b["latest"] == nil && b["definition_revision"] == nil) {
+		return nil
+	}
+	result, err := core.ManagementCall(c, "students.list", map[string]any{"exam": b["exam"], "limit": 1}, core.ManagementID())
+	if err != nil {
+		return fmt.Errorf("verify enrollment-date support using authorized students.list: %w; no enrollment/import was sent", err)
+	}
+	var page struct {
+		Capabilities []string `json:"capabilities"`
+	}
+	if json.Unmarshal(result.Result, &page) == nil {
+		for _, capability := range page.Capabilities {
+			if capability == "enrollment-dates-v1" {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("gateway cannot confirm enrollment-date support; update the web server before using explicit dates/revision; no enrollment/import was sent")
 }

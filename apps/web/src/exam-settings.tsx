@@ -54,18 +54,22 @@ export function ExamSettings({
         ? ""
         : String((initial.duration ?? 5400) / 60),
     ),
-    [earliestDraft, setEarliestDraft] = useState(localDateTime(form.earliest)),
-    [latestDraft, setLatestDraft] = useState(localDateTime(form.latest));
+    [earliestDraft, setEarliestDraft] = useState(
+      localDateTime(form.earliest, "exact"),
+    ),
+    [latestDraft, setLatestDraft] = useState(
+      localDateTime(form.latest, "exact"),
+    );
   const [earliestOccurrence, setEarliestOccurrence] = useState(
-      localOccurrence(form.earliest),
+      localOccurrence(form.earliest, "exact"),
     ),
     [latestOccurrence, setLatestOccurrence] = useState(
-      localOccurrence(form.latest),
+      localOccurrence(form.latest, "exact"),
     );
   const intent = useRef({ fingerprint: "", requestID: "" });
   return (
     <Modal
-      title={initial.id ? "Exam settings" : "New exam"}
+      title={initial.id ? "Exam defaults" : "New exam"}
       onClose={() => {
         if (!busy) onClose();
       }}
@@ -82,16 +86,20 @@ export function ExamSettings({
               ...form,
               earliest:
                 Number.isFinite(form.earliest) &&
-                earliestDraft === localDateTime(form.earliest) &&
-                earliestOccurrence === localOccurrence(form.earliest)
+                earliestDraft === localDateTime(form.earliest, "exact") &&
+                earliestOccurrence === localOccurrence(form.earliest, "exact")
                   ? form.earliest
-                  : parseLocalDateTime(earliestDraft, earliestOccurrence),
+                  : parseLocalDateTime(
+                      earliestDraft,
+                      earliestOccurrence,
+                      "exact",
+                    ),
               latest:
                 Number.isFinite(form.latest) &&
-                latestDraft === localDateTime(form.latest) &&
-                latestOccurrence === localOccurrence(form.latest)
+                latestDraft === localDateTime(form.latest, "exact") &&
+                latestOccurrence === localOccurrence(form.latest, "exact")
                   ? form.latest
-                  : parseLocalDateTime(latestDraft, latestOccurrence),
+                  : parseLocalDateTime(latestDraft, latestOccurrence, "exact"),
             };
             if (changes.latest <= changes.earliest)
               throw Error("Latest start must be after earliest start.");
@@ -145,10 +153,11 @@ export function ExamSettings({
           }
         />
         <fieldset className="admin-form-group">
-          <legend>Start window</legend>
+          <legend>{initial.id ? "Default start dates" : "Start window"}</legend>
           <div className="admin-form-grid">
             <LocalDateTimeInput
               label="Opens"
+              precision="exact"
               value={earliestDraft}
               onChange={setEarliestDraft}
               occurrence={earliestOccurrence}
@@ -157,6 +166,7 @@ export function ExamSettings({
             />
             <LocalDateTimeInput
               label="Closes"
+              precision="exact"
               value={latestDraft}
               onChange={setLatestDraft}
               occurrence={latestOccurrence}
@@ -262,7 +272,12 @@ export function ExamSettings({
             </div>
           </fieldset>
         </details>
-        <p>Existing attempts keep their settings.</p>
+        {initial.id && (
+          <p>
+            Used for new attempts unless you choose different settings. Existing
+            allowed attempts keep their saved settings.
+          </p>
+        )}
         {error && (
           <p role="alert" className="warn">
             {error}
@@ -273,7 +288,7 @@ export function ExamSettings({
             Cancel
           </button>
           <button disabled={busy} className="primary">
-            {busy ? "Saving…" : "Save exam"}
+            {busy ? "Saving…" : initial.id ? "Save defaults" : "Save exam"}
           </button>
         </div>
       </form>

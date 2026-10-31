@@ -661,7 +661,7 @@ test("ordinary timing and date controls keep technical references out of the use
 }) => {
   const state = await fixture(page, false, true);
   await page
-    .getByRole("button", { name: "Exam settings", exact: true })
+    .getByRole("button", { name: "Exam defaults", exact: true })
     .click();
   const settings = page.getByRole("dialog");
   await expect(settings.getByLabel("Opens", { exact: true })).toHaveAttribute(
@@ -1431,13 +1431,13 @@ test("editing an exam focuses an editable field and fits a narrow dialog", async
   await page.setViewportSize({ width: 430, height: 900 });
   await fixture(page);
   const settings = page.getByRole("button", {
-    name: "Exam settings",
+    name: "Exam defaults",
     exact: true,
   });
   await expect(settings).toBeInViewport();
   await settings.click();
   const dialog = page.getByRole("dialog", {
-    name: "Exam settings",
+    name: "Exam defaults",
     exact: true,
   });
   await expect(dialog.getByLabel("Exam ID", { exact: true })).toBeDisabled();

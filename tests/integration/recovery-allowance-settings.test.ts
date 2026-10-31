@@ -23,7 +23,16 @@ it("web settings and CSV persist only explicit allowance authorization, atomical
     maintenance: false,
   });
   try {
-    const definition = { duration: 3600, webcam: true };
+    const definition = {
+      id: "recovery",
+      name: "Legacy recovery",
+      template: "legacy-recovery",
+      earliest: 1,
+      latest: 10000000,
+      duration: 3600,
+      webcam: true,
+      terminals: 4,
+    };
     store.db
       .prepare("INSERT INTO exams VALUES('recovery',?)")
       .run(JSON.stringify(definition));

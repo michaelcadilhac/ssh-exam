@@ -33,6 +33,63 @@ it("uses the device timezone, preserves exact time labels and rejects nonexisten
   }
 });
 
+it("exact native dates round-trip milliseconds without changing minute-only callers", () => {
+  const previous = process.env.TZ;
+  try {
+    process.env.TZ = "America/Chicago";
+    const at = Date.UTC(2026, 9, 30, 12, 15, 23, 456);
+    expect(localDateTime(at, "exact")).toBe("2026-10-30T07:15:23.456");
+    expect(parseLocalDateTime(localDateTime(at, "exact"), 0, "exact")).toBe(at);
+    for (const [value, expected] of [
+      ["2026-10-30T07:15", Date.UTC(2026, 9, 30, 12, 15)],
+      ["2026-10-30T07:15:00.000", Date.UTC(2026, 9, 30, 12, 15)],
+      ["2026-10-30T07:15:23", Date.UTC(2026, 9, 30, 12, 15, 23)],
+      ["2026-10-30T07:15:23.4", Date.UTC(2026, 9, 30, 12, 15, 23, 400)],
+      ["2026-10-30T07:15:23.45", Date.UTC(2026, 9, 30, 12, 15, 23, 450)],
+      ["2026-10-30T07:15:23.456", at],
+    ] as const)
+      expect(parseLocalDateTime(value, 0, "exact")).toBe(expected);
+    expect(localDateTime(at)).toBe("2026-10-30T07:15");
+    expect(parseLocalDateTime("2026-10-30T07:15")).toBe(
+      Date.UTC(2026, 9, 30, 12, 15),
+    );
+    expect(() => localTimeOptions("2026-10-30T07:15:23.456")).toThrow(
+      "Choose a date and time",
+    );
+    expect(localDateTime(NaN, "exact")).toBe("");
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});
+
+it("exact dates reject DST gaps and preserve milliseconds across both repeated-hour choices", () => {
+  const previous = process.env.TZ;
+  try {
+    process.env.TZ = "America/Chicago";
+    expect(() =>
+      parseLocalDateTime("2026-03-08T02:30:12.345", 0, "exact"),
+    ).toThrow("not valid");
+    expect(() =>
+      parseLocalDateTime("2026-02-30T12:00:12.345", 0, "exact"),
+    ).toThrow("not valid");
+    const repeated = "2026-11-01T01:30:12.345",
+      choices = localTimeOptions(repeated, "exact");
+    expect(choices).toEqual([
+      Date.UTC(2026, 10, 1, 6, 30, 12, 345),
+      Date.UTC(2026, 10, 1, 7, 30, 12, 345),
+    ]);
+    expect(parseLocalDateTime(repeated, 1, "exact")).toBe(choices[1]);
+    expect(localOccurrence(choices[1], "exact")).toBe(1);
+    expect(() => parseLocalDateTime(repeated, 2, "exact")).toThrow(
+      "Choose which occurrence",
+    );
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});
+
 it("distinguishes same-named source exams without exposing archive references", () => {
   const original = {
     id: "private-reference-a",

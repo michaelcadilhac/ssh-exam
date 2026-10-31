@@ -10,6 +10,11 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await page
     .getByLabel("Selected exam", { exact: true })
     .selectOption("versioned-source");
+  const examDefaults = (
+    await (await page.request.get("/api/admin/exams")).json()
+  ).find((exam: any) => exam.id === "versioned-source");
+  expect(examDefaults).toBeDefined();
+  const firstAttemptCloses = examDefaults.latest + 60000;
   await expect(page.locator("textarea, .bulk-import")).toHaveCount(0);
   const add = page.getByRole("button", { name: "Add student", exact: true });
   await add.click();
@@ -18,17 +23,32 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     exact: true,
   });
   await expect(
-    dialog.getByRole("textbox", {name:"Username",exact:true}),
+    dialog.getByRole("textbox", { name: "Username", exact: true }),
   ).toBeVisible();
   await expect(
     dialog.getByRole("button", { name: "One student", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    dialog.getByRole("group", {
+      name: "First attempt start dates",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await dialog.getByLabel("Closes", { exact: true }).fill(
+    await page.evaluate((at) => {
+      const date = new Date(at);
+      return new Date(at - date.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 23);
+    }, firstAttemptCloses),
+  );
+
   await dialog
     .getByRole("group", { name: "Add students using" })
     .getByRole("button", { name: "CSV file", exact: true })
     .click();
   await expect(
-    dialog.getByRole("textbox", {name:"Username",exact:true}),
+    dialog.getByRole("textbox", { name: "Username", exact: true }),
   ).toHaveCount(0);
   await expect(dialog.locator("textarea")).toHaveCount(0);
   const confirm = dialog.getByRole("button", {
@@ -101,7 +121,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await expect(row).toContainText("Optional");
   await add.click();
   await expect(
-    dialog.getByRole("textbox", {name:"Username",exact:true}),
+    dialog.getByRole("textbox", { name: "Username", exact: true }),
   ).toHaveValue("");
   await dialog
     .getByRole("group", { name: "Add students using" })
@@ -126,7 +146,12 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   ).grants[0];
   expect(issued).toMatchObject({
     revision: 1,
-    settings: { duration: 7200, template_version: "a".repeat(64) },
+    settings: {
+      duration: 7200,
+      template_version: "a".repeat(64),
+      earliest: examDefaults.earliest,
+      latest: firstAttemptCloses,
+    },
   });
   expect(
     await grants.evaluate(

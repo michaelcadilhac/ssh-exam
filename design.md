@@ -1733,6 +1733,17 @@ details. Attempt-selection checkboxes visibly select targets for change/cancel,
 with purpose/count above cards and no disabled history checkboxes. Roster controls
 visibly identify defaults (including Webcam on mobile); started attempt clocks and
 requirements remain separate from future defaults and explicit legacy updates.
+The existing definition editor is Exam defaults, with Default start dates and
+Save defaults. Add students shows native Opens/Closes fields copied from those
+defaults for both single and CSV enrollment; changes affect newly issued first
+attempts only. Preserve exact local seconds/milliseconds and explicit DST
+occurrences. Date edits clear CSV review; re-review reuses its selected file and
+binds current definition, selected dates and target enrollments atomically.
+Existing saved attempts retain their settings. Sandbox enrollment explains its
+automatic practice dates instead of exposing ineffective individual overrides.
+Matching examctl add/import-preview flags use the same authority and refuse
+older gateways before explicit dates can be silently discarded. Details:
+docs/enrollment-default-dates.md.
 Workspace chrome shows exam,
 connection/capture state, saved directory, timed deadline and available terminal controls;
 preflight hides inactive timer/finish controls and empty terminal menus. Empty states provide

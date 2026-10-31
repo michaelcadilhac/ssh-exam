@@ -442,6 +442,10 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		fmt.Fprintln(os.Stderr, "Load root agent configuration:", err)
 		return 1
 	}
+	if err := checkEnrollmentDatesSupport(c, operation, body); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	if request == "" {
 		request = core.ManagementID()
 	}

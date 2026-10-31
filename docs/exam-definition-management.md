@@ -1,5 +1,12 @@
 # Shared definition configuration — local implementation
 
+October 31 local UI follow-up: the existing exam editor is **Exam defaults**,
+with **Default start dates** and **Save defaults**. Add students copies those
+dates into editable Opens/Closes controls for newly issued first attempts only.
+Existing allowed attempts keep saved settings. Precise behavior and local
+verification: [enrollment-default-dates.md](enrollment-default-dates.md).
+Earlier dated implementation notes below are historical.
+
 October 21, 2026. Implemented/tested locally; **not deployed**. C1b supports all
 current exam-definition settings in web administration and root examctl through
 the same ExamDefinitions validation/transaction/audit service. Full management,

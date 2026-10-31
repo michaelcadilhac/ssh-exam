@@ -269,7 +269,7 @@ export class AttemptGrants {
       );
     if (!settings.template_version)
       return conflict(
-        "Choose a published version of the exam files in Exam settings before allowing an attempt. No attempt or enrollment changed.",
+        "Choose a published version of the exam files in Exam defaults before allowing an attempt. No attempt or enrollment changed.",
       );
     new TemplateCatalog(this.store, this.agent).show({
       name: settings.template,
@@ -314,6 +314,7 @@ export class AttemptGrants {
     duration: number | null,
     webcam: boolean | null,
     actor: string,
+    window?: { earliest: number; latest: number },
   ) {
     if (isSandbox(exam)) return null; // Repeatable practice issues at authenticated preflight.
     if (!this.store.db.inTransaction)
@@ -341,6 +342,8 @@ export class AttemptGrants {
     );
     const value = this.snapshot({
       ...definition,
+      earliest: window?.earliest ?? definition.earliest,
+      latest: window?.latest ?? definition.latest,
       duration: duration ?? definition.duration,
       webcam: webcam ?? definition.webcam,
     });
