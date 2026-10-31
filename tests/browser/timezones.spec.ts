@@ -153,7 +153,9 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         await page
           .getByRole("button", { name: "Sign in", exact: true })
           .click();
-        await page.getByLabel("Password", { exact: true }).fill("shared-password");
+        await page
+          .getByLabel("Password", { exact: true })
+          .fill("shared-password");
         await page
           .getByRole("button", { name: "Continue", exact: true })
           .click();
@@ -169,9 +171,10 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         const startWindow = page.locator("details").filter({
           has: page.getByText("Start window", { exact: true }),
         });
-        await expect(startWindow).toHaveCount(1);
-        await startWindow.locator("summary").click();
-        await expect(startWindow).toContainText(/C[SD]T/);
+        await expect(startWindow).toHaveCount(0);
+        await expect(page.locator("main")).toContainText(
+          `${index % 2 ? "120" : "90"} min · Webcam: Optional`,
+        );
         await page
           .getByRole("button", {
             name: "Check setup and practice",

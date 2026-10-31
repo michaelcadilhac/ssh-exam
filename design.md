@@ -1717,8 +1717,11 @@ Keep authentication host identity and all MFA instructions visible. App-authored
 password prompts use **Password**. After submission, remove the completed inputs
 and retain progress and Cancel; only a fresh authentication challenge restores
 empty inputs. Server notices do not restore submitted fields. Preserve raw host
-prompts and explicit verification-code/phone approval responses. Combine duration/webcam
-requirements and put the start window in expandable details. Workspace chrome shows exam,
+prompts and explicit verification-code/phone approval responses. Focus the first field
+when a sign-in form appears, without stealing focus on later updates. Combine time
+limit/webcam requirements; omit routine start-window details and date ranges from
+student attempt choices. Retain blocked-start explanations and instructor scheduling.
+Workspace chrome shows exam,
 connection/capture state, saved directory, timed deadline and available terminal controls;
 preflight hides inactive timer/finish controls and empty terminal menus. Empty states provide
 one actionable instruction. Recovery preserves the reason, clock, restoration controls and

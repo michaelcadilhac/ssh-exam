@@ -482,9 +482,7 @@ function App() {
                                 : g.issuance === "PRACTICE"
                                   ? "Practice attempt"
                                   : "First attempt"}{" "}
-                              · {timeLimit(g.settings.duration)} ·{" "}
-                              {chicago(g.settings.earliest)} –{" "}
-                              {chicago(g.settings.latest)} · Created{" "}
+                              · {timeLimit(g.settings.duration)} · Created{" "}
                               {chicago(g.issued_at)}
                             </option>
                           ))}
@@ -492,10 +490,7 @@ function App() {
                       </label>
                     )}
                     {grantSelectionRequired ? (
-                      <p>
-                        Choose an attempt to see its time limit and start
-                        window.
-                      </p>
+                      <p>Choose an attempt to continue.</p>
                     ) : (
                       <>
                         {info.practice_blocked && (
@@ -521,26 +516,12 @@ function App() {
                           </details>
                         )}
                         {isSandbox(info.exam.id) &&
-                        !hasSandboxWindow(info.exam) ? (
-                          <p>
-                            Practice is closed. Ask your instructor to open a
-                            start window.
-                          </p>
-                        ) : (
-                          <details className="exam-details">
-                            <summary>Start window</summary>
+                          !hasSandboxWindow(info.exam) && (
                             <p>
-                              Start window:{" "}
-                              {chicago(
-                                info.settings?.earliest ?? info.exam.earliest,
-                              )}{" "}
-                              –{" "}
-                              {chicago(
-                                info.settings?.latest ?? info.exam.latest,
-                              )}
+                              Practice is closed. Ask your instructor to open
+                              it.
                             </p>
-                          </details>
-                        )}
+                          )}
                         <p>
                           {timeLimit(
                             info.settings?.duration ??
@@ -720,6 +701,7 @@ function App() {
                     Username
                     <input
                       required
+                      autoFocus
                       autoComplete="username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
@@ -922,6 +904,7 @@ function App() {
                     <label>
                       Exam ID
                       <input
+                        autoFocus
                         required
                         disabled={browserBlocked || !!navigation}
                         value={examId}
@@ -932,6 +915,7 @@ function App() {
                   <label>
                     Username
                     <input
+                      autoFocus={!!loginTest?.loginOnly}
                       required
                       disabled={browserBlocked || !!navigation}
                       autoComplete="username"

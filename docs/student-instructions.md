@@ -19,7 +19,7 @@ opening/closing times.
    your phone and approve sign-in. Then choose **I approved on my phone** on the
    exam page. Do not type that number into the exam page. For a different
    verification-code prompt, follow the displayed instructions instead.
-4. Check the exam name, time limit and opening/closing times. If several attempts
+4. Check the exam name, time limit and webcam requirement. If several attempts
    are offered, choose the one you intend to start. Choose **Check setup and
    practice**, then complete the numbered buttons in order:
    - **Share entire screen:** select the display containing the exam, not a tab

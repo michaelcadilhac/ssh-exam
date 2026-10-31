@@ -106,6 +106,27 @@ each outcome before its row details. Final acceptance is recorded below.
 
 ## Local results
 
+### Student summary and welcome focus follow-up (October 31)
+
+The instructor rejected the routine student **Start window** disclosure. Prof
+agreed to remove it and the opening/closing range in attempt choices, while
+retaining the time limit, webcam requirement, starting files and explicit choice.
+Choice labels keep the creation time to distinguish otherwise similar attempts.
+Closed practice still explains that the instructor must open it. Instructor
+scheduling and actual too-early/closed refusals remain unchanged; this supersedes
+the earlier student expandable-window recommendation below.
+
+The welcome form also lacked initial focus. Use React's mount-time autofocus:
+student Exam ID, login-test Username, instructor Username. Delayed initialization
+must choose the correct form first; later typing/rerenders must retain the user's
+focus. Restored sessions and active authentication must not mount a welcome form.
+Prof agreed this behavior. One real-WASM summary check and three focus checks
+reproduced the old failures. All four focused cases pass after the view-only fix,
+along with typecheck and fresh frontend build. Exact-image broader browser/release
+checks remain pending; the instructor explicitly authorized push/deployment once
+all three UI fixes are verified (including e57c3ec's password follow-up).
+Evidence: var/collection-tests/student-summary.japy2oc9.
+
 ### Submitted password field follow-up (October 31)
 
 The instructor reported that the cleared password field remained visible while

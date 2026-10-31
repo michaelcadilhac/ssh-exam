@@ -231,6 +231,13 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     exact: true,
   });
   await expect(open).toBeDisabled();
+  await expect(page.getByText(/start window/i)).toHaveCount(0);
+  const options = await page
+    .getByRole("combobox", { name: "Choose an attempt", exact: true })
+    .locator("option")
+    .allTextContents();
+  expect(options).toHaveLength(3);
+  for (const option of options) expect(option).not.toContain(" – ");
   await page
     .getByRole("combobox", { name: "Choose an attempt", exact: true })
     .selectOption(ninety);

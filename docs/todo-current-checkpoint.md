@@ -1,4 +1,13 @@
-# Current checkpoint — password wait fixed locally
+# Current checkpoint — student summary follow-up in progress
+
+October 31, 2026. LOCAL IN PROGRESS after e57c3ec. Prof agreed to remove the
+student’s routine Start window disclosure and attempt-option date ranges; retain
+time limit, webcam, files, selection, blocked-start explanations and all scheduling
+enforcement. Tests: timezone/initial/additional real-WASM workflows plus fresh
+frontend build/typecheck. Evidence: var/collection-tests/student-summary.japy2oc9.
+Next: reproduce, make the view/copy edit, qualify and commit locally. No deployment.
+
+Previous completed local milestone:
 
 October 31, 2026. COMPLETE/TESTED LOCALLY. Student SSH sign-in labels the
 app-authored field **Password** and hides submitted fields until a fresh challenge.
