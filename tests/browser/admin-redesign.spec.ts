@@ -440,6 +440,36 @@ async function fixture(
   return state;
 }
 for (const width of [1280, 430])
+  test(`legacy attempt notes are inline in roster and review at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await fixture(page, false, true);
+    await page
+      .getByLabel("Selected exam", { exact: true })
+      .selectOption("beta");
+    const row = page.getByRole("rowgroup", { name: "amy", exact: true }),
+      notice = "Earlier attempt · saved settings unavailable";
+    await expect(row.getByText(notice, { exact: true })).toBeVisible();
+    await expect(row.locator(".attempt-grant-summary summary")).toHaveCount(0);
+    await row
+      .getByRole("button", { name: "Review", exact: true })
+      .click({ timeout: 3000 });
+    const review = page.getByRole("dialog", {
+      name: "amy · Attempt 1",
+      exact: true,
+    });
+    await expect(review.getByText(notice, { exact: true })).toBeVisible();
+    await expect(review.locator(".attempt-grant-summary summary")).toHaveCount(
+      0,
+    );
+    await page.screenshot({
+      path: info.outputPath(`legacy-attempt-notes-${width}.png`),
+      fullPage: true,
+    });
+  });
+
+for (const width of [1280, 430])
   test(`attempt provenance keeps applied settings and opens the exact grant and cross-exam source at ${width}px`, async ({
     page,
   }, info) => {
@@ -463,19 +493,33 @@ for (const width of [1280, 430])
     const currentGrant = grants.locator("article.clock-batch-row").filter({
       hasText: "75 min · Webcam optional",
     });
+    const selectionHelp = grants.getByText(
+      "Select unused attempts to change or cancel.",
+      { exact: true },
+    );
+    await expect(selectionHelp).toBeVisible();
     await expect(currentGrant).toHaveCount(1);
     await expect(currentGrant).toBeInViewport();
+    await expect(
+      currentGrant.getByRole("checkbox", { name: /^Select .*attempt/i }),
+    ).toBeChecked();
+    await expect(currentGrant.locator("label")).toHaveText(
+      /^Select .*attempt/i,
+    );
     await expect(
       grants.getByText("1 attempt for 1 student selected", { exact: true }),
     ).toBeVisible();
     await expect(currentGrant.getByText(/^Start window:/)).toBeVisible();
     await expect(currentGrant.getByText(/^Reference /)).not.toBeVisible();
     const cardBox = await currentGrant.boundingBox(),
+      purposeBox = await selectionHelp.boundingBox(),
       editBox = await grants
         .getByLabel("Time limit (minutes)", { exact: true })
         .boundingBox();
     expect(cardBox).not.toBeNull();
+    expect(purposeBox).not.toBeNull();
     expect(editBox).not.toBeNull();
+    expect(purposeBox!.y).toBeLessThan(cardBox!.y);
     expect(cardBox!.y).toBeLessThan(editBox!.y);
     await page.screenshot({
       path: info.outputPath(`allowed-attempts-useful-${width}.png`),
@@ -574,13 +618,16 @@ for (const width of [1280, 430])
       name: "amy · Attempt 1",
       exact: true,
     });
-    await source
-      .locator(".attempt-grant-summary")
-      .getByText("Details", { exact: true })
-      .click();
-    await expect(source).toContainText(
-      "Earlier attempt · saved settings unavailable",
-    );
+    await expect(
+      source.getByText("Earlier attempt · saved settings unavailable", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      source.locator(
+        ".attempt-grant-summary details, details.attempt-grant-summary",
+      ),
+    ).toHaveCount(0);
     await expect(source.locator(".grant-provenance")).toHaveCount(0);
   });
 test("saved attempt settings show exact short durations without exposing technical references", async ({
@@ -871,6 +918,15 @@ test("retained instructor authorization preserves the original page and SSH rath
     .click();
   await expect(dialog).toContainText("on the same page and connection");
   await expect(dialog).toContainText("A lost session needs another attempt");
+  const approval = dialog.getByRole("group", {
+    name: "Confirm resume approval",
+    exact: true,
+  });
+  await expect(approval.getByText(/Reviewed revision/)).not.toBeVisible();
+  const technical = approval.getByText("Technical details", { exact: true });
+  await expect(technical).toBeVisible();
+  await technical.click({ timeout: 3000 });
+  await expect(approval.getByText(/Reviewed revision/)).toBeVisible();
   await dialog
     .getByRole("textbox", { name: /^Reason/ })
     .fill("Reviewed same-page monitoring restoration");
@@ -1095,7 +1151,7 @@ test("slow dashboard responses complete, stale data blocks clock edits, and exam
   s.rows[0].enrollment.duration = 7200;
   await expect(
     page.getByRole("rowgroup", { name: "amy", exact: true }),
-  ).toContainText("Time limit: 120 min", { timeout: 15000 });
+  ).toContainText("Default: 120 min", { timeout: 15000 });
   s.slow = 0;
   s.failDashboard = true;
   await expect(page.getByRole("alert")).toContainText("Updates paused", {
@@ -1686,6 +1742,13 @@ for (const width of [1280, 430])
       name: "Edit future time limit for amy",
       exact: true,
     });
+    await expect(duration).toHaveText("Default: 90 min");
+    await expect(
+      amy.getByRole("button", {
+        name: "Edit future webcam setting for amy",
+        exact: true,
+      }),
+    ).toHaveText("Webcam default: Optional");
     const started = amy.locator(".attempt-row time").first();
     await expect(started).toHaveAttribute(
       "datetime",
@@ -1725,7 +1788,7 @@ for (const width of [1280, 430])
       fullPage: true,
     });
     await editor.getByLabel("Minutes", { exact: true }).press("Enter");
-    await expect(duration).toHaveText("Time limit: 120 min");
+    await expect(duration).toHaveText("Default: 120 min");
     expect(s.calls[0].body).toEqual({ usernames: ["amy"], duration: 7200 });
     await amy
       .getByRole("button", {
@@ -1746,7 +1809,7 @@ for (const width of [1280, 430])
         name: "Edit future webcam setting for amy",
         exact: true,
       }),
-    ).toHaveText("Required");
+    ).toHaveText("Webcam default: Required");
     expect(s.calls[1].body).toEqual({ usernames: ["amy"], webcam: true });
     await expect(
       amy.locator('.attempt-row [data-label="Webcam"]').first(),
@@ -1764,7 +1827,7 @@ for (const width of [1280, 430])
     });
     await editor.getByRole("checkbox", { name: /Exam default/ }).check();
     await editor.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(duration).toHaveText("Time limit: 90 min");
+    await expect(duration).toHaveText("Default: 90 min");
     expect(s.calls[2].body).toEqual({ usernames: ["amy"], duration: null });
     await amy
       .getByRole("button", {
@@ -1785,7 +1848,7 @@ for (const width of [1280, 430])
         name: "Edit future webcam setting for amy",
         exact: true,
       }),
-    ).toHaveText("Optional");
+    ).toHaveText("Webcam default: Optional");
     expect(s.calls[3].body).toEqual({ usernames: ["amy"], webcam: null });
     expect(
       await page.evaluate(
@@ -1824,11 +1887,11 @@ test("inline setting failures preserve edits for retry and cancellation", async 
   );
   s.failSettings = false;
   await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(duration).toHaveText("Time limit: 125 min");
+  await expect(duration).toHaveText("Default: 125 min");
   await duration.click();
   await editor.getByLabel("Minutes", { exact: true }).fill("140");
   await editor.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(duration).toHaveText("Time limit: 125 min");
+  await expect(duration).toHaveText("Default: 125 min");
   await expect(duration).toBeFocused();
   expect(s.calls).toHaveLength(2);
 });

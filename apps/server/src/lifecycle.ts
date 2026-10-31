@@ -1096,8 +1096,11 @@ export class Lifecycle {
       (remote.cancellation_cleanup_complete !== true ||
         remote.policy_state !== "NORMAL")
     )
-      throw Error(
-        "Cancelled grant cleanup/restoration is not positively complete. Preserve the claim; inspect examctl info ATTEMPT --read-only and retry supported native cancellation/restoration with matching roles before new authorization.",
+      throw Object.assign(
+        Error(
+          "Cancelled grant cleanup/restoration is not positively complete. Preserve the claim; inspect examctl info ATTEMPT --read-only and retry supported native cancellation/restoration with matching roles before new authorization.",
+        ),
+        { code: "PREFLIGHT_CLEANUP_UNCONFIRMED" },
       );
     if (
       remote.id !== a.id ||

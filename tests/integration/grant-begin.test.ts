@@ -1008,7 +1008,7 @@ it.each([
         const refused = await begin();
         expect(refused.statusCode, refused.body).toBe(400);
         expect(refused.json().error).toContain(
-          "You can start only between the opening and closing times shown. These times do not change the deadline of an attempt already started.",
+          "This attempt cannot start right now. Ask your instructor when you can start. No new attempt was started.",
         );
         expect(store.attempt(id)).toMatchObject({
           state: "PREPARING",

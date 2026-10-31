@@ -32,6 +32,10 @@ opening/closing times.
    **15 minutes after you open it**, even while connected. Before starting,
    **Sign out** cancels setup and closes practice terminals; you can sign in again.
 
+Sandbox practice lasts five minutes and opens when your instructor schedules it.
+If it is closed, ask your instructor. **Check again** refreshes availability after
+an opening or permission update; it does not start the exam or use an attempt.
+
 Capture starts after sign-in, when you enable sharing. Setup images may be retained
 if you start; abandoned setup images are deleted.
 

@@ -2021,9 +2021,9 @@ test("focus grace counts down, survives 15 seconds, clears on return, and expire
     .getByRole("alert")
     .filter({ hasText: "Return to the exam" });
   await setExamFocus(page, false);
-  await expect(warning).toContainText("20s before lock");
+  await expect(warning).toContainText("20s before work pauses");
   await page.waitForTimeout(2200);
-  await expect(warning).toContainText(/1[67]s before lock/);
+  await expect(warning).toContainText(/1[67]s before work pauses/);
   await page.screenshot({ path: test.info().outputPath("focus-warning.png") });
   await setExamFocus(page, true);
   await expect(warning).toHaveCount(0);
@@ -2062,7 +2062,7 @@ test("focus grace counts down, survives 15 seconds, clears on return, and expire
   expect(stillActive.attempt.state).toBe("ACTIVE");
   expect(stillActive.sshConnected).toBe(true);
   expect(stillActive.attempt.focus_lost_at).toBe(lost);
-  await expect(warning).toContainText(/[34]s before lock/);
+  await expect(warning).toContainText(/[34]s before work pauses/);
   await expect
     .poll(
       async () =>

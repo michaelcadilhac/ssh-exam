@@ -383,7 +383,7 @@ export function AdminReview({
               : "The student must sign in again and restore the checks."}
           </p>
           <details>
-            <summary>Details</summary>
+            <summary>Technical details</summary>
             <p>
               Reviewed revision {authorization.revision} · generation{" "}
               {authorization.generation}

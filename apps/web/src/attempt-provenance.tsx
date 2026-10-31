@@ -25,10 +25,9 @@ export function AttemptProvenance({
   if (!g) return null; // Older cached metadata remains readable.
   if (g.state === "legacy")
     return (
-      <details className="attempt-grant-summary">
-        <summary>Details</summary>
+      <div className="attempt-grant-summary">
         <small>Earlier attempt · saved settings unavailable</small>
-      </details>
+      </div>
     );
   if (g.state !== "recorded")
     return (

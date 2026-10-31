@@ -21,6 +21,9 @@ it.each([
   "old-cleanup-role",
   "lost-stage-reply",
   "manual-future-window",
+  "manual-open-window",
+  "stale-selected-grant",
+  "window-closed-after-sign-in",
   "cancelled-retry",
   "revoked",
   "expired",
@@ -238,7 +241,13 @@ it.each([
         "instructor",
         "Configure finite exact practice policy",
       );
-      if (scenario === "manual-future-window") {
+      if (
+        [
+          "manual-future-window",
+          "manual-open-window",
+          "stale-selected-grant",
+        ].includes(scenario)
+      ) {
         const admin = store.session("admin", "instructor", null),
           headers = {
             origin,
@@ -260,7 +269,10 @@ it.each([
             payload: {
               definition_revision: selected.revision,
               template_version: selected.exam.template_version,
-              earliest: Date.now() + 60000,
+              earliest:
+                scenario === "manual-future-window"
+                  ? Math.floor((Date.now() + 60000) / 60000) * 60000 + 47000
+                  : Date.now() - 60000,
               latest: Date.now() + 600000,
               usernames: ["student"],
               duration: 300,
@@ -275,6 +287,14 @@ it.each([
           payload: { revision: review.json().revision },
         });
         expect(confirmed.statusCode, confirmed.body).toBe(200);
+        const closing = definitions.show("sandbox");
+        definitions.update(
+          "sandbox",
+          { earliest: Date.now() - 120000, latest: Date.now() - 60000 },
+          closing.revision,
+          "instructor",
+          "Close defaults without changing the explicitly saved grant window",
+        );
       }
       const login = async () => {
         const started = await app.inject({
@@ -359,11 +379,126 @@ it.each([
           headers,
           payload: {},
         });
+      if (scenario === "stale-selected-grant") {
+        const shown = await app.inject({ url: "/api/student/exam", headers });
+        expect(shown.statusCode, shown.body).toBe(200);
+        const selected = shown.json().grants[0];
+        expect(selected.status).toBe("AVAILABLE");
+        const admin = store.session("admin", "instructor", null);
+        const revoked = await app.inject({
+          method: "POST",
+          url: `/api/admin/grants/${selected.id}/revoke`,
+          headers: {
+            origin,
+            cookie: `session=${admin.token}`,
+            "x-csrf-token": admin.csrf,
+          },
+          payload: {
+            revision: selected.revision,
+            reason:
+              "Withdraw unused permission after it was shown, before student selection",
+          },
+        });
+        expect(revoked.statusCode, revoked.body).toBe(200);
+        const staleRead = await app.inject({
+          url: `/api/student/exam?grant=${selected.id}`,
+          headers,
+        });
+        expect(staleRead.statusCode).toBe(409);
+        expect(staleRead.json()).toEqual({
+          code: "ATTEMPT_UNAVAILABLE",
+          error:
+            "That attempt is no longer available. Choose Check again to see your current attempts.",
+        });
+        const stalePreparation = await app.inject({
+          method: "POST",
+          url: "/api/student/preflight",
+          headers,
+          payload: { grant: selected.id },
+        });
+        expect(stalePreparation.statusCode).toBe(409);
+        expect(stalePreparation.json()).toEqual(staleRead.json());
+        expect(
+          store.db
+            .prepare("SELECT status FROM attempt_grants WHERE id=?")
+            .get(selected.id),
+        ).toEqual({ status: "REVOKED" });
+        for (const table of ["attempts", "grant_claims", "grant_begin_intents"])
+          expect(
+            store.db.prepare(`SELECT count(*) n FROM ${table}`).get(),
+          ).toEqual({ n: 0 });
+        expect(operations).not.toContain("prepare-practice-grant-attempt");
+        return;
+      }
+      if (scenario === "window-closed-after-sign-in") {
+        const closing = definitions.show("sandbox");
+        definitions.update(
+          "sandbox",
+          { earliest: Date.now() - 120000, latest: Date.now() - 60000 },
+          closing.revision,
+          "instructor",
+          "Close practice after authentication before preparation",
+        );
+      }
+      const portalBefore = await app.inject({
+        url: "/api/student/exam",
+        headers,
+      });
+      expect(portalBefore.statusCode, portalBefore.body).toBe(200);
+      if (scenario === "window-closed-after-sign-in")
+        expect(portalBefore.json().practice_blocked).toEqual({
+          status: "CLOSED",
+          message: "Practice is closed. Ask your instructor to open it.",
+        });
+      if (scenario === "manual-future-window") {
+        expect(
+          new Date(portalBefore.json().settings.earliest).getUTCSeconds(),
+        ).toBe(47);
+        expect(portalBefore.json().practice_blocked.message).toMatch(
+          /:\d{2}:47\b/,
+        );
+        expect(portalBefore.json().practice_blocked).toMatchObject({
+          status: "NOT_OPEN",
+          message: expect.stringMatching(
+            /^This practice attempt opens .+ \(Chicago time\). Try again then\.$/,
+          ),
+        });
+        expect(portalBefore.json().settings.earliest).toBeGreaterThan(
+          Date.now(),
+        );
+      }
+      if (scenario === "manual-open-window") {
+        expect(portalBefore.json().practice_blocked).toBeNull();
+        expect(portalBefore.json().settings.latest).toBeGreaterThan(Date.now());
+        expect(definitions.show("sandbox").exam.latest).toBeLessThan(
+          Date.now(),
+        );
+      }
       let prepared = await preflight();
+      if (scenario === "window-closed-after-sign-in") {
+        expect(prepared.statusCode).toBe(409);
+        expect(prepared.json().error).toBe(
+          "Practice is closed. Ask your instructor to open it.",
+        );
+        expect(prepared.json().error).not.toMatch(
+          /examctl|Begin|grant|authority|uid|hash/,
+        );
+        for (const table of [
+          "attempts",
+          "attempt_grants",
+          "grant_claims",
+          "grant_begin_intents",
+        ])
+          expect(
+            store.db.prepare(`SELECT count(*) n FROM ${table}`).get(),
+          ).toEqual({ n: 0 });
+        expect(operations).not.toContain("prepare-practice-grant-attempt");
+        return;
+      }
       if (scenario === "manual-future-window") {
         expect(prepared.statusCode, prepared.body).toBe(400);
         expect(prepared.body).toContain(
-          "You can start only between the opening and closing times shown. These times do not change the deadline of an attempt already started.",
+          "This attempt cannot start right now. Ask your instructor when you can start. No new attempt was started.",
         );
         expect(
           store.db.prepare("SELECT count(*) n FROM attempts").get(),
@@ -469,6 +604,24 @@ it.each([
             },
           });
           expect(refused.statusCode, refused.body).toBe(409);
+          if (scenario === "cleanup-pending") {
+            headers = await login();
+            const pendingRetry = await preflight();
+            expect(pendingRetry.statusCode).toBe(409);
+            expect(pendingRetry.json().error).toBe(
+              "Cleanup of your earlier setup could not be confirmed. Try again shortly, or ask your instructor to check it.",
+            );
+            expect(store.attempt(id)).toMatchObject({
+              state: "CANCELLED_BEFORE_START",
+              start: null,
+              deadline: null,
+            });
+            expect(
+              store.db
+                .prepare("SELECT state FROM grant_claims WHERE attempt=?")
+                .get(id),
+            ).toEqual({ state: "PREPARING" });
+          }
           Object.assign(native.get(id), {
             cancellation_cleanup_complete: true,
             policy_state: "NORMAL",
@@ -628,6 +781,18 @@ it.each([
       const before = store.attempt(id);
       expect(before.deadline! - before.start!).toBe(300000);
       expect(before.original_deadline).toBe(before.deadline);
+      const boundRead = await app.inject({
+        url: `/api/student/exam?grant=${grantID}`,
+        headers,
+      });
+      expect(boundRead.statusCode, boundRead.body).toBe(200);
+      expect(boundRead.json().attempt).toMatchObject({
+        id,
+        state: "ACTIVE",
+        start: before.start,
+        original_deadline: before.original_deadline,
+      });
+      expect(boundRead.json().practice_blocked).toBeNull();
       if (scenario === "first") {
         const selected = definitions.show("sandbox");
         definitions.update(
@@ -638,6 +803,18 @@ it.each([
           "Close future defaults without revising active practice",
         );
         expect(store.attempt(id)).toEqual(before);
+        const activePortal = await app.inject({
+          url: "/api/student/exam",
+          headers,
+        });
+        expect(activePortal.statusCode, activePortal.body).toBe(200);
+        expect(activePortal.json().practice_blocked).toBeNull();
+        expect(activePortal.json().attempt).toMatchObject({
+          id,
+          state: "ACTIVE",
+          start: before.start,
+          original_deadline: before.original_deadline,
+        });
       }
       expect((await begin()).statusCode).toBe(200);
       expect(store.attempt(id).start).toBe(before.start);
@@ -703,7 +880,9 @@ it.each([
         const next = await preflight();
         if (scenario === "repeat-contradictory-claim") {
           expect(next.statusCode, next.body).toBe(409);
-          expect(next.body).toContain("Previous practice consumption");
+          expect(next.json().error).toBe(
+            "Your earlier practice attempt's completion or server access could not be confirmed. Ask your instructor to check it before starting again.",
+          );
           expect(
             store.db.prepare("SELECT count(*) n FROM attempt_grants").get(),
           ).toEqual({ n: 1 });

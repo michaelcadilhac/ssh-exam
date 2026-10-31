@@ -25,6 +25,7 @@ export async function api(
   if (!res.ok)
     throw Object.assign(Error(result.error || "Request failed"), {
       status: res.status,
+      code: typeof result.code === "string" ? result.code : undefined,
     });
   return result;
 }

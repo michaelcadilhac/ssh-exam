@@ -549,3 +549,28 @@ nonce loss, authority edits, missing history, unaudited/nonempty/other operation
 and invalid lifetimes. No application/data change was needed. Before reusing a
 rollout guard, inspect all writers and expiry/append semantics introduced since
 its previous release. This prevents an avoidable post-start false refusal.
+
+
+## October 31 clarity pass: follow the rendered data boundary
+
+An app.ts-only wording audit missed practice()'s student runtime caller and the
+expired-but-well-formed schedule. Follow expected refusals from the public entry
+through shared services, and test the closed-after-identity branch plus existing
+saved/ongoing exceptions. Keep operator diagnostics separate from student copy.
+Inspect responsive screens too: hiding headers made Optional lose its Webcam
+subject. Collapsing a lone useful sentence added a click without reducing clutter.
+
+The first stale-choice fixture revoked before initial metadata arrived, leaving
+one option and no menu. It timed out without reaching the intended race. Await
+the actual two-choice menu before the external change; assert that boundary and
+bound the action. Preserve the failed receipt. Fresh choice/status reads also need
+a bounded wait and a visible recovery control that clears only a definitely
+refused selection, never silently retries a mutation. Whole-browser reloads can
+force new SSH/MFA and are a poor substitute for a read-only Check again action.
+
+A blocked opening hint must preserve seconds when the saved start time has them;
+Try again then must identify the actual allowed instant. The final single-option
+formatting delta was verified by a nonzero-second public regression and three
+focused interfaces after full application/browser qualification. Record the
+exact delta and retain unchanged-source evidence instead of rerunning everything
+for an isolated formatting option. No production enforcement was relaxed.

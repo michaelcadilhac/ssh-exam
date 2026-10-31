@@ -1,9 +1,18 @@
 # Unified sandbox practice grants (C14)
 
-Current production setup: the instructor explicitly requested completion on
-October 30. Existing sample files are now published/selected and practice has a
-finite window through tonight at 23:59 Chicago. Sign-in/preflight automatically
-issues eligible practice grants. See [current setup and operator workflow](sandbox-setup-2026-10-30.md).
+Current schedule: the last explicitly configured practice interval ended
+October30,2026 at23:59 America/Chicago, confirmed read-only October31. Pinned
+sample files remain installed. The instructor can open a new finite interval in
+**sandbox → Exam settings → Opens/Closes → Save exam**, or the supported
+`examctl web exams show/update sandbox` workflow. No manual practice grant is
+needed. Default edits do not revise existing unused saved permissions.
+
+The October31 UI clarity follow-up is implemented/tested locally, not deployed:
+certain universal closure before SSH credentials, personalized availability,
+plain student refusals and in-place Check again without using time or permission.
+Existing attempts and independently saved windows remain authoritative. See
+[clarity review and verification](ui-clarity-pass.md) and the
+[setup/operator workflow](sandbox-setup-2026-10-30.md).
 The dated implementation/qualification notes below describe earlier stages.
 
 Implemented/tested locally, October23,2026; not deployed. Evidence, retained

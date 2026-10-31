@@ -5,10 +5,7 @@ import { api, setCsrf, socket, chicago } from "./api.js";
 import { timeLimit } from "./local-date-time.js";
 import { Workspace } from "./workspace.js";
 import { Admin } from "./admin.js";
-import {
-  isSandbox,
-  hasSandboxWindow,
-} from "../../../packages/protocol/sandbox.js";
+import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import {
   authMessageBlocks,
   phoneApprovalNumber,
@@ -44,7 +41,7 @@ function App() {
     [password, setPassword] = useState(""),
     [reservation, setReservation] = useState<any>(null),
     [navigation, setNavigation] = useState<
-      "preflight" | "restore" | "signout" | null
+      "preflight" | "restore" | "signout" | "select-attempt" | null
     >(null),
     [answers, setAnswers] = useState<string[]>([]),
     [loginTest, setLoginTest] = useState<any>(null),
@@ -52,6 +49,7 @@ function App() {
       checking: true,
       issue: examBrowserIssue(),
     }));
+  const [attemptChoiceStale, setAttemptChoiceStale] = useState(false);
   const answersRef = useRef<string[]>([]);
   const authHistory = useRef<AuthChallenge | null>(null);
   const showChallenge = (
@@ -104,6 +102,7 @@ function App() {
       setUsername(next.user.username);
     }
     // Commit identity and its destination data together, never a partial page.
+    setAttemptChoiceStale(false);
     setSession(next);
   };
   const load = async () => applySession(await readSession());
@@ -134,6 +133,8 @@ function App() {
     try {
       await fn();
     } catch (e) {
+      if ((e as { code?: string }).code === "ATTEMPT_UNAVAILABLE")
+        setAttemptChoiceStale(true);
       setError((e as Error).message);
     }
   };
@@ -160,7 +161,7 @@ function App() {
   const browserBlocked = browserCheck.checking || !!browserCheck.issue;
   const navigationBusy = useRef(false);
   const navigate = async (
-    kind: "preflight" | "restore" | "signout",
+    kind: "preflight" | "restore" | "signout" | "select-attempt",
     fn: () => Promise<void>,
   ) => {
     if (navigationBusy.current) return;
@@ -173,6 +174,38 @@ function App() {
       setNavigation(null);
     }
   };
+  const refreshAttempt = (id: string | null = info?.selected_grant ?? null) =>
+    action(() =>
+      navigate("select-attempt", async () => {
+        let info;
+        try {
+          info = await api(
+            id
+              ? `/student/exam?grant=${encodeURIComponent(id)}`
+              : "/student/exam",
+            undefined,
+            undefined,
+            AbortSignal.timeout(15000),
+          );
+        } catch (error) {
+          if (
+            error instanceof DOMException &&
+            ["AbortError", "TimeoutError"].includes(error.name)
+          )
+            throw Error(
+              "Checking this attempt took too long. Check your connection and try again.",
+            );
+          throw error;
+        }
+        setAttemptChoiceStale(
+          attemptChoiceStale &&
+            !isSandbox(info.exam.id) &&
+            !info.attempt &&
+            !info.grants?.length,
+        );
+        setSession({ user, info });
+      }),
+    );
   const logout = async () =>
     navigate("signout", async () => {
       // The retained control socket must finish SSH cleanup before invalidation.
@@ -460,18 +493,9 @@ function App() {
                         Choose an attempt
                         <select
                           value={info.selected_grant ?? ""}
+                          disabled={!!navigation}
                           onChange={(e) => {
-                            const selected = info.grants.find(
-                              (g: any) => g.id === e.target.value,
-                            );
-                            setSession({
-                              user,
-                              info: {
-                                ...info,
-                                selected_grant: selected?.id ?? null,
-                                settings: selected?.settings ?? info.settings,
-                              },
-                            });
+                            void refreshAttempt(e.target.value || null);
                           }}
                         >
                           <option value="">Choose an attempt to start</option>
@@ -489,39 +513,50 @@ function App() {
                         </select>
                       </label>
                     )}
-                    {grantSelectionRequired ? (
+                    {navigation === "select-attempt" ? (
+                      <p role="status">Checking attempt…</p>
+                    ) : attemptChoiceStale ? (
+                      <p role="status">
+                        {!info.grants?.length &&
+                          "No attempts are available to start. Ask your instructor to allow an attempt. "}
+                        <button
+                          type="button"
+                          onClick={() => void refreshAttempt(null)}
+                        >
+                          Check again
+                        </button>
+                      </p>
+                    ) : grantSelectionRequired ? (
                       <p>Choose an attempt to continue.</p>
                     ) : (
                       <>
                         {info.practice_blocked && (
-                          <p role="status">{info.practice_blocked.message}</p>
+                          <p role="status">
+                            <span>{info.practice_blocked.message}</span>{" "}
+                            <button
+                              type="button"
+                              onClick={() => void refreshAttempt()}
+                            >
+                              Check again
+                            </button>
+                          </p>
                         )}
                         {info.selected_grant && (
-                          <details className="exam-details">
-                            <summary>Starting files</summary>
-                            <p>
-                              {(() => {
-                                const work = info.grants.find(
-                                  (g: any) => g.id === info.selected_grant,
-                                )?.work;
-                                return work?.kind === "empty"
-                                  ? "Empty folder"
-                                  : work?.kind === "saved"
-                                    ? "Saved work"
-                                    : work
-                                      ? `Starter files: ${work.name}`
-                                      : "Starting files unavailable";
-                              })()}
-                            </p>
-                          </details>
+                          <p>
+                            {(() => {
+                              const work = info.grants.find(
+                                (g: any) => g.id === info.selected_grant,
+                              )?.work;
+                              return work?.kind === "empty"
+                                ? "Starting files: Empty folder"
+                                : work?.kind === "saved"
+                                  ? "Starting files: Saved work"
+                                  : work
+                                    ? `Starter files: ${work.name}`
+                                    : "Starting files unavailable";
+                            })()}
+                          </p>
                         )}
-                        {isSandbox(info.exam.id) &&
-                          !hasSandboxWindow(info.exam) && (
-                            <p>
-                              Practice is closed. Ask your instructor to open
-                              it.
-                            </p>
-                          )}
                         <p>
                           {timeLimit(
                             info.settings?.duration ??
@@ -653,7 +688,8 @@ function App() {
                               !!info.practice_blocked ||
                               browserBlocked ||
                               !!navigation ||
-                              grantSelectionRequired
+                              grantSelectionRequired ||
+                              attemptChoiceStale
                             }
                             onClick={() =>
                               action(async () => {

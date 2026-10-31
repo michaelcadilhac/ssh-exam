@@ -1721,6 +1721,18 @@ prompts and explicit verification-code/phone approval responses. Focus the first
 when a sign-in form appears, without stealing focus on later updates. Combine time
 limit/webcam requirements; omit routine start-window details and date ranges from
 student attempt choices. Retain blocked-start explanations and instructor scheduling.
+Report a certain public practice closure before requesting credentials; preserve
+exam-wide saved/unfinished/recovery exceptions without exposing an account-status
+oracle. After identity verification, show the selected attempt's read-only current
+availability. Check again refreshes metadata in place with a bounded request;
+a definite stale selection clears its refused ID before retrieving current choices.
+Never reserve an account, issue/consume permission, start a clock or retry a
+mutation through these hints. Fresh native/preflight/start checks remain authoritative.
+Useful one-line source/history facts are inline; technical payloads use Technical
+details. Attempt-selection checkboxes visibly select targets for change/cancel,
+with purpose/count above cards and no disabled history checkboxes. Roster controls
+visibly identify defaults (including Webcam on mobile); started attempt clocks and
+requirements remain separate from future defaults and explicit legacy updates.
 Workspace chrome shows exam,
 connection/capture state, saved directory, timed deadline and available terminal controls;
 preflight hides inactive timer/finish controls and empty terminal menus. Empty states provide

@@ -660,24 +660,33 @@ export function AttemptGrantsDialog({
       selected.size <= 200 &&
       g.work.kind === "saved" &&
       grantUnused(g);
+    const heading = (
+      <>
+        {title(g)} · {shortDateTime(g.issued_at)}
+        {!setupSelected && ` · ${grantStatus(g)}`}
+      </>
+    );
     return (
       <article key={g.id} className="clock-batch-row">
-        <label>
-          <input
-            type="checkbox"
-            disabled={busy || !grantUnused(g)}
-            checked={selected.has(g.id)}
-            onChange={(e) =>
-              setSelected((old) => {
-                const value = new Set(old);
-                e.target.checked ? value.add(g.id) : value.delete(g.id);
-                return value;
-              })
-            }
-          />
-          {title(g)} · {shortDateTime(g.issued_at)}
-          {!setupSelected && ` · ${grantStatus(g)}`}
-        </label>
+        {grantUnused(g) ? (
+          <label>
+            <input
+              type="checkbox"
+              disabled={busy}
+              checked={selected.has(g.id)}
+              onChange={(e) =>
+                setSelected((old) => {
+                  const value = new Set(old);
+                  e.target.checked ? value.add(g.id) : value.delete(g.id);
+                  return value;
+                })
+              }
+            />
+            Select {heading}
+          </label>
+        ) : (
+          <p>{heading}</p>
+        )}
         <p>
           {timeLimit(g.settings.duration)} · Webcam{" "}
           {g.settings.webcam ? "required" : "optional"}
@@ -918,11 +927,7 @@ export function AttemptGrantsDialog({
             {!!catalog.length && (
               <p className="muted">Times in {deviceTimeZone()}.</p>
             )}
-            {username && attemptGroups}
-            <p>
-              Started attempts keep their settings. These changes apply only to
-              the unused attempts you select.
-            </p>
+            <p>Select unused attempts to change or cancel.</p>
             <div className="actions">
               <button
                 type="button"
@@ -959,6 +964,7 @@ export function AttemptGrantsDialog({
             {!!noUnused.length && (
               <p>No unused attempts for: {noUnused.join(", ")}.</p>
             )}
+            {username && attemptGroups}
             <fieldset disabled={busy || !selectedGrants.length}>
               {exam === "sandbox" && (
                 <p>

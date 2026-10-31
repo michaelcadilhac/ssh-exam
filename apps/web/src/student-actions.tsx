@@ -128,7 +128,7 @@ export function StudentActions({
         )}
         {settings && (
           <p>
-            Existing attempts keep their settings. Change unused attempts
+            Started attempts keep their settings. Change unused attempts
             separately.
           </p>
         )}

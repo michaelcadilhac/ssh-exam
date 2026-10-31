@@ -1653,7 +1653,7 @@ export function Workspace({
       {focusSeconds !== null && attempt.state === "ACTIVE" && !locked && (
         <div className="focus-warning" role="alert" aria-live="polite">
           <span aria-hidden="true">⚠</span>
-          <strong>Return to the exam · {focusSeconds}s before lock</strong>
+          <strong>Return to the exam · {focusSeconds}s before work pauses</strong>
         </div>
       )}
       {attempt.state === "PREPARING" && (

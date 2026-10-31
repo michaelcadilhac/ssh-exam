@@ -1,5 +1,17 @@
 # Deferred work
 
+October 31 DEEP UI CLARITY PASS COMPLETE/TESTED LOCALLY after ec00cba:
+certain closed-practice refusal before SSH, personalized read-only availability,
+Check again/stale-choice recovery, plain known student errors; explicit selection,
+inline one-line facts, mobile Webcam defaults and technical captions. Prof agreed
+and accepted actual desktop/mobile renders. Focused 22 backend/18 browser cases,
+full 653 application checks (3 existing opt-in skips), 86 affected browser workflows,
+types/web/server builds pass. A final seconds-only opening-hint correction passes
+its red/green public regression and 3 focused interfaces; the unchanged broader
+source/asset evidence remains applicable and is recorded separately. No policy or
+production changes; sandbox remains closed by its saved schedule. No push/deploy
+is authorized for this follow-up. Details: docs/ui-clarity-pass.md/current checkpoint.
+
 October31 three student-UI fixes DEPLOYED AND ONLINE under the instructor's
 explicit authorization. Runtime ff9e0f3/schema35: submitted Password field hides,
 routine Start window/date ranges removed, first welcome field focused. All36

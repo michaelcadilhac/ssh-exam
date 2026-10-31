@@ -1,28 +1,33 @@
-# Current checkpoint — student UI fixes deployed
+# Current checkpoint — deep UI clarity pass complete locally
 
-October31,2026. DEPLOYED AND ONLINE under the instructor's explicit push/deploy
-instruction. Runtime ff9e0f3/schema35 includes e57c3ec: Password field hides after
-submission, routine student Start window/date ranges removed, welcome first field
-focused once. Prof agreed each change. Original nginx restored; admissions open.
+October 31, 2026. IMPLEMENTED/TESTED LOCALLY after ec00cba. No new push/deploy
+instruction; production remains ff9e0f3/schema35. A read-only check confirmed the
+sandbox schedule ended October 30 at 23:59 Chicago; mcadilha has eight completed
+attempts, none unfinished. No production configuration/student records changed.
 
-- Final36 selected browser workflows pass against EXACT image assets/pinnedGo1.27.2
-  WASM, including timing/enforcement across seven zones and16 signed-in clients.
-  Four focused/red checks, typecheck/build, production-maintenance image startup/
-  schema/history/clock smoke and earlier unchanged29 auth/Go races pass.
-- Real public TLS/readiness/all six assets and desktop/mobile student/instructor
-  first-field typing checks pass; no credentials or student starts in acceptance.
-- All110 web/175 native histories, grants/settings/clocks/holds/source records
-  preserved.37 durable authority tables equal; prior audit/request history intact.
-  Only already-expired nonces and audited existing-worker empty polls vary.
-  The initial copied guard refusal was retained;9 new verifier regressions pass.
-- Only web image env line changes. Native agent4007876/watchdog210730/relay893011/
-  source-worker2256672 retain PIDs/config/CLI proxy/binaries. Consolidation unchanged.
-- Installed Config59a026af… / tagssh-exam-release:ui-ff9e0f3; source-engine54b936a0….
-  Full13.6GB private /data backup verified; exact paths/hash/compatible image-only
-  rollback in docs/ui-followup-deployment.md. No old DB/native-state restoration.
-- All ten original dirty screenshots remain untouched/uncommitted. No open local
-  or deployment blocker. Root-filesystem headroom remains a separate maintenance
-  task; preserve all student data/backups. Next: instructor's next task.
+Delivered student workflow: certain public practice closure before credentials;
+personalized availability preserves saved/ongoing/cleanup exceptions; plain known
+refusals; fresh selected-attempt GET with bounded15s pending state; Check again
+preserves valid selection or clears a definitely stale ID; empty choices remain
+disabled. No reservation, automatic start/clock, mutation retry or authority change.
+Instructor workflow: inline one-line history/source facts, visible Select-target
+purpose/count before cards, history without disabled boxes, explicit defaults and
+mobile Webcam subject, precise Technical details captions. Pause wording and
+legacy/default explanation are consistent. Prof agreed and accepted final renders.
 
-Evidence: var/collection-tests/ui-followup-rollout.dgw3btoc/completion.json;
-source checks var/collection-tests/student-summary.japy2oc9 and password-wait.aop_n05o.
+- Focused22 real backend interfaces and18 final browser cases PASS.
+- Full application653 PASS /3 existing opt-in skips; broader86 browser PASS.
+- Types and fresh web/server builds PASS; unchanged exact deployedGo1.27.2 WASM.
+- Final opening-hint short→medium option shows seconds; retained red/green public
+  regression and3 focused interfaces PASS, then types/server build PASS. No other
+  product source/frontend asset changed after broad qualification. Details explain
+  why unchanged suites were not rerun for this formatting-only correction.
+- All10 original dirty screenshots preserved; owned3100/3101 listeners closed.
+  No native/CLI/kernel changes or new privileged qualification claim.
+
+No implementation/design blocker remains. Next: instructor's next instruction;
+a separate explicit push/deploy is required to install this local follow-up. A
+new finite practice interval is also an independent instructor configuration action.
+Evidence: var/collection-tests/ui-clarity-pass.zsifuw12/completion.json;
+coverage/decisions: docs/ui-clarity-pass.md. Prior production/backups/rollback:
+docs/ui-followup-deployment.md. Original38-item release count is unchanged.

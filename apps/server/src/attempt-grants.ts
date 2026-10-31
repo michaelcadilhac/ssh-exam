@@ -29,8 +29,11 @@ import {
   type MonitoringBootstrap,
 } from "../../../packages/protocol/monitoring-evidence.js";
 
-const conflict = (message: string): never => {
-  throw Object.assign(Error(message), { statusCode: 409 });
+const conflict = (message: string, code?: string): never => {
+  throw Object.assign(Error(message), {
+    statusCode: 409,
+    ...(code ? { code } : {}),
+  });
 };
 // Real callers: shared enrollment/CSV, shared web/root management, student
 // preflight/Begin, signed native verification and positive lifecycle receipts.
@@ -414,6 +417,55 @@ export class AttemptGrants {
       isSandbox(exam) ? null : (this.initialFor(exam, username)?.id ?? null),
     );
   }
+  // These are read-only hints. Fresh native/preflight/Begin checks still own
+  // admission. Never accept a username here: a public check must not reveal
+  // whether a particular account has saved permission or an unfinished attempt.
+  practiceSignInBlock() {
+    const definition = JSON.parse(
+      (
+        this.store.db
+          .prepare("SELECT config FROM exams WHERE id='sandbox'")
+          .get() as { config: string }
+      ).config,
+    );
+    const block = this.practiceWindowBlock(definition);
+    if (!block) return null;
+    const unfinished = this.store.db
+      .prepare(
+        "SELECT 1 FROM attempts WHERE exam='sandbox' AND (state NOT IN ('COMPLETED','CANCELLED_BEFORE_START') OR (start IS NOT NULL AND (coalesce(protected,0)<>1 OR coalesce(access_state,'') NOT IN ('RELEASED','OVERRIDDEN'))) OR coalesce(policy_state,'NORMAL')<>'NORMAL' OR coalesce(policy_error,'')<>'' OR coalesce(access_error,'')<>'') LIMIT 1",
+      )
+      .get();
+    // Match available()'s closing filter conservatively, including future or
+    // claimed grants and source setup still awaiting confirmation. This does
+    // not make any of them usable; it merely preserves authenticated inspection.
+    const issued = this.store.db
+      .prepare(
+        "SELECT 1 FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.agent=? AND g.exam='sandbox' AND g.status IN ('AVAILABLE','PENDING_NATIVE') AND json_extract(r.settings,'$.latest')>=? LIMIT 1",
+      )
+      .get(this.agent, now());
+    return unfinished || issued ? null : block.message;
+  }
+  practiceWindowBlock(settings: { earliest: number; latest: number }) {
+    const at = now();
+    if (!hasSandboxWindow(settings) || at > settings.latest)
+      return {
+        status: "CLOSED",
+        message: "Practice is closed. Ask your instructor to open it.",
+      };
+    if (at < settings.earliest)
+      return {
+        status: "NOT_OPEN",
+        message: `This practice attempt opens ${new Intl.DateTimeFormat(
+          "en-US",
+          {
+            timeZone: "America/Chicago",
+            dateStyle: "medium",
+            timeStyle: "medium",
+          },
+        ).format(settings.earliest)} (Chicago time). Try again then.`,
+      };
+    return null;
+  }
   // Runtime caller: authenticated student preflight, after native role/UID and
   // prior completion/release checks. This transaction never waits on native IO.
   practice(username: string) {
@@ -426,7 +478,7 @@ export class AttemptGrants {
         .get(this.agent, username) as any;
       if (last && last.status !== "CONSUMED")
         return conflict(
-          "Unused practice authority is expired or revoked. Inspect examctl web grants list sandbox; explicitly revise an expired unused grant, or review NEW authority with web grants additional-preview sandbox --duration-minutes 5. No automatic replacement or clock authorized.",
+          "Your practice attempt is not available. Ask your instructor to update it or allow another attempt.",
         );
       if (
         last &&
@@ -437,7 +489,7 @@ export class AttemptGrants {
           .get(last.id)
       )
         return conflict(
-          "Previous practice consumption, protected completion or access release is unconfirmed; inspect the original attempt. No new allowance authorized.",
+          "Your earlier practice attempt's completion or server access could not be confirmed. Ask your instructor to check it before starting again.",
         );
       const prior = this.store.db
         .prepare(
@@ -451,7 +503,7 @@ export class AttemptGrants {
           !["RELEASED", "OVERRIDDEN"].includes(prior.access_state))
       )
         return conflict(
-          "Previous practice is unresolved or restricted; preserve its original attempt/clock and complete supported cancellation or protection/release before a new allowance.",
+          "Your earlier practice attempt needs review before you can start again. Ask your instructor to check it. Its deadline and access restrictions are unchanged.",
         );
       const definition = JSON.parse(
         (
@@ -460,11 +512,25 @@ export class AttemptGrants {
             .get() as any
         ).config,
       );
-      const value = this.snapshot(definition);
-      if (now() < value.settings.earliest || now() > value.settings.latest)
-        return conflict(
-          "Outside configured practice Begin window; inspect examctl web exams show sandbox. No grant, account or clock reserved.",
-        );
+      let value: ReturnType<AttemptGrants["snapshot"]>;
+      try {
+        value = this.snapshot(definition);
+      } catch (error) {
+        const status = (error as { statusCode?: number } | null)?.statusCode;
+        if (error instanceof z.ZodError || status === 404 || status === 409)
+          throw Object.assign(
+            Error(
+              "Practice is not ready. Ask your instructor to check its settings.",
+            ),
+            {
+              statusCode: status ?? 409,
+              cause: error,
+            },
+          );
+        throw error;
+      }
+      const block = this.practiceWindowBlock(value.settings);
+      if (block) return conflict(block.message);
       this.issueGrant(
         "sandbox",
         username,
@@ -915,6 +981,7 @@ export class AttemptGrants {
     if (grant.status !== "AVAILABLE")
       return conflict(
         "Grant is revoked or consumed; ask your instructor to inspect grant history; no allowance started",
+        "GRANT_UNAVAILABLE",
       );
     if (grant.work.kind === "saved") {
       const retained = this.store.db

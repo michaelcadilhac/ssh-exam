@@ -196,7 +196,7 @@ export async function createApp(
     const at = now();
     if (at < settings.earliest || at > settings.latest)
       throw Error(
-        "You can start only between the opening and closing times shown. These times do not change the deadline of an attempt already started.",
+        "This attempt cannot start right now. Ask your instructor when you can start. No new attempt was started.",
       );
   };
   const requireSandboxAgent = (exam: string, h: any) => {
@@ -793,12 +793,13 @@ export async function createApp(
     }
   });
   app.setErrorHandler((error, req, reply) => {
-    const err = error as Error & { statusCode?: number };
+    const err = error as Error & { statusCode?: number; code?: string };
     const status = err.statusCode || 400;
     reply.code(status).send({
       ...(error instanceof MonitoringChallengeError
         ? { code: error.code }
         : {}),
+      ...(err.code === "ATTEMPT_UNAVAILABLE" ? { code: err.code } : {}),
       error:
         status >= 500
           ? error instanceof MonitoringMediaError
@@ -1275,6 +1276,22 @@ export async function createApp(
       .object({ grant: z.string().uuid().optional() })
       .strict()
       .parse(req.query).grant;
+    if (
+      selectedID &&
+      !availableGrants.some((grant) => grant.id === selectedID) &&
+      !(
+        latest?.grant_id === selectedID &&
+        [
+          "PREPARING", "ACTIVE", "LOCKED", "FINALIZING", "COLLECTION_FAILED",
+        ].includes(latest.state)
+      )
+    )
+      throw Object.assign(
+        Error(
+          "That attempt is no longer available. Choose Check again to see your current attempts.",
+        ),
+        { statusCode: 409, code: "ATTEMPT_UNAVAILABLE" },
+      );
     const selectedGrant = selectedID
       ? grants.select(s.exam!, s.username, selectedID)
       : availableGrants.length === 1
@@ -1305,6 +1322,34 @@ export async function createApp(
                 ? JSON.parse(exam.config).webcam
                 : !!row.webcam,
           });
+    const preparing =
+      !latest ||
+      repeat ||
+      ["PREPARING", "CANCELLED_BEFORE_START"].includes(latest.state);
+    let practiceBlocked: {
+      message: string;
+      id?: string;
+      status?: string;
+    } | null = null;
+    if (isSandbox(s.exam) && preparing) {
+      if (
+        !availableGrants.length &&
+        initialGrant &&
+        initialGrant.status !== "CONSUMED"
+      )
+        practiceBlocked = {
+          id: initialGrant.id,
+          status: initialGrant.status,
+          message:
+            "Your practice attempt is not available. Ask your instructor to update it or allow another attempt.",
+        };
+      else if (
+        selectedGrant ||
+        availableGrants.length <= 1 ||
+        latest?.state === "PREPARING"
+      )
+        practiceBlocked = grants.practiceWindowBlock(settings);
+    }
     return {
       exam: JSON.parse(exam.config),
       settings,
@@ -1313,18 +1358,7 @@ export async function createApp(
       attempt: repeat ? null : latest || null,
       grants: availableGrants,
       selected_grant: selectedGrant?.id ?? null,
-      practice_blocked:
-        isSandbox(s.exam) &&
-        !availableGrants.length &&
-        initialGrant &&
-        initialGrant.status !== "CONSUMED"
-          ? {
-              id: initialGrant.id,
-              status: initialGrant.status,
-              message:
-                "Your practice attempt is not available. Ask your instructor to update it or allow another attempt. Changing the exam settings alone does not update this attempt.",
-            }
-          : null,
+      practice_blocked: practiceBlocked,
       previous_attempt:
         repeat && latest
           ? {
@@ -1432,7 +1466,20 @@ export async function createApp(
       previous = store.attempt(previous.id);
     }
     if (previous?.state === "CANCELLED_BEFORE_START") {
-      await life.retirePreflight(previous.id);
+      try {
+        await life.retirePreflight(previous.id);
+      } catch (error) {
+        if (
+          (error as { code?: string } | null)?.code === "PREFLIGHT_CLEANUP_UNCONFIRMED"
+        )
+          throw Object.assign(
+            Error(
+              "Cleanup of your earlier setup could not be confirmed. Try again shortly, or ask your instructor to check it.",
+            ),
+            { statusCode: 409, cause: error },
+          );
+        throw error;
+      }
       previous = undefined;
     }
     if (previous && isSandbox(s.exam) && previous.state === "COMPLETED") {
@@ -1657,7 +1704,19 @@ export async function createApp(
     requireTemplateAgent(settings, h);
     store.db.transaction(() => {
       if (initialGrant) {
-        const current = grants.claim(initialGrant.id, id, enrollment.uid);
+        let current: ReturnType<AttemptGrants["claim"]>;
+        try {
+          current = grants.claim(initialGrant.id, id, enrollment.uid);
+        } catch (error) {
+          if ((error as { code?: string } | null)?.code === "GRANT_UNAVAILABLE")
+            throw Object.assign(
+              Error(
+                "That attempt is no longer available. Choose Check again to see your current attempts.",
+              ),
+              { statusCode: 409, code: "ATTEMPT_UNAVAILABLE", cause: error },
+            );
+          throw error;
+        }
         if (
           current.hash !== initialGrant.hash ||
           current.revision !== initialGrant.revision
@@ -3219,6 +3278,8 @@ export async function createApp(
             previous.count++;
           } else authAttempts.set(key, { at: now(), count: 1 });
           if (!config.loginOnly && isSandbox(m.exam)) {
+            const block = grants.practiceSignInBlock();
+            if (block) throw signInError(block);
             const latest = store.db
               .prepare(
                 "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY rowid DESC LIMIT 1",

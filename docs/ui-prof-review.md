@@ -8,6 +8,11 @@ statements below record that original scope, not the current deployment status.
 Prof is the professor reviewer agent requested by the instructor. He reviews
 changes before implementation; the accepted decisions below record that agreement.
 
+October31 deep clarity follow-up after that release: additional confirmed student
+admission/admin selection/inline fact/default/technical-caption fixes are agreed
+with Prof and implemented locally. They are NOT part of the deployed ff9e0f3 image.
+Current scope, failures and verification: [deep clarity pass](ui-clarity-pass.md).
+
 ## Goals and scenarios
 
 | Task                   | Entry and result                                                    | Maximum screens/dialogs |

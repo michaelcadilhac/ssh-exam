@@ -48,10 +48,10 @@ export function EnrollmentSetting({
   const effective = confirmed ?? exam[kind];
   const text =
     kind === "duration"
-      ? `Time limit: ${timeLimit(Number(effective))}`
+      ? `Default: ${timeLimit(Number(effective))}`
       : effective
-        ? "Required"
-        : "Optional";
+        ? "Webcam default: Required"
+        : "Webcam default: Optional";
   const locked = kind === "duration" && isSandbox(exam.id);
   const close = () => {
     setEditing(false);
@@ -190,7 +190,7 @@ export function EnrollmentSetting({
             </label>
           )}
           <small>
-            Existing attempts keep their settings.
+            Started attempts keep their settings.
             {student.grant && " Change unused attempts separately."}
             {kind === "duration" &&
               " For older unused recovery attempts, saving this time limit also authorizes updates at the student's next setup. Changing exam defaults does not."}

@@ -252,11 +252,109 @@ async function fixture(
   return { state, open, original: structuredClone(grants), settings };
 }
 
+test("allowed-attempt selection chooses an action target without changing permission", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  await page.getByLabel("Selected exam").selectOption(f.settings.id);
+  await page
+    .getByRole("button", { name: "Actions for student amy", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+      name: "Allowed attempts for amy",
+      exact: true,
+    }),
+    card = dialog
+      .getByRole("region", { name: "Attempts for amy", exact: true })
+      .getByRole("article"),
+    target = card.getByRole("checkbox", { name: /^Select .*attempt/i });
+  await expect(
+    dialog.getByText("Select unused attempts to change or cancel.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(card.locator("label")).toHaveText(/^Select .*attempt/i);
+  await expect(target).toBeChecked();
+  await expect(dialog).toContainText("1 attempt for 1 student selected");
+  expect(f.state.writes).toHaveLength(0);
+  await dialog
+    .getByRole("button", { name: "Clear selection", exact: true })
+    .click();
+  await expect(target).not.toBeChecked();
+  await expect(dialog).toContainText("0 attempts for 0 students selected");
+  for (const name of ["Review changes", "Review cancellation"])
+    await expect(
+      dialog.getByRole("button", { name, exact: true }),
+    ).toBeDisabled();
+  expect(f.state.grants).toEqual(f.original);
+  expect(f.state.writes).toHaveLength(0);
+  await target.check();
+  await expect(dialog).toContainText("1 attempt for 1 student selected");
+  for (const name of ["Review changes", "Review cancellation"])
+    await expect(
+      dialog.getByRole("button", { name, exact: true }),
+    ).toBeEnabled();
+  await dialog
+    .getByRole("button", { name: "Review cancellation", exact: true })
+    .click();
+  const review = dialog.getByRole("region", {
+    name: "Review unused changes",
+    exact: true,
+  });
+  await expect(review.getByRole("article")).toHaveCount(1);
+  await expect(review).toContainText("amy · Extra attempt");
+  await expect(review).toContainText(
+    "Cancel this unused attempt. Saved files and history are kept.",
+  );
+  await expect(
+    dialog.getByRole("button", {
+      name: "Cancel selected attempts",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  expect(f.state.writes).toHaveLength(0);
+  expect(f.state.grants).toEqual(f.original);
+});
+
+test("started historical attempts show their status without a selection checkbox", async ({
+  page,
+}) => {
+  const f = await fixture(page),
+    dialog = await f.open(),
+    history = dialog.getByRole("region", {
+      name: "Attempts for carol",
+      exact: true,
+    });
+  await history
+    .getByText("Unavailable attempts and history", { exact: true })
+    .click();
+  const started = history.getByRole("article");
+  await expect(started).toContainText("Started");
+  await expect(started.getByRole("checkbox")).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(0);
+  expect(f.state.grants).toEqual(f.original);
+});
+
 test("an inherited exact-second default can be saved without rounding or invalid minute input", async ({
   page,
 }) => {
   const f = await fixture(page);
   await page.getByLabel("Selected exam").selectOption(f.settings.id);
+  await expect(
+    page.getByRole("button", {
+      name: "Edit future time limit for amy",
+      exact: true,
+    }),
+  ).toHaveText("Default: 1 min 35 sec");
+  await expect(
+    page.getByRole("button", {
+      name: "Edit future webcam setting for amy",
+      exact: true,
+    }),
+  ).toHaveText("Webcam default: Required");
   await page
     .getByRole("button", {
       name: "Edit future time limit for amy",
@@ -286,7 +384,7 @@ test("an inherited exact-second default can be saved without rounding or invalid
       name: "Edit future time limit for amy",
       exact: true,
     }),
-  ).toContainText("1 min 35 sec");
+  ).toHaveText("Default: 1 min 35 sec");
   expect(f.state.grants).toEqual(f.original);
 });
 

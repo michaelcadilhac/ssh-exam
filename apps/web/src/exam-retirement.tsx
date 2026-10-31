@@ -186,7 +186,7 @@ export function ExamRetirement({
               <>
                 <p>Keep this review open to retry the same request.</p>
                 <details>
-                  <summary>Details</summary>
+                  <summary>Technical details</summary>
                   <p>
                     Reference: <code>{intent.current.request}</code>
                   </p>

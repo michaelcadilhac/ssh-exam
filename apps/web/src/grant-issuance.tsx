@@ -599,7 +599,7 @@ export function GrantIssuanceDialog({
                   : "Use current first-attempt settings"}
             </p>
             <details>
-              <summary>Details</summary>
+              <summary>Technical details</summary>
               <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
                 {JSON.stringify(pending.body, null, 2)}
               </pre>
