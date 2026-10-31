@@ -67,12 +67,10 @@ describe("attempt-scoped shared SSH password", () => {
       await c.connect(async (_host, _instructions, prompts) =>
         prompts.map((p) => {
           promptsSeen.push(p.prompt);
-          return p.prompt === "Shared SSH password"
-            ? "shared-password"
-            : "123456";
+          return p.prompt === "Password" ? "shared-password" : "123456";
         }),
       );
-      expect(promptsSeen).toEqual(["Shared SSH password", "Verification code"]);
+      expect(promptsSeen).toEqual(["Password", "Verification code"]);
       expect(h.authCalls).toEqual({ jump: 1, class: 1 });
       cleared(c);
     } finally {

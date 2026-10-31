@@ -98,7 +98,7 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
     await page
       .getByRole("button", { name: "Sign in", exact: true })
       .click();
-    await page.getByLabel("Shared SSH password").fill("shared-password");
+    await page.getByLabel("Password", { exact: true }).fill("shared-password");
     const summaryReady = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/student/exam" &&

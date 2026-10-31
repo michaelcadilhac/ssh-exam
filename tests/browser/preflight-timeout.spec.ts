@@ -5,7 +5,7 @@ async function signIn(page: Page) {
   await page.getByLabel("Exam ID", { exact: true }).fill("preflight-limit");
   await page.getByLabel("Username").fill("preflight01");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Check setup and practice" }).click();
   await expect(

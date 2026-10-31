@@ -17,7 +17,7 @@ async function begin(page: Page, username: string) {
   await page
     .getByRole("button", { name: "Sign in", exact: true })
     .click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page
     .getByRole("button", { name: "Continue", exact: true })
     .click();

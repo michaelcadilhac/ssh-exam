@@ -410,7 +410,7 @@ test("real gateway approval reaches the paused WASM SSH page without reload, rep
   await page.getByLabel("Exam ID", { exact: true }).fill("approval-feedback");
   await page.getByLabel("Username").fill("approval01");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);

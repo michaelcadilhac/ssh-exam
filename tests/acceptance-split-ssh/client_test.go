@@ -168,7 +168,7 @@ func TestAcceptanceSplitIdentity(t *testing.T) {
 					phone = phone || text == "Phone MFA\nApprove synthetic phone challenge"
 					return []string{}, nil
 				}
-				if len(prompts) != 1 || prompts[0].Prompt != "Shared SSH password" {
+				if len(prompts) != 1 || prompts[0].Prompt != "Password" {
 					return nil, errors.New("unexpected prompt")
 				}
 				asks++

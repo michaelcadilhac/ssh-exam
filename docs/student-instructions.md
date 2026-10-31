@@ -12,7 +12,7 @@ opening/closing times.
    reference and monitor rules. References may be physical documents or files
    read through exam terminals.
 2. Enter the exam ID and your enrolled username, then choose **Sign in**. Enter
-   your shared SSH password when asked. It is reused for the class server, then
+   your password when asked. It is reused for the class server, then
    discarded. Keep the page open; the number for your phone app may take a moment
    to appear.
 3. When a phone-approval number appears, enter it in your Authenticator app on

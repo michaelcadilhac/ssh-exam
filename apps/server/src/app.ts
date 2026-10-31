@@ -3390,7 +3390,7 @@ export async function createApp(
             type: "error",
             error:
               (e as Error & { publicMessage?: string }).publicMessage ||
-              "SSH sign-in failed. Check your shared password and challenge approval. If it still fails, contact your instructor to check the server connection.",
+              "SSH sign-in failed. Check your password and challenge approval. If it still fails, contact your instructor to check the server connection.",
           });
           p.connection?.close();
           ws.close();

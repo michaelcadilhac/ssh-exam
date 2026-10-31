@@ -76,7 +76,7 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
   await page.getByLabel("Exam ID", { exact: true }).fill("legacy-grant");
   await page.getByLabel("Username").fill("legacy01");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Reviewed browser grant", exact: true }),

@@ -33,7 +33,18 @@ for (const width of [1280, 430])
       )
       .join(" ");
     let showPhone: (() => void) | undefined;
+    let notice: (() => void) | undefined;
     await page.routeWebSocket("**/api/auth/dialogue", (ws) => {
+      notice = () =>
+        ws.send(
+          JSON.stringify({
+            type: "notice",
+            host: "sshjump.depaul.edu",
+            instruction: "Waiting for the next authentication step.",
+            round: "password-notice",
+            prompts: [],
+          }),
+        );
       ws.onMessage((raw) => {
         const m = JSON.parse(String(raw));
         if (m.type === "start")
@@ -43,7 +54,7 @@ for (const width of [1280, 430])
               host: "sshjump.depaul.edu",
               instruction: `${banner}\n\nPlease enter your password.`,
               round: "password",
-              prompts: [{ prompt: "Shared SSH password", echo: false }],
+              prompts: [{ prompt: "Password", echo: false }],
             }),
           );
         if (m.type === "answers") {
@@ -67,9 +78,7 @@ for (const width of [1280, 430])
     await page.getByLabel("Exam ID", { exact: true }).fill("test");
     await page.getByLabel("Username", { exact: true }).fill("student01");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page
-      .getByLabel("Shared SSH password", { exact: true })
-      .fill("fixture-secret");
+    await page.getByLabel("Password", { exact: true }).fill("fixture-secret");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect.poll(() => !!showPhone).toBe(true);
     const progress = page.getByText(
@@ -79,9 +88,16 @@ for (const width of [1280, 430])
     await expect(progress).toBeVisible();
     await expect(progress).toBeInViewport();
     await expect(progress).toHaveAttribute("role", "status");
+    await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+    await expect(page.locator('input[type="password"]')).toHaveCount(0);
     await expect(
-      page.getByLabel("Shared SSH password", { exact: true }),
-    ).toHaveValue("");
+      page.getByRole("button", { name: "Cancel", exact: true }),
+    ).toBeVisible();
+    notice!();
+    await expect(
+      page.getByLabel("Host authentication messages", { exact: true }),
+    ).toContainText("Waiting for the next authentication step.");
+    await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
     await expect(
       page.getByText(
         "Keep this page open. The number for your phone app may take a moment to appear.",
@@ -198,6 +214,9 @@ test("a genuine one-time password still requires its code and never claims phone
   await expect(
     page.getByText(/Password sent|number for your phone app/),
   ).toHaveCount(0);
+  await expect(
+    page.getByLabel("One-time password:", { exact: true }),
+  ).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText("123456");
 });
 for (const explicit of [true, false]) {
@@ -298,7 +317,7 @@ for (const explicit of [true, false]) {
               host: "jump.example.edu",
               instruction: starts === 1 ? "Initial host notice" : "Fresh login",
               round: `password-${starts}`,
-              prompts: [{ prompt: "Shared SSH password", echo: false }],
+              prompts: [{ prompt: "Password", echo: false }],
             }),
           );
         } else if (message.type === "answers") {
@@ -328,7 +347,7 @@ for (const explicit of [true, false]) {
     await page.getByLabel("Username", { exact: true }).fill("student01");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page
-      .getByLabel("Shared SSH password", { exact: true })
+      .getByLabel("Password", { exact: true })
       .fill("test-secret-must-disappear");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     const alert = page.getByRole("alert");
@@ -356,9 +375,7 @@ for (const explicit of [true, false]) {
       ).toHaveCount(0);
     }
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(
-      page.getByLabel("Shared SSH password", { exact: true }),
-    ).toHaveValue("");
+    await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
     await expect(
       page.getByLabel("SSH sign-in details", { exact: true }),
     ).toHaveCount(0);

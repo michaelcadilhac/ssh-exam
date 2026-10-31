@@ -183,7 +183,7 @@ func TestSharedPasswordMFAAndRetainedChannels(t *testing.T) {
 			asks := 0
 			phone := false
 			err := c.Connect(raw(t, h), "student", h.jump, h.class, func(_ context.Context, host, text string, p []Prompt) ([]string, error) {
-				if len(p) == 1 && p[0].Prompt == "Shared SSH password" {
+				if len(p) == 1 && p[0].Prompt == "Password" {
 					asks++
 					return []string{h.password}, nil
 				}

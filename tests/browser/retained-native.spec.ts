@@ -240,7 +240,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   await page
     .getByRole("button", { name: "Sign in", exact: true })
     .click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page
     .getByRole("button", { name: "Continue", exact: true })
     .click();
@@ -351,7 +351,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     await expect(
       page.getByText("Reconnecting · input blocked", { exact: true }),
     ).toHaveCount(0, { timeout: 15000 });
-    await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+    await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   };
   if (processMode) {
     await restart("kill");

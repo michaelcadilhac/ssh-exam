@@ -835,7 +835,9 @@ function App() {
                         )}
                     </div>
                   )}
-                  {(authPhase === "connecting" && phoneNumber === null
+                  {(authPhase === "connecting" &&
+                  !responding &&
+                  phoneNumber === null
                     ? challenge?.prompts || []
                     : []
                   ).map((p: any, i: number) => (

@@ -33,7 +33,7 @@ async function login(page: Page, exam: string, username: string) {
   await page.getByLabel("Exam ID", { exact: true }).fill(exam);
   await page.getByLabel("Username").fill(username);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
 }
 async function begin(page: Page, exam: string, username: string) {
@@ -388,7 +388,7 @@ test.describe.serial("browser abandonment and recovery", () => {
     await page.getByLabel("Username").fill("closure02");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText("already completed");
-    await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+    await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
     await expect(page.locator(".winbox")).toHaveCount(0);
     lastCleanup = Date.now(); // Include reload and completion in the timeout window.
   });

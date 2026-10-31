@@ -136,7 +136,7 @@ export class Connection {
     const shared = async (host: string, instruction: string) => {
       if (!attempt.password.available) {
         const answers = await ask(host, instruction, [
-          { prompt: "Shared SSH password", echo: false },
+          { prompt: "Password", echo: false },
         ]);
         attempt.password.capture(answers);
       }
@@ -221,7 +221,7 @@ export class Connection {
               else
                 await ask(
                   label,
-                  instruction || "Authenticating with the shared SSH password.",
+                  instruction || "Signing in with your password.",
                   [],
                 );
               if (attempt.cancelled) throw Error("Authentication ended");
@@ -307,7 +307,7 @@ export class Connection {
               void (async () => {
                 const password = await shared(
                   label,
-                  "Enter the shared SSH password for both configured hosts.",
+                  "Enter the password for the username you entered.",
                 );
                 const authentication = {
                   type: "password" as const,
@@ -316,11 +316,7 @@ export class Connection {
                 };
                 try {
                   if (attempt.cancelled) throw Error("Authentication ended");
-                  await ask(
-                    label,
-                    "Authenticating with the shared SSH password.",
-                    [],
-                  );
+                  await ask(label, "Signing in with your password.", []);
                   if (attempt.cancelled) throw Error("Authentication ended");
                   (next as any)(authentication);
                 } finally {

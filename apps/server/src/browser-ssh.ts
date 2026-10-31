@@ -584,7 +584,7 @@ export class BrowserConnection extends Connection {
     } catch (e) {
       const publicMessage = sshAuthenticated
         ? "SSH sign-in succeeded, but the exam server could not admit this account. Contact your instructor to check the account’s exam-server setup. No new exam was started."
-        : "SSH sign-in failed. Check your shared password and challenge approval. If it still fails, contact your instructor to check the server connection.";
+        : "SSH sign-in failed. Check your password and challenge approval. If it still fails, contact your instructor to check the server connection.";
       // Closing first discards the error queued by the auth route: the browser
       // only sees a close and silently returns to the sign-in form.
       if (this.socket?.readyState === 1)

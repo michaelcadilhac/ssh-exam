@@ -204,7 +204,7 @@ test("SSH completion retains its dialog through delayed session/exam loading and
     await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
     await page.getByLabel("Username").fill("student10");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByLabel("Shared SSH password").fill("shared-password");
+    await page.getByLabel("Password", { exact: true }).fill("shared-password");
     await page.evaluate(() => {
       (window as any).__signInFrames = [];
     });

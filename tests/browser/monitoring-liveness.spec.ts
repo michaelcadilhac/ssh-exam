@@ -141,7 +141,7 @@ test("real browser SSH keeps contact and terminal input when only final heartbea
   await page.getByLabel("Exam ID", { exact: true }).fill("monitoring-liveness");
   await page.getByLabel("Username").fill("monitoring01");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);

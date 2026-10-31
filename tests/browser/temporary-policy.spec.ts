@@ -63,7 +63,7 @@ test("one password and MFA sign-in, one preflight, automatic protected SSH hando
   await page
     .getByRole("button", { name: "Sign in", exact: true })
     .click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByRole("button", { name: "Check setup and practice", exact: true })
@@ -95,7 +95,7 @@ test("one password and MFA sign-in, one preflight, automatic protected SSH hando
     await page.evaluate(() => (window as any).__screenCaptureRequests),
   ).toBe(1);
   expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
-  await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Finish exam", exact: true }).click();
   await page
     .getByRole("dialog")

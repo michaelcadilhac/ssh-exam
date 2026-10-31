@@ -18,7 +18,7 @@ test("actual WASM SSH preflight and Begin retain the selected hash with no legac
   await page
     .getByRole("button", { name: "Sign in", exact: true })
     .click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page
     .getByRole("button", { name: "Continue", exact: true })
     .click();

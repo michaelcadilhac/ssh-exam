@@ -106,6 +106,37 @@ each outcome before its row details. Final acceptance is recorded below.
 
 ## Local results
 
+### Submitted password field follow-up (October 31)
+
+The instructor reported that the cleared password field remained visible while
+waiting for the phone prompt. The earlier oracle checked an empty value and a
+disabled input; neither establishes that a completed field disappears. Prof agreed
+the bounded correction: use **Password** for the two app-authored prompts, hide
+submitted fields until a fresh challenge, and retain the waiting status and
+Cancel. App-authored instructions/errors and the student guide drop “shared.”
+Raw host messages, host/round binding, explicit OTP responses, password reuse and
+credential cleanup are unchanged. Same-host notices cannot resurrect a submitted
+field; a new challenge restores only its own empty inputs. No durable state,
+authority, deadline, admission or account policy changes.
+
+Three red browser checks reproduced visible submitted fields at desktop/mobile
+widths and for a genuine OTP. After the fix, all four focused browser checks pass,
+including blank rounds, notices, cancellation and fresh empty prompts. The current
+Node SSH/auth/security/receipt and auth-display unit checks pass (29); the Go SSH
+client race suite, full typecheck and fresh clock/WASM/web/server build pass.
+All 16 affected browser scenarios pass against rebuilt assets: desktop/mobile
+wait, OTP, notices, failures/retry, session restoration, actual-WASM SSH pane
+cleanup/logout/finish and sixteen simultaneous signed-in clients with zero exam
+clock. The private split-identity adapter's updated real TCP/SSH race check also
+passes. Prof accepted both rendered waiting screens. Public fixture status verifies
+real browser SSH; WASM/runtime hashes match the freshly built public assets.
+No agent/kernel/state/CLI behavior changed, so earlier native/root qualification
+remains applicable; this bounded display/copy fix does not need a new privileged
+release qualification or unrelated management suite. All ten original dirty
+screenshots are unchanged and unstaged. This follow-up is local only; production
+remains on 6b7c62b. No deployment or push was performed.
+Evidence: var/collection-tests/password-wait.aop_n05o.
+
 ### Phone sign-in and terminology follow-up after 976b7d5
 
 Prof found that the password-to-phone wait was only represented by a low-contrast

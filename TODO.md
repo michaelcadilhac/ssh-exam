@@ -1,5 +1,14 @@
 # Deferred work
 
+October 31 submitted-password follow-up COMPLETE/TESTED LOCALLY: the field now
+reads **Password** and disappears after submission until a fresh SSH challenge.
+Prof accepted desktop/mobile screens. Three red browser regressions reproduced the
+old bug; all 16 affected browser workflows pass, including notices/OTP/retry,
+real-WASM terminal cleanup and 16 simultaneous signed-in clients with zero exam
+clock. All 29 auth checks, Go client and private split-identity races, typecheck
+and rebuilt clock/WASM/web/server pass. Production remains on 6b7c62b; this
+follow-up is not pushed or deployed. See docs/ui-prof-review.md/current checkpoint.
+
 October 31 Prof UI / automatic saved-work release DEPLOYED AND ONLINE under the
 instructor's **Push and deploy** instruction. Runtime source 6b7c62b/schema 35,
 matched CLI 348d7567… and the separate worker are installed; worker active/enabled.

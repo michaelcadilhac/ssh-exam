@@ -208,7 +208,7 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   await page.getByLabel("Exam ID", { exact: true }).fill("additional-template");
   await page.getByLabel("Username").fill("extra01");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   // SSH authentication, HTTP session completion and destination loading are
   // separate stages. Bound the actual summary response before asserting its
   // controls; the default five-second visibility wait is not a sign-in bound.

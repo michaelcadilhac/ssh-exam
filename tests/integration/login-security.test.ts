@@ -187,9 +187,7 @@ it.each([false, true])(
       start(t.ws);
       await until(() => t.messages.some((m) => m.prompts?.length));
       const challenge = t.messages.find((m) => m.prompts?.length);
-      expect(challenge.prompts).toEqual([
-        { prompt: "Shared SSH password", echo: false },
-      ]);
+      expect(challenge.prompts).toEqual([{ prompt: "Password", echo: false }]);
       answer(t.ws, challenge, password);
       await until(() =>
         t.messages.some(

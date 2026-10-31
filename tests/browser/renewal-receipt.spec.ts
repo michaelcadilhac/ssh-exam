@@ -10,7 +10,7 @@ test("real WASM SSH recovers dropped native renewal replies and retires only the
   await page.getByLabel("Exam ID", { exact: true }).fill("monitoring-receipt");
   await page.getByLabel("Username").fill("receipt01");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("button", { name: "Check setup and practice" }).click();
   await ready(page);

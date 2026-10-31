@@ -222,7 +222,7 @@ for (const [index, missing] of [
     await expect(page.getByLabel("Username")).toHaveCount(0);
     await expect(page.locator(".sign-in form, .sign-in input")).toHaveCount(0);
     expect(authenticationRequests).toBe(0);
-    await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+    await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
     await page.getByRole("link", { name: "Instructor sign-in" }).click();
     await expect(
       page.getByRole("heading", { name: "Instructor sign-in" }),
@@ -731,7 +731,7 @@ async function studentSignIn(
   await page.getByLabel("Exam ID", { exact: true }).fill(exam);
   await page.getByLabel("Username").fill(username);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByLabel("Host authentication messages")).toContainText(
     "Enter number 42",
@@ -739,7 +739,7 @@ async function studentSignIn(
   await expect(
     page.getByRole("button", { name: readyButton, exact: true }),
   ).toBeVisible();
-  await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
 }
 
 test("practice terminals accept typing, stay floating, change maximize icon, close and restore correctly", async ({
@@ -1128,7 +1128,7 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   await page.getByLabel("Exam ID", { exact: true }).fill("sample");
   await page.getByLabel("Username").fill("student01");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Check setup and practice" }).click();
   await page.getByRole("button", { name: "1. Share entire screen" }).click();
@@ -1492,7 +1492,7 @@ test("completed and locked exam sign-in failures describe the attempt instead of
   await expect(page.getByRole("alert")).toContainText(
     "Your exam is already completed",
   );
-  await expect(page.getByLabel("Shared SSH password")).toHaveCount(0);
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Dismiss", exact: true }).click();
   await page.getByLabel("Exam ID", { exact: true }).fill("locked");
   await page.getByLabel("Username").fill("student05");
@@ -1665,9 +1665,9 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
             type: "challenge",
             host: "jump",
             instruction:
-              "------------------------------------------------------------------------\nThis is a DePaul University resource. This computer\nsystem, and all\nrelated equipment, networks, and network devices\nare provided for\nauthorized use only.\n------------------------------------------------------------------------\n\nEnter your shared SSH password",
+              "------------------------------------------------------------------------\nThis is a DePaul University resource. This computer\nsystem, and all\nrelated equipment, networks, and network devices\nare provided for\nauthorized use only.\n------------------------------------------------------------------------\n\nEnter the password for the username you entered.",
             round: "shared-password-round",
-            prompts: [{ prompt: "Shared SSH password", echo: false }],
+            prompts: [{ prompt: "Password", echo: false }],
           }),
         );
     });
@@ -1696,10 +1696,10 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
     path: test.info().outputPath("ssh-authentication-banner.png"),
     fullPage: true,
   });
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByLabel("Shared SSH password")).toHaveValue("");
-  await expect(page.getByLabel("Shared SSH password")).toBeDisabled();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await expect
     .poll(() => sent.filter((m) => m.type === "answers").length)
     .toBe(1);
@@ -1771,7 +1771,19 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
   await expect(messages).not.toContainText("123456");
   await expect(page.getByLabel("Verification code")).toHaveValue("123456");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByLabel("Verification code")).toHaveValue("");
+  await expect(page.getByLabel("Verification code")).toHaveCount(0);
+  server!.send(
+    JSON.stringify({
+      v: 1,
+      type: "notice",
+      host: "class",
+      instruction: "Checking the submitted code",
+      round: "after-code",
+      prompts: [],
+    }),
+  );
+  await expect(messages).toContainText("Checking the submitted code");
+  await expect(page.getByLabel("Verification code")).toHaveCount(0);
   await expect
     .poll(() => sent.filter((m) => m.type === "answers").at(-1)?.round)
     .toBe("verification-code-round");
@@ -1785,7 +1797,8 @@ test("MFA messages survive blank rounds, preserve pending prompts and clear sent
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.getByLabel("Host authentication messages")).toHaveCount(0);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByLabel("Shared SSH password")).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
   await expect(
     page.getByLabel("Host authentication messages"),
   ).not.toContainText("Additional class-host notice");
@@ -2195,7 +2208,7 @@ test("active page reload requires one instructor grant and fresh SSH before rest
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
     await resetScreens(page);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByLabel("Shared SSH password").fill("shared-password");
+    await page.getByLabel("Password", { exact: true }).fill("shared-password");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Host authentication messages")).toContainText(
       "Enter number 42",

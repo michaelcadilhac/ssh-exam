@@ -224,7 +224,7 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
       await page
         .getByRole("button", { name: "Sign in", exact: true })
         .click();
-      await page.getByLabel("Shared SSH password").fill("shared-password");
+      await page.getByLabel("Password", { exact: true }).fill("shared-password");
       await page
         .getByRole("button", { name: "Continue", exact: true })
         .click();

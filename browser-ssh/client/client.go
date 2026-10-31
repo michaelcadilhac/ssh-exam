@@ -68,7 +68,7 @@ func (a *authState) shared(ctx context.Context, host, text string) (string, erro
 	have := len(a.password) > 0
 	a.mu.Unlock()
 	if !have {
-		answers, err := a.ask(ctx, host, text, []Prompt{{Prompt: "Shared SSH password", Echo: false}})
+		answers, err := a.ask(ctx, host, text, []Prompt{{Prompt: "Password", Echo: false}})
 		defer clear(answers)
 		if err != nil {
 			return "", err
@@ -262,7 +262,7 @@ func (c *Client) Connect(raw net.Conn, user string, jump, class Host, dialogue D
 					return "", errors.New("password retry rejected")
 				}
 				sent = true
-				return a.shared(ctx, h.Host, "Enter the shared SSH password for both hosts.")
+				return a.shared(ctx, h.Host, "Enter the password for the username you entered.")
 			}),
 		}
 		sc, channels, requests, err := ssh.NewClientConn(conn, net.JoinHostPort(h.Host, itoa(h.Port)), config)

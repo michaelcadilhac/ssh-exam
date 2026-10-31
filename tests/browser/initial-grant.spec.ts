@@ -39,7 +39,7 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   await page.getByLabel("Exam ID", { exact: true }).fill("initial-grant");
   await page.getByLabel("Username").fill("grant01");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Shared SSH password").fill("shared-password");
+  await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Initial browser grant", exact: true }),

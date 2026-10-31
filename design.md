@@ -1713,7 +1713,11 @@ in a collapsed Submission details section. Instructor recovery details remain av
 Interface content must support an action, a decision, consent, or a visible operational state.
 Remove promotional headings and duplicate labels. Student sign-in uses one compact form with
 password-reuse and recording/browser requirements, without a hero column or repeated footer.
-Keep authentication host identity and all MFA instructions visible. Combine duration/webcam
+Keep authentication host identity and all MFA instructions visible. App-authored
+password prompts use **Password**. After submission, remove the completed inputs
+and retain progress and Cancel; only a fresh authentication challenge restores
+empty inputs. Server notices do not restore submitted fields. Preserve raw host
+prompts and explicit verification-code/phone approval responses. Combine duration/webcam
 requirements and put the start window in expandable details. Workspace chrome shows exam,
 connection/capture state, saved directory, timed deadline and available terminal controls;
 preflight hides inactive timer/finish controls and empty terminal menus. Empty states provide
