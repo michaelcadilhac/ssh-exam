@@ -1,7 +1,13 @@
 # Automatic saved-work setup
 
-October 30, 2026: local candidate, not deployed. The instructor approved a separate
-retain-only service so allowing another attempt can finish in the website. This
+October 31, 2026: deployed and verified on marco/csc-sys under the explicit
+**Push and deploy** instruction. The worker is active/enabled. Exact artifacts,
+root-service qualification, backups and rollback: [release record](prof-ui-deployment.md).
+Earlier local-only/pre-enable statements below record the development sequence;
+their release gates are now satisfied for the installed configuration.
+
+The instructor approved a separate retain-only service so allowing another
+attempt can finish in the website. This
 extends the existing verified-source workflow; it does not replace its archive,
 UID, checksum, source-pin, consumer or fresh-Begin checks.
 

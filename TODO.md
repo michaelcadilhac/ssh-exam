@@ -1,5 +1,18 @@
 # Deferred work
 
+October 31 Prof UI / automatic saved-work release DEPLOYED AND ONLINE under the
+instructor's **Push and deploy** instruction. Runtime source 6b7c62b/schema 35,
+matched CLI 348d7567… and the separate worker are installed; worker active/enabled.
+Public TLS/readiness, all six exact assets, desktop/mobile sign-in and installed
+CLI workflows pass. All 110 web/175 native histories and effective settings remain
+unchanged; no student grant issued, account restriction changed or native execution
+service restarted. Private root-unit/archive qualification and actual signed idle
+worker exchanges pass. Original nginx site restored and admissions open. Full
+backup verified on marco's local /data disk; root filesystem still has about 3.1 GiB
+free. Exact artifacts, failures, backup paths and compatible rollback:
+docs/prof-ui-deployment.md. Earlier local-only follow-up statements below are
+historical. The original 38-item release count and agent consolidation are unchanged.
+
 October 30 phone sign-in/terminology follow-up COMPLETE/TESTED LOCALLY after
 976b7d5. Prof accepted desktop/mobile waiting progress, prominent phone number,
 clear Authenticator instructions and one explicit approval action. Generic code

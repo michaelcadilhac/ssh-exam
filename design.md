@@ -5,6 +5,15 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+October 31 deployed release: Prof's UI/phone terminology and the approved separate
+saved-work worker are online. Web runtime 6b7c62b/schema 35 and the matched CLI/unit
+passed guarded installation, exact assets, historical preservation and real signed
+worker exchanges. The worker is active/enabled; native execution services retain
+their original processes/configuration. No existing student permission, saved
+settings, original deadline, account hold or protected history changed. Exact
+release, qualification limits, private backups and rollback:
+docs/prof-ui-deployment.md. This supersedes the dated local-only status below.
+
 October 30 phone/terminology follow-up after 976b7d5 (local only): sign-in progress
 explains the wait after a DePaul password. The strictly recognized phone challenge
 shows the number, Authenticator instructions and **I approved on my phone** together

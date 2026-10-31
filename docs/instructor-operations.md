@@ -1,8 +1,9 @@
 # Instructor operations
 
-## October30 UI candidate — local only
+## October 31 deployed interface
 
-The UI reviewed with Prof is not deployed. An **attempt** is one timed sitting;
+The UI reviewed with Prof is deployed; see [release record](prof-ui-deployment.md).
+An **attempt** is one timed sitting;
 **Allowed attempts** lists the sittings a student may start or has already used.
 Ordinary controls use **Start exam**, **setup**, **Resume exam** and **saved files**.
 The CLI/API retain their existing `begin`, `preflight` and `grants` names.
@@ -38,8 +39,8 @@ shown time zone; a repeated daylight-saving minute asks which occurrence you mea
 
 Saved work remains **Preparing saved work** until the class server confirms its
 archive protection. **Retry setup** retries that exact permission/revision. It
-starts no clock and reserves no account. The new separate worker is uninstalled;
-its qualification and future installation steps are in
+starts no clock and reserves no account. The separate worker is active on the
+class server; its status, qualification and operator workflows are in
 [automatic-saved-work-setup.md](automatic-saved-work-setup.md). Native source pins
 still require explicit retirement; cancellation does not delete submissions.
 

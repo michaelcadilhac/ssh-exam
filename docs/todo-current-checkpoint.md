@@ -1,45 +1,47 @@
-# Current checkpoint — phone sign-in and plain terminology
+# Current checkpoint — Prof UI deployed
 
-October 30, 2026. COMPLETE/TESTED LOCALLY. The commit containing this checkpoint
-(parent 976b7d5) is the validated candidate. No push, deployment, production
-configuration/student changes or restarts. No open decision or running test.
+October 31, 2026. DEPLOYED AND ONLINE under the instructor's **Push and deploy**
+instruction. Runtime 6b7c62b; test-only correction efb7c0f also pushed. This checkpoint
+and docs are the deployment record, not a new runtime artifact. No open release
+or design blocker; no test or maintenance fence remains.
 
-Prof agreed the fixes before implementation and accepted actual 1280px/430px
-phone screenshots. Password waiting, prominent number, Authenticator instructions
-and one **I approved on my phone** action remain visible above long raw banners.
-No answer is automatic; generic OTP still requires its typed code. Host/prompt/
-round fences and credential clearing remain unchanged. Ordinary prose uses Start
-exam, setup, attempts, time limit, opening/closing times and instructor approval.
-The finished student's IDs/checksum require Technical details. Guides now match
-setup expiry and saved-file recovery; this changes no existing policy.
+- marco: schema 35, installed image Config 1046ca35… (source OCI a2e5f542…). Public
+  admissions open; original nginx site hash restored. TLS/readiness, all six exact
+  packaged assets and real public desktop/mobile sign-in pages PASS.
+- csc-sys: CLI 348d7567…; exam-source-setup active/enabled, PID 2256672. Exact live
+  resource/hardening checks and authenticated idle polls PASS; queue remained empty.
+- All 110 web and 175 original native histories, exams/enrollments/grants/settings,
+  clocks/claims/source records and prior audit are unchanged. Native configuration
+  and proxy bytes unchanged. Agent 4007876/watchdog 210730/relay 893011 retain PIDs;
+  SSH not restarted. Temporary execution-agent consolidation remains complete.
+- Qualified shipped root unit/CLI inside the idle private volatile guest: durable
+  source pin, failure isolation, actual kernel limits, private mounts and complete
+  teardown PASS; base/host files and authority preserved. Actual host SELinux was
+  permissive. Real production service then verified its own credential/LSM/kernel
+  context via successful signed empty-queue exchanges; no student archive tested.
+- Existing full 644 app/3 opt-in skips and 95 selected browser receipts qualify the
+  unchanged runtime. Joined actual CLI/gateway/archive/worker opt-in PASS 9.74s;
+  two stale error assertions corrected (test-only). Exact-image schema 11/24→35 and
+  actual private-copy 33→35 preservation/integrity smokes, typecheck/build PASS.
 
-Evidence: var/collection-tests/prof-login-terms.g_qplfoq. Details, failure records
-and Prof's decisions are in docs/ui-prof-review.md.
+Verified full web backup: marco
+/data/ssh-exam-backup-prof-20261030-6xpa_io6 (13.6 GB; SHA 18774c5f…).
+CLI/config/native authority backup: csc-sys
+/var/backups/ssh-exam/prof-cli-20261030-hbjopq9v.
+Detailed artifacts, failure records and rollback: docs/prof-ui-deployment.md;
+evidence var/collection-tests/prof-rollout.lta25gu8.
 
-- Full npm test: 644 passed / 3 existing opt-in skips, 330.0s; clock pretest included.
-- All 95 selected browser scenarios covered: 94 broad passes and one separate 7.6s
-  pass after correcting two stale wording oracles. Product/assets and the 94 other
-  scenarios stayed unchanged. Actual WASM/separate gateway mode verified publicly;
-  SSH hosts/media are synthetic, not privileged class-server qualification.
-- Focused checks: 74 app (including 7 auth unit), 8 additional HTTP, 3 phone browser pass.
-  Typecheck and fresh frontend/server builds pass. Three initial phone failures
-  reproduced the old UI; final desktop/mobile/genuine-OTP checks pass.
-- Source proof: 70 public app literals plus 14 ordinary instructor messages; zero
-  other server tokens/interpolation changes. Eligibility, statuses, operations,
-  source protection, clocks, holds and stored historical reasons are unchanged.
-- Source/test/assets frozen without drift. Qualified SSH WASM/runtime preserved
-  after the last Vite build. Cleanup: 76 logged owned PIDs exited; 3100/3101 closed.
-  All 10 original dirty documentation screenshots remain unchanged and uncommitted.
+The initial backup refused root free space; old gateway restored before using the
+existing /data volume with a capacity precheck. No older backups/data deleted.
+A private-copy SQLite URI flag was corrected. A transient extra native process
+caused a safe refusal; unchanged guard passed after it exited, without termination
+or weakened checks. Auto-review rejected a live-host temporary test unit; the
+approved disposable guest provided the safer qualification instead.
 
-Prior UI/automatic saved-work results remain in docs/ui-prof-review.md and
-applicable feature documents. No native/SSH/protocol/CLI code changed in this
-follow-up. The original 38-item deployed release remains separate from this local
-candidate. No original TODO completion count was inflated by this review.
-
-Next action: await the instructor's next task. A future separately authorized
-release needs a new matched shipping image and the exact root worker unit's
-mount/LSM qualification before installation/enablement. The retain-only worker
-remains uninstalled. Use docs/automatic-saved-work-setup.md for guarded rollout,
-backup/drain/migration/synthetic acceptance and rollback; never restore an older
-database over newer authority. Preserve history, pins, original deadlines and
-account holds. Existing deployed single-agent consolidation needs no change.
+Remaining operational concern: marco root has about 3.1 GiB free. Persistent-data
+relocation or reviewed backup retention needs a separate maintenance task. Do not
+silently delete history/backups. Any future rollback needs admission fence/drain,
+worker stop and old-reader/config compatibility review; preserve newer schema 35
+queue/pins/permissions/attempts rather than restoring an older DB. Prefer repair
+forward. All 10 original dirty documentation screenshots remain byte-identical
+and uncommitted. Next action: instructor's next task; no deployment remains pending.

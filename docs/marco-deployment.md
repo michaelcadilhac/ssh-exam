@@ -1,5 +1,14 @@
 # ssh-exam.cadilhac.name deployment
 
+October 31 Prof UI / saved-work release is online: runtime 6b7c62b/schema 35,
+installed Config 1046ca35… and csc-sys CLI 348d7567…. The separate saved-work worker
+is active/enabled. Public readiness/TLS/all six assets, desktop/mobile sign-in,
+installed CLI, signed worker exchanges and preservation of 110 web/175 native
+histories PASS. Execution agent/watchdog/SSH/relay were not restarted. The verified
+full backup is on marco's existing local /data filesystem; root still has about
+3.1 GiB free. Exact artifacts, backups, limitations and compatible rollback:
+[Prof UI deployment](prof-ui-deployment.md). Dated release status below is historical.
+
 October29 scripting update is deployed and online: web07b6fa5/schema33,
 Config3549374a… and csc-sys CLI46bcfa2/eb311160…; native872fe80 is unchanged.
 Public admissions, TLS/readiness/packaged assets and actual root CLI exports/

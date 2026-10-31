@@ -1,7 +1,6 @@
 # Student instructions
 
-> Instructions for the current local candidate. Its revised button labels have
-> not been deployed by this work.
+> Updated October 31, 2026.
 
 An **attempt** is one timed sitting of an exam, with its own time limit and
 opening/closing times.

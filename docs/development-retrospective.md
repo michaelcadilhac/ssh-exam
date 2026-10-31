@@ -515,3 +515,20 @@ current connected terminal, then invokes it after sign-out and checks disposal,
 no page errors and the original401/404 refusals. It preserves native observation
 and disconnect behavior. This is a fixture correction, not a product or safety
 policy change.
+
+
+## October 31 release preflight
+
+The reused backup operation checked capacity only after stopping the drained web
+service. Its root filesystem had 3.1 GiB free for 13.6 GB of data. The guard refused;
+the unchanged old gateway was restored before using the existing local /data
+volume. Check the chosen volume and headroom before fencing/stopping, and preserve
+older backups rather than clearing space without a retention decision. Rehearse
+the operation's verification code too: SQLite URI reads require uri=True for an
+attached read-only backup. A fresh private copy verified the correction.
+
+Two opt-in CLI checks still expected fragments of old error wording, although
+ordinary application/browser checks passed. Include the existing opt-in public
+caller when shared management text changes; exact-message discovery alone misses
+fragment assertions. Preserve refusal/state/retry checks. A busy guard remains a
+refusal: wait/inspect and retry it unchanged after a transient process exits.
