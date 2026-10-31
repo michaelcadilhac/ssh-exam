@@ -1,7 +1,7 @@
 # Current checkpoint — deep UI clarity pass complete locally
 
-October 31, 2026. IMPLEMENTED/TESTED LOCALLY after ec00cba. No new push/deploy
-instruction; production remains ff9e0f3/schema35. A read-only check confirmed the
+October 31, 2026. IMPLEMENTED/TESTED LOCALLY in source/test commit 52d00a8,
+after ec00cba. No new push/deploy instruction; production remains ff9e0f3/schema35. A read-only check confirmed the
 sandbox schedule ended October 30 at 23:59 Chicago; mcadilha has eight completed
 attempts, none unfinished. No production configuration/student records changed.
 
