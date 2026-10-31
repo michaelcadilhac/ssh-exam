@@ -1,5 +1,17 @@
 # Deferred work
 
+October31 three student-UI fixes DEPLOYED AND ONLINE under the instructor's
+explicit authorization. Runtime ff9e0f3/schema35: submitted Password field hides,
+routine Start window/date ranges removed, first welcome field focused. All36
+exact-image browser workflows, typecheck/build, image smoke and public desktop/
+mobile/assets/readiness checks pass. All110 web/175 native histories and effective
+settings preserved; native services/CLI/worker/config unchanged. Original nginx
+restored; admissions open. Full private backup verified. A copied guard's nonce/
+empty-poll false refusal was diagnosed and separately proven with9 regression
+checks; no production enforcement/data changed. Details/rollback:
+docs/ui-followup-deployment.md. Earlier local-only statements below are historical;
+the original38-item release count is unchanged.
+
 October 31 student-summary/focus follow-up IMPLEMENTED/FOCUSED TESTS PASS locally:
 no routine student Start window/date ranges; first welcome field gets focus once.
 Time limit/webcam/files, attempt choice, instructor schedules and all enforcement

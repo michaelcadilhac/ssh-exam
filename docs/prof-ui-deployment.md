@@ -1,5 +1,9 @@
 # Prof UI and automatic saved-work release
 
+Subsequent October31 web-only UI release ff9e0f3 is online; see
+[student UI follow-up](ui-followup-deployment.md). This document retains the
+original worker/CLI release and its backups. Native services remain unchanged.
+
 Deployed and online October 31, 2026, under the instructor's explicit **Push and
 deploy** instruction. Public admissions are open at https://ssh-exam.cadilhac.name.
 The separate saved-work worker is active and enabled on csc-sys. No student grant

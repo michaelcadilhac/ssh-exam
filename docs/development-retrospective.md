@@ -532,3 +532,20 @@ ordinary application/browser checks passed. Include the existing opt-in public
 caller when shared management text changes; exact-message discovery alone misses
 fragment assertions. Preserve refusal/state/retry checks. A busy guard remains a
 refusal: wait/inspect and retry it unchanged after a transient process exits.
+
+
+## October31 UI follow-up preservation guard
+
+The copied all-table comparison treated expiring authentication nonces and the
+already-installed worker's appended empty-poll request history as static data.
+It refused after candidate startup; admissions stayed fenced while read-only
+comparison proved every student-authority row unchanged. Six old nonces were
+already expired before startup; every new request had a matching successful
+source-next audit with task:null. Keep prior audit/request rows immutable, but
+check these expected operational changes against their actual producer contract.
+Do not classify the entire management tables as unchecked volatile data. Nine
+synthetic guard regressions prove permitted pruning/polls and refusal of live
+nonce loss, authority edits, missing history, unaudited/nonempty/other operations
+and invalid lifetimes. No application/data change was needed. Before reusing a
+rollout guard, inspect all writers and expiry/append semantics introduced since
+its previous release. This prevents an avoidable post-start false refusal.

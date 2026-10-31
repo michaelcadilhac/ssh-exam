@@ -1,7 +1,10 @@
 # UI review with Prof
 
-October 30, 2026. Local development and testing only. No push, deployment,
-production changes or real student actions are authorized for this review.
+October31,2026: the agreed UI changes and three final student follow-ups are
+DEPLOYED AND ONLINE under subsequent explicit push/deploy instructions. Current
+verification, preservation, backup and rollback: docs/ui-followup-deployment.md.
+The October30 review began as local development/testing only; dated local-only
+statements below record that original scope, not the current deployment status.
 Prof is the professor reviewer agent requested by the instructor. He reviews
 changes before implementation; the accepted decisions below record that agreement.
 
