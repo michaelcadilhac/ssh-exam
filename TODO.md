@@ -4,8 +4,10 @@ October 31 student-summary/focus follow-up IMPLEMENTED/FOCUSED TESTS PASS locall
 no routine student Start window/date ranges; first welcome field gets focus once.
 Time limit/webcam/files, attempt choice, instructor schedules and all enforcement
 remain intact. Four red regressions reproduced the issues; four focused cases,
-typecheck/frontend build pass. Exact-image/browser release qualification pending.
-Instructor authorized push/deploy all three UI fixes after verification.
+typecheck/frontend build pass. All36 selected workflows pass against the exact
+packaged image, plus production-maintenance schema/history/asset/clock smoke.
+Instructor authorized push/deploy all three UI fixes; guarded web-only cutover
+is next. No native service/configuration or student-record change is planned.
 
 October 31 submitted-password follow-up COMPLETE/TESTED LOCALLY: the field now
 reads **Password** and disappears after submission until a fresh SSH challenge.

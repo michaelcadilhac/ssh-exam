@@ -122,9 +122,15 @@ must choose the correct form first; later typing/rerenders must retain the user'
 focus. Restored sessions and active authentication must not mount a welcome form.
 Prof agreed this behavior. One real-WASM summary check and three focus checks
 reproduced the old failures. All four focused cases pass after the view-only fix,
-along with typecheck and fresh frontend build. Exact-image broader browser/release
-checks remain pending; the instructor explicitly authorized push/deployment once
-all three UI fixes are verified (including e57c3ec's password follow-up).
+along with typecheck and fresh frontend build. All 36 selected browser workflows
+then pass against the exact new image assets, including seven timezone start/
+clock/finish workflows, instructor date entry, multiple-attempt selection, initial
+saved settings, restored sessions, password/OTP waits and sixteen WASM clients.
+The pinned Go1.27.2 image's WASM differs from the local Go1.27.3 build; these final
+checks use the image's actual bytes. Production-maintenance image startup passes
+with synthetic schema24→35/history/enrollment preservation and native-clock ABI.
+The instructor explicitly authorized push/deployment of all three verified fixes
+(including e57c3ec's password follow-up); the guarded web-only cutover is next.
 Evidence: var/collection-tests/student-summary.japy2oc9.
 
 ### Submitted password field follow-up (October 31)

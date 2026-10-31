@@ -1,36 +1,31 @@
-# Current checkpoint — student summary follow-up in progress
+# Current checkpoint — verified UI release, authorized cutover
 
-October 31, 2026. LOCAL IN PROGRESS after e57c3ec. Prof agreed to remove the
-student’s routine Start window disclosure and attempt-option date ranges; retain
-time limit, webcam, files, selection, blocked-start explanations and all scheduling
-enforcement. Tests: timezone/initial/additional real-WASM workflows plus fresh
-frontend build/typecheck. Evidence: var/collection-tests/student-summary.japy2oc9.
-Next: reproduce, make the view/copy edit, qualify and commit locally. No deployment.
+October 31, 2026. Source ff9e0f3 includes e57c3ec's password field fix, removes
+routine student Start window/date ranges, and focuses the first sign-in field
+on mount. Prof agreed each change. Local/source verification COMPLETE; instructor
+explicitly authorized push/deploy all three fixes.
 
-Previous completed local milestone:
+- Four new red checks reproduce summary/focus failures; four focused checks pass.
+  Final36 selected browser workflows PASS against the exact packaged Go1.27.2
+  WASM/assets: focus/no theft, timing across seven zones, instructor date entry,
+  attempt choice, saved settings, restored sessions, password/OTP/notices/retry,
+  sixteen simultaneous signed-in clients with zero clock. Typecheck/build PASS.
+- Earlier unchanged SSH/Node/auth29, Go client/private split-identity races PASS;
+  current exact image production-maintenance startup/schema24→35/history/clock/
+  asset smoke PASS. No native/CLI/schema/policy changes; no full-app rerun claimed.
+- Image ssh-exam-release:ui-ff9e0f3. Exported Config59a026af…; source engine54b936a0….
+  Source from clean git archive; original ten dirty screenshots remain untouched.
+- Web/class code-only private stages uploaded and byte-verified; image loaded on
+  marco, not activated. Independent native guard PASS; all175 native histories,
+  native PIDs/config/CLI proxy/worker/relay intact. Web guard initially refused
+  one session; instructor signed out, repeat PASS with110 histories and no owners.
+- Next: push verified commits; fresh web guard, admission fence/public refusal,
+  fresh native guard, capacity-checked full private backup BEFORE web stop;
+  web-only activation, table/config/native preservation checks, reopen/acceptance.
+  Do not restart any native service or restore older state. Busy guard means stop.
 
-October 31, 2026. COMPLETE/TESTED LOCALLY. Student SSH sign-in labels the
-app-authored field **Password** and hides submitted fields until a fresh challenge.
-Status and Cancel remain visible; notices cannot restore completed inputs. Raw host
-messages, OTP/phone responses, password reuse and secret cleanup remain intact.
-Prof agreed the fix and accepted actual desktop/mobile waiting screens.
-
-- Three red browser checks reproduced the lingering field. All 16 affected browser
-  workflows pass on rebuilt assets: waiting/OTP/notices, failures/retry, restoration,
-  actual-WASM SSH terminal cleanup/logout/finish and sixteen simultaneous signed-in
-  clients without starting clocks. Four focused checks passed before broad testing.
-- All 29 focused Node/auth/security/receipt/unit checks, Go SSH-client races and
-  private synthetic split-identity races pass. Typecheck and fresh native-clock,
-  WASM, frontend and server build pass. No new durable state or policy change.
-- Evidence: var/collection-tests/password-wait.aop_n05o. Details and regression-oracle
-  correction: docs/ui-prof-review.md. Original ten dirty screenshots preserved.
-- This follow-up is not pushed/deployed. No open design decision or local blocker.
-  Next action: a new explicit instruction is required before push/deployment.
-
-Production remains the previously deployed 6b7c62b runtime/schema35, documented by
-14c850e and docs/prof-ui-deployment.md: marco online/admissions open, csc-sys separate
-source worker active/enabled. All 110 web/175 native histories preserved; native
-agent/watchdog/relay/SSH unchanged. No production contact or changes in this fix.
-Rollback/backup evidence remains in var/collection-tests/prof-rollout.lta25gu8 and
-the deployment document. Existing operational follow-up: marco root has about
-3.1 GiB free; retain all student data/backups pending a separate maintenance task.
+Evidence: var/collection-tests/student-summary.japy2oc9 (regressions),
+var/collection-tests/ui-followup-rollout.dgw3btoc (frozen scripts/qualified image/
+production receipts). Runtime production still6b7c62b/schema35 until activation.
+Existing deployment/backups/rollback: docs/prof-ui-deployment.md. Root filesystem
+space remains a separate maintenance concern; preserve all student data/backups.
