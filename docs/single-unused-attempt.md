@@ -1,7 +1,10 @@
 # One unused attempt per student and exam
 
 November1,2026: intentional policy change explicitly requested by the instructor.
-Implemented and tested locally; no push or deployment is authorized.
+Implemented, tested, pushed and deployed under the subsequent **Push & deploy**
+instruction. Runtime f0c7e10/schema36 and matched examctl are online; admissions
+are open. Exact installed artifacts, private backups, acceptance and rollback:
+[deployment record](single-unused-attempt-deployment.md).
 This supersedes the prior policy permitting several unused grants and
 asking the student to choose, including the previous initial-after-extra workflow.
 
@@ -67,14 +70,17 @@ Full types, formatting and frontend/production-image builds pass. Local candidat
 `sha256:0b8d384cf972b462c1173af023f37618fba353876042f3b16947414d7c76f015`.
 Its isolated read-only/no-network/UID10001 startup upgrades synthetic schemas35
 and24 to36, preserving historical attempts/holds/settings and exact browser-tested
-assets. Both private fixture containers/images/keys are removed; candidate remains
-local. Source/context hashes and final receipts bind qualification to these bytes.
+assets. Both private fixture containers/images/keys are removed. The same image was
+exported, verified against Config/rootfs digests and deployed without rebuilding.
+Source/context hashes and final receipts bind qualification to these bytes.
 
 Native execution, watchdog, relay, core and SSH WASM source/bytes are unchanged;
 their earlier qualification remains applicable. No new PAM/cgroup/capacity claim
-or production test is made. Original dirty documentation images are preserved.
+is made. Production acceptance uses public read-only browser checks and an
+authenticated CLI read, with strict history/configuration preservation. It creates
+no student exam or clock. Original dirty documentation images are preserved.
 
-For a later separately authorized deployment:
+Guarded deployment procedure, executed November1 under explicit authorization:
 
 1. Inventory affected unused permissions and exact loaded versions read-only.
    Fence admissions and obtain the existing full drain; preserve all running
@@ -97,4 +103,5 @@ migration workflow; metadata replacement never deletes unknown native authority.
 The previously recorded canonical agent-service consolidation is unchanged. This
 release introduces no temporary agent and needs no execution-agent restart; any
 remaining temporary owner discovered later requires the existing positive-drain
-consolidation procedure. None of this plan is executed here.
+consolidation procedure. The recorded rollout found no temporary agents and
+preserved every native service PID; only the idle web service was restarted.

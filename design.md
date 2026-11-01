@@ -11,17 +11,22 @@ Reviewed new issuance replaces earlier definitely-unused permissions atomically;
 students receive the sole assigned attempt without choosing. Started attempts,
 deadlines, setup claims, holds and protected history remain authoritative. This
 supersedes older multiple-unused/student-selection specifications below. It is
-implemented/tested locally; nothing is pushed or deployed. Scope and qualification:
-docs/single-unused-attempt.md and docs/todo-current-checkpoint.md.
+deployed and online on marco/csc-sys at f0c7e10/schema36, with matched examctl.
+Exact preservation, public assets/readiness, desktop/mobile focus and signed CLI
+read pass; all110 web/175 native histories and native service PIDs are preserved.
+Admissions are open. Scope, qualification, private backups and compatible rollback:
+docs/single-unused-attempt.md, docs/single-unused-attempt-deployment.md and
+docs/todo-current-checkpoint.md.
 
-Implemented/tested local personal-editor follow-up: a student's Allowed attempts uses explicit
-per-attempt Edit settings/Cancel attempt, including with multiple unused attempts.
-Bulk management retains selection. Current files are preserved unless an explicit
+The deployed personal editor uses explicit Edit settings/Cancel attempt actions
+for the student's unused attempt. Bulk management retains selection. Current
+files are preserved unless an explicit
 replacement passes the existing review; source choices distinguish empty/one/many
 and display recognizable exam codes. Exact targets, stale revisions, unknown
-request identities and native source confirmation remain authoritative. No policy
-or deployment change. Qualification/status: docs/unused-attempt-editor.md and
-docs/todo-current-checkpoint.md.
+request identities and native source confirmation remain authoritative. It is
+included in f0c7e10; the single-unused policy above supersedes the former student
+selector. Qualification/status: docs/unused-attempt-editor.md and
+docs/single-unused-attempt-deployment.md.
 
 October 31 deployed release: Prof's UI/phone terminology and the approved separate
 saved-work worker are online. Web runtime 6b7c62b/schema 35 and the matched CLI/unit

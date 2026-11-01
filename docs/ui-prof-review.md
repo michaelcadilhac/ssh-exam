@@ -1,19 +1,21 @@
 # UI review with Prof
 
-November1 single-unused-attempt follow-up is COMPLETE/TESTED LOCALLY. Prof agreed
+November1 single-unused-attempt follow-up is DEPLOYED AND ONLINE. Prof agreed
 the policy's concise form/review wording and accepted seven actual student,
 pending-file, instructor review/result renders at desktop/mobile sizes. No student
 chooser remains; Replaces appears before confirmation and Replaced only from the
-actual receipt. No extra dialog or routine technical IDs. Qualification and
-unexecuted rollout: [single unused attempt](single-unused-attempt.md). Not deployed.
+actual receipt. No extra dialog or routine technical IDs. Qualification:
+[single unused attempt](single-unused-attempt.md). Installed f0c7e10/schema36,
+public acceptance, preservation, private backups and rollback:
+[deployment record](single-unused-attempt-deployment.md).
 
-October31 personal attempt-editor follow-up is COMPLETE/TESTED LOCALLY, after the welcome/UI
+October31 personal attempt-editor follow-up is DEPLOYED with the release above, after the welcome/UI
 deployment. Prof agreed per-attempt Edit settings/Cancel attempt without personal
 selection checkboxes, optional explicit file replacement, honest source choices
 and recognizable exam codes. Prof accepted four actual desktop/mobile/source
 renders; all42 affected browser checks pass. Qualification and render acceptance are tracked
 in [personal attempt editing](unused-attempt-editor.md) and the current checkpoint.
-The student multiple-attempt chooser is inspected but unchanged by this follow-up.
+The later single-unused policy removes the student multiple-attempt chooser.
 
 October31,2026: the agreed UI changes and three final student follow-ups are
 DEPLOYED AND ONLINE under subsequent explicit push/deploy instructions. Current

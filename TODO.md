@@ -1,6 +1,6 @@
 # Deferred work
 
-November1 INTENTIONAL POLICY CHANGE — IMPLEMENTED/TESTED LOCALLY:
+November1 INTENTIONAL POLICY CHANGE — DEPLOYED AND ONLINE:
 The instructor requires one unused attempt per student/exam, regardless of start
 windows. Confirming another attempt replaces earlier definitely-unused permission;
 students never select between attempts. Started attempts/history/deadlines/holds
@@ -10,9 +10,14 @@ atomically and preserve retries/pins. Schema36 safely reconciles old duplicates
 and refuses ambiguous authority. Full691 app tests, actual CLI/gateway13, CLI races/
 build/vet,81 covered browser scenarios and exact-image35/24→36 upgrades pass.
 Prof accepted seven desktop/mobile renders. Existing opt-in/native-only skips are
-documented; unchanged native/WASM evidence is retained. Not pushed/deployed; no
-production changes authorized. Original38-item count unchanged.
-Plan/evidence: docs/single-unused-attempt.md and current checkpoint.
+documented; unchanged native/WASM evidence is retained. Source f0c7e10 is pushed;
+matched web/CLI and schema36 passed guarded production installation, exact public
+assets, desktop/mobile focus and one signed read. All110 web/175 native histories,
+settings, deadlines, pins and native service PIDs are preserved. Migration found
+zero duplicate unused permissions; existing permissions are unchanged. Original
+nginx restored and admissions open. Original38-item count/consolidation unchanged.
+Private backups, verification and schema-compatible rollback:
+docs/single-unused-attempt-deployment.md and current checkpoint.
 
 October31 PERSONAL ATTEMPT EDITOR COMPLETE/TESTED LOCALLY:
 Prof agreed per-attempt Edit settings/Cancel attempt without selection checkboxes
@@ -22,8 +27,10 @@ choices and recognizable exam codes. Exact cancellation, no silent older-source
 fallback and original unknown-request identities are retained. All42 affected
 browser checks, full types and frontend build pass; Prof accepted desktop/mobile
 renders. Native/backend/CLI/WASM inputs are unchanged, with prior evidence retained.
-Original dirty images are preserved; owned listeners closed. Not pushed/deployed;
-no production mutation. Original release count unchanged.
+Original dirty images are preserved; owned listeners closed. Pushed and deployed
+with f0c7e10 under the subsequent instruction, as recorded above. The single-unused
+policy supersedes the earlier multiple-attempt student selector. Original release
+count unchanged.
 Details: docs/unused-attempt-editor.md and current checkpoint.
 
 October31 Chicago / November1 UTC WELCOME/UI RELEASE DEPLOYED AND ONLINE:

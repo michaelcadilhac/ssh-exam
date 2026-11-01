@@ -5,8 +5,11 @@ student chooser and support for several unused permissions. Personal editing and
 historical cards remain; current replacement behavior is documented in
 [single unused attempt](single-unused-attempt.md).
 
-Implemented and tested locally after runtime 63903bd. Not pushed or deployed.
-The current checkpoint records the release boundary.
+Implemented and tested after runtime63903bd; subsequently pushed and deployed
+with f0c7e10/schema36. The current replacement policy supersedes this milestone's
+historical student selector and web-only rollback instructions below. Use the
+[deployment record](single-unused-attempt-deployment.md) for current backups and
+schema-compatible rollback.
 
 The instructor's screenshots exposed two unrelated selections on the same screen:
 which unused attempt to change, and which earlier attempt supplies its files. A
