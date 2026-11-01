@@ -3,6 +3,11 @@ import type { Monitoring } from "./monitoring.js";
 import { monitoringPurgeStatus } from "./monitoring-purge-jobs.js";
 import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
 import { MonitoringExport } from "./monitoring-export.js";
+import { monitoringFrameProvenance } from "../../../packages/protocol/monitoring-video.js";
+import {
+  monitoringVideoStatus,
+  requestMonitoringOptimization,
+} from "./monitoring-video-jobs.js";
 import {
   monitoringList,
   monitoringReplay,
@@ -27,6 +32,10 @@ export class MonitoringManagement {
     private media = new MonitoringMedia(store),
   ) {
     this.exports = new MonitoringExport(store, media);
+  }
+
+  optimize(input: unknown, actor: string) {
+    return requestMonitoringOptimization(this.store, input, actor);
   }
 
   // Synchronous final publication fence: callers must repeat this after the
@@ -64,6 +73,44 @@ export class MonitoringManagement {
       );
     const image = await this.media.read(b.frame, b.thumbnail, actor, b.id);
     this.assertImageRetained(b);
+    const parsed =
+      image.provenance === undefined
+        ? undefined
+        : monitoringFrameProvenance.safeParse(image.provenance);
+    if (parsed && !parsed.success) throw new MonitoringMediaError("storage");
+    const provenance = parsed?.success ? parsed.data : undefined;
+    let dimensions: { width: number; height: number } | undefined;
+    if (provenance) {
+      const capture = this.store.db
+        .prepare(
+          "SELECT hash,width,height FROM frames WHERE id=? AND attempt=?",
+        )
+        .get(b.frame, b.id) as
+        | { hash: string; width: number; height: number }
+        | undefined;
+      if (
+        !capture ||
+        capture.hash !== provenance.capture_sha256 ||
+        capture.width !== provenance.capture_width ||
+        capture.height !== provenance.capture_height
+      )
+        throw new MonitoringMediaError("storage");
+      if (!b.thumbnail) {
+        const { width, height } = image;
+        if (
+          typeof width !== "number" ||
+          typeof height !== "number" ||
+          !Number.isSafeInteger(width) ||
+          !Number.isSafeInteger(height) ||
+          width < 1 ||
+          height < 1 ||
+          width > 2560 ||
+          height > 2560
+        )
+          throw new MonitoringMediaError("storage");
+        dimensions = { width, height };
+      }
+    }
     return {
       id: b.id,
       frame: b.frame,
@@ -72,6 +119,8 @@ export class MonitoringManagement {
       bytes: image.data.length,
       sha256: hash(image.data),
       data: image.data.toString("base64"),
+      ...(provenance ? { provenance } : {}),
+      ...(dimensions ?? {}),
       retention,
     };
   }
@@ -357,6 +406,8 @@ export class MonitoringManagement {
         terminals: a.monitoringDeleted !== null ? 0 : terminals,
         physicalPurge: monitoringPurgeStatus(this.store, b.id),
         deletionReview: this.deletionReview(b.id),
+        optimization: monitoringVideoStatus(this.store, b.id),
+        capabilities: ["monitoring-optimization-v1"],
         serverNow: now(),
         retention,
       };

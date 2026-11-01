@@ -1157,6 +1157,9 @@ export class Monitoring {
         .run(id);
       this.store.db.prepare("DELETE FROM frames WHERE attempt=?").run(id);
       this.store.db.prepare("DELETE FROM recordings WHERE attempt=?").run(id);
+      this.store.db.prepare("DELETE FROM monitoring_video_segments WHERE attempt=?").run(id);
+      this.store.db.prepare(`UPDATE monitoring_video_jobs SET status='deleted',owner=NULL,
+        error=NULL,verified=NULL,updated=? WHERE attempt=?`).run(now(),id);
       this.store.db
         .prepare(
           "UPDATE incidents SET events='[]',message=NULL WHERE attempt=?",

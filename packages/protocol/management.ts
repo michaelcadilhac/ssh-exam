@@ -63,6 +63,7 @@ export const managementOperations = [
   "monitoring.delete",
   "monitoring.purges",
   "monitoring.purge",
+  "monitoring.optimize",
 ] as const;
 export const managementRequest = z
   .object({

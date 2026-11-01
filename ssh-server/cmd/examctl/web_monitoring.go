@@ -23,23 +23,42 @@ func webMonitoringHelp(out io.Writer) {
        sudo examctl web monitoring delete ATTEMPT --confirm USERNAME --revision HASH --reason TEXT [--intent UUID]
        sudo examctl web monitoring purges [--status pending|running|retry|verified-absent --limit N --after ATTEMPT]
        sudo examctl web monitoring purge-status ATTEMPT
+       sudo examctl web monitoring optimize ATTEMPT [--intent UUID]
+       sudo examctl web monitoring optimize-retry ATTEMPT [--intent UUID]
+       sudo examctl web monitoring optimize-cancel ATTEMPT [--intent UUID]
 
 Read gateway monitoring through existing root-agent signed outbound HTTPS.
 Explicit monitoring.show/list/replay/image/export/delete managementOperations authorization is required;
 Purge inventory separately requires monitoring.purges and monitoring.purge.
 default is denied. No student credentials or inbound agent control API.
 show returns counts, retention and attempt metadata, not fresh native protection.
+Optimization requires BOTH monitoring.show and monitoring.optimize authorization.
+show also reports verified-video optimization status/counts and converted subset
+source/video bytes, excluding remaining JPEGs, terminals, submissions and backups.
+optimize requests eligible completed-attempt conversion; optimize-retry resumes
+eligible work; optimize-cancel leaves it paused with no later publication from
+that request. Already verified mapped clips remain. No clock, grant, account hold,
+terminal recording or retention rule changes. Original JPEGs are removed only by
+the gateway's verified conversion/cleanup workflow, never by this CLI.
+Keep the printed --request and --intent for unknown replies; --intent defaults
+to the request ID. Same intent/arguments never requeues work; after a confirmed
+refusal deliberately use a new intent. Fresh show reads progress; an accepted
+receipt confirms the request only, not completed conversion or JPEG cleanup.
 list returns metadata only: default frames, 50 entries, range 1..200. Choose
 terminals to discover pane IDs for replay. Cursors are nonnegative safe integers;
 --after requires the first page's --through watermark. Keep both when paging;
 new captures after that watermark require a fresh list. No screenshot bytes in list.
 
-image reads ONE listed FRAME UUID belonging to ATTEMPT. Default is the original
-JPEG (maximum 1,500,000 bytes); --thumbnail selects its derived JPEG (maximum 2 MiB).
+image reads ONE listed FRAME UUID belonging to ATTEMPT. It returns the original
+or video-derived JPEG (maximum 1,500,000 bytes); --thumbnail selects its derived JPEG (maximum 2 MiB).
 The same web-review reader enforces private pinned/no-follow bounded storage,
-retention and shared capacity. Original bytes have the stored upload digest;
+retention and shared capacity. A video-derived JPEG is a review representation;
 legacy thumbnails have no independent stored provenance hash. The signed result
 contains scoped base64, byte length and a transfer digest, checked before output.
+Derived JSON includes strict provenance: capture_sha256 identifies the received
+capture, while sha256 identifies the returned JPEG. Nonthumbnail width/height
+describe derived pixels. Thumbnail provenance identifies its full decoded source
+frame, without claiming the thumbnail's pixels have that decoded RGB24 hash.
 Default JSON contains private image bytes. --output NEW_FILE writes one binary
 JPEG to a new exclusive 0600 file; '-' emits binary stdout, use only a private
 redirect, never an interactive terminal. This is NOT a whole monitoring export.
@@ -54,7 +73,7 @@ without replacing an existing target. A failed export returns exit 1, retains
 explicitly INCOMPLETE private data, and never claims success. Rare post-publication
 sync/close failure is reported UNCONFIRMED even if the final directory exists.
 
-Export includes original screen/webcam JPEGs, derived thumbnails, exact terminal
+Export includes retained original or video-derived screen/webcam JPEGs, thumbnails, exact terminal
 bytes (including incomplete trailing NDJSON), whitelisted metadata and incident/
 interruption history. Per-file hashes, metadata indexes and manifest.json describe
 the selected append-watermarked inventory and each recording's initial pinned
@@ -63,6 +82,11 @@ observations during the export, NOT a globally atomic snapshot, a live permissio
 or fresh protected-submission proof. Source prefixes are independently rehashed
 before completion. Old/replayed/mixed/wrong-target packets refuse. At most one
 gateway export/cleanup owner; capture and exam clocks stay independent.
+Video-derived frame metadata.hash identifies the exported JPEG, not the original
+capture. Optional strict provenance records encoding vp9-webm-v1, capture_sha256,
+original dimensions, verified segment/index and decoded RGB24 hash. Capture
+timestamps/sequence stay exact; CLI validates signed provenance shape and exported
+JPEG digest, not an independent reconstruction of deleted original JPEG bytes.
 
 Chunks are at most 256 KiB, signed event payloads 4 MiB; individual history text
 fields above 1 MiB refuse explicitly, never truncate silently. The read session has
@@ -138,6 +162,9 @@ Examples:
   sudo examctl web monitoring delete ATTEMPT --confirm student01 --revision HASH --reason 'Reviewed monitoring retention request'
   sudo examctl web monitoring purges --status retry --limit 50
   sudo examctl web monitoring purge-status ATTEMPT
+  sudo examctl web monitoring optimize ATTEMPT
+  sudo examctl web monitoring optimize-retry ATTEMPT --intent UUID
+  sudo examctl web monitoring optimize-cancel ATTEMPT
   sudo examctl manifest ATTEMPT
 
 Exit status: 0 authenticated result/accepted deletion, 1 refusal/operational failure, 2 invalid syntax.
@@ -186,6 +213,7 @@ func webMonitoringMain(args []string) int {
 	}
 	seen := map[string]bool{}
 	f.Visit(func(flag *flag.Flag) { seen[flag.Name] = true })
+	optimization := w[1] == "optimize" || w[1] == "optimize-retry" || w[1] == "optimize-cancel"
 	b := map[string]any{}
 	if w[1] != "purges" {
 		b["id"] = w[2]
@@ -196,10 +224,28 @@ func webMonitoringMain(args []string) int {
 	if seen["thumbnail"] && w[1] != "image" {
 		return usage("--thumbnail applies only to image ATTEMPT FRAME")
 	}
-	if w[1] != "delete" && (seen["confirm"] || seen["revision"] || seen["reason"] || seen["intent"]) {
+	if w[1] != "delete" && !optimization && (seen["confirm"] || seen["revision"] || seen["reason"] || seen["intent"]) {
 		return usage("read workflow forbids deletion flags")
 	}
 	switch w[1] {
+	case "optimize", "optimize-retry", "optimize-cancel":
+		if len(w) != 3 || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] || seen["output"] || seen["confirm"] || seen["revision"] || seen["reason"] {
+			return usage("optimization requires ATTEMPT and only optional --intent/--request/--config; use show for progress")
+		}
+		if *request == "" {
+			*request = core.ManagementID()
+		}
+		if *intent == "" {
+			*intent = *request
+		}
+		action := "request"
+		if w[1] == "optimize-retry" {
+			action = "retry"
+		}
+		if w[1] == "optimize-cancel" {
+			action = "cancel"
+		}
+		b["action"], b["requestID"] = action, *intent
 	case "show", "purge-status":
 		if len(w) != 3 || seen["section"] || seen["limit"] || seen["after"] || seen["through"] || seen["offset"] || seen["output"] {
 			return usage("show requires only ATTEMPT and optional common flags")
@@ -259,6 +305,9 @@ func webMonitoringMain(args []string) int {
 		return usage("unknown monitoring workflow")
 	}
 	operation := "monitoring." + w[1]
+	if optimization {
+		operation = "monitoring.optimize"
+	}
 	if w[1] == "export" {
 		return executeMonitoringExport(*config, *request, w[2], *output)
 	}
@@ -326,10 +375,10 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 	}
 	encoded, _ := json.Marshal(body)
 	var input struct {
-		ID, Pane, Section, RequestID string
-		Offset, After                int64
-		Through                      *int64
-		Limit                        int
+		ID, Pane, Section, RequestID, Action string
+		Offset, After                        int64
+		Through                              *int64
+		Limit                                int
 	}
 	var result struct {
 		ID, Pane, Section, Format          string
@@ -343,6 +392,10 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 		RequestID, Status                  string
 		LogicalDeleted                     *bool
 		PhysicalPurge                      json.RawMessage
+		Optimization                       json.RawMessage
+		Capabilities                       []string
+		Action                             string
+		Accepted                           *bool
 	}
 	invalid := errors.New("monitoring reply scope/cursor mismatch; no private output written; inspect fresh monitoring metadata")
 	if json.Unmarshal(encoded, &input) != nil || json.Unmarshal(raw, &result) != nil || result.ID != input.ID {
@@ -350,6 +403,11 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 	}
 	safe := func(n int64) bool { return n >= 0 && n <= 9007199254740991 }
 	switch operation {
+	case "monitoring.optimize":
+		var fields map[string]json.RawMessage
+		if core.DecodeMonitoringExportObject(raw, &fields, []string{"id", "action", "accepted"}) != nil || result.Action != input.Action || result.Accepted == nil || !*result.Accepted {
+			return errors.New("monitoring optimization reply scope/action mismatch; preserve --request/--intent and inspect fresh show before retrying")
+		}
 	case "monitoring.delete":
 		if result.RequestID != input.RequestID || result.Status != "logical-deletion-accepted" || result.LogicalDeleted == nil || !*result.LogicalDeleted || string(result.PhysicalPurge) != `"pending-verification"` {
 			return invalid
@@ -357,6 +415,17 @@ func validateMonitoringResult(operation string, body any, raw json.RawMessage) e
 	case "monitoring.show":
 		if result.Current.ID != input.ID {
 			return invalid
+		}
+		hasCapability := false
+		for _, capability := range result.Capabilities {
+			if capability == "monitoring-optimization-v1" {
+				hasCapability = true
+			}
+		}
+		if len(result.Optimization) != 0 || hasCapability {
+			if err := validateMonitoringOptimization(result.Optimization); err != nil {
+				return err
+			}
 		}
 	case "monitoring.list":
 		if result.Section != input.Section || result.Through == nil || !safe(*result.Through) || *result.Through < input.After || (input.Through != nil && *input.Through != *result.Through) || len(result.Entries) > input.Limit {
@@ -396,11 +465,29 @@ func decodeMonitoringImage(body any, raw json.RawMessage) ([]byte, error) {
 		Thumbnail         *bool
 		Bytes             *int64
 		SHA256, Data      *string
+		Width, Height     *int64
+		Provenance        json.RawMessage
 	}
 	invalid := errors.New("monitoring image scope/length/digest rejected; no private output written; inspect fresh monitoring list and matching gateway/CLI versions")
 	b, err := json.Marshal(body)
 	if err != nil || json.Unmarshal(b, &input) != nil || json.Unmarshal(raw, &result) != nil || result.ID != input.ID || result.Frame != input.Frame || result.Thumbnail == nil || *result.Thumbnail != input.Thumbnail || result.Format != "jpeg" || result.Bytes == nil || result.SHA256 == nil || result.Data == nil {
 		return nil, invalid
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil {
+		return nil, invalid
+	}
+	_, widthPresent := fields["width"]
+	_, heightPresent := fields["height"]
+	if widthPresent || heightPresent {
+		if input.Thumbnail || !widthPresent || !heightPresent || result.Width == nil || result.Height == nil || *result.Width < 1 || *result.Height < 1 || *result.Width > 2560 || *result.Height > 2560 {
+			return nil, invalid
+		}
+	}
+	if len(result.Provenance) != 0 {
+		if exportFrameProvenance(result.Provenance) != nil || (!input.Thumbnail && (!widthPresent || !heightPresent)) {
+			return nil, invalid
+		}
 	}
 	limit := int64(1500000)
 	if input.Thumbnail {

@@ -1,0 +1,70 @@
+{
+  "format": "ssh-exam-synthetic-monitoring-video-v1",
+  "producer": {
+    "ffmpeg": "5.1.9-0+deb12u1",
+    "encoder": "libvpx-vp9",
+    "decoded_hash_format": "rgb24"
+  },
+  "source_bytes": 12309,
+  "result": {
+    "version": 1,
+    "attempt": "runtime-synthetic",
+    "segment": "e7c20cd7-83c9-4057-b706-350c48aa8f1f",
+    "source": "webcam",
+    "file": "e7c20cd7-83c9-4057-b706-350c48aa8f1f.webm",
+    "sha256": "d3614a8b6c04786543564fdb9820589ead2c9ff1c1e5aa7782e1028be97b0b89",
+    "bytes": 4914,
+    "width": 320,
+    "height": 240,
+    "duration_ms": 15000,
+    "frames": [
+      {
+        "id": "0a076a92-8a46-4380-9bc3-b2a47d5e76f1",
+        "original_hash": "44908121efcc1920c97ba2a8f285d86fd56807e873e949666f4274859a904aa4",
+        "captured": 1000,
+        "index": 0,
+        "presentation_ms": 0,
+        "decoded_sha256": "218bf17c26eba0ac22507fccd23b7feafd5ee53bc90bffd88ae808b0d6799b5b"
+      },
+      {
+        "id": "4fc30551-9715-4f40-a683-2ba733f4cae2",
+        "original_hash": "44908121efcc1920c97ba2a8f285d86fd56807e873e949666f4274859a904aa4",
+        "captured": 6000,
+        "index": 1,
+        "presentation_ms": 5000,
+        "decoded_sha256": "fdd920965dca75534eaaa0a5c3146484506e42f0cb7084de1afb98f5e87e7848"
+      },
+      {
+        "id": "c452b468-c414-4954-891a-42245a4059b6",
+        "original_hash": "44908121efcc1920c97ba2a8f285d86fd56807e873e949666f4274859a904aa4",
+        "captured": 11000,
+        "index": 2,
+        "presentation_ms": 10000,
+        "decoded_sha256": "deb9708f7a0c1a13097711e28db71ec96721234d1aaffb993625e63f32aebb58"
+      }
+    ]
+  },
+  "source_frames": [
+    {
+      "id": "0a076a92-8a46-4380-9bc3-b2a47d5e76f1",
+      "hash": "44908121efcc1920c97ba2a8f285d86fd56807e873e949666f4274859a904aa4",
+      "captured": 1000,
+      "width": 320,
+      "height": 240
+    },
+    {
+      "id": "4fc30551-9715-4f40-a683-2ba733f4cae2",
+      "hash": "44908121efcc1920c97ba2a8f285d86fd56807e873e949666f4274859a904aa4",
+      "captured": 6000,
+      "width": 320,
+      "height": 240
+    },
+    {
+      "id": "c452b468-c414-4954-891a-42245a4059b6",
+      "hash": "44908121efcc1920c97ba2a8f285d86fd56807e873e949666f4274859a904aa4",
+      "captured": 11000,
+      "width": 320,
+      "height": 240
+    }
+  ]
+}

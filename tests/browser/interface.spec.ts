@@ -753,7 +753,27 @@ test("practice terminals accept typing, stay floating, change maximize icon, clo
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await studentSignIn(page);
-  await page.getByRole("button", { name: "Check setup and practice" }).click();
+  const availableReply = await page.request.get("/api/student/exam");
+  expect(availableReply.ok()).toBe(true);
+  const available = await availableReply.json();
+  expect(available.attempt).toBeNull();
+  expect(available.grants).toHaveLength(1);
+  const permission = available.grants[0];
+  expect(available.selected_grant).toBe(permission.id);
+  expect(permission.settings.template_version).toBe("a".repeat(64));
+  await page
+    .getByRole("button", { name: "Check setup and practice", exact: true })
+    .click({ timeout: 10000 });
+  await expect(
+    page.getByRole("button", { name: "Practice terminal", exact: true }),
+  ).toBeEnabled({ timeout: 10000 });
+  const prepared = await (await page.request.get("/api/student/exam")).json();
+  expect(prepared.attempt).toMatchObject({
+    state: "PREPARING",
+    grant_id: permission.id,
+    start: null,
+    deadline: null,
+  });
   await page
     .getByRole("button", { name: "Practice terminal", exact: true })
     .click();

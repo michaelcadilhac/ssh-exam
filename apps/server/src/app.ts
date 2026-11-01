@@ -54,6 +54,8 @@ import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { MonitoringChallengeError } from "./monitoring-readiness.js";
 import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
+import { MonitoringVideoJobs, monitoringVideoStatus } from "./monitoring-video-jobs.js";
+import { monitoringOptimize } from "../../../packages/protocol/monitoring-video.js";
 import {
   MonitoringPurgeJobs,
   monitoringPurgeStatus,
@@ -94,11 +96,13 @@ export async function createApp(
     connectionWorkerEntry?: URL;
     purgeWorkerEntry?: URL;
     purgeTimeoutMs?: number;
+    videoWorkerEntry?: URL;
+    videoTimeoutMs?: number;
     onConnection?: (connection: IsolatedConnection) => void;
   } = {},
 ) {
   if (
-    (options.purgeWorkerEntry || options.purgeTimeoutMs !== undefined) &&
+    (options.purgeWorkerEntry || options.purgeTimeoutMs !== undefined || options.videoWorkerEntry || options.videoTimeoutMs !== undefined) &&
     config.mode !== "development"
   )
     throw Error("Purge worker test overrides require development mode");
@@ -161,6 +165,14 @@ export async function createApp(
       );
   };
   const media = new MonitoringMedia(store);
+  const videos = new MonitoringVideoJobs(store, {
+    entry: options.videoWorkerEntry,
+    timeoutMs: options.videoTimeoutMs,
+    onFailure: (code) => app.log.warn(
+      {event:"monitoring-video-incomplete",code},
+      "Recording optimization unverified; original captures and exam authority remain unchanged",
+    ),
+  });
   const purges = new MonitoringPurgeJobs(store, {
     entry: options.purgeWorkerEntry,
     timeoutMs: options.purgeTimeoutMs,
@@ -2896,6 +2908,7 @@ export async function createApp(
         : null,
       monitoringDeleted,
       physicalPurge: monitoringPurgeStatus(store, req.params.id),
+      optimization: monitoringVideoStatus(store, req.params.id),
       deletionReview: monitoringManagement.deletionReview(req.params.id),
       frames: monitoringDeleted
         ? []
@@ -2948,6 +2961,13 @@ export async function createApp(
       monitoringPurges.parse(query),
       s.username,
     );
+  });
+  app.post("/api/admin/attempts/:id/monitoring/optimization", async (req:any) => {
+    const s = principal(req,"admin");
+    const body = monitoringOptimize.parse({...req.body,id:req.params.id});
+    const receipt = monitoringManagement.optimize(body,s.username);
+    void videos.kick();
+    return receipt;
   });
   app.get("/api/admin/monitoring/purges/:id", async (req: any) => {
     const s = principal(req, "admin");
@@ -4046,6 +4066,9 @@ export async function createApp(
     void purges.kick();
   }, 1000);
   void purges.kick();
+  const videoTick = setInterval(() => {
+    if (!config.loginOnly) void videos.kick();
+  }, 5000);
   const housekeeping = setInterval(() => {
     for (const [key, a] of authAttempts)
       if (now() - a.at > 60000) authAttempts.delete(key);
@@ -4151,9 +4174,11 @@ export async function createApp(
   });
   app.addHook("onClose", async () => {
     monitoring.closeTechnicalRecovery();
-    for (const t of [tick, cleanup, housekeeping, mail, purgeTick])
+    for (const t of [tick, cleanup, housekeeping, mail, purgeTick, videoTick])
       clearInterval(t);
     await purges.close();
+    await videos.close();
+    await media.close();
     for (const a of store.db
       // The v1 native supervisor owns cutoffs independently. Missing gateway
       // control during shutdown is not an SSH exit or student policy incident.
@@ -4171,5 +4196,5 @@ export async function createApp(
     await Promise.allSettled([...sessionTasks]);
     store.close();
   });
-  return { app, store, life, monitoring };
+  return { app, store, life, monitoring, videos };
 }

@@ -155,7 +155,7 @@ Unknown/unverified replies never imply success; retain the request ID for retry.
 	fmt.Fprintln(out, "Alert inspection/test/manual reminders: examctl web alerts help (list/show/test/remind).")
 	fmt.Fprintln(out, "Gateway attempt/clock workflows: examctl web attempts help; examctl web clocks help.")
 	fmt.Fprintln(out, "Interruption review/authorization: examctl web interruptions help.")
-	fmt.Fprintln(out, "Private monitoring metadata/images/replay/complete export/deletion/purge status: examctl web monitoring help.")
+	fmt.Fprintln(out, "Private monitoring metadata/images/replay/complete export/video optimization/deletion/purge status: examctl web monitoring help.")
 	fmt.Fprintln(out, "Shell-friendly complete exports, private review receipts and resumable batch source synchronization: examctl help scripting.")
 }
 
@@ -446,10 +446,19 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	if err := checkMonitoringOptimizationSupport(c, operation, body); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	if request == "" {
 		request = core.ManagementID()
 	}
 	fmt.Fprintln(os.Stderr, "Management request ID:", request)
+	if operation == "monitoring.optimize" {
+		if input, ok := body.(map[string]any); ok {
+			fmt.Fprintln(os.Stderr, "Optimization intent ID:", input["requestID"])
+		}
+	}
 	result, err := core.ManagementCall(c, operation, body, request)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

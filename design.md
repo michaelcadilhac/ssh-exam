@@ -5,6 +5,23 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November1 storage follow-up IMPLEMENTED/TESTED LOCALLY, runtime not deployed:
+the instructor authorizes smaller activity-level screen/webcam images, efficient
+recording encodings, shared incremental backups, short UI cutovers and a readable
+maintenance response. The new producer profile is1280/.50 screen and320/.50 camera,
+preserving5-second challenged captures, exact incoming-byte hashes and historical
+JPEG compatibility. The instructor APPROVED verified VP9 segments for completed
+attempts. Schema37 keeps original capture hashes/times separate from video hashes,
+decoded RGB24 hashes and returned derivative JPEG hashes. Originals are removed
+only after verified publication, durable mapping and a separate worker's disk
+barrier; derived review/export and matched CLI support both formats. Conversion
+faults leave original evidence and live monitoring authority intact. No cadence,
+deadline, hold, deletion or evidence-retention exception is introduced.
+Separately authorized production backup compaction has reclaimed54.1GB while
+preserving the newest full recovery archive and all older unique bytes. Plan,
+benchmarks, local qualification and production cleanup evidence:
+docs/storage-and-release-efficiency.md and current checkpoint.
+
 November1 deployed UI follow-up, source b70a080/schema36: attempt editing opens
 explicitly with saved values/files; unchanged exact times and saved sources remain
 unchanged. Personal exam-name overrides and editable instructor Reason fields are

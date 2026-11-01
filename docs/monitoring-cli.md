@@ -1,5 +1,84 @@
 # Monitoring inspection, private export and reviewed deletion
 
+November 1 video-storage extension: implemented/tested locally, not deployed.
+`monitoring show` adds conversion status and the CLI supports request/retry/pause
+through the same authenticated management route as the website. Completed screen
+and camera JPEGs may be replaced only after verified short video segments and
+their frame mappings are durable. Capture times and exact terminal bytes remain.
+The existing inspection/export/deletion features were subsequently deployed;
+dated local-candidate descriptions below retain their original qualification
+history. The new conversion/derived-export extension is not a production claim.
+
+## Completed-recording video storage
+
+```sh
+sudo examctl web monitoring show ATTEMPT
+sudo examctl web monitoring optimize ATTEMPT
+sudo examctl web monitoring optimize-retry ATTEMPT
+sudo examctl web monitoring optimize-cancel ATTEMPT
+```
+
+Both `monitoring.show` and `monitoring.optimize` must be explicitly authorized in
+the gateway's agent management allowlist. Before sending a mutation, the CLI makes
+a fresh signed show request, checks its attempt and typed status, and requires
+`monitoring-optimization-v1`. An older or unavailable gateway refuses before the
+optimization request is sent; do not bypass that check with direct database edits.
+Web and CLI delegate to the same durable request helper.
+
+Only retained, started, completed attempts with an end time are eligible. Request
+queues eligible work; retry resumes it. Cancel leaves it paused and prevents later
+publication by that request; already verified mapped segments remain. No command
+stops a live capture or changes a clock, permission, account hold, protected
+submission or the existing monitoring retention policy. The worker verifies the
+replacement before deleting redundant JPEGs; a request receipt is not proof that
+conversion or physical cleanup has completed.
+
+Fresh show returns `optimization` with status `not-queued`, `pending`, `running`,
+`retry`, `paused`, `complete`, `deleted` or `ineligible`, plus eligibility, frame/
+segment progress, verification time and a bounded diagnostic code. Converted and
+remaining frames sum to the retained frame count. `source_bytes` and `video_bytes`
+describe the converted subset: they exclude remaining JPEGs, terminal recordings,
+submissions and backups. They are not a measurement of total disk space freed or
+confirmation that every old JPEG has been physically removed.
+
+Keep the printed **Management request ID** and **Optimization intent ID** after
+an unknown reply. Retry the same command/arguments with `--request` and `--intent`;
+the latter defaults to the request ID. Exact intent retries acknowledge the earlier
+request without requeuing work. A confirmed refusal requires deliberate new intent
+after repair. Show is a fresh status read; the accepted mutation receipt contains
+only its attempt, action and acceptance, never a cached claim of current progress.
+
+Export still contains JPEG review frames and exact terminal files. Legacy frame
+metadata keeps its eleven fields. A video-derived frame adds strict `provenance`
+with encoding `vp9-webm-v1`, original `capture_sha256`/dimensions, segment UUID/hash,
+frame index0..11 and the decoded RGB24-pixel hash. Its ordinary metadata `hash`
+identifies the actual exported JPEG and width/height describe those derived
+pixels; capture time, sequence and receive/monotonic values remain unchanged.
+The original capture digest stays explicit and is never silently replaced in the
+database. The CLI validates signed provenance and actual exported bytes; it cannot
+independently reconstruct the deleted original JPEG from that digest.
+
+The individual `monitoring image` response follows the same distinction. Its
+`sha256` verifies the returned JPEG bytes. Derived responses include the strict
+provenance object; the gateway checks its capture digest and original dimensions
+against the retained frame record. A nonthumbnail response also includes the
+derived image dimensions. Thumbnail provenance identifies the full decoded
+source frame; its RGB24 hash is not a claim about the thumbnail's pixels. Legacy
+image responses remain accepted without these additional fields. Invalid
+provenance or dimensions refuse before the CLI writes private output.
+
+An older strict export consumer safely refuses derived metadata and retains only
+an incomplete output. Use the matched CLI; never combine old partial copies with
+a new retry. New consumers accept legacy and derived frames in the same export,
+with each frame's representation recorded. Existing scope/signature/watermark,
+byte-prefix, private-output and deletion fences remain unchanged.
+
+Local evidence: strict legacy/derived export checks, authenticated root-mapped
+CLI/TLS lost-reply and request/retry/cancel workflow, mixed-version/no-mutation
+refusals and the full affected CLI race suite pass. Exact receipts are in
+`var/collection-tests/monitoring-compaction-cli._fbt3403`. This CLI evidence does
+not substitute for the isolated codec/publication/deletion and website tests.
+
 October 22, 2026. C1ga reads, C1gb2 durable isolated purge/status and C1gb3 reviewed
 deletion are implemented/tested locally; **not deployed**. C1gc2's complete private
 export is also implemented/tested locally. C1gb4 adds the read-only purge

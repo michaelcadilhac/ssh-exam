@@ -1,5 +1,22 @@
 # Main-bug release readiness
 
+November1 storage extension: the instructor approved verified video segments for
+completed recordings. The local candidate adds schema37, isolated conversion and
+durability, derived review/export and matched CLI, incremental media backups,
+short UI-only deployment and maintenance responses. Focused real worker/HTTP/CLI,
+backup/restore, retention and nginx/browser checks pass. Final qualification covers
+740passing application cases plus the corrected17-case migration/isolation cohort,
+46browser cases, types/build/CLI races and actual-image37 restart plus36/35/24/11→37
+upgrade/archive compatibility. Three existing opt-in skips and the corrected
+test-only stale migration oracle/container-name collision are recorded, without
+claiming an entirely-green full application repeat. No new runtime is pushed or
+deployed. Only the separately authorized duplicate-backup cleanup has run in
+production, reclaiming54.1GB without changing live records/media/services.
+The additive migration and video-compatible CURRENT-data rollback plan are in
+[storage and release efficiency](storage-and-release-efficiency.md); a JPEG-only
+old image is unsuitable after originals have been replaced. The fast UI-only path
+cannot install this schema/runtime extension. No new policy decision is pending.
+
 November1 CURRENT: b70a080/schema36 is pushed, deployed and publicly online.
 The web-only admin-editor follow-up preserves all37 authority tables/settings/
 history,110 web attempts and175 native histories; no migration, CLI installation

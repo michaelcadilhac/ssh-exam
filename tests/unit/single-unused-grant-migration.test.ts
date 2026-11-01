@@ -158,7 +158,11 @@ it("036 keeps the newest unused row across disjoint expired windows and mixed so
         )
         .all();
       if (table === "schema_version")
-        expect(actual).toEqual([...rows, { preserved_rowid: 36, version: 36 }]);
+        expect(actual).toEqual([
+          ...rows,
+          { preserved_rowid: 36, version: 36 },
+          { preserved_rowid: 37, version: 37 },
+        ]);
       else if (table === "attempt_grants")
         expect(actual).toEqual(
           rows.map((row: any) =>

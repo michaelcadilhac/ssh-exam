@@ -1,4 +1,13 @@
 import { api } from "./api.js";
+
+// Keep each five-second observation independently verifiable as an ordinary
+// JPEG. Browser stream constraints are hints; the canvas also bounds actual
+// frames without cropping, stretching or enlarging a smaller selected display.
+const profiles = {
+  screen: { width: 1280, height: 720, quality: 0.5 },
+  webcam: { width: 320, height: 240, quality: 0.5 },
+};
+
 export class Capture {
   streams = new Map<string, MediaStream>();
   videos = new Map<string, HTMLVideoElement>();
@@ -25,14 +34,21 @@ export class Capture {
       ?.getTracks()
       .forEach((t) => t.stop());
     this.streams.delete(source);
+    const profile = profiles[source];
     const stream =
       source === "screen"
         ? await navigator.mediaDevices.getDisplayMedia({
-            video: { width: { ideal: 2560 }, height: { ideal: 1440 } },
+            video: {
+              width: { ideal: profile.width },
+              height: { ideal: profile.height },
+            },
             audio: false,
           })
         : await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 } },
+            video: {
+              width: { ideal: profile.width },
+              height: { ideal: profile.height },
+            },
             audio: false,
           });
     const track = stream.getVideoTracks()[0];
@@ -100,9 +116,10 @@ export class Capture {
     if (this.stopped || !this.sampleAllowed()) return false;
     const video = this.videos.get(source)!;
     if (!video.videoWidth || !video.videoHeight) throw Error("No video frame");
+    const profile = profiles[source === "webcam" ? "webcam" : "screen"];
     const scale = Math.min(
       1,
-      2560 / Math.max(video.videoWidth, video.videoHeight),
+      profile.width / Math.max(video.videoWidth, video.videoHeight),
     );
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(video.videoWidth * scale);
@@ -110,7 +127,7 @@ export class Capture {
     canvas
       .getContext("2d")!
       .drawImage(video, 0, 0, canvas.width, canvas.height);
-    const data = canvas.toDataURL("image/jpeg", 0.75).split(",")[1];
+    const data = canvas.toDataURL("image/jpeg", profile.quality).split(",")[1];
     const seq =
       Math.max(this.seq.get(source) || 0, challenge?.after_sequence ?? 0) + 1;
     this.seq.set(source, seq);

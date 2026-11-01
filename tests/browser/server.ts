@@ -1290,12 +1290,15 @@ definitions.update(
   "fixture-operator",
   "Configure finite synthetic practice window",
 );
-store.db
-  .prepare("INSERT INTO exams VALUES(?,?)")
-  .run("sample", JSON.stringify(exam));
-store.db
-  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
-  .run("sample", "student01", null, null, null, 10001);
+// Ordinary workflow fixtures need the same atomic initial permission/enrollment
+// as supported administration. Preflight performs the real authenticated claim;
+// source history and deliberately legacy protocol fixtures remain independent.
+const initialRoster = new RosterManagement(store, undefined, "class");
+definitions.create(
+  { ...exam, template_version: versionHash },
+  "fixture-operator",
+);
+initialRoster.add("sample", { username: "student01" }, "fixture-operator");
 for (const [id, webcam] of [
   ["windows", false],
   ["camera", true],
@@ -1303,50 +1306,43 @@ for (const [id, webcam] of [
   ["expiry", false],
   ["recovery", false],
 ] as const) {
-  store.db
-    .prepare("INSERT INTO exams VALUES(?,?)")
-    .run(id, JSON.stringify({ ...exam, id, webcam }));
-  store.db
-    .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
-    .run(
-      id,
-      id === "camera" || id === "expiry"
-        ? "student02"
-        : id === "logout" || id === "recovery"
-          ? "student03"
-          : "student01",
-      null,
-      null,
-      null,
-      id === "camera" || id === "expiry"
-        ? 10002
-        : id === "logout" || id === "recovery"
-          ? 10003
-          : 10001,
-    );
+  definitions.create(
+    { ...exam, id, webcam, template_version: versionHash },
+    "fixture-operator",
+  );
+  initialRoster.add(
+    id,
+    {
+      username:
+        id === "camera" || id === "expiry"
+          ? "student02"
+          : id === "logout" || id === "recovery"
+            ? "student03"
+            : "student01",
+    },
+    "fixture-operator",
+  );
 }
-store.db
-  .prepare("INSERT INTO exams VALUES(?,?)")
-  .run("reload", JSON.stringify({ ...exam, id: "reload" }));
-store.db
-  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
-  .run("reload", "student11", null, null, null, 10011);
-for (const [id, username, uid] of [
-  ["closure", "closure01", 10017],
-  ["reload-opening", "closure02", 10018],
-  ["monitoring-liveness", "monitoring01", 10019],
-  ["monitoring-receipt", "receipt01", 10029],
-  ["approval-feedback", "approval01", 10020],
-  ["isolation-a", "isolation01", 10015],
-  ["isolation-b", "isolation02", 10016],
-  ["preflight-limit", "preflight01", 10027],
+definitions.create(
+  { ...exam, id: "reload", template_version: versionHash },
+  "fixture-operator",
+);
+initialRoster.add("reload", { username: "student11" }, "fixture-operator");
+for (const [id, username] of [
+  ["closure", "closure01"],
+  ["reload-opening", "closure02"],
+  ["monitoring-liveness", "monitoring01"],
+  ["monitoring-receipt", "receipt01"],
+  ["approval-feedback", "approval01"],
+  ["isolation-a", "isolation01"],
+  ["isolation-b", "isolation02"],
+  ["preflight-limit", "preflight01"],
 ] as const) {
-  store.db
-    .prepare("INSERT INTO exams VALUES(?,?)")
-    .run(id, JSON.stringify({ ...exam, id }));
-  store.db
-    .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
-    .run(id, username, null, null, null, uid);
+  definitions.create(
+    { ...exam, id, template_version: versionHash },
+    "fixture-operator",
+  );
+  initialRoster.add(id, { username }, "fixture-operator");
 }
 // A separate locked account exercises continuation rejection without depending
 // on the old active-exam Sign out button.

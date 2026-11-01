@@ -71,6 +71,53 @@ func TestMonitoringImageScopeLengthAndDigestBeforeOutput(t *testing.T) {
 	}
 }
 
+func TestMonitoringImageDerivedProvenanceAndPixelsBeforePrivateOutput(t *testing.T) {
+	frame := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+	data := []byte("video-derived-review-JPEG")
+	body := map[string]any{"id": "a", "frame": frame, "thumbnail": false}
+	reply := func() map[string]any {
+		return map[string]any{
+			"id": "a", "frame": frame, "thumbnail": false, "format": "jpeg", "bytes": len(data), "sha256": core.Hash(data), "data": base64.StdEncoding.EncodeToString(data), "width": 20, "height": 16,
+			"provenance": map[string]any{"encoding": "vp9-webm-v1", "capture_sha256": core.Hash([]byte("original-capture")), "capture_width": 40, "capture_height": 30, "segment": "11111111-1111-4111-8111-111111111111", "segment_sha256": core.Hash([]byte("verified-segment")), "index": 3, "decoded_sha256": core.Hash([]byte("packed-rgb24"))},
+		}
+	}
+	raw, _ := json.Marshal(reply())
+	if err := validateMonitoringResult("monitoring.image", body, raw); err != nil {
+		t.Fatal("valid derived image refused", err)
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"missing-width":   func(value map[string]any) { delete(value, "width") },
+		"width":           func(value map[string]any) { value["width"] = 0 },
+		"height":          func(value map[string]any) { value["height"] = 2561 },
+		"null-provenance": func(value map[string]any) { value["provenance"] = nil },
+		"capture-hash":    func(value map[string]any) { value["provenance"].(map[string]any)["capture_sha256"] = "invalid" },
+		"unknown-field":   func(value map[string]any) { value["provenance"].(map[string]any)["path"] = "/private" },
+		"index":           func(value map[string]any) { value["provenance"].(map[string]any)["index"] = 12 },
+	} {
+		t.Run(name, func(t *testing.T) {
+			value := reply()
+			mutate(value)
+			raw, _ := json.Marshal(value)
+			target := filepath.Join(t.TempDir(), "refused.jpg")
+			if writeMonitoringImage(body, raw, target) != 1 {
+				t.Fatal("malformed derived metadata wrote a private image")
+			}
+			if _, err := os.Stat(target); !os.IsNotExist(err) {
+				t.Fatal("invalid reply created output")
+			}
+		})
+	}
+	value := reply()
+	value["thumbnail"] = true
+	delete(value, "width")
+	delete(value, "height")
+	raw, _ = json.Marshal(value)
+	body["thumbnail"] = true
+	if err := validateMonitoringResult("monitoring.image", body, raw); err != nil {
+		t.Fatal("thumbnail provenance incorrectly required full-frame dimensions", err)
+	}
+}
+
 func TestMonitoringHelpAndSyntaxWithoutConfiguration(t *testing.T) {
 	for _, args := range [][]string{{"help", "monitoring"}, {"web", "monitoring", "help"}, {"--config", "/missing", "web", "monitoring", "--help"}} {
 		out, code := cliProcess(t, args...)

@@ -40,6 +40,19 @@ test("retained coordination timeout requests one fresh bind without a policy inc
   const f = await fixture(page, "NONE", "student", "retained-contact-timer");
   Object.assign(f.model.attempt, { monitoring_mode: "v1" });
   await begin(page, f);
+  const admitted = await page.evaluate(async () =>
+    (await fetch("/api/student/exam")).json(),
+  );
+  expect(admitted.attempt).toMatchObject({
+    exam: "retained-contact-timer",
+    state: "ACTIVE",
+    grant_id: "22222222-2222-4222-8222-222222222222",
+    grant_revision: 1,
+  });
+  expect(admitted.grants).toEqual([]);
+  expect(JSON.parse(admitted.attempt.settings).template_version).toBe(
+    "a".repeat(64),
+  );
   await expect(page.locator(".winbox")).toHaveCount(1);
   await type(page, "before");
   await expect.poll(() => inputs(f)).toBe("before");

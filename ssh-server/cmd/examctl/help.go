@@ -174,7 +174,7 @@ HTTPS, with explicit named operation authorization; no browser login is required
   examctl web clocks help              reviewed individual/bulk clock changes
   examctl web interruptions help       review and continuation authorization
   examctl web alerts help              delivery/status and explicit reminders
-  examctl web monitoring help          reads, private export, deletion/purge status
+  examctl web monitoring help          reads, private export, video optimization, deletion/purge status
   examctl web administrators help      metadata and secret-safe creation
 
 Grant workflows save initial settings at enrollment, support reviewed NEW legacy
@@ -247,7 +247,7 @@ Exit status: 0 help/success, 1 operational refusal, 2 usage error.`)
 		fmt.Fprintln(w, "Gateway administrators: web administrators list/show/create; use examctl web administrators help (secret-safe input, no credential reset/overwrite).")
 		fmt.Fprintln(w, "Gateway email delivery/manual reminders: web alerts; use examctl web alerts help.")
 		fmt.Fprintln(w, "Gateway attempts/clocks/interruption review: web attempts/clocks/interruptions; use each topic's help.")
-		fmt.Fprintln(w, "Gateway private monitoring metadata/images/replay/complete export/deletion/purge status: web monitoring; use examctl web monitoring help.")
+		fmt.Fprintln(w, "Gateway private monitoring metadata/images/replay/complete export/video optimization/deletion/purge status: web monitoring; use examctl web monitoring help.")
 	}
 	fmt.Fprint(w, "Global flags (before or after command):\n  --config FILE  root configuration; default /etc/exam-agent/agent.json\n  --read-only    list/info observation only: no initialization, locks or writes; JSON, not permission\n  --state DIR    explicit existing private directory for --read-only; bypass config/keys\n  --limit N      read-only list page size; default 50, maximum 200\n  --after UUID   read-only list exclusive attempt cursor\n  --reason TEXT  concrete audited administrator reason (at least 8 characters)\n  --exam EXAM    exam-ID filter for list (also legacy info --exam)\n  --active       only started unfinished attempts in list\n  --json         list as JSON; other inspection/mutation results already use JSON\n  --output FILE  export to a new private file instead of binary stdout\n  --help         command help, available without root/configuration\n\nAll actual native operations require root. --read-only bypasses initialization/reconciliation and takes no state locks; other native workflows use watchdog state/locks.\nExit status: 0 success, 1 refusal/operational failure, 2 invalid syntax.\nMachine timestamps are UTC Unix milliseconds; native durations are seconds.\nOffline native state is authoritative locally; it does not prove gateway synchronization.\n")
 	return true

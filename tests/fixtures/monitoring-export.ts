@@ -17,6 +17,7 @@ import { mediaFixture } from "./monitoring-media.js";
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import { managementPurpose } from "../../packages/protocol/management.js";
 import { monitoringExportPurpose } from "../../packages/protocol/monitoring-export.js";
+import type { Config } from "../../packages/config/index.js";
 
 export async function exportFixture(
   options: { origin?: string; transcriptBytes?: number } = {},
@@ -32,11 +33,11 @@ export async function exportFixture(
     origin = options.origin ?? "https://exam.test";
   writeFileSync(dir + "/gateway.key", gateway.privateKey, { mode: 0o600 });
   writeFileSync(dir + "/agent.pub", agent.publicKey, { mode: 0o600 });
-  const agentConfig = {
+  const agentConfig: Config["agent"] = {
     id: "class",
     signingKey: dir + "/gateway.key",
     callbackPublicKey: dir + "/agent.pub",
-    managementOperations: ["monitoring.export" as const],
+    managementOperations: ["monitoring.export"],
   };
   const f = await mediaFixture(dir, {
     origin,

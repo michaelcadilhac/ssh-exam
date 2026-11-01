@@ -18,9 +18,10 @@ const ready = {
 };
 function fixture(sampleAllowed = () => true) {
   const draw = vi.fn(),
+    encode = vi.fn(() => "data:image/jpeg;base64,synthetic"),
     create = vi.fn(() => ({
       getContext: () => ({ drawImage: draw }),
-      toDataURL: () => "data:image/jpeg;base64,synthetic",
+      toDataURL: encode,
     }));
   vi.stubGlobal("document", { createElement: create });
   const incident = vi.fn(),
@@ -39,7 +40,7 @@ function fixture(sampleAllowed = () => true) {
     videoHeight: 30,
   } as HTMLVideoElement);
   capture.queues.set("screen", []);
-  return { capture, incident, mode, draw };
+  return { capture, incident, mode, draw, create, encode };
 }
 
 it("an unacknowledged local policy report withholds positive samples without destroying capture", async () => {
@@ -215,3 +216,115 @@ it("stop fences a late challenge before canvas sampling or upload", async () => 
   expect(draw).not.toHaveBeenCalled();
   expect(api).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  ["screen", 3840, 2160, 1280, 720, 0.5],
+  ["screen", 2160, 3840, 720, 1280, 0.5],
+  ["screen", 640, 480, 640, 480, 0.5],
+  ["webcam", 1280, 960, 320, 240, 0.5],
+  ["webcam", 960, 1280, 240, 320, 0.5],
+  ["webcam", 160, 120, 160, 120, 0.5],
+])(
+  "samples %s %sx%s as %sx%s JPEG without cropping or upscaling",
+  async (source, width, height, expectedWidth, expectedHeight, quality) => {
+    const { capture, create, draw, encode } = fixture();
+    capture.videos.set(source, {
+      videoWidth: width,
+      videoHeight: height,
+    } as HTMLVideoElement);
+    capture.queues.set(source, []);
+    vi.mocked(api).mockResolvedValue({
+      challenge: "bounded-profile",
+      after_sequence: 0,
+    });
+    try {
+      await capture.sample(source);
+      expect(create).toHaveBeenCalledExactlyOnceWith("canvas");
+      expect(create.mock.results[0]?.value).toMatchObject({
+        width: expectedWidth,
+        height: expectedHeight,
+      });
+      expect(draw).toHaveBeenCalledExactlyOnceWith(
+        capture.videos.get(source),
+        0,
+        0,
+        expectedWidth,
+        expectedHeight,
+      );
+      expect(encode).toHaveBeenCalledExactlyOnceWith("image/jpeg", quality);
+      expect(api).toHaveBeenLastCalledWith(
+        "/student/attempts/synthetic/frames/challenged",
+        expect.objectContaining({
+          source,
+          seq: 1,
+          data: "synthetic",
+          challenge: "bounded-profile",
+        }),
+        "page",
+        expect.any(AbortSignal),
+      );
+    } finally {
+      capture.stop();
+    }
+  },
+);
+
+it.each([
+  ["screen", "getDisplayMedia", 1280, 720],
+  ["webcam", "getUserMedia", 320, 240],
+] as const)(
+  "%s requests the smaller stream and still acquires a fresh frame every five seconds",
+  async (source, method, width, height) => {
+    vi.useFakeTimers();
+    const track = {
+        readyState: "live",
+        muted: false,
+        getSettings: () => ({ displaySurface: "monitor" }),
+        stop: vi.fn(),
+      },
+      stream = { getVideoTracks: () => [track], getTracks: () => [track] },
+      request = vi.fn().mockResolvedValue(stream),
+      encode = vi.fn(() => "data:image/jpeg;base64,synthetic"),
+      video = {
+        videoWidth: 3840,
+        videoHeight: 2160,
+        play: vi.fn().mockResolvedValue(undefined),
+      };
+    vi.stubGlobal("navigator", { mediaDevices: { [method]: request } });
+    vi.stubGlobal("document", {
+      createElement: (tag: string) =>
+        tag === "video"
+          ? video
+          : { getContext: () => ({ drawImage: vi.fn() }), toDataURL: encode },
+    });
+    const capture = new Capture(
+      "synthetic",
+      "page",
+      vi.fn(),
+      () => ({ ...ready }),
+      () => true,
+    );
+    vi.mocked(api).mockResolvedValue({
+      challenge: "fresh-sample",
+      after_sequence: 0,
+    });
+    try {
+      await capture.setup(source);
+      expect(request).toHaveBeenCalledExactlyOnceWith({
+        video: { width: { ideal: width }, height: { ideal: height } },
+        audio: false,
+      });
+      expect(encode).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(encode).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(encode).toHaveBeenCalledTimes(2);
+      const uploads = vi
+        .mocked(api)
+        .mock.calls.filter(([url]) => url.endsWith("/frames/challenged"));
+      expect(uploads.map(([, body]) => (body as any).seq)).toEqual([1, 2]);
+    } finally {
+      capture.stop();
+    }
+  },
+);

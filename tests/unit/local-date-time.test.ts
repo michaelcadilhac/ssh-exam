@@ -90,7 +90,7 @@ it("exact dates reject DST gaps and preserve milliseconds across both repeated-h
   }
 });
 
-it("distinguishes same-named source exams without exposing archive references", () => {
+it("identifies every saved source by exam code and attempt without exposing archive references", () => {
   const original = {
     id: "private-reference-a",
     exam: "midterm",
@@ -109,7 +109,9 @@ it("distinguishes same-named source exams without exposing archive references", 
   expect(savedWorkLabel(recovery, [original, recovery])).toContain(
     "Midterm (midterm-recovery)",
   );
-  expect(savedWorkLabel(original, [original])).not.toContain("(midterm)");
+  expect(savedWorkLabel(original, [original])).toContain(
+    "Midterm (midterm) · Attempt 1",
+  );
   expect(savedWorkLabel(recovery, [original, recovery])).not.toContain(
     "private-reference",
   );

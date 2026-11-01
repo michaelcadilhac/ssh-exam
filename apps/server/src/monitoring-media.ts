@@ -5,6 +5,35 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import { hash, type Store } from "./db.js";
 import { monitoringExportChunk } from "../../../packages/protocol/monitoring-export.js";
+import {
+  monitoringFrameProvenance,
+  type MonitoringFrameProvenance,
+} from "../../../packages/protocol/monitoring-video.js";
+import {
+  MonitoringVideoProcess,
+  MonitoringVideoError,
+  type VideoFrameInput,
+} from "./monitoring-video-process.js";
+
+export interface MonitoringImage {
+  id: string;
+  attempt: string;
+  thumbnail: boolean;
+  data: Buffer;
+  width?: number;
+  height?: number;
+  provenance?: MonitoringFrameProvenance;
+}
+type ImageReadContext = {
+  closed: boolean;
+  scope?: string;
+  bytes: number;
+  clips: Map<string, {fingerprint:string;bytes:number;images:Map<number,{original:Buffer;thumbnail:Buffer}>}>;
+};
+export interface MonitoringImageReadSession {
+  read(id:string,thumbnail:boolean,actor:string,expectedAttempt?:string):Promise<MonitoringImage>;
+  close():void;
+}
 
 export class MonitoringMediaError extends Error {
   readonly statusCode = 503;
@@ -37,11 +66,72 @@ const deleted = () =>
     { statusCode: 410 },
   );
 
-// Shared existing-image read boundary. No files/clock/hold mutation, no private
-// byte cache. This is async bounded descriptor IO, NOT a process/OS fault sandbox.
+// Shared read boundary. No files/clock/hold mutation. Ordinary HTTP reads have no
+// byte cache. One active export may own two bounded decoded segments, cleared on
+// stream close; every read still checks deletion and exact mapping. Video codecs
+// run in separate bounded workers, never this HTTP process.
 export class MonitoringMedia {
   private inflight = 0;
-  constructor(private store: Store) {}
+  private video: MonitoringVideoProcess;
+  private decoding = 0;
+  private closed = false;
+  private waiting: { resolve: () => void; reject: () => void }[] = [];
+  private sessions = new Set<ImageReadContext>();
+  constructor(private store: Store) {
+    this.video = new MonitoringVideoProcess(store);
+  }
+  private async decoded<T>(read:()=>Promise<T>) {
+    if (this.closed) throw new MonitoringMediaError("capacity");
+    if (this.decoding >= 2) {
+      await new Promise<void>((resolve, reject) => {
+        const waiter = {
+          resolve: () => { clearTimeout(timer); resolve(); },
+          reject: () => { clearTimeout(timer); reject(new MonitoringMediaError("capacity")); },
+        };
+        const timer = setTimeout(() => {
+          const index = this.waiting.indexOf(waiter);
+          if (index !== -1) this.waiting.splice(index, 1);
+          waiter.reject();
+        }, 10000);
+        this.waiting.push(waiter);
+      });
+    } else this.decoding++;
+    try {
+      if (this.closed) throw new MonitoringMediaError("capacity");
+      return await read();
+    } catch (error) {
+      if (error instanceof MonitoringVideoError)
+        throw new MonitoringMediaError(error.code === "capacity" ? "capacity" : "storage");
+      throw error;
+    } finally {
+      const next = this.waiting.shift();
+      if (next) next.resolve();
+      else this.decoding--;
+    }
+  }
+  async close() {
+    this.closed = true;
+    for (const session of this.sessions) {
+      session.closed = true;
+      session.clips.clear();
+      session.bytes = 0;
+    }
+    this.sessions.clear();
+    for (const waiter of this.waiting.splice(0)) waiter.reject();
+    await this.video.close();
+  }
+  createReadSession(): MonitoringImageReadSession {
+    if (this.closed || this.sessions.size >= 2) throw new MonitoringMediaError("capacity");
+    const context:ImageReadContext = {closed:false,bytes:0,clips:new Map()};
+    this.sessions.add(context);
+    return {
+      read:(id,thumbnail,actor,attempt)=>this.read(id,thumbnail,actor,attempt,context),
+      close:()=>{
+        context.closed=true;context.clips.clear();context.bytes=0;
+        this.sessions.delete(context);
+      },
+    };
+  }
   private async openPrivate(
     attemptID: string,
     leaf: string,
@@ -96,12 +186,14 @@ export class MonitoringMedia {
     thumbnail: boolean,
     actor: string,
     expectedAttempt?: string,
-  ) {
+    session?:ImageReadContext,
+  ): Promise<MonitoringImage> {
+    if (session?.closed) throw new MonitoringMediaError("storage");
     z.string().uuid().parse(id);
-    let row: { id: string; attempt: string; hash: string } | undefined;
+    let row: { id: string; attempt: string; hash: string; width:number; height:number } | undefined;
     try {
       row = this.store.db
-        .prepare("SELECT id,attempt,hash FROM frames WHERE id=?")
+        .prepare("SELECT id,attempt,hash,width,height FROM frames WHERE id=?")
         .get(id) as typeof row;
     } catch {
       throw new MonitoringMediaError("storage");
@@ -125,6 +217,61 @@ export class MonitoringMedia {
         !/^[a-f0-9]{64}$/.test(row.hash)
       )
         throw new MonitoringMediaError("storage");
+      const archived = this.store.db.prepare(`SELECT v.segment,v.frame_index,v.decoded_sha256,
+        s.attempt,s.sha256,s.width,s.height FROM monitoring_video_frames v
+        JOIN monitoring_video_segments s ON s.id=v.segment WHERE v.frame=?`).get(id) as {
+          segment:string;frame_index:number;decoded_sha256:string;attempt:string;
+          sha256:string;width:number;height:number;
+        } | undefined;
+      if (archived) {
+        if (archived.attempt !== row.attempt) throw new MonitoringMediaError("storage");
+        const provenance = monitoringFrameProvenance.parse({encoding:"vp9-webm-v1",
+          capture_sha256:row.hash,capture_width:row.width,capture_height:row.height,
+          segment:archived.segment,segment_sha256:archived.sha256,index:archived.frame_index,
+          decoded_sha256:archived.decoded_sha256});
+        const input:VideoFrameInput = {attempt:row.attempt,segment:archived.segment,
+          sha256:archived.sha256,index:archived.frame_index,decoded_sha256:archived.decoded_sha256,
+          width:archived.width,height:archived.height,thumbnail};
+        let data:Buffer;
+        if (session) {
+          const scope = JSON.stringify({attempt:row.attempt,actor});
+          if (session.scope && session.scope !== scope) throw new MonitoringMediaError("storage");
+          session.scope=scope;
+          const entries = this.store.db.prepare(`SELECT v.frame_index "index",v.decoded_sha256
+            FROM monitoring_video_frames v JOIN frames f ON f.id=v.frame
+            WHERE v.segment=? AND f.attempt=? ORDER BY v.frame_index`).all(archived.segment,row.attempt) as {index:number;decoded_sha256:string}[];
+          const batch = {attempt:row.attempt,segment:archived.segment,sha256:archived.sha256,
+            width:archived.width,height:archived.height,frames:entries};
+          const fingerprint = JSON.stringify(batch);
+          let cached = session.clips.get(archived.segment);
+          if (cached?.fingerprint !== fingerprint) {
+            if (cached) {session.bytes-=cached.bytes;session.clips.delete(archived.segment);}
+            const images = await this.decoded(()=>this.video.frames(batch));
+            if (session.closed) throw new MonitoringMediaError("storage");
+            const bytes = images.reduce((n,image)=>n+image.original.length+image.thumbnail.length,0);
+            if (bytes > 32*1024*1024) throw new MonitoringMediaError("size");
+            while (session.clips.size && (session.clips.size>=2 || session.bytes+bytes>32*1024*1024)) {
+              const key = session.clips.keys().next().value!;
+              session.bytes-=session.clips.get(key)!.bytes;session.clips.delete(key);
+            }
+            cached={fingerprint,bytes,images:new Map(images.map(image=>[image.index,image]))};
+            session.clips.set(archived.segment,cached);session.bytes+=bytes;
+          } else {
+            session.clips.delete(archived.segment);session.clips.set(archived.segment,cached);
+          }
+          const image=cached.images.get(archived.frame_index);
+          if (!image) throw new MonitoringMediaError("storage");
+          data=thumbnail?image.thumbnail:image.original;
+        } else data = await this.decoded(()=>this.video.frame(input));
+        this.assertRetained(row.attempt);
+        const current = this.store.db.prepare(`SELECT v.segment,v.frame_index,v.decoded_sha256,
+          s.attempt,s.sha256,s.width,s.height FROM monitoring_video_frames v
+          JOIN monitoring_video_segments s ON s.id=v.segment WHERE v.frame=?`).get(id);
+        if (JSON.stringify(current) !== JSON.stringify(archived)) throw new MonitoringMediaError("changed");
+        this.store.audit(actor,"view-media",row.attempt,JSON.stringify({id,thumbnail,representation:"verified-video"}));
+        return {id,attempt:row.attempt,thumbnail,data,
+          ...(!thumbnail?{width:archived.width,height:archived.height}:{}),provenance};
+      }
       // Intentional pinned proc-fd traversal; never follow a restored leaf or
       // parent-directory symlink. NONBLOCK ensures a FIFO cannot stall HTTP.
       const file = await this.openPrivate(

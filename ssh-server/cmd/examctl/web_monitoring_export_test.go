@@ -107,6 +107,136 @@ func TestMonitoringExportPrivatePublicationAndExactPartialBytes(t *testing.T) {
 	}
 }
 
+func derivedExportOutputEvents(t *testing.T) []json.RawMessage {
+	t.Helper()
+	events := exportOutputEvents()
+	derived := []byte("derived-from-verified-video")
+	for index, raw := range events {
+		var value map[string]any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			t.Fatal(err)
+		}
+		if value["kind"] == "metadata" && value["section"] == "frames" {
+			entry := value["entry"].(map[string]any)
+			entry["hash"], entry["width"], entry["height"] = core.Hash(derived), 20, 15
+			entry["provenance"] = map[string]any{"encoding": "vp9-webm-v1", "capture_sha256": core.Hash([]byte("original-image")), "capture_width": 40, "capture_height": 30, "segment": "11111111-1111-4111-8111-111111111111", "segment_sha256": core.Hash([]byte("verified-segment")), "index": 3, "decoded_sha256": core.Hash([]byte("verified-decoded-pixels"))}
+		}
+		if value["area"] == "frames" {
+			switch value["kind"] {
+			case "file-begin", "file-end":
+				value["bytes"], value["sha256"] = len(derived), core.Hash(derived)
+			case "file-data":
+				value["data"] = base64.StdEncoding.EncodeToString(derived)
+			}
+		}
+		if value["kind"] == "end" {
+			value["bytes"] = int(value["bytes"].(float64)) + len(derived) - len("original-image")
+		}
+		events[index], _ = json.Marshal(value)
+	}
+	return events
+}
+
+func TestMonitoringExportDerivedProvenancePublicationKeepsCaptureTimeAndTerminalBytes(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "derived-copy")
+	output, err := newMonitoringExportOutput(target, "a", exportRequestID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer output.close()
+	for _, event := range derivedExportOutputEvents(t) {
+		if err := output.accept(event); err != nil {
+			t.Fatal("derived metadata refused", err, string(event))
+		}
+	}
+	if _, err := output.finish(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(target, "frames", exportFrame+".jpg"))
+	if err != nil || string(data) != "derived-from-verified-video" {
+		t.Fatal("derived file differs", err)
+	}
+	metadata, err := os.ReadFile(filepath.Join(target, "frames.ndjson"))
+	var frame struct {
+		Hash                                   string
+		Width, Height, Captured, Received, Seq int
+		Monotonic                              float64
+		Provenance                             struct {
+			CaptureSHA256 string `json:"capture_sha256"`
+			CaptureWidth  int    `json:"capture_width"`
+			CaptureHeight int    `json:"capture_height"`
+		}
+	}
+	if err != nil || json.Unmarshal(metadata, &frame) != nil || frame.Hash != core.Hash(data) || frame.Provenance.CaptureSHA256 != core.Hash([]byte("original-image")) || frame.Width != 20 || frame.Height != 15 || frame.Provenance.CaptureWidth != 40 || frame.Provenance.CaptureHeight != 30 || frame.Captured != 1 || frame.Received != 2 || frame.Seq != 1 || frame.Monotonic != 1.5 {
+		t.Fatal("capture/derived identity or timing lost", err, string(metadata))
+	}
+	terminal, err := os.ReadFile(filepath.Join(target, "terminals", exportPane+".ndjson"))
+	if err != nil || string(terminal) != string([]byte{123, 255, 0, 10}) {
+		t.Fatal("exact terminal tail changed", err)
+	}
+}
+
+func TestMonitoringExportProvenanceStrictRefusalAndDerivedFileDigest(t *testing.T) {
+	mutants := map[string]func(map[string]any){
+		"encoding":       func(value map[string]any) { value["encoding"] = "unknown" },
+		"capture-hash":   func(value map[string]any) { value["capture_sha256"] = "invalid" },
+		"capture-width":  func(value map[string]any) { value["capture_width"] = 0 },
+		"capture-height": func(value map[string]any) { value["capture_height"] = 2561 },
+		"segment":        func(value map[string]any) { value["segment"] = "../outside" },
+		"segment-hash":   func(value map[string]any) { value["segment_sha256"] = "invalid" },
+		"index-negative": func(value map[string]any) { value["index"] = -1 },
+		"index-large":    func(value map[string]any) { value["index"] = 12 },
+		"index-fraction": func(value map[string]any) { value["index"] = 1.5 },
+		"decoded-hash":   func(value map[string]any) { value["decoded_sha256"] = "invalid" },
+		"missing-field":  func(value map[string]any) { delete(value, "capture_sha256") },
+		"private-field":  func(value map[string]any) { value["private_path"] = "/private" },
+	}
+	for name, mutate := range mutants {
+		t.Run(name, func(t *testing.T) {
+			events := derivedExportOutputEvents(t)
+			var value map[string]any
+			json.Unmarshal(events[1], &value)
+			mutate(value["entry"].(map[string]any)["provenance"].(map[string]any))
+			events[1], _ = json.Marshal(value)
+			target := filepath.Join(t.TempDir(), "refused")
+			output, err := newMonitoringExportOutput(target, "a", exportRequestID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer output.close()
+			if err := output.accept(events[0]); err != nil {
+				t.Fatal(err)
+			}
+			if output.accept(events[1]) == nil {
+				t.Fatal("accepted malformed provenance")
+			}
+			if _, err := os.Stat(target); !os.IsNotExist(err) {
+				t.Fatal("published invalid metadata")
+			}
+		})
+	}
+	t.Run("metadata-hash-is-exported-JPEG-not-capture", func(t *testing.T) {
+		events := derivedExportOutputEvents(t)
+		var value map[string]any
+		json.Unmarshal(events[1], &value)
+		value["entry"].(map[string]any)["hash"] = core.Hash([]byte("original-image"))
+		events[1], _ = json.Marshal(value)
+		output, err := newMonitoringExportOutput(filepath.Join(t.TempDir(), "refused"), "a", exportRequestID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer output.close()
+		for _, event := range events[:2] {
+			if err := output.accept(event); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if output.accept(events[2]) == nil {
+			t.Fatal("derived file accepted against capture digest")
+		}
+	})
+}
+
 func TestMonitoringExportRejectsBadNestedEventsWithoutFinalOutput(t *testing.T) {
 	mutants := map[string]struct {
 		index  int

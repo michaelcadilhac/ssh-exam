@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
+import sharp from "sharp";
 import { matchesDashboardView } from "../../packages/protocol/admin.js";
+import type { MonitoringOptimization } from "../../packages/protocol/monitoring-video.js";
 function makeAttempt(
   n: number,
   username: string,
@@ -110,7 +112,15 @@ async function fixture(
     monitoringRevision: "a".repeat(64),
     lostDeletion: false,
     deletionReplies: new Map<string, any>(),
+    lostOptimization: false,
+    refuseOptimization: false,
+    optimizationReplies: new Map<
+      string,
+      { path: string; body: any; result: any }
+    >(),
+    image: undefined as Buffer | undefined,
     media: {
+      optimization: undefined as MonitoringOptimization | undefined,
       monitoringDeleted: false,
       physicalPurge: {
         status: "not-verified",
@@ -314,11 +324,13 @@ async function fixture(
     }
     if (path.startsWith("/api/admin/media/"))
       return route.fulfill({
-        contentType: "image/png",
-        body: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6lWQAAAAASUVORK5CYII=",
-          "base64",
-        ),
+        contentType: state.image ? "image/jpeg" : "image/png",
+        body:
+          state.image ??
+          Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6lWQAAAAASUVORK5CYII=",
+            "base64",
+          ),
       });
     if (path.endsWith("/recordings")) {
       state.reviewCalls++;
@@ -341,6 +353,35 @@ async function fixture(
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
       state.calls.push({ path, body });
+      if (path.endsWith("/monitoring/optimization")) {
+        if (state.refuseOptimization) {
+          state.media.optimization = optimizationStatus("ineligible");
+          return json({ error: "Completed retained recordings required" }, 409);
+        }
+        const previous = state.optimizationReplies.get(body.requestID);
+        if (previous) {
+          if (
+            previous.path !== path ||
+            JSON.stringify(previous.body) !== JSON.stringify(body)
+          )
+            return json({ error: "Optimization intent changed" }, 409);
+          return json(previous.result);
+        }
+        const target = state.rows
+          .flatMap((row) => row.attempts)
+          .find((a) => path.includes(a.id));
+        if (!target || !state.media.optimization?.eligible)
+          return json({ error: "Completed retained recordings required" }, 409);
+        state.media.optimization.status =
+          body.action === "cancel" ? "paused" : "pending";
+        const result = { id: target.id, action: body.action, accepted: true };
+        state.optimizationReplies.set(body.requestID, { path, body, result });
+        if (state.lostOptimization) {
+          state.lostOptimization = false;
+          return route.abort("failed");
+        }
+        return json(result);
+      }
       if (path.endsWith("/delete-monitoring")) {
         if (state.deletionReplies.has(body.requestID))
           return json(state.deletionReplies.get(body.requestID));
@@ -1298,7 +1339,7 @@ test("monitoring deletion requires named confirmation and leaves submission revi
     name: "amy · Attempt 1",
     exact: true,
   });
-  await dialog.getByText("Recording retention", { exact: true }).click();
+  await dialog.getByText("Recording details", { exact: true }).click();
   await dialog
     .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
@@ -1360,7 +1401,7 @@ for (const width of [1280, 390])
       name: "amy · Attempt 1",
       exact: true,
     });
-    await dialog.getByText("Recording retention", { exact: true }).click();
+    await dialog.getByText("Recording details", { exact: true }).click();
     await dialog
       .getByRole("button", { name: "Delete recordings…", exact: true })
       .click();
@@ -1408,7 +1449,7 @@ test("monitoring deletion refuses a changed review without silently adopting it"
     name: "amy · Attempt 1",
     exact: true,
   });
-  await dialog.getByText("Recording retention", { exact: true }).click();
+  await dialog.getByText("Recording details", { exact: true }).click();
   await dialog
     .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
@@ -2295,4 +2336,233 @@ for (const width of [1280, 390])
     await button.click();
     await expect(history).toHaveCount(0);
     await expect(button).toBeFocused();
+  });
+
+function optimizationStatus(
+  status: MonitoringOptimization["status"] = "not-queued",
+): MonitoringOptimization {
+  const complete = status === "complete";
+  return {
+    status,
+    eligible: !["deleted", "ineligible"].includes(status),
+    frames: 2,
+    converted_frames: complete ? 2 : 0,
+    remaining_frames: complete ? 0 : 2,
+    segments: complete ? 1 : 0,
+    source_bytes: complete ? 18000 : 0,
+    video_bytes: complete ? 3000 : 0,
+    verified_at: complete ? Date.now() : null,
+    error: status === "retry" ? "codec" : null,
+  };
+}
+
+async function optimizationReview(
+  page: Page,
+  status: MonitoringOptimization["status"] = "not-queued",
+) {
+  const state = await fixture(page);
+  const attempt = state.rows[0].attempts[1];
+  state.media.optimization = optimizationStatus(status);
+  state.media.frames = [1, 2].map((n) => ({
+    id: `44444444-4444-4444-8444-${String(n).padStart(12, "0")}`,
+    source: "screen",
+    seq: n,
+    captured: attempt.start + n * 5000,
+    received: attempt.start + n * 5000 + 100,
+  }));
+  state.image = await sharp({
+    create: { width: 1280, height: 720, channels: 3, background: "#17283d" },
+  })
+    .jpeg({ quality: 50 })
+    .toBuffer();
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .nth(1)
+    .click({ timeout: 5000 });
+  const dialog = page.getByRole("dialog", {
+    name: "amy · Attempt 1",
+    exact: true,
+  });
+  await expect(
+    dialog.getByRole("img", { name: "Screen capture for amy", exact: true }),
+  ).toHaveJSProperty("naturalWidth", 1280);
+  await dialog
+    .locator("details.monitoring-deletion > summary")
+    .click({ timeout: 5000 });
+  return {
+    state,
+    dialog,
+    storage: dialog.getByRole("region", {
+      name: "Recording storage",
+      exact: true,
+    }),
+  };
+}
+
+test("recording optimization preserves capture review and offers only relevant start, pause, resume and retry actions", async ({
+  page,
+}) => {
+  const { state, dialog, storage } = await optimizationReview(page);
+  const selected = dialog
+    .getByRole("figure", { name: "Screen captures", exact: true })
+    .locator("time");
+  const captured = await selected.textContent();
+  await expect(storage).toContainText("Original images");
+  await storage
+    .getByRole("button", { name: "Optimize recordings", exact: true })
+    .click({ timeout: 5000 });
+  await expect(storage).toContainText("Optimizing recordings");
+  await storage
+    .getByRole("button", { name: "Pause optimization", exact: true })
+    .click({ timeout: 5000 });
+  await expect(storage).toContainText("Optimization paused");
+  await storage
+    .getByRole("button", { name: "Resume optimization", exact: true })
+    .click({ timeout: 5000 });
+  await expect(storage).toContainText("Optimizing recordings");
+  state.media.optimization = optimizationStatus("retry");
+  await dialog
+    .getByRole("button", { name: "Refresh", exact: true })
+    .click({ timeout: 5000 });
+  await storage
+    .getByRole("button", { name: "Retry optimization", exact: true })
+    .click({ timeout: 5000 });
+  state.media.optimization = optimizationStatus("complete");
+  await dialog
+    .getByRole("button", { name: "Refresh", exact: true })
+    .click({ timeout: 5000 });
+  await expect(storage).toContainText("Optimized");
+  await expect(storage.getByRole("button")).toHaveCount(0);
+  await expect(selected).toHaveText(captured!);
+  expect(
+    state.calls
+      .filter((call) => call.path.endsWith("/monitoring/optimization"))
+      .map((call) => call.body.action),
+  ).toEqual(["request", "cancel", "request", "retry"]);
+  await expect(
+    dialog.locator("details.monitoring-deletion > summary"),
+  ).toHaveText("Recording details");
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+});
+
+test("recording optimization retries an unconfirmed exact request before permitting a different action", async ({
+  page,
+}) => {
+  const { state, storage } = await optimizationReview(page);
+  state.lostOptimization = true;
+  await storage
+    .getByRole("button", { name: "Optimize recordings", exact: true })
+    .click({ timeout: 5000 });
+  await expect(storage).toContainText("Result unconfirmed");
+  await expect(
+    storage.getByRole("button", { name: "Pause optimization", exact: true }),
+  ).toHaveCount(0);
+  await storage
+    .getByRole("button", { name: "Retry optimization request", exact: true })
+    .click({ timeout: 5000 });
+  await expect(
+    storage.getByRole("button", { name: "Pause optimization", exact: true }),
+  ).toBeVisible();
+  const calls = state.calls.filter((call) =>
+    call.path.endsWith("/monitoring/optimization"),
+  );
+  expect(calls).toHaveLength(2);
+  expect(calls[1].body).toEqual(calls[0].body);
+});
+
+test("recording optimization never offers management for ineligible or deleted recordings", async ({
+  page,
+}) => {
+  const { state, dialog, storage } = await optimizationReview(
+    page,
+    "ineligible",
+  );
+  await expect(storage).toBeVisible();
+  await expect(storage.getByRole("button")).toHaveCount(0);
+  state.media.monitoringDeleted = true;
+  state.media.optimization = optimizationStatus("deleted");
+  await dialog
+    .getByRole("button", { name: "Refresh", exact: true })
+    .click({ timeout: 5000 });
+  await expect(dialog).toContainText("Recordings are inaccessible");
+  await expect(
+    dialog.getByRole("button", {
+      name: /^(Optimize recordings|Pause optimization|Resume optimization|Retry optimization)$/,
+    }),
+  ).toHaveCount(0);
+  expect(state.calls).toHaveLength(0);
+});
+
+test("recording optimization hides actions while paused for a website update", async ({
+  page,
+}) => {
+  const { state, dialog, storage } = await optimizationReview(page, "paused");
+  state.media.optimization!.error = "deployment-paused";
+  await dialog
+    .getByRole("button", { name: "Refresh", exact: true })
+    .click({ timeout: 5000 });
+  await expect(storage).toContainText("Paused for website update");
+  await expect(storage.getByRole("button")).toHaveCount(0);
+  state.media.optimization!.error = null;
+  await dialog
+    .getByRole("button", { name: "Refresh", exact: true })
+    .click({ timeout: 5000 });
+  await expect(
+    storage.getByRole("button", { name: "Resume optimization", exact: true }),
+  ).toBeVisible();
+  expect(state.calls).toHaveLength(0);
+});
+
+test("recording optimization refreshes a definitive refusal without offering an unconfirmed retry", async ({
+  page,
+}) => {
+  const { state, dialog, storage } = await optimizationReview(page);
+  state.refuseOptimization = true;
+  await storage
+    .getByRole("button", { name: "Optimize recordings", exact: true })
+    .click({ timeout: 5000 });
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Completed retained recordings required",
+  );
+  await expect(storage).not.toContainText("Result unconfirmed");
+  await expect(storage.getByRole("button")).toHaveCount(0);
+  expect(state.calls).toHaveLength(1);
+});
+
+for (const width of [1280, 320])
+  test(`recording optimization storage controls and reconstructed JPEG review fit ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    const { storage, dialog } = await optimizationReview(page, "pending");
+    await expect(storage).toContainText("Optimizing recordings");
+    await expect(
+      storage.getByRole("button", { name: "Pause optimization", exact: true }),
+    ).toBeVisible();
+    await storage
+      .getByRole("button", { name: "Pause optimization", exact: true })
+      .click({ timeout: 5000 });
+    await expect(storage).toContainText("Optimization paused");
+    await storage
+      .getByRole("button", { name: "Resume optimization", exact: true })
+      .click({ timeout: 5000 });
+    await expect(storage).toContainText("Optimizing recordings");
+    await storage.scrollIntoViewIfNeeded();
+    await expect(storage).toBeInViewport({ ratio: 1 });
+    const bounds = await storage.evaluate((element) => ({
+      client: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+    expect(bounds.scroll).toBeLessThanOrEqual(bounds.client + 1);
+    await expect(
+      dialog.getByRole("img", { name: "Screen capture for amy", exact: true }),
+    ).toHaveJSProperty("naturalHeight", 720);
+    await page.screenshot({
+      path: info.outputPath(`recording-optimization-${width}.png`),
+    });
+    await storage.screenshot({
+      path: info.outputPath(`recording-storage-${width}.png`),
+    });
   });

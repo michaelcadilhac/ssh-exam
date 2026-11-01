@@ -567,6 +567,12 @@ export function registerAgentManagement(
                       ? monitoringReads.purges(r.body, actor)
                       : monitoringReads.purge(r.body, actor),
                 };
+              } else if (r.operation === "monitoring.optimize") {
+                return {
+                  ok: true,
+                  status: 200,
+                  result: monitoringReads.optimize(r.body, actor),
+                };
               } else if (r.operation === "monitoring.delete") {
                 return {
                   ok: true,
@@ -820,6 +826,7 @@ export function registerAgentManagement(
           r.operation.startsWith("monitoring.") &&
           ![
             "monitoring.delete",
+            "monitoring.optimize",
             "monitoring.purges",
             "monitoring.purge",
             "monitoring.export",

@@ -6,6 +6,7 @@ import { InterruptionHistory } from "./interruption-history.js";
 import { CaptureTimeline } from "./capture-timeline.js";
 import { Modal } from "./modal.js";
 import { RefreshButton } from "./refresh-button.js";
+import { monitoringOptimization } from "../../../packages/protocol/monitoring-video.js";
 import {
   AttemptProvenance,
   type SourceAttemptLink,
@@ -238,6 +239,11 @@ export function AdminReview({
     sent: boolean;
   } | null>(null);
   const [replayOpen, setReplayOpen] = useState(false);
+  const [optimizationIntent, setOptimizationIntent] = useState<{
+    id: string;
+    action: "request" | "retry" | "cancel";
+    requestID: string;
+  } | null>(null);
   const [authorization, setAuthorization] = useState<{
     id: string;
     generation: number;
@@ -288,9 +294,79 @@ export function AdminReview({
       setBusy(false);
     }
   };
+  const optimize = (action: "request" | "retry" | "cancel") =>
+    run(async () => {
+      const intent =
+        optimizationIntent && optimizationIntent.id === a.id
+          ? optimizationIntent
+          : { id: a.id, action, requestID: crypto.randomUUID() };
+      if (intent.action !== action)
+        throw Error("Retry the unconfirmed optimization request first.");
+      setOptimizationIntent(intent);
+      let reply;
+      try {
+        reply = await api(
+          `/admin/attempts/${intent.id}/monitoring/optimization`,
+          intent,
+        );
+      } catch (e) {
+        const status = (e as Error & { status?: number }).status;
+        if (status && status >= 400 && status < 500 && status !== 408) {
+          setOptimizationIntent((current) =>
+            current?.requestID === intent.requestID ? null : current,
+          );
+          await load();
+        }
+        throw e;
+      }
+      if (
+        reply.id !== intent.id ||
+        reply.action !== intent.action ||
+        reply.accepted !== true
+      )
+        throw Error(
+          "The optimization reply did not confirm this attempt. Refresh status and retry this request.",
+        );
+      setOptimizationIntent((current) =>
+        current?.requestID === intent.requestID ? null : current,
+      );
+      await load();
+      await onChanged();
+      return intent.action === "cancel"
+        ? "Optimization paused."
+        : "Optimization requested.";
+    });
   const status = attemptStatus(a),
     frames = media?.frames || [],
     incidents = media?.incidents || [];
+  const optimizationRead = monitoringOptimization.safeParse(
+      media?.optimization,
+    ),
+    optimization = optimizationRead.success ? optimizationRead.data : null,
+    deploymentPaused = optimization?.error === "deployment-paused",
+    pendingOptimization =
+      optimizationIntent?.id === a.id ? optimizationIntent : null;
+  const storageLabel = !optimization
+    ? "Storage status unavailable"
+    : deploymentPaused
+      ? "Paused for website update"
+      : optimization.frames === 0
+        ? "No images to optimize"
+        : optimization.status === "complete" &&
+            optimization.remaining_frames > 0
+          ? "Original images remain"
+          : {
+              "not-queued": optimization.converted_frames
+                ? "Partly optimized"
+                : "Original images",
+              pending: "Optimizing recordings",
+              running: "Optimizing recordings",
+              retry: "Optimization needs retry",
+              paused: "Optimization paused",
+              complete: "Optimized",
+              deleted: "Recordings deleted",
+              ineligible: "Original images",
+            }[optimization.status];
   const activityIncidents = a.interruptions
     ? incidents.filter((i: any) => i.message || i.review_at)
     : incidents;
@@ -649,7 +725,83 @@ export function AdminReview({
               )}
               {!!a.ended && (
                 <details className="monitoring-deletion">
-                  <summary>Recording retention</summary>
+                  <summary>Recording details</summary>
+                  {!media.monitoringDeleted &&
+                    (media.optimization !== undefined ||
+                      pendingOptimization) && (
+                      <section aria-label="Recording storage">
+                        <h4>Recording storage</h4>
+                        <p role="status">
+                          <strong>{storageLabel}</strong>
+                        </p>
+                        {optimization && optimization.frames > 0 && (
+                          <p>
+                            {optimization.converted_frames} of{" "}
+                            {optimization.frames} images optimized.
+                          </p>
+                        )}
+                        <p>
+                          Smaller recordings preserve capture times and terminal
+                          replay.
+                        </p>
+                        {deploymentPaused ? null : pendingOptimization ? (
+                          <>
+                            <p>
+                              {busy
+                                ? "Sending request…"
+                                : "Result unconfirmed. Retry the same request."}
+                            </p>
+                            {!busy && (
+                              <button
+                                disabled={stale}
+                                onClick={() =>
+                                  void optimize(pendingOptimization.action)
+                                }
+                              >
+                                Retry optimization request
+                              </button>
+                            )}
+                          </>
+                        ) : optimization?.eligible &&
+                          optimization.frames > 0 ? (
+                          <div className="actions">
+                            {["pending", "running"].includes(
+                              optimization.status,
+                            ) ? (
+                              <button
+                                disabled={busy || stale}
+                                onClick={() => void optimize("cancel")}
+                              >
+                                Pause optimization
+                              </button>
+                            ) : optimization.status === "retry" ? (
+                              <button
+                                disabled={busy || stale}
+                                onClick={() => void optimize("retry")}
+                              >
+                                Retry optimization
+                              </button>
+                            ) : optimization.status === "paused" ? (
+                              <button
+                                disabled={busy || stale}
+                                onClick={() => void optimize("request")}
+                              >
+                                Resume optimization
+                              </button>
+                            ) : optimization.remaining_frames > 0 ? (
+                              <button
+                                disabled={busy || stale}
+                                onClick={() => void optimize("request")}
+                              >
+                                {optimization.converted_frames
+                                  ? "Optimize remaining images"
+                                  : "Optimize recordings"}
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </section>
+                    )}
                   <p>
                     Recordings are deleted after 60 days. Submissions are kept
                     separately.

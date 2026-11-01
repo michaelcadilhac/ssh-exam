@@ -4,6 +4,7 @@ import {
   type Route,
   type WebSocketRoute,
 } from "@playwright/test";
+import { createHash } from "node:crypto";
 
 export function gate() {
   let release!: () => void;
@@ -108,6 +109,41 @@ export async function fixture(
     latest: 8640000000000000,
   };
   const now = Date.now();
+  // These UI-only ordinary fixtures model the public initial permission and
+  // its preparation binding. Actual issuance/claim authority is qualified by
+  // server.ts's RosterManagement producer and authenticated HTTP/SSH callers.
+  const ordinarySettings = {
+      ...settings,
+      earliest: now - 10000,
+      latest: now + 86400000,
+      template_version: "a".repeat(64),
+    },
+    work = {
+      kind: "template",
+      name: settings.template,
+      hash: ordinarySettings.template_version,
+    },
+    permission =
+      role === "student" && exam !== "sandbox"
+        ? {
+            id: "22222222-2222-4222-8222-222222222222",
+            agent: "class",
+            exam,
+            username: "transition",
+            revision: 1,
+            issued_at: now,
+            actor: "fixture-operator",
+            reason: "Synthetic initial ordinary permission",
+            issuance: "ENROLLMENT",
+            issuance_order: 1,
+            initial_grant: null,
+            settings: ordinarySettings,
+            work,
+            hash: createHash("sha256")
+              .update(JSON.stringify({ settings: ordinarySettings, work }))
+              .digest("hex"),
+          }
+        : null;
   const model = {
     signedIn: true,
     state: initial,
@@ -116,7 +152,7 @@ export async function fixture(
       exam,
       username: "transition",
       uid: 10001,
-      settings: JSON.stringify(settings),
+      settings: JSON.stringify(permission?.settings ?? settings),
       state: initial === "NONE" ? "PREPARING" : initial,
       generation: initial === "LOCKED" ? 1 : 0,
       start: initial === "LOCKED" ? now : (null as number | null),
@@ -124,6 +160,13 @@ export async function fixture(
       protected: false,
       work_path: "/work",
       reason: "Paused for testing",
+      ...(permission
+        ? {
+            grant_id: permission.id,
+            grant_revision: permission.revision,
+            grant_hash: permission.hash,
+          }
+        : {}),
     },
     socket: undefined as WebSocketRoute | undefined,
     bind: gate(),
@@ -158,7 +201,7 @@ export async function fixture(
   const reservation = () => ({
     id: model.attempt.id,
     page: "fixture-page",
-    settings,
+    settings: permission?.settings ?? settings,
     attempt: { ...model.attempt },
     panes: [],
   });
@@ -215,6 +258,36 @@ export async function fixture(
           enrollment: { duration: null, webcam: null },
           attempt: model.state === "NONE" ? null : { ...model.attempt },
           sshConnected: true,
+          ...(permission
+            ? {
+                settings: permission.settings,
+                grants: ["NONE", "PREPARING"].includes(model.state)
+                  ? [
+                      {
+                        ...permission,
+                        status: "AVAILABLE",
+                        claims:
+                          model.state === "NONE"
+                            ? []
+                            : [
+                                {
+                                  attempt: model.attempt.id,
+                                  revision: permission.revision,
+                                  hash: permission.hash,
+                                  uid: model.attempt.uid,
+                                  state: "PREPARING",
+                                  created_at: now,
+                                  ended_at: null,
+                                },
+                              ],
+                      },
+                    ]
+                  : [],
+                selected_grant: ["NONE", "PREPARING"].includes(model.state)
+                  ? permission.id
+                  : null,
+              }
+            : {}),
         },
       });
     if (path === "/api/student/preflight") {

@@ -106,12 +106,17 @@ async function purge(root: string, id: string) {
     if (!privateDirectory(target)) throw Error("unsafe-target");
     const identity = fstatSync(target),
       pinned = `/proc/self/fd/${target}`;
-    // Pin actual directory descriptors. This proc-fd traversal is intentional,
-    // not a student-controlled symlink. Monitoring layout is flat: never recurse.
+    // Pin actual directory descriptors. The only permitted nested directory is
+    // one generated video work area; arbitrary recursion remains forbidden.
     const dir = await opendir(pinned, { bufferSize: 32 });
     let removed = 0;
     for await (const entry of dir) {
-      if (entry.isDirectory()) throw Error("unexpected-directory");
+      if (entry.isDirectory()) {
+        if (!/^\.video-work-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(entry.name))
+          throw Error("unexpected-directory");
+        removed += await purgeVideoWork(target,entry.name);
+        continue;
+      }
       await unlink(`${pinned}/${entry.name}`); // Unlink symlinks/FIFOs; never open/follow them.
       removed++;
     }
@@ -128,4 +133,27 @@ async function purge(root: string, id: string) {
     if (target !== -1) closeSync(target);
     if (parent !== -1) closeSync(parent);
   }
+}
+
+async function purgeVideoWork(parent: number, name: string) {
+  const path = `/proc/self/fd/${parent}/${name}`;
+  let fd = -1;
+  try {
+    try { fd = openSync(path,constants.O_RDONLY|constants.O_DIRECTORY|constants.O_NOFOLLOW|constants.O_NONBLOCK); }
+    catch(error) { if((error as NodeJS.ErrnoException).code==="ENOENT")return 0;throw Error("unsafe-target"); }
+    if (!privateDirectory(fd)) throw Error("unsafe-target");
+    const identity=fstatSync(fd),pinned=`/proc/self/fd/${fd}`;
+    let removed=0;
+    for await(const entry of await opendir(pinned,{bufferSize:16})) {
+      if(entry.isDirectory())throw Error("unexpected-directory");
+      try {await unlink(`${pinned}/${entry.name}`);removed++;}
+      catch(error) {if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
+    }
+    let current;
+    try {current=lstatSync(path);}
+    catch(error) {if((error as NodeJS.ErrnoException).code==="ENOENT")return removed;throw error;}
+    if(!current.isDirectory()||current.dev!==identity.dev||current.ino!==identity.ino)throw Error("unsafe-target");
+    try {await rmdir(path);} catch(error) {if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
+    return removed;
+  } finally {if(fd!==-1)closeSync(fd);}
 }

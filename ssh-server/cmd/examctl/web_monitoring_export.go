@@ -85,6 +85,38 @@ func exportNumber(raw json.RawMessage, nullable bool) (int64, error) {
 	}
 	return value, nil
 }
+
+func exportFrameProvenance(raw json.RawMessage) error {
+	fields, err := exportFields(raw, "encoding", "capture_sha256", "capture_width", "capture_height", "segment", "segment_sha256", "index", "decoded_sha256")
+	if err != nil {
+		return err
+	}
+	encoding, err := exportString(fields["encoding"], 32)
+	if err != nil || encoding != "vp9-webm-v1" {
+		return errExportOutput
+	}
+	for _, name := range []string{"capture_sha256", "segment_sha256", "decoded_sha256"} {
+		value, err := exportString(fields[name], 64)
+		if err != nil || !exportDigest.MatchString(value) {
+			return errExportOutput
+		}
+	}
+	for _, name := range []string{"capture_width", "capture_height"} {
+		value, err := exportNumber(fields[name], false)
+		if err != nil || value < 1 || value > 2560 {
+			return errExportOutput
+		}
+	}
+	segment, err := exportString(fields["segment"], 36)
+	if err != nil || !managementUUID.MatchString(segment) {
+		return errExportOutput
+	}
+	index, err := exportNumber(fields["index"], false)
+	if err != nil || index > 11 {
+		return errExportOutput
+	}
+	return nil
+}
 func decodeExportBytes(encoded string) ([]byte, error) {
 	if len(encoded) > base64.StdEncoding.EncodedLen(core.MonitoringExportChunkSize) {
 		return nil, errExportOutput
@@ -384,6 +416,11 @@ func (o *monitoringExportOutput) metadata(raw json.RawMessage) error {
 		"interruptions": {"cursor", "attempt", "id", "opened", "generation", "events", "authorizations", "ended", "outcome", "historical"},
 	}
 	entry, err := exportFields(fields["entry"], keys[section]...)
+	if err != nil && section == "frames" {
+		// Legacy frames retain their exact11 fields. Derived JPEGs add one
+		// strict provenance object; no arbitrary extra metadata is accepted.
+		entry, err = exportFields(fields["entry"], append(keys[section], "provenance")...)
+	}
 	if err != nil {
 		return err
 	}
@@ -401,6 +438,11 @@ func (o *monitoringExportOutput) metadata(raw json.RawMessage) error {
 	}
 	switch section {
 	case "frames":
+		if provenance, exists := entry["provenance"]; exists {
+			if err := exportFrameProvenance(provenance); err != nil {
+				return err
+			}
+		}
 		source, err := exportString(entry["source"], 16)
 		if err != nil || (source != "screen" && source != "webcam") {
 			return errExportOutput

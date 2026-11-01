@@ -3,7 +3,12 @@ import { setImmediate as yieldIO } from "node:timers/promises";
 import { z } from "zod";
 import type { Store } from "./db.js";
 import { hash, now } from "./db.js";
-import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
+import {
+  MonitoringMedia,
+  MonitoringMediaError,
+  type MonitoringImage,
+} from "./monitoring-media.js";
+import { monitoringFrameProvenance } from "../../../packages/protocol/monitoring-video.js";
 import {
   monitoringExportChunk,
   monitoringExportPayload,
@@ -265,153 +270,201 @@ export class MonitoringExport {
     actor: string,
     signal: AbortSignal,
   ): AsyncGenerator<Event> {
-    const attempt = this.store.db
-      .prepare(
-        "SELECT id,exam,username,state,start,deadline,original_deadline,ended,protected,checksum FROM attempts WHERE id=?",
-      )
-      .get(id);
-    yield {
-      kind: "begin",
-      inventory,
-      attempt,
-      observed: now(),
-      note: "Append-watermarked inventory; each recording uses its initial pinned byte prefix, including incomplete tails. Not a globally atomic snapshot or protection/permission proof. Downloaded copies have independent operator retention",
-    };
-    const counts = { frames: 0, terminals: 0, incidents: 0, interruptions: 0 };
-    let files = 0,
-      bytes = 0;
-    for (const section of monitoringExportSections) {
-      const description = descriptions[section];
-      let after = 0;
-      for (;;) {
-        if (signal.aborted) throw new ExportError("canceled");
-        this.assertRetained(id);
-        const rows = this.store.db
-          .prepare(
-            `SELECT rowid cursor,${description.fields} FROM ${description.table} WHERE attempt=? AND rowid>? AND rowid<=? ORDER BY rowid LIMIT ?`,
-          )
-          .all(
-            id,
-            after,
-            inventory[section].through,
-            description.limit,
-          ) as any[];
-        if (!rows.length) break;
-        for (const row of rows) {
-          if (
-            row.cursor <= after ||
-            row.cursor > inventory[section].through ||
-            !Number.isSafeInteger(row.cursor)
-          )
-            throw new ExportError("inventory-changed");
-          after = row.cursor;
-          if (!z.string().uuid().safeParse(row.id).success)
-            throw new ExportError("invalid-metadata-identity");
-          if (
-            row.oversized_message ||
-            ((section === "incidents" || section === "interruptions") &&
-              row.events === null) ||
-            (section === "interruptions" && row.authorizations === null)
-          )
-            throw new ExportError("metadata-record-too-large", 503);
-          delete row.oversized_message;
-          counts[section]++;
-          yield { kind: "metadata", section, entry: row };
-          if (section === "frames") {
-            for (const thumbnail of [false, true]) {
-              const image = await this.media.read(row.id, thumbnail, actor, id);
-              const area = thumbnail ? "thumbnails" : "frames",
-                sha256 = hash(image.data);
-              if (!thumbnail && sha256 !== row.hash)
-                throw new ExportError("source-changed");
-              yield {
-                kind: "file-begin",
-                area,
-                file: row.id,
-                bytes: image.data.length,
-                sha256,
-              };
-              for (
-                let offset = 0;
-                offset < image.data.length;
-                offset += monitoringExportChunk
-              ) {
-                const part = image.data.subarray(
-                  offset,
-                  offset + monitoringExportChunk,
-                );
-                yield {
-                  kind: "file-data",
-                  area,
-                  file: row.id,
-                  offset,
-                  data: part.toString("base64"),
-                };
-              }
-              yield {
-                kind: "file-end",
-                area,
-                file: row.id,
-                bytes: image.data.length,
-                sha256,
-              };
-              files++;
-              bytes += image.data.length;
-            }
-          } else if (section === "terminals") {
-            if (!z.string().uuid().safeParse(row.pane).success)
-              throw new ExportError("invalid-pane-identity");
-            for await (const part of this.media.recording(
+    const images = this.media.createReadSession();
+    try {
+      const attempt = this.store.db
+        .prepare(
+          "SELECT id,exam,username,state,start,deadline,original_deadline,ended,protected,checksum FROM attempts WHERE id=?",
+        )
+        .get(id);
+      yield {
+        kind: "begin",
+        inventory,
+        attempt,
+        observed: now(),
+        note: "Append-watermarked inventory; each recording uses its initial pinned byte prefix, including incomplete tails. Video-derived frame provenance preserves original capture identity; frame hash identifies exported JPEG bytes. Not a globally atomic snapshot or protection/permission proof. Downloaded copies have independent operator retention",
+      };
+      const counts = {
+        frames: 0,
+        terminals: 0,
+        incidents: 0,
+        interruptions: 0,
+      };
+      let files = 0,
+        bytes = 0;
+      for (const section of monitoringExportSections) {
+        const description = descriptions[section];
+        let after = 0;
+        for (;;) {
+          if (signal.aborted) throw new ExportError("canceled");
+          this.assertRetained(id);
+          const rows = this.store.db
+            .prepare(
+              `SELECT rowid cursor,${description.fields} FROM ${description.table} WHERE attempt=? AND rowid>? AND rowid<=? ORDER BY rowid LIMIT ?`,
+            )
+            .all(
               id,
-              row.pane,
-              row.id,
-              actor,
-              signal,
-            )) {
-              if (part.kind === "begin")
+              after,
+              inventory[section].through,
+              description.limit,
+            ) as any[];
+          if (!rows.length) break;
+          for (const row of rows) {
+            if (
+              row.cursor <= after ||
+              row.cursor > inventory[section].through ||
+              !Number.isSafeInteger(row.cursor)
+            )
+              throw new ExportError("inventory-changed");
+            after = row.cursor;
+            if (!z.string().uuid().safeParse(row.id).success)
+              throw new ExportError("invalid-metadata-identity");
+            if (
+              row.oversized_message ||
+              ((section === "incidents" || section === "interruptions") &&
+                row.events === null) ||
+              (section === "interruptions" && row.authorizations === null)
+            )
+              throw new ExportError("metadata-record-too-large", 503);
+            delete row.oversized_message;
+            let entry = row,
+              original: MonitoringImage | undefined;
+            if (section === "frames") {
+              original = await images.read(row.id, false, actor, id);
+              this.assertRetained(id);
+              if (original.provenance !== undefined) {
+                const provenance = monitoringFrameProvenance.safeParse(
+                  original.provenance,
+                );
+                const { width, height } = original;
+                if (
+                  !provenance.success ||
+                  provenance.data.capture_sha256 !== row.hash ||
+                  provenance.data.capture_width !== row.width ||
+                  provenance.data.capture_height !== row.height ||
+                  typeof width !== "number" ||
+                  typeof height !== "number" ||
+                  !Number.isInteger(width) ||
+                  !Number.isInteger(height) ||
+                  width < 1 ||
+                  width > 2560 ||
+                  height < 1 ||
+                  height > 2560
+                )
+                  throw new ExportError("source-changed");
+                entry = {
+                  ...row,
+                  width,
+                  height,
+                  hash: hash(original.data),
+                  provenance: provenance.data,
+                };
+              } else if (hash(original.data) !== row.hash)
+                throw new ExportError("source-changed");
+            }
+            counts[section]++;
+            yield { kind: "metadata", section, entry };
+            if (section === "frames") {
+              for (const thumbnail of [false, true]) {
+                const image = thumbnail
+                  ? await images.read(row.id, true, actor, id)
+                  : original!;
+                this.assertRetained(id);
+                const area = thumbnail ? "thumbnails" : "frames",
+                  sha256 = hash(image.data);
+                if (!thumbnail && sha256 !== entry.hash)
+                  throw new ExportError("source-changed");
                 yield {
                   kind: "file-begin",
-                  area: "terminals",
-                  file: row.pane,
-                  bytes: part.bytes,
+                  area,
+                  file: row.id,
+                  bytes: image.data.length,
+                  sha256,
                 };
-              else if (part.kind === "data")
-                yield {
-                  kind: "file-data",
-                  area: "terminals",
-                  file: row.pane,
-                  offset: part.offset,
-                  data: part.data.toString("base64"),
-                };
-              else if (part.kind === "verify")
-                yield {
-                  kind: "file-verify",
-                  area: "terminals",
-                  file: row.pane,
-                  offset: part.offset,
-                  bytes: part.bytes,
-                };
-              else {
+                for (
+                  let offset = 0;
+                  offset < image.data.length;
+                  offset += monitoringExportChunk
+                ) {
+                  const part = image.data.subarray(
+                    offset,
+                    offset + monitoringExportChunk,
+                  );
+                  yield {
+                    kind: "file-data",
+                    area,
+                    file: row.id,
+                    offset,
+                    data: part.toString("base64"),
+                  };
+                }
                 yield {
                   kind: "file-end",
-                  area: "terminals",
-                  file: row.pane,
-                  bytes: part.bytes,
-                  sha256: part.sha256,
+                  area,
+                  file: row.id,
+                  bytes: image.data.length,
+                  sha256,
                 };
                 files++;
-                bytes += part.bytes;
+                bytes += image.data.length;
+              }
+            } else if (section === "terminals") {
+              if (!z.string().uuid().safeParse(row.pane).success)
+                throw new ExportError("invalid-pane-identity");
+              for await (const part of this.media.recording(
+                id,
+                row.pane,
+                row.id,
+                actor,
+                signal,
+              )) {
+                if (part.kind === "begin")
+                  yield {
+                    kind: "file-begin",
+                    area: "terminals",
+                    file: row.pane,
+                    bytes: part.bytes,
+                  };
+                else if (part.kind === "data")
+                  yield {
+                    kind: "file-data",
+                    area: "terminals",
+                    file: row.pane,
+                    offset: part.offset,
+                    data: part.data.toString("base64"),
+                  };
+                else if (part.kind === "verify")
+                  yield {
+                    kind: "file-verify",
+                    area: "terminals",
+                    file: row.pane,
+                    offset: part.offset,
+                    bytes: part.bytes,
+                  };
+                else {
+                  yield {
+                    kind: "file-end",
+                    area: "terminals",
+                    file: row.pane,
+                    bytes: part.bytes,
+                    sha256: part.sha256,
+                  };
+                  files++;
+                  bytes += part.bytes;
+                }
               }
             }
+            if (!Number.isSafeInteger(bytes) || !Number.isSafeInteger(files))
+              throw new ExportError("size-bound", 503);
           }
-          if (!Number.isSafeInteger(bytes) || !Number.isSafeInteger(files))
-            throw new ExportError("size-bound", 503);
         }
+        if (counts[section] !== inventory[section].count)
+          throw new ExportError("inventory-changed");
       }
-      if (counts[section] !== inventory[section].count)
-        throw new ExportError("inventory-changed");
+      this.assertRetained(id);
+      yield { kind: "end", inventory, counts, files, bytes, observed: now() };
+    } finally {
+      images.close();
     }
-    this.assertRetained(id);
-    yield { kind: "end", inventory, counts, files, bytes, observed: now() };
   }
 }

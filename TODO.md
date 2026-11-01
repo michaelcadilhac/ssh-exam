@@ -1,5 +1,27 @@
 # Deferred work
 
+November1 RECORDING STORAGE / RELEASE EFFICIENCY — TESTED LOCALLY; BACKUP CLEANUP DONE:
+The instructor authorized immediate redundant-backup cleanup, smaller recordings,
+incremental backups, short UI deployments and a maintenance page. The newest full
+backup is retained; four older archives were compacted after digest and
+unique-payload preservation checks, reclaiming54.1GB. Live records/media/services
+are unchanged; backups now use15.84GB and the filesystem has70.25GB free.
+New1280-pixel screen /320-pixel camera captures retain the5-second challenged
+protocol, original-byte hashes and old-image compatibility; focused HTTP/browser
+checks pass locally. The instructor APPROVED verified short VP9 segments after
+completion, with original capture provenance and exact terminal replay retained.
+Schema37, isolated conversion/durability, derived review/export and matched CLI
+are integrated locally; codec/publication/deletion/fault/HTTP/CLI checks pass.
+Shared-media backup/restore CLIs pass14 synthetic workflow/refusal/WAL tests;
+maintenance nginx/browser and22 integrated fast-deployment cases pass locally.
+Final application coverage is740passing plus the corrected17-case migration/
+isolation cohort (three existing opt-in skips);46 browser checks, type/build,
+CLI races and exact-image37 restart/36/35/24/11→37 upgrades pass. The one stale
+migration oracle and a disposable-container naming collision were corrected in
+tests only; original failures remain recorded. No open design question remains.
+None of these new runtime/deployment changes is pushed or deployed. Plan and evidence:
+docs/storage-and-release-efficiency.md and current checkpoint.
+
 November1 ATTEMPT EDITOR SIMPLIFICATION — DEPLOYED AND ONLINE:
 Edit settings opens an explicit, prefilled editor; Cancel editing discards only
 the draft. Current starting files stay selected, with visible exam/attempt/date
