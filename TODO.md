@@ -1,5 +1,17 @@
 # Deferred work
 
+October31 PERSONAL ATTEMPT EDITOR COMPLETE/TESTED LOCALLY:
+Prof agreed per-attempt Edit settings/Cancel attempt without selection checkboxes
+in a student's Allowed attempts, keeping bulk selection separate. Optional file
+replacement preserves current files; source lists explain zero/one/multiple
+choices and recognizable exam codes. Exact cancellation, no silent older-source
+fallback and original unknown-request identities are retained. All42 affected
+browser checks, full types and frontend build pass; Prof accepted desktop/mobile
+renders. Native/backend/CLI/WASM inputs are unchanged, with prior evidence retained.
+Original dirty images are preserved; owned listeners closed. Not pushed/deployed;
+no production mutation. Original release count unchanged.
+Details: docs/unused-attempt-editor.md and current checkpoint.
+
 October31 Chicago / November1 UTC WELCOME/UI RELEASE DEPLOYED AND ONLINE:
 source through10d4438 pushed; runtime63903bd/schema35 and matching examctl installed.
 Native first-field focus passes public desktop/mobile direct/reload/navigation

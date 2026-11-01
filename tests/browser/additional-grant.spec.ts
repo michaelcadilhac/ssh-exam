@@ -141,8 +141,11 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   const other = records.find((g: any) => g.id !== ninety);
   const grants = await manageStudent(page, "extra01");
   const otherRow = grants.getByRole("article").filter({ hasText: other.id });
-  await otherRow.getByRole("checkbox").check();
+  await otherRow
+    .getByRole("button", { name: "Edit settings", exact: true })
+    .click();
   await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
+  await grants.getByText("Change starting files", { exact: true }).click();
   await grants
     .getByRole("combobox", { name: "Starting files", exact: true })
     .selectOption("template");
@@ -335,13 +338,11 @@ test("saved-work review stays pending without native confirmation and can be can
   expect(saved).toBeTruthy();
   expect(saved.claims).toHaveLength(0);
   const management = await manageStudent(page, "extra01");
-  await management
-    .getByRole("article")
-    .filter({ hasText: saved.id })
-    .getByRole("checkbox")
-    .check();
   await expect(management).toContainText("Preparing saved work");
-  await cancelUnused(management);
+  await cancelUnused(
+    management,
+    management.getByRole("article").filter({ hasText: saved.id }),
+  );
   expect(
     (await (await page.request.get(`/api/admin/grants/${saved.id}`)).json())
       .status,
@@ -475,12 +476,10 @@ test("bulk saved work requires each student's own source and preserves the exact
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   const management = await manageStudent(page, "extra02"),
     secondID = receipt.issued.find((g: any) => g.username === "extra02").grant;
-  await management
-    .getByRole("article")
-    .filter({ hasText: secondID })
-    .getByRole("checkbox")
-    .check();
-  await cancelUnused(management);
+  await cancelUnused(
+    management,
+    management.getByRole("article").filter({ hasText: secondID }),
+  );
   expect(
     (
       await (

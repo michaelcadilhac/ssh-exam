@@ -5,6 +5,15 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+Implemented/tested local personal-editor follow-up: a student's Allowed attempts uses explicit
+per-attempt Edit settings/Cancel attempt, including with multiple unused attempts.
+Bulk management retains selection. Current files are preserved unless an explicit
+replacement passes the existing review; source choices distinguish empty/one/many
+and display recognizable exam codes. Exact targets, stale revisions, unknown
+request identities and native source confirmation remain authoritative. No policy
+or deployment change. Qualification/status: docs/unused-attempt-editor.md and
+docs/todo-current-checkpoint.md.
+
 October 31 deployed release: Prof's UI/phone terminology and the approved separate
 saved-work worker are online. Web runtime 6b7c62b/schema 35 and the matched CLI/unit
 passed guarded installation, exact assets, historical preservation and real signed

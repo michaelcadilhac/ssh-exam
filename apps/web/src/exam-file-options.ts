@@ -2,6 +2,16 @@ import { api } from "./api.js";
 import { templateCatalogPageResult } from "../../../packages/protocol/template-catalog.js";
 import { shortDateTime } from "./local-date-time.js";
 
+export function examChoiceLabel(exam: {
+  id: string;
+  name?: string;
+  lifecycle?: string;
+}) {
+  const label =
+    exam.name && exam.name !== exam.id ? `${exam.name} · ${exam.id}` : exam.id;
+  return exam.lifecycle === "archived" ? `${label} · Archived` : label;
+}
+
 export async function publishedFiles(signal?: AbortSignal) {
   const sources: any[] = [],
     seen = new Set<string>(),

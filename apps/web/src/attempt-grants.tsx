@@ -7,6 +7,7 @@ import { SavedWorkSetup } from "./saved-work-setup.js";
 import { workspaceChoice } from "./grant-workspace.js";
 import {
   attemptsForExam,
+  examChoiceLabel,
   latestStarted,
   savedWorkLabel,
   savedWorkUsable,
@@ -120,11 +121,11 @@ function restored(
 }
 function workLabel(work: any, sources: any[]) {
   if (work.kind === "empty") return "Empty folder";
-  if (work.kind === "template") return `Starter files: ${work.name}`;
+  if (work.kind === "template") return `${work.name} (starter files)`;
   const source = sources.find((s) => s?.id === work.attempt);
   return source
-    ? `Saved work: ${savedWorkLabel(source, sources)}`
-    : "Saved work";
+    ? `Saved files from ${savedWorkLabel(source, sources)}`
+    : "Saved files";
 }
 function valueLabel(key: string, value: any) {
   if (key === "duration") return timeLimit(value);
@@ -175,7 +176,11 @@ export function AttemptGrantsDialog({
     [materialChange, setMaterialChange] = useState(false),
     [materialName, setMaterialName] = useState(""),
     [materialHash, setMaterialHash] = useState(""),
-    [reason, setReason] = useState("Change selected unused attempt settings"),
+    [reason, setReason] = useState(
+      username
+        ? "Change unused attempt settings"
+        : "Change selected unused attempt settings",
+    ),
     [exams, setExams] = useState<any[]>([]),
     [examError, setExamError] = useState(""),
     [sourceExam, setSourceExam] = useState(exam),
@@ -223,12 +228,21 @@ export function AttemptGrantsDialog({
           [...old].filter((id) => eligible.some((g) => g.id === id)),
         );
       if (
+        !loaded &&
+        !review &&
         !old.size &&
         initialGrantId &&
         eligible.some((g) => g.id === initialGrantId)
       )
         current.add(initialGrantId);
-      else if (!old.size && names.length === 1 && eligible.length === 1)
+      else if (
+        !loaded &&
+        !review &&
+        !initialGrantId &&
+        !old.size &&
+        names.length === 1 &&
+        eligible.length === 1
+      )
         current.add(eligible[0].id);
       return current;
     });
@@ -370,34 +384,86 @@ export function AttemptGrantsDialog({
     };
   }, [JSON.stringify([observed, review?.map((r) => r.state)]), statusRefresh]);
   const selectedGrants = catalog.filter((g) => selected.has(g.id)),
-    selectedNames = [...new Set(selectedGrants.map((g) => g.username))];
+    selectedNames = [...new Set(selectedGrants.map((g) => g.username))],
+    editingGrant =
+      username && selectedGrants.length === 1 && grantUnused(selectedGrants[0])
+        ? selectedGrants[0]
+        : null,
+    sourceExams = exams.length ? exams : [{ id: exam, name: exam }],
+    sourceExamLabel = examChoiceLabel(
+      sourceExams.find((value) => value.id === sourceExam) ?? {
+        id: sourceExam,
+      },
+    );
+  const editGrant = (grant: any) => {
+    if (busy || review || !grantUnused(grant)) return;
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`${formId}-editor`)
+        ?.scrollIntoView({ block: "nearest" }),
+    );
+    if (selected.size === 1 && selected.has(grant.id)) return;
+    setSelected(new Set([grant.id]));
+    setDraft({});
+    setWebcam("keep");
+    setWindowMode("keep");
+    setOpens("");
+    setCloses("");
+    setOpenOccurrence(0);
+    setCloseOccurrence(0);
+    setWorkMode("keep");
+    setWorkName("");
+    setWorkHash("");
+    setMaterialChange(false);
+    setMaterialName("");
+    setMaterialHash("");
+    setReason("Change unused attempt settings");
+    setSourceExam(exam);
+    setSources([]);
+    setSavedChoices({});
+    setSourceError("");
+    setSourceLoading(false);
+    setError("");
+  };
   const savedSource = (name: string) => {
     if (sourceLoading || sourceError)
       throw Error("Load the saved-work list before reviewing.");
-    const last = savedChoices[name]
-      ? sources.find((s) => s.id === savedChoices[name] && s.username === name)
-      : latestStarted(sources, name);
+    const last =
+      savedChoices[name] !== undefined
+        ? sources.find(
+            (s) => s.id === savedChoices[name] && s.username === name,
+          )
+        : latestStarted(sources, name);
     if (!last || !savedWorkUsable(last))
       throw Error(
         `${name}: choose protected saved work. No older source was selected automatically.`,
       );
     return last;
   };
-  const makeReview = async (operation: "revise" | "revoke") => {
+  const makeReview = async (
+    operation: "revise" | "revoke",
+    targets = selectedGrants,
+  ) => {
     if (busy) return;
     setBusy(true);
     setError("");
     try {
-      if (!selectedGrants.length || selectedGrants.length > 200)
+      const reviewReason =
+        username && operation === "revoke"
+          ? "Cancel unused attempt"
+          : reason.trim();
+      if (!targets.length || targets.length > 200)
         throw Error("Choose from 1 to 200 unused attempts.");
-      if (reason.trim().length < 8 || reason.trim().length > 1000)
+      if (username && targets.length !== 1)
+        throw Error("Choose Edit settings for the attempt you want to change.");
+      if (reviewReason.length < 8 || reviewReason.length > 1000)
         throw Error("Use a reason from 8 to 1,000 characters.");
       const current = await readStatus(
-        selectedGrants.map((g) => ({ id: g.id, revision: g.revision })),
+        targets.map((g) => ({ id: g.id, revision: g.revision })),
         new AbortController().signal,
       );
       setSnapshots(current);
-      const changed = selectedGrants.filter(
+      const changed = targets.filter(
         (g) =>
           current[g.id].grant.revision !== g.revision ||
           !grantUnused(current[g.id].grant),
@@ -406,7 +472,7 @@ export function AttemptGrantsDialog({
         throw Error(
           `Settings changed or setup started for ${[...new Set(changed.map((g) => g.username))].join(", ")}. Refresh the selection and review again.`,
         );
-      const rows: ChangeRow[] = selectedGrants.map((old) => {
+      const rows: ChangeRow[] = targets.map((old) => {
         const grant = current[old.id].grant,
           changes: Record<string, any> = {};
         let work: any;
@@ -446,6 +512,8 @@ export function AttemptGrantsDialog({
                 );
               if (n !== grant.settings[key]) changes[key] = n;
             }
+          if ((draft.name?.trim().length ?? 0) > 120)
+            throw Error("Exam name must be at most 120 characters.");
           if (draft.name?.trim() && draft.name.trim() !== grant.settings.name)
             changes.name = draft.name.trim();
           if (materialChange) {
@@ -479,7 +547,7 @@ export function AttemptGrantsDialog({
         }
         const body = {
           revision: grant.revision,
-          reason: reason.trim(),
+          reason: reviewReason,
           request: crypto.randomUUID(),
           ...(operation === "revise"
             ? { changes, ...(work ? { work } : {}) }
@@ -668,7 +736,7 @@ export function AttemptGrantsDialog({
     );
     return (
       <article key={g.id} className="clock-batch-row">
-        {grantUnused(g) ? (
+        {!username && grantUnused(g) ? (
           <label>
             <input
               type="checkbox"
@@ -687,6 +755,24 @@ export function AttemptGrantsDialog({
         ) : (
           <p>{heading}</p>
         )}
+        {username && grantUnused(g) && (
+          <div className="actions">
+            <button
+              type="button"
+              disabled={busy || !!review}
+              onClick={() => editGrant(g)}
+            >
+              Edit settings
+            </button>
+            <button
+              type="button"
+              disabled={busy || !!review}
+              onClick={() => void makeReview("revoke", [g])}
+            >
+              Cancel attempt
+            </button>
+          </div>
+        )}
         <p>
           {timeLimit(g.settings.duration)} · Webcam{" "}
           {g.settings.webcam ? "required" : "optional"}
@@ -695,6 +781,7 @@ export function AttemptGrantsDialog({
           Start window: {windowLabel(g.settings.earliest, g.settings.latest)}
         </p>
         <p>
+          Starting files:{" "}
           {workLabel(
             g.work,
             [...sources, snapshots[g.id]?.source].filter(Boolean),
@@ -920,6 +1007,23 @@ export function AttemptGrantsDialog({
             id={formId}
             onSubmit={(e) => {
               e.preventDefault();
+              const input = Array.from(
+                e.currentTarget.querySelectorAll<HTMLInputElement>("input"),
+              ).find((field) => field.willValidate && field.validity.badInput);
+              if (input) {
+                const label =
+                  input.labels?.[0]?.textContent?.replace(/\s+/g, " ").trim() ||
+                  "the number or date";
+                setError(`Complete ${label} before reviewing.`);
+                for (
+                  let details = input.closest("details");
+                  details;
+                  details = details.parentElement?.closest("details") ?? null
+                )
+                  details.open = true;
+                input.focus();
+                return;
+              }
               void makeReview("revise");
             }}
           >
@@ -927,299 +1031,378 @@ export function AttemptGrantsDialog({
             {!!catalog.length && (
               <p className="muted">Times in {deviceTimeZone()}.</p>
             )}
-            <p>Select unused attempts to change or cancel.</p>
-            <div className="actions">
-              <button
-                type="button"
-                disabled={
-                  busy ||
-                  !catalog.some(grantUnused) ||
-                  catalog.filter(grantUnused).length > 200
-                }
-                onClick={() =>
-                  setSelected(
-                    new Set(catalog.filter(grantUnused).map((g) => g.id)),
-                  )
-                }
-              >
-                Select unused attempts
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setSelected(new Set())}
-              >
-                Clear selection
-              </button>
-            </div>
-            <p>
-              {selectedGrants.length}{" "}
-              {selectedGrants.length === 1 ? "attempt" : "attempts"} for{" "}
-              {selectedNames.length}{" "}
-              {selectedNames.length === 1 ? "student" : "students"} selected
-            </p>
-            {selectedGrants.length > 200 && (
-              <p role="alert">Choose up to 200 unused attempts.</p>
+            {!username && (
+              <>
+                <p>Select unused attempts to change or cancel.</p>
+                <div className="actions">
+                  <button
+                    type="button"
+                    disabled={
+                      busy ||
+                      !catalog.some(grantUnused) ||
+                      catalog.filter(grantUnused).length > 200
+                    }
+                    onClick={() =>
+                      setSelected(
+                        new Set(catalog.filter(grantUnused).map((g) => g.id)),
+                      )
+                    }
+                  >
+                    Select unused attempts
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setSelected(new Set())}
+                  >
+                    Clear selection
+                  </button>
+                </div>
+                <p>
+                  {selectedGrants.length}{" "}
+                  {selectedGrants.length === 1 ? "attempt" : "attempts"} for{" "}
+                  {selectedNames.length}{" "}
+                  {selectedNames.length === 1 ? "student" : "students"} selected
+                </p>
+                {selectedGrants.length > 200 && (
+                  <p role="alert">Choose up to 200 unused attempts.</p>
+                )}
+              </>
             )}
             {!!noUnused.length && (
               <p>No unused attempts for: {noUnused.join(", ")}.</p>
             )}
             {username && attemptGroups}
-            <fieldset disabled={busy || !selectedGrants.length}>
-              {exam === "sandbox" && (
-                <p>
-                  Practice uses five minutes, optional webcam and four
-                  terminals.
-                </p>
-              )}
-              <label>
-                Time limit (minutes)
-                <input
-                  type="number"
-                  min={1}
-                  max={360}
-                  step={1}
-                  placeholder={exam === "sandbox" ? "Fixed at 5" : "Unchanged"}
-                  disabled={exam === "sandbox"}
-                  value={draft.duration ?? ""}
-                  onChange={(e) =>
-                    setDraft({ ...draft, duration: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Webcam
-                <select
-                  disabled={exam === "sandbox"}
-                  value={webcam}
-                  onChange={(e) => setWebcam(e.target.value)}
+            {(!username || editingGrant) && (
+              <>
+                {editingGrant && (
+                  <h3 id={`${formId}-editor`}>
+                    Editing: {title(editingGrant)} ·{" "}
+                    {shortDateTime(editingGrant.issued_at)}
+                  </h3>
+                )}
+                <fieldset
+                  key={editingGrant?.id ?? "bulk-editor"}
+                  disabled={busy || !selectedGrants.length}
                 >
-                  <option value="keep">Unchanged</option>
-                  <option value="true">Required</option>
-                  <option value="false">Optional</option>
-                </select>
-              </label>
-              <label>
-                Start window
-                <select
-                  value={windowMode}
-                  onChange={(e) => setWindowMode(e.target.value)}
-                >
-                  <option value="keep">Unchanged</option>
-                  <option value="set">Set dates</option>
-                </select>
-              </label>
-              {windowMode === "set" && (
-                <fieldset>
-                  <legend>Start window</legend>
-                  <LocalDateTimeInput
-                    label="Opens"
-                    value={opens}
-                    onChange={setOpens}
-                    occurrence={openOccurrence}
-                    onOccurrence={setOpenOccurrence}
-                    required={false}
-                  />
-                  <LocalDateTimeInput
-                    label="Closes"
-                    value={closes}
-                    onChange={setCloses}
-                    occurrence={closeOccurrence}
-                    onOccurrence={setCloseOccurrence}
-                    required={false}
-                  />
-                  <small>Leave either date blank to keep it.</small>
-                </fieldset>
-              )}
-              <label>
-                Starting files
-                <select
-                  value={workMode}
-                  onChange={(e) => {
-                    if (e.target.value === "saved" && workMode !== "saved")
-                      setSourceLoading(true);
-                    setWorkMode(e.target.value);
-                  }}
-                >
-                  <option value="keep">Unchanged</option>
-                  <option value="empty">Empty folder</option>
-                  <option value="template">Published starter files</option>
-                  <option value="saved">Saved work</option>
-                </select>
-              </label>
-              {workMode === "template" && (
-                <TemplatePicker
-                  name={workName}
-                  hash={workHash}
-                  onChange={(name, hash) => {
-                    setWorkName(name);
-                    setWorkHash(hash);
-                  }}
-                />
-              )}
-              {workMode === "saved" && (
-                <>
+                  {exam === "sandbox" && (
+                    <p>
+                      Practice uses five minutes, optional webcam and four
+                      terminals.
+                    </p>
+                  )}
                   <label>
-                    Saved work from
-                    <select
-                      value={sourceExam}
-                      onChange={(e) => {
-                        setSourceLoading(true);
-                        setSources([]);
-                        setSourceExam(e.target.value);
-                        setSavedChoices({});
-                      }}
-                    >
-                      {(exams.length ? exams : [{ id: exam, name: exam }]).map(
-                        (e) => (
-                          <option key={e.id} value={e.id}>
-                            {e.name || e.id}
-                            {exams.filter((other) => other.name === e.name)
-                              .length > 1
-                              ? ` (${e.id})`
-                              : ""}
-                            {e.lifecycle === "archived" ? " · Archived" : ""}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </label>
-                  {examError && (
-                    <div role="alert">
-                      <p>Could not load exam choices.</p>
-                      <button type="button" onClick={() => void loadExams()}>
-                        Refresh exams
-                      </button>
-                      <details>
-                        <summary>Details</summary>
-                        <p>{examError}</p>
-                      </details>
-                    </div>
-                  )}
-                  {sourceLoading && <p role="status">Loading saved work…</p>}
-                  {sourceError && (
-                    <div role="alert">
-                      <p>Could not load saved work.</p>
-                      <details>
-                        <summary>Details</summary>
-                        <p>{sourceError}</p>
-                      </details>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    disabled={sourceLoading}
-                    onClick={() => {
-                      setSourceLoading(true);
-                      setSources([]);
-                      setSourceReload((n) => n + 1);
-                    }}
-                  >
-                    Refresh saved work
-                  </button>
-                  {selectedNames.map((name) => {
-                    let automatic: any = null;
-                    try {
-                      automatic = latestStarted(sources, name);
-                    } catch {
-                      /* Explicit choice required for ties. */
-                    }
-                    return (
-                      <label key={name}>
-                        Saved work for {name}
-                        <select
-                          required
-                          disabled={sourceLoading || !!sourceError}
-                          value={
-                            savedChoices[name] ??
-                            (automatic && savedWorkUsable(automatic)
-                              ? automatic.id
-                              : "")
-                          }
-                          onChange={(e) =>
-                            setSavedChoices((old) => ({
-                              ...old,
-                              [name]: e.target.value,
-                            }))
-                          }
-                        >
-                          <option value="">Choose protected saved work</option>
-                          {sources
-                            .filter(
-                              (s) => s.username === name && savedWorkUsable(s),
-                            )
-                            .map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {savedWorkLabel(s, sources)}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                    );
-                  })}
-                </>
-              )}
-              <details>
-                <summary>More settings</summary>
-                <label>
-                  Exam name
-                  <input
-                    maxLength={120}
-                    placeholder="Unchanged"
-                    value={draft.name ?? ""}
-                    onChange={(e) =>
-                      setDraft({ ...draft, name: e.target.value })
-                    }
-                  />
-                </label>
-                {numeric.map(([key, label, min, max]) => (
-                  <label key={key}>
-                    {label}
+                    Time limit (minutes)
                     <input
                       type="number"
-                      min={min}
-                      max={max}
+                      min={1}
+                      max={360}
                       step={1}
-                      disabled={exam === "sandbox" && key === "terminals"}
-                      placeholder="Unchanged"
-                      value={draft[key] ?? ""}
+                      placeholder={
+                        exam === "sandbox" ? "Fixed at 5" : "Unchanged"
+                      }
+                      disabled={exam === "sandbox"}
+                      value={draft.duration ?? ""}
                       onChange={(e) =>
-                        setDraft({ ...draft, [key]: e.target.value })
+                        setDraft({ ...draft, duration: e.target.value })
                       }
                     />
                   </label>
-                ))}
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={materialChange}
-                    onChange={(e) => setMaterialChange(e.target.checked)}
-                  />
-                  Change exam files
-                </label>
-                {materialChange && (
-                  <TemplatePicker
-                    label="Exam files"
-                    name={materialName}
-                    hash={materialHash}
-                    onChange={(name, hash) => {
-                      setMaterialName(name);
-                      setMaterialHash(hash);
-                    }}
-                  />
-                )}
-              </details>
-              <label>
-                Reason
-                <input
-                  required
-                  minLength={8}
-                  maxLength={1000}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                />
-              </label>
-            </fieldset>
+                  <label>
+                    Webcam
+                    <select
+                      disabled={exam === "sandbox"}
+                      value={webcam}
+                      onChange={(e) => setWebcam(e.target.value)}
+                    >
+                      <option value="keep">Unchanged</option>
+                      <option value="true">Required</option>
+                      <option value="false">Optional</option>
+                    </select>
+                  </label>
+                  <label>
+                    Start window
+                    <select
+                      value={windowMode}
+                      onChange={(e) => setWindowMode(e.target.value)}
+                    >
+                      <option value="keep">Unchanged</option>
+                      <option value="set">Set dates</option>
+                    </select>
+                  </label>
+                  {windowMode === "set" && (
+                    <fieldset>
+                      <legend>Start window</legend>
+                      <LocalDateTimeInput
+                        label="Opens"
+                        value={opens}
+                        onChange={setOpens}
+                        occurrence={openOccurrence}
+                        onOccurrence={setOpenOccurrence}
+                        required={false}
+                      />
+                      <LocalDateTimeInput
+                        label="Closes"
+                        value={closes}
+                        onChange={setCloses}
+                        occurrence={closeOccurrence}
+                        onOccurrence={setCloseOccurrence}
+                        required={false}
+                      />
+                      <small>Leave either date blank to keep it.</small>
+                    </fieldset>
+                  )}
+                  <details key={editingGrant?.id ?? "bulk-files"}>
+                    <summary>Change starting files</summary>
+                    <label>
+                      Starting files
+                      <select
+                        value={workMode}
+                        onChange={(e) => {
+                          if (
+                            e.target.value === "saved" &&
+                            workMode !== "saved"
+                          )
+                            setSourceLoading(true);
+                          setWorkMode(e.target.value);
+                        }}
+                      >
+                        <option value="keep">Keep current files</option>
+                        <option value="empty">Empty folder</option>
+                        <option value="template">
+                          Published starter files
+                        </option>
+                        <option value="saved">
+                          Use files from an earlier attempt
+                        </option>
+                      </select>
+                    </label>
+                    {workMode === "template" && (
+                      <TemplatePicker
+                        name={workName}
+                        hash={workHash}
+                        onChange={(name, hash) => {
+                          setWorkName(name);
+                          setWorkHash(hash);
+                        }}
+                      />
+                    )}
+                    {workMode === "saved" && (
+                      <>
+                        {sourceExams.length === 1 ? (
+                          <p>From exam: {sourceExamLabel}</p>
+                        ) : (
+                          <label>
+                            From exam
+                            <select
+                              value={sourceExam}
+                              onChange={(e) => {
+                                setSourceLoading(true);
+                                setSources([]);
+                                setSourceExam(e.target.value);
+                                setSavedChoices({});
+                              }}
+                            >
+                              {sourceExams.map((value) => (
+                                <option key={value.id} value={value.id}>
+                                  {examChoiceLabel(value)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                        {examError && (
+                          <div role="alert">
+                            <p>Could not load exam choices.</p>
+                            <button
+                              type="button"
+                              onClick={() => void loadExams()}
+                            >
+                              Refresh exams
+                            </button>
+                            <details>
+                              <summary>Details</summary>
+                              <p>{examError}</p>
+                            </details>
+                          </div>
+                        )}
+                        {sourceLoading && (
+                          <p role="status">Loading saved work…</p>
+                        )}
+                        {sourceError && (
+                          <div role="alert">
+                            <p>Could not load saved work.</p>
+                            <details>
+                              <summary>Details</summary>
+                              <p>{sourceError}</p>
+                            </details>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          disabled={sourceLoading}
+                          onClick={() => {
+                            setSourceLoading(true);
+                            setSources([]);
+                            setSourceReload((n) => n + 1);
+                          }}
+                        >
+                          Refresh saved work
+                        </button>
+                        {!sourceLoading &&
+                          !sourceError &&
+                          selectedNames.map((name) => {
+                            const usable = sources.filter(
+                              (value) =>
+                                value.username === name &&
+                                savedWorkUsable(value),
+                            );
+                            let automatic: any = null,
+                              tied = false;
+                            try {
+                              automatic = latestStarted(sources, name);
+                            } catch {
+                              tied = true;
+                            }
+                            const explicit = savedChoices[name] !== undefined,
+                              chosen = explicit
+                                ? usable.find(
+                                    (value) => value.id === savedChoices[name],
+                                  )
+                                : automatic && savedWorkUsable(automatic)
+                                  ? automatic
+                                  : null;
+                            if (!usable.length)
+                              return (
+                                <p key={name}>
+                                  No saved files are available for {name} in{" "}
+                                  {sourceExamLabel}.{" "}
+                                  {sourceExams.length > 1
+                                    ? "Choose another exam or keep the current files."
+                                    : "Keep the current files."}
+                                </p>
+                              );
+                            if (
+                              usable.length === 1 &&
+                              automatic &&
+                              savedWorkUsable(automatic) &&
+                              (!explicit || chosen?.id === automatic.id)
+                            )
+                              return (
+                                <p key={name}>
+                                  {name}: {savedWorkLabel(automatic, sources)}
+                                </p>
+                              );
+                            return (
+                              <div key={name}>
+                                {tied ? (
+                                  <p>
+                                    The latest attempt could not be identified.
+                                    Choose an attempt or keep the current files.
+                                  </p>
+                                ) : automatic && !savedWorkUsable(automatic) ? (
+                                  <p>
+                                    The latest attempt’s saved files are not
+                                    available. Choose an earlier attempt or keep
+                                    the current files.
+                                  </p>
+                                ) : explicit &&
+                                  savedChoices[name] &&
+                                  !chosen ? (
+                                  <p>
+                                    The saved-file list changed. Choose the
+                                    files again or keep the current files.
+                                  </p>
+                                ) : null}
+                                <label>
+                                  Saved work for {name}
+                                  <select
+                                    required
+                                    value={chosen?.id ?? ""}
+                                    onChange={(e) =>
+                                      setSavedChoices((old) => ({
+                                        ...old,
+                                        [name]: e.target.value,
+                                      }))
+                                    }
+                                  >
+                                    <option value="">Choose an attempt</option>
+                                    {usable.map((value) => (
+                                      <option key={value.id} value={value.id}>
+                                        {savedWorkLabel(value, sources)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
+                            );
+                          })}
+                      </>
+                    )}
+                  </details>
+                  <details>
+                    <summary>More settings</summary>
+                    <label>
+                      Exam name
+                      <input
+                        maxLength={120}
+                        placeholder="Unchanged"
+                        value={draft.name ?? ""}
+                        onChange={(e) =>
+                          setDraft({ ...draft, name: e.target.value })
+                        }
+                      />
+                    </label>
+                    {numeric.map(([key, label, min, max]) => (
+                      <label key={key}>
+                        {label}
+                        <input
+                          type="number"
+                          min={min}
+                          max={max}
+                          step={1}
+                          disabled={exam === "sandbox" && key === "terminals"}
+                          placeholder="Unchanged"
+                          value={draft[key] ?? ""}
+                          onChange={(e) =>
+                            setDraft({ ...draft, [key]: e.target.value })
+                          }
+                        />
+                      </label>
+                    ))}
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={materialChange}
+                        onChange={(e) => setMaterialChange(e.target.checked)}
+                      />
+                      Change exam files
+                    </label>
+                    {materialChange && (
+                      <TemplatePicker
+                        label="Exam files"
+                        name={materialName}
+                        hash={materialHash}
+                        onChange={(name, hash) => {
+                          setMaterialName(name);
+                          setMaterialHash(hash);
+                        }}
+                      />
+                    )}
+                  </details>
+                  <label>
+                    Reason
+                    <input
+                      required
+                      minLength={8}
+                      maxLength={1000}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </label>
+                </fieldset>
+              </>
+            )}
             {!username && attemptGroups}
           </form>
         )}
@@ -1307,9 +1490,11 @@ export function AttemptGrantsDialog({
             <button
               form={formId}
               type="submit"
+              formNoValidate
               className="primary"
               disabled={
                 busy ||
+                (!!username && !editingGrant) ||
                 !selectedGrants.length ||
                 selectedGrants.length > 200 ||
                 (workMode === "saved" && (sourceLoading || !!sourceError))
@@ -1317,16 +1502,18 @@ export function AttemptGrantsDialog({
             >
               Review changes
             </button>
+            {!username && (
+              <button
+                disabled={
+                  busy || !selectedGrants.length || selectedGrants.length > 200
+                }
+                onClick={() => void makeReview("revoke")}
+              >
+                Review cancellation
+              </button>
+            )}
             <button
-              disabled={
-                busy || !selectedGrants.length || selectedGrants.length > 200
-              }
-              onClick={() => void makeReview("revoke")}
-            >
-              Review cancellation
-            </button>
-            <button
-              disabled={busy}
+              disabled={busy || !loaded}
               onClick={() => {
                 setError("");
                 void load().catch((e) => setError(e.message));
@@ -1345,7 +1532,9 @@ export function AttemptGrantsDialog({
             {unknown
               ? "Retry unconfirmed changes"
               : review[0].operation === "revoke"
-                ? "Cancel selected attempts"
+                ? username
+                  ? "Cancel attempt"
+                  : "Cancel selected attempts"
                 : "Apply changes"}
           </button>
         )}

@@ -76,12 +76,19 @@ export async function manageStudent(page: Page, username: string) {
     exact: true,
   });
 }
-export async function cancelUnused(dialog: Locator) {
+export async function cancelUnused(dialog: Locator, target?: Locator) {
+  const cancel = (target ?? dialog).getByRole("button", {
+    name: "Cancel attempt",
+    exact: true,
+  });
+  // An ambiguous set of rows is a fixture error, never permission to pick one.
+  await expect(cancel).toHaveCount(1);
+  await cancel.click();
+  await expect(
+    dialog.getByRole("region", { name: "Review unused changes", exact: true }),
+  ).toBeVisible();
   await dialog
-    .getByRole("button", { name: "Review cancellation", exact: true })
-    .click();
-  await dialog
-    .getByRole("button", { name: "Cancel selected attempts", exact: true })
+    .getByRole("button", { name: "Cancel attempt", exact: true })
     .click();
   await expect(dialog.getByText("Cancelled", { exact: true })).toBeVisible();
 }

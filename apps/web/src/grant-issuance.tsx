@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import {
   attemptsForExam,
+  examChoiceLabel,
   latestStarted,
   savedWorkLabel,
   savedWorkUsable,
@@ -693,9 +694,10 @@ export function GrantIssuanceDialog({
                         <summary>
                           Saved work from{" "}
                           {sourceExams
-                            .map(
-                              (id) =>
-                                exams.find((e) => e.id === id)?.name || id,
+                            .map((id) =>
+                              examChoiceLabel(
+                                exams.find((e) => e.id === id) ?? { id },
+                              ),
                             )
                             .join(", ") || "no exam selected"}
                         </summary>
@@ -716,14 +718,7 @@ export function GrantIssuanceDialog({
                                   );
                                 }}
                               />
-                              {exam.name || exam.id}
-                              {exams.filter((e) => e.name === exam.name)
-                                .length > 1
-                                ? ` (${exam.id})`
-                                : ""}
-                              {exam.lifecycle === "archived"
-                                ? " · Archived"
-                                : ""}
+                              {examChoiceLabel(exam)}
                             </label>
                           ))}
                         </fieldset>

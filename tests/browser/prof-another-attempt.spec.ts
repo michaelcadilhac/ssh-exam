@@ -1,14 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
 test.use({ timezoneId: "America/Chicago" });
 
-async function fixture(page: Page, count = 3, pinned = true) {
+async function fixture(
+  page: Page,
+  count = 3,
+  pinned = true,
+  displayName = "Midterm",
+) {
   page.setDefaultTimeout(7000);
   const exam = "prof-another",
     now = Date.now(),
     id = "88888888-8888-4888-8888-888888888888";
   const settings = {
     id: exam,
-    name: "Midterm",
+    name: displayName,
     template: "sample-exam",
     template_version: pinned ? "a".repeat(64) : "",
     revision: "b".repeat(64),
@@ -35,7 +40,7 @@ async function fixture(page: Page, count = 3, pinned = true) {
       start: now - 7200000,
       deadline: now - 3600000,
       original_deadline: now - 3600000,
-      settings: { name: "Midterm" },
+      settings: { name: displayName },
       attempt_number: 1,
       access_state: "RELEASED",
     }));
@@ -220,6 +225,27 @@ async function fixture(page: Page, count = 3, pinned = true) {
   return { state, open, usernames };
 }
 
+test("source exams show their recognizable code even when the display name is generic", async ({
+  page,
+}) => {
+  const f = await fixture(page, 1, true, "Programming exam"),
+    dialog = await f.open(),
+    source = dialog.getByText(
+      "Saved work from Programming exam · prof-another",
+      { exact: true },
+    );
+  await expect(source).toBeVisible({ timeout: 3000 });
+  await source.click({ timeout: 3000 });
+  await expect(
+    dialog.getByRole("checkbox", {
+      name: "Programming exam · prof-another",
+      exact: true,
+    }),
+  ).toBeChecked();
+  expect(f.state.previews).toHaveLength(0);
+  expect(f.state.confirmations).toHaveLength(0);
+});
+
 test("another attempt uses two screens with fetched mixed sources and exact per-student settings", async ({
   page,
 }, info) => {
@@ -323,9 +349,11 @@ test("a review polls one cohort, rather than every student, and invalid latest f
   test.setTimeout(25000);
   const f = await fixture(page, 16),
     dialog = await f.open();
-  await dialog.getByText("Saved work from Midterm", { exact: true }).click();
   await dialog
-    .getByRole("checkbox", { name: "Midterm", exact: true })
+    .getByText("Saved work from Midterm · prof-another", { exact: true })
+    .click();
+  await dialog
+    .getByRole("checkbox", { name: "Midterm · prof-another", exact: true })
     .uncheck();
   await expect(dialog.getByRole("alert")).toContainText(
     "Choose at least one source exam.",
@@ -334,7 +362,9 @@ test("a review polls one cohort, rather than every student, and invalid latest f
     dialog.getByRole("button", { name: "Review", exact: true }),
   ).toBeDisabled();
   await expect(dialog.getByText(/Starter files: 16/)).toHaveCount(0);
-  await dialog.getByRole("checkbox", { name: "Midterm", exact: true }).check();
+  await dialog
+    .getByRole("checkbox", { name: "Midterm · prof-another", exact: true })
+    .check();
   f.state.attempts.push({
     ...f.state.attempts[0],
     id: "77777777-7777-4777-8777-777777777777",

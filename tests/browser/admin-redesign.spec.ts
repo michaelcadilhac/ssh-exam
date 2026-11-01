@@ -493,34 +493,26 @@ for (const width of [1280, 430])
     const currentGrant = grants.locator("article.clock-batch-row").filter({
       hasText: "75 min · Webcam optional",
     });
-    const selectionHelp = grants.getByText(
-      "Select unused attempts to change or cancel.",
-      { exact: true },
-    );
-    await expect(selectionHelp).toBeVisible();
+    const editingHelp = grants.getByText(/^Editing:/);
+    await expect(editingHelp).toBeVisible();
     await expect(currentGrant).toHaveCount(1);
     await expect(currentGrant).toBeInViewport();
-    await expect(
-      currentGrant.getByRole("checkbox", { name: /^Select .*attempt/i }),
-    ).toBeChecked();
-    await expect(currentGrant.locator("label")).toHaveText(
-      /^Select .*attempt/i,
-    );
+    await expect(grants.getByRole("checkbox")).toHaveCount(0);
     await expect(
       grants.getByText("1 attempt for 1 student selected", { exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(currentGrant.getByText(/^Start window:/)).toBeVisible();
     await expect(currentGrant.getByText(/^Reference /)).not.toBeVisible();
     const cardBox = await currentGrant.boundingBox(),
-      purposeBox = await selectionHelp.boundingBox(),
+      purposeBox = await editingHelp.boundingBox(),
       editBox = await grants
         .getByLabel("Time limit (minutes)", { exact: true })
         .boundingBox();
     expect(cardBox).not.toBeNull();
     expect(purposeBox).not.toBeNull();
     expect(editBox).not.toBeNull();
-    expect(purposeBox!.y).toBeLessThan(cardBox!.y);
-    expect(cardBox!.y).toBeLessThan(editBox!.y);
+    expect(cardBox!.y).toBeLessThanOrEqual(purposeBox!.y);
+    expect(purposeBox!.y).toBeLessThan(editBox!.y);
     await page.screenshot({
       path: info.outputPath(`allowed-attempts-useful-${width}.png`),
       fullPage: true,

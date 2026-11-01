@@ -1,5 +1,13 @@
 # UI review with Prof
 
+Current personal attempt-editor follow-up is COMPLETE/TESTED LOCALLY, after the welcome/UI
+deployment. Prof agreed per-attempt Edit settings/Cancel attempt without personal
+selection checkboxes, optional explicit file replacement, honest source choices
+and recognizable exam codes. Prof accepted four actual desktop/mobile/source
+renders; all42 affected browser checks pass. Qualification and render acceptance are tracked
+in [personal attempt editing](unused-attempt-editor.md) and the current checkpoint.
+The student multiple-attempt chooser is inspected but unchanged by this follow-up.
+
 October31,2026: the agreed UI changes and three final student follow-ups are
 DEPLOYED AND ONLINE under subsequent explicit push/deploy instructions. Current
 verification, preservation, backup and rollback: docs/ui-followup-deployment.md.
