@@ -1,3 +1,20 @@
+# Current deployment — welcome focus and latest UI follow-ups
+
+October31: instructor explicitly requests first-field focus verification, push and
+deploy. Existing autofocus passes four focused browser cases, including native
+loads/reloads/student-instructor navigation and three delayed-configuration cases.
+No product focus change was necessary. Both initial production idle guards PASS:
+marco110 histories/sessions0; csc-sys175 histories and unchanged native processes.
+Deployment is PREPARING; nothing new installed/restarted/fenced yet. Build and
+qualify a clean committed image plus matching CLI; then push and use fresh guards,
+private backups and the existing guarded cutover. Preserve native processes,
+configuration, authority/history, previous backups and all ten dirty screenshots.
+Evidence: var/collection-tests/welcome-enrollment-rollout.9s70lhkv;
+focus: var/collection-tests/welcome-focus-native.ztxp24p1/completion.json.
+
+Previous local completion record follows; its no-deploy status is superseded ONLY
+by this new explicit instruction and the actual deployment evidence to follow.
+
 # Current checkpoint — exam defaults and enrollment dates complete locally
 
 October 31, 2026. IMPLEMENTED/TESTED LOCALLY in source/test revision

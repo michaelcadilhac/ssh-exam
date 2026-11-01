@@ -99,3 +99,57 @@ for (const scenario of [
     }
   });
 }
+
+test("native browser loads, reloads and sign-in navigation focus the first field without a click", async ({
+  page,
+}) => {
+  let authenticationRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/auth/start")
+      authenticationRequests++;
+  });
+  // Use the actual fixture responses and native browser capability checks.
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
+  ).toBeVisible();
+  const exam = page.getByLabel("Exam ID", { exact: true });
+  await expect(exam).toBeFocused();
+  await page.keyboard.insertText("midterm");
+  await expect(exam).toHaveValue("midterm");
+  const student = page.getByLabel("Username", { exact: true });
+  await student.focus();
+  await page.keyboard.insertText("student01");
+  await expect(student).toHaveValue("student01");
+  await expect(student).toBeFocused();
+  await expect(exam).toHaveValue("midterm");
+
+  await page.reload();
+  await expect(exam).toBeFocused();
+  await page.keyboard.insertText("midterm-reload");
+  await expect(exam).toHaveValue("midterm-reload");
+  await page
+    .getByRole("link", { name: "Instructor sign-in", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    page.getByRole("heading", { name: "Instructor sign-in", exact: true }),
+  ).toBeVisible();
+  const instructor = page.getByLabel("Username", { exact: true });
+  await expect(instructor).toBeFocused();
+  await page.keyboard.insertText("instructor");
+  await expect(instructor).toHaveValue("instructor");
+  const password = page.getByLabel("Password", { exact: true });
+  await password.focus();
+  await page.keyboard.insertText("synthetic-focus-check");
+  await expect(password).toBeFocused();
+  await expect(password).toHaveValue("synthetic-focus-check");
+  await expect(instructor).toHaveValue("instructor");
+
+  await page
+    .getByRole("link", { name: "Student sign-in", exact: true })
+    .click({ timeout: 3000 });
+  await expect(exam).toBeFocused();
+  await page.keyboard.insertText("midterm-return");
+  await expect(exam).toHaveValue("midterm-return");
+  expect(authenticationRequests).toBe(0);
+});
