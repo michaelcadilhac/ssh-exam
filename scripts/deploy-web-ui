@@ -1,0 +1,761 @@
+#!/usr/bin/env python3
+"""Guarded same-schema UI-only web update, run on the application host.
+
+Prepare loads a qualified image, warms monitoring recovery objects and renders
+maintenance responses while the current gateway remains online. Apply requires a
+positive idle/native drain, then takes a stopped incremental snapshot. Failures
+retain the admission fence. Rollback selects the retained previous image with
+CURRENT data; it never restores a database or touches native services.
+
+Root-private release.json/image-assets.json are required. release.fast_ui supplies
+absolute project, data, environment, nginx_site, nginx_main, shared_store,
+previous_image_archive and previous_image_assets paths, both archive SHA256 values, an absolute native_guard
+command array, and unchanged_backend_protocol_native:true. This explicit scope
+attestation belongs to the qualified release review; this tool cannot infer it
+from a commit name. No command authorizes production deployment by itself.
+"""
+import argparse
+import datetime
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import shutil
+import sqlite3
+import stat
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+import urllib.error
+import urllib.request
+import uuid
+
+from shared_backup import atomic_json, digest, monitoring_copy_scratch, private_directory, signature, sync_directory
+import deployment_pause
+
+SCRIPTS = Path(__file__).resolve().parent
+OPS = SCRIPTS/'web-ui-ops'
+LOCK_FILE = Path('/run/lock/ssh-exam-web-ui.lock')
+spec = importlib.util.spec_from_file_location('ui_preservation', OPS/'preservation.py')
+preservation = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(preservation)
+
+
+def command(arguments, timeout=30):
+    result = subprocess.run([str(value) for value in arguments], capture_output=True, text=True,
+                            timeout=timeout, env={**os.environ, 'PATH': '/usr/sbin:/usr/bin:/sbin:/bin'})
+    if result.returncode:
+        raise RuntimeError(f'{Path(str(arguments[0])).name} refused (exit {result.returncode}); preserve the fence and inspect the owning host')
+    return result.stdout
+
+
+def selected_env(original, tag):
+    lines = original.splitlines(keepends=True)
+    selected = [line for line in lines if line.startswith(b'EXAM_IMAGE=')]
+    if len(selected) != 1:
+        raise ValueError('Exactly one EXAM_IMAGE line is required')
+    return b''.join(b'EXAM_IMAGE='+tag.encode()+b'\n' if line == selected[0] else line for line in lines)
+
+
+def replace_file(path, content):
+    previous = path.lstat()
+    if not stat.S_ISREG(previous.st_mode) or previous.st_uid != os.geteuid() or previous.st_mode & 0o022:
+        raise ValueError('Unsafe protected file: '+str(path))
+    fd, name = tempfile.mkstemp(prefix='.web-ui-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'wb') as output:
+            output.write(content); output.flush()
+            os.fchmod(output.fileno(), stat.S_IMODE(previous.st_mode))
+            os.fchown(output.fileno(), previous.st_uid, previous.st_gid)
+            os.fsync(output.fileno())
+        os.replace(name, path); sync_directory(path.parent)
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+def require_root():
+    if os.geteuid() != 0:
+        raise ValueError('Run on the application host as root with a reviewed private release plan')
+
+
+class Rollout:
+    def __init__(self, state):
+        self.state = state.resolve()
+        private_directory(self.state)
+        self.release = json.loads((self.state/'release.json').read_text())
+        self.assets = json.loads((self.state/'image-assets.json').read_text())
+        self.settings = self.release['fast_ui']
+        self.record = json.loads((self.state/'status.json').read_text())
+        self.project = Path(self.settings['project'])
+        self.data = Path(self.settings['data'])
+        self.env = Path(self.settings['environment'])
+        self.site = Path(self.settings['nginx_site'])
+        self.image = self.assets['release_image']
+        self.validate()
+
+    def validate(self):
+        if self.release['schema'] != self.release['old_schema'] or self.release['schema'] < 36:
+            raise ValueError('UI-only deployment requires the same qualified schema, at least36')
+        if self.settings.get('unchanged_backend_protocol_native') is not True:
+            raise ValueError('Review and attest unchanged backend/protocol/native contracts before this UI-only workflow')
+        if self.release['old_cli_sha256'] != self.release['cli_sha256']:
+            raise ValueError('A CLI change requires the broader matched-release workflow')
+        for field in ('project', 'data', 'environment', 'nginx_site', 'nginx_main', 'shared_store', 'previous_image_archive', 'previous_image_assets'):
+            if not Path(self.settings[field]).is_absolute():
+                raise ValueError('Use absolute protected paths: '+field)
+        if self.data != self.project/'var/production':
+            raise ValueError('Data must be this project\'s var/production, matching the existing guard')
+        native = self.settings['native_guard']
+        if not isinstance(native, list) or not native or not all(isinstance(part, str) for part in native) or not Path(native[0]).is_absolute():
+            raise ValueError('native_guard must be an absolute command array for the existing pinned read-only class-server guard')
+        if self.image['config_id'] != self.release['image_config_id'] or self.assets['source'] != self.release['revision']:
+            raise ValueError('Image/source manifest disagreement')
+        if self.settings.get('site_template') and not Path(self.settings['site_template']).is_absolute():
+            raise ValueError('site_template must be absolute')
+
+    def save(self, phase, **details):
+        self.record.update(phase=phase, at=datetime.datetime.now(datetime.timezone.utc).isoformat(), **details)
+        atomic_json(self.state/'status.json', self.record)
+
+    def pause_background(self):
+        if self.release['schema'] < 37:
+            return
+        pause = self.record.get('video_pause')
+        if not pause or pause['status'] == 'RELEASED':
+            nonce = str(uuid.uuid4())
+            pause = {'nonce': nonce, 'sha256': hashlib.sha256(deployment_pause.content(self.state, nonce)).hexdigest(), 'status': 'PENDING'}
+            # Persist the exact bytes' identity before creating the file. A
+            # complete marker can then be adopted after an installer crash.
+            self.save(self.record['phase'], video_pause=pause)
+        path = self.data/deployment_pause.NAME
+        try:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        except FileExistsError:
+            if not deployment_pause.owned(self.data, self.state, self.record):
+                raise ValueError('Another deployment pause exists; preserve it and inspect its owner')
+        else:
+            with os.fdopen(fd, 'wb') as output:
+                output.write(deployment_pause.content(self.state, pause['nonce']))
+                output.flush(); os.fsync(output.fileno())
+            sync_directory(self.data)
+        if not deployment_pause.owned(self.data, self.state, self.record):
+            raise ValueError('Deployment pause ownership was not proved; do not stop the gateway')
+        self.save(self.record['phase'], video_pause={**pause, 'status': 'OWNED'})
+
+    def release_background(self):
+        pause = self.record.get('video_pause')
+        if not pause or pause['status'] == 'RELEASED':
+            return
+        path = self.data/deployment_pause.NAME
+        if path.exists() or path.is_symlink():
+            if not deployment_pause.owned(self.data, self.state, self.record):
+                raise ValueError('Cannot release a foreign deployment pause; preserve it')
+            path.unlink(); sync_directory(self.data)
+        self.save(self.record['phase'], video_pause={**pause, 'status': 'RELEASED'})
+
+    def background_status(self):
+        path = self.data/deployment_pause.NAME
+        present = path.exists() or path.is_symlink()
+        try:
+            owned = deployment_pause.owned(self.data, self.state, self.record)
+            condition = 'owned' if owned else 'foreign-or-unconfirmed' if present else 'absent'
+        except (OSError, ValueError, KeyError):
+            condition = 'foreign-or-unsafe'
+        return {'path': str(path), 'condition': condition,
+                'pending_release': condition == 'owned'}
+
+    def inventory(self, stopped=False):
+        arguments = [sys.executable, OPS/'inventory-web.py', self.state, self.release['schema']]
+        result = json.loads(command(arguments+(['stopped'] if stopped else [])))
+        if result['guard'] != 'PASS':
+            raise ValueError('Web guard did not prove idle')
+        if stopped and result['scope'] != 'STOPPED':
+            raise ValueError('Gateway was not positively inactive; preserve current work and reinventory')
+        return result
+
+    def native(self):
+        result = json.loads(command(self.settings['native_guard'], timeout=60))
+        if (result['guard'] != 'PASS' or result['history_sha256'] != self.release['native_history_sha256']
+                or result['config_sha256'] != self.release['native_config_sha256']
+                or result['cli_config_sha256'] != self.release['cli_config_sha256']
+                or result['installed_cli_sha256'] != self.release['cli_sha256']
+                or result['worker_cli_sha256'] != self.release['worker_cli_sha256']):
+            raise ValueError('Native history/configuration/cohort changed; do not stop the gateway')
+        pids = {row['unit']: row['pid'] for row in result['native_roles']}
+        pids['exam-ssh-relay.service'] = result['relay_pid']
+        if pids != self.release['service_pids']:
+            raise ValueError('Native service restarted; reinventory the release before proceeding')
+        return result
+
+    def coverage(self):
+        store = Path(self.settings['shared_store']); private_directory(store)
+        cache = json.loads((store/'source-cache.json').read_text())
+        files = total = 0
+        origin = self.data/'monitoring'
+        if origin.exists():
+            for directory, directories, names in os.walk(origin, followlinks=False):
+                if any((Path(directory)/name).is_symlink() for name in directories):
+                    raise ValueError('Monitoring directory symlink; preserve evidence and inspect')
+                directories[:] = [name for name in directories if not monitoring_copy_scratch(Path(directory)/name, origin)]
+                for name in names:
+                    path = Path(directory)/name
+                    value = cache.get(str(path))
+                    if not value or value['source'] != signature(path, source=True):
+                        raise ValueError('Monitoring recovery objects need warming; rerun prepare before stopping the gateway')
+                    obj = store/value['sha256'][:2]/value['sha256']
+                    if signature(obj) != value['object']:
+                        raise ValueError('Shared recovery object changed; preserve snapshots and run full backup verification')
+                    files += 1; total += value['source'][2]
+        return {'monitoring_files': files, 'already_recoverable_bytes': total, 'new_media_bytes_required': 0}
+
+    def inspect_image(self, identity):
+        return json.loads(command(['/usr/bin/docker', 'image', 'inspect', identity]))[0]
+
+    def prepare(self, bundle):
+        if self.record['phase'] != 'PREPARING':
+            raise ValueError('Prepare requires a new state directory; preserve the earlier attempt')
+        archive = bundle/'web-image.tar'
+        if digest(archive) != self.settings['image_archive_sha256']:
+            raise ValueError('Candidate archive digest differs from the qualified release')
+        with tarfile.open(archive) as stream:
+            manifest = json.load(stream.extractfile('manifest.json'))
+            if len(manifest) != 1:
+                raise ValueError('Expected one qualified image')
+            raw = stream.extractfile(manifest[0]['Config']).read()
+            if ('sha256:'+hashlib.sha256(raw).hexdigest() != self.image['config_id']
+                    or json.loads(raw)['rootfs']['diff_ids'] != self.image['layers']
+                    or manifest[0]['RepoTags'] != [self.image['tag']]):
+                raise ValueError('Candidate Config/layers/tag differ from the qualified manifest')
+        command(['/usr/bin/docker', 'image', 'load', '--input', archive], timeout=180)
+        candidate = self.inspect_image(self.image['tag'])
+        if candidate['Id'] != self.image['config_id'] or candidate['RootFS']['Layers'] != self.image['layers']:
+            raise ValueError('Loaded candidate differs from the qualified image')
+        previous = self.inspect_image(self.release['old_image_config_id'])
+        previous_archive = Path(self.settings['previous_image_archive'])
+        if digest(previous_archive) != self.settings['previous_image_archive_sha256']:
+            raise ValueError('Retained previous image archive changed')
+        with tarfile.open(previous_archive) as stream:
+            manifests = json.load(stream.extractfile('manifest.json'))
+            if len(manifests) != 1:
+                raise ValueError('Expected one retained previous image')
+            raw = stream.extractfile(manifests[0]['Config']).read()
+            if 'sha256:'+hashlib.sha256(raw).hexdigest() != previous['Id'] or json.loads(raw)['rootfs']['diff_ids'] != previous['RootFS']['Layers']:
+                raise ValueError('Retained archive does not recover the installed previous image')
+        try:
+            os.link(previous_archive, self.state/'previous-image.tar')
+        except OSError as error:
+            if error.errno != 18:  # EXDEV: retain one copy on this snapshot filesystem.
+                raise
+            shutil.copyfile(previous_archive, self.state/'previous-image.tar')
+        if digest(self.state/'previous-image.tar') != self.settings['previous_image_archive_sha256']:
+            raise ValueError('Retained image changed while copying')
+        with (self.state/'previous-image.tar').open('rb') as stream:
+            os.fsync(stream.fileno())
+        previous_assets = json.loads(Path(self.settings['previous_image_assets']).read_text())
+        if previous_assets['release_image']['config_id'] != previous['Id']:
+            raise ValueError('Previous asset manifest does not describe the retained image')
+        atomic_json(self.state/'previous-image-assets.json', previous_assets)
+        for name, path in [('environment-before', self.env), ('nginx-before.conf', self.site), ('nginx-main-before.conf', Path(self.settings['nginx_main'])), ('application-config-before.json', self.project/'deploy/config/config.json')]:
+            before = signature(path, source=True)
+            shutil.copyfile(path, self.state/name)
+            if signature(path, source=True) != before:
+                raise ValueError('Configuration changed while preparing; preserve state and prepare anew')
+            with (self.state/name).open('rb') as stream:
+                os.fsync(stream.fileno())
+        small = self.state/'configuration'; small.mkdir(mode=0o700)
+        copied = {}
+        for directory in ('config', 'trust', 'secrets'):
+            origin = self.project/'deploy'/directory
+            if not origin.exists():
+                continue
+            if origin.is_symlink() or not origin.is_dir():
+                raise ValueError('Unsafe configuration directory: '+str(origin))
+            for parent, directories, names in os.walk(origin, followlinks=False):
+                if any((Path(parent)/name).is_symlink() for name in directories):
+                    raise ValueError('Configuration directory symlink')
+                for name in names:
+                    path = Path(parent)/name
+                    before = signature(path, source=True)
+                    relative = path.relative_to(self.project/'deploy')
+                    target = small/relative; target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                    shutil.copyfile(path, target)
+                    if signature(path, source=True) != before:
+                        raise ValueError('Configuration changed during preparation')
+                    with target.open('rb') as stream:
+                        os.fsync(stream.fileno())
+                    copied[str(path)] = {'copy': str(target.relative_to(self.state)), 'sha256': digest(target)}
+        for name in ('compose.yaml', 'docker-compose.yml'):
+            path = self.project/name
+            # The repository's docker-compose.yml is a tracked link to compose.yaml.
+            if path.is_symlink():
+                if name != 'docker-compose.yml' or os.readlink(path) != 'compose.yaml':
+                    raise ValueError('Unexpected Compose symlink')
+                atomic_json(small/'compose-link.json', {'path': str(path), 'target': 'compose.yaml'})
+                continue
+            signature(path, source=True)
+            target = small/name; shutil.copyfile(path, target)
+            copied[str(path)] = {'copy': str(target.relative_to(self.state)), 'sha256': digest(target)}
+            with target.open('rb') as stream:
+                os.fsync(stream.fileno())
+        unit = Path(command(['/usr/bin/systemctl', 'show', 'ssh-exam.service', '-p', 'FragmentPath', '--value']).strip())
+        if not unit.is_absolute():
+            raise ValueError('Service unit path unavailable')
+        shutil.copyfile(unit, small/'web-service-unit')
+        copied[str(unit)] = {'copy': 'configuration/web-service-unit', 'sha256': digest(small/'web-service-unit')}
+        with (small/'web-service-unit').open('rb') as stream:
+            os.fsync(stream.fileno())
+        dropins = command(['/usr/bin/systemctl', 'show', 'ssh-exam.service', '-p', 'DropInPaths', '--value']).split()
+        for position, name in enumerate(dropins):
+            path = Path(name); signature(path, source=True)
+            target = small/('web-service-dropin-'+str(position)); shutil.copyfile(path, target)
+            copied[str(path)] = {'copy': str(target.relative_to(self.state)), 'sha256': digest(target)}
+            with target.open('rb') as stream:
+                os.fsync(stream.fileno())
+        atomic_json(small/'unit-paths.json', {'fragment': str(unit), 'dropins': dropins})
+        atomic_json(self.state/'configuration.json', copied)
+        for directory, _, _ in os.walk(small, topdown=False):
+            sync_directory(Path(directory))
+        template = Path(self.settings.get('site_template', str(SCRIPTS.parent/'deploy/nginx/ssh-exam.cadilhac.name.conf')))
+        for fenced in (False, True):
+            arguments = [sys.executable, SCRIPTS/'render-rollout-nginx', '--site', template, '--output', self.state/('fenced.conf' if fenced else 'normal.conf')]
+            command(arguments+(['--fence'] if fenced else []))
+        sync_directory(self.state)
+        inputs = [self.state/name for name in ('release.json', 'image-assets.json', 'previous-image-assets.json', 'previous-image.tar', 'normal.conf', 'fenced.conf', 'configuration.json')]
+        inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py')]
+        inputs += [OPS/name for name in ('inventory-web.py', 'preservation.py', 'qualify-old-workers.py')]
+        inputs += [SCRIPTS.parent/'deploy/nginx'/name for name in ('maintenance-maps.conf', 'maintenance-response.conf')]
+        inputs.append(template)
+        atomic_json(self.state/'prepared-inputs.json', {str(path): digest(path) for path in inputs})
+        self.save('PREPARING', prepared_inputs_sha256=digest(self.state/'prepared-inputs.json'),
+                  old_image=previous['Id'], preparation_copies_ready=True)
+        self.finish_prepare()
+
+    def finish_prepare(self):
+        self.online_identity(self.release['old_image_config_id'])
+        if (self.site.read_bytes() != (self.state/'nginx-before.conf').read_bytes()
+                or Path(self.settings['nginx_main']).read_bytes() != (self.state/'nginx-main-before.conf').read_bytes()):
+            raise ValueError('Preparation site configuration changed; reinventory without stopping work')
+        self.pause_background()
+        if self.release['schema'] >= 37:
+            deadline = time.monotonic()+60
+            while True:
+                database = sqlite3.connect((self.data/'metadata.sqlite').as_uri()+'?mode=ro', uri=True)
+                try:
+                    busy = database.execute("SELECT count(*) FROM monitoring_video_jobs WHERE status='running' OR owner IS NOT NULL").fetchone()[0]
+                finally:
+                    database.close()
+                if not busy:
+                    break
+                if time.monotonic() >= deadline:
+                    raise ValueError('Current video chunk has not drained; preserve its work and use resume or cancel before stop')
+                time.sleep(.1)
+        warm = json.loads(command([sys.executable, SCRIPTS/'backup', '--warm-media', self.data, '--shared-store', self.settings['shared_store']], timeout=1800))
+        if warm['phase'] != 'MEDIA_WARMED':
+            raise ValueError('Media recovery preparation did not complete')
+        self.save('PREPARED', coverage=self.coverage(), prepared_at=time.time())
+
+    def inputs_unchanged(self):
+        if digest(self.state/'prepared-inputs.json') != self.record['prepared_inputs_sha256']:
+            raise ValueError('Prepared input manifest changed; preserve state and prepare a reviewed new release')
+        for path, expected in json.loads((self.state/'prepared-inputs.json').read_text()).items():
+            if digest(Path(path)) != expected:
+                raise ValueError('Prepared release/assets/configuration/helper input changed: '+path)
+        image = self.inspect_image(self.image['tag'])
+        if image['Id'] != self.image['config_id'] or image['RootFS']['Layers'] != self.image['layers']:
+            raise ValueError('Prepared candidate image/tag changed; do not stop the gateway')
+
+    def install_site(self, content):
+        original = self.site.read_bytes()
+        replace_file(self.site, content)
+        try:
+            command(['/usr/bin/nginx', '-t'], timeout=15)
+            command(['/usr/bin/systemctl', 'reload', 'nginx.service'], timeout=15)
+        except BaseException:
+            replace_file(self.site, original)
+            command(['/usr/bin/nginx', '-t'], timeout=15)
+            command(['/usr/bin/systemctl', 'reload', 'nginx.service'], timeout=15)
+            raise
+
+    def fence(self):
+        master = int(command(['/usr/bin/systemctl', 'show', 'nginx.service', '-p', 'MainPID', '--value']).strip())
+        workers = [int(pid) for pid in Path(f'/proc/{master}/task/{master}/children').read_text().split()
+                   if b'nginx: worker process' in Path(f'/proc/{pid}/cmdline').read_bytes()]
+        if not workers:
+            raise ValueError('No owned nginx workers observed')
+        self.install_site((self.state/'fenced.conf').read_bytes())
+        atomic_json(self.state/'gate.json', {'old_workers': workers, 'fence_sha256': digest(self.site)})
+        deadline = time.monotonic()+20
+        while any(Path('/proc/'+str(pid)).exists() for pid in workers):
+            if time.monotonic() >= deadline:
+                result = json.loads(command([sys.executable, OPS/'qualify-old-workers.py', self.state]))
+                if result['guard'] != 'PASS':
+                    raise ValueError('Old exam connections not positively drained')
+                break
+            time.sleep(.1)
+
+    def stopped(self):
+        command(['/usr/bin/systemctl', 'stop', 'ssh-exam.service'], timeout=75)
+        container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+        if container['State']['Running']:
+            raise ValueError('Gateway still running; no stopped snapshot is authorized')
+
+    def configuration_unchanged(self):
+        for path, expected in json.loads((self.state/'configuration.json').read_text()).items():
+            if digest(Path(path)) != expected['sha256'] or digest(self.state/expected['copy']) != expected['sha256']:
+                raise ValueError('Prepared configuration/unit changed; preserve state and prepare anew')
+        link = self.state/'configuration/compose-link.json'
+        if link.exists():
+            expected = json.loads(link.read_text())
+            if not Path(expected['path']).is_symlink() or os.readlink(expected['path']) != expected['target']:
+                raise ValueError('Compose link changed')
+        expected = json.loads((self.state/'configuration/unit-paths.json').read_text())
+        if (command(['/usr/bin/systemctl', 'show', 'ssh-exam.service', '-p', 'FragmentPath', '--value']).strip() != expected['fragment']
+                or command(['/usr/bin/systemctl', 'show', 'ssh-exam.service', '-p', 'DropInPaths', '--value']).split() != expected['dropins']):
+            raise ValueError('Service unit/drop-in membership changed')
+
+    def capacity(self):
+        required = (self.data/'metadata.sqlite').stat().st_size*2+2*1024**3
+        for name in ('receipts', 'submissions'):
+            if (self.data/name).exists():
+                required += sum(path.stat().st_size for path in (self.data/name).rglob('*') if path.is_file())
+        if shutil.disk_usage(self.state).free <= required:
+            raise ValueError('Insufficient backup capacity; do not stop the gateway or remove historical work')
+
+    def snapshot(self, name):
+        self.coverage()
+        destination = self.state/name
+        if destination.exists():
+            # Crash-only repair is intentionally allowed to take longer: adopt
+            # a fully verified published snapshot, never overwrite it or live data.
+            checked = json.loads(command([sys.executable, SCRIPTS/'backup', '--verify-backup', destination], timeout=1800))
+            if checked['phase'] != 'BACKUP_VERIFIED':
+                raise ValueError('Existing snapshot did not verify; preserve it')
+            manifest = json.loads((destination/'snapshot.json').read_text())
+            if manifest['format'] != 'shared-monitoring-v1' or manifest['gateway_stopped_attested'] is not True or manifest.get('require_warmed') is not True:
+                raise ValueError('Existing snapshot does not attest a stopped source')
+            result = {'phase': 'BACKUP_COMPLETE', 'snapshot': str(destination), 'files': len(manifest['files']),
+                      'database_bytes': manifest['files']['metadata.sqlite']['bytes'],
+                      'new_monitoring_objects': manifest['new_monitoring_objects'],
+                      'copied_bytes_excluding_database': manifest['copied_bytes_excluding_database'],
+                      'reused_monitoring_bytes': manifest['reused_monitoring_bytes'], 'recovered_after_crash': True}
+        else:
+            result = json.loads(command([sys.executable, SCRIPTS/'backup', self.data, destination, '--gateway-stopped', '--require-warmed', '--shared-store', self.settings['shared_store']], timeout=120))
+        if result['phase'] != 'BACKUP_COMPLETE' or result['new_monitoring_objects'] != 0:
+            raise ValueError('Fast stopped backup did not prove unchanged shared monitoring; preserve fence and inspect')
+        atomic_json(self.state/(name+'-receipt.json'), result)
+        return result
+
+    def preserved(self):
+        observed = int(time.time()*1000)
+        db = sqlite3.connect((self.data/'metadata.sqlite').as_uri()+'?mode=ro', uri=True)
+        try:
+            db.execute('PRAGMA query_only=ON')
+            db.execute('ATTACH DATABASE ? AS previous', ((self.state/'snapshot/metadata.sqlite').as_uri()+'?mode=ro',))
+            db.execute('BEGIN')
+            if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)] or db.execute('PRAGMA foreign_key_check').fetchall():
+                raise ValueError('Database integrity/referral check refused')
+            if db.execute('SELECT max(version) FROM schema_version').fetchone()[0] != self.release['schema']:
+                raise ValueError('Schema changed; UI-only rollback cannot discard that authority')
+            return preservation.verify(db, self.record['proof_started_ms'], observed, json.loads((self.project/'deploy/config/config.json').read_text())['agent']['id'])
+        finally:
+            db.close()
+
+    def verified(self, image):
+        guard = self.inventory()
+        if guard['image'] != image or guard['history_sha256'] != self.record['guard']['history_sha256'] or guard['attempts'] != self.record['guard']['attempts']:
+            raise ValueError('Running image/history differs from the guarded release')
+        if (self.project/'deploy/config/config.json').read_bytes() != (self.state/'application-config-before.json').read_bytes():
+            raise ValueError('Application configuration changed')
+        proof = self.preserved()
+        roles = self.roles()
+        if not roles['complete'] or not roles['retained_enabled'] or roles['observed'] < self.record['latest_start_ms']-1000:
+            raise ValueError('Fresh post-start signed native readiness not observed')
+        with urllib.request.urlopen('http://127.0.0.1:3001/health/ready', timeout=5) as response:
+            ready = json.load(response)
+        if not (ready['ready'] and ready['productionReady'] and ready['notifications'] and not ready['maintenance'] and not ready['functionalTest']):
+            raise ValueError('Production readiness/notifications refused')
+        return proof
+
+    def roles(self):
+        database = sqlite3.connect((self.data/'metadata.sqlite').as_uri()+'?mode=ro', uri=True)
+        try:
+            agent = json.loads((self.project/'deploy/config/config.json').read_text())['agent']['id']
+            roles = json.loads(database.execute('SELECT payload FROM agent_snapshot WHERE agent=?', (agent,)).fetchone()[0])['health']['native_roles']
+        finally:
+            database.close()
+        return roles
+
+    def start(self, image, tag):
+        before = (self.state/'environment-before').read_bytes()
+        replace_file(self.env, selected_env(before, tag))
+        self.save(self.record['phase'], latest_start_ms=int(time.time()*1000))
+        command(['/usr/bin/systemctl', 'start', 'ssh-exam.service'], timeout=150)
+        deadline = time.monotonic()+120
+        while True:
+            try:
+                container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+                roles = self.roles()
+                if (container['State']['Running'] and container['State']['Health']['Status'] == 'healthy'
+                        and container['Image'] == image and roles['complete'] and roles['retained_enabled']
+                        and roles['observed'] >= self.record['latest_start_ms']-1000):
+                    break
+            except (OSError, RuntimeError, KeyError, TypeError):
+                pass
+            if time.monotonic() >= deadline:
+                raise RuntimeError('Fresh readiness unavailable; fence remains closed')
+            time.sleep(1)
+        # Authority/configuration failures are definitive, not a retry timeout.
+        return self.verified(image)
+
+    def public(self, opened, previous=False):
+        origin = json.loads((self.project/'deploy/config/config.json').read_text())['origin']
+        assets = json.loads((self.state/'previous-image-assets.json').read_text()) if previous else self.assets
+        for name, expected in assets['assets'].items():
+            path = '/' if name == 'dist/web/index.html' else '/'+name.removeprefix('dist/web/')
+            try:
+                with urllib.request.urlopen(origin+path, timeout=5) as response:
+                    status, body = response.status, response.read()
+            except urllib.error.HTTPError as error:
+                if not opened and path == '/' and error.code == 503 and error.headers.get('Retry-After') == '60':
+                    continue
+                raise
+            if status != 200 or hashlib.sha256(body).hexdigest() != expected:
+                raise ValueError('Public asset differs from the qualified release: '+path)
+
+    def apply(self):
+        if self.record['phase'] != 'PREPARED':
+            raise ValueError('Apply requires PREPARED; inspect status and use rollback after a failed cutover')
+        self.inputs_unchanged()
+        for path, saved in [(self.site, 'nginx-before.conf'), (self.env, 'environment-before'), (self.project/'deploy/config/config.json', 'application-config-before.json'), (Path(self.settings['nginx_main']), 'nginx-main-before.conf')]:
+            if path.read_bytes() != (self.state/saved).read_bytes():
+                raise ValueError('Prepared configuration changed; prepare a new release state')
+        self.configuration_unchanged(); self.capacity()
+        self.pause_background()
+        guard = self.inventory(); self.native(); self.coverage()
+        if guard['image'] != self.release['old_image_config_id']:
+            raise ValueError('Installed release changed since preparation')
+        self.inspect_image(self.release['old_image_config_id'])
+        self.save('FENCING', guard=guard, cutover_started=time.monotonic())
+        self.fence_stop()
+        self.finish_apply()
+
+    def fence_stop(self):
+        self.fence(); self.save('FENCED')
+        self.inventory(); self.native(); self.coverage(); self.capacity()
+        self.stopped(); self.save('STOPPED')
+        self.configuration_unchanged()
+
+    def finish_apply(self):
+        backup = self.snapshot('snapshot')
+        self.save('SNAPSHOT_DURABLE', backup=backup, proof_started_ms=int(time.time()*1000))
+        proof = self.start(self.image['config_id'], self.image['tag'])
+        self.save('RUNNING_GATED', proof=proof)
+        self.native(); self.public(False)
+        proof = self.verified(self.image['config_id'])
+        self.save('VERIFIED_GATED', proof=proof)
+        self.save('VERIFIED_GATED', opening_image=self.image['config_id'], opening_previous=False,
+                  opening_site='normal.conf', opening_phase='ONLINE')
+        self.install_site((self.state/'normal.conf').read_bytes())
+        try:
+            self.public(True)
+        except BaseException:
+            self.install_site((self.state/'fenced.conf').read_bytes())
+            raise
+        self.save('ONLINE', cutover_seconds=time.monotonic()-self.record['cutover_started'])
+        self.release_background()
+
+    def resume(self):
+        if self.record.get('opening_phase') == 'CANCELLED' and self.record['phase'] in ('PREPARING', 'PREPARED', 'FENCING', 'FENCED'):
+            return self.cancel()
+        if self.record.get('opening_image') and self.site.read_bytes() == (self.state/self.record['opening_site']).read_bytes():
+            return self.resume_online()
+        if self.record['phase'] == 'PREPARING' and self.record.get('preparation_copies_ready'):
+            return self.finish_prepare()
+        if self.record['phase'] not in ('FENCING', 'FENCED', 'STOPPED'):
+            raise ValueError('resume requires FENCING, FENCED or STOPPED; later failed activation uses rollback')
+        self.inputs_unchanged()
+        self.pause_background()
+        if self.env.read_bytes() != (self.state/'environment-before').read_bytes():
+            raise ValueError('Image selection changed; preserve state and inspect before retrying')
+        if self.record['phase'] == 'FENCED':
+            container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+            if not container['State']['Running']:
+                if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
+                    raise ValueError('Stopped admission fence changed; preserve state before retrying')
+                # Stop can complete just before its status write. Continue only
+                # through the same fresh inactive-service/SQL/native proof below.
+                self.save('STOPPED')
+        if self.record['phase'] in ('FENCING', 'FENCED'):
+            if self.site.read_bytes() not in ((self.state/'fenced.conf').read_bytes(), (self.state/'nginx-before.conf').read_bytes()):
+                raise ValueError('Admission configuration changed; preserve state before retrying')
+            self.configuration_unchanged(); self.capacity(); self.coverage(); self.native()
+            guard = self.inventory()
+            if guard['image'] != self.release['old_image_config_id'] or guard['history_sha256'] != self.record['guard']['history_sha256']:
+                raise ValueError('Fresh pre-stop release/history proof changed')
+            self.fence_stop()
+            return self.finish_apply()
+        if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
+            raise ValueError('Stopped admission fence changed; preserve state and inspect before retrying')
+        self.native()
+        guard = json.loads(command([sys.executable, OPS/'inventory-web.py', self.state, self.release['schema'], 'stopped']))
+        if (guard['guard'] != 'PASS' or guard['scope'] != 'STOPPED' or guard['image'] != self.release['old_image_config_id']
+                or guard['history_sha256'] != self.record['guard']['history_sha256'] or guard['attempts'] != self.record['guard']['attempts']):
+            raise ValueError('Fresh stopped idle/history proof refused; do not restart or overwrite work')
+        self.configuration_unchanged(); self.coverage(); self.capacity()
+        self.finish_apply()
+
+    def rollback(self):
+        self.inputs_unchanged()
+        if ('backup' not in self.record and self.record['phase'] == 'STOPPED'
+                and (self.state/'snapshot/snapshot.json').is_file()):
+            container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+            if container['State']['Running']:
+                raise ValueError('Unknown running gateway after crash; do not stop it without a fresh drain')
+            backup = self.snapshot('snapshot')
+            at = json.loads((self.state/'snapshot/snapshot.json').read_text())['at']
+            self.save('SNAPSHOT_DURABLE', backup=backup,
+                      proof_started_ms=int(datetime.datetime.fromisoformat(at).timestamp()*1000))
+        if 'backup' not in self.record or self.record['phase'] in ('ONLINE', 'ONLINE_ROLLED_BACK'):
+            raise ValueError('Rollback requires a fenced failed cutover with a durable snapshot; an online release needs a fresh reviewed rollout')
+        if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
+            raise ValueError('Admission fence changed; preserve current work and reinventory before rollback')
+        self.native(); self.preserved()
+        container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+        guard = self.inventory(stopped=not container['State']['Running'])
+        if guard['image'] not in (self.release['old_image_config_id'], self.image['config_id']):
+            raise ValueError('Unknown running image; do not stop it or take over its work')
+        if container['State']['Running']:
+            self.stopped()
+        self.snapshot('rollback-current-snapshot')
+        self.inspect_image(self.release['old_image_config_id'])
+        old_tag = self.release['old_image_config_id']
+        self.save('ROLLING_BACK')
+        proof = self.start(self.release['old_image_config_id'], old_tag)
+        self.native()
+        self.save('ROLLED_BACK_GATED', proof=proof, current_database_preserved=True)
+        # Keep the fence: opening is a separately reviewable step after repair.
+
+    def reopen(self):
+        self.inputs_unchanged()
+        if self.record['phase'] != 'ROLLED_BACK_GATED':
+            raise ValueError('reopen requires a verified ROLLED_BACK_GATED state')
+        self.native(); self.verified(self.release['old_image_config_id']); self.public(False, previous=True)
+        self.save('ROLLED_BACK_GATED', opening_image=self.release['old_image_config_id'], opening_previous=True,
+                  opening_site='normal.conf', opening_phase='ONLINE_ROLLED_BACK')
+        self.install_site((self.state/'normal.conf').read_bytes())
+        try:
+            self.public(True, previous=True)
+        except BaseException:
+            self.install_site((self.state/'fenced.conf').read_bytes())
+            raise
+        self.save('ONLINE_ROLLED_BACK', current_database_preserved=True)
+        self.release_background()
+
+    def online_identity(self, image):
+        # Admissions may already be open: never use an idle/history guard or
+        # stop the service here. Legitimate new work must remain untouched.
+        self.inputs_unchanged(); self.configuration_unchanged()
+        if (self.project/'deploy/config/config.json').read_bytes() != (self.state/'application-config-before.json').read_bytes():
+            raise ValueError('Online application configuration changed; reinventory without stopping work')
+        tag = self.image['tag'] if image == self.image['config_id'] else self.release['old_image_config_id']
+        expected = selected_env((self.state/'environment-before').read_bytes(), tag)
+        if image == self.release['old_image_config_id'] and self.env.read_bytes() == (self.state/'environment-before').read_bytes():
+            expected = self.env.read_bytes()
+        if self.env.read_bytes() != expected:
+            raise ValueError('Online image selection changed; reinventory without stopping work')
+        container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+        if (container['Image'] != image or not container['State']['Running']
+                or container['State']['Health']['Status'] != 'healthy'
+                or container['Config']['User'] != '10001:10001'
+                or not container['HostConfig']['ReadonlyRootfs'] or container['HostConfig']['CapDrop'] != ['ALL']):
+            raise ValueError('Online gateway identity is uncertain; do not stop it')
+        roles = self.roles(); age = int(time.time()*1000)-roles['observed']
+        if not roles['complete'] or not roles['retained_enabled'] or not -1000 <= age < 120000:
+            raise ValueError('Fresh signed online native readiness unavailable; preserve the pause')
+        with urllib.request.urlopen('http://127.0.0.1:3001/health/ready', timeout=5) as response:
+            ready = json.load(response)
+        if not (ready['ready'] and ready['productionReady'] and ready['notifications'] and not ready['maintenance'] and not ready['functionalTest']):
+            raise ValueError('Online readiness unavailable; preserve the pause')
+
+    def resume_online(self):
+        if self.record['phase'] not in ('VERIFIED_GATED', 'ROLLED_BACK_GATED', 'ONLINE', 'ONLINE_ROLLED_BACK', 'CANCELLED'):
+            raise ValueError('No verified opening receipt; reinventory without stopping work')
+        self.online_identity(self.record['opening_image'])
+        self.public(True, previous=self.record['opening_previous'])
+        self.save(self.record['opening_phase'], recovered_online_read_only=True)
+        self.release_background()
+
+    def cancel(self):
+        if (self.record['phase'] not in ('PREPARING', 'PREPARED', 'FENCING', 'FENCED')
+                or (self.record['phase'] == 'PREPARING' and not self.record.get('preparation_copies_ready')) or 'backup' in self.record):
+            raise ValueError('Cancel is only available before the gateway stops; later recovery uses rollback')
+        if self.env.read_bytes() != (self.state/'environment-before').read_bytes():
+            raise ValueError('Image selection changed; reinventory without stopping work')
+        if self.site.read_bytes() not in ((self.state/'fenced.conf').read_bytes(), (self.state/'nginx-before.conf').read_bytes()):
+            raise ValueError('Admission configuration is not owned; do not replace it')
+        self.online_identity(self.release['old_image_config_id'])
+        self.public(self.site.read_bytes() != (self.state/'fenced.conf').read_bytes(), previous=True)
+        self.save(self.record['phase'], opening_image=self.release['old_image_config_id'], opening_previous=True,
+                  opening_site='nginx-before.conf', opening_phase='CANCELLED')
+        if self.site.read_bytes() != (self.state/'nginx-before.conf').read_bytes():
+            self.install_site((self.state/'nginx-before.conf').read_bytes())
+        self.public(True, previous=True)
+        self.save('CANCELLED')
+        self.release_background()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', choices=['prepare', 'apply', 'resume', 'rollback', 'reopen', 'cancel', 'status'])
+    parser.add_argument('--state', required=True, type=Path, help='New private state directory for prepare; existing state for other actions')
+    parser.add_argument('--release', type=Path, help='Private qualified bundle directory containing release.json, image-assets.json, web-image.tar')
+    args = parser.parse_args()
+    os.umask(0o077)
+    rollout = lock = None
+    try:
+        require_root()
+        LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+        lock = os.fdopen(os.open(LOCK_FILE, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600), 'r+')
+        info = os.fstat(lock.fileno())
+        if info.st_uid != os.geteuid() or info.st_mode & 0o022 or not stat.S_ISREG(info.st_mode):
+            raise ValueError('Unsafe application-host deployment lock')
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if args.action == 'prepare':
+            if not args.release:
+                parser.error('prepare requires --release')
+            private_directory(args.release)
+            args.state.mkdir(mode=0o700)
+            for name in ('release.json', 'image-assets.json'):
+                shutil.copyfile(args.release/name, args.state/name)
+            atomic_json(args.state/'status.json', {'phase': 'PREPARING'})
+        rollout = Rollout(args.state)
+        if args.action == 'prepare':
+            rollout.prepare(args.release)
+        elif args.action == 'apply':
+            rollout.apply()
+        elif args.action == 'rollback':
+            rollout.rollback()
+        elif args.action == 'resume':
+            rollout.resume()
+        elif args.action == 'reopen':
+            rollout.reopen()
+        elif args.action == 'cancel':
+            rollout.cancel()
+        if args.action == 'status':
+            rollout.record['video_pause_observed'] = rollout.background_status()
+        print(json.dumps(rollout.record), flush=True)
+    except (OSError, ValueError, AssertionError, KeyError, RuntimeError, sqlite3.Error, subprocess.TimeoutExpired) as error:
+        if rollout:
+            rollout.save(rollout.record['phase'], last_error=str(error))
+        parser.exit(1, f'UI release refused: {error}\nPreserve the state directory and any admission fence. Inspect status; do not restore an old database.\n')
+    finally:
+        if lock:
+            lock.close()
+
+
+if __name__ == '__main__':
+    main()

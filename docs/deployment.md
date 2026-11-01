@@ -80,8 +80,13 @@ username and confirm a password of 12–1024 characters. Creation is audited; an
 existing account is never overwritten. The CLI remains available for initial
 bootstrap and operator recovery through creation of a separate account.
 
-Install deploy/nginx/exam-workspace.conf.example inside nginx's http context; replace hostname
-and certificate paths. It supplies HTTP redirect/TLS, WebSocket upgrade, explicit forwarding
+After choosing hostname and certificate paths, render
+`deploy/nginx/exam-workspace.conf.example` with `scripts/render-rollout-nginx`
+and install the generated file inside nginx's http context. The generated site
+provides a503 maintenance page/retryable JSON when the gateway is unavailable;
+`--fence` additionally closes new admissions during a separately guarded cutover.
+See [maintenance responses](nginx-maintenance.md) for commands, verification and
+the drain boundary. It supplies HTTP redirect/TLS, WebSocket upgrade, explicit forwarding
 headers, 12 MiB body cap, 75-second live timeout and bounded authenticated monitoring responses.
 Logs omit bodies/cookies/query strings; private directories are never nginx aliases.
 CSP is app-provided, with inline styles only for WinBox and no inline/eval scripts. Microphone
@@ -174,8 +179,9 @@ rejections and reported native cleanup errors still alert immediately. See
 On `marco`, `/opt/ssh-exam` links to `/home/micha/src/ssh-exam`. The `ssh-exam.service`
 unit reads `/etc/ssh-exam/ssh-exam.env` and uses the tracked `docker-compose.yml` symlink.
 Set `EXAM_HOST_PORT=3001` in that environment file (and the checkout's ignored `.env`
-for manual Compose commands); TagMix retains localhost port 3000. Install
-`deploy/nginx/ssh-exam.cadilhac.name.conf` in `/etc/nginx/servers.d/`, removing the old
+for manual Compose commands); TagMix retains localhost port 3000. Render
+`deploy/nginx/ssh-exam.cadilhac.name.conf` with `scripts/render-rollout-nginx` and
+install the generated normal candidate in `/etc/nginx/servers.d/`, removing the old
 domain-only redirect blocks from nginx.conf after taking a backup. The existing
 cadilhac.name certificate covers this hostname. Validate nginx before reloading.
 
