@@ -17,9 +17,7 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
     ["legacy01", "legacy02"],
     "Allow first attempt",
   );
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Review NEW grants for existing unused browser enrollments");
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   await expect(
     dialog.getByRole("heading", { name: "legacy01", exact: true }),
@@ -67,7 +65,7 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
   ).json();
   expect(grants.grants).toHaveLength(2);
   expect(grants.grants.every((g: any) => g.claims.length === 0)).toBe(true);
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await page
     .getByRole("button", { name: "Administration", exact: true })
     .click();

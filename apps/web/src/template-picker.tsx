@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { publishedFiles } from "./exam-file-options.js";
 import { shortDateTime } from "./local-date-time.js";
+import { RefreshButton } from "./refresh-button.js";
 
 export function TemplatePicker({
   name,
@@ -77,13 +78,11 @@ export function TemplatePicker({
       {error && (
         <div role="alert">
           <p>Could not load starter files.</p>
-          <button
-            type="button"
+          <RefreshButton
+            label="Refresh files"
             disabled={disabled}
             onClick={() => setReload((n) => n + 1)}
-          >
-            Refresh files
-          </button>
+          />
           <details>
             <summary>Details</summary>
             <p>{error}</p>

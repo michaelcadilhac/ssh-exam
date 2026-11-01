@@ -103,25 +103,24 @@ for (const width of [1280, 430])
         exact: true,
       })
       .click();
+    await expect(
+      dialog.getByRole("textbox", { name: "Reason", exact: true }),
+    ).toHaveCount(0, { timeout: 3000 });
     await dialog
-      .getByLabel("Reason")
-      .fill("Explicit instructor reminder after review");
-    await dialog
-      .locator("form")
-      .filter({
-        has: page.getByRole("textbox", { name: "Reason", exact: true }),
-      })
+      .getByRole("form", { name: "Send alert reminder", exact: true })
       .getByRole("button", { name: "Send reminder", exact: true })
       .click();
     await expect(dialog.getByRole("alert")).toBeVisible();
+    await expect(
+      dialog
+        .getByRole("form", { name: "Send alert reminder", exact: true })
+        .getByRole("button", { name: "Close", exact: true }),
+    ).toBeVisible();
     await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
     await dialog.getByText("Details", { exact: true }).click();
     await expect(dialog.getByText(/1 manual reminders/)).toBeVisible();
     await dialog
-      .locator("form")
-      .filter({
-        has: page.getByRole("textbox", { name: "Reason", exact: true }),
-      })
+      .getByRole("form", { name: "Send alert reminder", exact: true })
       .getByRole("button", { name: "Send reminder", exact: true })
       .click();
     await expect(
@@ -131,7 +130,7 @@ for (const width of [1280, 430])
     expect(state.reminders[1]).toEqual(state.reminders[0]);
     expect(state.reminders[0]).toMatchObject({
       revision: "a".repeat(64),
-      reason: "Explicit instructor reminder after review",
+      reason: "Send alert reminder",
     });
     expect(state.reminders[0].requestID).toMatch(/^[a-f0-9-]{36}$/);
     await expect(dialog.getByLabel("Reason")).toHaveCount(0);
@@ -140,7 +139,7 @@ for (const width of [1280, 430])
     ).toBe(true);
   });
 
-test("resolved/stale reminder stays fenced, retains edits and can be cancelled", async ({
+test("resolved/stale reminder stays fenced and can be dismissed", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -151,22 +150,26 @@ test("resolved/stale reminder stays fenced, retains edits and can be cancelled",
       exact: true,
     })
     .click();
-  await dialog.getByLabel("Reason").fill("Retain this reviewed reason");
+  await expect(dialog.getByLabel("Reason")).toHaveCount(0);
   state.rejectReminder = true;
   state.row.episode.resolved = Date.now();
   state.row.episode.revision = "b".repeat(64);
   state.row.remindable = false;
   state.row.refusal = "Episode is resolved";
   await dialog
-    .locator("form")
-    .filter({ has: page.getByRole("textbox", { name: "Reason", exact: true }) })
+    .getByRole("form", { name: "Send alert reminder", exact: true })
     .getByRole("button", { name: "Send reminder", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toContainText("episode changed");
-  await expect(dialog.getByLabel("Reason")).toHaveValue(
-    "Retain this reviewed reason",
-  );
-  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(dialog.getByLabel("Reason")).toHaveCount(0);
+  expect(state.reminders[0]).toMatchObject({
+    revision: "a".repeat(64),
+    reason: "Send alert reminder",
+  });
+  await dialog
+    .getByRole("form", { name: "Send alert reminder", exact: true })
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(
     dialog.getByText("Episode is resolved", { exact: true }),

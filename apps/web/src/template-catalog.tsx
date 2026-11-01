@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
+import { RefreshButton } from "./refresh-button.js";
 import {
   templateCatalogPageResult,
   templateCatalogShowResult,
@@ -187,13 +188,11 @@ export function TemplateCatalogView() {
             />
           </label>
           <button type="submit">Filter</button>
-          <button
-            type="button"
+          <RefreshButton
+            label="Refresh"
             disabled={loading}
             onClick={() => setRefresh((n) => n + 1)}
-          >
-            Refresh
-          </button>
+          />
         </form>
         {filterError && <p role="alert">{filterError}</p>}
         {error && (

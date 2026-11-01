@@ -89,7 +89,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
   let dialog = await manageStudent(page, "practice01");
   await expect(dialog).toContainText("5 min");
   await cancelUnused(dialog);
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await adminOut();
   await student();
   await expect(page.locator("main")).toContainText(
@@ -129,7 +129,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
     .getByRole("button", { name: "Allow attempt", exact: true })
     .click();
   await expect(dialog).toContainText("Attempt allowed");
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await adminOut();
   await student();
   const prepared = await preflight();

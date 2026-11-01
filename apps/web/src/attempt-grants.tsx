@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
+import { RefreshButton } from "./refresh-button.js";
 import { allGrants, grantStatus, grantUnused } from "./grant-options.js";
 import { TemplatePicker } from "./template-picker.js";
 import { SavedWorkSetup } from "./saved-work-setup.js";
@@ -14,6 +15,8 @@ import {
 } from "./exam-file-options.js";
 import {
   deviceTimeZone,
+  localDateTime,
+  localOccurrence,
   parseLocalDateTime,
   shortDateTime,
   timeLimit,
@@ -157,6 +160,8 @@ export function AttemptGrantsDialog({
     formId = useId();
   const [catalog, setCatalog] = useState<any[]>([]),
     [selected, setSelected] = useState(new Set<string>()),
+    [editingId, setEditingId] = useState<string | null>(null),
+    [editingSnapshot, setEditingSnapshot] = useState<any>(null),
     [loaded, setLoaded] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -171,16 +176,12 @@ export function AttemptGrantsDialog({
     [openOccurrence, setOpenOccurrence] = useState(0),
     [closeOccurrence, setCloseOccurrence] = useState(0),
     [workMode, setWorkMode] = useState("keep"),
+    [workChanged, setWorkChanged] = useState(false),
     [workName, setWorkName] = useState(""),
     [workHash, setWorkHash] = useState(""),
     [materialChange, setMaterialChange] = useState(false),
     [materialName, setMaterialName] = useState(""),
     [materialHash, setMaterialHash] = useState(""),
-    [reason, setReason] = useState(
-      username
-        ? "Change unused attempt settings"
-        : "Change selected unused attempt settings",
-    ),
     [exams, setExams] = useState<any[]>([]),
     [examError, setExamError] = useState(""),
     [sourceExam, setSourceExam] = useState(exam),
@@ -246,6 +247,7 @@ export function AttemptGrantsDialog({
         current.add(eligible[0].id);
       return current;
     });
+    return values;
   };
   const loadExams = async (signal?: AbortSignal) => {
     try {
@@ -386,8 +388,11 @@ export function AttemptGrantsDialog({
   const selectedGrants = catalog.filter((g) => selected.has(g.id)),
     selectedNames = [...new Set(selectedGrants.map((g) => g.username))],
     editingGrant =
-      username && selectedGrants.length === 1 && grantUnused(selectedGrants[0])
-        ? selectedGrants[0]
+      username &&
+      editingId === selectedGrants[0]?.id &&
+      selectedGrants.length === 1 &&
+      grantUnused(selectedGrants[0])
+        ? editingSnapshot
         : null,
     sourceExams = exams.length ? exams : [{ id: exam, name: exam }],
     sourceExamLabel = examChoiceLabel(
@@ -395,35 +400,84 @@ export function AttemptGrantsDialog({
         id: sourceExam,
       },
     );
-  const editGrant = (grant: any) => {
-    if (busy || review || !grantUnused(grant)) return;
-    requestAnimationFrame(() =>
-      document
-        .getElementById(`${formId}-editor`)
-        ?.scrollIntoView({ block: "nearest" }),
-    );
-    if (selected.size === 1 && selected.has(grant.id)) return;
+  const populateEditor = (
+    grant: any,
+    changes: Record<string, any> = {},
+    replacement?: any,
+  ) => {
+    const settings = { ...grant.settings, ...changes },
+      work = replacement ?? grant.work;
+    setEditingId(grant.id);
+    setEditingSnapshot(structuredClone(grant));
     setSelected(new Set([grant.id]));
-    setDraft({});
-    setWebcam("keep");
-    setWindowMode("keep");
-    setOpens("");
-    setCloses("");
-    setOpenOccurrence(0);
-    setCloseOccurrence(0);
-    setWorkMode("keep");
-    setWorkName("");
-    setWorkHash("");
-    setMaterialChange(false);
-    setMaterialName("");
-    setMaterialHash("");
-    setReason("Change unused attempt settings");
-    setSourceExam(exam);
+    setDraft(
+      Object.fromEntries(
+        Object.entries(changes)
+          .filter(
+            ([key]) =>
+              key === "duration" || numeric.some(([name]) => key === name),
+          )
+          .map(([key, value]) => [
+            key,
+            String(key === "duration" ? value / 60 : value),
+          ]),
+      ),
+    );
+    setWebcam(String(settings.webcam));
+    setWindowMode("set");
+    setOpens(localDateTime(settings.earliest));
+    setCloses(localDateTime(settings.latest));
+    setOpenOccurrence(localOccurrence(settings.earliest));
+    setCloseOccurrence(localOccurrence(settings.latest));
+    setWorkMode(work.kind);
+    setWorkChanged(!!replacement && !sameWork(work, grant.work));
+    setWorkName(work.name ?? "");
+    setWorkHash(work.hash ?? "");
+    setMaterialChange(
+      changes.template !== undefined || changes.template_version !== undefined,
+    );
+    setMaterialName(settings.template ?? "");
+    setMaterialHash(settings.template_version ?? "");
+    setSourceExam(
+      [...sources, snapshots[grant.id]?.source].find(
+        (s) => s?.id === work.attempt,
+      )?.exam ?? exam,
+    );
     setSources([]);
-    setSavedChoices({});
+    setSavedChoices(
+      work.kind === "saved" ? { [grant.username]: work.attempt } : {},
+    );
     setSourceError("");
     setSourceLoading(false);
     setError("");
+  };
+  const editGrant = (grant: any) => {
+    if (busy || review || !grantUnused(grant)) return;
+    populateEditor(grant);
+  };
+  useEffect(() => {
+    if (!editingGrant || workChanged || editingGrant.work.kind !== "saved")
+      return;
+    const source = snapshots[editingGrant.id]?.source;
+    if (source?.id === editingGrant.work.attempt) setSourceExam(source.exam);
+  }, [editingGrant?.id, snapshots, workChanged]);
+  useEffect(() => {
+    if (editingGrant && !review) {
+      document
+        .getElementById(`${formId}-editor`)
+        ?.scrollIntoView({ block: "nearest" });
+      document.getElementById(`${formId}-duration`)?.focus();
+    }
+  }, [editingGrant?.id, !!review]);
+  const cancelEditing = () => {
+    if (busy) return;
+    setEditingId(null);
+    setError("");
+    setWorkMode("keep");
+    setWorkChanged(false);
+    requestAnimationFrame(() =>
+      document.getElementById(`${formId}-edit-${editingId}`)?.focus(),
+    );
   };
   const savedSource = (name: string) => {
     if (sourceLoading || sourceError)
@@ -442,22 +496,20 @@ export function AttemptGrantsDialog({
   };
   const makeReview = async (
     operation: "revise" | "revoke",
-    targets = selectedGrants,
+    targets = username && editingGrant ? [editingGrant] : selectedGrants,
   ) => {
     if (busy) return;
     setBusy(true);
     setError("");
     try {
       const reviewReason =
-        username && operation === "revoke"
+        operation === "revoke"
           ? "Cancel unused attempt"
-          : reason.trim();
+          : "Change unused attempt settings";
       if (!targets.length || targets.length > 200)
         throw Error("Choose from 1 to 200 unused attempts.");
       if (username && targets.length !== 1)
         throw Error("Choose Edit settings for the attempt you want to change.");
-      if (reviewReason.length < 8 || reviewReason.length > 1000)
-        throw Error("Use a reason from 8 to 1,000 characters.");
       const current = await readStatus(
         targets.map((g) => ({ id: g.id, revision: g.revision })),
         new AbortController().signal,
@@ -470,7 +522,7 @@ export function AttemptGrantsDialog({
       );
       if (changed.length)
         throw Error(
-          `Settings changed or setup started for ${[...new Set(changed.map((g) => g.username))].join(", ")}. Refresh the selection and review again.`,
+          `Settings changed or setup started for ${[...new Set(changed.map((g) => g.username))].join(", ")}. ${username ? "Cancel editing and reopen settings to check the current attempt." : "Refresh the selection and review again."}`,
         );
       const rows: ChangeRow[] = targets.map((old) => {
         const grant = current[old.id].grant,
@@ -493,7 +545,16 @@ export function AttemptGrantsDialog({
               ["earliest", opens, openOccurrence],
               ["latest", closes, closeOccurrence],
             ] as const) {
-              if (value) {
+              if (username && !value)
+                throw Error(
+                  `Choose ${key === "earliest" ? "an opening" : "a closing"} date and time.`,
+                );
+              if (
+                value &&
+                (!username ||
+                  value !== localDateTime(grant.settings[key]) ||
+                  occurrence !== localOccurrence(grant.settings[key]))
+              ) {
                 const at = parseLocalDateTime(value, occurrence);
                 if (at !== grant.settings[key]) changes[key] = at;
               }
@@ -512,10 +573,6 @@ export function AttemptGrantsDialog({
                 );
               if (n !== grant.settings[key]) changes[key] = n;
             }
-          if ((draft.name?.trim().length ?? 0) > 120)
-            throw Error("Exam name must be at most 120 characters.");
-          if (draft.name?.trim() && draft.name.trim() !== grant.settings.name)
-            changes.name = draft.name.trim();
           if (materialChange) {
             workspaceChoice("template", materialName, materialHash);
             if (materialName !== grant.settings.template)
@@ -538,10 +595,18 @@ export function AttemptGrantsDialog({
             throw Error(
               `${grant.username}: total file limit must be at least the per-file limit.`,
             );
-          if (workMode === "saved") {
-            const source = savedSource(grant.username);
-            work = workspaceChoice("saved", source.id, source.checksum);
-          } else if (workMode !== "keep")
+          if (workMode === "saved" && (!username || workChanged)) {
+            if (
+              username &&
+              grant.work.kind === "saved" &&
+              savedChoices[grant.username] === grant.work.attempt
+            )
+              work = grant.work;
+            else {
+              const source = savedSource(grant.username);
+              work = workspaceChoice("saved", source.id, source.checksum);
+            }
+          } else if (workMode !== "keep" && (!username || workChanged))
             work = workspaceChoice(workMode, workName, workHash);
           if (work && sameWork(work, grant.work)) work = undefined;
         }
@@ -758,6 +823,7 @@ export function AttemptGrantsDialog({
         {username && grantUnused(g) && (
           <div className="actions">
             <button
+              id={`${formId}-edit-${g.id}`}
               type="button"
               disabled={busy || !!review}
               onClick={() => editGrant(g)}
@@ -861,12 +927,27 @@ export function AttemptGrantsDialog({
     setBusy(true);
     setError("");
     try {
-      await load();
+      const values = await load();
+      if (!values)
+        throw Error("Could not load current attempt settings. Try again.");
       setSelected(
         new Set(
           review?.filter((r) => r.state !== "saved").map((r) => r.grant.id),
         ),
       );
+      if (username) {
+        const remaining = review?.find((r) => r.state !== "saved");
+        const fresh = values.find(
+          (g) => g.id === remaining?.grant.id && grantUnused(g),
+        );
+        if (fresh && remaining?.operation === "revise")
+          populateEditor(fresh, remaining.body.changes, remaining.body.work);
+        else {
+          setEditingId(null);
+          setEditingSnapshot(null);
+          setWorkMode("keep");
+        }
+      }
       try {
         sessionStorage.removeItem(cacheKey);
       } catch {
@@ -1072,7 +1153,7 @@ export function AttemptGrantsDialog({
             {!!noUnused.length && (
               <p>No unused attempts for: {noUnused.join(", ")}.</p>
             )}
-            {username && attemptGroups}
+            {username && !editingGrant && attemptGroups}
             {(!username || editingGrant) && (
               <>
                 {editingGrant && (
@@ -1094,20 +1175,39 @@ export function AttemptGrantsDialog({
                   <label>
                     Time limit (minutes)
                     <input
+                      id={`${formId}-duration`}
                       type="number"
                       min={1}
                       max={360}
                       step={1}
                       placeholder={
-                        exam === "sandbox" ? "Fixed at 5" : "Unchanged"
+                        exam === "sandbox"
+                          ? "Fixed at 5"
+                          : editingGrant
+                            ? "Keep current time limit"
+                            : "Unchanged"
                       }
                       disabled={exam === "sandbox"}
-                      value={draft.duration ?? ""}
+                      value={
+                        draft.duration ??
+                        (editingGrant &&
+                        editingGrant.settings.duration % 60 === 0
+                          ? String(editingGrant.settings.duration / 60)
+                          : "")
+                      }
                       onChange={(e) =>
                         setDraft({ ...draft, duration: e.target.value })
                       }
                     />
                   </label>
+                  {editingGrant &&
+                    editingGrant.settings.duration % 60 !== 0 && (
+                      <p>
+                        Current time limit:{" "}
+                        {timeLimit(editingGrant.settings.duration)}. Leave blank
+                        to keep it.
+                      </p>
+                    )}
                   <label>
                     Webcam
                     <select
@@ -1115,21 +1215,23 @@ export function AttemptGrantsDialog({
                       value={webcam}
                       onChange={(e) => setWebcam(e.target.value)}
                     >
-                      <option value="keep">Unchanged</option>
+                      {!editingGrant && <option value="keep">Unchanged</option>}
                       <option value="true">Required</option>
                       <option value="false">Optional</option>
                     </select>
                   </label>
-                  <label>
-                    Start window
-                    <select
-                      value={windowMode}
-                      onChange={(e) => setWindowMode(e.target.value)}
-                    >
-                      <option value="keep">Unchanged</option>
-                      <option value="set">Set dates</option>
-                    </select>
-                  </label>
+                  {!editingGrant && (
+                    <label>
+                      Start window
+                      <select
+                        value={windowMode}
+                        onChange={(e) => setWindowMode(e.target.value)}
+                      >
+                        <option value="keep">Unchanged</option>
+                        <option value="set">Set dates</option>
+                      </select>
+                    </label>
+                  )}
                   {windowMode === "set" && (
                     <fieldset>
                       <legend>Start window</legend>
@@ -1139,7 +1241,7 @@ export function AttemptGrantsDialog({
                         onChange={setOpens}
                         occurrence={openOccurrence}
                         onOccurrence={setOpenOccurrence}
-                        required={false}
+                        required={!!editingGrant}
                       />
                       <LocalDateTimeInput
                         label="Closes"
@@ -1147,13 +1249,17 @@ export function AttemptGrantsDialog({
                         onChange={setCloses}
                         occurrence={closeOccurrence}
                         onOccurrence={setCloseOccurrence}
-                        required={false}
+                        required={!!editingGrant}
                       />
-                      <small>Leave either date blank to keep it.</small>
+                      {!editingGrant && (
+                        <small>Leave either date blank to keep it.</small>
+                      )}
                     </fieldset>
                   )}
-                  <details key={editingGrant?.id ?? "bulk-files"}>
-                    <summary>Change starting files</summary>
+                  <section
+                    key={editingGrant?.id ?? "bulk-files"}
+                    aria-label="Starting file settings"
+                  >
                     <label>
                       Starting files
                       <select
@@ -1164,10 +1270,13 @@ export function AttemptGrantsDialog({
                             workMode !== "saved"
                           )
                             setSourceLoading(true);
+                          setWorkChanged(true);
                           setWorkMode(e.target.value);
                         }}
                       >
-                        <option value="keep">Keep current files</option>
+                        {!editingGrant && (
+                          <option value="keep">Keep current files</option>
+                        )}
                         <option value="empty">Empty folder</option>
                         <option value="template">
                           Published starter files
@@ -1182,6 +1291,7 @@ export function AttemptGrantsDialog({
                         name={workName}
                         hash={workHash}
                         onChange={(name, hash) => {
+                          setWorkChanged(true);
                           setWorkName(name);
                           setWorkHash(hash);
                         }}
@@ -1189,6 +1299,22 @@ export function AttemptGrantsDialog({
                     )}
                     {workMode === "saved" && (
                       <>
+                        {editingGrant?.work.kind === "saved" &&
+                          (sourceLoading ||
+                            sourceError ||
+                            !sources.some(
+                              (s) => s.id === editingGrant.work.attempt,
+                            )) && (
+                            <p>
+                              Current files:{" "}
+                              {workLabel(
+                                editingGrant.work,
+                                [snapshots[editingGrant.id]?.source].filter(
+                                  Boolean,
+                                ),
+                              )}
+                            </p>
+                          )}
                         {sourceExams.length === 1 ? (
                           <p>From exam: {sourceExamLabel}</p>
                         ) : (
@@ -1197,6 +1323,7 @@ export function AttemptGrantsDialog({
                             <select
                               value={sourceExam}
                               onChange={(e) => {
+                                setWorkChanged(true);
                                 setSourceLoading(true);
                                 setSources([]);
                                 setSourceExam(e.target.value);
@@ -1214,12 +1341,10 @@ export function AttemptGrantsDialog({
                         {examError && (
                           <div role="alert">
                             <p>Could not load exam choices.</p>
-                            <button
-                              type="button"
+                            <RefreshButton
+                              label="Refresh exams"
                               onClick={() => void loadExams()}
-                            >
-                              Refresh exams
-                            </button>
+                            />
                             <details>
                               <summary>Details</summary>
                               <p>{examError}</p>
@@ -1238,17 +1363,15 @@ export function AttemptGrantsDialog({
                             </details>
                           </div>
                         )}
-                        <button
-                          type="button"
+                        <RefreshButton
+                          label="Refresh saved work"
                           disabled={sourceLoading}
                           onClick={() => {
                             setSourceLoading(true);
                             setSources([]);
                             setSourceReload((n) => n + 1);
                           }}
-                        >
-                          Refresh saved work
-                        </button>
+                        />
                         {!sourceLoading &&
                           !sourceError &&
                           selectedNames.map((name) => {
@@ -1265,6 +1388,15 @@ export function AttemptGrantsDialog({
                               tied = true;
                             }
                             const explicit = savedChoices[name] !== undefined,
+                              currentSource =
+                                editingGrant?.work.kind === "saved" &&
+                                savedChoices[name] === editingGrant.work.attempt
+                                  ? snapshots[editingGrant.id]?.source
+                                  : null,
+                              keepingCurrent =
+                                editingGrant?.work.kind === "saved" &&
+                                savedChoices[name] ===
+                                  editingGrant.work.attempt,
                               chosen = explicit
                                 ? usable.find(
                                     (value) => value.id === savedChoices[name],
@@ -1277,9 +1409,11 @@ export function AttemptGrantsDialog({
                                 <p key={name}>
                                   No saved files are available for {name} in{" "}
                                   {sourceExamLabel}.{" "}
-                                  {sourceExams.length > 1
-                                    ? "Choose another exam or keep the current files."
-                                    : "Keep the current files."}
+                                  {editingGrant
+                                    ? "Cancel editing to keep the current files."
+                                    : sourceExams.length > 1
+                                      ? "Choose another exam or keep the current files."
+                                      : "Keep the current files."}
                                 </p>
                               );
                             if (
@@ -1308,7 +1442,8 @@ export function AttemptGrantsDialog({
                                   </p>
                                 ) : explicit &&
                                   savedChoices[name] &&
-                                  !chosen ? (
+                                  !chosen &&
+                                  !keepingCurrent ? (
                                   <p>
                                     The saved-file list changed. Choose the
                                     files again or keep the current files.
@@ -1317,16 +1452,30 @@ export function AttemptGrantsDialog({
                                 <label>
                                   Saved work for {name}
                                   <select
-                                    required
-                                    value={chosen?.id ?? ""}
-                                    onChange={(e) =>
+                                    required={!editingGrant || workChanged}
+                                    value={
+                                      chosen?.id ??
+                                      (keepingCurrent
+                                        ? editingGrant.work.attempt
+                                        : "")
+                                    }
+                                    onChange={(e) => {
+                                      setWorkChanged(true);
                                       setSavedChoices((old) => ({
                                         ...old,
                                         [name]: e.target.value,
-                                      }))
-                                    }
+                                      }));
+                                    }}
                                   >
                                     <option value="">Choose an attempt</option>
+                                    {keepingCurrent && !chosen && (
+                                      <option value={editingGrant.work.attempt}>
+                                        Current files
+                                        {currentSource
+                                          ? `: ${savedWorkLabel(currentSource)}`
+                                          : ""}
+                                      </option>
+                                    )}
                                     {usable.map((value) => (
                                       <option key={value.id} value={value.id}>
                                         {savedWorkLabel(value, sources)}
@@ -1334,25 +1483,24 @@ export function AttemptGrantsDialog({
                                     ))}
                                   </select>
                                 </label>
+                                {(chosen || keepingCurrent) && (
+                                  <p className="selected-file-source">
+                                    Selected files:{" "}
+                                    {chosen
+                                      ? savedWorkLabel(chosen, sources)
+                                      : currentSource
+                                        ? savedWorkLabel(currentSource)
+                                        : "Current saved files"}
+                                  </p>
+                                )}
                               </div>
                             );
                           })}
                       </>
                     )}
-                  </details>
+                  </section>
                   <details>
                     <summary>More settings</summary>
-                    <label>
-                      Exam name
-                      <input
-                        maxLength={120}
-                        placeholder="Unchanged"
-                        value={draft.name ?? ""}
-                        onChange={(e) =>
-                          setDraft({ ...draft, name: e.target.value })
-                        }
-                      />
-                    </label>
                     {numeric.map(([key, label, min, max]) => (
                       <label key={key}>
                         {label}
@@ -1363,7 +1511,12 @@ export function AttemptGrantsDialog({
                           step={1}
                           disabled={exam === "sandbox" && key === "terminals"}
                           placeholder="Unchanged"
-                          value={draft[key] ?? ""}
+                          value={
+                            draft[key] ??
+                            (editingGrant
+                              ? String(editingGrant.settings[key])
+                              : "")
+                          }
                           onChange={(e) =>
                             setDraft({ ...draft, [key]: e.target.value })
                           }
@@ -1390,16 +1543,6 @@ export function AttemptGrantsDialog({
                       />
                     )}
                   </details>
-                  <label>
-                    Reason
-                    <input
-                      required
-                      minLength={8}
-                      maxLength={1000}
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </label>
                 </fieldset>
               </>
             )}
@@ -1414,7 +1557,7 @@ export function AttemptGrantsDialog({
                 : "Change results"}
             </h3>
             <p>
-              {review.length} attempts
+              {review.length} {review.length === 1 ? "attempt" : "attempts"}
               {dateChanges ? ` · Dates shown in ${deviceTimeZone()}` : ""}
             </p>
             {review.map((row) => (
@@ -1485,7 +1628,7 @@ export function AttemptGrantsDialog({
         )}
       </div>
       <div className="actions grant-dialog-actions">
-        {!review && (
+        {!review && (!username || editingGrant) && (
           <>
             <button
               form={formId}
@@ -1497,7 +1640,9 @@ export function AttemptGrantsDialog({
                 (!!username && !editingGrant) ||
                 !selectedGrants.length ||
                 selectedGrants.length > 200 ||
-                (workMode === "saved" && (sourceLoading || !!sourceError))
+                ((!username || workChanged) &&
+                  workMode === "saved" &&
+                  (sourceLoading || !!sourceError))
               }
             >
               Review changes
@@ -1512,15 +1657,6 @@ export function AttemptGrantsDialog({
                 Review cancellation
               </button>
             )}
-            <button
-              disabled={busy || !loaded}
-              onClick={() => {
-                setError("");
-                void load().catch((e) => setError(e.message));
-              }}
-            >
-              Refresh
-            </button>
           </>
         )}
         {review && !!pendingRows.length && (
@@ -1538,22 +1674,43 @@ export function AttemptGrantsDialog({
                 : "Apply changes"}
           </button>
         )}
-        {review && !unknown && (
-          <button disabled={busy} onClick={() => void editAgain()}>
-            Edit remaining changes
-          </button>
-        )}
+        {review &&
+          !unknown &&
+          review.some((row) =>
+            ["review", "refused", "noop"].includes(row.state),
+          ) && (
+            <button disabled={busy} onClick={() => void editAgain()}>
+              {username && review[0].operation === "revoke"
+                ? "Back to attempts"
+                : "Back to editing"}
+            </button>
+          )}
         {review && (
-          <button
+          <RefreshButton
+            label="Refresh status"
             disabled={busy}
             onClick={() => setStatusRefresh((n) => n + 1)}
-          >
-            Refresh status
+          />
+        )}
+        {!review && (
+          <RefreshButton
+            label="Refresh"
+            disabled={busy || !loaded}
+            onClick={() => {
+              setError("");
+              void load().catch((e) => setError(e.message));
+            }}
+          />
+        )}
+        {!review && editingGrant ? (
+          <button disabled={busy} onClick={cancelEditing}>
+            Cancel editing
+          </button>
+        ) : (
+          <button disabled={busy} onClick={close}>
+            {review && !pendingRows.length ? "Done" : "Close"}
           </button>
         )}
-        <button disabled={busy} onClick={close}>
-          Close
-        </button>
       </div>
     </Modal>
   );

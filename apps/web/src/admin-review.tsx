@@ -5,6 +5,7 @@ import { api, chicago, remaining } from "./api.js";
 import { InterruptionHistory } from "./interruption-history.js";
 import { CaptureTimeline } from "./capture-timeline.js";
 import { Modal } from "./modal.js";
+import { RefreshButton } from "./refresh-button.js";
 import {
   AttemptProvenance,
   type SourceAttemptLink,
@@ -353,16 +354,18 @@ export function AdminReview({
                   generation: a.generation,
                   revision: a.continuation_revision,
                   requestID: crypto.randomUUID(),
-                  reason: "",
+                  reason: "Allow exam to resume",
                 })
               }
             >
               Allow resume
             </button>
           )}
-          <button disabled={busy || loading} onClick={() => void load()}>
-            Refresh
-          </button>
+          <RefreshButton
+            label="Refresh"
+            disabled={busy || loading}
+            onClick={() => void load()}
+          />
           <button data-initial-focus disabled={busy} onClick={onClose}>
             Close review
           </button>
@@ -389,24 +392,6 @@ export function AdminReview({
               {authorization.generation}
             </p>
           </details>
-          <label>
-            Reason
-            <small>
-              Recorded in audit history. Omit private student details.
-            </small>
-            <textarea
-              autoFocus
-              maxLength={1000}
-              value={authorization.reason}
-              onChange={(e) =>
-                setAuthorization({
-                  ...authorization,
-                  reason: e.target.value,
-                  requestID: crypto.randomUUID(),
-                })
-              }
-            />
-          </label>
           {error && (
             <p className="warn" role="alert">
               {error}
@@ -414,12 +399,9 @@ export function AdminReview({
           )}
           <div className="continuation-actions">
             <button
+              autoFocus
               className="primary"
-              disabled={
-                stale ||
-                authorization.reason.trim().length < 8 ||
-                a.deadline <= clock
-              }
+              disabled={stale || a.deadline <= clock}
               onClick={() =>
                 void run(async () => {
                   const { id, ...body } = authorization;
@@ -695,7 +677,7 @@ export function AdminReview({
                           confirm: media.deletionReview.confirm,
                           revision: media.deletionReview.revision,
                           requestID: crypto.randomUUID(),
-                          reason: "",
+                          reason: "Delete attempt recordings",
                           sent: false,
                         })
                       }
@@ -713,18 +695,6 @@ export function AdminReview({
                         completed separately. Time limits and server
                         restrictions stay unchanged.
                       </p>
-                      <label>
-                        Reason
-                        <textarea
-                          value={deleting.reason}
-                          disabled={busy || deleting.sent}
-                          minLength={8}
-                          maxLength={1000}
-                          onChange={(e) =>
-                            setDeleting({ ...deleting, reason: e.target.value })
-                          }
-                        />
-                      </label>
                       {deleting.sent && (
                         <p>
                           Retry repeats the same deletion request. To change it,
@@ -740,7 +710,7 @@ export function AdminReview({
                         </button>
                         <button
                           className="danger"
-                          disabled={busy || deleting.reason.trim().length < 8}
+                          disabled={busy}
                           onClick={() =>
                             void run(async () => {
                               const { sent: _sent, ...intent } = deleting;

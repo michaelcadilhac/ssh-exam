@@ -5,6 +5,16 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November1 local UI follow-up, tested but not deployed: attempt editing opens
+explicitly with saved values/files; unchanged exact times and saved sources remain
+unchanged. Personal exam-name overrides and editable instructor Reason fields are
+removed from the website. Action-specific audit descriptions, history, CLI/API
+parameters and exact unknown-request retries remain. Compact accessible refresh,
+clear Cancel editing/Close/Done actions and narrow-screen controls are qualified;
+a fresh Prof accepted actual renders. This supersedes older UI instructions to
+enter a reason or use a blank personal editor, without changing grant, deadline,
+retention or monitoring policy. Scope/evidence: docs/attempt-editor-simplification.md.
+
 November1 intentional policy change requested by the instructor: one unused
 permission per student/exam, independent of overlapping or disjoint start windows.
 Reviewed new issuance replaces earlier definitely-unused permissions atomically;

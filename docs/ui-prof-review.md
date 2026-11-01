@@ -1,5 +1,15 @@
 # UI review with Prof
 
+November1 attempt-editor simplification is COMPLETE/TESTED LOCALLY, not deployed.
+A fresh Prof agreed the changes before implementation and inspected final actual
+desktop/mobile renders: explicit editing, saved-value prefills, exact saved-source
+identity, meaningful closing actions, compact refresh and 320/375/430px fit. His
+render review caught truncated source identity and a hidden single-student source;
+both are fixed and accepted. All134 affected browser scenarios have passing
+current-artifact coverage, alongside final15 focused checks, types and build.
+Details and honest failure/correction receipts:
+[attempt editor simplification](attempt-editor-simplification.md).
+
 November1 single-unused-attempt follow-up is DEPLOYED AND ONLINE. Prof agreed
 the policy's concise form/review wording and accepted seven actual student,
 pending-file, instructor review/result renders at desktop/mobile sizes. No student

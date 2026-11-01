@@ -77,13 +77,16 @@ test("mobile unused deletion retries the identical reviewed request after the re
     },
   );
   const dialog = await open(page, "Delete unused exam");
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Remove reviewed synthetic unused exam");
+  await expect(
+    dialog.getByRole("textbox", { name: "Reason", exact: true }),
+  ).toHaveCount(0, { timeout: 3000 });
   await dialog
     .getByRole("button", { name: "Delete unused exam", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Close", exact: true }),
+  ).toBeVisible();
   const list = await (
     await page.request.get("/api/admin/exams?lifecycle=all")
   ).json();
@@ -94,6 +97,7 @@ test("mobile unused deletion retries the identical reviewed request after the re
   await expect(dialog).toHaveCount(0);
   expect(writes).toHaveLength(2);
   expect(writes[1]).toEqual(writes[0]);
+  expect(writes[0].reason).toBe("Delete unused exam");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -107,9 +111,7 @@ test("stale review requires explicit refresh and a failed refresh cannot submit 
   const post = await admin(page),
     definition = await create(page, post);
   const dialog = await open(page, "Delete unused exam");
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Remove explicitly reviewed unused exam");
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   await post("/api/admin/exams", {
     id: definition.id,
     revision: definition.revision,
@@ -165,9 +167,7 @@ test("archive and restoration retain real historical attempts and disable new-au
   ).toBeDisabled();
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   dialog = await open(page, "Archive exam");
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Archive protected synthetic exam history");
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   await dialog
     .getByRole("button", { name: "Archive exam", exact: true })
     .click();
@@ -195,9 +195,7 @@ test("archive and restoration retain real historical attempts and disable new-au
   ])
     expect(retained[key]).toEqual(original[key]);
   dialog = await open(page, "Restore archived exam");
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Restore visibility preserving all original history");
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   await dialog
     .getByRole("button", { name: "Restore exam", exact: true })
     .click();
@@ -254,9 +252,7 @@ test("legacy retirement exposes native review status and archives native-only hi
   await expect(
     dialog.getByText("Verified for this review", { exact: true }),
   ).toBeVisible();
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Archive native-only protected history without removing records");
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   await page.screenshot({
     path: test.info().outputPath("native-retirement-review.png"),
   });

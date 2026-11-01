@@ -1,5 +1,20 @@
 # Deferred work
 
+November1 ATTEMPT EDITOR SIMPLIFICATION — IMPLEMENTED/TESTED LOCALLY:
+Edit settings opens an explicit, prefilled editor; Cancel editing discards only
+the draft. Current starting files stay selected, with visible exam/attempt/date
+identity and no silent latest-source substitution. Personal exam-name editing and
+all six instructor Reason inputs are removed; contextual audit records and exact
+unknown-request retries remain. Refresh uses accessible circular-arrow controls;
+fields and nested controls fit 320/375/430px. A fresh Prof accepted actual renders.
+Final15 focused checks, fixture types and production build pass. All134 selected
+browser scenarios have passing current-artifact coverage: broad128 plus corrected9
+covering its6 fixture failures and all shared-helper callers. No runtime change was
+needed after broad qualification. Backend/CLI/native policy and source are unchanged.
+Not pushed/deployed; original38-item count and production f0c7e10/schema36 unchanged.
+Details, preserved failures and future web-only rollout:
+docs/attempt-editor-simplification.md and current checkpoint.
+
 November1 INTENTIONAL POLICY CHANGE — DEPLOYED AND ONLINE:
 The instructor requires one unused attempt per student/exam, regardless of start
 windows. Confirming another attempt replaces earlier definitely-unused permission;

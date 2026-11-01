@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
 import { publishedSource } from "./prof-workflow-fixture.js";
+import { localDateTime } from "../../apps/web/src/local-date-time.js";
 test.use({ timezoneId: "America/Chicago" });
 
 async function fixture(
@@ -101,7 +102,13 @@ async function fixture(
         : route.fulfill({ json: state.examDefinitions });
     if (path === "/api/admin/templates")
       return route.fulfill({
-        json: { agent: "class", sources: [publishedSource()], next: null },
+        json: {
+          agent: "class",
+          sources: [publishedSource()],
+          next: null,
+          observed: now,
+          note: "Authenticated synthetic file metadata",
+        },
       });
     if (path.endsWith("/dashboard"))
       return route.fulfill({
@@ -277,7 +284,7 @@ async function fixture(
       exact: true,
     });
   };
-  const openPersonal = async (username = "amy") => {
+  const openPersonal = async (username = "amy", edit = true) => {
     await page.getByLabel("Selected exam").selectOption(exam);
     await page
       .getByRole("button", {
@@ -288,10 +295,21 @@ async function fixture(
     await page
       .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
       .click({ timeout: 3000 });
-    return page.getByRole("dialog", {
+    const dialog = page.getByRole("dialog", {
       name: `Allowed attempts for ${username}`,
       exact: true,
     });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByText("Loading allowed attempts…", { exact: true }),
+    ).toHaveCount(0);
+    const button = dialog.getByRole("button", {
+      name: "Edit settings",
+      exact: true,
+    });
+    if (edit && (await button.count()) === 1)
+      await button.click({ timeout: 3000 });
+    return dialog;
   };
   return {
     state,
@@ -304,14 +322,9 @@ async function fixture(
 }
 
 async function openStartingFiles(dialog: Locator) {
-  const disclosure = dialog.getByText("Change starting files", { exact: true });
-  await expect(disclosure).toBeVisible();
-  if (
-    !(await disclosure.evaluate(
-      (element) => element.closest("details")?.open ?? false,
-    ))
-  )
-    await disclosure.click({ timeout: 3000 });
+  await expect(
+    dialog.getByRole("combobox", { name: "Starting files", exact: true }),
+  ).toBeVisible();
 }
 async function chooseSavedFiles(dialog: Locator) {
   await openStartingFiles(dialog);
@@ -319,6 +332,270 @@ async function chooseSavedFiles(dialog: Locator) {
     .getByRole("combobox", { name: "Starting files", exact: true })
     .selectOption("saved");
 }
+
+test("personal editor opens on demand with saved values and cancelling only discards the draft", async ({
+  page,
+}, info) => {
+  const f = await fixture(page);
+  Object.assign(f.state.grants[0].settings, {
+    duration: 5400,
+    earliest: Date.parse("2026-11-01T01:15:30.123-06:00"),
+    latest: Date.parse("2026-11-06T23:42:10.456-06:00"),
+  });
+  const before = structuredClone(f.state.grants[0]),
+    dialog = await f.openPersonal("amy", false);
+  await expect(
+    dialog.getByRole("spinbutton", {
+      name: "Time limit (minutes)",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Review changes", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Close", exact: true }),
+  ).toBeVisible();
+  const edit = dialog.getByRole("button", {
+    name: "Edit settings",
+    exact: true,
+  });
+  await edit.click({ timeout: 3000 });
+  await expect(edit).toHaveCount(0);
+  const duration = dialog.getByRole("spinbutton", {
+    name: "Time limit (minutes)",
+    exact: true,
+  });
+  await expect(duration).toHaveValue("90");
+  await expect(duration).toBeFocused();
+  await expect(
+    dialog.getByRole("combobox", { name: "Webcam", exact: true }),
+  ).toHaveValue("true");
+  await expect(dialog.getByLabel("Opens", { exact: true })).toHaveValue(
+    localDateTime(before.settings.earliest),
+  );
+  await expect(
+    dialog.getByRole("combobox", { name: "Occurrence for Opens", exact: true }),
+  ).toHaveValue("1");
+  await expect(dialog.getByLabel("Closes", { exact: true })).toHaveValue(
+    localDateTime(before.settings.latest),
+  );
+  await expect(
+    dialog.getByRole("combobox", { name: "Starting files", exact: true }),
+  ).toHaveValue("template");
+  await expect(
+    dialog.getByRole("combobox", { name: "Starter files", exact: true }),
+  ).toHaveValue(`sample-exam@${"a".repeat(64)}`);
+  await dialog
+    .getByText("More settings", { exact: true })
+    .click({ timeout: 3000 });
+  await expect(dialog.getByLabel("Terminals", { exact: true })).toHaveValue(
+    "4",
+  );
+  await expect(
+    dialog.getByLabel("Maximum file size (MiB)", { exact: true }),
+  ).toHaveValue("128");
+  await expect(dialog.getByLabel("Exam name", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
+  await duration.fill("120");
+  await dialog
+    .getByRole("button", { name: "Cancel editing", exact: true })
+    .click({ timeout: 3000 });
+  await expect(duration).toHaveCount(0);
+  await expect(edit).toBeFocused();
+  expect(f.state.grants[0]).toEqual(before);
+  expect(f.state.writes).toHaveLength(0);
+  await edit.click({ timeout: 3000 });
+  await expect(duration).toHaveValue("90");
+  await page.screenshot({
+    path: info.outputPath("prefilled-editor-desktop.png"),
+    fullPage: true,
+  });
+  await dialog
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click({ timeout: 3000 });
+  await expect(dialog.getByText("No changes", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Apply changes", exact: true }),
+  ).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(0);
+  expect(f.state.grants[0]).toEqual(before);
+});
+
+test("personal saved-file prefill preserves an older exact source and seconds despite history lookup failure", async ({
+  page,
+}, info) => {
+  const f = await fixture(page, "source", false, "Programming exam");
+  f.state.sourceAttempts.push({
+    ...f.source,
+    id: "44444444-4444-4444-8444-444444444444",
+    start: f.source.start + 10000,
+    attempt_number: 2,
+  });
+  f.state.failSource = true;
+  const before = structuredClone(f.state.grants[0]),
+    dialog = await f.openPersonal();
+  await expect(
+    dialog.getByRole("combobox", { name: "Starting files", exact: true }),
+  ).toHaveValue("saved");
+  await expect(dialog).toContainText(
+    /Current files: Saved files from Programming exam \(prof-unused\).*Attempt 1/,
+  );
+  await expect(
+    dialog.getByLabel("Time limit (minutes)", { exact: true }),
+  ).toHaveValue("");
+  await expect(dialog).toContainText("Current time limit: 1 min 35 sec");
+  await expect(
+    dialog.getByText("Could not load saved work.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Review changes", exact: true }),
+  ).toBeEnabled();
+  await dialog
+    .getByRole("combobox", { name: "Webcam", exact: true })
+    .selectOption("false");
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.screenshot({
+    path: info.outputPath("prefilled-saved-source-mobile.png"),
+    fullPage: true,
+  });
+  await dialog
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    dialog.getByRole("region", { name: "Review unused changes", exact: true }),
+  ).toContainText("Webcam: Required → Optional");
+  await expect(
+    dialog.getByRole("button", { name: "Back to editing", exact: true }),
+  ).toBeVisible();
+  await dialog
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    dialog.getByText("Settings saved", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Back to editing", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Done", exact: true }),
+  ).toBeVisible();
+  expect(f.state.writes[0].rows[0].body.changes).toEqual({ webcam: false });
+  expect(f.state.writes[0].rows[0].body).not.toHaveProperty("work");
+  expect(f.state.writes[0].rows[0].body.reason).toBe(
+    "Change unused attempt settings",
+  );
+  expect(f.state.grants[0].settings).toEqual({
+    ...before.settings,
+    webcam: false,
+  });
+  expect(f.state.grants[0].work).toEqual(before.work);
+});
+
+test("personal refresh cannot turn untouched prefilled values into stale authority changes", async ({
+  page,
+}) => {
+  const f = await fixture(page),
+    dialog = await f.openPersonal();
+  f.state.grants[0].revision++;
+  f.state.grants[0].settings.webcam = false;
+  const changed = structuredClone(f.state.grants[0]);
+  await dialog
+    .getByRole("button", { name: "Refresh", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    dialog.getByRole("combobox", { name: "Webcam", exact: true }),
+  ).toHaveValue("true");
+  await dialog
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click({ timeout: 3000 });
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Settings changed or setup started for amy",
+  );
+  expect(f.state.writes).toHaveLength(0);
+  expect(f.state.grants[0]).toEqual(changed);
+});
+
+test("personal review returns to fresh settings with the explicit draft preserved, and cancellation returns to the overview", async ({
+  page,
+}) => {
+  const f = await fixture(page),
+    dialog = await f.openPersonal();
+  await dialog
+    .getByRole("combobox", { name: "Webcam", exact: true })
+    .selectOption("false");
+  await dialog
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click({ timeout: 3000 });
+  f.state.grants[0].revision++;
+  f.state.grants[0].settings.duration = 5400;
+  await dialog
+    .getByRole("button", { name: "Back to editing", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    dialog.getByRole("combobox", { name: "Webcam", exact: true }),
+  ).toHaveValue("false");
+  await expect(
+    dialog.getByLabel("Time limit (minutes)", { exact: true }),
+  ).toHaveValue("90");
+  await dialog
+    .getByRole("button", { name: "Cancel editing", exact: true })
+    .click({ timeout: 3000 });
+  await dialog
+    .getByRole("button", { name: "Cancel attempt", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    dialog.getByRole("region", { name: "Review unused changes", exact: true }),
+  ).toContainText("Cancel this unused attempt");
+  await dialog
+    .getByRole("button", { name: "Back to attempts", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    dialog.getByRole("button", { name: "Edit settings", exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByLabel("Time limit (minutes)", { exact: true }),
+  ).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(0);
+  await dialog
+    .getByRole("button", { name: "Edit settings", exact: true })
+    .click({ timeout: 3000 });
+  await expect(
+    dialog.getByLabel("Time limit (minutes)", { exact: true }),
+  ).toHaveValue("90");
+  await expect(
+    dialog.getByRole("combobox", { name: "Webcam", exact: true }),
+  ).toHaveValue("true");
+});
+
+test("personal current saved files remain selected when another attempt is the only retrievable source", async ({
+  page,
+}) => {
+  const f = await fixture(page, "source");
+  const latest = {
+    ...f.source,
+    id: "44444444-4444-4444-8444-444444444444",
+    start: f.source.start + 10000,
+    attempt_number: 2,
+  };
+  f.state.sourceAttempts = [latest];
+  const before = structuredClone(f.state.grants[0]),
+    dialog = await f.openPersonal();
+  const choice = dialog.getByRole("combobox", {
+    name: "Saved work for amy",
+    exact: true,
+  });
+  await expect(choice).toHaveValue(before.work.attempt!);
+  await expect(
+    choice.getByRole("option", { name: "Current files", exact: true }),
+  ).toHaveCount(1);
+  await dialog
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click({ timeout: 3000 });
+  await expect(dialog.getByText("No changes", { exact: true })).toBeVisible();
+  expect(f.state.writes).toHaveLength(0);
+  expect(f.state.grants[0]).toEqual(before);
+});
 
 test("bulk allowed-attempt selection chooses an action target without changing permission", async ({
   page,
@@ -473,7 +750,7 @@ test("unused settings skip no-ops and change only named fields without rounding 
   ).toHaveCount(0);
   expect(f.state.writes).toHaveLength(0);
   await dialog
-    .getByRole("button", { name: "Edit remaining changes", exact: true })
+    .getByRole("button", { name: "Back to editing", exact: true })
     .click();
   await dialog
     .getByRole("combobox", { name: "Webcam", exact: true })
@@ -568,8 +845,13 @@ test("unknown unused changes survive reload, inspect current state and retry the
 test("editing only a closing time uses the chosen repeated hour and preserves every other setting", async ({
   page,
 }) => {
-  const f = await fixture(page),
-    dialog = await f.open();
+  const f = await fixture(page);
+  // The authored window must span the fixed DST boundary, even after that date.
+  for (let i = 0; i < 2; i++) {
+    f.state.grants[i].settings.earliest = Date.UTC(2026, 9, 31, 18, 0, 0, 123);
+    f.original[i] = structuredClone(f.state.grants[i]);
+  }
+  const dialog = await f.open();
   await dialog
     .getByRole("button", { name: "Select unused attempts", exact: true })
     .click();
@@ -641,7 +923,7 @@ test("a storage failure after dispatch keeps received results usable in the same
     "Results are shown, but this browser could not save them for reopening.",
   );
   await expect(dialog.getByText("Applying…", { exact: true })).toHaveCount(0);
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(f.state.writes).toHaveLength(1);
 });
@@ -749,7 +1031,7 @@ test("personal attempt editing has no selection clutter and opening file options
   page,
 }, info) => {
   const f = await fixture(page),
-    dialog = await f.openPersonal();
+    dialog = await f.openPersonal("amy", false);
   await expect(dialog.getByRole("checkbox")).toHaveCount(0);
   await expect(
     dialog.getByRole("button", { name: "Select unused attempts", exact: true }),
@@ -765,10 +1047,6 @@ test("personal attempt editing has no selection clutter and opening file options
       exact: true,
     }),
   ).toBeVisible();
-  const disclosure = dialog
-    .getByText("Change starting files", { exact: true })
-    .locator("..");
-  await expect(disclosure).toHaveJSProperty("open", false);
   for (const width of [1280, 430]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -782,13 +1060,15 @@ test("personal attempt editing has no selection clutter and opening file options
     });
   }
   await page.setViewportSize({ width: 1280, height: 900 });
-  await disclosure.locator("summary").click({ timeout: 3000 });
+  await dialog
+    .getByRole("button", { name: "Edit settings", exact: true })
+    .click({ timeout: 3000 });
   await expect(
     dialog.getByRole("combobox", { name: "Starting files", exact: true }),
-  ).toHaveValue("keep");
+  ).toHaveValue("template");
   await expect(
     dialog.getByRole("option", { name: "Keep current files", exact: true }),
-  ).toHaveCount(1);
+  ).toHaveCount(0);
   expect(f.state.grants).toEqual(f.original);
   expect(f.state.writes).toHaveLength(0);
   await dialog
@@ -829,7 +1109,7 @@ test("personal multiple attempts edit one row reset drafts on switching and canc
   extra.issued_at += 10000;
   f.state.grants.push(extra);
   f.original.push(structuredClone(extra));
-  const dialog = await f.openPersonal(),
+  const dialog = await f.openPersonal("amy", false),
     rows = dialog
       .getByRole("region", { name: "Attempts for amy", exact: true })
       .getByRole("article");
@@ -847,17 +1127,23 @@ test("personal multiple attempts edit one row reset drafts on switching and canc
   await dialog
     .getByRole("combobox", { name: "Starting files", exact: true })
     .selectOption("empty");
+  await dialog
+    .getByRole("button", { name: "Cancel editing", exact: true })
+    .click({ timeout: 3000 });
   await rows
     .nth(1)
     .getByRole("button", { name: "Edit settings", exact: true })
     .click({ timeout: 3000 });
   await expect(
     dialog.getByRole("combobox", { name: "Webcam", exact: true }),
-  ).toHaveValue("keep");
+  ).toHaveValue("true");
   await openStartingFiles(dialog);
   await expect(
     dialog.getByRole("combobox", { name: "Starting files", exact: true }),
-  ).toHaveValue("keep");
+  ).toHaveValue("template");
+  await dialog
+    .getByRole("button", { name: "Cancel editing", exact: true })
+    .click({ timeout: 3000 });
   await rows
     .nth(0)
     .getByRole("button", { name: "Cancel attempt", exact: true })
@@ -901,6 +1187,9 @@ test("personal saved-file choices explain an empty completed list without blocki
     path: info.outputPath("personal-no-saved-files-mobile.png"),
     fullPage: true,
   });
+  await dialog
+    .getByRole("button", { name: "Cancel editing", exact: true })
+    .click({ timeout: 3000 });
   await dialog
     .getByRole("button", { name: "Cancel attempt", exact: true })
     .click({ timeout: 3000 });
@@ -1224,7 +1513,7 @@ test("personal refresh never opens a different editor after its previous target 
   extra.id = "44444444-4444-4444-8444-444444444444";
   extra.issuance_order = 4;
   f.state.grants.push(extra);
-  const dialog = await f.openPersonal();
+  const dialog = await f.openPersonal("amy", false);
   await dialog
     .getByRole("button", { name: "Edit settings", exact: true })
     .first()
@@ -1246,15 +1535,17 @@ test("personal refresh never opens a different editor after its previous target 
   await expect(dialog.getByText(/^Editing:/)).toHaveCount(0);
   await expect(
     dialog.getByRole("button", { name: "Review changes", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   expect(f.state.writes).toHaveLength(0);
 });
 
-test("personal collapsed missing starter-file choice reaches the manual Review guard without discarding intent", async ({
+test("personal missing starter-file choice reaches the manual Review guard without discarding intent", async ({
   page,
 }) => {
-  const f = await fixture(page),
-    dialog = await f.openPersonal();
+  const f = await fixture(page);
+  f.state.grants[0].work = { kind: "empty" } as any;
+  f.original[0] = structuredClone(f.state.grants[0]);
+  const dialog = await f.openPersonal();
   await openStartingFiles(dialog);
   await dialog
     .getByRole("combobox", { name: "Starting files", exact: true })
@@ -1262,9 +1553,6 @@ test("personal collapsed missing starter-file choice reaches the manual Review g
   await expect(
     dialog.getByRole("combobox", { name: "Starter files", exact: true }),
   ).toHaveValue("");
-  await dialog
-    .getByText("Change starting files", { exact: true })
-    .click({ timeout: 3000 });
   const reads = f.state.statusReads;
   await dialog
     .getByRole("button", { name: "Review changes", exact: true })

@@ -175,6 +175,9 @@ test("Add student contains single entry and CSV upload with a downloadable examp
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
     ),
   ).toBe(true);
+  await grants
+    .getByRole("button", { name: "Edit settings", exact: true })
+    .click();
   await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("90");
   let lost = false;
   const requests: any[] = [];
@@ -211,7 +214,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   ).toBeVisible();
   expect(requests).toHaveLength(2);
   expect(requests[1]).toEqual(requests[0]);
-  await grants.getByRole("button", { name: "Close", exact: true }).click();
+  await grants.getByRole("button", { name: "Done", exact: true }).click();
   grants = await manageStudent(page, "student02");
   await expect(grants).toContainText("90 min");
   await grants.getByText("Details and history", { exact: true }).click();
@@ -222,7 +225,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     (await (await page.request.get(`/api/admin/grants/${issued.id}`)).json())
       .status,
   ).toBe("REVOKED");
-  await grants.getByRole("button", { name: "Close", exact: true }).click();
+  await grants.getByRole("button", { name: "Done", exact: true }).click();
   await expect(row).toContainText("120 min");
   await expect(row).toContainText("First attempt: 90 min · Cancelled");
 });

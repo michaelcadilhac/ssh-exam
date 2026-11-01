@@ -122,7 +122,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   const prior = await (
     await page.request.get(`/api/admin/grants/${ninety}`)
   ).json();
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await page.unroute(`**/api/admin/grant-issuance/${reviewID}/confirm`);
   dialog = await additionalDraft(page, ["extra01"], "75");
   const { review: replacementReview } = await previewAdditional(page, dialog);
@@ -149,7 +149,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   const replacementReceipt = await replacementResponse.json();
   expect(replacementReceipt.issued[0].replaced).toEqual(replaced);
   await expect(dialog).toContainText("Replaced 1 unused attempt.");
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   const records = (
     await (
       await page.request.get(
@@ -170,12 +170,12 @@ test("an additional attempt replaces unused permission and starts automatically 
       .map((g: any) => g.id),
   ).toEqual([other.id]);
   const grants = await manageStudent(page, "extra01");
+  expect(other.work.kind).toBe("empty");
   const otherRow = grants.getByRole("article").filter({ hasText: other.id });
   await otherRow
     .getByRole("button", { name: "Edit settings", exact: true })
     .click();
   await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
-  await grants.getByText("Change starting files", { exact: true }).click();
   await grants
     .getByRole("combobox", { name: "Starting files", exact: true })
     .selectOption("template");
@@ -206,7 +206,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   ).toBe(4500);
   await page.unroute("**/api/admin/exams/additional-template/grants/change");
   await grants
-    .getByRole("button", { name: "Edit remaining changes", exact: true })
+    .getByRole("button", { name: "Back to editing", exact: true })
     .click();
   await grants
     .getByRole("button", { name: "Review changes", exact: true })
@@ -233,7 +233,7 @@ test("an additional attempt replaces unused permission and starts automatically 
     path: testInfo.outputPath("additional-grants-management-430.png"),
     fullPage: true,
   });
-  await grants.getByRole("button", { name: "Close", exact: true }).click();
+  await grants.getByRole("button", { name: "Done", exact: true }).click();
   await page
     .getByRole("button", { name: "Administration", exact: true })
     .click();
@@ -389,7 +389,7 @@ test("saved-work review stays pending without native confirmation and can be can
     .click();
   await expect(dialog).toContainText("Preparing saved work");
   await expect(dialog).not.toContainText("sudo examctl");
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   const saved = (
     await (
       await page.request.get(
@@ -537,7 +537,7 @@ test("bulk saved work requires each student's own source and preserves the exact
       claims: [],
     });
   }
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
   const management = await manageStudent(page, "extra02"),
     secondID = receipt.issued.find((g: any) => g.username === "extra02").grant;
   await cancelUnused(

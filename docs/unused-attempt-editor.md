@@ -1,5 +1,12 @@
 # Personal attempt editing and saved-file choices
 
+November1 local follow-up supersedes the former blank/Unchanged personal editor
+and Keep current files presentation below. Editing now opens explicitly with the
+saved values/files; unchanged values stay exact. Current-source descriptions and
+multiple-source selections remain visible on narrow screens. A fresh Prof accepted
+the actual renders. This follow-up is tested locally, not deployed:
+[attempt editor simplification](attempt-editor-simplification.md).
+
 The November1 single-unused-attempt policy supersedes this milestone's remaining
 student chooser and support for several unused permissions. Personal editing and
 historical cards remain; current replacement behavior is documented in

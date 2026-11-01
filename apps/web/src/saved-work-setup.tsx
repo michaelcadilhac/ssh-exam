@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api.js";
 import { grantStatus } from "./grant-options.js";
+import { RefreshButton } from "./refresh-button.js";
 
 // Native source confirmation remains the authority. Worker success by itself
 // never changes the visible attempt into Ready.
@@ -119,16 +120,14 @@ export function SavedWorkSetup({
         </details>
       )}
       {(error || setup?.status === "NOT_QUEUED") && (
-        <button
-          type="button"
+        <RefreshButton
+          label="Refresh saved work"
           disabled={busy}
           onClick={() => {
             if (onRefresh) onRefresh();
             else setRefresh((n) => n + 1);
           }}
-        >
-          Refresh saved work
-        </button>
+        />
       )}
     </div>
   );

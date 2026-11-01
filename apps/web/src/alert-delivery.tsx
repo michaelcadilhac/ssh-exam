@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, chicago } from "./api.js";
+import { RefreshButton } from "./refresh-button.js";
 
 const deliveryLabels: Record<string, string> = {
   all: "All messages",
@@ -24,7 +25,6 @@ export function AlertDelivery() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<any>(null);
-  const [reason, setReason] = useState("");
   const active = useRef(false);
   const testRequest = useRef("");
   const reminder = useRef({ key: "", request: "" });
@@ -100,7 +100,7 @@ export function AlertDelivery() {
       } else {
         const intent = {
           revision: selected.episode.revision,
-          reason: reason.trim(),
+          reason: "Send alert reminder",
         };
         const key = JSON.stringify({ id: selected.episode.id, ...intent });
         if (reminder.current.key !== key)
@@ -111,7 +111,6 @@ export function AlertDelivery() {
         );
         if (mounted.current) {
           setSelected(null);
-          setReason("");
         }
       }
       if (mounted.current) {
@@ -170,15 +169,14 @@ export function AlertDelivery() {
           ))}
         </select>
       </label>
-      <button
+      <RefreshButton
+        label="Refresh"
         disabled={busy}
         onClick={() => {
           setError("");
           setRefresh((v) => v + 1);
         }}
-      >
-        Refresh
-      </button>
+      />
       <details>
         <summary>Technical details</summary>
         <p>Desktop alerts and sound apply only to this browser.</p>
@@ -221,6 +219,7 @@ export function AlertDelivery() {
       </details>
       {selected && (
         <form
+          aria-label="Send alert reminder"
           onSubmit={(e) => {
             e.preventDefault();
             void execute("remind");
@@ -230,22 +229,8 @@ export function AlertDelivery() {
           <p>
             Send another email about {selected.subject} to the alert recipients?
           </p>
-          <label>
-            Reason{" "}
-            <textarea
-              required
-              minLength={8}
-              maxLength={1000}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={busy}
-            />
-          </label>
           <p>If this alert changes, cancel and review it again.</p>
-          <button
-            type="submit"
-            disabled={busy || stale || reason.trim().length < 8}
-          >
+          <button type="submit" disabled={busy || stale}>
             Send reminder
           </button>
           <button
@@ -253,11 +238,17 @@ export function AlertDelivery() {
             disabled={busy}
             onClick={() => {
               setSelected(null);
-              setReason("");
               setError("");
             }}
           >
-            Cancel
+            {reminder.current.key ===
+            JSON.stringify({
+              id: selected.episode.id,
+              revision: selected.episode.revision,
+              reason: "Send alert reminder",
+            })
+              ? "Close"
+              : "Cancel"}
           </button>
         </form>
       )}
@@ -286,7 +277,6 @@ export function AlertDelivery() {
               disabled={busy || stale || !row.remindable}
               onClick={() => {
                 setSelected(row);
-                setReason("");
                 setError("");
               }}
             >

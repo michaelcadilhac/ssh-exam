@@ -130,11 +130,5 @@ export function latestStarted(attempts: any[], username: string) {
 
 export const savedWorkLabel = (a: any, choices: any[] = []) => {
   const name = a.settings?.name || a.exam;
-  const duplicate = choices.some(
-    (other) =>
-      other &&
-      other.exam !== a.exam &&
-      (other.settings?.name || other.exam) === name,
-  );
-  return `${name}${duplicate ? ` (${a.exam})` : ""}${a.attempt_number ? ` · Attempt ${a.attempt_number}` : ""} · ${shortDateTime(a.start)}`;
+  return `${name}${name !== a.exam ? ` (${a.exam})` : ""}${a.attempt_number ? ` · Attempt ${a.attempt_number}` : ""} · ${shortDateTime(a.start)}`;
 };

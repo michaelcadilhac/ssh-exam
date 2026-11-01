@@ -39,6 +39,28 @@ button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: 44px;
+  block-size: 44px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding: 10px;
+  background: transparent;
+}
+.refresh-button svg {
+  display: block;
+  inline-size: 20px;
+  block-size: 20px;
+  flex-shrink: 0;
+}
+.refresh-button:focus-visible {
+  outline: 2px solid #68dac5;
+  outline-offset: 3px;
+}
 .primary {
   background: #68dac5;
   color: #08231f;
@@ -887,14 +909,36 @@ summary {
   font-size: 26px;
 }
 
-.admin > header { flex-wrap: wrap; }
-.admin > header > label { min-width: 12rem; margin: 0; }
-.bulk-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .65rem; margin: 1rem 0; }
-.bulk-actions label { margin: 0; }
-.student-row { background: #1b2b40; }
-.student-row td { border-top: 2px solid #425671; }
-.attempt-row td:nth-child(2) { padding-left: 2rem; }
-.selection-list { max-height: 12rem; overflow: auto; }
+.admin > header {
+  flex-wrap: wrap;
+}
+.admin > header > label {
+  min-width: 12rem;
+  margin: 0;
+}
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+.bulk-actions label {
+  margin: 0;
+}
+.student-row {
+  background: #1b2b40;
+}
+.student-row td {
+  border-top: 2px solid #425671;
+}
+.attempt-row td:nth-child(2) {
+  padding-left: 2rem;
+}
+.selection-list {
+  max-height: 12rem;
+  overflow: auto;
+}
 
 .enrollment-method {
   margin-bottom: 18px;

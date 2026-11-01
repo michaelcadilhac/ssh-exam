@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
+import { RefreshButton } from "./refresh-button.js";
 
 export type RetirementAction = "delete" | "archive" | "unarchive";
 export function ExamRetirement({
@@ -17,8 +18,7 @@ export function ExamRetirement({
   const [review, setReview] = useState<any>(null),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [reason, setReason] = useState("");
+    [error, setError] = useState("");
   const live = useRef(true),
     intent = useRef({ fingerprint: "", request: "" });
   const load = async () => {
@@ -64,13 +64,12 @@ export function ExamRetirement({
       <form
         onSubmit={async (event) => {
           event.preventDefault();
-          if (busy || loading || !review?.allowed || reason.trim().length < 8)
-            return;
+          if (busy || loading || !review?.allowed) return;
           const body = {
               action,
               revision: review.revision,
               review: review.review,
-              reason: reason.trim(),
+              reason: title,
             },
             fingerprint = JSON.stringify(body);
           if (intent.current.fingerprint !== fingerprint)
@@ -162,20 +161,6 @@ export function ExamRetirement({
                   </ul>
                 </div>
               )}
-              {review.allowed && (
-                <label>
-                  Reason
-                  <input
-                    data-initial-focus
-                    required
-                    minLength={8}
-                    maxLength={1000}
-                    value={reason}
-                    disabled={busy}
-                    onChange={(event) => setReason(event.target.value)}
-                  />
-                </label>
-              )}
             </>
           )
         )}
@@ -197,20 +182,16 @@ export function ExamRetirement({
         )}
         <div className="modal-actions">
           <button type="button" disabled={busy} onClick={onClose}>
-            Cancel
+            {intent.current.request ? "Close" : "Cancel"}
           </button>
-          <button
-            type="button"
+          <RefreshButton
+            label="Refresh"
             disabled={busy || loading}
             onClick={() => void load()}
-          >
-            Refresh
-          </button>
+          />
           <button
             className={action === "delete" ? "danger" : "primary"}
-            disabled={
-              busy || loading || !review?.allowed || reason.trim().length < 8
-            }
+            disabled={busy || loading || !review?.allowed}
           >
             {busy
               ? "Saving…"

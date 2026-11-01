@@ -20,6 +20,7 @@ import { LocalDateTimeInput } from "./local-date-time-input.js";
 import { TemplatePicker } from "./template-picker.js";
 import { workspaceChoice } from "./grant-workspace.js";
 import { SavedWorkSetup } from "./saved-work-setup.js";
+import { RefreshButton } from "./refresh-button.js";
 
 type Intent = {
   operation: "preview" | "confirm" | "cancel";
@@ -95,6 +96,16 @@ export function GrantIssuanceDialog({
         ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
         : "NEW_LEGACY_INITIAL_GRANTS",
     cacheKey = `${cachePrefix}${JSON.stringify([actor, initial.id, kind, names])}`;
+  const enrollment = students.length === 1 ? students[0].enrollment : null;
+  const singleSettings = enrollment
+    ? {
+        duration: enrollment.duration ?? initial.duration,
+        webcam: Boolean(enrollment.webcam ?? initial.webcam),
+      }
+    : null;
+  const issuanceReason = additional
+    ? "Allow another exam attempt"
+    : "Issue first attempt from selected current settings";
   const [saved] = useState(() => readCache(cacheKey, initial.id, names));
   const formId = useId();
   const [review, setReview] = useState<any>(null),
@@ -110,11 +121,6 @@ export function GrantIssuanceDialog({
     ),
     [duration, setDuration] = useState(""),
     [webcam, setWebcam] = useState("effective"),
-    [reason, setReason] = useState(
-      additional
-        ? "Allow another exam attempt"
-        : "Issue first attempt from selected current settings",
-    ),
     [individual, setIndividual] = useState<
       Record<string, { duration: string; webcam: string }>
     >({}),
@@ -367,15 +373,13 @@ export function GrantIssuanceDialog({
             throw Error(
               "Choose a closing time after the opening time, in the future.",
             );
-          if (reason.trim().length < 8 || reason.trim().length > 1000)
-            throw Error("Use a reason from 8 to 1,000 characters.");
           body = {
             definition_revision: initial.revision,
             template_version: initial.template_version,
             earliest: start,
             latest: end,
             usernames: names,
-            reason: reason.trim(),
+            reason: issuanceReason,
             request: crypto.randomUUID(),
           };
           if (additional) {
@@ -542,6 +546,11 @@ export function GrantIssuanceDialog({
             ))}
           </select>
         </label>
+        {row.work && (
+          <p style={{ overflowWrap: "anywhere" }}>
+            {sourceLabel({ username, work: row.work })}
+          </p>
+        )}
         {row.error && (
           <p className="warn">
             {username}: {row.error}
@@ -655,15 +664,27 @@ export function GrantIssuanceDialog({
                     <p>Five minutes · Webcam optional · Four terminals</p>
                   ) : (
                     <>
+                      {singleSettings && (
+                        <p>
+                          Current time limit:{" "}
+                          {timeLimit(singleSettings.duration)}
+                        </p>
+                      )}
                       <label>
-                        Time limit (minutes)
+                        {names.length === 1
+                          ? "New time limit (minutes, optional)"
+                          : "Time limit (minutes)"}
                         <input
                           type="number"
                           min={1}
                           max={360}
                           step={1}
                           value={duration}
-                          placeholder="Keep each student's time limit"
+                          placeholder={
+                            names.length === 1
+                              ? "Keep current time limit"
+                              : "Keep each student's time limit"
+                          }
                           onChange={(e) => setDuration(e.target.value)}
                         />
                       </label>
@@ -674,13 +695,21 @@ export function GrantIssuanceDialog({
                           onChange={(e) => setWebcam(e.target.value)}
                         >
                           <option value="effective">
-                            Keep each student's setting
+                            {singleSettings
+                              ? `${singleSettings.webcam ? "Required" : "Optional"} (current setting)`
+                              : names.length === 1
+                                ? "Keep current setting"
+                                : "Keep each student's setting"}
                           </option>
                           <option value="required">
-                            Required for everyone
+                            {names.length === 1
+                              ? "Required"
+                              : "Required for everyone"}
                           </option>
                           <option value="optional">
-                            Optional for everyone
+                            {names.length === 1
+                              ? "Optional"
+                              : "Optional for everyone"}
                           </option>
                         </select>
                       </label>
@@ -763,16 +792,16 @@ export function GrantIssuanceDialog({
                             <summary>Details</summary>
                             <p>{sourceError}</p>
                           </details>
-                          <button
-                            type="button"
+                          <RefreshButton
+                            label="Refresh saved work"
                             onClick={() => {
                               setSourceLoading(true);
                               setSourceReload((n) => n + 1);
                             }}
-                          >
-                            Refresh saved work
-                          </button>
+                          />
                         </div>
+                      ) : names.length === 1 ? (
+                        sourceRow(names[0])
                       ) : (
                         <>
                           <p>
@@ -836,7 +865,7 @@ export function GrantIssuanceDialog({
                   the student begins.
                 </p>
               </fieldset>
-              {additional && !practice && (
+              {additional && !practice && names.length > 1 && (
                 <details>
                   <summary>Individual time and webcam settings</summary>
                   {additional &&
@@ -886,16 +915,6 @@ export function GrantIssuanceDialog({
                     })}
                 </details>
               )}
-              <label>
-                Reason
-                <input
-                  value={reason}
-                  minLength={8}
-                  maxLength={1000}
-                  required
-                  onChange={(e) => setReason(e.target.value)}
-                />
-              </label>
             </fieldset>
             {!initial.template_version && (
               <p className="warn">
@@ -1042,12 +1061,20 @@ export function GrantIssuanceDialog({
             ))}
             {!recent.length && !recentError && <p>No recent requests.</p>}
             {recentError && <p role="alert">Could not load recent requests.</p>}
-            <button
-              disabled={busy}
-              onClick={() => void loadRecent(recentNext ?? undefined)}
-            >
-              {recentNext ? "Load more requests" : "Refresh requests"}
-            </button>
+            {recentNext ? (
+              <button
+                disabled={busy}
+                onClick={() => void loadRecent(recentNext)}
+              >
+                Load more requests
+              </button>
+            ) : (
+              <RefreshButton
+                label="Refresh requests"
+                disabled={busy}
+                onClick={() => void loadRecent()}
+              />
+            )}
           </details>
         )}
       </div>
@@ -1091,9 +1118,11 @@ export function GrantIssuanceDialog({
             </button>
           )}
         {review && (
-          <button disabled={busy} onClick={() => void inspect(review.id)}>
-            Refresh status
-          </button>
+          <RefreshButton
+            label="Refresh status"
+            disabled={busy}
+            onClick={() => void inspect(review.id)}
+          />
         )}
         {pending && (
           <>
@@ -1115,7 +1144,12 @@ export function GrantIssuanceDialog({
           </>
         )}
         <button disabled={busy} onClick={close}>
-          Close
+          {review &&
+          ["CONFIRMED", "CANCELLED", "EXPIRED"].includes(review.status)
+            ? "Done"
+            : !review && !pending && !recovering
+              ? "Cancel"
+              : "Close"}
         </button>
       </div>
     </Modal>

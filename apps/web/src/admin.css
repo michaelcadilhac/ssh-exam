@@ -6,6 +6,7 @@
 }
 .grant-dialog-content {
   min-height: 0;
+  min-inline-size: 0;
   overflow: auto;
   scroll-padding-block: 0.75rem;
 }
@@ -24,6 +25,34 @@
 .grant-review .clock-batch-row p {
   margin: 0.25rem 0;
   line-height: 1.45;
+}
+.admin-redesign .dialog-backdrop > .card,
+.admin-redesign .dialog-backdrop form,
+.admin-redesign .dialog-backdrop fieldset {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+.admin-redesign .dialog-backdrop fieldset {
+  margin-inline: 0;
+}
+.admin-redesign .dialog-backdrop label {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.admin-redesign
+  .dialog-backdrop
+  label
+  > input:not([type="checkbox"]):not([type="radio"]),
+.admin-redesign .dialog-backdrop label > select,
+.admin-redesign .dialog-backdrop label > textarea {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  margin-block-start: 7px;
+}
+.admin-redesign .dialog-backdrop :is(p, h3, h4, legend, summary) {
+  overflow-wrap: anywhere;
 }
 .continuation-confirmation {
   min-width: 0;

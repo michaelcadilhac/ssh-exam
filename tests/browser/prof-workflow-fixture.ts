@@ -34,7 +34,12 @@ export async function additionalDraft(
   const dialog = await selectedAction(page, names, "Allow another attempt");
   if (minutes)
     await dialog
-      .getByLabel("Time limit (minutes)", { exact: true })
+      .getByLabel(
+        names.length === 1
+          ? "New time limit (minutes, optional)"
+          : "Time limit (minutes)",
+        { exact: true },
+      )
       .fill(minutes);
   await dialog
     .getByRole("combobox", { name: "Start with", exact: true })
@@ -45,9 +50,7 @@ export async function additionalDraft(
   await dialog
     .getByLabel("Closes", { exact: true })
     .fill(localDateTime(Date.now() + 600000));
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Reviewed synthetic additional attempt with explicit finite dates");
+  await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   return dialog;
 }
 export async function previewAdditional(page: Page, dialog: Locator) {
@@ -118,20 +121,23 @@ export async function chooseSavedSource(
   username: string,
   attempt: string,
 ) {
-  const summary = dialog
-    .locator("summary")
-    .filter({ hasText: "Individual starting files" });
-  await expect(summary).toBeVisible();
-  if (
-    !(await summary.evaluate(
-      (el) => (el.parentElement as HTMLDetailsElement).open,
-    ))
-  )
-    await summary.click();
   const choice = dialog.getByRole("combobox", {
     name: `Starting files for ${username}`,
     exact: true,
   });
+  const summary = dialog
+    .locator("summary")
+    .filter({ hasText: "Individual starting files" });
+  await expect(choice.or(summary).first()).toBeVisible();
+  if (!(await choice.isVisible())) {
+    await expect(summary).toBeVisible();
+    if (
+      !(await summary.evaluate(
+        (el) => (el.parentElement as HTMLDetailsElement).open,
+      ))
+    )
+      await summary.click();
+  }
   await expect(choice).toBeVisible();
   await choice.selectOption(attempt);
 }

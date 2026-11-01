@@ -227,6 +227,79 @@ async function fixture(
   return { state, open, usernames };
 }
 
+for (const width of [1280, 430])
+  test(`one student's exact current settings are visible without a reason prompt at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const f = await fixture(page, 1),
+      dialog = await f.open();
+    await expect(
+      dialog.getByText("Current time limit: 1 min 35 sec", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByLabel("New time limit (minutes, optional)", { exact: true }),
+    ).toHaveValue("");
+    await expect(
+      dialog.getByRole("combobox", { name: "Webcam", exact: true }),
+    ).toHaveValue("effective");
+    await expect(
+      dialog
+        .getByRole("combobox", { name: "Webcam", exact: true })
+        .locator("option:checked"),
+    ).toHaveText("Optional (current setting)");
+    await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
+    await expect(
+      dialog.getByText("Individual time and webcam settings", { exact: true }),
+    ).toHaveCount(0);
+    await dialog
+      .getByText("Current time limit: 1 min 35 sec", { exact: true })
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`single-student-exact-settings-${width}.png`),
+      fullPage: true,
+    });
+    await expect(
+      dialog.getByRole("combobox", {
+        name: "Starting files for student01",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByText("Individual starting files", { exact: true }),
+    ).toHaveCount(0);
+    const sourceIdentity = dialog.getByText(
+      /^Saved work: Midterm \(prof-another\) · Attempt 1 ·/,
+    );
+    await expect(sourceIdentity).toBeVisible();
+    await expect(sourceIdentity).not.toContainText(f.state.attempts[0].id);
+    await sourceIdentity.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`single-student-starting-files-${width}.png`),
+      fullPage: true,
+    });
+    await dialog.getByLabel("Closes", { exact: true }).fill("2026-11-06T23:42");
+    await expect(
+      dialog.getByRole("button", { name: "Review", exact: true }),
+    ).toBeEnabled();
+    await dialog.getByRole("button", { name: "Review", exact: true }).click();
+    await expect(
+      dialog.getByRole("heading", { name: "Review attempts", exact: true }),
+    ).toBeVisible();
+    expect(f.state.previews).toHaveLength(1);
+    expect(f.state.previews[0]).toMatchObject({
+      preserve_duration: true,
+      reason: "Allow another exam attempt",
+    });
+    expect(f.state.previews[0]).not.toHaveProperty("duration");
+    expect(f.state.previews[0]).not.toHaveProperty("webcam");
+    expect(f.state.previews[0].work_sources[0].work).toMatchObject({
+      kind: "saved",
+      attempt: f.state.attempts[0].id,
+    });
+    await expect(dialog).toContainText("1 min 35 sec · Webcam optional");
+  });
+
 test("source exams show their recognizable code even when the display name is generic", async ({
   page,
 }) => {
@@ -255,7 +328,7 @@ test("another attempt uses two screens with fetched mixed sources and exact per-
   const f = await fixture(page),
     dialog = await f.open();
   await expect(dialog.getByLabel("Starting files for student01")).toContainText(
-    "Midterm · Attempt 1",
+    "Midterm (prof-another) · Attempt 1",
   );
   await expect(dialog.getByLabel("Starting files for student02")).toContainText(
     "Automatic: Starter files: sample-exam",
@@ -375,7 +448,7 @@ test("a review polls one cohort, rather than every student, and invalid latest f
   });
   // Reload histories by re-opening; the latest invalid record must block the
   // automatic selection even though an older protected archive exists.
-  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await f.open();
   await expect(dialog.getByLabel("Starting files for student01")).toContainText(
     "Latest files need review",

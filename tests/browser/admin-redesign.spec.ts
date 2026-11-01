@@ -493,32 +493,52 @@ for (const width of [1280, 430])
     const currentGrant = grants.locator("article.clock-batch-row").filter({
       hasText: "75 min · Webcam optional",
     });
-    const editingHelp = grants.getByText(/^Editing:/);
-    await expect(editingHelp).toBeVisible();
     await expect(currentGrant).toHaveCount(1);
     await expect(currentGrant).toBeInViewport();
+    await expect(grants.getByText(/^Editing:/)).toHaveCount(0);
+    await expect(
+      grants.getByRole("spinbutton", {
+        name: "Time limit (minutes)",
+        exact: true,
+      }),
+    ).toHaveCount(0);
     await expect(grants.getByRole("checkbox")).toHaveCount(0);
     await expect(
       grants.getByText("1 attempt for 1 student selected", { exact: true }),
     ).toHaveCount(0);
     await expect(currentGrant.getByText(/^Start window:/)).toBeVisible();
     await expect(currentGrant.getByText(/^Reference /)).not.toBeVisible();
-    const cardBox = await currentGrant.boundingBox(),
-      purposeBox = await editingHelp.boundingBox(),
-      editBox = await grants
-        .getByLabel("Time limit (minutes)", { exact: true })
-        .boundingBox();
-    expect(cardBox).not.toBeNull();
-    expect(purposeBox).not.toBeNull();
-    expect(editBox).not.toBeNull();
-    expect(cardBox!.y).toBeLessThanOrEqual(purposeBox!.y);
-    expect(purposeBox!.y).toBeLessThan(editBox!.y);
+    await currentGrant.getByText("Technical details", { exact: true }).click();
+    await expect(currentGrant.getByText(/^Reference /)).toBeVisible();
+    await expect(currentGrant).toContainText("Revision 2");
     await page.screenshot({
       path: info.outputPath(`allowed-attempts-useful-${width}.png`),
       fullPage: true,
     });
-    await currentGrant.getByText("Technical details", { exact: true }).click();
-    await expect(currentGrant.getByText(/^Reference /)).toBeVisible();
+    await currentGrant
+      .getByRole("button", { name: "Edit settings", exact: true })
+      .click();
+    const editingHelp = grants.getByText(/^Editing:/);
+    await expect(editingHelp).toBeVisible();
+    await expect(currentGrant).toHaveCount(0);
+    const timeInput = grants.getByRole("spinbutton", {
+      name: "Time limit (minutes)",
+      exact: true,
+    });
+    await expect(timeInput).toHaveValue("75");
+    const purposeBox = await editingHelp.boundingBox(),
+      editBox = await timeInput.boundingBox();
+    expect(purposeBox).not.toBeNull();
+    expect(editBox).not.toBeNull();
+    expect(purposeBox!.y).toBeLessThan(editBox!.y);
+    await page.screenshot({
+      path: info.outputPath(`allowed-attempt-editor-${width}.png`),
+      fullPage: true,
+    });
+    await grants
+      .getByRole("button", { name: "Cancel editing", exact: true })
+      .click();
+    await expect(currentGrant).toBeVisible();
     await expect(currentGrant).toContainText("Revision 2");
     await grants
       .getByRole("button", { name: "Close", exact: true })
@@ -919,9 +939,10 @@ test("retained instructor authorization preserves the original page and SSH rath
   await expect(technical).toBeVisible();
   await technical.click({ timeout: 3000 });
   await expect(approval.getByText(/Reviewed revision/)).toBeVisible();
-  await dialog
-    .getByRole("textbox", { name: /^Reason/ })
-    .fill("Reviewed same-page monitoring restoration");
+  await expect(dialog.getByRole("textbox", { name: /^Reason/ })).toHaveCount(
+    0,
+    { timeout: 3000 },
+  );
   await dialog
     .getByRole("group", { name: "Confirm resume approval", exact: true })
     .getByRole("button", { name: "Allow resume", exact: true })
@@ -953,9 +974,7 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
     .getByRole("button", { name: "Allow resume", exact: true })
     .click();
   expect(s.calls).toHaveLength(0);
-  await dialog
-    .getByRole("textbox", { name: /^Reason/ })
-    .fill("Reviewed monitoring interruption");
+  await expect(dialog.getByRole("textbox", { name: /^Reason/ })).toHaveCount(0);
   await dialog
     .getByRole("group", { name: "Confirm resume approval", exact: true })
     .getByRole("button", { name: "Allow resume", exact: true })
@@ -1018,11 +1037,16 @@ for (const width of [1280, 430])
     await dialog
       .getByRole("button", { name: "Allow resume", exact: true })
       .click();
-    const reason = dialog.getByRole("textbox", {
-      name: /^Reason/,
+    const approval = dialog.getByRole("group", {
+      name: "Confirm resume approval",
+      exact: true,
     });
-    await expect(reason).toBeFocused();
-    await reason.fill("Reviewed screen-sharing restoration");
+    await expect(dialog.getByRole("textbox", { name: /^Reason/ })).toHaveCount(
+      0,
+    );
+    await expect(
+      approval.getByRole("button", { name: "Allow resume", exact: true }),
+    ).toBeFocused();
     s.lostAuthorization = true;
     await dialog
       .getByRole("group", { name: "Confirm resume approval", exact: true })
@@ -1034,7 +1058,7 @@ for (const width of [1280, 430])
     expect(original).toMatchObject({
       generation: 1,
       revision: 0,
-      reason: "Reviewed screen-sharing restoration",
+      reason: "Allow exam to resume",
     });
     await page.waitForResponse(
       async (r) =>
@@ -1046,7 +1070,7 @@ for (const width of [1280, 430])
         ),
       { timeout: 10000 },
     );
-    await expect(reason).toHaveValue(original.reason);
+    await expect(approval).toBeVisible();
     if (width === 430)
       await page.screenshot({
         path: test.info().outputPath("interruption-confirmation-mobile.png"),
@@ -1079,10 +1103,9 @@ test("continuation confirmation cannot silently adopt a new generation or same-g
     await dialog
       .getByRole("button", { name: "Allow resume", exact: true })
       .click();
-    const reason = dialog.getByRole("textbox", {
-      name: /^Reason/,
-    });
-    await reason.fill("Reviewed original interruption");
+    await expect(dialog.getByRole("textbox", { name: /^Reason/ })).toHaveCount(
+      0,
+    );
     const selectedRevision = bob.continuation_revision;
     bob.continuation_revision++;
     if (changeGeneration) bob.generation++;
@@ -1105,7 +1128,7 @@ test("continuation confirmation cannot silently adopt a new generation or same-g
     );
     expect(s.calls.at(-1)!.body.revision).toBe(selectedRevision);
     expect(s.authorizationReplies.size).toBe(0);
-    await expect(reason).toHaveValue("Reviewed original interruption");
+    expect(s.calls.at(-1)!.body.reason).toBe("Allow exam to resume");
     await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(
       dialog.getByRole("button", { name: "Allow resume", exact: true }),
@@ -1294,8 +1317,8 @@ test("monitoring deletion requires named confirmation and leaves submission revi
       name: "Permanently delete monitoring",
       exact: true,
     }),
-  ).toBeDisabled();
-  await dialog.getByLabel("Reason").fill("Reviewed retention request");
+  ).toBeEnabled();
+  await expect(dialog.getByLabel("Reason")).toHaveCount(0);
   await dialog
     .getByRole("button", { name: "Permanently delete monitoring", exact: true })
     .click();
@@ -1307,7 +1330,7 @@ test("monitoring deletion requires named confirmation and leaves submission revi
   expect(s.calls[0].body).toMatchObject({
     confirm: "amy",
     revision: "a".repeat(64),
-    reason: "Reviewed retention request",
+    reason: "Delete attempt recordings",
     requestID: expect.any(String),
   });
   await expect(dialog).toContainText("File deletion: retry");
@@ -1341,9 +1364,7 @@ for (const width of [1280, 390])
     await dialog
       .getByRole("button", { name: "Delete recordings…", exact: true })
       .click();
-    await dialog
-      .getByLabel("Reason")
-      .fill("Reviewed immutable deletion intent");
+    await expect(dialog.getByLabel("Reason")).toHaveCount(0);
     s.lostDeletion = true;
     await dialog
       .getByRole("button", {
@@ -1357,7 +1378,7 @@ for (const width of [1280, 390])
       }),
     ).toBeVisible();
     await expect(dialog.getByRole("alert")).toBeVisible();
-    await expect(dialog.getByLabel("Reason")).toBeDisabled();
+    await expect(dialog.getByLabel("Reason")).toHaveCount(0);
     const original = s.calls[0].body;
     await dialog
       .getByRole("button", {
@@ -1391,7 +1412,7 @@ test("monitoring deletion refuses a changed review without silently adopting it"
   await dialog
     .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
-  await dialog.getByLabel("Reason").fill("Reviewed original deletion target");
+  await expect(dialog.getByLabel("Reason")).toHaveCount(0);
   s.monitoringRevision = "c".repeat(64);
   await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
   await dialog
@@ -1406,7 +1427,7 @@ test("monitoring deletion refuses a changed review without silently adopting it"
   await dialog
     .getByRole("button", { name: "Delete recordings…", exact: true })
     .click();
-  await dialog.getByLabel("Reason").fill("Reviewed changed deletion target");
+  await expect(dialog.getByLabel("Reason")).toHaveCount(0);
   await dialog
     .getByRole("button", { name: "Permanently delete monitoring", exact: true })
     .click();
@@ -2021,7 +2042,17 @@ test("capture sliders are independent, keyboard accessible, and stop following w
   await expect(
     dialog.getByRole("button", { name: "Live webcam", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(screen).toHaveAttribute("aria-valuetext", /CDT/);
+  const selectedZone = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    timeZoneName: "short",
+  })
+    .formatToParts(now - 15000)
+    .find((part) => part.type === "timeZoneName");
+  expect(selectedZone).toBeDefined();
+  await expect(screen).toHaveAttribute(
+    "aria-valuetext",
+    new RegExp(`${selectedZone!.value}$`),
+  );
   await page.screenshot({
     path: info.outputPath("capture-sliders-desktop.png"),
     fullPage: true,
