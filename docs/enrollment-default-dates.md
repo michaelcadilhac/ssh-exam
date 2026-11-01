@@ -1,6 +1,7 @@
 # Exam defaults and first-attempt dates
 
-October 31, 2026. Implemented and tested locally; not pushed or deployed.
+October31 Chicago / November1 UTC: deployed and online in runtime63903bd/schema35,
+with matching installed CLI. Details: [welcome-enrollment-deployment.md](welcome-enrollment-deployment.md).
 
 The instructor edits **Exam defaults → Default start dates**. **Save defaults**
 changes settings used for future issuance, never a previously allowed attempt.
@@ -74,8 +75,12 @@ revision, reviewed defaults and each target's original enrollment. Confirm
 validates these before any enrollment/grant/allowance/audit changes. Changed
 defaults, changed target rows, a different class agent, expired review or an old
 unconsumed preview without settings proof requires a fresh review. An unrelated
-student's roster edit does not invalidate it. Consumed previews retain idempotent
-retry behavior; no review reserves an account, grants execution or starts time.
+student's roster edit does not invalidate it. Retained consumed previews return
+idempotently. Existing housekeeping removes preview rows older than ten minutes,
+including consumed ones: afterward the web interface requires a fresh review.
+Identical CLI --request retries remain protected by the durable management outcome.
+This is a retention clarification, not a new cleanup policy or unlimited web
+receipt-retention claim. No review reserves an account, grants execution or starts time.
 
 ## Release and rollback
 

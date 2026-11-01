@@ -1,5 +1,10 @@
 # Deep UI clarity pass — October 31, 2026
 
+November1 UTC: this follow-up is now DEPLOYED AND ONLINE in63903bd/schema35 under
+the instructor's explicit push/deploy instruction. Exact qualification, preservation
+and rollback: [welcome-enrollment-deployment.md](welcome-enrollment-deployment.md).
+The dated local investigation below is historical.
+
 Local follow-up after ec00cba. The instructor reported late sandbox denial,
 operator-only error text, a one-line hidden attempt fact and unexplained Allowed
 attempts checkboxes. Prof reviewed the workflows and agreed each fix before

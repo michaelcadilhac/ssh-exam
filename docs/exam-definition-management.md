@@ -1,6 +1,6 @@
 # Shared definition configuration — local implementation
 
-October 31 local UI follow-up: the existing exam editor is **Exam defaults**,
+October31/November1 UTC UI follow-up DEPLOYED (runtime63903bd): the existing exam editor is **Exam defaults**,
 with **Default start dates** and **Save defaults**. Add students copies those
 dates into editable Opens/Closes controls for newly issued first attempts only.
 Existing allowed attempts keep saved settings. Precise behavior and local

@@ -1,5 +1,21 @@
 # Deferred work
 
+October31 Chicago / November1 UTC WELCOME/UI RELEASE DEPLOYED AND ONLINE:
+source through10d4438 pushed; runtime63903bd/schema35 and matching examctl installed.
+Native first-field focus passes public desktop/mobile direct/reload/navigation
+checks; existing autofocus needed no product change. Clarity and Exam defaults /
+Add students dates are now deployed. Exact-image smoke,19 packaged scenarios and
+public assets/readiness pass; existing app663/CLI-race evidence applies to identical
+runtime inputs. Full private backups and all37 authoritytables/priorhistory,
+110web/175native attempts/settings/deadlines preserved. Native PIDs unchanged.
+Original nginx restored; admissions open. No grant/alert/practice-window change.
+Original38-item count/consolidation unchanged; ten original dirty screenshots kept.
+Preview-retention wording clarified: retained consumed IDs are idempotent, while
+existing ten-minute pruning requires later WEB re-review; identical CLI request IDs
+remain durable. No new pruning policy was introduced. Full deployment/rollback:
+docs/welcome-enrollment-deployment.md/current checkpoint. Older local-only notes
+below are historical and superseded by this verified deployment.
+
 October 31 EXAM DEFAULTS / ENROLLMENT START DATES COMPLETE/TESTED LOCALLY:
 Exam defaults, Default start dates and Save defaults are explicit. Add students
 single/CSV has native Opens/Closes copied from exact defaults, scoped to new first
