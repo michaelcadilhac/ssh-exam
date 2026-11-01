@@ -14,7 +14,9 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     await (await page.request.get("/api/admin/exams")).json()
   ).find((exam: any) => exam.id === "versioned-source");
   expect(examDefaults).toBeDefined();
-  const firstAttemptCloses = examDefaults.latest + 60000;
+  // Exercise the trailing-zero fractional case that native inputs canonicalize.
+  const firstAttemptCloses =
+    Math.floor((examDefaults.latest + 60000) / 1000) * 1000 + 520;
   await expect(page.locator("textarea, .bulk-import")).toHaveCount(0);
   const add = page.getByRole("button", { name: "Add student", exact: true });
   await add.click();
@@ -34,14 +36,29 @@ test("Add student contains single entry and CSV upload with a downloadable examp
       exact: true,
     }),
   ).toBeVisible();
-  await dialog.getByLabel("Closes", { exact: true }).fill(
-    await page.evaluate((at) => {
-      const date = new Date(at);
-      return new Date(at - date.getTimezoneOffset() * 60000)
+  const nativeDates = await page.evaluate((at) => {
+    const date = new Date(at),
+      input = document.createElement("input");
+    input.type = "datetime-local";
+    input.step = "0.001";
+    return [
+      new Date(at - date.getTimezoneOffset() * 60000)
         .toISOString()
-        .slice(0, 23);
-    }, firstAttemptCloses),
-  );
+        .slice(0, 23),
+      "2026-11-01T20:51:53.520",
+      "2026-11-01T20:51:53.000",
+      "2026-11-01T20:51:00.000",
+    ].map((value) => {
+      input.value = value;
+      return input.value;
+    });
+  }, firstAttemptCloses);
+  expect(nativeDates.slice(1)).toEqual([
+    "2026-11-01T20:51:53.52",
+    "2026-11-01T20:51:53",
+    "2026-11-01T20:51",
+  ]);
+  await dialog.getByLabel("Closes", { exact: true }).fill(nativeDates[0]);
 
   await dialog
     .getByRole("group", { name: "Add students using" })
