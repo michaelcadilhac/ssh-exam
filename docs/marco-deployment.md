@@ -1,12 +1,25 @@
 # ssh-exam.cadilhac.name deployment
 
+November1 current release is deployed and online: b70a080/schema36, tag
+`ssh-exam-release:admin-editor-b70a080`, image Config `bffbfe1f…`. The web-only
+cutover preserves all37 authority tables/settings/history,110 web attempts and175
+native histories. No migration, CLI installation or native-service restart.
+Installed CLI remains `b9d061eb…`; the source worker retains loaded `348d7567…`.
+All four native service PIDs/configurations are unchanged. Strict preservation,
+fresh signed readiness, all six exact public assets and four desktop/mobile focus
+checks pass; admissions are open, verified at18:16:09UTC. No new live exam/MFA or
+media acceptance is claimed. Exact artifacts, full private backup and compatible
+current-state rollback: [admin editor deployment](admin-editor-deployment.md).
+Dated releases and installation descriptions below are historical where superseded
+by this current record.
+
 October 31 Prof UI / saved-work release is online: runtime 6b7c62b/schema 35,
 installed Config 1046ca35… and csc-sys CLI 348d7567…. The separate saved-work worker
 is active/enabled. Public readiness/TLS/all six assets, desktop/mobile sign-in,
 installed CLI, signed worker exchanges and preservation of 110 web/175 native
 histories PASS. Execution agent/watchdog/SSH/relay were not restarted. The verified
-full backup is on marco's existing local /data filesystem; root still has about
-3.1 GiB free. Exact artifacts, backups, limitations and compatible rollback:
+full backup is on marco's existing local /data filesystem; root had about
+3.1 GiB free at that dated milestone. Exact artifacts, backups, limitations and compatible rollback:
 [Prof UI deployment](prof-ui-deployment.md). Dated release status below is historical.
 
 October29 scripting update is deployed and online: web07b6fa5/schema33,

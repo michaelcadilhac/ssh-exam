@@ -1,11 +1,15 @@
 # Personal attempt editing and saved-file choices
 
-November1 local follow-up supersedes the former blank/Unchanged personal editor
+November1 deployed b70a080/schema36 follow-up supersedes the former blank/Unchanged personal editor
 and Keep current files presentation below. Editing now opens explicitly with the
 saved values/files; unchanged values stay exact. Current-source descriptions and
 multiple-source selections remain visible on narrow screens. A fresh Prof accepted
-the actual renders. This follow-up is tested locally, not deployed:
-[attempt editor simplification](attempt-editor-simplification.md).
+the actual renders. All37 authority tables/settings/history and110 web/175 native
+attempts are preserved. No migration, CLI installation or native-service restart;
+six exact public assets/readiness and four desktop/mobile focus checks pass.
+Admissions are open. Qualification and current private backup/rollback:
+[attempt editor simplification](attempt-editor-simplification.md) and
+[deployment record](admin-editor-deployment.md). No new live exam/MFA test is claimed.
 
 The November1 single-unused-attempt policy supersedes this milestone's remaining
 student chooser and support for several unused permissions. Personal editing and
@@ -15,8 +19,8 @@ historical cards remain; current replacement behavior is documented in
 Implemented and tested after runtime63903bd; subsequently pushed and deployed
 with f0c7e10/schema36. The current replacement policy supersedes this milestone's
 historical student selector and web-only rollback instructions below. Use the
-[deployment record](single-unused-attempt-deployment.md) for current backups and
-schema-compatible rollback.
+[initial policy deployment](single-unused-attempt-deployment.md) for that release's
+backup and migration history; the current web-only deployment is linked above.
 
 The instructor's screenshots exposed two unrelated selections on the same screen:
 which unused attempt to change, and which earlier attempt supplies its files. A
@@ -93,8 +97,8 @@ The prior application663/3 existing skips and native/CLI qualification therefore
 remain applicable to those inputs; they were not rerun or claimed as new tests.
 This is local interface qualification, not qualification of a new release image.
 
-If deployment is later authorized, build a matched web release and use the existing
-guarded web-only cutover, private backup, asset/readiness checks and rollback
-procedure. This change needs no database migration, native binary replacement or
-native service restart. The prior matched web image remains the code rollback;
-rolling code back must not undo reviewed administrator actions or student history.
+The historical rollout requirement was met by the f0c7e10 installation and the
+later b70a080 web-only follow-up. The latter required no database migration,
+native binary replacement or native-service restart. Its prior matched schema36
+web image remains the code rollback; rolling code back must not undo reviewed
+administrator actions or student history. Use the current deployment record above.

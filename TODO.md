@@ -1,6 +1,6 @@
 # Deferred work
 
-November1 ATTEMPT EDITOR SIMPLIFICATION — IMPLEMENTED/TESTED LOCALLY:
+November1 ATTEMPT EDITOR SIMPLIFICATION — DEPLOYED AND ONLINE:
 Edit settings opens an explicit, prefilled editor; Cancel editing discards only
 the draft. Current starting files stay selected, with visible exam/attempt/date
 identity and no silent latest-source substitution. Personal exam-name editing and
@@ -11,9 +11,16 @@ Final15 focused checks, fixture types and production build pass. All134 selected
 browser scenarios have passing current-artifact coverage: broad128 plus corrected9
 covering its6 fixture failures and all shared-helper callers. No runtime change was
 needed after broad qualification. Backend/CLI/native policy and source are unchanged.
-Not pushed/deployed; original38-item count and production f0c7e10/schema36 unchanged.
-Details, preserved failures and future web-only rollout:
-docs/attempt-editor-simplification.md and current checkpoint.
+Source b70a080 is pushed; the matched web-only release is online at schema36.
+All37 authority tables/settings/history and110 web/175 native attempts remain
+unchanged. No migration, CLI installation or native-service restart. Strict
+preservation, all6 public assets/readiness and4 desktop/mobile focus checks pass;
+original nginx restored and admissions open at18:16:09UTC. No new live exam/MFA
+acceptance is claimed. Original38-item count/consolidation unchanged.
+Details, preserved failures, private backup and compatible rollback:
+docs/attempt-editor-simplification.md, docs/admin-editor-deployment.md and current
+checkpoint. Earlier dated local-only/version statements below are historical
+where superseded by the current deployed record.
 
 November1 INTENTIONAL POLICY CHANGE — DEPLOYED AND ONLINE:
 The instructor requires one unused attempt per student/exam, regardless of start

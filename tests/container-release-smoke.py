@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private local production-image startup/upgrade smoke; never deploys."""
+"""Private local production-image startup/current-schema/upgrade smoke; never deploys."""
 import argparse
 import hashlib
 import json
@@ -17,8 +17,8 @@ from cryptography.hazmat.primitives import serialization
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--image', required=True, help='already-built local release image')
 parser.add_argument('--docker-host', default='unix:///var/run/docker.sock')
-parser.add_argument('--from-schema', type=int, choices=(11, 24, 35), default=24,
-                    help='synthetic installed schema to upgrade')
+parser.add_argument('--from-schema', type=int, choices=(11, 24, 35, 36), default=24,
+                    help='synthetic installed schema; 36 checks startup without migration')
 parser.add_argument('--asset-receipt', type=Path,
                     help='independent qualified source/asset receipt instead of a local dist/web build')
 args = parser.parse_args()
@@ -86,6 +86,8 @@ const hash = b => createHash('sha256').update(b).digest('hex');
   assert.deepEqual(db.prepare('SELECT * FROM enrollments ORDER BY username').all(), expected.enrollments);
   assert.equal(db.prepare('SELECT config FROM exams WHERE id=?').get('release-smoke').config, expected.exam_config);
   assert.equal(db.prepare('SELECT max(version) AS v FROM schema_version').get().v, 36);
+  if (expected.schema_versions)
+    assert.deepEqual(db.prepare('SELECT * FROM schema_version ORDER BY version').all(), expected.schema_versions);
   assert.equal(db.prepare('SELECT count(*) AS n FROM exam_native_reconciliations').get().n, 0);
   assert.deepEqual(db.pragma('foreign_key_check'), []);
   assert.equal(db.prepare('SELECT count(*) AS n FROM attempts').get().n, expected.attempts.length);
@@ -112,6 +114,7 @@ const hash = b => createHash('sha256').update(b).digest('hex');
     assets[path] = hash(bytes);
   }
   console.log(JSON.stringify({uid:process.getuid(), productionMaintenance:true, schema:36,
+    schemaVersionRowsPreserved:!!expected.schema_versions,
     historicalAttemptsPreserved:expected.attempts.length, enrollmentSettingsPreserved:true,
     noInventedGrants:true, nativeBootClock:true, assets}));
 })().catch(error => { console.error(error); process.exit(1); });
@@ -170,7 +173,9 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-release-container-') as direct
             db.execute("UPDATE attempts SET monitoring_mode='legacy' WHERE start IS NOT NULL")
         expected = {'attempts':[dict(row) for row in db.execute('SELECT * FROM attempts ORDER BY id')],
                     'enrollments':[dict(row) for row in db.execute('SELECT * FROM enrollments ORDER BY username')],
-                    'exam_config':settings}
+                    'exam_config':settings,
+                    'schema_versions':[dict(row) for row in db.execute('SELECT * FROM schema_version ORDER BY version')]
+                        if args.from_schema == 36 else None}
         db.commit(); db.close()
         (fixture / 'expected.json').write_text(json.dumps(expected))
         for path in fixture.iterdir():

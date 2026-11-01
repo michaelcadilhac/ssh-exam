@@ -1,8 +1,13 @@
 # Application-host deployment
 
-For the current installed marco/csc-sys release and compatible rollback, see
-[examctl scripting rollout](examctl-scripting-deployment.md); original live
-acceptance is recorded in [production rollout](production-rollout-2026-10-27.md). The commands
+For the current installed b70a080/schema36 web release and compatible rollback,
+see [admin editor deployment](admin-editor-deployment.md). Its web-only cutover
+preserves all37 authority tables/settings/history,110 web attempts and175 native
+histories. No migration, CLI installation or native-service restart; all six public
+assets/readiness and four desktop/mobile focus checks pass, with admissions open.
+This read-only acceptance claims no new live exam/MFA test. The installed CLI and
+schema36 policy originate in [single-unused deployment](single-unused-attempt-deployment.md);
+original live acceptance is recorded in [production rollout](production-rollout-2026-10-27.md). The commands
 below describe installation setup; they are not permission to replace a running
 production cohort or bulk-convert unused permissions.
 

@@ -1,8 +1,14 @@
 # Attempt editor and administration controls
 
-November 1, 2026. Local development and testing; not pushed or deployed.
-The deployed baseline is f0c7e10/schema 36. Preserve its one-unused-attempt policy,
+November 1, 2026. Source b70a080 is pushed and deployed; admissions are open.
+The web-only release preserves schema36 and the f0c7e10 one-unused-attempt policy,
 immutable historical work, review identities, native retention and original clocks.
+All37 authority tables/settings/history and110 web/175 native attempts remain
+unchanged. No migration, CLI installation or native-service restart. Public TLS,
+readiness, all six exact assets and four desktop/mobile focus checks pass; this
+does not claim a new live exam, MFA or media test. Exact artifacts, private backup,
+preservation and compatible rollback:
+[deployment record](admin-editor-deployment.md).
 
 Agreed with a fresh Prof before implementation:
 
@@ -98,8 +104,12 @@ the browser checks used those exact rebuilt bytes. SSH source and wasm_exec.js a
 unchanged. Qualification records bind the active index assets rather than older
 files left in the local dist directory.
 
-Nothing is pushed or deployed. A later authorized release needs a qualified web
-image, the existing zero-session/exam drain and private backup, exact public assets
-and acceptance before reopening. No database migration or CLI/native replacement
-is needed. The prior f0c7e10 image supports the same schema 36 and can serve as a
-code rollback, preserving current records and all subsequent administrator actions.
+The subsequent authorized web-only cutover completed with a zero-session/exam
+drain, full durable private backup, exact-image schema36 preservation and public
+acceptance before reopening at18:16:09UTC. Packaged WASM is the unchanged prior
+qualified `49946ceb…` built with pinned Docker Go1.27.2; the development-host
+`6d255449…` above uses Go1.27.3 and Git metadata. All five non-WASM assets match
+the browser-qualified bytes. No database migration or CLI/native replacement
+was performed. The prior f0c7e10 image supports schema36 and is the code rollback,
+preserving CURRENT records and all subsequent administrator actions. Full evidence:
+[deployment record](admin-editor-deployment.md).

@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-November1 local UI follow-up, tested but not deployed: attempt editing opens
+November1 deployed UI follow-up, source b70a080/schema36: attempt editing opens
 explicitly with saved values/files; unchanged exact times and saved sources remain
 unchanged. Personal exam-name overrides and editable instructor Reason fields are
 removed from the website. Action-specific audit descriptions, history, CLI/API
@@ -13,7 +13,14 @@ parameters and exact unknown-request retries remain. Compact accessible refresh,
 clear Cancel editing/Close/Done actions and narrow-screen controls are qualified;
 a fresh Prof accepted actual renders. This supersedes older UI instructions to
 enter a reason or use a blank personal editor, without changing grant, deadline,
-retention or monitoring policy. Scope/evidence: docs/attempt-editor-simplification.md.
+retention or monitoring policy. The web-only cutover preserves all37 authority
+tables/settings/history,110 web attempts and175 native histories. No migration,
+CLI installation or native-service restart. Exact public assets/readiness and
+four desktop/mobile focus checks pass; admissions reopened at18:16:09UTC. This
+read-only acceptance claims no new live exam, MFA or media test. Scope/evidence,
+private backup and compatible rollback: docs/attempt-editor-simplification.md and
+docs/admin-editor-deployment.md. Earlier dated release/local-only statements
+below are historical where superseded by this current deployed record.
 
 November1 intentional policy change requested by the instructor: one unused
 permission per student/exam, independent of overlapping or disjoint start windows.
@@ -21,7 +28,8 @@ Reviewed new issuance replaces earlier definitely-unused permissions atomically;
 students receive the sole assigned attempt without choosing. Started attempts,
 deadlines, setup claims, holds and protected history remain authoritative. This
 supersedes older multiple-unused/student-selection specifications below. It is
-deployed and online on marco/csc-sys at f0c7e10/schema36, with matched examctl.
+initially deployed on marco/csc-sys at f0c7e10/schema36, with matched examctl;
+the current b70a080 web release preserves that policy and installed CLI.
 Exact preservation, public assets/readiness, desktop/mobile focus and signed CLI
 read pass; all110 web/175 native histories and native service PIDs are preserved.
 Admissions are open. Scope, qualification, private backups and compatible rollback:
@@ -34,9 +42,9 @@ files are preserved unless an explicit
 replacement passes the existing review; source choices distinguish empty/one/many
 and display recognizable exam codes. Exact targets, stale revisions, unknown
 request identities and native source confirmation remain authoritative. It is
-included in f0c7e10; the single-unused policy above supersedes the former student
-selector. Qualification/status: docs/unused-attempt-editor.md and
-docs/single-unused-attempt-deployment.md.
+initially included in f0c7e10 and simplified in b70a080; the single-unused policy
+above supersedes the former student selector. Qualification/status:
+docs/unused-attempt-editor.md and docs/admin-editor-deployment.md.
 
 October 31 deployed release: Prof's UI/phone terminology and the approved separate
 saved-work worker are online. Web runtime 6b7c62b/schema 35 and the matched CLI/unit
@@ -112,7 +120,7 @@ support before Begin/Continue; there is no environment/configuration enable bypa
 The exact release/native/kernel/browser/16-student qualification and limitations
 are in docs/retained-release-qualification.md. Earlier dated implementation notes
 below are historical; this contract supersedes their disabled/incomplete status.
-Current installed versions are web07b6fa5/schema33, CLI46bcfa2 and unchanged native
+At that dated milestone, installed versions were web07b6fa5/schema33, CLI46bcfa2 and unchanged native
 872fe80. The October29 drained scripting update preserves all110 web/174 native
 histories, source pins, grants, deadlines and account holds. Full qualification,
 installed root CLI/signed readiness/TLS/asset checks and backups pass; admissions

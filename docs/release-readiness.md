@@ -1,12 +1,25 @@
 # Main-bug release readiness
 
-November1 single-unused-attempt candidate is implemented/tested LOCALLY, not pushed
-or deployed. New issuance replaces older unused permissions; students never choose.
+November1 CURRENT: b70a080/schema36 is pushed, deployed and publicly online.
+The web-only admin-editor follow-up preserves all37 authority tables/settings/
+history,110 web attempts and175 native histories; no migration, CLI installation
+or native-service restart. Exact image/schema preservation, fresh signed roles,
+all six public assets/TLS/readiness and four desktop/mobile focus checks pass.
+Admissions reopened at18:16:09UTC. Production acceptance is read-only; no new live
+exam, MFA or media test is claimed. Full private backup, artifacts, preservation
+and current-state schema36 rollback: [admin editor deployment](admin-editor-deployment.md).
+Earlier dated status/version/local-only/NO-GO entries below are historical where
+superseded by this current deployed record.
+
+November1 initial single-unused-attempt release f0c7e10 is deployed. New issuance
+replaces older unused permissions; students never choose.
 App691, actual CLI/gateway13, CLI races/build/vet,81 covered browser scenarios and
 exact-image schema35/24→36 upgrade checks pass; Prof accepted the rendered flow.
-Current candidate, preserved boundaries and unexecuted migration/rollback plan:
-single-unused-attempt.md and todo-current-checkpoint.md. Prior dated deployment
-records below are historical; this candidate authorizes no production action.
+The guarded schema36 migration found no duplicate unused permissions and changed
+no existing permission; exact preservation, signed CLI read and public checks pass.
+Policy, qualification and initial migration/backup record: single-unused-attempt.md
+and single-unused-attempt-deployment.md. The current b70a080 web-only update
+preserves that policy and schema; this document grants no new deployment authority.
 
 October28 CURRENT: **release online;38/38 main TODO items covered.** Web7d0b894/
 schema33 and native872fe80 are deployed under the explicit guarded-cutover

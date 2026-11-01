@@ -1,39 +1,39 @@
-# Current checkpoint — attempt editor simplification tested locally
+# Current checkpoint — admin editor deployed and online
 
-November 1, 2026. The requested UI follow-up is complete locally. Nothing is
-pushed or deployed. The source baseline is baf87f2; the final local commit and
-qualified input hashes are recorded in the completion receipt below.
+November 1, 2026: the explicit Push, deploy instruction is fulfilled. Source
+b70a080 is pushed and running on marco, schema36 unchanged. Admissions are open;
+original nginx bytes are restored. CLI and all native services/configurations/PIDs
+are unchanged. No exam was interrupted and no student permission was issued.
 
-Allowed attempts opens an overview; Edit settings opens saved values and files.
-Cancel editing discards only the draft. Untouched source references, seconds and
-DST occurrences remain exact; stale revisions refuse. The selected source shows
-its exam code, attempt and date, including on narrow screens. Personal exam-name
-editing and all six instructor Reason inputs are removed; contextual audit/history
-and exact unknown-request identities remain. Refresh uses labelled circular-arrow
-controls. Close, Cancel editing, Back and Done match their actual effects.
-
-Verification: final 15 focused browser cases pass; all 134 selected affected
-scenarios have passing current-artifact coverage (broad 128 pass / 6 fixture
-failures, then corrected 9 pass including all failed cases and shared-helper
-callers). Runtime inputs/assets stayed identical; only three test files changed
-for those corrections. Full fixture types and production build pass. A fresh Prof
-accepted desktop/mobile and dedicated source views at 320/375/430px. Owned fixture
-listeners are closed; ten preexisting dirty screenshots stay byte-identical and
-unstaged. Backend, protocol, CLI and native execution are unchanged. SSH WASM
-source is unchanged; the locally rebuilt bundle has Git build metadata and was
-used by the real-WASM checks. Earlier native qualification is not newly claimed.
-
-Scope, intentional UI changes, retained failures and future web-only rollout:
-docs/attempt-editor-simplification.md.
-Exact input/artifact hashes, local commit and verification/cleanup receipts:
+The explicit prefilled editor, exact starting-file identity, mobile controls,
+Reason-input removal and compact accessible refresh are deployed. Fresh Prof
+accepted local desktop/mobile renders. Local qualification covers all134 selected
+browser scenarios (broad128 plus corrected9 covering6 fixture failures/callers),
+final15 focused cases, fixture types and production build. Retained failures:
 var/collection-tests/admin-form-cleanup.ztdlo53r/completion.json.
 
-Production remains f0c7e10/schema 36 with matched examctl; admissions were reopened
-by the previous authorized deployment. No remote production action in this task.
-Private backups and current policy/rollback: docs/single-unused-attempt-deployment.md.
-One unused permission, authoritative deadlines, claims, holds, pins and canonical
-agent consolidation remain unchanged. Original 38-item release count unchanged.
+Exact image/schema36 startup, Config/rootfs/asset checks and full private durable
+backup pass. Production comparison preserves schema/indexes, all37 authority
+tables, attempt/grant rowids, prior audit/requests and110 web histories/settings/
+deadlines/pins. Native175 histories and four PIDs remain. Only expired nonces and
+fully audited empty worker polls differ operationally. Public six assets/TLS/
+readiness and four native Chromium focus cases pass; reopening verified18:16:09UTC.
+This acceptance creates no exam, clock, authentication or media session.
 
-No open decision or blocker. Next: instructor's next instruction. A new push or
-deployment requires explicit authorization; the new UI needs no schema migration
-or native-service restart. Preserve current records during any code rollback.
+Private backup, installed image, verification and compatible rollback:
+docs/admin-editor-deployment.md. Source/user-interface policy:
+docs/attempt-editor-simplification.md. Exact rollout/completion receipts:
+var/collection-tests/admin-editor-rollout._ew85if9/completion.json.
+The schema36 release smoke helper now supports no-migration startup explicitly.
+Ten preexisting dirty screenshots remain byte-identical and unstaged.
+
+Latest user storage question: metadata survey found13.3GB live application data,
+mostly full-resolution screen JPEGs, and69.98GB in five recognized release-backup
+copies;16.11GB available. Images use5-second cadence and60-day live retention;
+backup copies have no automatic rotation. Details and proposals are in the
+rollout report. No recording policy or files were changed/deleted by the survey.
+
+No open implementation decision or deployment blocker. Next: instructor's next
+instruction; storage optimization/cleanup remains a proposal. Original38-item
+count and canonical agent consolidation are unchanged. Any further production
+mutation needs authorization; preserve current records during code rollback.
