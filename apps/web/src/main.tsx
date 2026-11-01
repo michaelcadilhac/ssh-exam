@@ -1,7 +1,7 @@
 import { hasProtectedFiles } from "../../../packages/protocol/admin.js";
 import React, { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { api, setCsrf, socket, chicago } from "./api.js";
+import { api, setCsrf, socket } from "./api.js";
 import { timeLimit } from "./local-date-time.js";
 import { Workspace } from "./workspace.js";
 import { Admin } from "./admin.js";
@@ -133,7 +133,11 @@ function App() {
     try {
       await fn();
     } catch (e) {
-      if ((e as { code?: string }).code === "ATTEMPT_UNAVAILABLE")
+      if (
+        ["ATTEMPT_UNAVAILABLE", "ROSTER_REVIEW_REQUIRED"].includes(
+          (e as { code?: string }).code ?? "",
+        )
+      )
         setAttemptChoiceStale(true);
       setError((e as Error).message);
     }
@@ -174,15 +178,13 @@ function App() {
       setNavigation(null);
     }
   };
-  const refreshAttempt = (id: string | null = info?.selected_grant ?? null) =>
+  const refreshAttempt = () =>
     action(() =>
       navigate("select-attempt", async () => {
         let info;
         try {
           info = await api(
-            id
-              ? `/student/exam?grant=${encodeURIComponent(id)}`
-              : "/student/exam",
+            "/student/exam",
             undefined,
             undefined,
             AbortSignal.timeout(15000),
@@ -197,12 +199,7 @@ function App() {
             );
           throw error;
         }
-        setAttemptChoiceStale(
-          attemptChoiceStale &&
-            !isSandbox(info.exam.id) &&
-            !info.attempt &&
-            !info.grants?.length,
-        );
+        setAttemptChoiceStale(false);
         setSession({ user, info });
       }),
     );
@@ -337,8 +334,12 @@ function App() {
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, [challenge, authSocket, authPhase]);
-  const grantSelectionRequired =
-    !!info && !info.attempt && info.grants?.length > 1 && !info.selected_grant;
+  const noAssignedAttempt =
+    !!info?.exam &&
+    !info.attempt &&
+    !info.selected_grant &&
+    !isSandbox(info.exam.id);
+  const attemptBlocked = info?.attempt_blocked ?? info?.practice_blocked;
   const phoneNumber =
     authPhase === "connecting" ? phoneApprovalNumber(challenge) : null;
   const waitingForPhoneNumber =
@@ -488,51 +489,33 @@ function App() {
                         attempt.
                       </p>
                     )}
-                    {!info.attempt && info.grants?.length > 1 && (
-                      <label>
-                        Choose an attempt
-                        <select
-                          value={info.selected_grant ?? ""}
-                          disabled={!!navigation}
-                          onChange={(e) => {
-                            void refreshAttempt(e.target.value || null);
-                          }}
-                        >
-                          <option value="">Choose an attempt to start</option>
-                          {info.grants.map((g: any) => (
-                            <option key={g.id} value={g.id}>
-                              {g.issuance === "ADDITIONAL_TEMPLATE"
-                                ? "Extra attempt"
-                                : g.issuance === "PRACTICE"
-                                  ? "Practice attempt"
-                                  : "First attempt"}{" "}
-                              · {timeLimit(g.settings.duration)} · Created{" "}
-                              {chicago(g.issued_at)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
                     {navigation === "select-attempt" ? (
                       <p role="status">Checking attempt…</p>
                     ) : attemptChoiceStale ? (
                       <p role="status">
-                        {!info.grants?.length &&
-                          "No attempts are available to start. Ask your instructor to allow an attempt. "}
+                        Check the current attempt before opening setup.{" "}
                         <button
                           type="button"
-                          onClick={() => void refreshAttempt(null)}
+                          onClick={() => void refreshAttempt()}
                         >
                           Check again
                         </button>
                       </p>
-                    ) : grantSelectionRequired ? (
-                      <p>Choose an attempt to continue.</p>
+                    ) : noAssignedAttempt ? (
+                      <p role="status">
+                        No attempt is available. Ask your instructor.{" "}
+                        <button
+                          type="button"
+                          onClick={() => void refreshAttempt()}
+                        >
+                          Check again
+                        </button>
+                      </p>
                     ) : (
                       <>
-                        {info.practice_blocked && (
+                        {attemptBlocked && (
                           <p role="status">
-                            <span>{info.practice_blocked.message}</span>{" "}
+                            <span>{attemptBlocked.message}</span>{" "}
                             <button
                               type="button"
                               onClick={() => void refreshAttempt()}
@@ -685,10 +668,10 @@ function App() {
                           <button
                             className="primary"
                             disabled={
-                              !!info.practice_blocked ||
+                              !!attemptBlocked ||
                               browserBlocked ||
                               !!navigation ||
-                              grantSelectionRequired ||
+                              noAssignedAttempt ||
                               attemptChoiceStale
                             }
                             onClick={() =>

@@ -95,9 +95,7 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
     await page.goto(origin);
     await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
     await page.getByLabel("Username").fill("examq");
-    await page
-      .getByRole("button", { name: "Sign in", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.getByLabel("Password", { exact: true }).fill("shared-password");
     const summaryReady = page.waitForResponse(
       (response) =>
@@ -105,22 +103,19 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
         response.status() === 200,
       { timeout: 20000 },
     );
-    await page
-      .getByRole("button", { name: "Continue", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     const summary = await (await summaryReady).json();
     const open = page.getByRole("button", {
       name: "Check setup and practice",
       exact: true,
     });
     await expect(open).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Choose an attempt", exact: true }),
+    ).toHaveCount(0);
     if (grant) {
-      expect(summary.grants.map((g: { id: string }) => g.id)).toContain(grant);
-      const chooser = page.getByRole("combobox", {
-        name: "Choose an attempt",
-        exact: true,
-      });
-      if (await chooser.count()) await chooser.selectOption(grant);
+      expect(summary.grants.map((g: { id: string }) => g.id)).toEqual([grant]);
+      expect(summary.selected_grant).toBe(grant);
     }
     await open.click();
     await ready(page);

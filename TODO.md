@@ -1,5 +1,19 @@
 # Deferred work
 
+November1 INTENTIONAL POLICY CHANGE — IMPLEMENTED/TESTED LOCALLY:
+The instructor requires one unused attempt per student/exam, regardless of start
+windows. Confirming another attempt replaces earlier definitely-unused permission;
+students never select between attempts. Started attempts/history/deadlines/holds
+remain authoritative. Live setup or uncertain start evidence refuses replacement
+until verified cleanup. Web/examctl reviews must bind exact predecessors, replace
+atomically and preserve retries/pins. Schema36 safely reconciles old duplicates
+and refuses ambiguous authority. Full691 app tests, actual CLI/gateway13, CLI races/
+build/vet,81 covered browser scenarios and exact-image35/24→36 upgrades pass.
+Prof accepted seven desktop/mobile renders. Existing opt-in/native-only skips are
+documented; unchanged native/WASM evidence is retained. Not pushed/deployed; no
+production changes authorized. Original38-item count unchanged.
+Plan/evidence: docs/single-unused-attempt.md and current checkpoint.
+
 October31 PERSONAL ATTEMPT EDITOR COMPLETE/TESTED LOCALLY:
 Prof agreed per-attempt Edit settings/Cancel attempt without selection checkboxes
 in a student's Allowed attempts, keeping bulk selection separate. Optional file

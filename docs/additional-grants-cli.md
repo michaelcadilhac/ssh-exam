@@ -1,5 +1,11 @@
 # Additional attempts and workspace sources
 
+November1 policy update (local candidate): confirming another attempt replaces
+earlier definitely-unused permission for the same student/exam, regardless of
+overlapping or disjoint dates. Students receive one assigned attempt and never
+choose between permissions. Started attempts, deadlines, history and holds stay
+authoritative. Current qualification/migration: [single unused attempt](single-unused-attempt.md).
+
 Local implementation/qualification only; not deployed. Evidence and privileged
 limits: additional-template-grants.md. These commands do not authorize production
 changes. Empty/separate-template initialization is implemented/tested locally
@@ -31,11 +37,18 @@ sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH --requ
 Replace the placeholders with the actual hashes/UUIDs. Whole minutes or exact
 `--duration-seconds` are supported,60..21600 seconds. A review names1..200 enrolled
 ordinary students and lasts fifteen minutes. It shows the resolved snapshot and
-existing unused/pending grants at review time. Preview reserves no account or
-clock. Changed selected definitions/enrollments require a new review; confirmation
-publishes the whole batch atomically. A new confirmed review authorizes another
-attempt. Cancel an unconfirmed review with `issue-cancel PREVIEW_UUID --revision
+the exact earlier unused/pending permissions that confirmation will replace.
+Preview reserves no account or clock. Changed definitions, enrollments or reviewed
+predecessors require a new review; confirmation replaces permissions and publishes
+the whole batch atomically. A setup or unfinished Start claim refuses replacement
+until verified unstarted cleanup. Cancel an unconfirmed review with `issue-cancel PREVIEW_UUID --revision
 REVIEW_HASH`; cancellation cannot undo confirmed issuance.
+
+For scripts, `issue-show` supports `--format table` or `--format tsv` with fields
+`replacement_count,replacement_refs` before confirmation and
+`grant,replaced_count,replaced_refs` afterward. References show `UUID@revision`;
+JSON parsing is unnecessary. New CLI confirmations carry the required policy
+marker automatically; an old gateway rejects them before mutation.
 
 The grant window can be wholly outside expired exam defaults. It limits actual
 Begin, not finish: a late valid Begin still receives the full fixed allowance.
@@ -99,7 +112,7 @@ pending grants never reserve accounts or time.
 Web: enter usernames, select Protected saved work and fill each separately labelled
 attempt/checksum. Correct an owner refusal and preview again; inspect both rows
 before confirming. A lost confirm offers exact retry and saved-review inspection.
-Revoking one selected unused grant preserves other grants and all prior attempts.
+Revoking unused permission preserves all prior attempts and protected history.
 
 To compare/select submissions, use the selected exam's student rows: each attempt
 has its own numbered Review action. Open Timing and monitoring details for its UUID/timing, and
@@ -183,13 +196,17 @@ including the original timestamps. Use a fresh request ID for fresh status.
 `issue-show` on the original preview returns its retained issued IDs across
 restart; confirmed metadata is history, not current unused availability.
 
-The browser displays a saved review ID BEFORE confirmation. After a lost reply,
-retry the exact pending request or reload and inspect that same saved review ID.
-Do not authorize a replacement batch as a retry. Automatic browser intent
-restoration is not implemented; the manual saved-review workflow is tested.
+After a lost reply, retry the exact current-policy request or inspect the original
+saved review. Do not authorize a replacement batch as a retry. The browser retains
+unknown intent across reload. An older unmarked request is never blindly replayed:
+positive confirmed status supplies its actual receipt; an unconfirmed old review
+needs a fresh review under the new policy. CLI legacy unknown retries likewise
+require authenticated confirmed status before replaying their original bytes.
 
-Students choose an authorization on the waiting page when several are usable.
-An existing preparation retains its bound choice. A new attempt gets a separate
+Students receive the sole assigned attempt on the waiting page. New confirmation
+replaces earlier unused permission even when their dates do not overlap. An
+existing preparation retains its bound authority and cannot be silently replaced.
+A new attempt gets a separate
 UUID/private workspace from its saved initializer; previous protected work/history and original
 timing remain intact. The old attempt must have confirmed protected collection
 and normal access release. Web/native account restrictions still refuse new work
@@ -197,9 +214,10 @@ while an original/current interval or recovery hold remains authoritative.
 
 Native Begin requires fresh authenticated outbound agreement and the exact grant/
 revision/type/lineage/source/owner. Retry the same attempt/intent after an unknown
-outcome; committed native time is never rebased. An unused initial grant can
-follow an explicitly additional grant only with positively retained original
-identity/issuance history; missing or contradictory history refuses for inspection.
+outcome; committed native time is never rebased. Superseded initial permission
+remains revoked history and cannot be used after its replacement. Existing native
+lineage checks remain additional safeguards; missing or contradictory history
+refuses for inspection.
 Root-only legacy saved-work grants remain protected and may conflict with this
 template initialization. No live-work copying, source fallback or automatic
 reopening/refund is part of this workflow.

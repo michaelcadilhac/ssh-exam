@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import {
   grantIssuePreview,
@@ -188,19 +189,17 @@ export class GrantIssuance {
             source ?? b.work,
             username,
           );
+          const replaces = additional
+            ? this.grants.replacements(b.exam, username)
+            : [];
           return {
             username,
             enrollment: JSON.stringify(enrollment),
             ...value,
+            replaces,
             ...(additional
               ? {
-                  existing_grants: (
-                    this.store.db
-                      .prepare(
-                        "SELECT count(*) n FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND status IN ('AVAILABLE','PENDING_NATIVE')",
-                      )
-                      .get(this.agent, b.exam, username) as any
-                  ).n,
+                  existing_grants: replaces.length,
                 }
               : {}),
           };
@@ -217,6 +216,7 @@ export class GrantIssuance {
             exam: b.exam,
             actor,
             definition_revision: b.definition_revision,
+            replacement_policy: "single-unused-v1",
             reason: b.reason,
             rows,
           });
@@ -332,6 +332,14 @@ export class GrantIssuance {
             "This review was cancelled or expired. Create a new review before allowing attempts. This request did not allow attempts or reserve accounts.",
           );
         if (
+          saved.kind !== "NEW_LEGACY_INITIAL_GRANTS" &&
+          (saved.replacement_policy !== "single-unused-v1" ||
+            b.replacement_policy !== "single-unused-v1")
+        )
+          return refuse(
+            "This request uses an older attempt policy. Edit and review again before confirming; update examctl if using the CLI. No allowed attempt changed.",
+          );
+        if (
           this.definitions.requireActive(saved.exam).revision !==
           saved.definition_revision
         )
@@ -350,6 +358,17 @@ export class GrantIssuance {
           )
             return refuse(
               `Enrollment or settings for ${r.username} changed after this review. Create a new review. This request allowed no attempts.`,
+            );
+          if (
+            saved.kind !== "NEW_LEGACY_INITIAL_GRANTS" &&
+            (!Array.isArray(r.replaces) ||
+              !isDeepStrictEqual(
+                this.grants.replacements(saved.exam, r.username),
+                r.replaces,
+              ))
+          )
+            return refuse(
+              `Allowed attempts for ${r.username} changed after this review. Create a new review. No permission was replaced and no exam time started.`,
             );
           if (r.settings.latest <= now())
             return refuse(
@@ -376,7 +395,11 @@ export class GrantIssuance {
             return refuse(
               "Reviewed source/settings hash differs at confirmation; no partial batch issued",
             );
-          return { username: r.username, grant: grant.id };
+          return {
+            username: r.username,
+            grant: grant.id,
+            replaced: r.replaces ?? [],
+          };
         });
         this.store.db
           .prepare(

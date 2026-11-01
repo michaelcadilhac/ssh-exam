@@ -557,9 +557,23 @@ export class AttemptGrants {
       | "PRACTICE" = "ENROLLMENT",
     initial: string | null = null,
   ) {
+    if (!this.store.db.inTransaction)
+      throw Error("Grant issuance requires its shared atomic transaction");
+    const predecessors = this.replacements(exam, username);
     const id = randomUUID(),
       at = now();
     new ExamDefinitions(this.store, this.agent).requireActive(exam);
+    for (const previous of predecessors) {
+      this.store.db
+        .prepare("UPDATE attempt_grants SET status='REVOKED' WHERE id=?")
+        .run(previous.id);
+      this.store.audit(
+        actor,
+        "supersede-unused-grant",
+        previous.id,
+        JSON.stringify({ ...previous, replacement: id, reason }),
+      );
+    }
     this.store.db
       .prepare(
         "INSERT INTO attempt_grants(id,agent,exam,username,revision,status,issued_at,actor,reason,issuance,initial_grant) VALUES(?,?,?,?,1,?,?,?,?,?,?)",
@@ -807,12 +821,12 @@ export class AttemptGrants {
     if (
       this.store.db
         .prepare(
-          "SELECT 1 FROM grant_begin_intents b JOIN grant_claims c ON c.attempt=b.attempt WHERE c.grant_id=? AND (b.state='CONSUMED' OR b.start IS NOT NULL OR b.deadline IS NOT NULL)",
+          "SELECT 1 FROM grant_begin_intents b JOIN grant_claims c ON c.attempt=b.attempt WHERE c.grant_id=? AND (b.state<>'CANCELLED' OR b.start IS NOT NULL OR b.deadline IS NOT NULL)",
         )
         .get(id)
     )
       return conflict(
-        "Recorded evidence indicates this attempt has started. It cannot be changed or cancelled as unused. Check the original attempt and keep its history. No time is refunded.",
+        "Recorded start or unfinished start evidence remains. This attempt cannot be changed or cancelled as unused. Check the original attempt and keep its history. No time is refunded.",
       );
     if (
       this.store.db
@@ -824,7 +838,47 @@ export class AttemptGrants {
       return conflict(
         "This attempt is in setup, starting, or already started. Cancel a confirmed unstarted setup before changing it; otherwise check the original attempt. This refusal does not cancel an attempt or refund time.",
       );
+    if (
+      this.store.db
+        .prepare(
+          "SELECT 1 FROM attempts WHERE grant_id=? AND (state<>'CANCELLED_BEFORE_START' OR start IS NOT NULL OR deadline IS NOT NULL OR original_deadline IS NOT NULL OR protected<>0 OR checksum IS NOT NULL OR registered_owner IS NOT NULL) LIMIT 1",
+        )
+        .get(id)
+    )
+      return conflict(
+        "Recorded setup, start, saved-file or ownership evidence remains. Inspect the original attempt and obtain verified unstarted cleanup before replacing it. No permission or deadline changed.",
+      );
     return row;
+  }
+  // Runtime callers: issuance review/confirmation and the sole atomic issuer.
+  // Validate the complete set before a caller revokes any predecessor.
+  replacements(exam: string, username: string) {
+    const rows = this.store.db
+      .prepare(
+        "SELECT id,revision FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND status IN ('AVAILABLE','PENDING_NATIVE') ORDER BY rowid",
+      )
+      .all(this.agent, exam, username) as { id: string; revision: number }[];
+    return rows.map((row) => {
+      const grant = this.view(this.unused(row.id, row.revision));
+      return {
+        id: grant.id as string,
+        revision: grant.revision as number,
+        hash: grant.hash as string,
+      };
+    });
+  }
+  current(exam: string, username: string) {
+    const rows = this.store.db
+      .prepare(
+        "SELECT id FROM attempt_grants WHERE agent=? AND exam=? AND username=? AND status IN ('AVAILABLE','PENDING_NATIVE') ORDER BY rowid LIMIT 2",
+      )
+      .all(this.agent, exam, username) as { id: string }[];
+    if (rows.length > 1)
+      return conflict(
+        "Your allowed attempt needs an instructor update. Ask your instructor to review it before opening setup.",
+        "ROSTER_REVIEW_REQUIRED",
+      );
+    return rows.length ? this.view(this.row(rows[0].id)) : null;
   }
   revise(id: string, input: unknown, actor: string) {
     const b = grantRevision.parse(input);
@@ -922,16 +976,10 @@ export class AttemptGrants {
     return grant;
   }
   available(exam: string, username: string) {
-    const rows = this.store.db
-      .prepare(
-        "SELECT g.id FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision WHERE g.agent=? AND g.exam=? AND g.username=? AND g.status='AVAILABLE' AND json_extract(r.settings,'$.latest')>=? ORDER BY g.rowid LIMIT 201",
-      )
-      .all(this.agent, exam, username, now()) as any[];
-    if (rows.length > 200)
-      return conflict(
-        "Too many unused grants to select safely; ask the instructor to inspect/revoke unneeded authorizations, preserving their history",
-      );
-    return rows.map((r) => this.view(this.row(r.id)));
+    const grant = this.current(exam, username);
+    return grant?.status === "AVAILABLE" && grant.settings.latest >= now()
+      ? [grant]
+      : [];
   }
   binding(grant: ReturnType<AttemptGrants["select"]>) {
     return grantBinding.parse({

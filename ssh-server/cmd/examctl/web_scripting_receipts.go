@@ -160,7 +160,13 @@ func readScriptReceipt(path string) (*scriptReceipt, error) {
 			return nil, errors.New("receipt result digest changed; preserve original receipt")
 		}
 		if r.Operation != "grants.source-sync-batch" {
-			if err := scriptValidateResult(r.Agent, r.Operation, r.Body, r.Result.Result); err != nil {
+			var err error
+			if r.Operation == "grants.additional-preview" {
+				err = validateGrantIssuanceResultPolicy(r.Operation, r.Body, r.Result.Result, r.Agent, true)
+			} else {
+				err = scriptValidateResult(r.Agent, r.Operation, r.Body, r.Result.Result)
+			}
+			if err != nil {
 				return nil, err
 			}
 		}

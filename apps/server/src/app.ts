@@ -1274,34 +1274,35 @@ export async function createApp(
         "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY rowid DESC LIMIT 1",
       )
       .get(s.exam, s.username) as Attempt | undefined;
-    const availableGrants = grants.available(s.exam!, s.username);
+    const availableGrants = grants.available(s.exam!, s.username),
+      currentGrant = grants.current(s.exam!, s.username),
+      pendingGrant =
+        currentGrant?.status === "PENDING_NATIVE" ? currentGrant : null,
+      selectedGrant = availableGrants[0] ?? pendingGrant;
     const selectedID = z
       .object({ grant: z.string().uuid().optional() })
       .strict()
       .parse(req.query).grant;
     if (
       selectedID &&
-      !availableGrants.some((grant) => grant.id === selectedID) &&
+      selectedGrant?.id !== selectedID &&
       !(
         latest?.grant_id === selectedID &&
         [
-          "PREPARING", "ACTIVE", "LOCKED", "FINALIZING", "COLLECTION_FAILED",
+          "PREPARING",
+          "ACTIVE",
+          "LOCKED",
+          "FINALIZING",
+          "COLLECTION_FAILED",
         ].includes(latest.state)
       )
     )
       throw Object.assign(
-        Error(
-          "That attempt is no longer available. Choose Check again to see your current attempts.",
-        ),
+        Error("Your attempt has changed. Check it again before opening setup."),
         { statusCode: 409, code: "ATTEMPT_UNAVAILABLE" },
       );
-    const selectedGrant = selectedID
-      ? grants.select(s.exam!, s.username, selectedID)
-      : availableGrants.length === 1
-        ? availableGrants[0]
-        : null;
     const repeat =
-      (isSandbox(s.exam) || availableGrants.length > 0) &&
+      (isSandbox(s.exam) || !!selectedGrant) &&
       latest?.state === "COMPLETED" &&
       latest.protected &&
       ["RELEASED", "OVERRIDDEN"].includes(latest.access_state);
@@ -1359,8 +1360,21 @@ export async function createApp(
       enrollment: row,
       sshConnected: !!connections.get(`${s.exam}:${s.username}`)?.alive,
       attempt: repeat ? null : latest || null,
-      grants: availableGrants,
+      grants: pendingGrant ? [pendingGrant] : availableGrants,
       selected_grant: selectedGrant?.id ?? null,
+      attempt_blocked:
+        preparing && pendingGrant
+          ? {
+              status:
+                pendingGrant.settings.latest <= now()
+                  ? "CLOSED"
+                  : "PENDING_NATIVE",
+              message:
+                pendingGrant.settings.latest <= now()
+                  ? "This attempt is closed. Ask your instructor."
+                  : "Your saved files are being prepared. Check again shortly.",
+            }
+          : null,
       practice_blocked: practiceBlocked,
       previous_attempt:
         repeat && latest
@@ -1378,14 +1392,32 @@ export async function createApp(
     if (config.maintenance)
       throw Error("Exam starts are paused for maintenance.");
     if (productionReadinessIssues(config).length)
-      throw Error("The exam server is awaiting a safety check. Ask your instructor to check it before starting.");
+      throw Error(
+        "The exam server is awaiting a safety check. Ask your instructor to check it before starting.",
+      );
     const s = principal(req, "student");
     const conn = connections.get(`${s.exam}:${s.username}`);
-    if (!conn?.alive) throw Error("Sign in to the exam server before opening setup.");
+    if (!conn?.alive)
+      throw Error("Sign in to the exam server before opening setup.");
     const chosenGrant = z
       .object({ grant: z.string().uuid().optional() })
       .strict()
       .parse(req.body ?? {}).grant;
+    if (chosenGrant) {
+      const assigned = grants.current(s.exam!, s.username),
+        bound = store.db
+          .prepare(
+            "SELECT grant_id FROM attempts WHERE exam=? AND username=? AND state IN ('PREPARING','ACTIVE','LOCKED','FINALIZING','COLLECTION_FAILED') ORDER BY rowid DESC LIMIT 1",
+          )
+          .get(s.exam, s.username) as { grant_id: string | null } | undefined;
+      if (chosenGrant !== assigned?.id && chosenGrant !== bound?.grant_id)
+        throw Object.assign(
+          Error(
+            "Your attempt has changed. Check it again before opening setup.",
+          ),
+          { statusCode: 409, code: "ATTEMPT_UNAVAILABLE" },
+        );
+    }
     const exam = JSON.parse(
       (
         store.db
@@ -1398,7 +1430,10 @@ export async function createApp(
         "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
       )
       .get(s.exam, s.username) as any;
-    if (!enrollment) throw Error("Your enrollment could not be found. Ask your instructor to check your exam access.");
+    if (!enrollment)
+      throw Error(
+        "Your enrollment could not be found. Ask your instructor to check your exam access.",
+      );
     if (!Number.isSafeInteger(enrollment.uid) || enrollment.uid < 1000)
       throw Error(
         "Sign in through SSH again to verify your course-server identity.",
@@ -1416,7 +1451,10 @@ export async function createApp(
       throw Error(
         "The exam server cannot verify the required browser monitoring. Ask your instructor to update and check the server before starting.",
       );
-    if (!h.ready) throw Error("The exam server is not ready to start exams safely. Ask your instructor to check it.");
+    if (!h.ready)
+      throw Error(
+        "The exam server is not ready to start exams safely. Ask your instructor to check it.",
+      );
     requireSandboxAgent(s.exam, h);
     if (
       isSandbox(s.exam) &&
@@ -1473,7 +1511,8 @@ export async function createApp(
         await life.retirePreflight(previous.id);
       } catch (error) {
         if (
-          (error as { code?: string } | null)?.code === "PREFLIGHT_CLEANUP_UNCONFIRMED"
+          (error as { code?: string } | null)?.code ===
+          "PREFLIGHT_CLEANUP_UNCONFIRMED"
         )
           throw Object.assign(
             Error(
@@ -1507,22 +1546,11 @@ export async function createApp(
         ? previous.grant_id
           ? grants.select(s.exam!, s.username, previous.grant_id)
           : null
-        : chosenGrant
-          ? grants.select(s.exam!, s.username, chosenGrant)
-          : choices.length === 1
-            ? choices[0]
-            : null;
-    if (
-      previous?.state === "PREPARING" &&
-      chosenGrant &&
-      chosenGrant !== previous.grant_id
-    )
-      throw Error(
-        "Your current setup keeps its original attempt and settings. Sign out to cancel setup before choosing another attempt.",
-      );
-    if (!previous && !initialGrant && choices.length > 1)
-      throw Error(
-        "Choose an attempt on the exam page before opening setup. No attempt was started or exam time used.",
+        : (choices[0] ?? null);
+    if (chosenGrant && chosenGrant !== initialGrant?.id)
+      throw Object.assign(
+        Error("Your attempt has changed. Check it again before opening setup."),
+        { statusCode: 409, code: "ATTEMPT_UNAVAILABLE" },
       );
     if (
       !previous &&
@@ -1549,7 +1577,9 @@ export async function createApp(
       previous = undefined;
     }
     if (previous && previous.state !== "PREPARING")
-      throw Error("You already have an attempt for this exam. Ask your instructor to review it before trying again.");
+      throw Error(
+        "You already have an attempt for this exam. Ask your instructor to review it before trying again.",
+      );
     const id = previous?.id || randomUUID(),
       pageSecret = secret();
     if (initialGrant && !h.capabilities?.includes("ordered-template-grants-v1"))
@@ -1860,7 +1890,10 @@ export async function createApp(
     const a = studentAttempt(req);
     page(req, a);
     await requirePreflightTime(a);
-    if (a.state !== "PREPARING") throw Error("The practice terminal is available only before you start the exam.");
+    if (a.state !== "PREPARING")
+      throw Error(
+        "The practice terminal is available only before you start the exam.",
+      );
     const conn = connections.get(`${a.exam}:${a.username}`)!;
     for (const c of conn.panes.values()) await c.close();
     const pane = randomUUID();
@@ -1885,19 +1918,33 @@ export async function createApp(
         .prepare("SELECT 1 FROM enrollments WHERE exam=? AND username=?")
         .get(a.exam, a.username)
     )
-      throw Error("You are no longer enrolled in this exam. Ask your instructor to check your access. This attempt cannot start.");
-    if (config.maintenance) throw Error("New exam starts are paused for maintenance. Try again later.");
+      throw Error(
+        "You are no longer enrolled in this exam. Ask your instructor to check your access. This attempt cannot start.",
+      );
+    if (config.maintenance)
+      throw Error(
+        "New exam starts are paused for maintenance. Try again later.",
+      );
     if (productionReadinessIssues(config).length)
-      throw Error("The exam server is awaiting a safety check. Ask your instructor to check it before starting.");
+      throw Error(
+        "The exam server is awaiting a safety check. Ask your instructor to check it before starting.",
+      );
     const settings = JSON.parse(a.settings);
     requireBeginWindow(a.exam, settings);
     monitoring.requireBeginReadiness(a);
     if ((settings.webcam && !(req.body as any).webcam) || !healthy(a))
-      throw Error("Current screen or required webcam images are missing. Keep sharing and try again in a few seconds.");
+      throw Error(
+        "Current screen or required webcam images are missing. Keep sharing and try again in a few seconds.",
+      );
     const conn = connections.get(`${a.exam}:${a.username}`);
-    if (!conn?.alive) throw Error("The sign-in connection is unavailable. Check the exam status and sign in again before retrying setup.");
+    if (!conn?.alive)
+      throw Error(
+        "The sign-in connection is unavailable. Check the exam status and sign in again before retrying setup.",
+      );
     if (busy.has(a.id) || life.isBusy(a.id))
-      throw Error("Setup is still changing. Check the current attempt before starting.");
+      throw Error(
+        "Setup is still changing. Check the current attempt before starting.",
+      );
     busy.add(a.id);
     let checkingMonitoring = false;
     let checkingLegacyRoles = false;
@@ -2158,7 +2205,10 @@ export async function createApp(
     { config: { rateLimit: { max: 2, timeWindow: "1 minute" } } },
     async (req) => {
       const a = studentAttempt(req);
-      if (a.state !== "LOCKED") throw Error("This attempt is not paused for instructor review. Check its current status.");
+      if (a.state !== "LOCKED")
+        throw Error(
+          "This attempt is not paused for instructor review. Check its current status.",
+        );
       const message = z
         .object({ message: z.string().max(1000) })
         .parse(req.body).message;
@@ -2266,7 +2316,9 @@ export async function createApp(
       auth.generation !== a.generation ||
       auth.expires <= now()
     )
-      throw Error("Ask your instructor to approve resuming before opening another exam page. Your deadline is unchanged.");
+      throw Error(
+        "Ask your instructor to approve resuming before opening another exam page. Your deadline is unchanged.",
+      );
     const conn = connections.get(`${a.exam}:${a.username}`);
     if (!conn?.alive)
       throw Error(
@@ -2322,7 +2374,9 @@ export async function createApp(
       a.state !== "LOCKED" &&
       !(a.state === "ACTIVE" && nativeContinuationOutcomeRecorded(a))
     )
-      throw Error("This attempt is not waiting to resume. Check its current status.");
+      throw Error(
+        "This attempt is not waiting to resume. Check its current status.",
+      );
     const readiness = readinessMessage(req.body, JSON.parse(a.settings).webcam);
     if (readiness) throw Error(readiness);
     if (!automaticTechnical) await autoAuthorizeSandbox(a.id);
@@ -2341,14 +2395,18 @@ export async function createApp(
         "Ask your instructor to approve resuming. Wait for approval before choosing Resume exam.",
       );
     if (authenticationGap(a.id))
-      throw Error("The connection or exam page must be restored before resuming. Keep this page open and ask your instructor to check it.");
+      throw Error(
+        "The connection or exam page must be restored before resuming. Keep this page open and ask your instructor to check it.",
+      );
     if (!healthy(a))
       throw Error(
         "Waiting for current screen or camera images. Keep sharing and try again in a few seconds.",
       );
     const conn = connections.get(`${a.exam}:${a.username}`);
     if (!conn?.alive)
-      throw Error("The connection needed to resume is unavailable. Keep this page open and ask your instructor to check it.");
+      throw Error(
+        "The connection needed to resume is unavailable. Keep this page open and ask your instructor to check it.",
+      );
     if (JSON.parse(a.settings).webcam && !(req.body as any).webcam)
       throw Error("Restore webcam sharing before resuming.");
     let inputEpochs:

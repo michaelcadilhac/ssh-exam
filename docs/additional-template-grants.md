@@ -1,5 +1,10 @@
 # Additional exact-template grants: next integrated milestone
 
+Historical qualification record: its multiple-unused/student-selection policy is
+superseded by the instructor's November1 single-unused-attempt decision. Current
+replacement, migration and qualification are in [single unused attempt](single-unused-attempt.md).
+The historical test receipts below describe their original artifacts and policy.
+
 Local development only. Parent validated source:045c49b (reviewed legacy initial
 grants), after b8bcec2 (ordinary enrollment through C15 Begin). C2/C5 already
 authorize explicit additional grants, fixed settings and an independent finite

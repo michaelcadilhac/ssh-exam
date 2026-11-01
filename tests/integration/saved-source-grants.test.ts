@@ -12,7 +12,7 @@ import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 import { AttemptGrants } from "../../apps/server/src/attempt-grants.js";
 import { grantExam } from "../fixtures/grant-exam.js";
 
-it("reviews fixed saved-work authority but keeps it unavailable and cancellable until durable native source confirmation", async () => {
+it("reviews fixed saved-work authority and refuses delayed retention after pending permission is superseded", async () => {
   const data = mkdtempSync(tmpdir() + "/saved-source-grant-"),
     origin = "http://localhost:3000",
     keys = generateKeyPairSync("ed25519", {
@@ -134,12 +134,18 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
         latest: input.latest,
       },
     });
-    const intent = { revision: preview.json().revision, request: randomUUID() },
+    expect(preview.json().rows[0].replaces).toEqual([]);
+    const intent = {
+        revision: preview.json().revision,
+        request: randomUUID(),
+        replacement_policy: "single-unused-v1",
+      },
       confirmed = await post(
         `/api/admin/grant-issuance/${preview.json().id}/confirm`,
         intent,
       );
     expect(confirmed.statusCode, confirmed.body).toBe(200);
+    expect(confirmed.json().issued[0].replaced).toEqual([]);
     expect(
       (
         await post(
@@ -351,6 +357,132 @@ it("reviews fixed saved-work authority but keeps it unavailable and cancellable 
         .prepare("SELECT state FROM grant_claims WHERE attempt=?")
         .get(consumer),
     ).toEqual({ state: "CANCELLED" });
+
+    // The earlier accepted native pin remains retained history. A later worker
+    // can finish retaining a new source after that pending permission has been
+    // replaced; its signed reply must never restore the superseded permission.
+    const retainedPins = store.db
+        .prepare(
+          "SELECT * FROM grant_source_retentions ORDER BY grant_id,revision",
+        )
+        .all(),
+      priorAttempts = store.db
+        .prepare("SELECT * FROM attempts ORDER BY rowid")
+        .all(),
+      priorClaims = store.db
+        .prepare("SELECT * FROM grant_claims ORDER BY rowid")
+        .all(),
+      priorBegins = store.db
+        .prepare("SELECT * FROM grant_begin_intents ORDER BY rowid")
+        .all(),
+      issuedPending: any[] = [];
+    expect(retainedPins).toHaveLength(1);
+    for (let index = 0; index < 2; index++) {
+      const nextReview = await post(
+        `/api/admin/exams/${settings.id}/grants/additional-preview`,
+        { ...input, request: randomUUID() },
+      );
+      expect(nextReview.statusCode, nextReview.body).toBe(200);
+      const replaced = index
+        ? [
+            {
+              id: issuedPending[0].id,
+              revision: 1,
+              hash: issuedPending[0].hash,
+            },
+          ]
+        : [];
+      expect(nextReview.json().rows[0].replaces).toEqual(replaced);
+      const nextConfirm = await post(
+        `/api/admin/grant-issuance/${nextReview.json().id}/confirm`,
+        {
+          revision: nextReview.json().revision,
+          request: randomUUID(),
+          replacement_policy: "single-unused-v1",
+        },
+      );
+      expect(nextConfirm.statusCode, nextConfirm.body).toBe(200);
+      expect(nextConfirm.json().issued[0].replaced).toEqual(replaced);
+      const current = await app.inject({
+        url: `/api/admin/grants/${nextConfirm.json().issued[0].grant}`,
+        headers,
+      });
+      expect(current.statusCode, current.body).toBe(200);
+      expect(current.json()).toMatchObject({ status: "PENDING_NATIVE", work });
+      issuedPending.push(current.json());
+    }
+    const superseded = issuedPending[0],
+      replacement = issuedPending[1],
+      delayed = await native("grants.source-confirm", {
+        ...receipt,
+        id: superseded.id,
+        grant_hash: superseded.hash,
+        retained_at: Date.now(),
+      });
+    expect(delayed.statusCode, delayed.body).toBe(200);
+    expect(
+      JSON.parse(Buffer.from(delayed.json().payload, "base64").toString()),
+    ).toMatchObject({ ok: false, status: 409 });
+    const oldStatus = await app.inject({
+      url: `/api/admin/grants/${superseded.id}/source-setup?revision=1`,
+      headers,
+    });
+    expect(oldStatus.statusCode, oldStatus.body).toBe(200);
+    expect(oldStatus.json()).toMatchObject({
+      id: superseded.id,
+      revision: 1,
+      grant_status: "REVOKED",
+      status: "CANCELLED",
+    });
+    const newStatus = await app.inject({
+      url: `/api/admin/grants/${replacement.id}/source-setup?revision=1`,
+      headers,
+    });
+    expect(newStatus.statusCode, newStatus.body).toBe(200);
+    expect(newStatus.json()).toMatchObject({
+      id: replacement.id,
+      grant_status: "PENDING_NATIVE",
+      status: "QUEUED",
+    });
+    const allPermissions = await app.inject({
+      url: `/api/admin/exams/${settings.id}/grants?username=student&limit=200`,
+      headers,
+    });
+    expect(allPermissions.statusCode, allPermissions.body).toBe(200);
+    expect(
+      allPermissions
+        .json()
+        .grants.filter((grant: any) =>
+          ["AVAILABLE", "PENDING_NATIVE"].includes(grant.status),
+        )
+        .map((grant: any) => grant.id),
+    ).toEqual([replacement.id]);
+    expect(
+      store.db
+        .prepare(
+          "SELECT * FROM grant_source_retentions ORDER BY grant_id,revision",
+        )
+        .all(),
+    ).toEqual(retainedPins);
+    expect(
+      store.db.prepare("SELECT * FROM attempts ORDER BY rowid").all(),
+    ).toEqual(priorAttempts);
+    expect(
+      store.db.prepare("SELECT * FROM grant_claims ORDER BY rowid").all(),
+    ).toEqual(priorClaims);
+    expect(
+      store.db
+        .prepare("SELECT * FROM grant_begin_intents ORDER BY rowid")
+        .all(),
+    ).toEqual(priorBegins);
+    expect(
+      store.db
+        .prepare(
+          "SELECT count(*) n FROM attempts WHERE state IN ('PREPARING','ACTIVE','LOCKED','FINALIZING','COLLECTION_FAILED')",
+        )
+        .get(),
+    ).toEqual({ n: 0 });
+    expect(store.attempt(source)).toEqual(before);
   } finally {
     await app.close();
     rmSync(data, { recursive: true, force: true });

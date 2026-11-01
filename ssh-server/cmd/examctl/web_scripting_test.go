@@ -469,7 +469,7 @@ func TestScriptingActualCLIDurableReceiptLostReplyAndConfirmedRefusal(t *testing
 		}
 		if op == "grants.additional-preview" {
 			settings := map[string]any{"id": "midterm", "name": "Midterm", "template": "v1", "template_version": b["template_version"], "duration": b["duration"], "webcam": true, "terminals": 4, "earliest": b["earliest"], "latest": b["latest"]}
-			reviewed = map[string]any{"id": previewID, "kind": "NEW_ADDITIONAL_TEMPLATE_GRANTS", "agent": "class", "actor": "agent:class:root", "exam": "midterm", "reason": b["reason"], "definition_revision": b["definition_revision"], "revision": strings.Repeat("c", 64), "created": core.Millis(), "expires": core.Millis() + 900000, "status": "REVIEW", "rows": []any{map[string]any{"username": "alice", "settings": settings, "work": grantWorkResult{Kind: "template", Name: "v1", Hash: strings.Repeat("b", 64)}, "hash": strings.Repeat("d", 64)}}, "issued": []any{}}
+			reviewed = map[string]any{"id": previewID, "kind": "NEW_ADDITIONAL_TEMPLATE_GRANTS", "agent": "class", "actor": "agent:class:root", "exam": "midterm", "reason": b["reason"], "definition_revision": b["definition_revision"], "revision": strings.Repeat("c", 64), "created": core.Millis(), "expires": core.Millis() + 900000, "status": "REVIEW", "rows": []any{map[string]any{"username": "alice", "existing_grants": 0, "replaces": []any{}, "settings": settings, "work": grantWorkResult{Kind: "template", Name: "v1", Hash: strings.Repeat("b", 64)}, "hash": strings.Repeat("d", 64)}}, "issued": []any{}}
 			return reviewed, "", false
 		}
 		if value, ok := cache[r["request"].(string)]; ok {
@@ -481,7 +481,7 @@ func TestScriptingActualCLIDurableReceiptLostReplyAndConfirmedRefusal(t *testing
 		}
 		confirmations++
 		reviewed["status"] = "CONFIRMED"
-		reviewed["issued"] = []any{map[string]any{"username": "alice", "grant": grantID}}
+		reviewed["issued"] = []any{map[string]any{"username": "alice", "grant": grantID, "replaced": []any{}}}
 		cache[r["request"].(string)] = reviewed
 		lose := drop
 		drop = false

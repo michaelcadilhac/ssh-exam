@@ -38,12 +38,20 @@ per student for review. A preview reserves no account/allowance and expires afte
 new preview. issue-cancel cannot undo confirmed issuance. Root-only legacy saved-
 work authority is not converted or declared absent; native preparation refuses
 conflicts without consuming time. additional-preview explicitly authorizes a
-separate exact-template attempt and allowance under the SAME exam. Use issue-show/
-confirm/cancel for its reviewed result. Its finite window may lie outside exam
-defaults; current effective webcam is preserved unless explicitly overridden.
+new attempt and allowance under the SAME exam. Confirming replaces every earlier
+unused permission for that student/exam, even when their dates do not overlap.
+Inspect the replacement count/references before confirming. An existing setup or
+pending start must be positively cancelled first; uncertain start evidence refuses
+replacement. Started deadlines, history and account holds remain protected.
+Use issue-show/confirm/cancel for the reviewed result. Its finite window may lie
+outside exam defaults; current effective webcam is preserved unless overridden.
 issue-list shows this authenticated actor's recent requests, with an exclusive
 cursor for earlier pages. Use --format table --fields id,status,created to inspect
 them without parsing JSON; issue-show retrieves the selected complete review.
+Detailed review exports support username,replacement_count,replacement_refs;
+confirmation exports also support grant,replaced_count,replaced_refs. References
+are comma-separated UUID@revision; full hashes remain in authenticated JSON.
+An empty historical count means unavailable evidence, not zero replacements.
 Protected history, original deadlines and account holds remain authoritative;
 neither metadata confirmation nor another grant reopens/overrides an old attempt.
 Additional starters: --work empty, or --work template --work-template NAME
@@ -131,12 +139,19 @@ revoke and named grants.issue-* managementOperations authorization; default deny
 credentials. --config FILE selects protected root configuration. --request UUID
 is a durable intent ID: repeat IDENTICAL arguments after a lost reply; a changed
 intent or refreshed read needs a new ID. Help needs no root/configuration.
+New confirmations require a matching gateway that supports single-unused-v1;
+an older strict gateway refuses before changing authority. Saved confirmed legacy
+receipts remain readable. Retrying an unknown legacy confirmation additionally
+requires grants.issue-show authorization and proof that it is already CONFIRMED;
+otherwise inspect/cancel the old review and make a fresh review.
 
 Examples:
   sudo examctl web grants list midterm --username student01
   sudo examctl web grants show GRANT_UUID
   sudo examctl web grants revise GRANT_UUID --revision 1 --duration-minutes 90 --reason 'Explicit unused allowance revision'
   sudo examctl web grants revoke GRANT_UUID --revision 2 --reason 'Withdraw unused authorization'
+  sudo examctl web grants issue-show PREVIEW_UUID --format table --fields username,replacement_count,replacement_refs
+  sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH --format table --fields username,grant,replaced_count,replaced_refs
 
 Exit status: 0 authenticated result, 1 refusal/unconfirmed operation, 2 syntax.`)
 	fmt.Fprintln(out, "Shell exports, stdin/per-student batch input, private review receipts and resumable source-sync: examctl help scripting.")

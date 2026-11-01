@@ -19,7 +19,11 @@ async function savedGrant(f: Awaited<ReturnType<typeof fixture>>) {
   expect(preview.statusCode, preview.body).toBe(200);
   const confirmed = await f.post(
     `/api/admin/grant-issuance/${preview.json().id}/confirm`,
-    { revision: preview.json().revision, request: randomUUID() },
+    {
+      revision: preview.json().revision,
+      request: randomUUID(),
+      replacement_policy: "single-unused-v1",
+    },
   );
   expect(confirmed.statusCode, confirmed.body).toBe(200);
   return confirmed.json().issued.find((g: any) => g.username === "savedstudent")
@@ -538,7 +542,11 @@ it("one reviewed batch mixes starting files and preserves each current time limi
     expect(
       f.store.db.prepare("SELECT count(*) n FROM attempt_grants").get(),
     ).toEqual({ n: 0 });
-    const body = { revision: review.revision, request: randomUUID() };
+    const body = {
+      revision: review.revision,
+      request: randomUUID(),
+      replacement_policy: "single-unused-v1",
+    };
     const confirmed = await f.post(
       `/api/admin/grant-issuance/${review.id}/confirm`,
       body,
@@ -618,7 +626,11 @@ it("mixed reviews reject ambiguous time choices, missing owners and changed enro
     expect(edit.statusCode, edit.body).toBe(200);
     const confirmed = await f.post(
       `/api/admin/grant-issuance/${preview.json().id}/confirm`,
-      { revision: preview.json().revision, request: randomUUID() },
+      {
+        revision: preview.json().revision,
+        request: randomUUID(),
+        replacement_policy: "single-unused-v1",
+      },
     );
     expect(confirmed.statusCode, confirmed.body).toBe(409);
     expect(

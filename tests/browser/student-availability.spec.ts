@@ -4,7 +4,7 @@ const openID = "11111111-1111-4111-8111-111111111111";
 const futureID = "22222222-2222-4222-8222-222222222222";
 const closed = "Practice is closed. Ask your instructor to open it.";
 
-async function portal(page: Page, multiple = false, examID = "sandbox") {
+async function portal(page: Page, future = false, examID = "sandbox") {
   const now = Date.now();
   const exam = {
     id: examID,
@@ -35,9 +35,10 @@ async function portal(page: Page, multiple = false, examID = "sandbox") {
   ];
   const requests: (string | null)[] = [];
   let starts = 0;
-  let revoked = false;
+  let assigned = future ? 1 : 0;
   let allRevoked = false;
   let reopened = false;
+  let holdNext = false;
   let releaseFuture!: () => void;
   const futureResponse = new Promise<void>((resolve) => {
     releaseFuture = resolve;
@@ -70,28 +71,12 @@ async function portal(page: Page, multiple = false, examID = "sandbox") {
   await page.route("**/api/student/exam*", async (route) => {
     const id = new URL(route.request().url()).searchParams.get("grant");
     requests.push(id);
-    if (revoked && id && (id === futureID || allRevoked))
-      return route.fulfill({
-        status: 409,
-        json: {
-          code: "ATTEMPT_UNAVAILABLE",
-          error:
-            "That attempt is no longer available. Choose Check again to see your current attempts.",
-        },
-      });
-    if (multiple && id === futureID) await futureResponse;
-    const available = allRevoked
-      ? []
-      : revoked
-        ? [grants[0]]
-        : multiple
-          ? grants
-          : [grants[0]];
-    const selected = id
-      ? available.find((g) => g.id === id)
-      : available.length === 1
-        ? available[0]
-        : undefined;
+    if (holdNext) {
+      holdNext = false;
+      await futureResponse;
+    }
+    const available = allRevoked ? [] : [grants[assigned]],
+      selected = available[0];
     return route.fulfill({
       json: {
         exam,
@@ -114,15 +99,17 @@ async function portal(page: Page, multiple = false, examID = "sandbox") {
   });
   await page.route("**/api/student/preflight", (route) => {
     starts++;
+    const requested = route.request().postDataJSON().grant;
     return route.fulfill({
       status: 409,
-      json: allRevoked
-        ? {
-            code: "ATTEMPT_UNAVAILABLE",
-            error:
-              "That attempt is no longer available. Choose Check again to see your current attempts.",
-          }
-        : { error: "Not used by this display test" },
+      json:
+        allRevoked || requested !== grants[assigned].id
+          ? {
+              code: "ATTEMPT_UNAVAILABLE",
+              error:
+                "Your attempt has changed. Check it again before opening setup.",
+            }
+          : { error: "Not used by this display test" },
     });
   });
   return {
@@ -130,11 +117,13 @@ async function portal(page: Page, multiple = false, examID = "sandbox") {
     releaseFuture,
     starts: () => starts,
     revokeFuture: () => {
-      revoked = true;
+      assigned = 0;
     },
     revokeAll: () => {
-      revoked = true;
       allRevoked = true;
+    },
+    holdNextRead: () => {
+      holdNext = true;
     },
     reopenFuture: () => {
       reopened = true;
@@ -169,27 +158,32 @@ for (const width of [1280, 430]) {
       path: test.info().outputPath(`starting-files-${width}.png`),
     });
   });
-  test(`attempt selection refreshes availability without reserving work at ${width}px`, async ({
+  test(`assigned attempt refreshes availability without reserving work at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await portal(page, true);
     await page.goto("/");
-    const choose = page.getByRole("combobox", {
-      name: "Choose an attempt",
-      exact: true,
-    });
+    await expect(
+      page.getByRole("combobox", { name: "Choose an attempt", exact: true }),
+    ).toHaveCount(0);
     const setup = page.getByRole("button", {
       name: "Check setup and practice",
       exact: true,
     });
+    await expect(page.getByRole("status")).toContainText(closed);
     await expect(setup).toBeDisabled();
+    fixture.holdNextRead();
     try {
-      await choose.selectOption(futureID, { timeout: 3000 });
-      await expect.poll(() => fixture.requests).toContain(futureID);
+      await page
+        .getByRole("button", { name: "Check again", exact: true })
+        .click({ timeout: 3000 });
+      await expect.poll(() => fixture.requests).toEqual([null, null]);
       await expect(page.getByRole("status")).toHaveText("Checking attempt…");
-      await expect(choose).toBeDisabled();
       await expect(setup).toBeDisabled();
+      await expect(
+        page.getByRole("button", { name: "Sign out", exact: true }),
+      ).toBeDisabled();
     } finally {
       fixture.releaseFuture();
     }
@@ -205,63 +199,58 @@ for (const width of [1280, 430]) {
     await page
       .getByRole("button", { name: "Check again", exact: true })
       .click({ timeout: 3000 });
-    await expect
-      .poll(() => fixture.requests.filter((id) => id === futureID).length)
-      .toBe(2);
+    await expect.poll(() => fixture.requests).toEqual([null, null, null]);
     await expect(page.getByText(closed, { exact: true })).toHaveCount(0);
     await expect(setup).toBeEnabled();
-    await expect(choose).toHaveValue(futureID);
-    await choose.selectOption(openID, { timeout: 3000 });
-    await expect.poll(() => fixture.requests).toContain(openID);
-    await expect(page.getByText(closed, { exact: true })).toHaveCount(0);
-    await expect(setup).toBeEnabled();
+    await expect(
+      page.getByRole("combobox", { name: "Choose an attempt", exact: true }),
+    ).toHaveCount(0);
     expect(fixture.starts()).toBe(0);
   });
-  test(`a stale choice can be checked again without repeating it or starting work at ${width}px`, async ({
+  test(`a stale assigned attempt can be checked again without repeating it or starting work at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await portal(page, true, "synthetic-exam");
+    fixture.reopenFuture();
     await page.goto("/");
-    const choices = page.getByRole("combobox", {
-      name: "Choose an attempt",
-      exact: true,
-    });
-    await expect(choices).toBeVisible();
-    await expect(choices.locator("option")).toHaveCount(3);
-    fixture.revokeFuture();
-    await choices.selectOption(futureID, { timeout: 3000 });
-    await expect(page.getByRole("alert")).toContainText(
-      "That attempt is no longer available.",
-    );
     const setup = page.getByRole("button", {
       name: "Check setup and practice",
       exact: true,
     });
+    await expect(setup).toBeEnabled();
+    await expect(
+      page.getByRole("combobox", { name: "Choose an attempt", exact: true }),
+    ).toHaveCount(0);
+    fixture.revokeFuture();
+    await setup.click({ timeout: 3000 });
+    await expect(page.getByRole("alert")).toContainText(
+      "Your attempt has changed.",
+    );
     await expect(setup).toBeDisabled();
     await page
       .getByRole("button", { name: "Check again", exact: true })
       .click({ timeout: 3000 });
     await expect(setup).toBeEnabled();
     await expect(page.getByRole("alert")).toHaveCount(0);
-    expect(fixture.requests).toEqual([null, futureID, null]);
-    expect(fixture.starts()).toBe(0);
+    expect(fixture.requests).toEqual([null, null]);
+    expect(fixture.starts()).toBe(1);
     await expect(
       page.getByText("Starter files: sample-exam", { exact: true }),
     ).toBeVisible();
     fixture.revokeAll();
     await setup.click({ timeout: 3000 });
     await expect(page.getByRole("alert")).toContainText(
-      "That attempt is no longer available.",
+      "Your attempt has changed.",
     );
     await page
       .getByRole("button", { name: "Check again", exact: true })
       .click({ timeout: 3000 });
     await expect(page.getByRole("status")).toContainText(
-      "No attempts are available to start.",
+      "No attempt is available. Ask your instructor.",
     );
     await expect(setup).toBeDisabled();
-    expect(fixture.starts()).toBe(1);
+    expect(fixture.starts()).toBe(2);
     expect(fixture.requests.at(-1)).toBeNull();
     await expect(
       page.getByRole("button", { name: "Check again", exact: true }),
@@ -277,22 +266,25 @@ test("a stalled availability read releases the controls without starting work", 
 }) => {
   const fixture = await portal(page, true);
   await page.goto("/");
-  const choices = page.getByRole("combobox", {
-    name: "Choose an attempt",
-    exact: true,
-  });
-  await expect(choices).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(closed);
+  await expect(
+    page.getByRole("combobox", { name: "Choose an attempt", exact: true }),
+  ).toHaveCount(0);
   await page.evaluate(() => {
     const original = AbortSignal.timeout.bind(AbortSignal);
     AbortSignal.timeout = (ms) => original(Math.min(ms, 25));
   });
+  fixture.holdNextRead();
   try {
-    await choices.selectOption(futureID, { timeout: 3000 });
+    await page
+      .getByRole("button", { name: "Check again", exact: true })
+      .click({ timeout: 3000 });
     await expect(page.getByRole("alert")).toContainText(
       "Checking this attempt took too long.",
     );
-    await expect(choices).toBeEnabled();
-    await expect(choices).toHaveValue("");
+    await expect(
+      page.getByRole("button", { name: "Check again", exact: true }),
+    ).toBeEnabled();
     await expect(
       page.getByRole("button", { name: "Sign out", exact: true }),
     ).toBeEnabled();

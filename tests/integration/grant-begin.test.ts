@@ -299,9 +299,17 @@ it.each([
         });
         if (scenario.startsWith("callback-before-")) {
           startedRemote = { ...a };
-          const callback = async (sequence: number, attempt = startedRemote) => {
+          const callback = async (
+            sequence: number,
+            attempt = startedRemote,
+          ) => {
             const payload = Buffer.from(
-              JSON.stringify({ agent: "class", sequence, at: Date.now(), attempt }),
+              JSON.stringify({
+                agent: "class",
+                sequence,
+                at: Date.now(),
+                attempt,
+              }),
             );
             const response = await app.inject({
               method: "POST",
@@ -323,7 +331,9 @@ it.each([
           await callback(2);
           if (scenario === "callback-before-lost-ack") {
             lostReplyInjected = true;
-            throw Error("Synthetic activation reply lost after signed callback");
+            throw Error(
+              "Synthetic activation reply lost after signed callback",
+            );
           }
           if (scenario === "callback-before-policy-lock") {
             Object.assign(a, {
@@ -468,7 +478,11 @@ it.each([
           method: "POST",
           url: `/api/admin/grant-issuance/${review.json().id}/confirm`,
           headers: adminHeaders,
-          payload: { revision: review.json().revision, request: randomUUID() },
+          payload: {
+            revision: review.json().revision,
+            request: randomUUID(),
+            replacement_policy: "single-unused-v1",
+          },
         });
         expect(confirmed.statusCode, confirmed.body).toBe(200);
       } else if (scenario.startsWith("reviewed-")) {
@@ -1090,7 +1104,9 @@ it.each([
             operations.filter((op) => op === "activate-grant-attempt"),
           ).toHaveLength(1);
           expect(
-            store.db.prepare("SELECT status FROM attempt_grants WHERE id=?").get(issued.id),
+            store.db
+              .prepare("SELECT status FROM attempt_grants WHERE id=?")
+              .get(issued.id),
           ).toEqual({ status: "CONSUMED" });
           return;
         }

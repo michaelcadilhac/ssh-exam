@@ -1456,6 +1456,9 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         (await grantsCLI(["show", issuedLegacy.issued[0].grant])).settings
           .duration,
       ).toBe(4500);
+      const predecessors = new Map<string, any>();
+      for (const row of issuedLegacy.issued)
+        predecessors.set(row.username, await grantsCLI(["show", row.grant]));
       const extraArgs = [
         "additional-preview",
         "legacy-cli",
@@ -1497,6 +1500,32 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
           },
         ],
       });
+      for (const row of extraReview.rows) {
+        const previous = predecessors.get(row.username);
+        expect(row.replaces).toEqual([
+          { id: previous.id, revision: previous.revision, hash: previous.hash },
+        ]);
+      }
+      expect(
+        (
+          await invoke("grants", [
+            "issue-show",
+            extraReview.id,
+            "--format",
+            "tsv",
+            "--fields",
+            "username,replacement_count,replacement_refs",
+            "--no-header",
+          ])
+        ).stdout,
+      ).toBe(
+        extraReview.rows
+          .map((row: any) => {
+            const previous = predecessors.get(row.username);
+            return `${row.username}\t1\t${previous.id}@${previous.revision}\n`;
+          })
+          .join(""),
+      );
       const extraConfirm = [
         "issue-confirm",
         extraReview.id,
@@ -1507,6 +1536,25 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       ];
       const extraIssued = await grantsCLI(extraConfirm);
       expect(extraIssued.issued).toHaveLength(2);
+      for (const row of extraIssued.issued) {
+        const previous = predecessors.get(row.username);
+        expect(row.replaced).toEqual(
+          extraReview.rows.find(
+            (reviewed: any) => reviewed.username === row.username,
+          ).replaces,
+        );
+        expect(await grantsCLI(["show", previous.id])).toEqual({
+          ...previous,
+          status: "REVOKED",
+        });
+      }
+      expect(
+        f.current.store.db
+          .prepare(
+            "SELECT count(*) total,sum(status IN ('AVAILABLE','PENDING_NATIVE')) live FROM attempt_grants WHERE exam='legacy-cli'",
+          )
+          .get(),
+      ).toEqual({ total: 4, live: 2 });
       await f.restart();
       expect(await grantsCLI(extraConfirm)).toEqual(extraIssued);
       const extraGrant = await grantsCLI(["show", extraIssued.issued[0].grant]);

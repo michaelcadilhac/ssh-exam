@@ -157,6 +157,7 @@ export const grantIssueIntent = z
   .object({
     revision: z.string().regex(/^[a-f0-9]{64}$/),
     request: z.string().uuid().optional(),
+    replacement_policy: z.literal("single-unused-v1").optional(),
   })
   .strict();
 export const grantAdditionalPreview = grantIssuePreview

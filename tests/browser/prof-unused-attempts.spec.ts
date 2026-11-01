@@ -680,7 +680,7 @@ test("saved-work retrieval is retryable and sandbox fixed settings cannot be cha
   await dialog
     .getByRole("button", { name: "Refresh saved work", exact: true })
     .click();
-  await expect(dialog.getByText(/Midterm.*Attempt 1/)).toBeVisible();
+  await expect(dialog.getByText(/^amy: Midterm.*Attempt 1/)).toBeVisible();
   await expect(
     dialog.getByRole("combobox", { name: "Saved work for amy", exact: true }),
   ).toHaveCount(0);

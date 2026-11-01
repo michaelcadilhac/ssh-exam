@@ -91,7 +91,11 @@ it("authorizes separate full additional attempts outside expired defaults withou
     expect(
       store.db.prepare("SELECT count(*) n FROM attempt_grants").get(),
     ).toEqual({ n: 0 });
-    const intent = { revision: review.revision, request: randomUUID() },
+    const intent = {
+        revision: review.revision,
+        request: randomUUID(),
+        replacement_policy: "single-unused-v1",
+      },
       confirmed = await post(
         `/api/admin/grant-issuance/${review.id}/confirm`,
         intent,
@@ -130,14 +134,26 @@ it("authorizes separate full additional attempts outside expired defaults withou
     );
     expect(another.statusCode, another.body).toBe(200);
     expect(another.json().rows[0].settings.webcam).toBe(true);
+    const replaced = [{ id, revision: 1, hash: issued.json().hash }];
+    expect(another.json().rows[0].replaces).toEqual(replaced);
+    const replacement = await post(
+      `/api/admin/grant-issuance/${another.json().id}/confirm`,
+      {
+        revision: another.json().revision,
+        request: randomUUID(),
+        replacement_policy: "single-unused-v1",
+      },
+    );
+    expect(replacement.statusCode, replacement.body).toBe(200);
+    expect(replacement.json().issued[0].replaced).toEqual(replaced);
+    const prior = await app.inject({ url: `/api/admin/grants/${id}`, headers });
+    expect(prior.statusCode, prior.body).toBe(200);
+    expect(prior.json()).toEqual({ ...issued.json(), status: "REVOKED" });
     expect(
-      (
-        await post(`/api/admin/grant-issuance/${another.json().id}/confirm`, {
-          revision: another.json().revision,
-          request: randomUUID(),
-        })
-      ).statusCode,
-    ).toBe(200);
+      new AttemptGrants(store, "class")
+        .available("midterm", "student")
+        .map((grant) => grant.id),
+    ).toEqual([replacement.json().issued[0].grant]);
     expect(
       store.db.prepare("SELECT count(*) n FROM attempt_grants").get(),
     ).toEqual({ n: 2 });
@@ -232,7 +248,11 @@ it.each(["empty", "template"])(
         settings: { template: "v1", duration: 4500, webcam: true },
       });
       const review = preview.json(),
-        confirm = { revision: review.revision, request: randomUUID() };
+        confirm = {
+          revision: review.revision,
+          request: randomUUID(),
+          replacement_policy: "single-unused-v1",
+        };
       const reply = await post(
         `/api/admin/grant-issuance/${review.id}/confirm`,
         confirm,

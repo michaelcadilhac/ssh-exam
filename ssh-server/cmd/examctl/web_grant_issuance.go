@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const grantReplacementPolicy = "single-unused-v1"
+
 func webGrantIssuanceMain(args []string) int {
 	f := flag.NewFlagSet("examctl web grants issue", flag.ContinueOnError)
 	f.SetOutput(os.Stderr)
@@ -183,6 +185,9 @@ func webGrantIssuanceMain(args []string) int {
 			allowed["revision"] = true
 			body["revision"] = *revision
 		}
+		if w[1] == "issue-confirm" {
+			body["replacement_policy"] = grantReplacementPolicy
+		}
 	default:
 		return usage("unsupported issuance workflow")
 	}
@@ -198,6 +203,12 @@ func webGrantIssuanceMain(args []string) int {
 	return executeWeb(*config, *request, "grants."+w[1], body, "")
 }
 
+type grantReplacementRef struct {
+	ID       string `json:"id"`
+	Revision int64  `json:"revision"`
+	Hash     string `json:"hash"`
+}
+
 type grantIssuanceResult struct {
 	ID                 string `json:"id"`
 	Kind               string `json:"kind"`
@@ -211,19 +222,27 @@ type grantIssuanceResult struct {
 	Expires            int64  `json:"expires"`
 	Status             string `json:"status"`
 	Rows               []struct {
-		Username       string          `json:"username"`
-		ExistingGrants *int            `json:"existing_grants,omitempty"`
-		Settings       core.Settings   `json:"settings"`
-		Work           grantWorkResult `json:"work"`
-		Hash           string          `json:"hash"`
+		Username       string                 `json:"username"`
+		ExistingGrants *int                   `json:"existing_grants,omitempty"`
+		Replaces       *[]grantReplacementRef `json:"replaces,omitempty"`
+		Settings       core.Settings          `json:"settings"`
+		Work           grantWorkResult        `json:"work"`
+		Hash           string                 `json:"hash"`
 	} `json:"rows"`
 	Issued []struct {
-		Username string `json:"username"`
-		Grant    string `json:"grant"`
+		Username string                 `json:"username"`
+		Grant    string                 `json:"grant"`
+		Replaced *[]grantReplacementRef `json:"replaced,omitempty"`
 	} `json:"issued"`
 }
 
 func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent string) error {
+	return validateGrantIssuanceResultPolicy(op, body, raw, agent, false)
+}
+
+// Only the private receipt reader may inspect reviews produced before the
+// single-unused policy. Live additional previews must prove their replacements.
+func validateGrantIssuanceResultPolicy(op string, body any, raw json.RawMessage, agent string, legacyReceipt bool) error {
 	if op == "grants.issue-list" {
 		return validateGrantReviewPage(body, raw, agent)
 	}
@@ -269,11 +288,31 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		return fail
 	}
 	seen := map[string]bool{}
+	replacements := map[string]*[]grantReplacementRef{}
+	replacedIDs := map[string]bool{}
 	for _, row := range result.Rows {
 		if seen[row.Username] || row.Username == "" || row.Settings.ID != result.Exam || !validGrantWorkResult(row.Work) || !digest.MatchString(row.Settings.TemplateVersion) || !digest.MatchString(row.Hash) || row.Settings.Latest <= row.Settings.Earliest || row.Settings.Duration < 60 || row.Settings.Duration > 21600 {
 			return fail
 		}
 		seen[row.Username] = true
+		if op == "grants.additional-preview" && !legacyReceipt && (row.Replaces == nil || row.ExistingGrants == nil) {
+			return fail
+		}
+		if row.ExistingGrants != nil && *row.ExistingGrants < 0 {
+			return fail
+		}
+		if row.Replaces != nil {
+			if row.ExistingGrants != nil && *row.ExistingGrants != len(*row.Replaces) {
+				return fail
+			}
+			for _, ref := range *row.Replaces {
+				if !uuid.MatchString(ref.ID) || ref.Revision <= 0 || !digest.MatchString(ref.Hash) || replacedIDs[ref.ID] {
+					return fail
+				}
+				replacedIDs[ref.ID] = true
+			}
+		}
+		replacements[row.Username] = row.Replaces
 		if result.Exam == "sandbox" && (row.Settings.Duration != 300 || row.Settings.Webcam || row.Settings.Terminals != 4) {
 			return fail
 		}
@@ -374,8 +413,27 @@ func validateGrantIssuanceResult(op string, body any, raw json.RawMessage, agent
 		}
 		ids := map[string]bool{}
 		for _, issued := range result.Issued {
-			if !seen[issued.Username] || !uuid.MatchString(issued.Grant) || ids[issued.Grant] {
+			if !seen[issued.Username] || !uuid.MatchString(issued.Grant) || ids[issued.Grant] || replacedIDs[issued.Grant] {
 				return fail
+			}
+			reviewed := replacements[issued.Username]
+			if (reviewed == nil) != (issued.Replaced == nil) {
+				return fail
+			}
+			if reviewed != nil {
+				if len(*reviewed) != len(*issued.Replaced) {
+					return fail
+				}
+				remaining := map[grantReplacementRef]bool{}
+				for _, ref := range *reviewed {
+					remaining[ref] = true
+				}
+				for _, ref := range *issued.Replaced {
+					if !remaining[ref] {
+						return fail
+					}
+					delete(remaining, ref)
+				}
 			}
 			delete(seen, issued.Username)
 			ids[issued.Grant] = true

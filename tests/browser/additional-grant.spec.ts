@@ -62,7 +62,7 @@ test("individual additional settings are reviewed per student without changing s
   ).toBeVisible();
 });
 
-test("additional grants outside expired defaults support reviewed recovery, multiple-grant management and explicit student selection through fresh Begin", async ({
+test("an additional attempt replaces unused permission and starts automatically with its exact reviewed settings", async ({
   page,
 }, testInfo) => {
   test.setTimeout(90000);
@@ -119,16 +119,36 @@ test("additional grants outside expired defaults support reviewed recovery, mult
       await page.request.get(`/api/admin/grant-issuance/${reviewID}`)
     ).json(),
     ninety = receipt.issued[0].grant;
+  const prior = await (
+    await page.request.get(`/api/admin/grants/${ninety}`)
+  ).json();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await page.unroute(`**/api/admin/grant-issuance/${reviewID}/confirm`);
   dialog = await additionalDraft(page, ["extra01"], "75");
-  await previewAdditional(page, dialog);
+  const { review: replacementReview } = await previewAdditional(page, dialog);
+  const replaced = [{ id: ninety, revision: prior.revision, hash: prior.hash }];
+  expect(replacementReview.rows[0].replaces).toEqual(replaced);
+  await expect(dialog).toContainText("Replaces 1 unused attempt.");
+  const replacementReply = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        `/api/admin/grant-issuance/${replacementReview.id}/confirm` &&
+      response.request().method() === "POST",
+  );
   await dialog
     .getByRole("button", { name: "Allow attempt", exact: true })
     .click();
   await expect(
     dialog.getByRole("heading", { name: "Attempt allowed", exact: true }),
   ).toBeVisible();
+  const replacementResponse = await replacementReply;
+  expect(replacementResponse.status()).toBe(200);
+  expect(replacementResponse.request().postDataJSON().replacement_policy).toBe(
+    "single-unused-v1",
+  );
+  const replacementReceipt = await replacementResponse.json();
+  expect(replacementReceipt.issued[0].replaced).toEqual(replaced);
+  await expect(dialog).toContainText("Replaced 1 unused attempt.");
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   const records = (
     await (
@@ -139,6 +159,16 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   ).grants;
   expect(records).toHaveLength(2);
   const other = records.find((g: any) => g.id !== ninety);
+  expect(records.find((g: any) => g.id === ninety)).toMatchObject({
+    status: "REVOKED",
+    claims: [],
+    settings: { duration: 5400 },
+  });
+  expect(
+    records
+      .filter((g: any) => ["AVAILABLE", "PENDING_NATIVE"].includes(g.status))
+      .map((g: any) => g.id),
+  ).toEqual([other.id]);
   const grants = await manageStudent(page, "extra01");
   const otherRow = grants.getByRole("article").filter({ hasText: other.id });
   await otherRow
@@ -187,9 +217,10 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   await expect(
     grants.getByText("Settings saved", { exact: true }),
   ).toBeVisible();
-  expect(
-    await (await page.request.get(`/api/admin/grants/${other.id}`)).json(),
-  ).toMatchObject({
+  const revised = await (
+    await page.request.get(`/api/admin/grants/${other.id}`)
+  ).json();
+  expect(revised).toMatchObject({
     settings: { duration: 3600 },
     work: { kind: "template", name: "sample-exam", hash: "a".repeat(64) },
   });
@@ -223,43 +254,72 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   const summaryResponse = await summaryReady;
   expect(summaryResponse.status()).toBe(200);
   const summary = await summaryResponse.json();
-  expect(summary.grants.map((grant: any) => grant.id).sort()).toEqual(
-    [ninety, other.id].sort(),
-  );
+  expect(summary.grants.map((grant: any) => grant.id)).toEqual([other.id]);
+  expect(summary.selected_grant).toBe(other.id);
+  expect(summary.attempt).toBeNull();
   await expect(
     page.getByRole("combobox", { name: "Choose an attempt", exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   const open = page.getByRole("button", {
     name: "Check setup and practice",
     exact: true,
   });
-  await expect(open).toBeDisabled();
   await expect(page.getByText(/start window/i)).toHaveCount(0);
-  const options = await page
-    .getByRole("combobox", { name: "Choose an attempt", exact: true })
-    .locator("option")
-    .allTextContents();
-  expect(options).toHaveLength(3);
-  for (const option of options) expect(option).not.toContain(" – ");
-  await page
-    .getByRole("combobox", { name: "Choose an attempt", exact: true })
-    .selectOption(ninety);
   await expect(open).toBeEnabled();
-  await expect(page.locator("main")).toContainText("90 min · Webcam: Optional");
+  await expect(page.locator("main")).toContainText("60 min · Webcam: Optional");
+  const session = await (await page.request.get("/api/session")).json(),
+    runtimeBefore = await (
+      await page.request.get("/api/fixture/runtime")
+    ).json();
+  const stale = await page.request.post("/api/student/preflight", {
+    headers: {
+      Origin: new URL(page.url()).origin,
+      "X-CSRF-Token": session.csrf,
+    },
+    data: { grant: ninety },
+  });
+  expect(stale.status()).toBe(409);
+  expect(await stale.json()).toMatchObject({ code: "ATTEMPT_UNAVAILABLE" });
+  const afterStale = await (await page.request.get("/api/student/exam")).json(),
+    runtimeAfter = await (
+      await page.request.get("/api/fixture/runtime")
+    ).json();
+  expect(afterStale.attempt).toBeNull();
+  expect(afterStale.selected_grant).toBe(other.id);
+  expect(runtimeAfter.nativeBeginRequests).toEqual(
+    runtimeBefore.nativeBeginRequests,
+  );
+  expect(runtimeAfter.terminalOpens).toBe(runtimeBefore.terminalOpens);
+  expect(runtimeAfter.panes).toEqual(runtimeBefore.panes);
   await open.click();
   await expect(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
   ).toBeEnabled();
-  const before = (await (await page.request.get("/api/student/exam")).json())
-    .attempt;
+  const beforeSummary = await (
+      await page.request.get("/api/student/exam")
+    ).json(),
+    before = beforeSummary.attempt;
   expect(before).toMatchObject({
     state: "PREPARING",
     start: null,
     deadline: null,
-    grant_id: ninety,
+    grant_id: other.id,
     grant_kind: "ADDITIONAL",
-    grant_work: '{"kind":"empty"}',
+    grant_revision: revised.revision,
+    grant_hash: revised.hash,
   });
+  // The native binding omits work when it exactly matches the saved starter
+  // snapshot. NULL here is canonical, not an absent initializer.
+  expect(before.grant_work).toBeNull();
+  expect(JSON.parse(before.settings)).toEqual(revised.settings);
+  expect(beforeSummary.settings).toEqual(revised.settings);
+  expect(revised.work).toEqual({
+    kind: "template",
+    name: "sample-exam",
+    hash: revised.settings.template_version,
+  });
+  expect(revised.settings.template).toBe("sample-exam");
+  expect(revised.settings.template_version).toBe("a".repeat(64));
   await ready(page);
   await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
@@ -269,8 +329,8 @@ test("additional grants outside expired defaults support reviewed recovery, mult
   await expect(page.locator(".winbox")).toHaveCount(1);
   const active = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
-  expect(active).toMatchObject({ state: "ACTIVE", grant_id: ninety });
-  expect(active.deadline - active.start).toBe(5400000);
+  expect(active).toMatchObject({ state: "ACTIVE", grant_id: other.id });
+  expect(active.deadline - active.start).toBe(3600000);
   expect(active.id).not.toBe(original.id);
   await page.getByRole("button", { name: "Finish exam", exact: true }).click();
   await page
@@ -281,9 +341,13 @@ test("additional grants outside expired defaults support reviewed recovery, mult
     page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
   await admin(page);
-  const kept = (await dashboard()).students
-    .find((s: any) => s.username === "extra01")
-    .attempts.find((a: any) => a.id === original.id);
+  const finished = (await dashboard()).students.find(
+      (s: any) => s.username === "extra01",
+    ).attempts,
+    completed = finished.find((a: any) => a.id === active.id),
+    kept = finished.find((a: any) => a.id === original.id);
+  expect(completed.state).toBe("COMPLETED");
+  expect(completed.protected === true || completed.protected === 1).toBe(true);
   for (const key of [
     "id",
     "state",

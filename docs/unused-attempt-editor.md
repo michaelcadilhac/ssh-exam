@@ -1,5 +1,10 @@
 # Personal attempt editing and saved-file choices
 
+The November1 single-unused-attempt policy supersedes this milestone's remaining
+student chooser and support for several unused permissions. Personal editing and
+historical cards remain; current replacement behavior is documented in
+[single unused attempt](single-unused-attempt.md).
+
 Implemented and tested locally after runtime 63903bd. Not pushed or deployed.
 The current checkpoint records the release boundary.
 

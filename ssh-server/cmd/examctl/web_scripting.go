@@ -55,7 +55,9 @@ func scriptingHelp(w io.Writer) {
       --latest RFC3339 --reason TEXT --receipt FILE --format table
   web grants additional-preview --from-receipt REVIEW --resume --format table
   web grants issue-show --from-receipt REVIEW --format table
+      --fields username,replacement_count,replacement_refs
   web grants issue-confirm --from-receipt REVIEW --receipt ISSUED --resume
+      --format table --fields username,grant,replaced_count,replaced_refs
   web grants source-sync --from-receipt ISSUED --receipt SYNC --resume
 
 --format json (existing envelope), jsonl, tsv, csv, table. --fields selects
@@ -74,6 +76,13 @@ review/request/receipt. Unknown outcomes inspect/retry the SAME receipt. Read
 receipts are immutable snapshots; use a new file for fresh status. --definition-from
 requires an authenticated exams.show receipt; confirmation revalidates the server.
 No credential-bearing operations can be stored in scripting receipts.
+Additional issuance replaces earlier unused permissions for the same student/exam
+regardless of their dates. Review replacement_count/replacement_refs first;
+confirmation reports replaced_count/replaced_refs and the new grant. References
+use UUID@revision; unavailable historical evidence is null, not zero. A pending
+setup/start must be positively cancelled; started deadlines/history remain intact.
+Unknown legacy confirmation resumes require grants.issue-show authorization and
+proof of prior CONFIRMED issuance before the original request may be replayed.
 
 --input FILE|- accepts CSV username,attempt,checksum with optional duration_seconds
 and require_webcam columns, or JSONL {username,settings:{duration,webcam},work}.
@@ -520,7 +529,50 @@ func webScriptingMain(args []string) int {
 	if w[1] == "list" {
 		return scriptExport(c, o, op, body, exams, *username)
 	}
+	if op == "grants.issue-confirm" {
+		body, err = scriptGrantConfirmationBody(c, o, body)
+		if err != nil {
+			return scriptFail(o, "legacy_confirmation", "not_sent", "inspect_original_review", err)
+		}
+	}
 	return scriptOperation(c, o, op, body)
+}
+
+func scriptGrantConfirmationBody(c core.Config, o scriptOptions, body map[string]any) (map[string]any, error) {
+	body["replacement_policy"] = grantReplacementPolicy
+	if !o.resume || o.receipt == "" {
+		return body, nil
+	}
+	prior, err := readScriptReceipt(o.receipt)
+	if err != nil || prior.Operation != "grants.issue-confirm" || prior.checkContext(c) != nil || (o.request != "" && o.request != prior.Request) {
+		// The normal receipt loader will report invalid/mismatched metadata.
+		return body, nil
+	}
+	if _, present := prior.Body["replacement_policy"]; present {
+		return body, nil
+	}
+	legacy := map[string]any{"id": body["id"], "revision": body["revision"]}
+	digest, err := scriptBodyDigest(legacy)
+	if err != nil || digest != prior.BodyHash {
+		return body, nil
+	}
+	if prior.Outcome != "confirmed" && prior.Outcome != "refused" {
+		// Replaying an unconfirmed old body against an old gateway could create
+		// duplicate authority. Only recover an already committed old confirmation.
+		request := core.ManagementID()
+		if o.errorFormat != "json" {
+			fmt.Fprintln(os.Stderr, "Legacy confirmation inspection request ID:", request)
+		}
+		result, err := scriptValidatedCall(c, "grants.issue-show", map[string]any{"id": legacy["id"]}, request)
+		if err != nil {
+			return nil, fmt.Errorf("cannot establish the original confirmation; authorize grants.issue-show and inspect the SAME review before retrying: %w", err)
+		}
+		var review grantIssuanceResult
+		if json.Unmarshal(result.Result, &review) != nil || review.Status != "CONFIRMED" || review.Revision != legacy["revision"] {
+			return nil, errors.New("legacy confirmation has not been proved committed; no confirmation sent. Inspect the original issue-show review, cancel it if unused, then create a fresh review with a matching gateway")
+		}
+	}
+	return legacy, nil
 }
 
 func decodeScriptJSON(raw []byte, target any) error {
@@ -676,6 +728,37 @@ func scriptRows(r core.ManagementResult) ([]map[string]any, error) {
 				return nil, errors.New("invalid review row")
 			}
 			rows = append(rows, row)
+		}
+		switch r.Operation {
+		case "grants.issue-preview", "grants.additional-preview", "grants.issue-show", "grants.issue-confirm", "grants.issue-cancel":
+			var review grantIssuanceResult
+			if err := json.Unmarshal(r.Result, &review); err != nil {
+				return nil, err
+			}
+			issuedRows := map[string]int{}
+			for i, issued := range review.Issued {
+				issuedRows[issued.Username] = i
+			}
+			setRefs := func(row map[string]any, count, refs string, values *[]grantReplacementRef) {
+				row[count], row[refs] = nil, nil
+				if values != nil {
+					labels := make([]string, len(*values))
+					for i, ref := range *values {
+						labels[i] = ref.ID + "@" + strconv.FormatInt(ref.Revision, 10)
+					}
+					row[count], row[refs] = len(*values), strings.Join(labels, ",")
+				}
+			}
+			for i, row := range rows {
+				setRefs(row, "replacement_count", "replacement_refs", review.Rows[i].Replaces)
+				row["grant"] = nil
+				setRefs(row, "replaced_count", "replaced_refs", nil)
+				if index, ok := issuedRows[review.Rows[i].Username]; ok {
+					issued := review.Issued[index]
+					row["grant"] = issued.Grant
+					setRefs(row, "replaced_count", "replaced_refs", issued.Replaced)
+				}
+			}
 		}
 		return rows, nil
 	}

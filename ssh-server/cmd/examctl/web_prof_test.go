@@ -91,7 +91,7 @@ func TestProfActualCLIMixedPreviewValidatesEachResolvedRowBeforeOutput(t *testin
 			if mode == "bounds" && username == "bob" {
 				duration = 21601
 			}
-			rows = append(rows, map[string]any{"username": username, "settings": map[string]any{
+			rows = append(rows, map[string]any{"username": username, "existing_grants": 0, "replaces": []any{}, "settings": map[string]any{
 				"id": "midterm", "name": "Exam", "template": "v1", "template_version": b["template_version"],
 				"duration": duration, "webcam": false, "terminals": 4, "earliest": b["earliest"], "latest": b["latest"],
 			}, "work": work, "hash": strings.Repeat("c", 64)})

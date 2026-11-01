@@ -138,6 +138,7 @@ async function fixture(
             latest: body.latest,
           },
           existing_grants: 0,
+          replaces: [],
         })),
       };
       if (state.dropPreview) {
@@ -152,6 +153,7 @@ async function fixture(
       state.review.issued = state.review.rows.map((row: any, i: number) => ({
         username: row.username,
         grant: `22222222-2222-4222-8222-${String(i + 1).padStart(12, "0")}`,
+        replaced: row.replaces,
       }));
       if (state.dropConfirm) {
         state.dropConfirm = false;

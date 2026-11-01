@@ -5,6 +5,15 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November1 intentional policy change requested by the instructor: one unused
+permission per student/exam, independent of overlapping or disjoint start windows.
+Reviewed new issuance replaces earlier definitely-unused permissions atomically;
+students receive the sole assigned attempt without choosing. Started attempts,
+deadlines, setup claims, holds and protected history remain authoritative. This
+supersedes older multiple-unused/student-selection specifications below. It is
+implemented/tested locally; nothing is pushed or deployed. Scope and qualification:
+docs/single-unused-attempt.md and docs/todo-current-checkpoint.md.
+
 Implemented/tested local personal-editor follow-up: a student's Allowed attempts uses explicit
 per-attempt Edit settings/Cancel attempt, including with multiple unused attempts.
 Bulk management retains selection. Current files are preserved unless an explicit
@@ -2373,7 +2382,9 @@ uniqueness, account-busy/access holds and immutable historical submissions.
 Distinct native purposes bind type, durable issuance order and the exact original
 initial UUID; fresh C15 agreement, private receipt and actual commit-time checks
 preserve one-use original intervals. Native initial-after-additional admission
-requires positive retained lineage, never absent records or sequence alone.
+required positive retained lineage, never absent records or sequence alone. That
+historical unused-initial workflow is superseded by the November1 single-unused
+policy: replaced initial permission stays revoked; lineage history is retained.
 469 app tests/full native race-resource and ten current-artifact browser checks
 pass locally. Empty/saved-work and sandbox grants, full legacy-source migration,
 retained SSH and retirement remain unfinished. Nothing is deployed. Evidence and
@@ -2468,8 +2479,8 @@ edits must not silently change a grant or started attempt.
 
 Every new grant requires an explicit finite earliest/latest Begin window with
 date/time/timezone. An additional attempt's window may be entirely outside the
-exam default window. Use the selected grant's window, never an intersection with
-the exam default window, throughout selection/authentication/preflight/native
+exam default window. Use the assigned grant's window, never an intersection with
+the exam default window, throughout assignment/authentication/preflight/native
 admission/Begin. Do not reopen the ordinary exam or bypass prior account holds
 to admit the additional attempt. The window limits actual Begin, not completion:
 starting near its end still receives the full fixed allowance. Waiting/preflight

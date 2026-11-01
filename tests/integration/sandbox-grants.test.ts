@@ -284,7 +284,10 @@ it.each([
           method: "POST",
           url: `/api/admin/grant-issuance/${review.json().id}/confirm`,
           headers,
-          payload: { revision: review.json().revision },
+          payload: {
+            revision: review.json().revision,
+            replacement_policy: "single-unused-v1",
+          },
         });
         expect(confirmed.statusCode, confirmed.body).toBe(200);
         const closing = definitions.show("sandbox");
@@ -408,7 +411,7 @@ it.each([
         expect(staleRead.json()).toEqual({
           code: "ATTEMPT_UNAVAILABLE",
           error:
-            "That attempt is no longer available. Choose Check again to see your current attempts.",
+            "Your attempt has changed. Check it again before opening setup.",
         });
         const stalePreparation = await app.inject({
           method: "POST",
@@ -711,6 +714,7 @@ it.each([
             const intent = {
               revision: review.json().revision,
               request: randomUUID(),
+              replacement_policy: "single-unused-v1",
             };
             const confirmed = await app.inject({
               method: "POST",

@@ -1,6 +1,13 @@
 # UI review with Prof
 
-Current personal attempt-editor follow-up is COMPLETE/TESTED LOCALLY, after the welcome/UI
+November1 single-unused-attempt follow-up is COMPLETE/TESTED LOCALLY. Prof agreed
+the policy's concise form/review wording and accepted seven actual student,
+pending-file, instructor review/result renders at desktop/mobile sizes. No student
+chooser remains; Replaces appears before confirmation and Replaced only from the
+actual receipt. No extra dialog or routine technical IDs. Qualification and
+unexecuted rollout: [single unused attempt](single-unused-attempt.md). Not deployed.
+
+October31 personal attempt-editor follow-up is COMPLETE/TESTED LOCALLY, after the welcome/UI
 deployment. Prof agreed per-attempt Edit settings/Cancel attempt without personal
 selection checkboxes, optional explicit file replacement, honest source choices
 and recognizable exam codes. Prof accepted four actual desktop/mobile/source

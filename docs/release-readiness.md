@@ -1,5 +1,13 @@
 # Main-bug release readiness
 
+November1 single-unused-attempt candidate is implemented/tested LOCALLY, not pushed
+or deployed. New issuance replaces older unused permissions; students never choose.
+App691, actual CLI/gateway13, CLI races/build/vet,81 covered browser scenarios and
+exact-image schema35/24→36 upgrade checks pass; Prof accepted the rendered flow.
+Current candidate, preserved boundaries and unexecuted migration/rollback plan:
+single-unused-attempt.md and todo-current-checkpoint.md. Prior dated deployment
+records below are historical; this candidate authorizes no production action.
+
 October28 CURRENT: **release online;38/38 main TODO items covered.** Web7d0b894/
 schema33 and native872fe80 are deployed under the explicit guarded-cutover
 instruction. Human ordinary/NEW saved-work tests, retained SSH/Nano hold/Continue,

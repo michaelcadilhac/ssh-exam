@@ -1,35 +1,35 @@
-# Current checkpoint — personal attempt editor tested locally
+# Current checkpoint — single unused attempt implemented and tested locally
 
-Completed local follow-up after 3d54fca. Entry points: a student's Allowed attempts
-and Allow another attempt → source exams. Prof agreed and accepted per-row Edit
-settings/Cancel attempt without personal target checkboxes, inline named editing,
-optional file replacement, honest empty/single/multiple sources and Name · exam-code.
-Bulk selection stays explicit. Draft switches, historical focus, repeated refresh,
-unsafe/tied latest, stale/empty source choices and unknown exact retries are covered.
-Malformed native input is rejected before dispatch without losing the draft.
+November1 policy delivered: one unused permission per student/exam regardless of
+start dates. Web/examctl confirmation atomically replaces exact reviewed unused
+predecessors; students receive one assigned attempt and never choose. Stale review/
+setup requests refuse, claims and original started history/deadlines/holds stay
+protected, and failed saved-file setup never restores old permission or consumes time.
 
-Verification: all42 affected browser cases pass (37 workflows including real HTTP /
-WASM SSH choice/start, enrollment and practice; five provenance/timing/source checks).
-Full fixture/application typecheck, fresh frontend build, formatting/diff checks pass.
-Prof viewed four desktop/mobile/source renders. Ten original dirty screenshots remain
-byte-identical and unstaged; owned fixture ports3100/3101 closed. Backend/protocol/
-native/CLI source and WASM bytes are unchanged; prior app663/3existing skips and
-native/CLI evidence applies to those exact inputs. No new release image is qualified.
+Schema36 safely keeps latest definitely-unused issuance, audits older revocations
+and enforces the unique live permission. Ambiguous duplicate groups abort intact.
+New confirmation policy marker blocks old gateways before mutation; historical
+receipts/unknown requests remain safe. CLI help and table/TSV refs/counts are covered.
 
-Evidence and exact source/assets/log hashes:
-var/collection-tests/attempt-editor-clarity.yep1wcu5/completion.json.
-Feature, failure corrections, limitations and future rollout/rollback:
-docs/unused-attempt-editor.md. No open design decision or implementation blocker.
-Student multiple-choice behavior was reviewed but not changed; same-duration extras
-can still be difficult to distinguish by creation date. Prof's recommendation is
-recorded separately, without new source-retrieval architecture.
+Validation:691application checks pass/3existing opt-in skips;86affected integration
+checks and13actual compiledCLI→signed gateway cases pass; fullCLI races/vet/static
+build/help pass.81unique browser cases covered by passing current-artifact receipts,
+with1native-bundle-only skip; broad75pass + corrected unused22pass + provenance5pass.
+Prof accepted7desktop/mobile review/result/pending renders. Exact image upgrades
+35/24→36 preserve history/holds and all browser-qualified assets. Native execution/
+watchdog/relay/core and pinned SSH WASM are unchanged; no new kernel/capacity claim.
 
-NOT PUSHED OR DEPLOYED. No new push/deploy authorization for this follow-up. Only
-production read was the two named exam display labels; no student records/work,
-configuration or services changed. Production remains runtime63903bd/schema35,
-source pushed through3d54fca, admissions open. Prior backup/preservation/rollback:
-docs/welcome-enrollment-deployment.md. Canonical agent consolidation and original
-38-item release count are unchanged. Sandbox retains its saved practice window.
+Exact source, failures/corrections, CLI/image/assets and cleanup receipts:
+var/collection-tests/single-unused-attempt.8vas59nd/completion.json.
+Feature/operator/migration/unexecuted rollout+rollback:docs/single-unused-attempt.md.
+Local image ssh-exam-release-test:single-unused-8vas59nd (engine0b8d384c…); CLIb9d061eb….
+Ten original dirty screenshots preserved/unstaged; owned local listeners and private
+smoke containers/images/keys removed. Candidate image and code-only context stay local.
 
-Next: instructor's next instruction. A later authorized release needs a matched web
-image and existing guarded web-only cutover; no DB migration or native restart.
+NOT PUSHED OR DEPLOYED. No remote/production actions in this milestone; no open
+implementation decision or blocker. Prior local58a0736 personal UI remains included.
+Production last recorded63903bd/schema35, pushedthrough3d54fca, admissions open;
+prior private backups/rollback:docs/welcome-enrollment-deployment.md. Canonical
+consolidation and original38-item release count unchanged. Next: instructor's next
+instruction. Any future push/deploy needs a new explicit instruction and the
+recorded guarded migration plan; never revive old permission or drop newer history.

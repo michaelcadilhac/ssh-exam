@@ -341,6 +341,11 @@ export function GrantIssuanceDialog({
       return { work: null, error: (e as Error).message };
     }
   };
+  const replacementSnapshotReady =
+    !!review && review.rows.every((row: any) => Array.isArray(row.replaces));
+  const legacyConfirmation =
+    pending?.operation === "confirm" &&
+    pending.body.replacement_policy !== "single-unused-v1";
   const perform = async (operation: Intent["operation"]) => {
     if (busy) return;
     setError("");
@@ -416,7 +421,17 @@ export function GrantIssuanceDialog({
         } else {
           if (!review)
             throw Error("Load the original review before continuing.");
-          body = { revision: review.revision, request: crypto.randomUUID() };
+          if (operation === "confirm" && !replacementSnapshotReady)
+            throw Error(
+              "Replacement details are missing. Edit and review again. If they are still missing, ask your server administrator to update the server.",
+            );
+          body = {
+            revision: review.revision,
+            request: crypto.randomUUID(),
+            ...(operation === "confirm"
+              ? { replacement_policy: "single-unused-v1" }
+              : {}),
+          };
         }
         intent = {
           operation,
@@ -429,6 +444,13 @@ export function GrantIssuanceDialog({
         remember(review?.id, intent);
         setPending(intent);
       }
+      if (
+        intent.operation === "confirm" &&
+        intent.body.replacement_policy !== "single-unused-v1"
+      )
+        throw Error(
+          "The earlier result is unconfirmed. Refresh status or edit and review again.",
+        );
       setBusy(true);
       const value = acceptReview(
         await api(
@@ -584,6 +606,12 @@ export function GrantIssuanceDialog({
             </button>
           </>
         )}
+        {legacyConfirmation && (
+          <p role="status" className="warn">
+            The earlier result is unconfirmed. Refresh status or edit and review
+            again.
+          </p>
+        )}
         {!review && pending?.operation === "preview" && (
           <section aria-label="Unconfirmed request">
             <h3>Previous review request</h3>
@@ -615,6 +643,7 @@ export function GrantIssuanceDialog({
               void perform("preview");
             }}
           >
+            <p>A new attempt replaces any unused attempt for this exam.</p>
             <fieldset disabled={busy || !!pending}>
               <details>
                 <summary>Selected students ({names.length})</summary>
@@ -889,6 +918,15 @@ export function GrantIssuanceDialog({
                     ? "Request cancelled"
                     : "Review expired"}
             </h3>
+            {review.status === "REVIEW" &&
+              !replacementSnapshotReady &&
+              !legacyConfirmation && (
+                <p role="alert" className="warn">
+                  Replacement details are missing. Edit and review again. If
+                  they are still missing, ask your server administrator to
+                  update the server.
+                </p>
+              )}
             {sharedWindow && (
               <p>
                 Start window:{" "}
@@ -936,15 +974,24 @@ export function GrantIssuanceDialog({
                   </p>
                 )}
                 <p>{sourceLabel(row)}</p>
-                {!!row.existing_grants && (
+                {review.status === "REVIEW" && !!row.replaces?.length && (
                   <p className="warn">
-                    {row.existing_grants} earlier unused{" "}
-                    {row.existing_grants === 1
-                      ? "attempt remains"
-                      : "attempts remain"}
-                    .
+                    Replaces {row.replaces.length} unused{" "}
+                    {row.replaces.length === 1 ? "attempt" : "attempts"}.
                   </p>
                 )}
+                {review.status === "CONFIRMED" &&
+                  (() => {
+                    const replaced = review.issued.find(
+                      (g: any) => g.username === row.username,
+                    )?.replaced;
+                    return replaced?.length ? (
+                      <p>
+                        Replaced {replaced.length} unused{" "}
+                        {replaced.length === 1 ? "attempt" : "attempts"}.
+                      </p>
+                    ) : null;
+                  })()}
               </article>
             ))}
             <details>
@@ -1025,7 +1072,7 @@ export function GrantIssuanceDialog({
           <>
             <button
               className="primary"
-              disabled={busy}
+              disabled={busy || !replacementSnapshotReady}
               onClick={() => void perform("confirm")}
             >
               Allow {review.rows.length === 1 ? "attempt" : "attempts"}
@@ -1035,11 +1082,14 @@ export function GrantIssuanceDialog({
             </button>
           </>
         )}
-        {["CANCELLED", "EXPIRED"].includes(review?.status) && !pending && (
-          <button disabled={busy} onClick={startAgain}>
-            Edit and review again
-          </button>
-        )}
+        {(["CANCELLED", "EXPIRED"].includes(review?.status) ||
+          (review?.status === "REVIEW" &&
+            (!replacementSnapshotReady || legacyConfirmation))) &&
+          (!pending || legacyConfirmation) && (
+            <button disabled={busy} onClick={startAgain}>
+              Edit and review again
+            </button>
+          )}
         {review && (
           <button disabled={busy} onClick={() => void inspect(review.id)}>
             Refresh status
@@ -1048,7 +1098,11 @@ export function GrantIssuanceDialog({
         {pending && (
           <>
             <button
-              disabled={busy || (pending.operation !== "preview" && !review)}
+              disabled={
+                busy ||
+                legacyConfirmation ||
+                (pending.operation !== "preview" && !review)
+              }
               onClick={() => void perform(pending.operation)}
             >
               Retry same request

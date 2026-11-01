@@ -172,6 +172,7 @@ it("reviews explicit per-student saved sources atomically, preserves settings an
       (
         await post(`/api/admin/grant-issuance/${first.json().id}/confirm`, {
           revision: first.json().revision,
+          replacement_policy: "single-unused-v1",
         })
       ).statusCode,
     ).toBe(409);
@@ -206,12 +207,17 @@ it("reviews explicit per-student saved sources atomically, preserves settings an
     const intent = {
         revision: reviewed.json().revision,
         request: randomUUID(),
+        replacement_policy: "single-unused-v1",
       },
       issued = await post(
         `/api/admin/grant-issuance/${reviewed.json().id}/confirm`,
         intent,
       );
     expect(issued.statusCode, issued.body).toBe(200);
+    expect(issued.json().issued.map((row: any) => row.replaced)).toEqual([
+      [],
+      [],
+    ]);
     expect(
       (
         await post(
@@ -244,6 +250,11 @@ it("reviews explicit per-student saved sources atomically, preserves settings an
     expect(again.json().rows.map((r: any) => r.existing_grants)).toEqual([
       1, 1,
     ]);
+    expect(again.json().rows.map((row: any) => row.replaces)).toEqual(
+      saved.map((grant) => [
+        { id: grant.id, revision: grant.revision, hash: grant.hash },
+      ]),
+    );
     definitions.update(
       settings.id,
       { duration: 3600, webcam: true },
@@ -311,7 +322,10 @@ it("reviews explicit per-student saved sources atomically, preserves settings an
     const staleHistory = staleSources.map((s) => store.attempt(s.attempt)),
       lost = await post(
         `/api/admin/grant-issuance/${staleReview.json().id}/confirm`,
-        { revision: staleReview.json().revision },
+        {
+          revision: staleReview.json().revision,
+          replacement_policy: "single-unused-v1",
+        },
       );
     expect(lost.statusCode, lost.body).toBe(409);
     expect(lost.json().error).toContain("protected");
