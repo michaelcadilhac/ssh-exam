@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Compact redundant legacy release archives, preserving a verified full baseline.
+
+Only backup directories are changed. Live application data is never opened.
+Older non-monitoring files and unique monitoring payloads remain in a smaller tar.
+The retained full archive supplies byte-identical monitoring files. Original
+receipts remain; compaction.json records the replacement and its dependency.
+"""
+import argparse
+import copy
+import datetime
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import shutil
+import stat
+import tarfile
+import tempfile
+
+
+class DigestReader:
+    def __init__(self, source):
+        self.source = source
+        self.digest = hashlib.sha256()
+
+    def read(self, size=-1):
+        data = self.source.read(size)
+        self.digest.update(data)
+        return data
+
+
+def sync_directory(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def private_directory(path):
+    s = path.lstat()
+    if not stat.S_ISDIR(s.st_mode) or s.st_uid != os.geteuid() or s.st_mode & 0o077:
+        raise ValueError(f"Backup directory must be private and owned by the current user: {path}")
+
+
+def signature(path):
+    s = path.lstat()
+    if not stat.S_ISREG(s.st_mode) or s.st_uid != os.geteuid() or s.st_mode & 0o022:
+        raise ValueError(f"Unsafe backup file: {path}")
+    return (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns)
+
+
+def members(path, handle):
+    """Hash the exact archive and process its members in one sequential read."""
+    before = signature(path)
+    with path.open('rb') as source:
+        reader = DigestReader(source)
+        with tarfile.open(fileobj=reader, mode='r|') as archive:
+            for member in archive:
+                name = PurePosixPath(member.name)
+                if name.is_absolute() or '..' in name.parts or not member.name:
+                    raise ValueError('Unsafe archive member path')
+                if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
+                    raise ValueError('Unsupported archive member type')
+                handle(member, archive.extractfile(member) if member.isfile() else None)
+        while reader.read(1024 * 1024):
+            pass
+    if signature(path) != before:
+        raise ValueError('Archive changed while reading')
+    return reader.digest.hexdigest(), before
+
+
+def payload_hash(source):
+    digest = hashlib.sha256()
+    while True:
+        block = source.read(1024 * 1024)
+        if not block:
+            return digest.hexdigest()
+        digest.update(block)
+
+
+def metadata(member):
+    return (member.name, member.type, member.mode, member.uid, member.gid,
+            member.size, member.mtime, member.linkname, member.pax_headers)
+
+
+def write_json(path, value):
+    with path.open('x', encoding='utf-8') as out:
+        json.dump(value, out, indent=2)
+        out.write('\n')
+        out.flush()
+        os.fsync(out.fileno())
+
+
+def compact(root, keep, data_prefix, apply=False):
+    os.umask(0o077)
+    root = root.resolve(strict=True)
+    keep = keep.absolute()
+    if keep.parent != root or not keep.name.startswith('ssh-exam-backup-'):
+        raise ValueError('Retained backup must be an immediate ssh-exam-backup-* child of root')
+    private_directory(keep)
+    retained = keep / 'web-data-config-before.tar'
+    signature(keep / 'backup.json')
+    receipt = json.loads((keep / 'backup.json').read_text())
+    expected = receipt['archive_sha256']
+    index = {}
+
+    def remember(member, source):
+        if member.name in index:
+            raise ValueError('Duplicate regular member in retained archive')
+        if source is not None:
+            index[member.name] = (member.size, payload_hash(source))
+
+    digest, retained_signature = members(retained, remember)
+    if digest != expected:
+        raise ValueError('Retained full backup failed its recorded SHA256; nothing removed')
+    prefix = data_prefix.strip('/') + '/monitoring/'
+    results = []
+    for directory in sorted(root.iterdir()):
+        if directory == keep or not directory.name.startswith('ssh-exam-backup-'):
+            continue
+        private_directory(directory)
+        original = directory / 'web-data-config-before.tar'
+        if not original.exists():
+            if (directory / 'compaction.json').is_file():
+                prior = json.loads((directory / 'compaction.json').read_text())
+                reduced = directory / 'configuration-and-unique-data.tar'
+                actual, _ = members(reduced, lambda member, source: payload_hash(source) if source else None)
+                old = json.loads((directory / 'backup.json').read_text())
+                if (prior['retained_archive'] != str(retained) or prior['retained_sha256'] != digest
+                        or prior['original_sha256'] != old['archive_sha256']
+                        or actual != prior['replacement_sha256']
+                        or reduced.stat().st_size != prior['replacement_bytes']):
+                    raise ValueError('Completed compaction replacement does not verify; preserve recovery files')
+                continue
+            raise ValueError(f'Missing original archive without a compaction receipt: {directory}')
+        signature(directory / 'backup.json')
+        original_receipt = json.loads((directory / 'backup.json').read_text())
+        replacement = directory / 'configuration-and-unique-data.tar'
+        committed = directory / 'compaction.json'
+        if committed.exists():
+            prior = json.loads(committed.read_text())
+            actual, _ = members(replacement, lambda member, source: payload_hash(source) if source else None)
+            if (prior['retained_archive'] != str(retained) or prior['retained_sha256'] != digest
+                    or prior['original_sha256'] != original_receipt['archive_sha256']
+                    or actual != prior['replacement_sha256']):
+                raise ValueError('Existing compaction receipt does not verify; original preserved')
+            actual_original, original_signature = members(original, lambda member, source: None)
+            if actual_original != prior['original_sha256']:
+                raise ValueError('Original changed before compaction retry')
+            if apply:
+                if signature(retained) != retained_signature or signature(original) != original_signature:
+                    raise ValueError('Recovery archive changed before removal; original preserved')
+                original.unlink()
+                sync_directory(directory)
+            results.append({'directory': str(directory), 'retry_completed': apply})
+            continue
+        if replacement.exists():
+            raise ValueError('Uncommitted replacement exists; original preserved for review')
+        if shutil.disk_usage(root).free < 1024 ** 3:
+            raise ValueError('Less than 1 GiB free; original preserved')
+        count = dropped = dropped_bytes = 0
+        expected_members = []
+        temporary = None
+        writer = None
+        if apply:
+            fd, name = tempfile.mkstemp(prefix='.compaction-', suffix='.tar', dir=directory)
+            os.close(fd)
+            temporary = Path(name)
+            writer = tarfile.open(temporary, 'w')
+        try:
+            def select(member, source):
+                nonlocal count, dropped, dropped_bytes
+                member = copy.copy(member)
+                if source is None:
+                    expected_members.append((metadata(member), None))
+                    if writer:
+                        writer.addfile(member)
+                    return
+                count += 1
+                with tempfile.SpooledTemporaryFile(max_size=4 * 1024 ** 2, dir=directory) as spool:
+                    hashed = DigestReader(source)
+                    shutil.copyfileobj(hashed, spool, length=1024 * 1024)
+                    value = hashed.digest.hexdigest()
+                    if member.name.startswith(prefix) and index.get(member.name) == (member.size, value):
+                        dropped += 1
+                        dropped_bytes += member.size
+                        return
+                    expected_members.append((metadata(member), value))
+                    if writer:
+                        if spool.tell() + 128 * 1024 ** 2 > shutil.disk_usage(root).free:
+                            raise ValueError('Insufficient space for unique payload; original preserved')
+                        spool.seek(0)
+                        writer.addfile(member, spool)
+
+            old_digest, old_signature = members(original, select)
+            if old_digest != original_receipt['archive_sha256']:
+                raise ValueError('Older archive failed its recorded SHA256; original preserved')
+            if writer:
+                writer.close()
+                writer = None
+                actual_members = []
+                def verify(member, source):
+                    actual_members.append((metadata(member), payload_hash(source) if source is not None else None))
+                replacement_digest, _ = members(temporary, verify)
+                if actual_members != expected_members:
+                    raise ValueError('Replacement verification failed; original preserved')
+                with temporary.open('rb') as out:
+                    os.fsync(out.fileno())
+                temporary.rename(replacement)
+                temporary = None
+                sync_directory(directory)
+                record = {'format': 1, 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                          'original_sha256': old_digest, 'original_bytes': old_signature[2],
+                          'replacement': replacement.name, 'replacement_sha256': replacement_digest,
+                          'replacement_bytes': replacement.stat().st_size,
+                          'retained_archive': str(retained), 'retained_sha256': digest,
+                          'regular_files': count, 'shared_monitoring_files': dropped,
+                          'shared_monitoring_bytes': dropped_bytes,
+                          'all_unique_payloads_and_non_monitoring_files_preserved': True}
+                write_json(committed, record)
+                sync_directory(directory)
+                if signature(retained) != retained_signature or signature(original) != old_signature:
+                    raise ValueError('Recovery archive changed before removal; original preserved')
+                original.unlink()
+                sync_directory(directory)
+            results.append({'directory': str(directory), 'compacted': apply,
+                            'shared_monitoring_files': dropped, 'shared_monitoring_bytes': dropped_bytes,
+                            'old_archive_bytes': old_signature[2],
+                            'replacement_bytes': replacement.stat().st_size if apply else None})
+        finally:
+            if writer:
+                writer.close()
+            if temporary and temporary.exists():
+                temporary.unlink()
+    return {'phase': 'COMPACTED' if apply else 'VERIFIED_PREVIEW', 'retained': str(retained),
+            'retained_sha256': digest, 'results': results, 'free_bytes': shutil.disk_usage(root).free,
+            'live_data_opened_or_changed': False}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, required=True, help='directory containing private release backups')
+    parser.add_argument('--keep', type=Path, required=True, help='newest verified FULL backup directory to retain')
+    parser.add_argument('--data-prefix', required=True, help='application data path inside the tar, without leading /')
+    parser.add_argument('--apply', action='store_true', help='durably compact verified older archives; default verifies only')
+    args = parser.parse_args()
+    os.umask(0o077)
+    with (args.root / '.ssh-exam-backup-compaction.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        print(json.dumps(compact(args.root, args.keep, args.data_prefix, args.apply)), flush=True)
+
+
+if __name__ == '__main__':
+    main()

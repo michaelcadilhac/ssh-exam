@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 """Offline restore merges latest durable deletion ledger before serving any restored media."""
 import argparse,pathlib,sqlite3,shutil,time
+from shared_backup import verify_backup
 p=argparse.ArgumentParser();p.add_argument('backup');p.add_argument('destination');p.add_argument('--deletion-ledger',required=True);p.add_argument('--gateway-stopped',action='store_true',required=True);a=p.parse_args()
 src=pathlib.Path(a.backup).resolve();dest=pathlib.Path(a.destination).resolve()
 if dest.exists():raise SystemExit('Restore into a NEW private directory, then replace the configured data path')
+if (src/'snapshot.json').exists():
+ try: verify_backup(src)
+ except (ValueError,OSError,KeyError) as error: raise SystemExit(f'Restore refused: {error}; preserve the backup and inspect it before retrying')
 shutil.copytree(src,dest)
 with sqlite3.connect(a.deletion_ledger) as ledger:
  latest=ledger.execute('SELECT attempt,deleted FROM tombstones').fetchall()
  submissions=ledger.execute("SELECT DISTINCT target FROM audit WHERE action='delete-submission'").fetchall()
 with sqlite3.connect(dest/'metadata.sqlite') as db:
+ tables={item[0] for item in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
  for item in latest:db.execute('INSERT OR REPLACE INTO tombstones VALUES(?,?)',item)
  db.execute("UPDATE attempts SET state='LOCKED',reason='Restored backup; reconcile with class agent' WHERE state='ACTIVE'")
  cutoff=int(time.time()*1000)-60*86400000
  expired=db.execute('SELECT id FROM attempts WHERE ended IS NOT NULL AND ended<?',(cutoff,)).fetchall()
  for (attempt,) in expired:db.execute('INSERT OR IGNORE INTO tombstones VALUES(?,?)',(attempt,int(time.time()*1000)))
  for (attempt,) in db.execute('SELECT attempt FROM tombstones').fetchall():
+  if 'monitoring_video_frames' in tables:
+   db.execute('DELETE FROM monitoring_video_frames WHERE segment IN (SELECT id FROM monitoring_video_segments WHERE attempt=?)',(attempt,))
+  if 'monitoring_video_segments' in tables:db.execute('DELETE FROM monitoring_video_segments WHERE attempt=?',(attempt,))
+  if 'monitoring_video_jobs' in tables:db.execute("UPDATE monitoring_video_jobs SET status='deleted',owner=NULL,error=NULL,updated=? WHERE attempt=?",(int(time.time()*1000),attempt))
   shutil.rmtree(dest/'monitoring'/attempt,ignore_errors=True);db.execute('DELETE FROM frames WHERE attempt=?',(attempt,));db.execute('DELETE FROM recordings WHERE attempt=?',(attempt,));db.execute("UPDATE incidents SET events='[]',message=NULL WHERE attempt=?",(attempt,))
  for (attempt,) in submissions:
   if not all(c.isalnum() or c=='-' for c in attempt): raise SystemExit('Invalid deletion identifier')

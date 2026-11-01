@@ -1,12 +1,45 @@
 #!/usr/bin/env python3
-"""Consistent offline backup. Stop/drain the gateway first; never copy a live SQLite WAL."""
-import argparse, os, sqlite3, shutil, pathlib
-p=argparse.ArgumentParser();p.add_argument('data');p.add_argument('destination');p.add_argument('--gateway-stopped',action='store_true',required=True);a=p.parse_args()
-src=pathlib.Path(a.data).resolve();dest=pathlib.Path(a.destination).resolve()
-if dest.exists() or src==dest or src in dest.parents: raise SystemExit('Destination must be new and outside data')
-dest.mkdir(mode=0o700,parents=True)
-with sqlite3.connect(src/'metadata.sqlite') as original,sqlite3.connect(dest/'metadata.sqlite') as output:original.backup(output)
-for name in ('receipts','monitoring','submissions'):
- if (src/name).exists():shutil.copytree(src/name,dest/name)
-os.chmod(dest/'metadata.sqlite',0o600)
-print('Backup complete. Keep latest deletion tombstones separately; expire monitoring backups within 60 days.')
+"""Consistent offline snapshots sharing unchanged monitoring files across releases.
+
+Drain/stop the gateway first. Snapshots use a private shared object store, never
+hard links to live files. Normal scripts/restore remains supported. Run full
+--verify-backup outside cutover; keep deletion ledgers and60-day monitoring expiry.
+"""
+import argparse
+import json
+from pathlib import Path
+import sqlite3
+from shared_backup import create_backup, verify_backup, warm_media, prune_unused_objects
+
+p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('data', nargs='?', type=Path)
+p.add_argument('destination', nargs='?', type=Path)
+p.add_argument('--gateway-stopped', action='store_true', help='attest the gateway is drained and stopped')
+p.add_argument('--shared-store', type=Path, help='private store on the snapshot filesystem; default: DESTINATION_PARENT/.ssh-exam-media-objects')
+p.add_argument('--require-warmed', action='store_true', help='refuse under the store lock if any monitoring bytes need copying; use for fast cutovers')
+p.add_argument('--verify-backup', type=Path, help='fully hash a completed snapshot; no gateway stop needed')
+p.add_argument('--warm-media', type=Path, help='prepare DATA monitoring objects online; does not open the database or create a complete snapshot')
+p.add_argument('--prune-unused-objects', type=Path, help='preview unreferenced objects in STORE; remove expired snapshots separately first')
+p.add_argument('--apply-prune', action='store_true', help='remove only objects with no remaining snapshot links')
+a = p.parse_args()
+try:
+ if sum(bool(v) for v in (a.verify_backup,a.warm_media,a.prune_unused_objects)) > 1:
+  p.error('choose only one of --verify-backup, --warm-media or --prune-unused-objects')
+ if a.apply_prune and not a.prune_unused_objects: p.error('--apply-prune requires --prune-unused-objects STORE')
+ if a.verify_backup:
+  if a.data or a.destination or a.shared_store or a.gateway_stopped or a.require_warmed: p.error('--verify-backup takes no create arguments')
+  result = verify_backup(a.verify_backup)
+ elif a.warm_media:
+  if a.data or a.destination or a.gateway_stopped or a.require_warmed or not a.shared_store: p.error('--warm-media requires --shared-store and takes no snapshot arguments')
+  result = warm_media(a.warm_media,a.shared_store)
+ elif a.prune_unused_objects:
+  if a.data or a.destination or a.shared_store or a.gateway_stopped or a.require_warmed: p.error('--prune-unused-objects takes no create arguments')
+  result = prune_unused_objects(a.prune_unused_objects,a.apply_prune)
+ else:
+  if not a.data or not a.destination or not a.gateway_stopped:
+   p.error('create requires DATA DESTINATION --gateway-stopped; drain and stop the gateway first')
+  store = a.shared_store or a.destination.absolute().parent / '.ssh-exam-media-objects'
+  result = create_backup(a.data, a.destination, store, require_warmed=a.require_warmed)
+ print(json.dumps(result), flush=True)
+except (ValueError, OSError, sqlite3.Error, KeyError) as error:
+ p.exit(1, f'Backup refused: {error}\nPreserve existing snapshots and inspect private paths before retrying.\n')

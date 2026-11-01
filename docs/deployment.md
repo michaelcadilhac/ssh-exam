@@ -116,13 +116,33 @@ restore pre-start authority or strip new provenance for an older reader. Never
 down -v. Keep certificate/trust rollback copies.
 
     docker compose stop --timeout 45
-    scripts/backup var/production /secure/backups/exam-YYYYMMDD --gateway-stopped
+    scripts/backup var/production /secure/backups/exam-YYYYMMDD --gateway-stopped --shared-store /secure/backups/.ssh-exam-media-objects
     scripts/restore /secure/backups/exam-YYYYMMDD /secure/restored-data --gateway-stopped --deletion-ledger /secure/latest-metadata.sqlite
+
+The local incremental implementation shares immutable monitoring objects between
+snapshots; it never links backup files to live files. Prepare those objects before
+a short cutover with `scripts/backup --warm-media var/production --shared-store
+/secure/backups/.ssh-exam-media-objects`. Warming is online media preparation, not
+a database snapshot. Add `--require-warmed` to the stopped backup command for UI
+cutovers: it refuses under the store lock if new media copies would be needed.
+Use `scripts/backup --verify-backup /secure/backups/exam-YYYYMMDD` for a full
+content check outside the cutover window. Initial warming can be much slower than
+a subsequent release snapshot. These commands are local developments, not a claim
+that production's existing installation has been changed.
+
+New-format restore verifies the complete snapshot before copying and detaches all
+shared links. Keep the store and snapshots private. Remove obsolete/expired
+snapshots according to retention requirements, then preview `scripts/backup
+--prune-unused-objects /secure/backups/.ssh-exam-media-objects`; add `--apply-prune`
+only to reclaim objects with no remaining snapshot references. Retained snapshots
+continue to preserve their media. Detailed verification and production duplicate
+cleanup: [storage and release efficiency](storage-and-release-efficiency.md).
 
 Restore to a new directory, merge latest tombstones, reconcile remote canonical attempts,
 then switch the stopped mount. Retain the latest deletion ledger separately from old backups.
 Encrypt/private-protect backups and enforce monitoring expiry. Live database-only copying
-does not consistently back up SQLite WAL and files.
+does not make the accompanying files consistent; copying only the main SQLite file
+also omits committed WAL data. The backup API snapshots WAL correctly.
 
 Preflight expires fifteen minutes after opening, even if a background page continues
 sending contact. The class agent persists its preparation timestamp and enforces
