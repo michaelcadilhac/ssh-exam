@@ -1,3 +1,22 @@
+# Current checkpoint — one exam student list VERIFIED LOCALLY
+
+The dashboard, CLI/API lists, CSV and selection now share one exam-student catalog.
+History/permission students stay listed; only untouched setup entries are removable.
+Explicit reviewed NEW issuance restores missing metadata atomically; reads and
+Add/CSV cannot revive old permission. All70 are selectable; next-attempt editing
+names the four without permission. Retirement review also uses the canonical count.
+The private audit ties the missing four to October20 incident-transfer bookkeeping.
+Policy/design, honest receipts and rollout plan: docs/exam-student-list.md.
+Validation:764 application cases across final full/focused runs (one existing
+opt-in skip),91 affected browser cases plus targeted count workflows, real signed
+CLI/TLS, CLI races, full types/build and37 operator workflows pass. Initial stale
+fixture/oracle failures remain recorded. Original ten dirty screenshots unchanged.
+No production data/service changes, push or deployment. Release image is built from
+180 frozen application inputs at exam-student-list-image.z06tc__w; exact-image
+smoke/committed source/staticCLI binding is being finalized. New deployment scope
+is qualified locally; previous-reader public reopening is refused with CURRENT data.
+Next: finish image/binary qualification, local commits and final artifact checkpoint.
+
 # Current checkpoint — bulk next-attempt fix DEPLOYED
 
 November 2 at10:25:47 Chicago (16:25:47UTC): qualified source `bc20abd86edcf87c2417a456788251f95d3c62ca`

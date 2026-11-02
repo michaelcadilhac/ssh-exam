@@ -1,5 +1,14 @@
 # Shell scripting with examctl
 
+November2 local follow-up: student exports use the same complete per-exam list as
+the dashboard, including students whose legacy setup rows are missing. Therefore
+the existing second-go script includes all70 midterm students after the matched
+server update, rather than66. This change issues no permission itself. Prepare a
+fresh review and inspect its targets before Apply; an earlier saved66-student
+review does not silently gain four targets. See
+[exam-student-list.md](exam-student-list.md) for local qualification/deployment
+status. Reads never change access, history or clocks.
+
 October 29, 2026: generic scripting improvements. The instructor authorized
 implementation, commit, push and deployment; this development task issues no
 student grants. These extend the completed 38-item release. Current installed

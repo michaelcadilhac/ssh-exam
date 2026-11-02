@@ -266,7 +266,9 @@ its student, with stable attempt numbers. Rows show current webcam requirements 
 clocks; the student row separately labels future settings. **Working** requires live SSH,
 an acknowledged browser connection and fresh contact. Updates poll every five seconds;
 clocks tick every second. Failed or silent updates are marked stale and clock edits are
-blocked until fresh data arrives. Removed enrollments retain their history.
+blocked until fresh data arrives. Students with attempt or permission history
+remain in the exam's student list. See the locally qualified policy update in
+[exam-student-list.md](exam-student-list.md) for deployment status.
 
 Each attempt also shows its interruption count. Expand it directly in the table to see every
 recorded pause, its reasons, start/end, duration and approvals. The disclosure works with
@@ -299,7 +301,9 @@ and local qualification: [attempt-provenance.md](attempt-provenance.md).
 
 Click a student's displayed duration or webcam requirement to edit it in the table.
 Save applies the change; Cancel or Escape discards it and returns focus to the value.
-Use the student's **Actions** menu for enrollment removal. Use an attempt's **More** menu for clock actions. **Review** opens monitoring,
+Use **Remove from exam** only for a student who has no attempt or permission
+history; otherwise cancel their next attempt to prevent another try. Use an
+attempt's **More** menu for clock actions. **Review** opens monitoring,
 incidents and recovery for that particular attempt. Controls support keyboard navigation
 and Escape; opening review focuses Close review, never Authorize resume.
 
@@ -344,9 +348,10 @@ A reset or extension does not authorize a locked student to resume or reopen fin
 course account with optional future duration and webcam overrides, or **CSV file** to upload
 a roster. Download the example CSV from that dialog and replace its sample usernames.
 Selecting a file automatically validates it and shows a preview; **Confirm import** applies it.
-There is no CSV paste field or display-name setting. Removing enrollment requires confirmation;
-it blocks future Begin but does not stop an already running exam or delete history, monitoring
-or protected submissions.
+There is no CSV paste field or display-name setting. Removing a never-authorized
+student requires confirmation. Students with any attempt or permission remain
+listed; cancel an unused attempt to prevent another try. These actions never stop
+an already running exam or delete history, monitoring or protected submissions.
 Only a server administrator can stop a running exam using local `examctl stop`.
 
 Enrollment and CSV preview do not require an `examctl accounts` listing or an online

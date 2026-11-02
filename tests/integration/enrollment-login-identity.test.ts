@@ -49,9 +49,9 @@ it("saves single/CSV enrollments without an agent account list and preserves ver
         .prepare("SELECT uid FROM enrollments WHERE username='futurestudent'")
         .get(),
     ).toEqual({ uid: 0 });
-    expect((await post("add", { username: "futurestudent" })).statusCode).toBe(
-      400,
-    );
+    const duplicate = await post("add", { username: "futurestudent" });
+    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.json().error).toContain("Use Allow attempt");
     expect((await post("add", { username: "root" })).statusCode).toBe(400);
     store.db
       .prepare("UPDATE enrollments SET uid=1200 WHERE username='futurestudent'")
@@ -187,7 +187,9 @@ it.each(["accepted", "denied", "invalid-uid", "not-enrolled"])(
       });
       expect(completed.statusCode).toBe(outcome === "accepted" ? 200 : 400);
       if (outcome === "not-enrolled") {
-        expect(result.error).toContain("not enrolled");
+        expect(result.error).toBe(
+          "This account does not have access to the selected exam. Check the exam ID and username, or contact your instructor.",
+        );
         expect(commands).toEqual([]);
         expect(h.counts.jump).toBe(0);
       } else {

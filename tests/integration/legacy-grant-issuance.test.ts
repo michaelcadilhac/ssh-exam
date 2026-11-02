@@ -129,7 +129,7 @@ it("reviews NEW legacy-unused grants, preserves effective settings and confirms 
     );
     expect(changedEnrollment.statusCode).toBe(409);
     expect(changedEnrollment.json().error).toBe(
-      "Enrollment or settings for old01 changed after this review. Create a new review. This request allowed no attempts.",
+      "Student access or settings for old01 changed after this review. Create a new review. This request allowed no attempts.",
     );
     expect(
       store.db.prepare("SELECT count(*) n FROM attempt_grants").get(),

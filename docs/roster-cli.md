@@ -1,5 +1,18 @@
 # Shared roster and CSV management — local implementation
 
+November2 follow-up, implemented locally and under final qualification:
+`examctl web students list EXAM`, its paginated/TSV/CSV variants and `students
+export` now contain the same students as the dashboard: everyone with setup,
+attempt or permission records in that exam. Missing old setup metadata does not
+exclude a student. Exported compatibility settings for such a student come from
+their latest saved settings; UID0 remains unresolved, not a verified account ID.
+Listing and export never restore access or issue permission. Use the ordinary
+reviewed Allow attempt workflow to authorize a new attempt; its confirmation
+atomically repairs missing compatibility metadata without reviving old permission.
+Students with any attempt or permission stay in the list. Removal is only for
+untouched setup entries; cancel an unused permission to prevent another try.
+Policy/evidence: [exam-student-list.md](exam-student-list.md). Not deployed.
+
 October31/November1 UTC follow-up DEPLOYED (runtime63903bd, matching CLI): **Exam defaults** is explicit in the UI; Add students
 has editable first-attempt dates. Both `students add` and `import-preview` accept
 paired `--earliest/--latest` RFC3339 dates; omitted flags preserve inheritance.
@@ -73,12 +86,12 @@ or consumed grants refuse revision: inspect, positively cancel an unstarted
 preparation, then sign in for a fresh preflight. Started attempts keep their
 interval and cannot be refunded/reopened. See recovery-admission-consistency.md.
 
-Removal requires a named CLI confirmation and removes enrollment only. It never
-deletes attempts/submissions, cancels a native recovery grant, finishes work or
-releases an original interval hold. As under the existing web workflow, inspect
-active attempts/reauthentication needs before removal; enrollment may be needed
-for a later login until the unified-grant admission model is implemented. History
-and native authorization/collection enforcement remain independent.
+Removal requires a named CLI confirmation and refuses any student with an attempt
+or permission. Such students remain in the exam's list; cancel their unused
+permission to prevent another try. Only a never-authorized setup entry can be
+removed. Removal never deletes attempts/submissions, finishes work or releases
+an original interval hold. Native authorization/collection enforcement remains
+independent.
 
 ## Import, preview and export
 

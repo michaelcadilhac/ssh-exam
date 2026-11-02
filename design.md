@@ -3389,3 +3389,29 @@ new-attempt/protected-export acceptance pass. Installed admission remains OFF;
 the private readiness adapter does not qualify public release executables.
 Evidence/operator workflow: docs/retained-transport-recovery-plan.md and
 docs/recovery-runbook.md.
+
+### One student list per exam (November 2, 2026)
+
+This policy supersedes the earlier distinction between enrolled students and
+historical students. Management membership is the distinct, exam-scoped union of
+legacy setup records, attempts and the configured agent's permissions. Dashboard
+counts, search, bulk selection, API/CLI listing and CSV export use that same
+read-only catalog. A missing legacy setup record is not a statement about course
+enrollment and must not silently exclude a student from management.
+
+A student remains in the list after any attempt or permission, including cancelled
+and completed history. Remove student is allowed only before either exists.
+Cancel next attempt controls permission to start another attempt; history,
+protected files, existing intervals and account restrictions remain unchanged.
+The backend enforces this rule equally for website and root CLI; historical
+students retain ordinary Allow attempt and history actions.
+
+Catalog membership grants no admission. Legacy missing setup metadata is not
+automatically backfilled by listing or preview. Explicit confirmation of a reviewed
+NEW permission may recreate compatibility metadata with UID0 inside the same
+transaction as issuance and its audit, after validating every reviewed student,
+settings/source snapshot and replacement. Existing unused permissions are replaced,
+never silently revived. Stale or failed batches restore no access and consume no
+grant or clock. Authenticated native SSH still owns account/UID verification;
+retention, Begin, timing, monitoring and protected-work policies remain authoritative.
+Implementation and qualification: docs/exam-student-list.md.

@@ -12,7 +12,7 @@ async function fixture(
   page: Page,
   size: number,
   hold = false,
-  unenrolled = false,
+  legacyRosterMissing = false,
 ) {
   page.setDefaultTimeout(6000);
   const now = Date.now(),
@@ -54,7 +54,7 @@ async function fixture(
     makeGrant(
       i,
       name,
-      i >= size - 4 && (unenrolled || i < size - 1)
+      i >= size - 4 && (legacyRosterMissing || i < size - 1)
         ? { status: "CONSUMED", claims: [{ state: "CONSUMED" }] }
         : i === size - 1
           ? { claims: [{ state: "PREPARING" }] }
@@ -105,9 +105,10 @@ async function fixture(
           students: names.map((username, i) => ({
             username,
             enrollment:
-              unenrolled && i >= size - 4
+              legacyRosterMissing && i >= size - 4
                 ? null
                 : { duration: null, webcam: null },
+            removable: false,
             latestSettings: settings,
             unusedAttempt:
               grants.find(
@@ -119,7 +120,7 @@ async function fixture(
                   ),
               ) ?? null,
             attempts:
-              unenrolled && i >= size - 4
+              legacyRosterMissing && i >= size - 4
                 ? [
                     {
                       id: `22222222-2222-4222-8222-${String(i + 1).padStart(12, "0")}`,
@@ -213,7 +214,7 @@ async function fixture(
   const open = async () => {
     await page
       .getByRole("checkbox", {
-        name: "Select enrolled students on this page",
+        name: "Select all students on this page",
         exact: true,
       })
       .check();
@@ -363,7 +364,7 @@ test("a student entering setup after the bulk lookup is refused by the fresh rev
   expect(f.state.grants[5].settings.duration).toBe(3600);
 });
 
-test("70 visible students select only the 66 enrolled students and name the four historical students outside the selection", async ({
+test("all 70 students are selectable and four historical students without next attempts remain in the bulk selection", async ({
   page,
 }, info) => {
   const f = await fixture(page, 70, false, true);
@@ -371,26 +372,49 @@ test("70 visible students select only the 66 enrolled students and name the four
     70,
   );
   const select = page.getByRole("checkbox", {
-    name: "Select enrolled students on this page",
+    name: "Select all students on this page",
     exact: true,
   });
   await expect(
-    page.getByText("Select enrolled students (66)", { exact: true }),
+    page.getByText("Select all students (70)", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: /^Select student learner/ }),
+  ).toHaveCount(70);
+  await expect(page.getByText("Not enrolled", { exact: true })).toHaveCount(0);
+  const historyStudent = f.state.names[66],
+    historyActions = page.getByRole("button", {
+      name: `Actions for student ${historyStudent}`,
+      exact: true,
+    });
+  await historyActions.click();
+  await expect(
+    page.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", {
+      name: "Attempt settings and history…",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
+  ).toHaveCount(0);
+  await historyActions.click();
   await select.check();
   const selection = page.getByRole("region", {
     name: "Bulk selection",
     exact: true,
   });
-  await expect(selection).toContainText("66 students selected");
-  await expect(selection).toContainText("4 not enrolled; not selected.");
+  await expect(selection).toContainText("70 students selected");
+  await expect(selection).not.toContainText(/not enrolled|not selected/i);
   for (const username of f.state.names.slice(66)) {
     await expect(
       page.getByRole("checkbox", {
         name: `Select student ${username}`,
         exact: true,
       }),
-    ).toHaveCount(0);
+    ).toBeChecked();
   }
   await page
     .getByRole("button", { name: "Selected students", exact: true })
@@ -402,18 +426,20 @@ test("70 visible students select only the 66 enrolled students and name the four
     name: "Change next attempts",
     exact: true,
   });
-  await expect(dialog).toContainText("66 students selected");
+  await expect(dialog).toContainText("70 students selected");
   await expect(dialog).toContainText("66 next attempts can be changed");
-  await expect(dialog).toContainText("4 not selected (not enrolled)");
+  await expect(dialog).not.toContainText(/not enrolled|not selected/i);
+  await expect(dialog).toContainText(
+    `No next attempt for: ${f.state.names.slice(66).join(", ")}.`,
+  );
   for (const username of f.state.names.slice(66))
     await expect(dialog).toContainText(username);
-  await expect(dialog).not.toContainText("No next attempt for:");
   await expect(dialog.getByRole("alert")).toHaveCount(0);
   expect(f.state.metadataReads).toHaveLength(1);
   expect(f.state.historyReads).toEqual([]);
   await dialog.getByLabel("Time limit (minutes)", { exact: true }).fill("37");
   await page.screenshot({
-    path: info.outputPath("70-visible-66-enrolled.png"),
+    path: info.outputPath("70-selected-66-next-attempts.png"),
   });
   await dialog
     .getByRole("button", { name: "Review changes", exact: true })

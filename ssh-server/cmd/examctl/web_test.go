@@ -93,7 +93,7 @@ func TestWebTemplateVersionHelpAndSyntax(t *testing.T) {
 func TestRosterCLIHelpAndRefusalsAreDiscoverable(t *testing.T) {
 	for _, args := range [][]string{{"help", "students"}, {"web", "students", "help"}, {"web", "students", "add", "--help"}, {"--config", "/missing", "web", "students", "--help"}} {
 		output, code := cliProcess(t, args...)
-		for _, required := range []string{"Usage:", "import-preview", "import-confirm", "--confirm", "duration-minutes", "inherit", "UID", "historical", "Exit status:"} {
+		for _, required := range []string{"Usage:", "import-preview", "import-confirm", "--confirm", "duration-minutes", "inherit", "UID", "historical", "same exam student list", "any attempt or allowed-attempt", "web grants revoke", "Exit status:"} {
 			if code != 0 || !strings.Contains(output, required) {
 				t.Fatalf("missing %q: %d %s", required, code, output)
 			}

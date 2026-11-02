@@ -218,7 +218,7 @@ it("confirms imports idempotently, preserves omitted fields and rejects stale pr
   }
 });
 
-it("adds and removes approved enrollments without changing attempts or allowing a removed student to begin", async () => {
+it("preserves permanent students and attempts while refusing Begin for missing legacy admission", async () => {
   const { vi } = await import("vitest");
   const { Agent } = await import("../../apps/server/src/agent.js");
   const { hash } = await import("../../apps/server/src/db.js");
@@ -252,6 +252,11 @@ it("adds and removes approved enrollments without changing attempts or allowing 
       page = "1".repeat(64);
     store.db
       .prepare(
+        "INSERT INTO enrollments(exam,username,uid) VALUES('other','alice',1001),('e','bob',1002)",
+      )
+      .run();
+    store.db
+      .prepare(
         "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,page_hash) VALUES('active','other','alice',1001,'ACTIVE','{}',?,?,?)",
       )
       .run(Date.now(), deadline, hash(page));
@@ -275,10 +280,15 @@ it("adds and removes approved enrollments without changing attempts or allowing 
         payload: { username, webcam: false },
       });
     expect((await add("e", "alice")).statusCode).toBe(200);
-    expect((await add("other", "alice")).statusCode).toBe(200);
-    expect((await add("e", "alice")).statusCode).toBe(400);
+    for (const exam of ["other", "e"]) {
+      const duplicate = await add(exam, "alice");
+      expect(duplicate.statusCode, duplicate.body).toBe(409);
+      expect(duplicate.json().error).toContain("Use Allow attempt");
+    }
     expect((await add("e", "unknown")).statusCode).toBe(200);
-    await add("e", "bob");
+    const duplicateBob = await add("e", "bob");
+    expect(duplicateBob.statusCode, duplicateBob.body).toBe(409);
+    expect(duplicateBob.json().error).toContain("Use Allow attempt");
     const remove = (exam: string, username: string, extra: any = {}) =>
       app.inject({
         method: "POST",
@@ -289,7 +299,25 @@ it("adds and removes approved enrollments without changing attempts or allowing 
     expect(
       (await remove("other", "alice", { confirm: false })).statusCode,
     ).toBe(400);
-    expect((await remove("other", "alice")).statusCode).toBe(200);
+    const activeAdmission = store.db
+        .prepare(
+          "SELECT * FROM enrollments WHERE exam='other' AND username='alice'",
+        )
+        .get(),
+      activeBefore = store.attempt("active"),
+      activeRemoval = await remove("other", "alice");
+    expect(activeRemoval.statusCode, activeRemoval.body).toBe(409);
+    expect(activeRemoval.json().error).toContain(
+      "must stay in the student list",
+    );
+    expect(
+      store.db
+        .prepare(
+          "SELECT * FROM enrollments WHERE exam='other' AND username='alice'",
+        )
+        .get(),
+    ).toEqual(activeAdmission);
+    expect(store.attempt("active")).toEqual(activeBefore);
     expect(store.attempt("active").state).toBe("ACTIVE");
     expect(store.attempt("active").deadline).toBe(deadline);
     expect(
@@ -313,7 +341,61 @@ it("adds and removes approved enrollments without changing attempts or allowing 
         })
       ).statusCode,
     ).toBe(401);
-    expect((await remove("e", "bob")).statusCode).toBe(200);
+    const pendingBefore = store.attempt("pending"),
+      pendingAdmission = store.db
+        .prepare("SELECT * FROM enrollments WHERE exam='e' AND username='bob'")
+        .get(),
+      pendingRemoval = await remove("e", "bob");
+    expect(pendingRemoval.statusCode, pendingRemoval.body).toBe(409);
+    expect(store.attempt("pending")).toEqual(pendingBefore);
+    expect(
+      store.db
+        .prepare("SELECT * FROM enrollments WHERE exam='e' AND username='bob'")
+        .get(),
+    ).toEqual(pendingAdmission);
+    const unusedBefore = store.db
+        .prepare(
+          "SELECT * FROM attempt_grants WHERE exam='e' AND username='unknown'",
+        )
+        .get(),
+      unusedRemoval = await remove("e", "unknown");
+    expect(unusedRemoval.statusCode, unusedRemoval.body).toBe(409);
+    expect(
+      store.db
+        .prepare(
+          "SELECT * FROM attempt_grants WHERE exam='e' AND username='unknown'",
+        )
+        .get(),
+    ).toEqual(unusedBefore);
+    expect(
+      store.db
+        .prepare(
+          "SELECT 1 FROM enrollments WHERE exam='e' AND username='unknown'",
+        )
+        .get(),
+    ).toBeTruthy();
+    // A legacy student row with no allowed attempt or history can still be
+    // removed. Use a separate legacy-mode exam: a unified-mode exam correctly
+    // refuses new enrollment rows without atomic grant issuance.
+    grantExam(store, "legacy");
+    store.db
+      .prepare(
+        "INSERT INTO enrollments(exam,username,uid) VALUES('legacy','neverallowed',0)",
+      )
+      .run();
+    expect((await remove("legacy", "neverallowed")).statusCode).toBe(200);
+    expect(
+      store.db
+        .prepare(
+          "SELECT 1 FROM enrollments WHERE exam='legacy' AND username='neverallowed'",
+        )
+        .get(),
+    ).toBeUndefined();
+    // Synthetic legacy/corrupt storage only: the Remove endpoint cannot create
+    // this missing-admission state anymore. Begin must continue to fail safely.
+    store.db
+      .prepare("DELETE FROM enrollments WHERE exam='e' AND username='bob'")
+      .run();
     const bob = store.session("student", "bob", "e");
     const begin = await app.inject({
       method: "POST",
@@ -335,7 +417,7 @@ it("adds and removes approved enrollments without changing attempts or allowing 
     });
     expect(begin.statusCode).toBe(400);
     expect(begin.json().error).toContain(
-      "You are no longer enrolled in this exam. Ask your instructor to check your access. This attempt cannot start.",
+      "Your exam access could not be verified. Ask your instructor to check your allowed attempt. This attempt cannot start.",
     );
     expect(store.attempt("pending").state).toBe("PREPARING");
   } finally {

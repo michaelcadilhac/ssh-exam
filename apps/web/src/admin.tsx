@@ -103,7 +103,6 @@ export function Admin({
   const [unusedStudents, setUnusedStudents] = useState<{
     students: string[];
     action: "edit" | "cancel";
-    notEnrolled: string[];
   } | null>(null);
   const [inlineAttempt, setInlineAttempt] = useState<{
     username: string;
@@ -332,13 +331,9 @@ export function Admin({
       attempts: s.attempts.filter((a: any) => matchesDashboardView(a, filter)),
     }))
     .filter((s: any) => !filter || s.attempts.length);
-  const candidates = visible.filter((s: any) => s.enrollment);
+  const candidates = visible;
   const keyOf = (a: any) => a.username;
   const chosen = candidates.filter((a: any) => selection.has(keyOf(a)));
-  const notEnrolled =
-    chosen.length === candidates.length
-      ? visible.filter((s: any) => !s.enrollment).map((s: any) => s.username)
-      : [];
   const selectedClocks = chosen.flatMap((s: any) =>
     s.attempts.filter((a: any) => clockEditable(a, clock)),
   );
@@ -641,7 +636,7 @@ export function Admin({
               <label className="admin-select-page">
                 <input
                   type="checkbox"
-                  aria-label="Select enrolled students on this page"
+                  aria-label="Select all students on this page"
                   checked={
                     !!candidates.length && chosen.length === candidates.length
                   }
@@ -657,7 +652,7 @@ export function Admin({
                     )
                   }
                 />
-                Select enrolled students ({candidates.length})
+                Select all students ({candidates.length})
               </label>
             </div>
             {!!chosen.length && (
@@ -671,11 +666,6 @@ export function Admin({
                     {chosen.length}{" "}
                     {chosen.length === 1 ? "student" : "students"} selected
                   </strong>
-                  {!!notEnrolled.length && (
-                    <small>
-                      {notEnrolled.length} not enrolled; not selected.
-                    </small>
-                  )}
                 </span>
                 <AdminMenu
                   label="Selected students"
@@ -738,7 +728,6 @@ export function Admin({
                         setUnusedStudents({
                           students: chosen.map((s: any) => s.username),
                           action: "edit",
-                          notEnrolled,
                         }),
                     },
                     {
@@ -748,7 +737,6 @@ export function Admin({
                         setUnusedStudents({
                           students: chosen.map((s: any) => s.username),
                           action: "cancel",
-                          notEnrolled,
                         }),
                     },
                   ]}
@@ -830,15 +818,13 @@ export function Admin({
                           >
                             <tr className="student-row" role="row">
                               <td className="selection-cell" role="cell">
-                                {s.enrollment && (
-                                  <input
-                                    type="checkbox"
-                                    aria-label={`Select student ${s.username}`}
-                                    checked={selection.has(s.username)}
-                                    disabled={stale}
-                                    onChange={() => toggle(s.username)}
-                                  />
-                                )}
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select student ${s.username}`}
+                                  checked={selection.has(s.username)}
+                                  disabled={stale}
+                                  onChange={() => toggle(s.username)}
+                                />
                               </td>
                               <td
                                 className="student-identity"
@@ -859,43 +845,44 @@ export function Admin({
                                 {!s.unusedAttempt && !s.grantError && (
                                   <small>No next attempt</small>
                                 )}
-                                {!s.enrollment && <small>Not enrolled</small>}
                               </td>
                               <td role="cell" className="row-actions">
-                                {s.enrollment && (
-                                  <AdminMenu
-                                    label={`Actions for student ${s.username}`}
-                                    actions={[
-                                      {
-                                        label: s.unusedAttempt
-                                          ? "Replace attempt…"
-                                          : "Allow attempt…",
-                                        disabled:
-                                          stale ||
-                                          current?.lifecycle === "archived" ||
-                                          !!s.grantError,
-                                        onSelect: () =>
-                                          setIssuingGrants({
-                                            students: [{ ...s }],
-                                          }),
-                                      },
-                                      {
-                                        label: "Attempt settings and history…",
-                                        disabled: stale,
-                                        onSelect: () => openGrants(s.username),
-                                      },
-                                      {
-                                        label: "Remove from exam…",
-                                        danger: true,
-                                        disabled: stale,
-                                        onSelect: () => {
-                                          setRemovingError("");
-                                          setRemoving(s.username);
-                                        },
-                                      },
-                                    ]}
-                                  />
-                                )}
+                                <AdminMenu
+                                  label={`Actions for student ${s.username}`}
+                                  actions={[
+                                    {
+                                      label: s.unusedAttempt
+                                        ? "Replace attempt…"
+                                        : "Allow attempt…",
+                                      disabled:
+                                        stale ||
+                                        current?.lifecycle === "archived" ||
+                                        !!s.grantError,
+                                      onSelect: () =>
+                                        setIssuingGrants({
+                                          students: [{ ...s }],
+                                        }),
+                                    },
+                                    {
+                                      label: "Attempt settings and history…",
+                                      disabled: stale,
+                                      onSelect: () => openGrants(s.username),
+                                    },
+                                    ...(s.removable === true
+                                      ? [
+                                          {
+                                            label: "Remove from exam…",
+                                            danger: true,
+                                            disabled: stale,
+                                            onSelect: () => {
+                                              setRemovingError("");
+                                              setRemoving(s.username);
+                                            },
+                                          },
+                                        ]
+                                      : []),
+                                  ]}
+                                />
                               </td>
                             </tr>
                             {s.unusedAttempt && (
@@ -1285,7 +1272,6 @@ export function Admin({
           actor={actor}
           username={grantsFor ?? undefined}
           students={unusedStudents?.students}
-          notEnrolled={unusedStudents?.notEnrolled}
           initialAction={unusedStudents?.action ?? grantAction}
           initialGrantId={grantFocus ?? undefined}
           onClose={() => {
@@ -1381,8 +1367,8 @@ export function Admin({
           }}
         >
           <p>
-            Removing enrollment keeps current attempts, history, recordings and
-            submissions.
+            Remove this student from the exam list. This is available only
+            before any attempt has been allowed or started.
           </p>
           {removingError && (
             <p role="alert" className="warn">

@@ -416,7 +416,7 @@ func webScriptingMain(args []string) int {
 			}
 		}
 		if len(users) < 1 || len(users) > 200 {
-			return bad("select1..200 enrolled students")
+			return bad("select1..200 students")
 		}
 		unique := map[string]bool{}
 		for _, user := range users {

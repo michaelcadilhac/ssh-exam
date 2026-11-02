@@ -283,6 +283,56 @@ class FastUI(unittest.TestCase):
         self.assertIn('Native history/configuration/cohort changed',error)
         self.assertFalse(self.stopped_calls());self.assertEqual(self.site.read_text(),'original synthetic site')
 
+    def test_unified_student_scope_requires_matched_cli_then_preserves_current_authority(self):
+        self.reviewed_web_cli(scope='unified-exam-student-list-v1',compatible=False)
+        before=self.history();self.cli('prepare');command=self.command
+        def old_cli(arguments,timeout=30):
+            raw=command(arguments,timeout)
+            if str(arguments[0])=='/synthetic/read-only-native-guard':
+                value=json.loads(raw);value['installed_cli_sha256']=self.release['old_cli_sha256'];return json.dumps(value)
+            return raw
+        with patch.object(self,'command',old_cli):_,error=self.cli('apply',expect=1)
+        self.assertIn('Native history/configuration/cohort changed',error)
+        self.assertFalse(self.stopped_calls());self.assertEqual(self.site.read_text(),'original synthetic site')
+        result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertEqual(self.history(),before);self.assertEqual(self.current,self.new['config_id'])
+        self.assertTrue(self.running);self.assertEqual(result['video_pause']['status'],'RELEASED')
+        self.assertEqual((self.data/'submissions/protected.tar').read_bytes(),b'protected historical submission')
+
+    def test_unified_student_scope_rollback_preserves_current_data_but_old_writer_cannot_reopen_or_resume(self):
+        self.reviewed_web_cli(scope='unified-exam-student-list-v1',compatible=False)
+        before=self.history();self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)
+        result,_=self.cli('rollback')
+        self.assertEqual(result['phase'],'ROLLED_BACK_GATED');self.assertTrue(result['current_database_preserved'])
+        self.assertEqual(self.current,self.old['config_id']);self.assertEqual(self.history(),before)
+        stops=len(self.stopped_calls());_,error=self.cli('reopen',expect=1)
+        self.assertIn('permanent exam student-list policy',error)
+        self.assertIn('ssh_exam_rollout_refuse',self.site.read_text())
+        record=json.loads((self.state/'status.json').read_text())
+        record.update(opening_image=self.old['config_id'],opening_previous=True,opening_site='normal.conf',opening_phase='ONLINE_ROLLED_BACK')
+        deploy.atomic_json(self.state/'status.json',record)
+        self.site.write_bytes((self.state/'normal.conf').read_bytes())
+        _,error=self.cli('resume',expect=1)
+        self.assertIn('permanent exam student-list policy',error);self.assertEqual(len(self.stopped_calls()),stops)
+        self.assertEqual(self.current,self.old['config_id']);self.assertEqual(self.history(),before)
+        self.assertTrue(self.running);self.assertTrue((self.data/deploy.deployment_pause.NAME).exists())
+
+    def test_unified_student_scope_refuses_old_writer_compatibility_and_other_unqualified_manifests(self):
+        self.reviewed_web_cli(scope='unified-exam-student-list-v1',compatible=False)
+        original=json.loads(json.dumps(self.release))
+        changes=(('previous_reader_policy_compatible',True),('previous_reader_policy_compatible',None),
+                 ('reviewed_scope','unified-exam-student-list-v2'),('qualified_source','2'*40),
+                 ('unchanged_backend_protocol_native',True),('schema',36))
+        for number,(key,value) in enumerate(changes):
+            self.state=self.root/('unqualified-student-scope-'+str(number));self.release=json.loads(json.dumps(original))
+            if key=='schema':self.release.update(schema=value,old_schema=value)
+            else:self.release['fast_ui'][key]=value
+            (self.bundle/'release.json').write_text(json.dumps(self.release))
+            _,error=self.cli('prepare',expect=1)
+            if number==0:self.assertIn('previous_reader_policy_compatible=false',error)
+            self.assertFalse(self.stopped_calls());self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
     def public_failure(self, code=503, retry='60'):
         headers=Message()
         if retry is not None:headers['Retry-After']=retry

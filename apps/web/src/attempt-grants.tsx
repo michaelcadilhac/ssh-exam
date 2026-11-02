@@ -137,7 +137,6 @@ export function AttemptGrantsDialog({
   exam,
   username,
   students,
-  notEnrolled = [],
   actor,
   initialGrantId,
   embedded = false,
@@ -149,7 +148,6 @@ export function AttemptGrantsDialog({
   exam: string;
   username?: string;
   students?: string[];
-  notEnrolled?: string[];
   actor: string;
   initialGrantId?: string;
   embedded?: boolean;
@@ -1162,12 +1160,6 @@ export function AttemptGrantsDialog({
               {names.length}{" "}
               {names.length === 1 ? "student selected" : "students selected"}.
             </strong>
-          </p>
-        )}
-        {!!notEnrolled.length && (
-          <p>
-            {notEnrolled.length} not selected (not enrolled):{" "}
-            {notEnrolled.join(", ")}.
           </p>
         )}
         {!!noUnused.length && (

@@ -31,6 +31,19 @@ against an older server must refuse the unsupported read flag actionably. The
 matched CLI must still be installed and independently guarded before apply.
 Unknown scope names remain refused; this does not authorize other backend changes.
 
+The third exact scope `unified-exam-student-list-v1` covers the shared exam student
+catalog, permanent membership after attempt/permission history, Add/CSV safeguards
+and reviewed NEW-permission restoration of missing compatibility metadata. It
+retains schema37 and all native binaries, roles and admission/monitoring checks.
+The matched CLI and exact qualified source remain mandatory. This transition
+requires `previous_reader_policy_compatible: false`: the old writer can remove
+historical membership or restore old permission through legacy setup. Rollback
+may preserve CURRENT data behind maintenance; reopening or resuming the older
+policy is refused. Use compatible forward repair. The37 locally qualified
+operator workflows include exact-scope refusal, matched-CLI checks and this held
+rollback/reopen boundary. They mock privileged transport; unchanged real nginx
+and signed-startup timing evidence remains separate.
+
 The entry point is `scripts/deploy-web-ui`. Preparation does expensive work while
 the current gateway remains online: verify/load the qualified image, retain the
 previous image, render maintenance responses, copy small configuration and warm

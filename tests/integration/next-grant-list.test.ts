@@ -38,6 +38,11 @@ async function fixture(count: number, history = 0) {
     source = randomUUID(),
     start = Date.now() - 10800000;
   // A real saved-source grant remains PENDING_NATIVE until verified retention.
+  // Its legacy student row predates history and unified issuance. Public Add
+  // cannot be used to recreate a student who already has an earlier attempt.
+  store.db
+    .prepare("INSERT INTO enrollments(exam,username,uid) VALUES(?,?,0)")
+    .run(settings.id, names[0]);
   store.db
     .prepare(
       "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state) VALUES(?,?,?,10001,'COMPLETED',?,?,?,?,1,?,'RELEASED')",
@@ -52,7 +57,7 @@ async function fixture(count: number, history = 0) {
       start + 5400000,
       "b".repeat(64),
     );
-  for (const username of names)
+  for (const username of names.slice(1))
     roster.add(settings.id, { username }, "instructor");
   store.db.transaction(() =>
     grants.additional(

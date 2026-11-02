@@ -7,6 +7,7 @@ import { exportRoster, parseRosterAsync, type RosterRow } from "./roster.js";
 import { recoveryAllowanceEdit } from "../../../packages/protocol/recovery-allowance.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import { ExamDefinitions } from "./exam-definitions.js";
+import { ExamStudents } from "./exam-students.js";
 
 const examID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const allowance = z.number().int().min(60).max(21600).multipleOf(60).nullable();
@@ -84,7 +85,7 @@ export class RosterManagement {
     if (selected.earliest === undefined) return undefined;
     if (isSandbox(id))
       throw Error(
-        "Practice dates come from Exam defaults. Enrollment cannot change them.",
+        "Practice dates come from Exam defaults. Adding students cannot change them.",
       );
     return { earliest: selected.earliest, latest: selected.latest! };
   }
@@ -128,13 +129,9 @@ export class RosterManagement {
   }
   list(id: string, after = "", limit = -1) {
     this.findExam(id);
-    return (
-      this.store.db
-        .prepare(
-          "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username>? ORDER BY username LIMIT ?",
-        )
-        .all(id, after, limit) as any[]
-    ).map((row) => {
+    const students = new ExamStudents(this.store, this.agent);
+    return students.names(id, { after, limit }).map((username) => {
+      const row = students.get(id, username)!;
       const a = this.store.db
         .prepare(
           "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY state IN ('ACTIVE','LOCKED','PREPARING') DESC,rowid DESC LIMIT 1",
@@ -175,16 +172,17 @@ export class RosterManagement {
           ),
           { statusCode: 409 },
         );
-      if (
-        this.store.db
-          .prepare("SELECT 1 FROM enrollments WHERE exam=? AND username=?")
-          .get(id, b.username)
-      )
-        throw Error("Student is already enrolled in this exam");
+      if (new ExamStudents(this.store, this.agent).has(id, b.username))
+        throw Object.assign(
+          Error(
+            "Student is already in this exam. Use Allow attempt to authorize another try. No access, permission or clock changed.",
+          ),
+          { statusCode: 409 },
+        );
       if (!isSandbox(id)) {
         if (!this.agent)
           throw Error(
-            "Configured class agent identity required for initial grant issuance; no enrollment committed",
+            "Configured class agent identity required to allow an attempt; no student was added",
           );
         new AttemptGrants(this.store, this.agent).initial(
           id,
@@ -216,6 +214,13 @@ export class RosterManagement {
     this.findExam(id);
     const b = rosterRemove.parse(input);
     this.store.db.transaction(() => {
+      if (new ExamStudents(this.store, this.agent).hasHistory(id, b.username))
+        throw Object.assign(
+          Error(
+            "This student has exam history or an allowed attempt and must stay in the student list. Cancel their unused attempt to prevent another try. No access, history or clock changed.",
+          ),
+          { statusCode: 409 },
+        );
       this.store.db
         .prepare("DELETE FROM enrollments WHERE exam=? AND username=?")
         .run(id, b.username);
@@ -239,7 +244,7 @@ export class RosterManagement {
           .get(id, name) as any;
         if (!r)
           throw Error(
-            `${name} is no longer enrolled; refresh the student list`,
+            `${name}: use Allow attempt to authorize another try, or edit their next attempt. Legacy setup settings cannot restore exam access. No settings changed.`,
           );
         if (b.duration !== undefined)
           this.authorizeAllowance(id, name, b.duration, actor);
@@ -306,6 +311,15 @@ export class RosterManagement {
             .all(id) as any[]
         ).map((r) => [r.username, r]),
       );
+      const students = new ExamStudents(this.store, this.agent);
+      for (const r of rows)
+        if (!existing.has(r.username) && students.has(id, r.username))
+          throw Object.assign(
+            Error(
+              `${r.username}: this student is already in this exam. Use Allow attempt to authorize another try. No students were imported and no access, permission or clock changed.`,
+            ),
+            { statusCode: 409 },
+          );
       const result = rows.map((r, index) => ({
         ...r,
         uid: existing.get(r.username)?.uid ?? 0,
@@ -422,6 +436,7 @@ export class RosterManagement {
         );
       const rows = imported.rows;
       // Validate every target before any grant/enrollment/allowance mutation.
+      const students = new ExamStudents(this.store, this.agent);
       for (const r of rows) {
         const previous = this.store.db
           .prepare(
@@ -433,6 +448,13 @@ export class RosterManagement {
           JSON.stringify(r.previous || null)
         )
           return reviewRequired("Roster changed since preview; validate again");
+        if (!previous && students.has(id, r.username))
+          throw Object.assign(
+            Error(
+              `${r.username}: this student is already in this exam. Use Allow attempt to authorize another try. Review the CSV again; no students were imported and no access, permission or clock changed.`,
+            ),
+            { statusCode: 409, code: "ROSTER_REVIEW_REQUIRED" },
+          );
       }
       for (const r of rows) {
         const previous = r.previous;
@@ -490,13 +512,7 @@ export class RosterManagement {
   }
   export(id: string) {
     this.findExam(id);
-    return exportRoster(
-      this.store.db
-        .prepare(
-          "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? ORDER BY username",
-        )
-        .all(id),
-    );
+    return exportRoster(this.list(id));
   }
   example(id: string) {
     this.findExam(id);

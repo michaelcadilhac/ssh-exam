@@ -90,7 +90,7 @@ async function fixture() {
   };
 }
 
-it("single enrollment saves exact chosen past dates only for a new first attempt, preserving defaults and re-enrollment history", async () => {
+it("adding a student saves exact past dates, while only a reviewed new attempt can replace the saved permission", async () => {
   const f = await fixture();
   try {
     const window = {
@@ -120,20 +120,67 @@ it("single enrollment saves exact chosen past dates only for a new first attempt
         ).config,
       ),
     ).toEqual(f.defaults);
-    expect(
-      (await f.post("remove", { username: "student", confirm: true }))
-        .statusCode,
-    ).toBe(200);
-    expect(
-      (
-        await f.post("add", {
-          username: "student",
-          earliest: f.defaults.earliest,
-          latest: f.defaults.latest,
-        })
-      ).statusCode,
-    ).toBe(200);
+    const before = f.domain(),
+      removal = await f.post("remove", { username: "student", confirm: true });
+    expect(removal.statusCode, removal.body).toBe(409);
+    expect(removal.json().error).toContain("must stay in the student list");
+    expect(f.domain()).toEqual(before);
+    const readd = await f.post("add", {
+      username: "student",
+      earliest: f.defaults.earliest,
+      latest: f.defaults.latest,
+    });
+    expect(readd.statusCode, readd.body).toBe(409);
+    expect(readd.json().error).toContain("Use Allow attempt");
+    expect(f.domain()).toEqual(before);
     expect(await f.grants("student")).toEqual([saved]);
+    const reviewResponse = await f.app.inject({
+      method: "POST",
+      url: `/api/admin/exams/${f.defaults.id}/grants/additional-preview`,
+      headers: f.headers,
+      payload: {
+        definition_revision: new ExamDefinitions(f.store, "class").show(
+          f.defaults.id,
+        ).revision,
+        template_version: f.defaults.template_version,
+        usernames: ["student"],
+        preserve_duration: true,
+        earliest: f.defaults.earliest,
+        latest: f.defaults.latest,
+        reason: "Explicitly replace the unused attempt with new starting dates",
+        request: randomUUID(),
+      },
+    });
+    expect(reviewResponse.statusCode, reviewResponse.body).toBe(200);
+    expect(f.domain()).toEqual(before);
+    const review = reviewResponse.json(),
+      confirmed = await f.app.inject({
+        method: "POST",
+        url: `/api/admin/grant-issuance/${review.id}/confirm`,
+        headers: f.headers,
+        payload: {
+          revision: review.revision,
+          request: randomUUID(),
+          replacement_policy: "single-unused-v1",
+        },
+      });
+    expect(confirmed.statusCode, confirmed.body).toBe(200);
+    const replacement = confirmed.json().issued[0],
+      after = await f.grants("student");
+    expect(replacement.replaced.map((r: any) => r.id)).toEqual([saved.id]);
+    expect(after.find((g: any) => g.id === saved.id)).toEqual({
+      ...saved,
+      status: "REVOKED",
+    });
+    expect(after.find((g: any) => g.id === replacement.grant)).toMatchObject({
+      status: "AVAILABLE",
+      settings: {
+        earliest: f.defaults.earliest,
+        latest: f.defaults.latest,
+        duration: 4500,
+        webcam: false,
+      },
+    });
     expect(
       (await f.post("add", { username: "defaultstudent" })).statusCode,
     ).toBe(200);

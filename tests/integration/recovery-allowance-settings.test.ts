@@ -120,12 +120,25 @@ it("web settings and CSV persist only explicit allowance authorization, atomical
       roster.allowanceEdit("recovery", "student")!.revision,
     ).toBeGreaterThan(csvEdit.revision);
     expect(store.attempt("historical")).toEqual(original);
-    roster.remove(
-      "recovery",
-      { username: "student", confirm: true },
-      "instructor",
+    const admissionBefore = store.db
+        .prepare(
+          "SELECT * FROM enrollments WHERE exam='recovery' AND username='student'",
+        )
+        .get(),
+      allowanceBefore = roster.allowanceEdit("recovery", "student"),
+      removal = await post("remove", { username: "student", confirm: true });
+    expect(removal.statusCode, removal.body).toBe(409);
+    expect(removal.json().error).toContain("must stay in the student list");
+    expect(
+      store.db
+        .prepare(
+          "SELECT * FROM enrollments WHERE exam='recovery' AND username='student'",
+        )
+        .get(),
+    ).toEqual(admissionBefore);
+    expect(roster.allowanceEdit("recovery", "student")).toEqual(
+      allowanceBefore,
     );
-    expect(roster.allowanceEdit("recovery", "student")).not.toBeNull();
     expect(store.attempt("historical")).toEqual(original);
   } finally {
     await app.close();

@@ -60,6 +60,84 @@ async function open(
   return dialog;
 }
 
+test("retirement shows all 70 exam students when only 66 legacy setup rows exist", async ({
+  page,
+}) => {
+  const post = await admin(page),
+    definition = await create(page, post),
+    students = Array.from({ length: 70 }, (_, i) => ({
+      exam: definition.id,
+      username: `learner${String(i + 1).padStart(3, "0")}`,
+    }));
+  let studentReads = 0;
+  await page.route(`**/api/admin/exams/${definition.id}/roster`, (route) => {
+    expect(route.request().method()).toBe("GET");
+    studentReads++;
+    return route.fulfill({ json: students });
+  });
+  await page.route(
+    `**/api/admin/exams/${definition.id}/retirement-preview`,
+    async (route) => {
+      const response = await route.fetch(),
+        result = await response.json();
+      expect(response.status()).toBe(200);
+      return route.fulfill({
+        response,
+        json: { ...result, counts: { ...result.counts, enrollments: 66 } },
+      });
+    },
+  );
+  const dialog = await open(page, "Archive exam");
+  await expect(dialog.getByText("Students", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("70", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("66", { exact: true })).toHaveCount(0);
+  await expect(dialog).not.toContainText(/enrollment|not enrolled/i);
+  await expect(
+    dialog.getByRole("button", { name: "Archive exam", exact: true }),
+  ).toBeEnabled();
+  expect(studentReads).toBe(1);
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect.poll(() => studentReads).toBe(2);
+  await expect(dialog.getByText("70", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+});
+
+for (const malformed of ["not-array", "duplicate", "foreign-exam"] as const)
+  test(`retirement refuses a ${malformed} student list and refreshes both inputs before enabling the action`, async ({
+    page,
+  }) => {
+    const post = await admin(page),
+      definition = await create(page, post),
+      student = { exam: definition.id, username: "learner001" };
+    let valid = false;
+    await page.route(`**/api/admin/exams/${definition.id}/roster`, (route) =>
+      route.fulfill({
+        json: valid
+          ? [student]
+          : malformed === "not-array"
+            ? { students: [student] }
+            : malformed === "duplicate"
+              ? [student, student]
+              : [{ ...student, exam: "another-exam" }],
+      }),
+    );
+    const dialog = await open(page, "Archive exam"),
+      confirm = dialog.getByRole("button", {
+        name: "Archive exam",
+        exact: true,
+      });
+    await expect(dialog.getByRole("alert")).toContainText(
+      "Could not read the complete student list",
+    );
+    await expect(confirm).toBeDisabled();
+    valid = true;
+    await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(confirm).toBeEnabled();
+    await expect(dialog.getByRole("alert")).toHaveCount(0);
+    await expect(dialog.getByText("1", { exact: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  });
+
 test("mobile unused deletion retries the identical reviewed request after the real server commits but its reply is lost", async ({
   page,
 }) => {

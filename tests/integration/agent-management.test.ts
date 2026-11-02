@@ -1823,15 +1823,33 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         stderr: expect.stringContaining("never overwrite"),
       });
       expect(readFileSync(destination, "utf8")).toBe(exported);
+      await expect(
+        students(["remove", "cli-exam", "learner02", "--confirm", "learner02"]),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringMatching(/cancel.*unused|unused.*cancel/i),
+      });
+      expect(
+        f.current.store.db
+          .prepare(
+            "SELECT username FROM enrollments WHERE exam='cli-exam' AND username='learner02'",
+          )
+          .get(),
+      ).toEqual({ username: "learner02" });
+      // A legacy student with no attempt or permission can still be removed.
+      await cli(["create", "removable-students", ...creation.slice(2)]);
+      f.current.store.db
+        .prepare("INSERT INTO enrollments(exam,username,uid) VALUES(?,?,0)")
+        .run("removable-students", "removable01");
       expect(
         JSON.parse(
           (
             await students([
               "remove",
-              "cli-exam",
-              "learner02",
+              "removable-students",
+              "removable01",
               "--confirm",
-              "learner02",
+              "removable01",
             ])
           ).stdout,
         ).result.ok,
@@ -1957,7 +1975,9 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         )
         .run(
           savedSourceID,
-          JSON.stringify(savedDefinition.exam),
+          // Saved attempt settings own this requirement; the later legacy
+          // student metadata is not a substitute for the source snapshot.
+          JSON.stringify({ ...savedDefinition.exam, webcam: true }),
           savedSourceEnded - 5400000,
           savedSourceEnded,
           savedSourceEnded,
@@ -1977,7 +1997,7 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         )
         .run(
           secondSavedSource,
-          JSON.stringify(savedDefinition.exam),
+          JSON.stringify({ ...savedDefinition.exam, webcam: false }),
           savedSourceEnded - 5400000,
           savedSourceEnded,
           savedSourceEnded,
@@ -2820,8 +2840,14 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
         })
       ).ok,
     ).toBe(true);
-    // Existing legacy history must not be retroactively issued an initial grant
-    // by re-enrollment. New CSV students below still exercise real issuance.
+    // Author complete legacy membership before its historical attempt. An
+    // existing student cannot be added again to restore or invent permission.
+    // New CSV students below still exercise real initial issuance.
+    f.current.store.db
+      .prepare(
+        "INSERT INTO enrollments(exam,username,duration,webcam,uid) VALUES('roster','learner01',7200,0,0)",
+      )
+      .run();
     f.current.store.db
       .prepare(
         "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,access_state) VALUES('active-roster','roster','learner01',29999,'ACTIVE',?,100,200,200,'HELD')",
@@ -2841,8 +2867,8 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
           },
           addedID,
         )
-      ).ok,
-    ).toBe(true);
+      ).status,
+    ).toBe(409);
     expect(
       (
         await root(
@@ -2856,8 +2882,8 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
           },
           addedID,
         )
-      ).ok,
-    ).toBe(true);
+      ).status,
+    ).toBe(409);
     expect(
       f.current.store.db
         .prepare("SELECT uid FROM enrollments WHERE exam='roster'")
@@ -3008,11 +3034,36 @@ it("shares roster/CSV validation, inheritance, verified UID and snapshot fences 
     expect(next.result.students.map((s: any) => s.username)).toEqual([
       "learner02",
     ]);
+    const refusedRemoval = await root("students.remove", {
+      exam: "roster",
+      username: "learner02",
+      confirm: true,
+    });
+    expect(refusedRemoval.ok).toBe(false);
+    expect(refusedRemoval.error).toMatch(/cancel.*unused|unused.*cancel/i);
+    expect(
+      f.current.store.db
+        .prepare(
+          "SELECT username FROM enrollments WHERE exam='roster' AND username='learner02'",
+        )
+        .get(),
+    ).toEqual({ username: "learner02" });
+    expect(
+      (
+        await root("exams.create", {
+          exam: { ...exam, id: "removable-roster" },
+          source_selection: "template-version/v1",
+        })
+      ).ok,
+    ).toBe(true);
+    f.current.store.db
+      .prepare("INSERT INTO enrollments(exam,username,uid) VALUES(?,?,0)")
+      .run("removable-roster", "removable01");
     expect(
       (
         await root("students.remove", {
-          exam: "roster",
-          username: "learner02",
+          exam: "removable-roster",
+          username: "removable01",
           confirm: true,
         })
       ).ok,

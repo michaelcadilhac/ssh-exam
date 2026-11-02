@@ -26,25 +26,27 @@ Uses root agent authentication, the fixed HTTPS gateway and explicit named
 students.* managementOperations authorization; no browser login or student
 credentials. Help works without root/configuration. All operations preserve
 historical attempts, active snapshots, original/current deadlines and holds.
-Removal deletes enrollment only, not an attempt/submission or access restriction.
-It does not finish/cancel work or revoke a native recovery grant. Inspect active
-attempts/reauthentication needs before removing enrollment.
+Removal is allowed only before the student has any attempt or allowed-attempt
+history in this exam, including cancelled or consumed permissions. Otherwise use
+web grants revoke to cancel an unused attempt; started attempts, submissions,
+history and access restrictions remain intact. Removal never finishes work or
+revokes a native recovery grant.
 
 Add defaults to inheritance; settings changes only named fields (1..1000 users).
 Duration is 1..360 whole MINUTES, or inherit; webcam is required/optional/inherit.
-These enrollment values supply new enrollment accommodations and the legacy
+These student settings supply new-student accommodations and the legacy
 fallback when no saved grant or attempt exists. Later attempts copy the latest
-saved attempt settings; changing enrollment values does not override that copy,
+saved attempt settings; changing student settings does not override that copy,
 revise unused attempts or edit current clocks. Use web grants revise for an unused
 attempt. Sandbox duration is five minutes or inheritance. UID stays unresolved (0)
 until the student's trusted SSH verifies identity; no UID override is accepted.
 
-NEW ordinary enrollment/CSV rows atomically issue an initial saved-settings grant.
+NEW ordinary student/CSV rows atomically issue an initial saved-settings grant.
 Configure an exact attested template version and finite Begin window FIRST; a
-missing source/window refuses without partial enrollment. Existing legacy
-history/enrollment is not automatically backfilled. Later roster/default edits
+missing source/window refuses without partially adding a student. Existing
+history never receives another allowance automatically. Later roster/default edits
 never revise an issued initial grant: use examctl web grants help for inspection,
-explicit unused revision/revoke and original claim/Begin diagnostics. Reenrollment
+explicit unused revision/revoke and original claim/Begin diagnostics. Adding again
 cannot invent another allowance; first verified claim retains its Unix UID even
 after cancellation. Extra/sandbox/migration issuance is not provided here.
 
@@ -56,7 +58,7 @@ its configured practice dates and refuses individual date overrides.
 For add, --definition-revision HASH optionally requires the reviewed exam
 definition revision; obtain it with examctl web exams show EXAM. CSV preview
 saves its chosen dates and current definition; confirm refuses changed defaults
-or changed target enrollments and requires a new preview. A consumed preview
+or changed target students and requires a new preview. A consumed preview
 remains retryable. No date columns are added to CSV.
 Explicit dates/revision require an updated gateway and students.list permission
 for a fresh authenticated capability check before mutation. An older gateway
@@ -87,6 +89,8 @@ writes can leave a partial new file; inspect it before retrying.
 Common flags: --config FILE (root agent JSON), --request UUID (durable intent ID).
 Lost reply: repeat identical arguments with the printed --request UUID and fresh
 nonce. Different intent: use a NEW ID. A new ID is also needed for refreshed reads.
+List and export use the same exam student list as the dashboard, including saved
+attempt/permission history. Being listed alone grants no permission or clock.
 List defaults to 100 rows, max 200; next is an exclusive username cursor. Other
 inspection/mutation results are confirmed JSON, not proof of native execution.
 
@@ -301,7 +305,7 @@ func checkEnrollmentDatesSupport(c core.Config, operation string, body any) erro
 	}
 	result, err := core.ManagementCall(c, "students.list", map[string]any{"exam": b["exam"], "limit": 1}, core.ManagementID())
 	if err != nil {
-		return fmt.Errorf("verify enrollment-date support using authorized students.list: %w; no enrollment/import was sent", err)
+		return fmt.Errorf("verify student-date support using authorized students.list: %w; no student/import was sent", err)
 	}
 	var page struct {
 		Capabilities []string `json:"capabilities"`
@@ -313,5 +317,5 @@ func checkEnrollmentDatesSupport(c core.Config, operation string, body any) erro
 			}
 		}
 	}
-	return fmt.Errorf("gateway cannot confirm enrollment-date support; update the web server before using explicit dates/revision; no enrollment/import was sent")
+	return fmt.Errorf("gateway cannot confirm student-date support; update the web server before using explicit dates/revision; no student/import was sent")
 }

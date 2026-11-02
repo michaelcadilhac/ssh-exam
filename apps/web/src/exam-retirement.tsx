@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import { RefreshButton } from "./refresh-button.js";
+import { username } from "../../../packages/protocol/index.js";
 
 export type RetirementAction = "delete" | "archive" | "unarchive";
 export function ExamRetirement({
@@ -26,15 +27,30 @@ export function ExamRetirement({
     setError("");
     setReview(null);
     try {
-      const result = await api(`/admin/exams/${exam.id}/retirement-preview`, {
-        action,
-      });
+      const [result, students] = await Promise.all([
+        api(`/admin/exams/${exam.id}/retirement-preview`, { action }),
+        api(`/admin/exams/${exam.id}/roster`),
+      ]);
       if (!live.current) return;
       if (result.id !== exam.id || result.action !== action)
         throw Error(
           "This review does not match the exam. Close it and open the intended exam.",
         );
-      setReview(result);
+      if (
+        !Array.isArray(students) ||
+        students.some(
+          (student) =>
+            !student ||
+            student.exam !== exam.id ||
+            !username.safeParse(student.username).success,
+        ) ||
+        new Set(students.map((student) => student.username)).size !==
+          students.length
+      )
+        throw Error(
+          "Could not read the complete student list. Refresh and try again.",
+        );
+      setReview({ ...result, studentCount: students.length });
     } catch (e) {
       if (live.current) setError((e as Error).message);
     } finally {
@@ -110,7 +126,7 @@ export function ExamRetirement({
               </p>
               <dl className="admin-review-summary">
                 <dt>Students</dt>
-                <dd>{review.counts.enrollments}</dd>
+                <dd>{review.studentCount}</dd>
                 <dt>Attempts</dt>
                 <dd>{review.counts.attempts}</dd>
               </dl>

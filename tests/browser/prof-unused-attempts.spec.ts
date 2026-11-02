@@ -292,7 +292,7 @@ async function fixture(
     await page.getByLabel("Selected exam").selectOption(exam);
     await page
       .getByRole("checkbox", {
-        name: "Select enrolled students on this page",
+        name: "Select all students on this page",
         exact: true,
       })
       .check();
@@ -798,7 +798,7 @@ test("bulk cancellation directly reviews every selected next attempt regardless 
   await page.getByLabel("Selected exam").selectOption(f.settings.id);
   await page
     .getByRole("checkbox", {
-      name: "Select enrolled students on this page",
+      name: "Select all students on this page",
       exact: true,
     })
     .check();

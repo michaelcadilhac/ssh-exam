@@ -13,6 +13,7 @@ import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { RosterManagement } from "./roster-management.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import { AttemptManagement } from "./attempt-management.js";
+import { ExamStudents } from "./exam-students.js";
 import {
   ClockManagement,
   assertClockCapabilities,
@@ -53,20 +54,9 @@ export function registerExamAdmin(
       })
       .parse(req.query);
     const start = Math.max(0, Math.floor(Number(offset) || 0));
-    const allUsers = store.db
-      .prepare(
-        `SELECT username FROM (
-      SELECT username FROM enrollments WHERE exam=? UNION SELECT username FROM attempts WHERE exam=?
-    ) ORDER BY username`,
-      )
-      .all(req.params.exam, req.params.exam) as any[];
-    const users = store.db
-      .prepare(
-        `SELECT username FROM (
-      SELECT username FROM enrollments WHERE exam=? UNION SELECT username FROM attempts WHERE exam=?
-    ) WHERE username LIKE ? ORDER BY username`,
-      )
-      .all(req.params.exam, req.params.exam, `%${q}%`) as any[];
+    const catalog = new ExamStudents(store, agent.id);
+    const allUsers = catalog.names(req.params.exam);
+    const users = catalog.names(req.params.exam, { search: q });
     const interruptionHistory = store.interruptions.forExam(req.params.exam);
     const deletedHistory = new Set(
       (
@@ -93,7 +83,7 @@ export function registerExamAdmin(
       grouped.get(attempt.username)!.push(attempt);
     }
     const matches = users
-      .map(({ username }) => {
+      .map((username) => {
         const attempts = grouped.get(username) || [];
         return {
           username,
@@ -105,6 +95,7 @@ export function registerExamAdmin(
       .filter((s) => !view || s.attempts.length);
     const students = matches.slice(start, start + 100).map((s) => ({
       ...s,
+      removable: catalog.removable(req.params.exam, s.username),
       hasCurrentAttempt: (grouped.get(s.username) ?? []).some((a) =>
         ["PREPARING", "ACTIVATING", "ACTIVE", "LOCKED", "FINALIZING"].includes(
           a.state,
@@ -188,7 +179,7 @@ export function registerExamAdmin(
   });
   app.post("/api/admin/exams/:exam/roster/settings", async (req: any) => {
     const actor = principal(req, "admin");
-    return new RosterManagement(store, describe).settings(
+    return new RosterManagement(store, describe, agent.id).settings(
       req.params.exam,
       req.body,
       actor.username,

@@ -33,6 +33,14 @@ export async function qualifyClockCLI(
     terminals: 4,
     private_extra: "PRIVATE-UNRECOGNIZED-SETTINGS",
   };
+  // These are already-started legacy records, not new permissions. Author the
+  // original metadata before history; Add must refuse an already-known student.
+  for (const user of ["clock01", "clock02", "clock03", "clock04"])
+    f.current.store.db
+      .prepare(
+        "INSERT INTO enrollments(exam,username,uid) VALUES('clock-exam',?,0)",
+      )
+      .run(user);
   const insert = f.current.store.db.prepare(
     "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,access_state,access_held_at,page_hash,generation) VALUES(?,'clock-exam',?,?,?,?,?,?,?,'HELD',?,'PRIVATE-PAGE-HASH',1)",
   );
@@ -49,10 +57,6 @@ export async function qualifyClockCLI(
       start,
     ),
   );
-  // These fixtures are already-started LEGACY records, not new grants. Seed
-  // history before re-enrollment so enrollment cannot invent a new allowance.
-  for (const user of ["clock01", "clock02", "clock03", "clock04"])
-    await run("students", ["add", "clock-exam", user]);
   await run("students", [
     "settings",
     "clock-exam",

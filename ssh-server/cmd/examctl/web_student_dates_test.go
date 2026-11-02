@@ -128,13 +128,13 @@ func TestWebStudentEnrollmentDatesOldGatewayRefusesBeforeMutation(t *testing.T) 
 		{"students", "add", "midterm", "student", "--definition-revision", strings.Repeat("d", 64)},
 	} {
 		out, err, code := f.invoke(args...)
-		if code != 1 || out != "" || !strings.Contains(err, "update the web server") || !strings.Contains(err, "no enrollment/import was sent") {
+		if code != 1 || out != "" || !strings.Contains(err, "update the web server") || !strings.Contains(err, "no student/import was sent") {
 			t.Fatal(code, out, err)
 		}
 	}
 	var out strings.Builder
 	err, code := f.streams(strings.NewReader("username\nstudent\n"), &out, "students", "import-preview", "midterm", "--file", "-", "--earliest", "2020-01-02T00:00:00Z", "--latest", "2020-01-03T00:00:00Z")
-	if code != 1 || out.Len() != 0 || !strings.Contains(err, "no enrollment/import was sent") {
+	if code != 1 || out.Len() != 0 || !strings.Contains(err, "no student/import was sent") {
 		t.Fatal(code, out.String(), err)
 	}
 	mu.Lock()

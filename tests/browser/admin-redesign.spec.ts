@@ -83,6 +83,7 @@ async function fixture(
     {
       username: "eve",
       enrollment: { duration: null, webcam: null },
+      removable: true,
       attempts: [],
     },
   ];
@@ -869,7 +870,7 @@ for (const width of [1280, 430])
     await page.screenshot({ path: info.outputPath(`admin-${width}.png`) });
     await expect(
       page.getByRole("checkbox", {
-        name: "Select enrolled students on this page",
+        name: "Select all students on this page",
         exact: true,
       }),
     ).toBeVisible();
@@ -906,7 +907,7 @@ test("student selection names excluded students and changes only eligible curren
   ).toHaveCount(0);
   await page
     .getByRole("checkbox", {
-      name: "Select enrolled students on this page",
+      name: "Select all students on this page",
       exact: true,
     })
     .check();
@@ -947,7 +948,7 @@ test("student selection names excluded students and changes only eligible curren
     page.getByRole("rowgroup", { name: "amy", exact: true }),
   ).toContainText("Clock change pending");
 });
-test("row menus support keyboard navigation and restore focus after a cancelled operation", async ({
+test("row menus support keyboard navigation and limit removal to students without attempts", async ({
   page,
 }) => {
   await fixture(page);
@@ -967,10 +968,9 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
       exact: true,
     }),
   ).toBeFocused();
-  await page.keyboard.press("ArrowDown");
   await expect(
     page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
-  ).toBeFocused();
+  ).toHaveCount(0);
   await page.keyboard.press("ArrowDown");
   await expect(
     page.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
@@ -978,18 +978,6 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
   await expect(page.getByRole("menu")).toHaveCount(0);
-  await trigger.click();
-  await page
-    .getByRole("menuitem", { name: "Remove from exam…", exact: true })
-    .click();
-  await expect(
-    page.getByRole("dialog", {
-      name: "Remove amy from this exam?",
-      exact: true,
-    }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(trigger).toBeFocused();
   await trigger.press("ArrowDown");
   await page.keyboard.press("Tab");
   await expect(page.getByRole("menu")).toHaveCount(0);
@@ -999,6 +987,31 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
       .getByRole("button", { name: "Review", exact: true })
       .first(),
   ).toBeFocused();
+
+  const unusedStudent = page.getByRole("button", {
+    name: "Actions for student eve",
+    exact: true,
+  });
+  await unusedStudent.focus();
+  await unusedStudent.press("ArrowDown");
+  await page.keyboard.press("End");
+  const remove = page.getByRole("menuitem", {
+    name: "Remove from exam…",
+    exact: true,
+  });
+  await expect(remove).toBeFocused();
+  await remove.click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Remove eve from this exam?",
+    exact: true,
+  });
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation).toContainText(
+    "This is available only before any attempt has been allowed or started.",
+  );
+  await expect(confirmation).not.toContainText("Removing enrollment");
+  await page.keyboard.press("Escape");
+  await expect(unusedStudent).toBeFocused();
 });
 test("row menus ignore queued scroll at the same anchor but dismiss after actual movement", async ({
   page,
@@ -1315,7 +1328,7 @@ test("partial clock failures stay reviewable and retries reuse the same request 
   s.failedClock = s.rows[1].attempts[0].id;
   await page
     .getByRole("checkbox", {
-      name: "Select enrolled students on this page",
+      name: "Select all students on this page",
       exact: true,
     })
     .check();

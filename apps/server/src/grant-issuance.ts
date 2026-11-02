@@ -11,6 +11,7 @@ import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import { ExamDefinitions } from "./exam-definitions.js";
+import { ExamStudents } from "./exam-students.js";
 
 const refuse = (message: string, statusCode = 409): never => {
   throw Object.assign(Error(message), { statusCode });
@@ -20,19 +21,21 @@ const refuse = (message: string, statusCode = 409): never => {
 export class GrantIssuance {
   private grants: AttemptGrants;
   private definitions: ExamDefinitions;
+  private students: ExamStudents;
   constructor(
     private store: Store,
     private agent: string,
   ) {
     this.grants = new AttemptGrants(store, agent);
     this.definitions = new ExamDefinitions(store, agent);
+    this.students = new ExamStudents(store, agent);
   }
   private eligible(exam: string, username: string, additional = false) {
     const enrollment = this.store.db
       .prepare("SELECT * FROM enrollments WHERE exam=? AND username=?")
       .get(exam, username) as any;
     if (
-      !enrollment ||
+      (additional ? !this.students.has(exam, username) : !enrollment) ||
       (!additional &&
         (this.store.db
           .prepare("SELECT 1 FROM attempts WHERE exam=? AND username=?")
@@ -43,10 +46,13 @@ export class GrantIssuance {
     )
       return refuse(
         additional
-          ? `Student ${username} is not enrolled. Add them to this exam before allowing another attempt. This request allowed no attempts.`
-          : `Student ${username} must be enrolled and have no earlier allowed attempts or exam history. Check their enrollment and Allowed attempts. This request allowed no attempts.`,
+          ? `Student ${username} is not in this exam. Add them before allowing an attempt. This request allowed no attempts.`
+          : `Student ${username} must be in this exam with no earlier exam history or allowed attempt. For another try, use Allow attempt. No attempt was allowed.`,
       );
-    return enrollment;
+    // Historical students remain in the exam's student list even when an older
+    // installation has no admission row. Preserve that exact absence in review;
+    // listing/previewing must never recreate admission or revive an old grant.
+    return enrollment ?? null;
   }
   preview(input: unknown, actor: string) {
     return this.previewSelection(grantIssuePreview.parse(input), actor, false);
@@ -377,7 +383,7 @@ export class GrantIssuance {
             ) !== r.enrollment
           )
             return refuse(
-              `Enrollment or settings for ${r.username} changed after this review. Create a new review. This request allowed no attempts.`,
+              `Student access or settings for ${r.username} changed after this review. Create a new review. This request allowed no attempts.`,
             );
           if (
             saved.kind !== "NEW_LEGACY_INITIAL_GRANTS" &&
@@ -404,7 +410,42 @@ export class GrantIssuance {
             return refuse(
               "The reviewed start window has closed. Choose new opening and closing times and create a new review. This request allowed no attempts.",
             );
+          if (
+            this.grants.snapshot(r.settings, r.work, r.username).hash !== r.hash
+          )
+            return refuse(
+              "Reviewed source/settings hash differs at confirmation; no partial batch issued",
+            );
         }
+        // All rows and immutable settings/replacement snapshots were checked
+        // before any write. Only explicit confirmation of NEW authority restores
+        // this compatibility row, within the same atomic issuance transaction.
+        // UID remains unresolved until authenticated native SSH verifies it.
+        if (saved.kind !== "NEW_LEGACY_INITIAL_GRANTS")
+          for (const r of saved.rows) {
+            if (r.enrollment !== "null") continue;
+            this.store.db
+              .prepare(
+                "INSERT INTO enrollments(exam,username,duration,webcam,uid) VALUES(?,?,?,?,0)",
+              )
+              .run(
+                saved.exam,
+                r.username,
+                r.settings.duration,
+                Number(r.settings.webcam),
+              );
+            this.store.audit(
+              actor,
+              "restore-student-admission",
+              saved.exam,
+              JSON.stringify({
+                username: r.username,
+                review: id,
+                unresolved_uid: true,
+                reason: "Explicitly confirmed new allowed attempt",
+              }),
+            );
+          }
         const issued = saved.rows.map((r: any) => {
           const grant =
             saved.kind !== "NEW_LEGACY_INITIAL_GRANTS"

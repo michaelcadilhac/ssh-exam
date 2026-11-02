@@ -1,14 +1,27 @@
+# Current follow-up
+
+November2 ONE EXAM STUDENT LIST — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
+Unify dashboard, management/CLI lists, CSV and bulk selection, including historical
+and permission-only students. Remove enrollment labels. User approved keeping every
+student with attempt/permission history; only untouched setup entries can be removed.
+Explicit reviewed Allow attempt can restore missing compatibility metadata atomically
+with a new permission; reads/previews never restore access or start time. Incident
+transfer bookkeeping explains the four missing midterm setup records. Application764 (across full/focused runs, one opt-in skip), affected browser/CLI/
+race/types/build and37 operator checks pass; exact release packaging is finishing.
+No production data changes, push or deployment. Evidence and
+acceptance: docs/exam-student-list.md.
+
 # Deferred work
 
-November2 BULK NEXT-ATTEMPT LOADING — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
+November2 BULK NEXT-ATTEMPT LOADING — DEPLOYED November2 at10:25:47 Chicago:
 Replace serial student-history requests with the existing grants list's indexed
 current-only filter and matching examctl --next workflow. Shared drafts open
 immediately; selected and editable counts remain distinct, and no-permission/claim
 omissions are named. Midterm's70visible rows include4 unenrolled historical students;
 the66 selected students are enrolled. The page/dialog now make this scope explicit.
 No enrollment, grant, clock, history or claim policy changed. Focused/affected
-browser/HTTP/actualCLI/image and scoped deployment qualification pass; current
-production is unchanged. Evidence and proposed rollout: docs/bulk-next-attempt-loading.md.
+browser/HTTP/actualCLI/image and scoped deployment qualification pass; the authorized
+web/CLI cutover and public acceptance are complete. Evidence: docs/bulk-next-attempt-loading.md.
 
 November2 ADMIN NEXT ATTEMPT — DEPLOYED AND ONLINE:
 The instructor requested one visible/editable Next attempt, one creation workflow,

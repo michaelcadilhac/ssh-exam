@@ -1280,7 +1280,10 @@ export async function createApp(
         "SELECT exam,username,webcam,duration,uid FROM enrollments WHERE exam=? AND username=?",
       )
       .get(s.exam, s.username) as any;
-    if (!exam || !row) throw Error("Enrollment not found");
+    if (!exam || !row)
+      throw Error(
+        "Your exam access could not be verified. Ask your instructor to check your allowed attempt.",
+      );
     const latest = store.db
       .prepare(
         "SELECT * FROM attempts WHERE exam=? AND username=? ORDER BY rowid DESC LIMIT 1",
@@ -1444,7 +1447,7 @@ export async function createApp(
       .get(s.exam, s.username) as any;
     if (!enrollment)
       throw Error(
-        "Your enrollment could not be found. Ask your instructor to check your exam access.",
+        "Your exam access could not be verified. Ask your instructor to check your allowed attempt.",
       );
     if (!Number.isSafeInteger(enrollment.uid) || enrollment.uid < 1000)
       throw Error(
@@ -1719,7 +1722,7 @@ export async function createApp(
           enrollment.duration !== recovery.duration
         )
           throw Error(
-            "Your saved-work attempt and enrollment have different time limits. Ask your instructor to save the intended time limit, then open setup again. No exam time has started.",
+            "Your saved-work attempt has a different time limit from the one currently allowed. Ask your instructor to save the intended time limit, then open setup again. No exam time has started.",
           );
         if (previous && settings.duration !== recovery.duration)
           throw Error(
@@ -1931,7 +1934,7 @@ export async function createApp(
         .get(a.exam, a.username)
     )
       throw Error(
-        "You are no longer enrolled in this exam. Ask your instructor to check your access. This attempt cannot start.",
+        "Your exam access could not be verified. Ask your instructor to check your allowed attempt. This attempt cannot start.",
       );
     if (config.maintenance)
       throw Error(
@@ -3382,7 +3385,7 @@ export async function createApp(
               .get(m.exam, m.username);
             if (!row && !isSandbox(m.exam))
               throw signInError(
-                "This account is not enrolled in the selected exam. Check the exam ID and username, or contact your instructor.",
+                "This account does not have access to the selected exam. Check the exam ID and username, or contact your instructor.",
               );
             const existing = store.db
               .prepare(
@@ -3515,7 +3518,7 @@ export async function createApp(
               .run(uid, m.exam, m.username);
             if (!enrolled.changes)
               throw signInError(
-                "This account is no longer enrolled in the selected exam.",
+                "Exam access changed during sign-in. Ask your instructor to check your allowed attempt, then sign in again.",
               );
           }
           p.done = true;

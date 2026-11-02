@@ -662,4 +662,197 @@ export async function qualifyScriptingCLI(
   }
   for (const [index, row] of authored.entries())
     expect(f.current.store.attempt(row.id)).toEqual(history[index]);
+
+  // Exercise the public CLI projection of the same student list as the web
+  // dashboard: old attempts cannot make four students disappear from exports.
+  const catalogExam = "scripting-student-catalog";
+  await get("exams", [
+    "create",
+    catalogExam,
+    "--template",
+    "v1",
+    "--template-version",
+    "a".repeat(64),
+    "--earliest",
+    earliest,
+    "--latest",
+    latest,
+  ]);
+  const catalogDefinition = (await get("exams", ["show", catalogExam])).exam;
+  const catalogNames = Array.from(
+    { length: 70 },
+    (_, i) => `catalog${String(i + 1).padStart(3, "0")}`,
+  );
+  for (const [index, username] of catalogNames.slice(0, 66).entries())
+    f.current.store.db
+      .prepare(
+        "INSERT INTO enrollments(exam,username,uid,webcam,duration) VALUES(?,?,?,?,?)",
+      )
+      .run(catalogExam, username, 29901 + index, index % 2, 3600);
+  const catalogHistory = catalogNames.slice(66).map((username, index) => {
+    const row = {
+      id: randomUUID(),
+      username,
+      uid: 29967 + index,
+      settings: {
+        ...catalogDefinition,
+        duration: 4200 + index * 300,
+        webcam: index % 2 === 0,
+      },
+      start: ended - 7200000 + index * 1000,
+      deadline: ended - 3600000 + index * 1000,
+    };
+    f.current.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended,access_state,policy_state) VALUES(?,?,?,?,'COMPLETED',?,?,?,?,?,'RELEASED','NORMAL')",
+      )
+      .run(
+        row.id,
+        catalogExam,
+        row.username,
+        row.uid,
+        JSON.stringify(row.settings),
+        row.start,
+        row.deadline,
+        row.deadline,
+        row.deadline,
+      );
+    return row;
+  });
+  // More recent settings in a different exam must not replace this exam's copy.
+  f.current.store.db
+    .prepare(
+      "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended,access_state,policy_state) VALUES(?,?,?,?,'COMPLETED',?,?,?,?,?,'RELEASED','NORMAL')",
+    )
+    .run(
+      randomUUID(),
+      recovery,
+      catalogNames[66],
+      29967,
+      JSON.stringify({
+        ...definitions[recovery],
+        duration: 600,
+        webcam: false,
+      }),
+      ended - 600000,
+      ended,
+      ended,
+      ended,
+    );
+  const catalogSnapshot = () => ({
+    students: f.current.store.db
+      .prepare("SELECT * FROM enrollments WHERE exam=? ORDER BY username")
+      .all(catalogExam),
+    attempts: f.current.store.db
+      .prepare("SELECT * FROM attempts WHERE exam=? ORDER BY id")
+      .all(catalogExam),
+    permissions: f.current.store.db
+      .prepare("SELECT * FROM attempt_grants WHERE exam=? ORDER BY id")
+      .all(catalogExam),
+    claims: f.current.store.db
+      .prepare(
+        "SELECT c.* FROM grant_claims c JOIN attempt_grants g ON g.id=c.grant_id WHERE g.exam=? ORDER BY c.rowid",
+      )
+      .all(catalogExam),
+  });
+  const catalogBefore = catalogSnapshot();
+  expect(catalogBefore.students).toHaveLength(66);
+  expect(catalogBefore.attempts).toHaveLength(4);
+  expect(catalogBefore.permissions).toEqual([]);
+  const admin = f.current.store.session("admin", "catalog-instructor", null);
+  const dashboard = await f.current.app.inject({
+    url: `/api/admin/exams/${catalogExam}/dashboard`,
+    headers: { cookie: `session=${admin.token}` },
+  });
+  expect(dashboard.statusCode).toBe(200);
+  expect(dashboard.json().students.map((s: any) => s.username)).toEqual(
+    catalogNames,
+  );
+  expect(dashboard.json().counts.students).toBe(70);
+  const listed = await get("students", [
+    "list",
+    catalogExam,
+    "--all",
+    "--limit",
+    "17",
+  ]);
+  expect(listed.students.map((s: any) => s.username)).toEqual(catalogNames);
+  expect(listed.next).toBe(null);
+  for (const row of catalogHistory)
+    expect(
+      listed.students.find((s: any) => s.username === row.username),
+    ).toMatchObject({
+      exam: catalogExam,
+      username: row.username,
+      duration: row.settings.duration,
+      webcam: Number(row.settings.webcam),
+    });
+  for (const format of ["tsv", "csv"]) {
+    const output = (
+      await invoke("students", [
+        "list",
+        catalogExam,
+        "--all",
+        "--limit",
+        "17",
+        "--format",
+        format,
+        "--fields",
+        "username,duration,webcam",
+        "--no-header",
+      ])
+    ).stdout;
+    expect(output.trimEnd().split("\n")).toEqual(
+      listed.students.map((row: any) =>
+        [row.username, row.duration, row.webcam].join(
+          format === "tsv" ? "\t" : ",",
+        ),
+      ),
+    );
+  }
+  const exportedCatalog = (await invoke("students", ["export", catalogExam]))
+    .stdout;
+  const exportedNames = exportedCatalog
+    .trimEnd()
+    .split(/\r?\n/)
+    .slice(1)
+    .map((line) => line.split(",")[0]);
+  expect(exportedNames).toEqual(catalogNames);
+  for (const row of catalogHistory)
+    expect(exportedCatalog).toContain(
+      `${row.username},${row.settings.webcam ? "true" : "false"},${row.settings.duration / 60}`,
+    );
+  expect(catalogSnapshot()).toEqual(catalogBefore);
+  await expect(
+    invoke("students", ["add", catalogExam, catalogNames[66]]),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("Allow attempt"),
+  });
+  const knownImport = f.dir + "/known-catalog-student.csv";
+  writeFileSync(
+    knownImport,
+    `username\nfreshcatalogstudent\n${catalogNames[66]}\n`,
+    { mode: 0o600 },
+  );
+  await expect(
+    invoke("students", ["import-preview", catalogExam, "--file", knownImport]),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringContaining("Allow attempt"),
+  });
+  expect(catalogSnapshot()).toEqual(catalogBefore);
+  await expect(
+    invoke("students", [
+      "remove",
+      catalogExam,
+      catalogNames[66],
+      "--confirm",
+      catalogNames[66],
+    ]),
+  ).rejects.toMatchObject({
+    code: 1,
+    stderr: expect.stringMatching(/cancel.*unused|unused.*cancel/i),
+  });
+  expect(catalogSnapshot()).toEqual(catalogBefore);
 }

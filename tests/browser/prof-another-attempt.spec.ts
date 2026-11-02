@@ -224,7 +224,7 @@ async function fixture(
     await page.getByLabel("Selected exam").selectOption(exam);
     await page
       .getByRole("checkbox", {
-        name: "Select enrolled students on this page",
+        name: "Select all students on this page",
         exact: true,
       })
       .check();

@@ -234,7 +234,7 @@ async function openCancellation(page: Page) {
 async function selectPage(page: Page) {
   await page
     .getByRole("checkbox", {
-      name: "Select enrolled students on this page",
+      name: "Select all students on this page",
       exact: true,
     })
     .check();
@@ -312,7 +312,7 @@ test("add time has one dialog and names selected students whose clocks will not 
   const s = await fixture(page, "empty");
   await page
     .getByRole("checkbox", {
-      name: "Select enrolled students on this page",
+      name: "Select all students on this page",
       exact: true,
     })
     .check();
