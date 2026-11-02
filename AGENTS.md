@@ -38,7 +38,7 @@
   actual proxy reload timing; fast mocks do not establish production timing.
 - Treat "push and deploy" as execution of that prepared release, not another
   development milestone. Missing controllers, unqualified guards, unresolved
-  recovery or expensive cold preparation mean NOT READY. Report the specific
+  recovery or unqualified cold preparation mean NOT READY. Report the specific
   blocker promptly while the site is online; stop that deployment attempt before
   maintenance. Do not silently write tooling or start a long preparation loop.
 - There is no overall deployment time cap. Do not stop an authorized deployment

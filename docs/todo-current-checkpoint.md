@@ -1,25 +1,28 @@
-# Current checkpoint — bulk next-attempt loading fix, LOCAL COMPLETE
+# Current checkpoint — bulk next-attempt fix DEPLOYED
 
-Current request: speed up Select-page→Edit next attempts and explain70visible/66.
-Final read-only checks show66 enrolled students and4 unenrolled history-only rows;
-the original page control quietly selected only the66. Labels now explicitly state
-enrolled-only selection and name excluded historical accounts. The independent
-70-enrolled/66-editable case also has complete counts and named permission/claim
-omissions. Bulk loading uses one current-only exam query per200-item page, immediate
-drafting and lazy cards; fresh Review/Apply guards and exact retries remain intact.
-Local qualification COMPLETE:6 focused/34 editor-bulk/7 parent browser cases,
-50 affected app tests, actual CLI races/TLS, types/frontend and schema37 image smoke
-pass. Reviewed operator scope passes34 workflows. No production mutation, push or
-deployment authorized. Evidence/rollout plan: docs/bulk-next-attempt-loading.md.
-Candidate: `var/collection-tests/bulk-next-attempt-image.qcrhb83s`; image Config
-`06556283b063a648ead751a635b608d036d71c20cfc4221c9df5e597fe0a9234`.
-Validated implementation: `bc20abd86edcf87c2417a456788251f95d3c62ca`; all484 image/
-CLI source paths match committed bytes. CLI SHA256:
-`f44a0b6400958b80bb9b40885f5bad757fbd72186117e595061c8bb4f4fbccc3`.
-Candidate completion/source-binding receipts and local release/location plans are
-prepared. Fresh production inventory/idle proof is required after a new deployment
-instruction; no production directories were staged or created for this fix.
-The production revision below remains online and unchanged.
+November 2 at10:25:47 Chicago (16:25:47UTC): qualified source `bc20abd86edcf87c2417a456788251f95d3c62ca`
+and matched CLI are deployed under the explicit Deploy instruction. The instructor
+removed the overall deployment time cap; AGENTS.md and the current runbook reflect
+that decision. Fresh guards found zero exams/sessions. Cutover61.327seconds;
+41 authority tables,110 web/175 native histories, prior audit/management requests,
+configuration and native service PIDs are preserved. Conversion pause RELEASED.
+Public8asset hashes and4 desktop/mobile focus views pass; the installed CLI's
+signed current-only query of the existing synthetic exam passes. No new student
+exam, permission or clock. Original10 dirty screenshots remain unchanged. No push.
+
+Bulk editing now uses one current-only query per200-item page, immediate drafting
+and lazy cards. The actual70-visible/66-enrolled case labels enrolled-only selection
+and names4 excluded history-only accounts. The separate70-enrolled/66-editable case
+also accounts for every selected student. Local browser/backend/CLI/operator/image
+qualification is recorded in docs/bulk-next-attempt-loading.md.
+Deployment receipt: `var/collection-tests/bulk-next-attempt-image.qcrhb83s/deployment-completion.json`.
+Web state/snapshot: `/data/ssh-exam-bulk-next-20261102-qcrhb83s` on marco.
+CLI backup: `/var/backups/ssh-exam/recording-storage-cli-3koatt2u` on csc-sys.
+Fresh87,527,424byteDB+291,492small bytes reused970,286,469media bytes, zero new media
+objects. Recovery uses this release's exact staged `code/scripts/deploy-web-ui`;
+the prior compatible reader may reopen with CURRENT data. Never restore an older
+DB or change records to pass guards. Required acceptance is complete; no remaining
+release action. Historical checkpoint entries below retain their original context.
 
 November 2 at 00:02:48 Chicago (06:02:48UTC): source2694afd and matched CLI587f2b2b…
 are pushed/deployed under the explicit instruction and approved ten-minute budget.

@@ -1,7 +1,8 @@
 # Fast bulk editing with complete selection accounting
 
-November 2, 2026. Implemented and tested locally at `bc20abd`; no push or deployment
-authorized. The exact image/CLI source manifests match all484 committed inputs.
+November 2, 2026. Implemented and tested at `bc20abd`; deployed at16:25:47UTC
+under the explicit Deploy instruction. No Git push was requested or performed.
+The exact image/CLI source manifests match all484 committed inputs.
 
 The midterm page contains70 visible students, including4 historical students who
 are not enrolled. The final read-only enrollment check confirms66 enrolled and
@@ -78,8 +79,23 @@ Verification is complete:
   latest-settings-compatible reader. Native pins and default UI restrictions stay
   strict. Receipt: `var/collection-tests/bulk-next-deploy.cwi2c65b/qualification.json`.
 
-Deployment requires a new explicit instruction. Use the qualified matched web/CLI
+The authorized deployment used the qualified matched web/CLI
 mode, source-bound image/binary, fresh idle guards and current warmed-media backup
 coverage; take a fresh database/small-file snapshot. No schema migration or native
 service restart is needed. Never attest unchanged UI-only/CLI contracts for this
 read-query addition. Rollback preserves CURRENT data and original authority.
+
+
+Production acceptance: cutover61.327seconds;41 authority tables,110 web/175 native
+histories and all native/configuration/PID pins preserved. Public8asset checks and
+4 desktop/mobile focus views pass. The installed signed CLI current-only read of
+the existing synthetic exam succeeds. The owned recording-worker pause is released.
+Fresh database/small-file backup reused970,286,469media bytes with zero new objects.
+State: `/data/ssh-exam-bulk-next-20261102-qcrhb83s` on marco; exact staged controller
+supports compatible previous-reader recovery with CURRENT data. Completion receipt:
+`var/collection-tests/bulk-next-attempt-image.qcrhb83s/deployment-completion.json`.
+Original-instruction elapsed time includes the initial stop under the former cap;
+the instructor explicitly removed that cap before execution resumed. Current
+AGENTS/runbook policy was independently checked against continued healthy work,
+missing recovery, active exams and unsafe migration observation. Historical timing
+targets impose no current deployment deadline.
