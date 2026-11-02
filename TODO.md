@@ -7,7 +7,8 @@ student with attempt/permission history; only untouched setup entries can be rem
 Explicit reviewed Allow attempt can restore missing compatibility metadata atomically
 with a new permission; reads/previews never restore access or start time. Incident
 transfer bookkeeping explains the four missing midterm setup records. Application764 (across full/focused runs, one opt-in skip), affected browser/CLI/
-race/types/build and37 operator checks pass; exact release packaging is finishing.
+race/types/build and37 operator checks pass; matched schema37 image/staticCLI and
+committed source binding are qualified locally.
 No production data changes, push or deployment. Evidence and
 acceptance: docs/exam-student-list.md.
 

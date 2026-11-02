@@ -1,21 +1,32 @@
-# Current checkpoint — one exam student list VERIFIED LOCALLY
+# Current checkpoint — one exam student list COMPLETE LOCALLY, NOT DEPLOYED
 
-The dashboard, CLI/API lists, CSV and selection now share one exam-student catalog.
-History/permission students stay listed; only untouched setup entries are removable.
-Explicit reviewed NEW issuance restores missing metadata atomically; reads and
-Add/CSV cannot revive old permission. All70 are selectable; next-attempt editing
-names the four without permission. Retirement review also uses the canonical count.
-The private audit ties the missing four to October20 incident-transfer bookkeeping.
-Policy/design, honest receipts and rollout plan: docs/exam-student-list.md.
-Validation:764 application cases across final full/focused runs (one existing
-opt-in skip),91 affected browser cases plus targeted count workflows, real signed
-CLI/TLS, CLI races, full types/build and37 operator workflows pass. Initial stale
-fixture/oracle failures remain recorded. Original ten dirty screenshots unchanged.
-No production data/service changes, push or deployment. Release image is built from
-180 frozen application inputs at exam-student-list-image.z06tc__w; exact-image
-smoke/committed source/staticCLI binding is being finalized. New deployment scope
-is qualified locally; previous-reader public reopening is refused with CURRENT data.
-Next: finish image/binary qualification, local commits and final artifact checkpoint.
+Implemented/validated source: `e5e10f305dd02619d0e936b198b459b07e68e669`.
+Dashboard, CLI/API, CSV, bulk selection and retirement counts use one catalog.
+All70 midterm students are selectable;66 editable next attempts and four missing
+permissions are explicitly accounted for. No enrollment-status distinction remains.
+User approved permanent membership after any attempt/permission; Remove applies only
+before either. Reviewed NEW issuance atomically repairs missing compatibility data;
+reads, Add and CSV cannot revive old access. Forensics confirms the October20
+incident-transfer bookkeeping left the four original setup entries missing.
+
+Validation:764 application cases across full/focused receipts (one opt-in skip),
+91 affected browsers plus bulk/retirement targets, actual signed CLI/TLS, CLI races,
+types/build and37 operator workflows pass. Original stale fixture/oracle failures
+are retained and corrected. Exact schema37 image preserves41 tables/history/video,
+creates no permissions and uses the unchanged qualified shipping WASM. StaticCLI
+help and all543 committed image/CLI source paths are verified. Protected10 dirty
+screenshots are unchanged. No production record/config/service change, push or deploy.
+
+Prepared candidate: `var/collection-tests/exam-student-list-image.z06tc__w`.
+Image Config `57eadb81064d5642f9b8cc602c59462ca54b508631dc94eecac3fd8e9d9f4c2e`;
+CLI SHA256 `f772edfc022dea5ae2b247b61ade4adb5ac2f75d5a327e2103020df59b8e1989`.
+Use its qualified release/location/helper plans and the registered
+`unified-exam-student-list-v1` scope, not the old read-only/UI-only attestation.
+Fresh production inventory/idle proof is still mandatory; no new production stage
+exists. All native services/configuration stay unchanged. Rollback keeps CURRENT
+data fenced because the prior writer lacks this policy. No DB restore/backfill.
+Next action requires a new explicit push/deployment instruction. No open design
+question or local implementation work remains. Details: docs/exam-student-list.md.
 
 # Current checkpoint — bulk next-attempt fix DEPLOYED
 

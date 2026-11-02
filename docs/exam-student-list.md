@@ -1,7 +1,7 @@
 # One student list per exam
 
-November 2, 2026. Feature implemented and tested locally; exact release packaging
-is being finalized. No production changes, push or deployment.
+November 2, 2026. Implemented, tested and release artifacts qualified locally at
+`e5e10f305dd02619d0e936b198b459b07e68e669`. No production changes, push or deployment.
 
 The dashboard counted usernames from exam setup and historical attempts, while
 the web/CLI roster and CSV export counted only the old setup rows. This made the
@@ -112,3 +112,29 @@ Detailed receipts: `var/collection-tests/exam-student-list.20261102`,
 `unified-student-browser.3yolmtls` and `canonical-retirement-browser.8b5bj03h`,
 all below `var/collection-tests`. Original failures and fixture corrections remain
 alongside the final evidence. No production student permission was issued.
+
+
+Exact release packaging is complete at
+`var/collection-tests/exam-student-list-image.z06tc__w/completion.json`.
+The image Config is `57eadb81064d5642f9b8cc602c59462ca54b508631dc94eecac3fd8e9d9f4c2e`;
+its295,859,712byte archive binds the actual exported Config/rootfs identity.
+All180 image inputs and363 CLI source paths match committed bytes. The static
+Linux/AMD64 CLI is SHA256
+`f772edfc022dea5ae2b247b61ade4adb5ac2f75d5a327e2103020df59b8e1989`;
+actual help and embedded source revision pass. Its modified flag reflects only the
+ten preserved documentation screenshots. Exact-image startup retains all41 old
+schema37 table rows, prior attempt/settings, protected/video artifacts and native
+boot-clock enforcement, inventing no permission. The private smoke container,
+derived image and synthetic keys/data are removed. Shipping WASM/runtime hashes
+match the earlier qualified release; local toolchain-generated WASM differs and is
+not the packaged binary. Non-WASM image assets match the fresh browser build.
+The newly corrected retirement dialog passes its nine workflows and a joined
+70-student selection check without repeating unrelated browser scenarios.
+
+The candidate contains local release/location plans and exact helper hashes.
+Fresh production inventory, native/history/configuration pins, an idle drain and
+current backup coverage must be rechecked under a new deployment instruction.
+No upload, production directory creation or student permission issuance occurred.
+Do not rerun historical temporary agent-consolidation steps: this update retains
+all existing native services and needs only the matched web/CLI installation.
+There are no remaining policy decisions or local feature blockers.

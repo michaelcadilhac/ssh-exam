@@ -1,6 +1,6 @@
 # Shared roster and CSV management — local implementation
 
-November2 follow-up, implemented locally and under final qualification:
+November2 follow-up, implemented/tested and release-qualified locally:
 `examctl web students list EXAM`, its paginated/TSV/CSV variants and `students
 export` now contain the same students as the dashboard: everyone with setup,
 attempt or permission records in that exam. Missing old setup metadata does not
