@@ -1408,7 +1408,7 @@ export async function createApp(
               message:
                 pendingGrant.settings.latest <= now()
                   ? "This attempt is closed. Ask your instructor."
-                  : "Your saved files are being prepared. Check again shortly.",
+                  : "Your next attempt is getting ready. Check again shortly.",
             }
           : null,
       practice_blocked: practiceBlocked,

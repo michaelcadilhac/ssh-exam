@@ -1,4 +1,28 @@
-# Current milestone — replay loading continuity COMPLETE LOCALLY, NOT DEPLOYED
+# Current milestone — bulk settings wording COMPLETE LOCALLY, NOT DEPLOYED
+
+Entry: instructor Selected students → Edit next attempts → webcam change. Every
+saved-work revision genuinely requires fresh revision-bound native confirmation;
+camera edits preserve the selected source but the old UI calls them file setup.
+Keep that safety boundary: no Ready, claim or clock until current confirmation.
+
+Revised permissions now show "Updating attempt" with matching retry/error wording;
+initial saved-work issuance keeps its setup label. Student waiting copy is generic
+to the next attempt. No pin reuse, protocol/schema/admission change or native/CLI
+modification. Source selection, exact allowances and current native confirmation
+requirements remain unchanged; worker completion alone never produces Ready.
+
+Verification: three status units plus two signed source/admission HTTP cases pass;
+focused bulk/retry and current-control cases pass. All62 affected browser cases pass
+on the final full build; full fixture types pass. The old-wording control refuses
+the actual wrong text. Three old editor tests now use current controls. Test
+navigation honors document/asset Retry-After without resetting or relaxing limits.
+Frozen inputs, owned fixtures/3100/3101 cleanup and ten original dirty images pass.
+Evidence: var/collection-tests/attempt-settings-confirmation.20261102a/completion.json;
+details: docs/automatic-saved-work-setup.md. No open decision or implementation
+blocker. Both this and replay commit896a15c remain local; deployment needs a fresh
+instruction and normal qualified image/guards/CURRENT-data recovery, no migration.
+
+# Previous local milestone — replay loading continuity COMPLETE LOCALLY, NOT DEPLOYED
 
 Entry: instructor Review → Recordings. Keep the last decoded screen/webcam frame
 visible until its replacement is ready, with a stable preview area and its actual

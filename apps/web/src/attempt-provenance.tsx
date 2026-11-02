@@ -1,10 +1,10 @@
 import React from "react";
 import { chicago } from "./api.js";
 import { timeLimit } from "./local-date-time.js";
+import { pendingGrantLabel } from "./grant-options.js";
 
 const permissionLabels: Record<string, string> = {
   AVAILABLE: "Unused",
-  PENDING_NATIVE: "Preparing saved work",
   REVOKED: "Cancelled",
   CONSUMED: "Started",
 };
@@ -85,7 +85,9 @@ export function AttemptProvenance({
       <summary>Starting files and settings</summary>
       <p>
         {grantButton} · Current permission status:{" "}
-        {permissionLabels[g.current_status] ?? "Needs review"}
+        {g.current_status === "PENDING_NATIVE"
+          ? pendingGrantLabel(g.current_revision)
+          : (permissionLabels[g.current_status] ?? "Needs review")}
       </p>
       {g.current_revision !== g.revision && (
         <p>This attempt keeps its saved settings despite later changes.</p>

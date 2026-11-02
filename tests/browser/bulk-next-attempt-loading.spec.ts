@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { visitAdmin } from "./admin-navigation.js";
 
 function gate() {
   let release!: () => void;
@@ -207,7 +208,7 @@ async function fixture(
       json: { error: "Unexpected synthetic request" },
     });
   });
-  await page.goto("/admin");
+  await visitAdmin(page);
   await page
     .getByRole("combobox", { name: "Selected exam", exact: true })
     .selectOption(exam);

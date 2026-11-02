@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
 import { publishedSource } from "./prof-workflow-fixture.js";
+import { visitAdmin } from "./admin-navigation.js";
 test.use({ timezoneId: "America/Chicago" });
 
 // The combined personal editor was replaced by the four field-specific public
@@ -179,7 +180,7 @@ async function fixture(
       return route.fulfill({
         json: {
           id: grants[0].id,
-          revision: 1,
+          revision: route.request().postDataJSON().revision,
           status: "QUEUED",
           grant_status: "PENDING_NATIVE",
         },
@@ -203,7 +204,9 @@ async function fixture(
                   mode === "setup" && g.username === "amy"
                     ? state.setupStatus
                     : g.work.kind === "saved"
-                      ? "READY"
+                      ? g.status === "PENDING_NATIVE"
+                        ? "QUEUED"
+                        : "READY"
                       : "NOT_QUEUED",
                 tries: 0,
                 error: "",
@@ -237,10 +240,8 @@ async function fixture(
         else {
           g.settings = { ...g.settings, ...r.body.changes };
           g.revision++;
-          if (r.body.work) {
-            g.work = r.body.work;
-            if (g.work.kind === "saved") g.status = "PENDING_NATIVE";
-          }
+          if (r.body.work) g.work = r.body.work;
+          if (g.work.kind === "saved") g.status = "PENDING_NATIVE";
         }
         const result = {
           id: g.id,
@@ -292,7 +293,7 @@ async function fixture(
     }
     return route.fulfill({ json: { ok: true } });
   });
-  await page.goto("/admin");
+  await visitAdmin(page);
   const open = async () => {
     await page.getByLabel("Selected exam").selectOption(exam);
     await page
@@ -363,6 +364,30 @@ async function chooseSavedFiles(dialog: Locator) {
     .selectOption("saved");
 }
 
+for (const target of ["document", "script"] as const)
+  test(`admin fixture navigation honors ${target} Retry-After before opening the exam interface`, async ({
+    page,
+  }) => {
+    const visits: number[] = [];
+    await page.route(
+      target === "document" ? "**/admin" : "**/assets/index-*.js",
+      async (route) => {
+        visits.push(Date.now());
+        if (visits.length === 1)
+          return route.fulfill({
+            status: 429,
+            headers: { "retry-after": "1", "cache-control": "no-store" },
+            json: { error: "Synthetic navigation rate limit" },
+          });
+        return route.continue();
+      },
+    );
+    const f = await fixture(page);
+    await page.getByLabel("Selected exam").selectOption(f.settings.id);
+    expect(visits).toHaveLength(2);
+    expect(visits[1] - visits[0]).toBeGreaterThanOrEqual(1000);
+  });
+
 test("personal saved-file prefill preserves an older exact source despite history lookup failure", async ({
   page,
 }, info) => {
@@ -409,18 +434,19 @@ test("a concurrent revision cannot turn an untouched webcam value into a stale a
   page,
 }) => {
   const f = await fixture(page),
-    editor = await f.openField("webcam");
+    row = page.getByRole("row", { name: "Next attempt for amy", exact: true }),
+    camera = page.getByRole("button", {
+      name: "Change webcam for amy",
+      exact: true,
+    });
+  await page.getByLabel("Selected exam").selectOption(f.settings.id);
+  await expect(camera).toHaveAttribute("aria-pressed", "true");
   f.state.grants[0].revision++;
   f.state.grants[0].settings.webcam = false;
   const changed = structuredClone(f.state.grants[0]);
-  await expect(
-    editor.getByRole("combobox", { name: "Webcam", exact: true }),
-  ).toHaveValue("true");
-  await editor
-    .getByRole("button", { name: "Save", exact: true })
-    .click({ timeout: 3000 });
-  await expect(editor.getByRole("alert")).toContainText(
-    "Settings changed or setup started for amy",
+  await camera.click();
+  await expect(row.getByRole("alert")).toContainText(
+    "These settings changed. Reload the student before trying again.",
   );
   expect(f.state.writes).toHaveLength(0);
   expect(f.state.grants[0]).toEqual(changed);
@@ -496,7 +522,7 @@ test("bulk changes use each selected student's sole unused attempt without a sec
   expect(f.state.grants).toEqual(f.original);
 });
 
-test("main-page webcam Save preserves exact seconds, dates and files without separate student defaults", async ({
+test("main-page webcam click preserves exact seconds, dates and files without separate student defaults", async ({
   page,
 }) => {
   const f = await fixture(page),
@@ -505,14 +531,16 @@ test("main-page webcam Save preserves exact seconds, dates and files without sep
   await expect(
     page.getByRole("row", { name: "Next attempt for amy", exact: true }),
   ).toContainText("1 min 35 sec");
-  const editor = await f.openField("webcam");
+  const camera = page.getByRole("button", {
+    name: "Change webcam for amy",
+    exact: true,
+  });
+  await camera.click();
+  await expect(camera).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(editor.getByRole("spinbutton")).toHaveCount(0);
-  await editor
-    .getByRole("combobox", { name: "Webcam", exact: true })
-    .selectOption("false");
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(editor).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: "Webcam", exact: true }),
+  ).toHaveCount(0);
   expect(f.state.writes).toHaveLength(1);
   expect(f.state.writes[0].rows[0].body.changes).toEqual({ webcam: false });
   expect(f.state.writes[0].rows[0].body).not.toHaveProperty("work");
@@ -656,7 +684,7 @@ test("unknown unused changes survive reload, inspect current state and retry the
   await expect(
     dialog.getByText("Change unconfirmed", { exact: true }),
   ).toHaveCount(2);
-  await page.reload();
+  await visitAdmin(page);
   await page.getByLabel("Selected exam").selectOption(f.settings.id);
   await page.getByRole("button", { name: /^Resume saved changes/ }).click();
   dialog = page.getByRole("dialog", {
@@ -811,6 +839,89 @@ test("saved-work retrieval is retryable and sandbox fixed settings cannot be cha
   await expect(
     dialog.getByLabel("Maximum file size (MiB)", { exact: true }),
   ).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(0);
+});
+
+test("bulk camera edits keep starting files and show attempt updates until confirmed", async ({
+  page,
+}) => {
+  const f = await fixture(page, "source"),
+    before = structuredClone(f.state.grants);
+  const dialog = await f.open();
+  await dialog
+    .getByRole("combobox", { name: "Webcam", exact: true })
+    .selectOption("false");
+  await dialog
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await expect(dialog.getByText("Settings saved", { exact: true })).toHaveCount(
+    2,
+  );
+  await expect(
+    dialog.getByRole("status").filter({
+      hasText: /^(Preparing saved work|Updating attempt)$/,
+    }),
+  ).toHaveText("Updating attempt");
+  await expect(
+    dialog.getByText("Preparing saved work", { exact: true }),
+  ).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(1);
+  for (const row of f.state.writes[0].rows) {
+    expect(row.body.changes).toEqual({ webcam: false });
+    expect(row.body).not.toHaveProperty("work");
+  }
+  for (const [index, grant] of f.state.grants.entries()) {
+    expect(grant.work).toEqual(before[index].work);
+    expect(grant.settings).toEqual({
+      ...before[index].settings,
+      ...(index < 2 ? { webcam: false } : {}),
+    });
+  }
+  expect(f.state.grants[0].status).toBe("PENDING_NATIVE");
+  expect(f.state.sourceAttempts).toEqual([f.source]);
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  const row = page.getByRole("row", {
+    name: "Next attempt for amy",
+    exact: true,
+  });
+  await expect(row.locator(".next-status")).toHaveText("Updating attempt");
+  await visitAdmin(page);
+  await page.getByLabel("Selected exam").selectOption(f.settings.id);
+  await expect(row.locator(".next-status")).toHaveText("Updating attempt");
+  f.state.grants[0].status = "AVAILABLE";
+  await visitAdmin(page);
+  await page.getByLabel("Selected exam").selectOption(f.settings.id);
+  await expect(row.locator(".next-status")).toHaveText("Ready");
+});
+
+test("a revised saved-work permission retries its update and stays pending until native availability", async ({
+  page,
+}) => {
+  const f = await fixture(page, "setup");
+  f.state.grants[0].revision = 2;
+  f.state.setupStatus = "FAILED";
+  const dialog = await f.open();
+  await dialog.getByText("Attempt settings (2)", { exact: true }).click();
+  const row = dialog
+    .getByRole("region", { name: "Attempts for amy", exact: true })
+    .getByRole("article");
+  await expect(row.getByRole("status")).toHaveText("Updating attempt");
+  await expect(row).toContainText(
+    "Attempt update failed. The attempt cannot start yet.",
+  );
+  await row.getByRole("button", { name: "Retry update", exact: true }).click();
+  await expect.poll(() => f.state.setupRetries.length).toBe(1);
+  expect(f.state.setupRetries[0]).toMatchObject({ revision: 2 });
+  f.state.setupStatus = "READY";
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(row.getByRole("status")).toHaveText("Updating attempt");
+  await expect(row.getByText("Ready", { exact: true })).toHaveCount(0);
+  f.state.grants[0].status = "AVAILABLE";
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(row.getByRole("status")).toHaveText("Ready");
   expect(f.state.writes).toHaveLength(0);
 });
 
@@ -1230,42 +1341,40 @@ test("personal missing starter-file choice reaches the manual Review guard witho
   expect(f.state.grants).toEqual(f.original);
 });
 
-test("inline Save rejects unfinished native number input and preserves the draft for repair", async ({
+test("inline time rejects unfinished numeric text and preserves the draft for repair", async ({
   page,
 }) => {
   const f = await fixture(page),
-    before = structuredClone(f.state.grants[0]),
-    editor = await f.openField("time limit");
-  const duration = editor.getByRole("spinbutton", {
-    name: "Time limit (minutes)",
+    before = structuredClone(f.state.grants[0]);
+  await page.getByLabel("Selected exam").selectOption(f.settings.id);
+  await page
+    .getByRole("button", { name: "Change time limit for amy", exact: true })
+    .click();
+  const row = page.getByRole("row", {
+    name: "Next attempt for amy",
+    exact: true,
+  });
+  const duration = row.getByRole("textbox", {
+    name: "Time limit for amy (minutes)",
     exact: true,
   });
   await duration.focus();
   await expect(duration).toBeFocused();
-  await duration.pressSequentially("1e");
-  await expect(duration).toHaveValue("");
-  expect(
-    await duration.evaluate(
-      (element) => (element as HTMLInputElement).validity.badInput,
-    ),
-  ).toBe(true);
+  await duration.fill("1e");
+  await expect(duration).toHaveValue("1e");
   const reads = f.state.statusReads;
-  await editor
-    .getByRole("button", { name: "Save", exact: true })
-    .click({ timeout: 3000 });
-  await expect(editor.getByRole("alert")).toContainText(
-    "Complete Time limit (minutes) before saving.",
+  await duration.press("Enter");
+  await expect(row.getByRole("alert")).toContainText(
+    "Enter 1–360 whole minutes.",
   );
   expect(f.state.statusReads).toBe(reads);
   expect(f.state.writes).toHaveLength(0);
   await expect(
-    editor.getByRole("region", { name: "Review unused changes", exact: true }),
+    page.getByRole("region", { name: "Review unused changes", exact: true }),
   ).toHaveCount(0);
   await duration.fill("90");
-  await editor
-    .getByRole("button", { name: "Save", exact: true })
-    .click({ timeout: 3000 });
-  await expect(editor).toHaveCount(0);
+  await duration.press("Enter");
+  await expect(duration).toHaveCount(0);
   expect(f.state.writes).toHaveLength(1);
   expect(f.state.writes[0].rows[0].body.changes).toEqual({ duration: 5400 });
   expect(f.state.grants[0].settings).toEqual({

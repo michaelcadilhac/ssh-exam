@@ -83,14 +83,19 @@ export function SavedWorkSetup({
       setBusy(false);
     }
   };
-  const stale = grant && grant.revision !== revision;
+  const stale = grant && grant.revision !== revision,
+    updating = revision > 1;
   return (
     <div>
       <p role="status">
         {error
-          ? "Saved-work status unconfirmed"
+          ? updating
+            ? "Attempt status unconfirmed"
+            : "Saved-work status unconfirmed"
           : !grant
-            ? "Checking saved work…"
+            ? updating
+              ? "Checking attempt status…"
+              : "Checking saved work…"
             : stale
               ? "Settings changed since this request"
               : grantStatus(grant)}
@@ -99,7 +104,8 @@ export function SavedWorkSetup({
         grant?.status === "PENDING_NATIVE" &&
         setup?.status === "FAILED" && (
           <p className="warn">
-            Saved-work setup failed. The attempt cannot start yet.
+            {updating ? "Attempt update failed." : "Saved-work setup failed."}{" "}
+            The attempt cannot start yet.
           </p>
         )}
       {!stale &&
@@ -110,7 +116,7 @@ export function SavedWorkSetup({
             disabled={busy}
             onClick={() => void retrySetup()}
           >
-            Retry setup
+            {updating ? "Retry update" : "Retry setup"}
           </button>
         )}
       {(error || setup?.error) && (
@@ -121,7 +127,7 @@ export function SavedWorkSetup({
       )}
       {(error || setup?.status === "NOT_QUEUED") && (
         <RefreshButton
-          label="Refresh saved work"
+          label={updating ? "Refresh attempt status" : "Refresh saved work"}
           disabled={busy}
           onClick={() => {
             if (onRefresh) onRefresh();

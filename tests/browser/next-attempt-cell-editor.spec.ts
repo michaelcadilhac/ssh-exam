@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { publishedSource } from "./prof-workflow-fixture.js";
+import { visitAdmin } from "./admin-navigation.js";
 
 test.use({ timezoneId: "America/Chicago" });
 
@@ -288,7 +289,7 @@ async function fixture(
       json: { error: "Unexpected synthetic request" },
     });
   });
-  await page.goto("/admin");
+  await visitAdmin(page);
   await page
     .getByRole("combobox", { name: "Selected exam", exact: true })
     .selectOption(exam);
@@ -704,7 +705,7 @@ test("an uncertain inline save remains exactly retryable after the permission is
   await expect(
     page.getByRole("row", { name: "Next attempt for amy", exact: true }),
   ).toHaveCount(0);
-  await page.reload();
+  await visitAdmin(page);
   await page
     .getByRole("combobox", { name: "Selected exam", exact: true })
     .selectOption(f.initial.exam);
@@ -1114,7 +1115,7 @@ async function dashboardStudents(
       },
     }),
   );
-  await page.reload();
+  await visitAdmin(page);
   await page
     .getByRole("combobox", { name: "Selected exam", exact: true })
     .selectOption(exam);

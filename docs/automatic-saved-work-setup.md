@@ -1,5 +1,43 @@
 # Automatic saved-work setup
 
+November2 local wording follow-up (NOT DEPLOYED): revised saved-work permissions
+show **Updating attempt**, with **Retry update** and matching failure/status text.
+Initial saved-work issuance still shows **Preparing saved work**. Later starting-
+file changes also count as attempt updates. The student waiting message now says
+their next attempt is getting ready, without claiming that unchanged files are
+being rebuilt. Three status units, two signed source/admission HTTP cases, focused
+bulk/retry checks and all62 affected browser workflows pass. Full build and full
+fixture types pass. No production access, push or deployment.
+
+Each revision still needs fresh authenticated class-server confirmation. Its
+native retention identity covers the exact saved settings as well as source,
+account and revision; an older receipt cannot authorize a changed webcam rule or
+allowance. A settings-only request leaves the source selection unchanged, but must
+wait for that new confirmation. This is a wording correction, not removal of
+archive verification, pinning or admission checks. Worker completion alone cannot
+show Ready. No schema, protocol, native/CLI or permission-policy change.
+The supported `examctl web grants source-status` / `source-retry` workflows and
+their exact revision arguments remain unchanged.
+
+Evidence: var/collection-tests/attempt-settings-confirmation.20261102a/. The browser
+producer now mirrors the real server: any saved-work revision becomes pending,
+even when its request omits starting files. Tests assert unchanged source/time,
+reload persistence and no Ready from worker status alone. The old-wording control
+fails on actual received text and restores the exact qualified bundle afterward.
+Earlier failures from an ambiguous status locator and missing exam re-selection
+after reload remain in the evidence. Three retired-editor cases were migrated to
+current one-click/inline controls, preserving refusal, no-dispatch and repair.
+
+The first larger cohort encountered the real fixture's180/minute request limit;
+its JSON429 page/asset responses were not product refusals. Shared test navigation
+now observes document/script/stylesheet429s, waits the longest valid Retry-After
+(at most60seconds), and retries once. It never retries management mutations or
+changes/reset limits. Both response boundaries are tested; final62 cases pass
+with unchanged frozen inputs and complete owned cleanup. Native behavior and
+archive code are unchanged, so no redundant native races were run. A future
+authorized release is compatible display-copy work with normal image qualification,
+fresh guards/backups and CURRENT-data recovery; no migration or native restart.
+
 October 31, 2026: deployed and verified on marco/csc-sys under the explicit
 **Push and deploy** instruction. The worker is active/enabled. Exact artifacts,
 root-service qualification, backups and rollback: [release record](prof-ui-deployment.md).

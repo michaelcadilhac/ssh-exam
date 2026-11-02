@@ -1,4 +1,15 @@
-# Current follow-up — replay loading continuity COMPLETE LOCALLY
+# Current follow-up — bulk settings status COMPLETE LOCALLY
+
+November2: revised saved-work attempts show Updating attempt, with matching retry
+and error text; initial saved-work issuance retains Preparing saved work. Student
+waiting copy covers both. Camera edits preserve their source and time settings;
+fresh exact-revision native confirmation still gates availability. No pin reuse,
+policy/protocol/schema/native/CLI change. Status/signed HTTP, all62 affected browser
+cases, full types/build and preserved-image checks pass. Local only, not pushed or
+deployed; replay fix896a15c is also still local. Details and evidence:
+docs/automatic-saved-work-setup.md and docs/todo-current-checkpoint.md.
+
+# Previous local follow-up — replay loading continuity COMPLETE LOCALLY
 
 November2: keep the previously decoded frame visible until the next JPEG/video
 sample is ready, with its actual timestamp and stable preview dimensions. Loading

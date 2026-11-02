@@ -243,6 +243,20 @@ it("reviews explicit per-student saved sources atomically, preserves settings an
         },
         settings: { duration: 5400 },
       });
+      const student = store.session("student", source.username, settings.id),
+        waiting = await app.inject({
+          url: "/api/student/exam",
+          headers: { cookie: `session=${student.token}` },
+        });
+      expect(waiting.statusCode, waiting.body).toBe(200);
+      expect(waiting.json().attempt_blocked).toEqual({
+        status: "PENDING_NATIVE",
+        message: "Your next attempt is getting ready. Check again shortly.",
+      });
+      expect(waiting.json().grants[0]).toMatchObject({
+        id,
+        status: "PENDING_NATIVE",
+      });
       saved.push(result.json());
     }
     const again = await preview();

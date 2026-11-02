@@ -1,5 +1,9 @@
 import { api } from "./api.js";
 
+export function pendingGrantLabel(revision: number | undefined) {
+  return revision && revision > 1 ? "Updating attempt" : "Preparing saved work";
+}
+
 export function grantStatus(grant: any, now = Date.now()) {
   if (grant.status === "REVOKED") return "Cancelled";
   if (grant.status === "CONSUMED") return "Started";
@@ -13,7 +17,8 @@ export function grantStatus(grant: any, now = Date.now()) {
   )
     return "Needs review";
   if (now > grant.settings.latest) return "Start window closed";
-  if (grant.status === "PENDING_NATIVE") return "Preparing saved work";
+  if (grant.status === "PENDING_NATIVE")
+    return pendingGrantLabel(grant.revision);
   if (now < grant.settings.earliest) return "Available later";
   return grant.status === "AVAILABLE" ? "Ready" : "Needs review";
 }
