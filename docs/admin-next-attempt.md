@@ -1,6 +1,8 @@
 # One next attempt on the instructor dashboard
 
-November 1, 2026. Local development requested; no push or deployment authorized.
+November 1, 2026. Implemented and validated locally at `2694afd`; no push or
+deployment authorized. The candidate image and CLI source manifests are bound to
+that implementation commit, separately from later documentation-only commits.
 
 The instructor requested an interface that matches the existing single-unused-
 attempt policy. A fresh Prof agreed on one **Next attempt** row, with its opening

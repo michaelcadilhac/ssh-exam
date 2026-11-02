@@ -13,6 +13,11 @@ No push or deployment authorized; production remains the favicon release below.
 Scope, honest verification limits, evidence and rollout plan: docs/admin-next-attempt.md.
 Final candidate: `var/collection-tests/admin-next-attempt-image.gyl41pn1`, input
 manifest 21d205b46b1c…; Config e65741425bc5b2d2dd36dc0eb9077d9d7c1d3d117b534447066cc4253244a49a.
+Validated implementation commit: `2694afdb9946808567472f2ee74e403fe8b1e3c9`.
+All 179 image inputs and 304 CLI source files match it. Static CLI SHA256
+`587f2b2b6d508c623b4c6ec0f30c9fbeca672a6456fb241ff779f999c4122c3d`;
+actual help passes. Exact source/artifact mapping: candidate `completion.json`
+and `source-commit-binding.json`. Only the original ten dirty screenshots remain.
 Before separately authorized production installation: qualify matched same-schema
 web/CLI deployment. Backend semantics/CLI changed; stock UI-only unchanged-contract
 attestation does NOT apply. No new controller was added to this bounded milestone.
