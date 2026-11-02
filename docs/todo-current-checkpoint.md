@@ -1,63 +1,36 @@
-# Current checkpoint — forward repair IN PROGRESS, SITE IN MAINTENANCE
+# Current checkpoint — DePaul matched release DEPLOYED AND ONLINE
 
-User instructed “Go on” after the held cutover. Bounded milestones:
-1. Read-only comparison: only66 pre-existing purge-job rechecks differ, besides
-   already permitted native snapshots/events and paired empty polls/audit. No
-   tombstone or other authority/monitoring metadata difference was observed.
-2. Qualify a narrow preservation correction: identical deletion authority,
-   completed due rechecks only, independent proof of absent recording directories;
-   refuse unrelated changes. Exercise the actual frozen image with populated
-   tombstone/purge rows and forward resume from its already-running state.
-3. Freeze and stage new operators separately; keep original prepared inputs,
-   snapshot, release/image/native pins and CURRENT data intact. Refresh native
-   proof; resume once through all original guards; verify public reopening.
-No runtime image/native rebuild or installation is planned. Final reopening,
-public asset/native/CLI checks and the minimal deployed checkpoint are required.
-Frozen correction: preservationfc97b185… and controllerb52a161e…; focused30,
-prior operator37, matched11 and bridge9 pass. Actual63.246s startup/recovery passes, including original-verifier refusal,
-11 independent negatives with positive baselines and zero extra web starts.
-Owned fixture cleanup verified. All qualification is complete; execute the new
-operator resume against the unchanged held state after a fresh native after-proof.
-The live READ-ONLY precheck passes all41 preserved-table contracts,66 physical
-absence proofs, original prepared inputs/configuration/native receipt and media
-coverage6785files/970286469bytes with zero new bytes required. New operators are
-separately staged at forward-code-fd137a697dc9 under the existing marco stage.
+November2 at15:14:58 Chicago (21:14:58UTC): source49d5e3b/schema37 and the
+matched four native binaries are deployed; qualified forward operatorb18a40c.
+Theme/favicon/maintenance use DePaul navy/blue/white. Unified student membership,
+inline time/camera/dates/files, compact plus/bin actions and live exam-wide
+terminal/collection limits are online. Approved policies are unchanged.
 
-November2 at20:32:48UTC: web resume refused `Existing authority changed:
-monitoring_purges`. Current phase NATIVE_UPDATED; candidate web is running behind
-the owned maintenance fence. It is NOT ONLINE. No database restore, guard bypass,
-old-writer rollback or repeated resume was attempted. Background video pause is
-still owned. Preserve CURRENT database, release state and both recovery snapshots.
+Preservation passes all41 contracts, including66 strictly proven completed purge
+rechecks with independent physical absence; all other authority/tombstones remain
+exact. Original snapshot/prepared inputs, prior audit/requests,110 web/175 native
+histories and configuration are preserved. No restore/rebaseline/record clearing.
+Video pause RELEASED. Public8 exact assets,4 desktop/mobile focus/navigation
+views and installed CLI signed read of existing synthetic exam pass. No new exam,
+permission or clock; no real credentials/media used for post-deploy acceptance.
 
-User explicitly authorized push/deploy. Source49d5e3b and operators51dfc95 are
-pushed. The exact matched native binaries were installed; agent/watchdog/source
-worker are verified at PIDs1232120/1232116/1232118. Relay893011 and SSH were not
-restarted. Native history/configuration/CLI configuration match their before pins.
-Web entered maintenance only after a fresh zero-session/zero-exam drain. Incremental
-web backup reused970286469 monitoring bytes with zero new media copied. Native
-backup199925760bytes has SHA10dc636e2883e0c31b3b302b7d7ef91c7404a15b58cd39c72926a2ad8730d781.
-Final web preservation/public acceptance did NOT pass; do not mark this deployed.
+Native agent/watchdog/source-worker PIDs1232120/1232116/1232118 are verified;
+relay893011 and SSH were not restarted. Web resumed the already-running candidate
+without another restart. Web backup reused970286469 recording bytes, recopied0;
+private native snapshot199925760bytes retained. Maintenance47m9s includes the
+held guard failure and subsequent separately qualified recovery, not a fast
+cutover claim. The purge startup/test-oracle fixture failures are recorded in
+`docs/depaul-matched-release.md`; AGENTS.md now requires populated startup-writer
+fixtures and recovery from CURRENT data. Original ten dirty screenshots preserved.
 
-Cause: physical monitoring purge starts immediately and every second independently
-of the video-only deployment pause. Hourly rechecks update its durable job ledger.
-Preservation requires that ledger to be identical. Startup qualification seeded
-41 tables but omitted tombstone/purge rows and therefore missed this writer.
-There is no qualified retry that reverses those durable changes safely.
+Evidence: var/collection-tests/depaul-matched-image.f6eb051343/deployment-completion.json
+and var/collection-tests/matched-purge-startup-final.20261102a/completion.json.
+No remaining implementation/deployment blocker or open decision for this release.
+Optional future hardening is separate from this completed deployment: detect
+pending/failed physical-purge transitions before fencing, rather than only at
+strict preservation. Never weaken the current refusal or erase job history.
 
-Next: a separate, locally qualified forward repair must cover existing tombstones,
-purge rechecks, retention and every startup writer, plus recovery from this exact
-CURRENT-data state. Do not reset rows, rebaseline the snapshot or exclude a table
-to force a pass. Existing frozen deployment cannot reopen through resume as-is.
-See docs/depaul-matched-release.md. Original ten dirty documentation screenshots
-remain untouched.
-
-Recovery locations:
-marco /data/ssh-exam-depaul-20261102-f6eb051343/state;
-csc-sys /var/tmp/ssh-exam-depaul-native-20261102-38068e610401.
-ReleaseSHA933b54d5…, Configaca6572b…, nonce38068e61-0401-463b-b881-026805dc85bc.
-
-The following local-completion checkpoints are historical and are superseded by
-this failed-cutover state; none establishes successful public reopening.
+The following earlier local-only checkpoints are historical and superseded.
 
 # Current checkpoint — direct next-attempt editing COMPLETE LOCALLY, NOT DEPLOYED
 

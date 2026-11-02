@@ -1,4 +1,17 @@
-# Current follow-up — production cutover BLOCKED
+# Current follow-up — DEPLOYED AND ONLINE
+
+November2 at15:14:58 Chicago: DePaul theme/favicon/maintenance and all pending
+student-catalog/inline-admin/live-exam-limit work are pushed and deployed on
+marco/csc-sys (image49d5e3b/schema37; forward operatorb18a40c). All41 preservation
+contracts pass, including strict physical proof of66 completed cleanup rechecks;
+original snapshot,110 web/175 native histories, prior audit/requests and config
+are preserved. Public8 assets,4 desktop/mobile focus views and installed signed
+CLI read pass. No new exam/grant/clock, database restore or SSH/relay restart.
+Original dirty screenshots preserved; video pause released. Full evidence and
+qualified forward-recovery details: docs/depaul-matched-release.md and checkpoint.
+Prior local-only/held-cutover notes below are historical and superseded.
+
+# Prior held-cutover record — superseded by successful forward recovery
 
 November2 DePaul/matched release: source49d5e3b and operators51dfc95 pushed;
 native cohort installed/verified, but web reopening refused20:32:48UTC because

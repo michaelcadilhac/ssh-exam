@@ -1,7 +1,9 @@
 # One student list per exam
 
 November 2, 2026. Implemented, tested and release artifacts qualified locally at
-`e5e10f305dd02619d0e936b198b459b07e68e669`. No production changes, push or deployment.
+`e5e10f305dd02619d0e936b198b459b07e68e669`. DEPLOYED AND ONLINE November2 at
+15:14:58 Chicago in matched source49d5e3b/schema37, with preservation and final
+public/native/CLI acceptance. See docs/depaul-matched-release.md.
 
 The dashboard counted usernames from exam setup and historical attempts, while
 the web/CLI roster and CSV export counted only the old setup rows. This made the

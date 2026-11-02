@@ -1,6 +1,8 @@
 # Direct next-attempt editing
 
-November 2, 2026. Implemented and tested locally; no push or deployment.
+November 2, 2026. DEPLOYED AND ONLINE at15:14:58 Chicago in matched source49d5e3b/
+schema37. All four native executables and three loaded roles are matched; final
+preservation/public/CLI acceptance passes. See docs/depaul-matched-release.md.
 Validated source: backend/native/CLI `51b311c`; interface/browser `e950b6a`.
 
 The requested workflow is the instructor's exam table: click the printed webcam,

@@ -5,7 +5,13 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-November 2 direct-edit follow-up, IMPLEMENTED/TESTED LOCALLY: each student's sole
+November2 matched release DEPLOYED AND ONLINE at15:14:58 Chicago. The DePaul
+theme, unified exam student catalog and direct-edit/shared-limit changes below are
+online on marco/csc-sys at source49d5e3b/schema37. Preservation and public/native/CLI
+acceptance pass. Earlier dated local-only statuses are historical where superseded.
+Deployment and the qualified purge-job forward repair: docs/depaul-matched-release.md.
+
+November 2 direct-edit follow-up, DEPLOYED: each student's sole
 Next attempt exposes clickable time, webcam and start dates, plus a starting-files
 column with a small picker. No attempt-level Edit settings or student Actions menu.
 Camera is Required or Off. Bulk controls offer the same four settings; Add skips
@@ -19,8 +25,8 @@ rules and source identity remain authoritative for their respective purposes.
 Lower terminal limits preserve existing panes and editor buffers. Published
 archives retain their own verified bounds; legacy archives keep their original
 interpretation. A matching live agent/watchdog/source-worker capability is required
-before changing limits for current permissions or unfinished attempts. This is not
-a web-only release and is not deployed. Plan: docs/inline-next-attempt-controls.md.
+before changing limits for current permissions or unfinished attempts. This matched release is deployed; it includes the four native binaries
+and three loaded roles. Plan: docs/inline-next-attempt-controls.md.
 
 November2 LOCAL bulk-next fix: use indexed current-only grant pages rather than
 per-student historical reads. The bulk draft is interactive while loading; fresh

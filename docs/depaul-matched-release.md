@@ -1,10 +1,10 @@
 # DePaul palette and matched release
 
 November 2, 2026. The instructor explicitly requested the DePaul color scheme and
-push/deployment of all pending work. The cutover is **BLOCKED**, with the site in
-maintenance. Native installation and loaded-cohort verification succeeded; final
-web preservation refused and public reopening has not occurred. The prior startup
-qualification missed existing physical-purge jobs; it did not establish this state.
+push/deployment of all pending work. **DEPLOYED AND ONLINE** at15:14:58 Chicago
+(21:14:58UTC), after the separately qualified forward recovery below. Web source
+49d5e3b/schema37 and native cohort are matched; forward operatorsb18a40c. The
+initial held failure remains documented as historical evidence.
 
 The palette follows the [current homepage](https://www.depaul.edu/) and
 [official colors](https://resources.depaul.edu/brand/brand-guidelines/colors/Pages/default.aspx):
@@ -148,3 +148,24 @@ The new private code stage is
 The original staged operators, prepared-input manifest, snapshot, proof start,
 release/nonce and image/native hashes remain untouched. This is a separately
 frozen operator revision, not a replacement preservation baseline.
+
+## Production completion
+
+Qualified forward resume reopened at21:14:58UTC without restarting the running
+candidate. The original prepared inputs/snapshot and CURRENT data were retained.
+All41 preservation contracts pass:40 exact authority tables plus66 completed, due
+physical-purge rechecks with descriptor-pinned absence. Prior audit/management
+requests,110 web/175 native histories and configuration are preserved. All8 public
+asset hashes and4 desktop/mobile focus/navigation views pass; the actual installed
+CLI signed read of the existing synthetic exam succeeds. Video pause is RELEASED.
+No new exam/grant/clock, database restore, authority reset or extra SSH/relay restart.
+
+Maintenance was2829.094seconds (47m9s), including the held failure and subsequent
+authorized repair qualification. It is not presented as a fast cutover. The
+original970286469 recording bytes were reused with zero new media copied. Native
+private snapshot199925760bytes remains available; all ten original dirty screenshots
+match their baseline hashes. Completion receipt:
+`var/collection-tests/depaul-matched-image.f6eb051343/deployment-completion.json`.
+There is no remaining release blocker. A future pre-fence check for pending/failed
+physical-purge transitions is separate optional hardening; current refusal remains
+strict. This release changed no deletion, retention, deadline or recovery policy.

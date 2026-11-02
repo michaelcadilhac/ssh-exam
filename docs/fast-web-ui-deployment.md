@@ -71,6 +71,17 @@ while observing an owned web `resume` operation; stop refreshing once it finishe
 The helper writes private release metadata only. It does not stop services or
 install binaries. A stale or foreign proof refuses, preserving the held state.
 
+Preservation additionally recognizes one completed hourly absence recheck of an
+already tombstoned, previously verified-absent purge job. It requires identical
+job IDs/deletion authority, the exact capped increment and due/verification/hourly
+schedule, plus independent absence under the live database owner's private
+monitoring root through two no-follow descriptor walks. New/removed jobs,
+incomplete/failed/multiple rechecks, changed tombstones or other authority,
+retained paths and unsafe/inaccessible roots refuse. A changed ledger is never a
+reason to reset rows, replace the snapshot or exempt the table. Qualify startup
+with existing due purge jobs, not empty tables. The actual November2 forward repair
+and its no-extra-restart recovery are recorded in docs/depaul-matched-release.md.
+
 The entry point is `scripts/deploy-web-ui`. Preparation does expensive work while
 the current gateway remains online: verify/load the qualified image, retain the
 previous image, render maintenance responses, copy small configuration and warm
