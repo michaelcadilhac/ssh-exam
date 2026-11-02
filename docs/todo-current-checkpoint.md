@@ -1,4 +1,32 @@
-# Current checkpoint — DePaul matched release DEPLOYED AND ONLINE
+# Current checkpoint — simpler attempt cells COMPLETE LOCALLY, NOT DEPLOYED
+
+One coherent UI increment: camera click directly toggles Required/Off; passive
+historical icons share the same44px alignment. Time becomes one minutes text
+field: Enter/blur saves once, Escape cancels the draft, and unchanged exact
+seconds are preserved. Delayed initial loading cannot discard typing. Blur saves
+preserve external Search/Review focus; Enter/Escape can restore the readout.
+Completed Started/Ended timestamps are now in Dates, including mobile.
+
+Reuses existing revision/claim/instructor checks, persisted request identity and
+exact retry. No backend, native, CLI, schema, deadline or historical-policy change.
+All30 focused cases pass on the final source plus the actual HTTP enrollment
+workflow. Prior57 affected admin/actualSSH/WASM/theme cases passed before the
+last focus-only fix; repeat30+1 covers that change without a redundant full run.
+Types/full npm build and final fresh Vite pass. Prof accepted320/430/1280px renders,
+including one-line units and icon alignment, and the focus fix's source. Test
+inputs unchanged, owned fixture/PIDs and3100/3101 gone; original10 screenshot
+hashes preserved. Earlier fixture failures/corrections remain in the evidence.
+
+Evidence: var/collection-tests/simple-attempt-cells.20261102a/browser-summary.json;
+final receipts simple-attempt-cells-focus-restore.20261102a and
+simple-attempt-cells-enrollment-final.20261102a (see summary for exact path).
+Local commit is authorized; no new push/deploy instruction was given. No remaining
+implementation decision or local test blocker. A future release is UI-only with
+unchanged schema37/native/CLI; freeze/qualify its new image and perform the existing
+fresh drain/backup/preservation workflow. No migration or old-database restore.
+The last production checkpoint below remains the actual deployed version.
+
+# Last production checkpoint — DePaul matched release DEPLOYED AND ONLINE
 
 November2 at15:14:58 Chicago (21:14:58UTC): source49d5e3b/schema37 and the
 matched four native binaries are deployed; qualified forward operatorb18a40c.

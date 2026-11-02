@@ -12,6 +12,8 @@ async function fixture(
     webcam?: boolean;
     history?: boolean;
     templateName?: string;
+    holdFirst?: boolean;
+    holdCatalog?: boolean;
   } = {},
 ) {
   page.setDefaultTimeout(6000);
@@ -51,10 +53,19 @@ async function fixture(
     statusReads: 0,
     historyReads: 0,
     sourceReads: 0,
+    catalogReads: 0,
     actor: "instructor",
     failStatus: false,
+    refuseChanges: false,
+    catalogFault: null as "revision" | "claim" | null,
     attempts: [] as any[],
   };
+  let releaseChange!: () => void;
+  const firstChange = new Promise<void>((resolve) => (releaseChange = resolve));
+  let releaseCatalog!: () => void;
+  const firstCatalog = new Promise<void>(
+    (resolve) => (releaseCatalog = resolve),
+  );
   const historicalGrant = {
     ...structuredClone(grant),
     id: "44444444-4444-4444-8444-444444444444",
@@ -140,7 +151,15 @@ async function fixture(
           incidents: [],
         },
       });
-    if (path.endsWith("/grants"))
+    if (path.endsWith("/grants")) {
+      state.catalogReads++;
+      // This boundary occurs after the displayed row's click snapshot is taken.
+      // Background dashboard polling cannot accidentally absorb the mutation.
+      if (state.catalogFault === "revision") grant.revision++;
+      if (state.catalogFault === "claim")
+        grant.claims = [{ state: "PREPARING" }];
+      state.catalogFault = null;
+      if (options.holdCatalog && state.catalogReads === 1) await firstCatalog;
       return route.fulfill({
         json: {
           grants:
@@ -157,6 +176,7 @@ async function fixture(
           next: null,
         },
       });
+    }
     if (path.endsWith("/grants/status")) {
       state.statusReads++;
       if (state.failStatus)
@@ -183,11 +203,19 @@ async function fixture(
     if (path.endsWith("/grants/change")) {
       const body = request.postDataJSON();
       state.writes.push(body);
+      if (options.holdFirst && state.writes.length === 1) await firstChange;
       const results = body.rows.map((row: any) => {
         if (replies.has(row.body.request)) return replies.get(row.body.request);
         expect(row.id).toBe(grant.id);
         expect(row.body.revision).toBe(grant.revision);
         expect(grant.claims).toEqual([]);
+        if (state.refuseChanges)
+          return {
+            id: grant.id,
+            request: row.body.request,
+            outcome: "refused",
+            error: "Synthetic change safely refused",
+          };
         state.mutations++;
         if (row.operation === "revoke") grant.status = "REVOKED";
         else {
@@ -264,46 +292,58 @@ async function fixture(
   await page
     .getByRole("combobox", { name: "Selected exam", exact: true })
     .selectOption(exam);
+  await expect(
+    page.getByRole("row", { name: "Next attempt for amy", exact: true }),
+  ).toBeVisible();
   const edit = async (
     field: "time limit" | "webcam" | "start dates" | "starting files",
   ) => {
     await page
       .getByRole("button", { name: `Change ${field} for amy`, exact: true })
       .click();
-    return field === "starting files"
-      ? page.getByRole("dialog", {
-          name: "Starting files for amy",
+    return field === "time limit"
+      ? page.getByRole("textbox", {
+          name: "Time limit for amy (minutes)",
           exact: true,
         })
-      : page.getByRole("region", {
-          name: `${field[0].toUpperCase()}${field.slice(1)} for amy`,
-          exact: true,
-        });
+      : field === "starting files"
+        ? page.getByRole("dialog", {
+            name: "Starting files for amy",
+            exact: true,
+          })
+        : page.getByRole("region", {
+            name: `${field[0].toUpperCase()}${field.slice(1)} for amy`,
+            exact: true,
+          });
   };
-  return { state, edit, initial: structuredClone(grant) };
+  return {
+    state,
+    edit,
+    releaseChange,
+    releaseCatalog,
+    initial: structuredClone(grant),
+  };
 }
 
-test("an inline time cell is prefilled, shows only time and saves one fresh change without a dialog", async ({
+test("a plain time input saves once on Enter followed by blur without extra buttons or a dialog", async ({
   page,
 }) => {
   const f = await fixture(page),
-    editor = await f.edit("time limit");
+    input = await f.edit("time limit");
+  const cell = page
+    .getByRole("row", { name: "Next attempt for amy", exact: true })
+    .locator(".next-time");
+  await expect(input).toHaveValue("90");
   await expect(
-    editor.getByLabel("Time limit (minutes)", { exact: true }),
-  ).toHaveValue("90");
-  await expect(
-    editor.getByRole("combobox", { name: "Webcam", exact: true }),
+    cell.getByRole("button", { name: /^(Save|Cancel)$/ }),
   ).toHaveCount(0);
-  await expect(editor.getByLabel("Opens", { exact: true })).toHaveCount(0);
-  await expect(
-    editor.getByRole("combobox", { name: "Starting files", exact: true }),
-  ).toHaveCount(0);
-  await expect(editor.getByText("More settings", { exact: true })).toHaveCount(
-    0,
-  );
-  await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("75");
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(editor).toHaveCount(0);
+  await expect(cell.getByRole("region")).toHaveCount(0);
+  await expect(cell.getByRole("combobox")).toHaveCount(0);
+  await expect(cell.getByLabel("Opens", { exact: true })).toHaveCount(0);
+  await input.fill("75");
+  await input.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect(input).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(f.state.statusReads).toBeGreaterThan(0);
   expect(f.state.writes).toHaveLength(1);
@@ -314,26 +354,258 @@ test("an inline time cell is prefilled, shows only time and saves one fresh chan
   expect(f.state.sourceReads).toBe(0);
 });
 
-test("webcam Off saves only webcam and preserves exact seconds and dates", async ({
+test("webcam toggles in one click each way and preserves exact seconds and dates", async ({
   page,
 }) => {
-  const f = await fixture(page, { seconds: true }),
-    editor = await f.edit("webcam");
+  const f = await fixture(page, { seconds: true });
+  const camera = page.getByRole("button", {
+    name: "Change webcam for amy",
+    exact: true,
+  });
+  await expect(camera).toHaveAttribute("aria-pressed", "true");
+  await camera.click();
+  await expect(camera).toHaveAttribute("aria-pressed", "false");
+  await expect(camera).toHaveAttribute("title", "Webcam: Off");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
-    editor.getByRole("combobox", { name: "Webcam", exact: true }),
-  ).toHaveValue("true");
-  await expect(
-    editor.getByLabel("Time limit (minutes)", { exact: true }),
+    page.getByRole("region", { name: "Webcam for amy", exact: true }),
   ).toHaveCount(0);
-  await editor
-    .getByRole("combobox", { name: "Webcam", exact: true })
-    .selectOption({ label: "Off" });
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(editor).toHaveCount(0);
-  expect(f.state.writes[0].rows[0].body.changes).toEqual({ webcam: false });
+  await expect(
+    page.getByRole("combobox", { name: "Webcam", exact: true }),
+  ).toHaveCount(0);
+  await camera.click();
+  await expect(camera).toHaveAttribute("aria-pressed", "true");
+  expect(f.state.writes).toHaveLength(2);
+  expect(f.state.writes.map((write) => write.rows[0].body.changes)).toEqual([
+    { webcam: false },
+    { webcam: true },
+  ]);
   expect(f.state.grant.settings.duration).toBe(95);
   expect(f.state.grant.settings.earliest).toBe(f.initial.settings.earliest);
   expect(f.state.grant.settings.latest).toBe(f.initial.settings.latest);
+});
+
+test("time blur saves, Escape cancels even after blur, and invalid minutes never dispatch", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  let input = await f.edit("time limit");
+  await input.fill("60");
+  await input.press("Tab");
+  await expect(input).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(1);
+  expect(f.state.grant.settings.duration).toBe(3600);
+  input = await f.edit("time limit");
+  await input.fill("45");
+  await input.press("Escape");
+  await page.keyboard.press("Tab");
+  await expect(input).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(1);
+  input = await f.edit("time limit");
+  await expect(input).toHaveValue("60");
+  await input.fill("361");
+  await input.press("Enter");
+  await expect(
+    page
+      .getByRole("row", { name: "Next attempt for amy", exact: true })
+      .getByRole("alert"),
+  ).toContainText("1–360");
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(f.state.writes).toHaveLength(1);
+  await input.press("Escape");
+});
+
+test("focusing an unchanged non-whole-minute allowance preserves its exact seconds", async ({
+  page,
+}) => {
+  const f = await fixture(page, { seconds: true });
+  const input = await f.edit("time limit");
+  await input.press("Tab");
+  await expect(input).toHaveCount(0);
+  expect(f.state.writes).toEqual([]);
+  expect(f.state.grant.settings.duration).toBe(95);
+});
+
+for (const finish of ["Tab", "Enter", "Escape"] as const)
+  test(`early time typing survives a delayed catalogue and ${finish} ${finish === "Escape" ? "cancels" : "saves"} safely`, async ({
+    page,
+  }) => {
+    const f = await fixture(page, { holdCatalog: true });
+    const input = await f.edit("time limit");
+    try {
+      await expect.poll(() => f.state.catalogReads).toBe(1);
+      await input.fill("75");
+      await input.press(finish);
+      if (finish !== "Escape") await expect(input).toHaveValue("75");
+      expect(f.state.writes).toEqual([]);
+    } finally {
+      f.releaseCatalog();
+    }
+    await expect(input).toHaveCount(0);
+    if (finish === "Escape") {
+      expect(f.state.writes).toEqual([]);
+      expect(f.state.grant.settings.duration).toBe(5400);
+    } else {
+      expect(f.state.writes).toHaveLength(1);
+      expect(f.state.writes[0].rows[0].body.changes).toEqual({
+        duration: 4500,
+      });
+      expect(f.state.grant.settings.duration).toBe(4500);
+    }
+  });
+
+test("invalid early minutes remain visible after delayed loading without a request", async ({
+  page,
+}) => {
+  const f = await fixture(page, { holdCatalog: true });
+  const input = await f.edit("time limit");
+  const received = page.waitForResponse((response) =>
+    new URL(response.url()).pathname.endsWith("/grants"),
+  );
+  try {
+    await expect.poll(() => f.state.catalogReads).toBe(1);
+    await input.fill("0");
+    await input.press("Tab");
+  } finally {
+    f.releaseCatalog();
+  }
+  expect((await received).status()).toBe(200);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await expect(input).toHaveValue("0");
+  await expect(
+    page
+      .getByRole("row", { name: "Next attempt for amy", exact: true })
+      .getByRole("alert"),
+  ).toContainText("1–360");
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(f.state.writes).toEqual([]);
+  expect(f.state.grant.settings.duration).toBe(5400);
+  await input.press("Escape");
+});
+
+test("a delayed blur save preserves external search focus and subsequent typing", async ({
+  page,
+}) => {
+  const f = await fixture(page, { holdFirst: true });
+  const input = await f.edit("time limit");
+  const search = page.getByRole("textbox", {
+    name: "Search username",
+    exact: true,
+  });
+  try {
+    await input.fill("75");
+    await search.click();
+    await expect.poll(() => f.state.writes.length).toBe(1);
+    await expect(search).toBeFocused();
+  } finally {
+    f.releaseChange();
+  }
+  await expect(input).toHaveCount(0);
+  await expect(search).toBeFocused();
+  await page.keyboard.type("am");
+  await expect(search).toHaveValue("am");
+  expect(f.state.writes).toHaveLength(1);
+  expect(f.state.writes[0].rows[0].body.changes).toEqual({ duration: 4500 });
+  expect(f.state.mutations).toBe(1);
+});
+
+test("pending webcam saves disable duplicate clicks without changing other cells", async ({
+  page,
+}) => {
+  const f = await fixture(page, { holdFirst: true });
+  const camera = page.getByRole("button", {
+    name: "Change webcam for amy",
+    exact: true,
+  });
+  try {
+    await camera.click();
+    await expect.poll(() => f.state.writes.length).toBe(1);
+    await expect(camera).toBeDisabled();
+    const box = await camera.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    expect(f.state.mutations).toBe(0);
+    expect(f.state.writes).toHaveLength(1);
+  } finally {
+    f.releaseChange();
+  }
+  await expect(camera).toHaveAttribute("aria-pressed", "false");
+  expect(f.state.mutations).toBe(1);
+  expect(f.state.writes).toHaveLength(1);
+});
+
+for (const failure of ["status", "revision", "claim", "refused"] as const)
+  test(`webcam ${failure} refusal preserves safety and never fabricates a saved change`, async ({
+    page,
+  }) => {
+    const f = await fixture(page);
+    const row = page.getByRole("row", {
+      name: "Next attempt for amy",
+      exact: true,
+    });
+    const camera = row.getByRole("button", {
+      name: "Change webcam for amy",
+      exact: true,
+    });
+    await expect(camera).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      row.getByRole("button", {
+        name: "Change time limit for amy",
+        exact: true,
+      }),
+    ).toHaveText("90 min");
+    expect(f.state.grant.revision).toBe(1);
+    if (failure === "status") f.state.failStatus = true;
+    if (failure === "revision" || failure === "claim")
+      f.state.catalogFault = failure;
+    if (failure === "refused") f.state.refuseChanges = true;
+    await camera.click();
+    await expect(row.getByRole("alert")).toContainText(
+      {
+        status: "Synthetic fresh status unavailable",
+        revision:
+          "These settings changed. Reload the student before trying again.",
+        claim:
+          "This attempt is no longer unused. Refresh the student before making changes.",
+        refused: "Synthetic change safely refused",
+      }[failure],
+    );
+    if (failure === "revision" || failure === "claim") {
+      expect(f.state.catalogReads).toBe(1);
+      expect(f.state.catalogFault).toBeNull();
+    }
+    expect(f.state.writes).toHaveLength(failure === "refused" ? 1 : 0);
+    expect(f.state.mutations).toBe(0);
+    expect(f.state.grant.settings.webcam).toBe(true);
+    expect(f.state.grant.settings.duration).toBe(5400);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+test("an unknown webcam result retries the exact request without toggling twice", async ({
+  page,
+}) => {
+  const f = await fixture(page, { dropFirst: true });
+  const camera = page.getByRole("button", {
+    name: "Change webcam for amy",
+    exact: true,
+  });
+  await camera.click();
+  await page
+    .getByRole("button", { name: "Retry saving webcam", exact: true })
+    .click();
+  await expect(camera).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    page.getByRole("button", { name: "Retry saving webcam", exact: true }),
+  ).toHaveCount(0);
+  expect(f.state.writes).toHaveLength(2);
+  expect(f.state.writes[1]).toEqual(f.state.writes[0]);
+  expect(f.state.mutations).toBe(1);
+  expect(f.state.grant.revision).toBe(2);
 });
 
 test("start date cells save the chosen closing time without rounding the untouched opening time", async ({
@@ -393,10 +665,14 @@ test("fresh claim checks refuse an inline save without dispatching changes", asy
 }) => {
   const f = await fixture(page),
     editor = await f.edit("time limit");
-  await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
+  await editor.fill("60");
   f.state.grant.claims = [{ state: "PREPARING" }];
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(editor.getByRole("alert")).toContainText("setup started");
+  await editor.press("Enter");
+  await expect(
+    page
+      .getByRole("row", { name: "Next attempt for amy", exact: true })
+      .getByRole("alert"),
+  ).toContainText("setup started");
   expect(f.state.writes).toEqual([]);
   expect(f.state.grant.settings.duration).toBe(5400);
 });
@@ -406,12 +682,14 @@ test("fresh instructor identity is checked before an inline request is dispatche
 }) => {
   const f = await fixture(page),
     editor = await f.edit("time limit");
-  await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
+  await editor.fill("60");
   f.state.actor = "another_instructor";
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(editor.getByRole("alert")).toContainText(
-    "Instructor sign-in changed",
-  );
+  await editor.press("Enter");
+  await expect(
+    page
+      .getByRole("row", { name: "Next attempt for amy", exact: true })
+      .getByRole("alert"),
+  ).toContainText("Instructor sign-in changed");
   expect(f.state.writes).toEqual([]);
 });
 
@@ -420,8 +698,8 @@ test("an uncertain inline save remains exactly retryable after the permission is
 }) => {
   const f = await fixture(page, { dropFirst: true, consumeAfterDrop: true }),
     editor = await f.edit("time limit");
-  await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await editor.fill("60");
+  await editor.press("Enter");
   await expect.poll(() => f.state.writes.length).toBe(1);
   await expect(
     page.getByRole("row", { name: "Next attempt for amy", exact: true }),
@@ -491,15 +769,17 @@ test("opening cancellation cannot relabel or dispatch an older uncertain revisio
 }) => {
   const f = await fixture(page, { dropFirst: true }),
     editor = await f.edit("time limit");
-  await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await editor.fill("60");
+  await editor.press("Enter");
   await expect(
-    editor.getByRole("button", {
-      name: "Retry unconfirmed changes",
+    page.getByRole("button", {
+      name: "Retry saving time limit",
       exact: true,
     }),
   ).toBeVisible();
-  await editor.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(editor).toHaveAttribute("aria-invalid", "false");
+  await expect(editor).toHaveJSProperty("readOnly", true);
+  await editor.press("Escape");
   await expect(editor).toHaveCount(0);
   await page
     .getByRole("button", { name: "Cancel next attempt for amy", exact: true })
@@ -564,6 +844,9 @@ for (const width of [320, 430, 1280])
       }
     };
     await fits();
+    await expect(page.locator(".roster-timezone")).toHaveText(
+      "Dates in America/Chicago.",
+    );
     for (const label of [
       "Change webcam for amy",
       "Cancel next attempt for amy",
@@ -577,6 +860,34 @@ for (const width of [320, 430, 1280])
     await expect(
       page.getByRole("button", { name: "Change webcam for amy", exact: true }),
     ).toHaveAttribute("aria-description", "Off");
+    const history = page.locator(".historical-attempt-row"),
+      dates = history.locator(".history-window"),
+      camera = page.getByRole("button", {
+        name: "Change webcam for amy",
+        exact: true,
+      }),
+      recordedCamera = history.getByRole("img", {
+        name: "Webcam off",
+        exact: true,
+      });
+    await expect(history.locator(".attempt-identity")).not.toContainText(
+      /Started|Ended/,
+    );
+    await expect(dates).toContainText("Started");
+    await expect(dates).toContainText("Ended");
+    await expect(dates).toHaveAttribute("data-label", "Dates");
+    const nextCameraBox = await camera.boundingBox(),
+      historyCameraBox = await recordedCamera.boundingBox();
+    expect(nextCameraBox).not.toBeNull();
+    expect(historyCameraBox).not.toBeNull();
+    expect(
+      Math.abs(
+        nextCameraBox!.x +
+          nextCameraBox!.width / 2 -
+          historyCameraBox!.x -
+          historyCameraBox!.width / 2,
+      ),
+    ).toBeLessThanOrEqual(1);
     await expect(
       page.getByRole("button", { name: "Edit settings", exact: true }),
     ).toHaveCount(0);
@@ -590,7 +901,7 @@ for (const width of [320, 430, 1280])
       path: info.outputPath("prof-overview.png"),
       fullPage: true,
     });
-    for (const field of ["time limit", "webcam", "start dates"] as const) {
+    for (const field of ["time limit", "start dates"] as const) {
       const editor = await f.edit(field);
       await expect(editor).toBeVisible();
       if (field === "start dates") {
@@ -598,6 +909,17 @@ for (const width of [320, 430, 1280])
         await expect(
           editor.getByText("Start window", { exact: true }),
         ).toHaveCount(0);
+      } else {
+        const unit = page.locator(".next-time .direct-time-value > span");
+        await expect(unit).toHaveText("min");
+        expect(
+          await unit.evaluate((element) => {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            return [...range.getClientRects()].filter((rect) => rect.width > 0)
+              .length;
+          }),
+        ).toBe(1);
       }
       await fits();
       const box = await editor.boundingBox();
@@ -607,7 +929,11 @@ for (const width of [320, 430, 1280])
         path: info.outputPath(`prof-${field.replaceAll(" ", "-")}.png`),
         fullPage: true,
       });
-      await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+      if (field === "time limit") await editor.press("Escape");
+      else
+        await editor
+          .getByRole("button", { name: "Cancel", exact: true })
+          .click();
       await expect(
         page.getByRole("button", {
           name: `Change ${field} for amy`,

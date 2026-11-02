@@ -1,3 +1,16 @@
+# Current follow-up — simpler attempt cells COMPLETE LOCALLY
+
+November2: one-click Required/Off camera, matching history/next icon alignment,
+plain inline time field (Enter/blur save once; Escape cancels unsaved edit), and
+completed Started/Ended in Dates. Slow-loading typing and external focus survive
+saves; exact seconds, revision/claim checks and durable unknown-request retry are
+preserved. Final30 focused browser cases and actual HTTP enrollment workflow pass;
+prior57 affected cases cover unchanged workflows. Types/build/Prof review and
+owned cleanup pass. No backend/native/schema/CLI policy change. Original dirty
+screenshots preserved. Local only: no push/deploy instruction for this follow-up.
+Evidence and future UI-only deployment/rollback scope:
+docs/inline-next-attempt-controls.md and docs/todo-current-checkpoint.md.
+
 # Current follow-up — DEPLOYED AND ONLINE
 
 November2 at15:14:58 Chicago: DePaul theme/favicon/maintenance and all pending

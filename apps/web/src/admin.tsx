@@ -138,6 +138,7 @@ export function Admin({
     username: string;
     id: string;
     field: NextField;
+    directSetting?: { revision: number; value: number | boolean };
   } | null>(null);
   const [grantAction, setGrantAction] = useState<
     "edit" | "cancel" | undefined
@@ -375,9 +376,16 @@ export function Admin({
   const unfinishedChanges = pendingAttemptChanges(actor, exam);
   const unfinishedRequests = pendingGrantRequests(actor, exam);
   const closeInline = () => {
-    const previous = inlineAttempt;
+    const previous = inlineAttempt,
+      editor =
+        previous?.field === "duration" && previous.directSetting
+          ? document.getElementById(
+              `${fieldTrigger(previous.id, previous.field)}-editor`,
+            )
+          : null,
+      restoreFocus = !editor || editor.contains(document.activeElement);
     setInlineAttempt(null);
-    if (previous)
+    if (previous && restoreFocus)
       requestAnimationFrame(() =>
         document
           .getElementById(fieldTrigger(previous.id, previous.field))
@@ -389,6 +397,14 @@ export function Admin({
       username: student.username,
       id: student.unusedAttempt.id,
       field,
+      ...(field === "webcam" || field === "duration"
+        ? {
+            directSetting: {
+              revision: student.unusedAttempt.revision,
+              value: student.unusedAttempt.settings[field],
+            },
+          }
+        : {}),
     });
   const inlineEditor = (student: any, field: NextField) =>
     inlineAttempt?.id === student.unusedAttempt?.id &&
@@ -400,6 +416,7 @@ export function Admin({
         username={student.username}
         initialGrantId={inlineAttempt.id}
         editField={field}
+        directSetting={inlineAttempt.directSetting}
         embedded
         autoEdit
         onClose={closeInline}
@@ -727,9 +744,7 @@ export function Admin({
                 Select all students ({candidates.length})
               </label>
             </div>
-            <p className="roster-timezone">
-              Start dates in {deviceTimeZone()}.
-            </p>
+            <p className="roster-timezone">Dates in {deviceTimeZone()}.</p>
             {!!(unfinishedChanges.length || unfinishedRequests.length) && (
               <div
                 className="pending-attempt-changes"
@@ -942,12 +957,12 @@ export function Admin({
                             </th>
                             <th>Student / attempt</th>
                             <th>Status</th>
-                            <th>
+                            <th className="webcam-heading">
                               <span aria-hidden="true">📷</span>
                               <span className="visually-hidden">Webcam</span>
                             </th>
                             <th>Time</th>
-                            <th>Start dates</th>
+                            <th>Dates</th>
                             <th>Starting files</th>
                             <th>
                               <span className="visually-hidden">Actions</span>
@@ -1061,6 +1076,9 @@ export function Admin({
                                         "webcam",
                                       )}
                                       aria-label={`Change webcam for ${s.username}`}
+                                      aria-pressed={
+                                        !!s.unusedAttempt.settings.webcam
+                                      }
                                       aria-description={
                                         s.unusedAttempt.settings.webcam
                                           ? "Required"
@@ -1108,10 +1126,7 @@ export function Admin({
                                     </button>
                                   )}
                                 </td>
-                                <td
-                                  className="next-window"
-                                  data-label="Start dates"
-                                >
+                                <td className="next-window" data-label="Dates">
                                   {inlineEditor(s, "window") ?? (
                                     <button
                                       type="button"
@@ -1209,7 +1224,8 @@ export function Admin({
                             {inlineAttempt &&
                               inlineAttempt.username === s.username &&
                               inlineAttempt.field !== "files" &&
-                              !s.unusedAttempt && (
+                              (!s.unusedAttempt ||
+                                s.unusedAttempt.id !== inlineAttempt.id) && (
                                 <tr className="next-attempt-editor">
                                   <td colSpan={8}>
                                     <AttemptGrantsDialog
@@ -1219,6 +1235,9 @@ export function Admin({
                                       username={s.username}
                                       initialGrantId={inlineAttempt.id}
                                       editField={inlineAttempt.field}
+                                      directSetting={
+                                        inlineAttempt.directSetting
+                                      }
                                       embedded
                                       autoEdit
                                       onClose={closeInline}
@@ -1260,26 +1279,6 @@ export function Admin({
                                           {attemptStarted(
                                             a.preflight_started_at,
                                           )}
-                                        </time>
-                                      )}
-                                      {!!a.start && (
-                                        <time
-                                          dateTime={new Date(
-                                            a.start,
-                                          ).toISOString()}
-                                          title={chicago(a.start)}
-                                        >
-                                          Started {attemptStarted(a.start)}
-                                        </time>
-                                      )}
-                                      {!!a.ended && (
-                                        <time
-                                          dateTime={new Date(
-                                            a.ended,
-                                          ).toISOString()}
-                                          title={chicago(a.ended)}
-                                        >
-                                          Ended {attemptStarted(a.ended)}
                                         </time>
                                       )}
                                     </td>
@@ -1397,9 +1396,34 @@ export function Admin({
                                     <td
                                       role="cell"
                                       className="history-window"
-                                      aria-label="Start dates"
+                                      data-label="Dates"
                                     >
-                                      —
+                                      {a.start || a.ended ? (
+                                        <>
+                                          {!!a.start && (
+                                            <time
+                                              dateTime={new Date(
+                                                a.start,
+                                              ).toISOString()}
+                                              title={chicago(a.start)}
+                                            >
+                                              Started {attemptStarted(a.start)}
+                                            </time>
+                                          )}
+                                          {!!a.ended && (
+                                            <time
+                                              dateTime={new Date(
+                                                a.ended,
+                                              ).toISOString()}
+                                              title={chicago(a.ended)}
+                                            >
+                                              Ended {attemptStarted(a.ended)}
+                                            </time>
+                                          )}
+                                        </>
+                                      ) : (
+                                        "—"
+                                      )}
                                     </td>
                                     <td
                                       role="cell"

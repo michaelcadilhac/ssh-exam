@@ -215,10 +215,8 @@ test("a next attempt can be cancelled, recreated and edited before starting with
   ).toEqual([other.id]);
   expect(other.work.kind).toBe("empty");
   const timeEditor = await editNextField(page, "extra01", "time limit");
-  await timeEditor
-    .getByLabel("Time limit (minutes)", { exact: true })
-    .fill("60");
-  await timeEditor.getByRole("button", { name: "Save", exact: true }).click();
+  await timeEditor.fill("60");
+  await timeEditor.press("Enter");
   await expect(timeEditor).toHaveCount(0);
   const grants = await editNextField(page, "extra01", "starting files");
   await grants

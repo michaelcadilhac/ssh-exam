@@ -180,30 +180,34 @@ for (const width of [430, 1280]) {
     await page
       .getByLabel("Selected exam", { exact: true })
       .selectOption(settings.id);
+    const camera = page.getByRole("button", {
+      name: "Change webcam for amy",
+      exact: true,
+    });
+    await expect(camera).toHaveAttribute("aria-pressed", "false");
+    await contrast(camera);
+    await camera.focus();
+    await expect(camera).toHaveCSS("outline-color", blue);
     await page
-      .getByRole("button", { name: "Change webcam for amy", exact: true })
+      .getByRole("button", { name: "Change time limit for amy", exact: true })
       .click();
-    const editor = page.getByRole("region", {
-      name: "Webcam for amy",
+    const time = page.getByRole("textbox", {
+      name: "Time limit for amy (minutes)",
       exact: true,
     });
-    const webcam = editor.getByRole("combobox", {
-      name: "Webcam",
-      exact: true,
-    });
-    await expect(webcam).toHaveValue("false");
-    await contrast(webcam);
-    await webcam.focus();
-    await expect(webcam).toHaveCSS("outline-color", blue);
-    const save = editor.getByRole("button", { name: "Save", exact: true });
-    await expect(save).toHaveCSS("background-color", blue);
-    await contrast(save);
+    await expect(time).toHaveValue("90");
+    await contrast(time);
+    await expect(time).toBeFocused();
+    await expect(time).toHaveCSS("outline-color", blue);
+    await expect(
+      page.getByRole("button", { name: "Save", exact: true }),
+    ).toHaveCount(0);
     await noOverflow(page);
     await page.screenshot({
       path: info.outputPath("depaul-admin-inline.png"),
       fullPage: true,
     });
-    await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+    await time.press("Escape");
     await page
       .getByRole("button", { name: "Cancel next attempt for amy", exact: true })
       .click();

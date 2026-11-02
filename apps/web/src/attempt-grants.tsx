@@ -33,6 +33,7 @@ type AttemptGrantsProps = {
   actor: string;
   embedded?: boolean;
   autoEdit?: boolean;
+  directSetting?: { revision: number; value: number | boolean };
   initialAction?: "edit" | "cancel";
   onClose: () => void;
   onChanged: () => Promise<void>;
@@ -179,6 +180,7 @@ export function AttemptGrantsDialog({
   initialGrantId,
   embedded = false,
   autoEdit = false,
+  directSetting,
   editField,
   initialAction,
   onClose,
@@ -200,6 +202,11 @@ export function AttemptGrantsDialog({
       }[editField]
     : "Next attempt";
   const initializedAction = useRef(false);
+  const directWriting = useRef(false),
+    directStarted = useRef(false),
+    directCancelled = useRef(false),
+    directQueued = useRef<string | null>(null),
+    directInput = useRef<HTMLInputElement>(null);
   const [catalog, setCatalog] = useState<any[]>([]),
     [selected, setSelected] = useState(new Set<string>()),
     [editingId, setEditingId] = useState<string | null>(null),
@@ -487,8 +494,9 @@ export function AttemptGrantsDialog({
     setEditingId(grant.id);
     setEditingSnapshot(structuredClone(grant));
     setSelected(new Set([grant.id]));
-    setDraft(
-      Object.fromEntries(
+    setDraft((old) => ({
+      ...(directSetting && editField === "duration" ? old : {}),
+      ...Object.fromEntries(
         Object.entries(changes)
           .filter(([key]) => key === "duration")
           .map(([key, value]) => [
@@ -496,7 +504,7 @@ export function AttemptGrantsDialog({
             String(key === "duration" ? value / 60 : value),
           ]),
       ),
-    );
+    }));
     setWebcam(String(settings.webcam));
     setWindowMode("set");
     setOpens(localDateTime(settings.earliest));
@@ -518,7 +526,7 @@ export function AttemptGrantsDialog({
     );
     setSourceError("");
     setSourceLoading(false);
-    setError("");
+    if (!directSetting) setError("");
   };
   const editGrant = (grant: any) => {
     if (busy || review || !grantUnused(grant)) return;
@@ -574,6 +582,10 @@ export function AttemptGrantsDialog({
   };
   const finishConfirmed = (rows: ChangeRow[]) => {
     if (!rows.every((row) => ["noop", "saved"].includes(row.state))) return;
+    if (directSetting) {
+      if (directCancelled.current) return;
+      directCancelled.current = true;
+    }
     try {
       sessionStorage.removeItem(cacheKey);
     } catch {
@@ -585,6 +597,7 @@ export function AttemptGrantsDialog({
     operation: "revise" | "revoke",
     targets = username && editingGrant ? [editingGrant] : selectedGrants,
     saveImmediately = false,
+    directDuration?: string,
   ) => {
     if (busy) return;
     if (!catalogReady) {
@@ -602,6 +615,13 @@ export function AttemptGrantsDialog({
         throw Error("Choose from 1 to 200 unused attempts.");
       if (username && targets.length !== 1)
         throw Error("Choose one student's next attempt to change.");
+      if (
+        directSetting &&
+        targets.some((grant) => grant.revision !== directSetting.revision)
+      )
+        throw Error(
+          "These settings changed. Reload the student before trying again.",
+        );
       const current = await readStatus(
         targets.map((g) => ({ id: g.id, revision: g.revision })),
         new AbortController().signal,
@@ -621,18 +641,23 @@ export function AttemptGrantsDialog({
           changes: Record<string, any> = {};
         let work: any;
         if (operation === "revise") {
-          if ((!editField || editField === "duration") && draft.duration) {
-            const n = Number(draft.duration);
-            if (!/^\d+$/.test(draft.duration) || n < 1 || n > 360)
+          const duration = directDuration ?? draft.duration,
+            camera =
+              directSetting && editField === "webcam"
+                ? String(!directSetting.value)
+                : webcam;
+          if ((!editField || editField === "duration") && duration) {
+            const n = Number(duration);
+            if (!/^\d+$/.test(duration) || n < 1 || n > 360)
               throw Error("Choose a time limit from 1 to 360 whole minutes.");
             if (n * 60 !== grant.settings.duration) changes.duration = n * 60;
           }
           if (
             (!editField || editField === "webcam") &&
-            webcam !== "keep" &&
-            (webcam === "true") !== grant.settings.webcam
+            camera !== "keep" &&
+            (camera === "true") !== grant.settings.webcam
           )
-            changes.webcam = webcam === "true";
+            changes.webcam = camera === "true";
           if ((!editField || editField === "window") && windowMode === "set")
             for (const [key, value, occurrence] of [
               ["earliest", opens, openOccurrence],
@@ -841,6 +866,37 @@ export function AttemptGrantsDialog({
     const result = await applyRows(review);
     if ((editField || initialAction === "cancel") && result)
       finishConfirmed(result);
+  };
+  const directValue =
+    directSetting && editField === "duration"
+      ? Number(directSetting.value) % 60 === 0
+        ? String(Number(directSetting.value) / 60)
+        : timeLimit(Number(directSetting.value))
+      : "";
+  const saveDirect = async (value = draft.duration ?? directValue) => {
+    if (directWriting.current || directCancelled.current || busy) return;
+    if (!review && editField === "duration") {
+      if (value === directValue) {
+        directCancelled.current = true;
+        onClose();
+        return;
+      }
+      if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 360) {
+        setError("Enter 1–360 whole minutes.");
+        return;
+      }
+    }
+    if (!review && (!catalogReady || !editingGrant)) {
+      directQueued.current = value;
+      return;
+    }
+    directWriting.current = true;
+    try {
+      if (review) await apply();
+      else await makeReview("revise", [editingGrant], true, value);
+    } finally {
+      directWriting.current = false;
+    }
   };
   const loadHistory = async (grant: any, before?: number) => {
     try {
@@ -1202,6 +1258,181 @@ export function AttemptGrantsDialog({
     username,
     editField,
   ]);
+  const directReviewMatches =
+    !review ||
+    (review.length === 1 &&
+      review[0].grant.id === initialGrantId &&
+      review[0].operation === "revise" &&
+      !review[0].body.work &&
+      Object.keys(review[0].body.changes ?? {}).every(
+        (field) => field === editField,
+      ));
+  useEffect(() => {
+    if (
+      !directSetting ||
+      editField !== "duration" ||
+      directQueued.current === null ||
+      !editingGrant ||
+      !catalogReady ||
+      busy ||
+      review ||
+      directCancelled.current
+    )
+      return;
+    const value = directQueued.current;
+    directQueued.current = null;
+    void saveDirect(value);
+  }, [directSetting, editField, editingGrant?.id, catalogReady, busy, review]);
+  useEffect(() => {
+    if (
+      !directSetting ||
+      editField !== "webcam" ||
+      !editingGrant ||
+      review ||
+      busy ||
+      error ||
+      directStarted.current
+    )
+      return;
+    directStarted.current = true;
+    void saveDirect();
+  }, [directSetting, editField, editingGrant?.id, review, busy, error]);
+  useEffect(() => {
+    if (!directSetting || !directReviewMatches || busy) return;
+    if (review?.every((row) => ["noop", "saved"].includes(row.state)))
+      finishConfirmed(review);
+  }, [directSetting, directReviewMatches, review, busy]);
+  useEffect(() => {
+    if (!directSetting) return;
+    const cancel = (event: KeyboardEvent) => {
+      if (
+        event.key !== "Escape" ||
+        event.defaultPrevented ||
+        busy ||
+        directWriting.current
+      )
+        return;
+      event.preventDefault();
+      directCancelled.current = true;
+      close();
+    };
+    document.addEventListener("keydown", cancel);
+    return () => document.removeEventListener("keydown", cancel);
+  }, [directSetting, busy, review]);
+  if (directSetting && ["duration", "webcam"].includes(editField ?? "")) {
+    const message = !directReviewMatches
+        ? "Finish the earlier change in Unfinished changes before editing this setting."
+        : unknown
+          ? "Save unconfirmed. Retry the same change."
+          : error || review?.find((row) => row.error)?.error,
+      retry = directReviewMatches && !!pendingRows.length,
+      rejected = review?.some((row) => row.state === "refused"),
+      description = message ? `${formId}-direct-error` : undefined;
+    return (
+      <div
+        id={`next-attempt-${initialGrantId}-${editField}-editor`}
+        className="direct-attempt-setting"
+        aria-busy={busy || !loaded}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || busy || directWriting.current) return;
+          event.preventDefault();
+          directCancelled.current = true;
+          close();
+        }}
+      >
+        {editField === "webcam" ? (
+          <button
+            type="button"
+            className="cell-value icon-button"
+            aria-label={`Change webcam for ${username}`}
+            aria-pressed={!!directSetting.value}
+            aria-describedby={description}
+            title={`Webcam: ${directSetting.value ? "Required" : "Off"}`}
+            disabled={
+              busy || !catalogReady || !directReviewMatches || !!rejected
+            }
+            onClick={() => void saveDirect()}
+          >
+            <span
+              aria-hidden="true"
+              className={`webcam-icon${directSetting.value ? "" : " webcam-off"}`}
+            >
+              📷
+            </span>
+          </button>
+        ) : (
+          <span className="direct-time-value">
+            <input
+              ref={directInput}
+              autoFocus
+              type="text"
+              inputMode="numeric"
+              aria-label={`Time limit for ${username} (minutes)`}
+              aria-describedby={description}
+              aria-invalid={error === "Enter 1–360 whole minutes."}
+              value={
+                draft.duration ??
+                (review?.[0]?.body.changes?.duration !== undefined
+                  ? String(review[0].body.changes.duration / 60)
+                  : directValue)
+              }
+              readOnly={busy || !!review || !directReviewMatches}
+              onChange={(event) => {
+                setDraft({ ...draft, duration: event.target.value });
+                if (directQueued.current !== null)
+                  directQueued.current = event.target.value;
+                setError("");
+              }}
+              onFocus={(event) => event.currentTarget.select()}
+              onBlur={(event) => {
+                if (!review) void saveDirect(event.currentTarget.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                void saveDirect(event.currentTarget.value);
+              }}
+            />
+            {(draft.duration !== undefined ||
+              Number(directSetting.value) % 60 === 0) && <span>min</span>}
+          </span>
+        )}
+        {message && (
+          <small role="alert" id={description}>
+            {message}
+          </small>
+        )}
+        {retry && (
+          <button
+            type="button"
+            className="direct-setting-retry"
+            disabled={busy}
+            onClick={() => void saveDirect()}
+          >
+            Retry saving {editField === "webcam" ? "webcam" : "time limit"}
+          </button>
+        )}
+        {message &&
+          (!retry || !directReviewMatches) &&
+          error !== "Enter 1–360 whole minutes." && (
+            <button
+              type="button"
+              className="direct-setting-retry"
+              disabled={busy}
+              onClick={() => {
+                if (!directReviewMatches) close();
+                else
+                  void onChanged()
+                    .then(close)
+                    .catch((e) => setError(e.message));
+              }}
+            >
+              {directReviewMatches ? "Reload student" : "Close"}
+            </button>
+          )}
+      </div>
+    );
+  }
   if (
     initialAction === "cancel" &&
     (!review || review.every((row) => row.operation === "revoke"))

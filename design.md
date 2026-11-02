@@ -5,6 +5,15 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November2 subsequent UI follow-up, IMPLEMENTED/TESTED LOCALLY (not deployed):
+next-attempt cameras toggle directly on one click and align with passive history
+icons. Time edits use a plain minutes field: Enter/blur save once, Escape discards
+an unsaved edit, unchanged exact seconds stay intact, and blur-save preserves the
+user's external focus. Completed Started/Ended timestamps appear in Dates, also
+on mobile. Existing revision/claim/audit/request-retry enforcement is unchanged;
+no backend/native/deadline/history policy change. Final types/build/browser and
+Prof review pass; see docs/inline-next-attempt-controls.md and current checkpoint.
+
 November2 matched release DEPLOYED AND ONLINE at15:14:58 Chicago. The DePaul
 theme, unified exam student catalog and direct-edit/shared-limit changes below are
 online on marco/csc-sys at source49d5e3b/schema37. Preservation and public/native/CLI

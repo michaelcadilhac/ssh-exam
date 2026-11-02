@@ -1233,6 +1233,10 @@ test("slow dashboard responses complete, stale data blocks clock edits, and exam
   await expect(page.getByRole("alert")).toContainText("Updates paused", {
     timeout: 15000,
   });
+  for (const name of ["Change webcam for amy", "Change time limit for amy"])
+    await expect(
+      page.getByRole("button", { name, exact: true }),
+    ).toBeDisabled();
   await page
     .getByRole("button", { name: "Actions for amy attempt 2", exact: true })
     .click();
@@ -1871,7 +1875,7 @@ for (const width of [1280, 430])
       /First attempt:|Default:|Webcam default:/,
     );
     const started = amy
-      .locator(".attempt-row:not(.next-attempt-row) time")
+      .locator(".attempt-row:not(.next-attempt-row) .history-window time")
       .first();
     await expect(started).toHaveAttribute(
       "datetime",
@@ -1883,40 +1887,33 @@ for (const width of [1280, 430])
       exact: true,
     });
     await timeTrigger.click();
-    let editor = page.getByRole("region", {
-      name: "Time limit for amy",
+    let editor = page.getByRole("textbox", {
+      name: "Time limit for amy (minutes)",
       exact: true,
     });
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(editor).toHaveValue("75");
     await expect(
-      editor.getByLabel("Time limit (minutes)", { exact: true }),
-    ).toHaveValue("75");
-    await expect(editor.getByLabel("Closes", { exact: true })).toHaveCount(0);
-    await editor
-      .getByLabel("Time limit (minutes)", { exact: true })
-      .fill("120");
-    await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+      next
+        .locator(".next-time")
+        .getByRole("button", { name: /^(Save|Cancel)$/ }),
+    ).toHaveCount(0);
+    await editor.fill("120");
+    await editor.press("Escape");
     await expect(editor).toHaveCount(0);
     expect(s.calls).toHaveLength(0);
     await timeTrigger.click();
-    await expect(
-      editor.getByLabel("Time limit (minutes)", { exact: true }),
-    ).toHaveValue("75");
-    await editor
-      .getByLabel("Time limit (minutes)", { exact: true })
-      .fill("120");
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(editor).toHaveValue("75");
+    await editor.fill("120");
+    await editor.press("Enter");
     await expect(editor).toHaveCount(0);
     await expect(next).toContainText("120 min");
     await next
       .getByRole("button", { name: "Change webcam for amy", exact: true })
       .click();
-    editor = page.getByRole("region", { name: "Webcam for amy", exact: true });
-    await editor
-      .getByRole("combobox", { name: "Webcam", exact: true })
-      .selectOption("true");
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(editor).toHaveCount(0);
+    await expect(
+      page.getByRole("region", { name: "Webcam for amy", exact: true }),
+    ).toHaveCount(0);
     await expect(
       next.getByRole("button", { name: "Change webcam for amy", exact: true }),
     ).toHaveAttribute("title", "Webcam: Required");
@@ -1998,22 +1995,26 @@ test("inline next-attempt failures preserve the exact reviewed request for retry
   await next
     .getByRole("button", { name: "Change time limit for amy", exact: true })
     .click();
-  const editor = page.getByRole("region", {
-    name: "Time limit for amy",
+  const editor = page.getByRole("textbox", {
+    name: "Time limit for amy (minutes)",
     exact: true,
   });
-  await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("125");
+  await editor.fill("125");
   s.failSettings = true;
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(editor).toContainText("Change unconfirmed");
+  await editor.press("Enter");
+  await expect(next.getByText(/unconfirmed/i).first()).toBeVisible();
+  await expect(editor).toHaveAttribute("aria-invalid", "false");
+  await expect(editor).toHaveJSProperty("readOnly", true);
   const first = s.calls.filter((call) =>
     call.path.endsWith("/grants/change"),
   )[0].body;
   s.failSettings = false;
-  await editor
-    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
+  await next
+    .getByRole("button", { name: "Retry saving time limit", exact: true })
     .click();
-  await expect(editor).toHaveCount(0);
+  await expect(
+    next.getByRole("button", { name: "Retry saving time limit", exact: true }),
+  ).toHaveCount(0);
   const calls = s.calls.filter((call) => call.path.endsWith("/grants/change"));
   expect(calls).toHaveLength(2);
   expect(calls[1].body).toEqual(first);

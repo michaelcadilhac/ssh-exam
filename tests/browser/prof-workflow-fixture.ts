@@ -62,7 +62,7 @@ export async function previewAdditional(page: Page, dialog: Locator) {
 export async function editNextField(
   page: Page,
   username: string,
-  field: "time limit" | "webcam" | "start dates" | "starting files",
+  field: "time limit" | "start dates" | "starting files",
 ) {
   await page
     .getByRole("button", {
@@ -71,9 +71,14 @@ export async function editNextField(
     })
     .click();
   const name = `${field[0].toUpperCase()}${field.slice(1)} for ${username}`;
-  return field === "starting files"
-    ? page.getByRole("dialog", { name, exact: true })
-    : page.getByRole("region", { name, exact: true });
+  return field === "time limit"
+    ? page.getByRole("textbox", {
+        name: `Time limit for ${username} (minutes)`,
+        exact: true,
+      })
+    : field === "starting files"
+      ? page.getByRole("dialog", { name, exact: true })
+      : page.getByRole("region", { name, exact: true });
 }
 
 export async function cancelNext(page: Page, username: string) {

@@ -156,10 +156,6 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await expect(add).toBeFocused();
   // Enrollment-time issuance remains the real gateway transaction.
   await page.setViewportSize({ width: 430, height: 1000 });
-  const grants = await editNextField(page, "student02", "time limit");
-  await expect(
-    grants.getByLabel("Time limit (minutes)", { exact: true }),
-  ).toHaveValue("120");
   const issued = (
     await (
       await page.request.get(
@@ -176,12 +172,64 @@ test("Add student contains single entry and CSV upload with a downloadable examp
       latest: firstAttemptCloses,
     },
   });
+  const camera = row.getByRole("button", {
+    name: "Change webcam for student02",
+    exact: true,
+  });
+  for (const [required, revision] of [
+    [true, 2],
+    [false, 3],
+  ] as const) {
+    const saved = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith("/grants/change") &&
+        response.request().method() === "POST",
+    );
+    await camera.click();
+    const response = await saved;
+    expect(response.status()).toBe(200);
+    expect(response.request().postDataJSON().rows[0].body.changes).toEqual({
+      webcam: required,
+    });
+    await expect(camera).toHaveAttribute("aria-pressed", String(required));
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    const current = await (
+      await page.request.get(`/api/admin/grants/${issued.id}`)
+    ).json();
+    expect(current.revision).toBe(revision);
+    expect(current.settings).toEqual({ ...issued.settings, webcam: required });
+  }
+  let grants = await editNextField(page, "student02", "time limit");
+  await expect(grants).toHaveValue("120");
+  const timeCell = row.locator(".next-time");
+  await expect(
+    timeCell.getByRole("button", { name: /^(Save|Cancel)$/ }),
+  ).toHaveCount(0);
+  await grants.fill("45");
+  await grants.press("Escape");
+  await expect(grants).toHaveCount(0);
+  expect(
+    (await (await page.request.get(`/api/admin/grants/${issued.id}`)).json())
+      .revision,
+  ).toBe(3);
+  grants = await editNextField(page, "student02", "time limit");
+  await expect(grants).toHaveValue("120");
+  await grants.fill("105");
+  await grants.press("Tab");
+  await expect(grants).toHaveCount(0);
+  const blurred = await (
+    await page.request.get(`/api/admin/grants/${issued.id}`)
+  ).json();
+  expect(blurred.revision).toBe(4);
+  expect(blurred.settings).toEqual({ ...issued.settings, duration: 6300 });
+  grants = await editNextField(page, "student02", "time limit");
+  await expect(grants).toHaveValue("105");
   expect(
     await grants.evaluate(
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
     ),
   ).toBe(true);
-  await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("90");
+  await grants.fill("90");
   let lost = false;
   const requests: any[] = [];
   await page.route(
@@ -197,24 +245,26 @@ test("Add student contains single entry and CSV upload with a downloadable examp
       await route.fulfill({ response: reply });
     },
   );
-  await grants.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(
-    grants.getByText("Change unconfirmed", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    grants.getByLabel("Time limit (minutes)", { exact: true }),
-  ).toHaveCount(0);
-  await grants
-    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
+  await grants.press("Enter");
+  await expect(timeCell.getByText(/unconfirmed/i).first()).toBeVisible();
+  await expect(grants).toHaveJSProperty("readOnly", true);
+  await expect(grants).toHaveAttribute("aria-invalid", "false");
+  await timeCell
+    .getByRole("button", { name: "Retry saving time limit", exact: true })
     .click();
-  await expect(grants).toHaveCount(0);
+  await expect(
+    timeCell.getByRole("button", {
+      name: "Retry saving time limit",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   expect(requests).toHaveLength(2);
   expect(requests[1]).toEqual(requests[0]);
   await expect(row).toContainText("90 min");
   const revised = await (
     await page.request.get(`/api/admin/grants/${issued.id}`)
   ).json();
-  expect(revised.revision).toBe(2);
+  expect(revised.revision).toBe(5);
   expect(
     revised.history.some(
       (revision: any) => revision.settings.duration === 7200,

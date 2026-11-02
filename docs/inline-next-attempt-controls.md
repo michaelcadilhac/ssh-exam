@@ -1,5 +1,35 @@
 # Direct next-attempt editing
 
+November2 follow-up, IMPLEMENTED/TESTED LOCALLY, NOT PUSHED/DEPLOYED: the camera
+click directly toggles Required/Off; its confirmed state stays visible while a
+save is pending. The time value becomes a plain text field: enter whole minutes,
+press Enter or leave the field to save, or Escape to cancel. An untouched exact
+seconds allowance is preserved without a request. No normal Save/Cancel panel
+appears for either control. Revisions, claims, instructor identity, audit and
+exact-request recovery still use the existing management transaction. CLI
+`examctl web grants revise` remains the matching supported management workflow;
+there is no new server/native policy or deadline behavior.
+
+Passive historical and editable next-attempt cameras share the same44px footprint.
+Completed Started/Ended timestamps move from the attempt identity to the Dates
+column, visible on mobile too; next attempts retain labelled Opens/Closes there.
+The min unit remains on one line at320/430/1280px. Blur-save preserves the
+user's new focus target, including continued typing in Search while the reply is
+pending; Enter/Escape inside the editor can return to its readout. Prof accepted
+these renders and behaviors. The final30 focused cases and actual HTTP enrollment
+workflow pass. An earlier57-case affected admin/SSH/WASM/theme cohort also passes;
+it predates only the final focus fix, covered by the repeat30+1. Types, full build
+and final Vite pass; exact fixture cleanup and unchanged inputs are verified.
+The original failure receipts retain two refusal-message mismatches and a stale-
+fixture race; tests now fault precisely at the first post-click catalogue read,
+with a proven older displayed snapshot and zero writes. Original screenshots
+remain untouched. Evidence: var/collection-tests/simple-attempt-cells.20261102a/
+browser-summary.json. Backend/native/CLI are unchanged, so no new native race
+qualification is claimed or required. A future authorized release needs only the
+matched UI image, normal fresh guards/backups and CURRENT-data-compatible rollback;
+no migration or native restart. This follow-up is not pushed/deployed. The prior
+production release follows.
+
 November 2, 2026. DEPLOYED AND ONLINE at15:14:58 Chicago in matched source49d5e3b/
 schema37. All four native executables and three loaded roles are matched; final
 preservation/public/CLI acceptance passes. See docs/depaul-matched-release.md.

@@ -1432,6 +1432,61 @@
 .admin-roster .cell-edit-layout .icon-button + .icon-button {
   margin-inline-start: 4px;
 }
+.admin-roster
+  .cell-edit-layout
+  :is(.webcam-heading, .next-webcam, .history-webcam) {
+  text-align: center;
+}
+.admin-roster .cell-edit-layout .history-webcam > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  vertical-align: middle;
+}
+.cell-edit-layout .history-window time {
+  display: block;
+}
+.direct-attempt-setting {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+.direct-time-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-inline-size: 0;
+}
+.direct-time-value input {
+  flex: 1 1 0;
+  inline-size: 100%;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.direct-time-value > span {
+  flex: none;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.85em;
+}
+.direct-attempt-setting > small {
+  display: block;
+  margin-block-start: 5px;
+  text-align: start;
+}
+.admin-roster .direct-setting-retry {
+  margin: 5px 0 0;
+  padding: 3px;
+  min-block-size: 30px;
+  font-size: 0.85em;
+}
 .webcam-icon {
   display: inline-grid;
   position: relative;
@@ -1643,13 +1698,12 @@
   }
   .admin-roster .cell-edit-layout .historical-attempt-row {
     display: grid;
-    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr) 44px;
     gap: 8px;
     padding: 10px 12px;
     border-block-start: 1px solid var(--border);
   }
-  .admin-roster .cell-edit-layout .historical-attempt-row > .selection-cell,
-  .admin-roster .cell-edit-layout .history-window {
+  .admin-roster .cell-edit-layout .historical-attempt-row > .selection-cell {
     display: none;
   }
   .admin-roster .cell-edit-layout .historical-attempt-row .attempt-identity {
@@ -1671,19 +1725,23 @@
     table.cell-edit-layout.selecting
     .historical-attempt-row
     td.attempt-clock {
-    grid-column: 3;
+    grid-column: 3 / -1;
     grid-row: 3;
     text-align: start;
   }
-  .admin-roster .cell-edit-layout .history-files {
+  .admin-roster .cell-edit-layout .history-window {
     grid-column: 2 / -1;
     grid-row: 4;
+  }
+  .admin-roster .cell-edit-layout .history-files {
+    grid-column: 2 / -1;
+    grid-row: 5;
   }
   .admin-roster .cell-edit-layout .historical-attempt-row > .row-actions {
     display: flex;
     flex-wrap: wrap;
     grid-column: 2 / -1;
-    grid-row: 5;
+    grid-row: 6;
     justify-content: flex-end;
     gap: 8px;
     white-space: normal;
