@@ -11,6 +11,9 @@ WAITING_NATIVE after its durable stopped snapshot. Run the separately qualified
 native controller, bridge its nonce-bound transition and fresh after-guard, then
 resume this command. It admits only the matched candidate and forward recovery;
 older native/web writers cannot be restored or reopened in that scope.
+The reviewed-web-read/synchronized-monitoring-playback-v1 scope installs only
+the additive recording reader and UI, retaining schema37 and the native/CLI
+cohort. Its previous reader remains compatible with CURRENT data.
 
 Root-private release.json/image-assets.json are required. release.fast_ui supplies
 absolute project, data, environment, nginx_site, nginx_main, shared_store,
@@ -108,7 +111,7 @@ class Rollout:
         if self.release['schema'] != self.release['old_schema'] or self.release['schema'] < 36:
             raise ValueError('UI-only deployment requires the same qualified schema, at least36')
         mode = self.settings.get('mode', 'ui')
-        if mode not in ('ui', 'reviewed-web-cli', 'reviewed-web-native'):
+        if mode not in ('ui', 'reviewed-web-read', 'reviewed-web-cli', 'reviewed-web-native'):
             raise ValueError('Unknown deployment mode; use ui or an explicitly registered reviewed scope')
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
@@ -138,6 +141,18 @@ class Rollout:
             command_after = self.settings.get('native_after_guard')
             if not isinstance(command_after, list) or not command_after or not all(isinstance(part, str) for part in command_after) or not Path(command_after[0]).is_absolute():
                 raise ValueError('A separate absolute fresh native-after guard is required')
+        elif mode == 'reviewed-web-read':
+            if (self.release['schema'] != 37
+                    or self.settings.get('reviewed_scope') != 'synchronized-monitoring-playback-v1'
+                    or self.settings.get('qualified_source') != self.release['revision']
+                    or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
+                    or self.settings.get('previous_reader_policy_compatible') is not True
+                    or self.settings.get('unchanged_backend_protocol_native') is not False):
+                raise ValueError('Reviewed recording reader requires its exact schema37 scope, qualified source and CURRENT-data-compatible previous reader')
+            if (not re.fullmatch('[a-f0-9]{64}', self.release['cli_sha256'])
+                    or self.release['old_cli_sha256'] != self.release['cli_sha256']
+                    or self.release['worker_cli_sha256'] != self.release['cli_sha256']):
+                raise ValueError('Reviewed recording reader must retain the installed and loaded native CLI cohort')
         elif mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
                     or self.settings.get('reviewed_scope') not in ('latest-student-settings-and-cli-help-v1', 'bulk-next-attempt-read-v1', 'unified-exam-student-list-v1')

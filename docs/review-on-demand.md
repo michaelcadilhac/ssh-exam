@@ -48,3 +48,14 @@ matched web release and its guarded cutover before deployment. Schema37 and the
 native/CLI cohort remain unchanged. The previous reader remains compatible with
 CURRENT data; rollback must retain that data and normal admission/backup guards,
 never restore an older database. No production action is authorized by this file.
+# November2 release scope
+
+The synchronized reader uses the narrowly registered
+`reviewed-web-read/synchronized-monitoring-playback-v1` installation scope.
+It requires schema37, exact qualified source, unchanged installed/loaded CLI
+digests and explicit CURRENT-data compatibility for the retained previous image.
+It changes no native executable or service. The default UI-only scope remains
+unchanged. Actual prepare/apply and failed-start/rollback/reopen tests preserve
+all41 authority contracts; invalid scope/source/compatibility/cohort refuse
+before a pause or service stop. All40 deployment interface tests pass.
+

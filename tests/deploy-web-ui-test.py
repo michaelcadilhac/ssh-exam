@@ -137,7 +137,7 @@ class FastUI(unittest.TestCase):
         args = [str(value) for value in arguments]; self.calls.append(args)
         if args[0] == '/synthetic/read-only-native-guard':
             return json.dumps({'guard': 'PASS', 'history_sha256': 'a'*64, 'config_sha256': 'b'*64,
-                'cli_config_sha256': 'e'*64, 'installed_cli_sha256': 'c'*64, 'worker_cli_sha256': 'd'*64,
+                'cli_config_sha256': 'e'*64, 'installed_cli_sha256': 'c'*64, 'worker_cli_sha256': self.release['worker_cli_sha256'],
                 'native_roles': [{'unit': name, 'pid': pid} for name, pid in self.release['service_pids'].items() if name != 'exam-ssh-relay.service'], 'relay_pid': 4})
         if args[0] == '/usr/bin/systemctl':
             if args[1] == 'show': return (str(self.dropin) if 'DropInPaths' in args else str(self.unit))+'\n'
@@ -209,6 +209,37 @@ class FastUI(unittest.TestCase):
         (self.bundle/'release.json').write_text(json.dumps(self.release))
         assets=json.loads((self.bundle/'image-assets.json').read_text());assets['source']='1'*40
         (self.bundle/'image-assets.json').write_text(json.dumps(assets))
+
+    def recording_reader(self):
+        self.reviewed_web_cli(compatible=True)
+        self.release.update(old_cli_sha256=self.release['cli_sha256'],worker_cli_sha256=self.release['cli_sha256'])
+        self.release['fast_ui'].update(mode='reviewed-web-read',reviewed_scope='synchronized-monitoring-playback-v1')
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+
+    def test_recording_reader_public_apply_preserves_current_authority_and_cohort(self):
+        self.recording_reader();before=self.history();self.cli('prepare');result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertEqual(self.history(),before);self.assertEqual(self.current,self.new['config_id'])
+        self.assertEqual(result['video_pause']['status'],'RELEASED');self.assertTrue(self.running)
+
+    def test_recording_reader_failed_start_rollback_reopens_current_data(self):
+        self.recording_reader();before=self.history();self.cli('prepare');self.fail_start=True
+        self.cli('apply',expect=1);result,_=self.cli('rollback')
+        self.assertEqual(result['phase'],'ROLLED_BACK_GATED');self.assertTrue(result['current_database_preserved'])
+        result,_=self.cli('reopen');self.assertEqual(result['phase'],'ONLINE_ROLLED_BACK')
+        self.assertEqual(self.current,self.old['config_id']);self.assertEqual(self.history(),before)
+        self.assertEqual(result['video_pause']['status'],'RELEASED');self.assertTrue(self.running)
+
+    def test_recording_reader_rejects_unqualified_scope_source_compatibility_or_cli_before_pause(self):
+        self.recording_reader();original=json.loads(json.dumps(self.release))
+        changes=(('reviewed_scope','anything'),('qualified_source','2'*40),
+                 ('previous_reader_policy_compatible',False),('unchanged_backend_protocol_native',True),
+                 ('old_cli_sha256','9'*64),('worker_cli_sha256','8'*64))
+        for number,(key,value) in enumerate(changes):
+            self.state=self.root/('unqualified-reader-'+str(number));self.release=json.loads(json.dumps(original))
+            target=self.release if key.endswith('sha256') else self.release['fast_ui'];target[key]=value
+            (self.bundle/'release.json').write_text(json.dumps(self.release));self.cli('prepare',expect=1)
+            self.assertFalse(self.stopped_calls());self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
 
     def test_reviewed_web_cli_public_prepare_apply_preserves_schema37_and_current_authority(self):
         self.reviewed_web_cli();before=self.history();self.cli('prepare')
