@@ -575,12 +575,43 @@
   color: var(--muted);
 }
 .review-images img,
-.review-images video {
+.review-images video,
+.review-images canvas {
   display: block;
   width: 100%;
   max-height: 380px;
   object-fit: contain;
   background: var(--terminal-bg);
+}
+.capture-viewport {
+  position: relative;
+  width: 100%;
+  max-height: 380px;
+  overflow: hidden;
+  background: var(--terminal-bg);
+}
+.capture-viewport > img,
+.capture-viewport > video,
+.capture-viewport > canvas {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+.capture-viewport > [hidden] {
+  display: none;
+}
+.capture-viewport > .monitoring-empty {
+  color: var(--terminal-text);
+}
+.capture-viewport .capture-loading {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  font-size: 12px;
 }
 .monitoring-empty {
   padding: 30px 12px;

@@ -1,4 +1,23 @@
-# Current checkpoint — direct controls and synchronized review DEPLOYED
+# Current milestone — replay loading continuity COMPLETE LOCALLY, NOT DEPLOYED
+
+Entry: instructor Review → Recordings. Keep the last decoded screen/webcam frame
+visible until its replacement is ready, with a stable preview area and its actual
+capture timestamp. Genuine gaps, shared-clock loading pauses and private buffer
+cleanup remain enforced. No backend/native/CLI/policy or production change.
+
+Implemented with one bounded in-memory preview per source, cleared on gap/hide/
+close/deletion. Original delayed-download reproduction fails on the old UI. Final
+three regressions cover actual retained pixels, delayed seeks/segments, failed JPEG
+replacement/retry, resolution changes and cleanup. All31 affected review cases pass;
+final10 playback cases pass after a placeholder-color-only correction. Full types
+and Vite pass; mobile/error and gap images inspected. Frozen inputs unchanged and
+owned fixtures/3100/3101 gone. All ten original dirty screenshots are preserved.
+Evidence: var/collection-tests/replay-loading-continuity.20261102a/completion.json;
+details: docs/review-on-demand.md. Validated source hashes are in the receipt. No
+implementation blocker or open decision; push/deployment requires a new instruction. Future release
+is UI-only with normal image qualification, guards and CURRENT-data recovery.
+
+# Last production checkpoint — direct controls and synchronized review DEPLOYED
 
 The instructor explicitly requested deployment. Source04fa394 (including9306fdf
 and6c4ff22) is pushed. The exact image passed schema37/video compatibility and

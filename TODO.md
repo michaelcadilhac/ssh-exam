@@ -1,4 +1,14 @@
-# Current follow-up — synchronized video review DEPLOYED
+# Current follow-up — replay loading continuity COMPLETE LOCALLY
+
+November2: keep the previously decoded frame visible until the next JPEG/video
+sample is ready, with its actual timestamp and stable preview dimensions. Loading
+and errors overlay it; genuine gaps and hide/close/deletion clear private pixels.
+Resolution changes no longer resize the preview. Final focused3, affected31 and
+final10 playback browser checks, types/build and visual inspection pass. No backend,
+native, CLI, policy or production changes; not pushed/deployed. Evidence and scope:
+docs/review-on-demand.md and docs/todo-current-checkpoint.md.
+
+# Previous follow-up — synchronized video review DEPLOYED
 
 November2: actual stored VP9 clips play in the browser, with one original-time
 Play/Pause/speed/seek controller for screen and webcam. Irregular times and gaps

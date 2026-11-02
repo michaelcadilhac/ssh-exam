@@ -5,6 +5,13 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November2 replay-loading follow-up, IMPLEMENTED/TESTED LOCALLY (not deployed):
+retain the last decoded frame with its own capture timestamp while a replacement
+downloads/seeks; swap only when ready. Preview geometry stays fixed across loading,
+errors, retries and resolution changes. Genuine gaps remain explicit and private
+pixels are cleared on gap/hide/close/deletion. No backend/protocol/policy change.
+Verification and bounds: docs/review-on-demand.md and current checkpoint.
+
 November2 synchronized video review, DEPLOYED at16:23:58 Chicago: one
 original-time play/pause/speed/seek controller drives both screen and webcam.
 Verified stored VP9 segments are read through an authenticated, bounded private

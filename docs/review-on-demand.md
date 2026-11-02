@@ -1,5 +1,31 @@
 # Synchronized recording review
 
+November2 loading-continuity follow-up: IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED.
+Keep the last successfully decoded sample visible until its replacement is ready,
+with the displayed sample's actual timestamp. Loading/errors overlay the preview;
+its geometry stays stable through retries and changes in capture resolution. This
+fix covers both JPEG replacement and video seeks/segment downloads. One in-memory
+canvas per source retains at most1600×1200 pixels; native video/JPEG decoding and
+existing request limits remain unchanged. No extra server decode, download cache
+or stored derivative. Gap/hide/close/deletion zero the buffer; a gap is never filled
+with a stale frame. The shared playback clock still waits for both sources.
+
+Actual Chromium regressions verify retained pixels/timestamps and geometry while
+responses/seeks are blocked, failed-image retry, resolution changes and cleanup.
+Three focused cases and31 affected review workflows pass; final10 playback cases
+pass after the gap-placeholder color correction. Full fixture types and final Vite
+build pass; mobile/error and gap images inspected. All frozen inputs and owned
+fixture cleanup/ports pass. The first fixture run attempted to seek beyond the old
+range before Refresh had returned; it now awaits the public updated range. The
+corrected old-UI reproducer fails at the missing retained image. A later fixture
+assertion confused Retry's deliberate scrolling with a resize: pending-load checks
+still assert the full rectangle, while post-click checks assert content dimensions.
+Failure receipts remain. Evidence: var/collection-tests/replay-loading-continuity.20261102a/.
+This changes only browser rendering; backend/native/CLI/enforcement are unchanged,
+so no redundant native races or server suites were run. No production action.
+Future deployment uses the unchanged-contract UI scope and qualified image/normal
+guards and CURRENT-data recovery; a fresh deployment instruction is required.
+
 November2,2026. Pushed and deployed at16:23:58 Chicago in source04fa394/schema37.
 This supersedes the independent screenshot sliders. Exact-image preservation and
 public checks pass; see docs/synchronized-review-deployment.md.

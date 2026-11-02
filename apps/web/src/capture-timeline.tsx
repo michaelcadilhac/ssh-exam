@@ -38,6 +38,9 @@ function CaptureView({
     label = source === "screen" ? "Screen" : "Webcam";
   const clip = frame?.video;
   const video = useRef<HTMLVideoElement>(null);
+  const previous = useRef<HTMLCanvasElement>(null);
+  const [displayed, setDisplayed] = useState<PlaybackFrame | null>(null);
+  const [aspectRatio, setAspectRatio] = useState<number>();
   const [asset, setAsset] = useState<{
     segment: string;
     url?: string;
@@ -46,6 +49,40 @@ function CaptureView({
   const [shown, setShown] = useState(""),
     [imageError, setImageError] = useState("");
   const [retry, setRetry] = useState(0);
+  // Keep one bounded decoded preview, not another downloaded segment. It remains
+  // visible while the next image downloads or the video decoder seeks.
+  const remember = (
+    element: HTMLVideoElement | HTMLImageElement,
+    width: number,
+    height: number,
+  ) => {
+    const canvas = previous.current;
+    if (!enabled || !frame || !canvas || !width || !height) return false;
+    const scale = Math.min(1, 1600 / width, 1200 / height);
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return false;
+    context.drawImage(element, 0, 0, canvas.width, canvas.height);
+    setDisplayed(frame);
+    setAspectRatio((old) => old ?? width / height);
+    setShown(frame.id);
+    onReady(source, frame.id, true);
+    return true;
+  };
+  useLayoutEffect(() => {
+    const canvas = previous.current;
+    return () => {
+      if (canvas) canvas.width = canvas.height = 0;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (!enabled || !frame) {
+      const canvas = previous.current;
+      if (canvas) canvas.width = canvas.height = 0;
+      setDisplayed(null);
+    }
+  }, [enabled, frame?.id]);
   const segment = clip?.segment;
   useEffect(() => {
     setAsset(null);
@@ -121,13 +158,13 @@ function CaptureView({
       !clip ||
       !url ||
       !element ||
+      element.currentSrc !== url ||
       element.readyState < 2 ||
       element.seeking
     )
       return;
     if (Math.abs(element.currentTime - (clip.offset_ms + 1) / 1000) < 0.02) {
-      setShown(frame.id);
-      onReady(source, frame.id, true);
+      remember(element, element.videoWidth, element.videoHeight);
     }
   };
   useLayoutEffect(() => {
@@ -157,71 +194,90 @@ function CaptureView({
       ? asset?.error
       : undefined
     : imageError;
+  const ready = !!frame && shown === frame.id && !failure;
+  const retained = enabled && !!frame && !ready && !!displayed;
+  const caption = enabled && frame ? (retained ? displayed : frame) : null;
   return (
     <figure aria-label={`${label} captures`}>
       <figcaption>
         <strong>{label}</strong>
-        {frame && (
+        {caption && (
           <time
-            dateTime={new Date(frame.captured).toISOString()}
-            title={`Received ${chicago(frame.received)}`}
+            dateTime={new Date(caption.captured).toISOString()}
+            title={`Received ${chicago(caption.received)}`}
           >
-            {chicago(frame.captured)}
+            {chicago(caption.captured)}
           </time>
         )}
       </figcaption>
-      {!frames.length ? (
-        <p className="monitoring-empty">No {source} images received.</p>
-      ) : !frame ? (
-        <p className="monitoring-empty">No {source} capture at this time.</p>
-      ) : !enabled ? null : frame.video ? (
-        <>
-          <video
-            ref={video}
-            muted
-            playsInline
-            preload="auto"
-            src={url}
-            aria-label={`${label} recording for ${username}`}
-            data-frame-id={shown === frame.id ? frame.id : undefined}
-            hidden={shown !== frame.id}
-            onLoadedMetadata={seek}
-            onLoadedData={decoded}
-            onSeeked={decoded}
-            onError={() => {
-              if (url)
-                setAsset({
-                  segment: segment!,
-                  error: "Video unavailable. Retry this recording.",
-                });
-            }}
-          />
-          {!failure && shown !== frame.id && (
-            <p className="monitoring-empty">Loading {source} recording…</p>
-          )}
-        </>
-      ) : (
-        <img
-          key={`${frame.id}:${retry}`}
-          alt={`${label} capture for ${username}`}
-          src={`/api/admin/media/${frame.id}`}
-          hidden={!!imageError}
-          onLoad={() => {
-            setImageError("");
-            setShown(frame.id);
-            onReady(source, frame.id, true);
-          }}
-          onError={() =>
-            setImageError("Image unavailable. Retry this recording.")
-          }
+      <div
+        className="capture-viewport"
+        style={{ aspectRatio: aspectRatio ?? 4 / 3 }}
+      >
+        <canvas
+          ref={previous}
+          hidden={!retained}
+          role="img"
+          aria-label={`Previous ${source} capture for ${username}`}
+          data-frame-id={retained ? displayed?.id : undefined}
         />
-      )}
-      {failure && (
-        <p role="alert" className="monitoring-empty">
-          {failure}{" "}
-          <button onClick={() => setRetry((n) => n + 1)}>Retry {source}</button>
-        </p>
-      )}
+        {enabled &&
+          frame &&
+          (frame.video ? (
+            <video
+              ref={video}
+              muted
+              playsInline
+              preload="auto"
+              src={url}
+              aria-label={`${label} recording for ${username}`}
+              data-frame-id={shown === frame.id ? frame.id : undefined}
+              hidden={!ready}
+              onLoadedMetadata={seek}
+              onLoadedData={decoded}
+              onSeeked={decoded}
+              onError={() => {
+                if (url)
+                  setAsset({
+                    segment: segment!,
+                    error: "Video unavailable. Retry this recording.",
+                  });
+              }}
+            />
+          ) : (
+            <img
+              key={`${frame.id}:${retry}`}
+              alt={`${label} capture for ${username}`}
+              src={`/api/admin/media/${frame.id}`}
+              hidden={!ready}
+              data-frame-id={ready ? frame.id : undefined}
+              onLoad={(event) => {
+                setImageError("");
+                const image = event.currentTarget;
+                remember(image, image.naturalWidth, image.naturalHeight);
+              }}
+              onError={() =>
+                setImageError("Image unavailable. Retry this recording.")
+              }
+            />
+          ))}
+        {!frames.length ? (
+          <p className="monitoring-empty">No {source} images received.</p>
+        ) : !frame ? (
+          <p className="monitoring-empty">No {source} capture at this time.</p>
+        ) : !enabled ? null : failure ? (
+          <p role="alert" className="capture-loading">
+            {failure}{" "}
+            <button onClick={() => setRetry((n) => n + 1)}>
+              Retry {source}
+            </button>
+          </p>
+        ) : !ready ? (
+          <p role="status" className="capture-loading">
+            Loading {source} {frame.video ? "recording" : "image"}…
+          </p>
+        ) : null}
+      </div>
     </figure>
   );
 }

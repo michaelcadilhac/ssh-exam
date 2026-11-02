@@ -2227,10 +2227,15 @@ async function videoReview(page: Page, uneven = false, delay?: Promise<void>) {
           duration_ms: 15000,
         },
       });
-  const control = { fail: false, deleted: false };
+  const control = {
+    fail: false,
+    deleted: false,
+    delay: undefined as Promise<void> | undefined,
+  };
   await page.route("**/api/admin/attempts/*/videos/*", async (route) => {
     reads.push(new URL(route.request().url()).pathname);
     if (delay) await delay;
+    if (control.delay) await control.delay;
     if (control.deleted)
       return route.fulfill({
         status: 410,
@@ -2425,6 +2430,255 @@ test("synchronized video review mixes old JPEGs with video on the same timeline"
   await expect(f.video("Webcam")).toHaveCount(0);
 });
 
+test("replay keeps decoded video visible and layout stable until the next segment is ready", async ({
+  page,
+}) => {
+  const f = await videoReview(page);
+  await f.timeline.fill(String(f.base + 10000));
+  for (const source of ["Screen", "Webcam"])
+    await expect(f.video(source)).toHaveAttribute(
+      "data-frame-id",
+      `${source.toLowerCase()}-video-2`,
+    );
+  const before = await f.dialog.locator(".review-images").boundingBox();
+  const pixels = await f.video("Screen").evaluate((v: HTMLVideoElement) => {
+    const c = document.createElement("canvas");
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    c.getContext("2d")!.drawImage(v, 0, 0);
+    return c.toDataURL();
+  });
+  let release!: () => void;
+  f.control.delay = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  for (const [index, source] of ["screen", "webcam"].entries())
+    f.s.media.frames.push({
+      id: `${source}-video-3`,
+      source,
+      captured: f.base + 15000,
+      received: f.base + 15001,
+      video: {
+        segment: `${index + 3}3333333-3333-4333-8333-333333333333`,
+        offset_ms: 0,
+        duration_ms: 15000,
+      },
+    });
+  await f.dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  try {
+    await expect(f.timeline).toHaveAttribute("max", String(f.base + 15000));
+    await f.timeline.fill(String(f.base + 15000));
+    await expect.poll(() => f.reads.length).toBe(4);
+    for (const source of ["Screen", "Webcam"]) {
+      const previous = f.dialog.getByRole("img", {
+        name: `Previous ${source.toLowerCase()} capture for amy`,
+        exact: true,
+      });
+      await expect(previous).toBeVisible();
+      await expect(previous).toHaveAttribute(
+        "data-frame-id",
+        `${source.toLowerCase()}-video-2`,
+      );
+      await expect(
+        f.dialog
+          .getByLabel(`${source} captures`, { exact: true })
+          .locator("time"),
+      ).toHaveAttribute("datetime", new Date(f.base + 10000).toISOString());
+    }
+    expect(
+      await f.dialog
+        .getByRole("img", {
+          name: "Previous screen capture for amy",
+          exact: true,
+        })
+        .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    ).toBe(pixels);
+    expect(await f.dialog.locator(".review-images").boundingBox()).toEqual(
+      before,
+    );
+    release();
+    for (const source of ["Screen", "Webcam"])
+      await expect(f.video(source)).toHaveAttribute(
+        "data-frame-id",
+        `${source.toLowerCase()}-video-3`,
+      );
+    expect(await f.dialog.locator(".review-images").boundingBox()).toEqual(
+      before,
+    );
+    await expect(
+      f.dialog.getByRole("img", {
+        name: "Previous screen capture for amy",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await f.dialog
+      .locator("canvas")
+      .first()
+      .evaluate((canvas: HTMLCanvasElement) => {
+        (window as any).closedReviewCanvas = canvas;
+        if (!canvas.width || !canvas.height)
+          throw Error("No retained pixels to clear");
+      });
+    await f.dialog
+      .getByRole("button", { name: "Close review", exact: true })
+      .click();
+    expect(
+      await page.evaluate(() => {
+        const canvas = (window as any).closedReviewCanvas as HTMLCanvasElement;
+        return [canvas.width, canvas.height];
+      }),
+    ).toEqual([0, 0]);
+  } finally {
+    release();
+  }
+});
+
+test("replay keeps the previous JPEG through a failed replacement and retries without layout jumps", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const f = await videoReview(page);
+  f.s.image = await sharp({
+    create: { width: 320, height: 240, channels: 3, background: "blue" },
+  })
+    .jpeg()
+    .toBuffer();
+  for (const frame of f.s.media.frames) delete frame.video;
+  await f.dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  const image = f.dialog.getByAltText("Screen capture for amy");
+  await expect(image).toHaveAttribute("data-frame-id", "screen-video-0");
+  const before = await f.dialog.locator(".review-images").boundingBox();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let reads = 0,
+    fail = true;
+  const next = await sharp({
+    create: { width: 160, height: 90, channels: 3, background: "red" },
+  })
+    .jpeg()
+    .toBuffer();
+  await page.route("**/api/admin/media/screen-video-1", async (route) => {
+    reads++;
+    await gate;
+    return route.fulfill(
+      fail
+        ? { status: 503, body: "unavailable" }
+        : { contentType: "image/jpeg", body: next },
+    );
+  });
+  try {
+    await f.timeline.fill(String(f.base + 5000));
+    await expect.poll(() => reads).toBe(1);
+    const previous = f.dialog.getByRole("img", {
+      name: "Previous screen capture for amy",
+      exact: true,
+    });
+    await expect(previous).toBeVisible();
+    expect(
+      await previous.evaluate((c: HTMLCanvasElement) => [
+        ...c.getContext("2d")!.getImageData(0, 0, 1, 1).data,
+      ]),
+    ).toEqual([0, 0, 254, 255]);
+    expect(await f.dialog.locator(".review-images").boundingBox()).toEqual(
+      before,
+    );
+    release();
+    await expect(
+      f.dialog.getByRole("button", { name: "Retry screen", exact: true }),
+    ).toBeVisible();
+    await expect(previous).toBeVisible();
+    expect(await f.dialog.locator(".review-images").boundingBox()).toEqual(
+      before,
+    );
+    await page.screenshot({
+      path: info.outputPath("retained-frame-mobile.png"),
+      fullPage: true,
+    });
+    fail = false;
+    await f.dialog
+      .getByRole("button", { name: "Retry screen", exact: true })
+      .click();
+    await expect(image).toHaveAttribute("data-frame-id", "screen-video-1");
+    await expect(image).toBeVisible();
+    expect(
+      await image.evaluate((img: HTMLImageElement) => [
+        img.naturalWidth,
+        img.naturalHeight,
+      ]),
+    ).toEqual([160, 90]);
+    expect(reads).toBe(2);
+    // Clicking Retry can scroll the mobile dialog to its button. Its content
+    // dimensions must remain unchanged independently of that deliberate scroll.
+    const after = await f.dialog.locator(".review-images").boundingBox();
+    expect({ width: after?.width, height: after?.height }).toEqual({
+      width: before?.width,
+      height: before?.height,
+    });
+  } finally {
+    release();
+  }
+});
+
+test("replay retains the decoded frame while a same-segment seek is pending and clears it on hide", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      HTMLMediaElement.prototype,
+      "currentTime",
+    )!;
+    const pending = new Map<HTMLMediaElement, number>();
+    (window as any).holdReviewSeeks = false;
+    (window as any).releaseReviewSeeks = () => {
+      (window as any).holdReviewSeeks = false;
+      for (const [element, time] of pending)
+        descriptor.set!.call(element, time);
+      pending.clear();
+    };
+    Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
+      ...descriptor,
+      set(value: number) {
+        if ((window as any).holdReviewSeeks) pending.set(this, value);
+        else descriptor.set!.call(this, value);
+      },
+    });
+  });
+  const f = await videoReview(page);
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-0",
+  );
+  await page.evaluate(() => {
+    (window as any).holdReviewSeeks = true;
+  });
+  await f.timeline.fill(String(f.base + 5000));
+  const previous = f.dialog.getByRole("img", {
+    name: "Previous screen capture for amy",
+    exact: true,
+  });
+  await expect(previous).toBeVisible();
+  await expect(previous).toHaveAttribute("data-frame-id", "screen-video-0");
+  await page.evaluate(() => (window as any).releaseReviewSeeks());
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-1",
+  );
+  await page.evaluate(() => {
+    (window as any).retainedReviewCanvas = document.querySelector(
+      ".review-images canvas",
+    );
+  });
+  await f.dialog.getByRole("button", { name: /^Activity/ }).click();
+  expect(
+    await page.evaluate(() => {
+      const canvas = (window as any).retainedReviewCanvas as HTMLCanvasElement;
+      return [canvas.width, canvas.height];
+    }),
+  ).toEqual([0, 0]);
+});
+
 test("synchronized video review ignores late downloads after close", async ({
   page,
 }) => {
@@ -2464,7 +2718,7 @@ test("synchronized video review ignores late downloads after close", async ({
 
 test("synchronized video review maps uneven timestamps and shows capture gaps rather than future or stale images", async ({
   page,
-}) => {
+}, info) => {
   const f = await videoReview(page, true);
   await expect(
     f.dialog.getByText("No webcam capture at this time.", { exact: true }),
@@ -2478,6 +2732,12 @@ test("synchronized video review maps uneven timestamps and shows capture gaps ra
   await expect(
     f.dialog.getByLabel("Recording time", { exact: true }),
   ).toHaveAttribute("datetime", new Date(f.base + 6000).toISOString());
+  await f.dialog
+    .getByLabel("Screen captures", { exact: true })
+    .locator("canvas")
+    .evaluate((canvas) => {
+      (window as any).gapReviewCanvas = canvas;
+    });
   await f.timeline.fill(String(f.base + 11000));
   await expect(
     f.dialog.getByText("No screen capture at this time.", { exact: true }),
@@ -2486,6 +2746,15 @@ test("synchronized video review maps uneven timestamps and shows capture gaps ra
     "data-frame-id",
     "webcam-video-2",
   );
+  expect(
+    await page.evaluate(() => {
+      const canvas = (window as any).gapReviewCanvas as HTMLCanvasElement;
+      return [canvas.width, canvas.height];
+    }),
+  ).toEqual([0, 0]);
+  await f.dialog.getByLabel("Screen captures", { exact: true }).screenshot({
+    path: info.outputPath("gap-placeholder-screen.png"),
+  });
   await f.timeline.fill(String(f.base + 20000));
   await expect(f.video("Screen")).toHaveAttribute(
     "data-frame-id",
@@ -2542,6 +2811,14 @@ test("synchronized video review releases private buffers on tab switch, deletion
   await expect
     .poll(() => page.evaluate(() => (window as any).reviewURLs.size))
     .toBe(2);
+  await f.dialog
+    .locator("canvas")
+    .first()
+    .evaluate((canvas: HTMLCanvasElement) => {
+      (window as any).deletedReviewCanvas = canvas;
+      if (!canvas.width || !canvas.height)
+        throw Error("No retained pixels to clear");
+    });
   f.s.media.monitoringDeleted = true;
   f.s.media.frames = [];
   await f.dialog.getByRole("button", { name: "Refresh", exact: true }).click();
@@ -2551,6 +2828,12 @@ test("synchronized video review releases private buffers on tab switch, deletion
   await expect
     .poll(() => page.evaluate(() => (window as any).reviewURLs.size))
     .toBe(0);
+  expect(
+    await page.evaluate(() => {
+      const canvas = (window as any).deletedReviewCanvas as HTMLCanvasElement;
+      return [canvas.width, canvas.height];
+    }),
+  ).toEqual([0, 0]);
   await f.dialog
     .getByRole("button", { name: "Close review", exact: true })
     .click();
