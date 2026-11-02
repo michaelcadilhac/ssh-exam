@@ -1,3 +1,15 @@
+# Current follow-up — synchronized video review COMPLETE LOCALLY
+
+November2: actual stored VP9 clips play in the browser, with one original-time
+Play/Pause/speed/seek controller for screen and webcam. Irregular times and gaps
+are preserved; live/legacy JPEGs share the clock. Private reads are authenticated,
+bounded and deletion-fenced; tab/close abort/revoke media. No per-frame server
+codec work on the video path, new stored derivatives or authority/schema change.
+HTTP/unit/media/export, real-codec browser, mobile/layout, types/build checks pass;
+original dirty screenshots preserved. No production access/push/deployment.
+Evidence/constraints/future matched web-backend release and compatible CURRENT-
+data rollback: docs/review-on-demand.md and docs/todo-current-checkpoint.md.
+
 # Current follow-up — simpler attempt cells COMPLETE LOCALLY
 
 November2: one-click Required/Off camera, matching history/next icon alignment,

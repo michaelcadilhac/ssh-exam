@@ -1,4 +1,34 @@
-# Current checkpoint — simpler attempt cells COMPLETE LOCALLY, NOT DEPLOYED
+# Current checkpoint — synchronized video review COMPLETE LOCALLY, NOT DEPLOYED
+
+Review now has real browser-decoded VP9 playback with one original-time clock,
+Play/Pause, speed1×–125× (default60×), shared seek and Live. Both views use the
+same selected point; missing/future/stale samples remain explicit gaps. Stored
+segment offsets preserve irregular capture times. Live/old/partly converted JPEGs
+work on the same clock. Tab/page hide, close and deletion stop/release media;
+late downloads cannot recreate private buffers. Terminal replay remains opt-in.
+
+New instructor-only clip reads bind attempt/source/mapping, verify private FD,
+size/hash and deletion immediately before delivery; two32MiB reads at most, no
+codec in the HTTP process. Capture hashes/timestamps, protected history, grants,
+authoritative deadlines, native enforcement and existing CLI exports unchanged.
+No schema/native/CLI migration or production action.
+
+Verification: new HTTP5 and timestamp units3 pass;36 affected media/conversion/
+export cases pass.63 affected admin/review/theme/layout browsers pass before the
+last CSS-only Speed/nav wrapping fix; final7 real-VP9/shared-live/mobile cases pass
+on current artifacts, including320/390/1280px. Full build and final types/Vite pass.
+Actual decoded RGB, stored-byte reads, paired seek/play/speed, gaps, retry, mixed
+formats, deletion and abort/URL cleanup verified. Owned PIDs/3100/3101 gone, frozen
+inputs unchanged; original10 dirty documentation screenshots match their baseline.
+Evidence: var/collection-tests/synchronized-video-review.20261102a/completion.json.
+
+No open feature decision or local test blocker. Commit locally; neither this nor
+9306fdf has push/deployment authorization. Future release: matched backend+UI image
+with qualified backend-read scope/cutover (NOT unchanged-backend UI-only), current
+schema37/native/CLI. Previous reader remains CURRENT-data compatible; no old DB
+restore. Docs: docs/review-on-demand.md. Earlier local/prod records follow.
+
+# Previous local checkpoint — simpler attempt cells COMPLETE LOCALLY, NOT DEPLOYED
 
 One coherent UI increment: camera click directly toggles Required/Off; passive
 historical icons share the same44px alignment. Time becomes one minutes text

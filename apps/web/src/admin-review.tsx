@@ -667,25 +667,16 @@ export function AdminReview({
           {loading && !media && <p role="status">Loading recordings…</p>}
           {media && (
             <>
-              <div className="review-images">
-                {["screen", "webcam"]
-                  .filter(
-                    (source) =>
-                      source !== "webcam" ||
-                      webcamRequired(a) ||
-                      frames.some((f: any) => f.source === source),
-                  )
-                  .map((source) => (
-                    <CaptureTimeline
-                      key={source}
-                      source={source}
-                      frames={frames}
-                      username={a.username}
-                      working={!!a.working && !stale}
-                      clock={clock}
-                    />
-                  ))}
-              </div>
+              <CaptureTimeline
+                key={a.id}
+                attempt={a.id}
+                frames={frames}
+                username={a.username}
+                working={!!a.working && !stale}
+                webcam={!!webcamRequired(a)}
+                active={section === "Monitoring"}
+                deleted={!!media.monitoringDeleted}
+              />
               {!!media.terminals.length && (
                 <div className="review-selectors">
                   <button

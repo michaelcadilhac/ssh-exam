@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import sharp from "sharp";
+import { readFileSync } from "node:fs";
 import {
   localDateTime,
   windowLabel,
@@ -1577,7 +1578,7 @@ test("open review updates images, activity and incremental replay without moving
     .click();
   const dialog = page.getByRole("dialog");
   const timeline = dialog.getByRole("slider", {
-    name: "Screen timeline",
+    name: "Recording timeline",
     exact: true,
   });
   const terminal = dialog.getByRole("combobox", {
@@ -1586,7 +1587,7 @@ test("open review updates images, activity and incremental replay without moving
   });
   await expect(terminal).toHaveCount(0);
   expect(s.replayOffsets).toHaveLength(0);
-  await timeline.fill("0");
+  await timeline.fill(String(s.media.frames[0].captured));
   await dialog
     .getByRole("button", { name: "Open terminal replay", exact: true })
     .click();
@@ -1635,11 +1636,10 @@ test("open review updates images, activity and incremental replay without moving
     "src",
     "/api/admin/media/screen-old",
   );
-  await expect(dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
-    "src",
-    "/api/admin/media/webcam-new",
-  );
-  await expect(timeline).toHaveValue("0");
+  await expect(
+    dialog.getByText("No webcam capture at this time.", { exact: true }),
+  ).toBeVisible();
+  await expect(timeline).toHaveValue(String(s.media.frames[0].captured));
   await expect(terminal).toHaveValue(pane);
   await expect(slider).toHaveAttribute("max", "3");
   await expect(slider).toHaveValue("1");
@@ -1651,17 +1651,17 @@ test("open review updates images, activity and incremental replay without moving
     ),
   ).toBe(true);
   await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(timeline).toHaveValue("0");
+  await expect(timeline).toHaveValue(String(s.media.frames[0].captured));
   await expect(slider).toHaveValue("1");
   await dialog
-    .getByRole("button", { name: "Live screen", exact: true })
+    .getByRole("button", { name: "Live recordings", exact: true })
     .click();
   await expect(dialog.getByAltText("Screen capture for amy")).toHaveAttribute(
     "src",
     "/api/admin/media/screen-new",
   );
   await expect(
-    dialog.getByRole("button", { name: "Live screen", exact: true }),
+    dialog.getByRole("button", { name: "Live recordings", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await terminal.selectOption("");
   await terminal.selectOption(pane);
@@ -2068,11 +2068,11 @@ for (const width of [1280, 430])
       .click();
     const dialog = page.getByRole("dialog");
     await expect(
-      dialog.locator(".review-images figcaption").first(),
-    ).toContainText(/1h 1min(?: \d+s)? ago/);
+      dialog.getByText("No screen capture at this time.", { exact: true }),
+    ).toBeVisible();
     await expect(
-      dialog.locator(".review-images figcaption").nth(1),
-    ).toContainText(/2min \d+s ago/);
+      dialog.getByLabel("Recording time", { exact: true }),
+    ).toHaveAttribute("dateTime", new Date(now - 125000).toISOString());
     await expect(dialog.locator(".review-clock")).toContainText(/1:29:\d\d/);
     await dialog
       .getByRole("button", { name: "Submission", exact: true })
@@ -2110,21 +2110,20 @@ for (const width of [1280, 430])
     await expect(clock).toContainText(/1:29:\d\d remaining/);
   });
 
-test("capture sliders are independent, keyboard accessible, and stop following when the student pauses", async ({
+test("one shared capture timeline is keyboard accessible and pauses both sources together", async ({
   page,
 }, info) => {
-  const s = await fixture(page);
-  const a = s.rows[0].attempts[0],
+  const s = await fixture(page),
+    a = s.rows[0].attempts[0],
     now = Date.now();
   a.settings = JSON.stringify({ webcam: true, duration: 5400 });
-  a.preflight_started_at = now - 180000;
   s.media.frames.push(
     ...["screen", "webcam"].flatMap((source) =>
       [0, 1, 2].map((i) => ({
         id: `${source}-${i}`,
         source,
-        captured: now - (2 - i) * 15000,
-        received: now - (2 - i) * 15000,
+        captured: now - (2 - i) * 5000,
+        received: now - (2 - i) * 5000,
       })),
     ),
   );
@@ -2133,48 +2132,29 @@ test("capture sliders are independent, keyboard accessible, and stop following w
     .getByRole("button", { name: "Review", exact: true })
     .first()
     .click();
-  const dialog = page.getByRole("dialog");
-  const screen = dialog.getByRole("slider", {
-    name: "Screen timeline",
-    exact: true,
-  });
-  const webcam = dialog.getByRole("slider", {
-    name: "Webcam timeline",
-    exact: true,
-  });
-  await expect(screen).toHaveValue("2");
-  await screen.focus();
+  const dialog = page.getByRole("dialog"),
+    timeline = dialog.getByRole("slider", {
+      name: "Recording timeline",
+      exact: true,
+    });
+  await expect(timeline).toHaveValue(String(now));
+  await timeline.focus();
   await page.keyboard.press("ArrowLeft");
-  await expect(screen).toHaveValue("1");
-  await expect(dialog.getByAltText("Screen capture for amy")).toHaveAttribute(
-    "src",
-    "/api/admin/media/screen-1",
-  );
-  await expect(webcam).toHaveValue("2");
+  await expect(timeline).toHaveValue(String(now - 5000));
+  for (const source of ["Screen", "Webcam"])
+    await expect(
+      dialog.getByAltText(`${source} capture for amy`),
+    ).toHaveAttribute("src", `/api/admin/media/${source.toLowerCase()}-1`);
   await expect(
-    dialog.getByRole("button", { name: "Live screen", exact: true }),
+    dialog.getByRole("button", { name: "Live recordings", exact: true }),
   ).toHaveAttribute("aria-pressed", "false");
-  await expect(
-    dialog.getByRole("button", { name: "Live webcam", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  const selectedZone = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Chicago",
-    timeZoneName: "short",
-  })
-    .formatToParts(now - 15000)
-    .find((part) => part.type === "timeZoneName");
-  expect(selectedZone).toBeDefined();
-  await expect(screen).toHaveAttribute(
-    "aria-valuetext",
-    new RegExp(`${selectedZone!.value}$`),
-  );
   await page.screenshot({
-    path: info.outputPath("capture-sliders-desktop.png"),
+    path: info.outputPath("capture-shared-desktop.png"),
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 1000 });
   await page.screenshot({
-    path: info.outputPath("capture-sliders-mobile.png"),
+    path: info.outputPath("capture-shared-mobile.png"),
     fullPage: true,
   });
   expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
@@ -2185,33 +2165,431 @@ test("capture sliders are independent, keyboard accessible, and stop following w
   a.connected = false;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(
-    dialog.getByRole("button", { name: "Live webcam", exact: true }),
+    dialog.getByRole("button", { name: "Live recordings", exact: true }),
   ).toHaveCount(0);
-  s.media.frames.push({
-    id: "webcam-late",
-    source: "webcam",
-    captured: now + 1000,
-    received: now + 1000,
-  });
-  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
-    "src",
-    "/api/admin/media/webcam-2",
+  s.media.frames.push(
+    ...["screen", "webcam"].map((source) => ({
+      id: `${source}-late`,
+      source,
+      captured: now + 1000,
+      received: now + 1000,
+    })),
   );
-  await expect(screen).toHaveValue("1");
+  await dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(timeline).toHaveValue(String(now - 5000));
   a.state = "ACTIVE";
   a.working = true;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(
-    dialog.getByRole("button", { name: "Live webcam", exact: true }),
+    dialog.getByRole("button", { name: "Live recordings", exact: true }),
   ).toHaveAttribute("aria-pressed", "false");
   await dialog
-    .getByRole("button", { name: "Live webcam", exact: true })
+    .getByRole("button", { name: "Live recordings", exact: true })
     .click();
-  await expect(dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
-    "src",
-    "/api/admin/media/webcam-late",
+  for (const source of ["Screen", "Webcam"])
+    await expect(
+      dialog.getByAltText(`${source} capture for amy`),
+    ).toHaveAttribute("src", `/api/admin/media/${source.toLowerCase()}-late`);
+});
+
+async function videoReview(page: Page, uneven = false, delay?: Promise<void>) {
+  const s = await fixture(page),
+    a = s.rows[0].attempts[0];
+  a.state = "COMPLETED";
+  a.working = false;
+  a.connected = false;
+  a.protected = 1;
+  a.settings = JSON.stringify({ webcam: true, duration: 5400 });
+  const base = Date.now() - 120000,
+    bytes = readFileSync(
+      new URL("../fixtures/monitoring-video-v1/segment.webm", import.meta.url),
+    );
+  const segments = {
+    screen: "11111111-1111-4111-8111-111111111111",
+    webcam: "22222222-2222-4222-8222-222222222222",
+  };
+  const reads: string[] = [],
+    images: string[] = [];
+  for (const source of ["screen", "webcam"] as const)
+    for (let i = 0; i < 3; i++)
+      s.media.frames.push({
+        id: `${source}-video-${i}`,
+        source,
+        received: base + i * 5000 + 1,
+        captured:
+          base +
+          (uneven
+            ? (source === "screen" ? [0, 5000, 20000] : [500, 5500, 10500])[i]
+            : i * 5000),
+        video: {
+          segment: segments[source],
+          offset_ms: i * 5000,
+          duration_ms: 15000,
+        },
+      });
+  const control = { fail: false, deleted: false };
+  await page.route("**/api/admin/attempts/*/videos/*", async (route) => {
+    reads.push(new URL(route.request().url()).pathname);
+    if (delay) await delay;
+    if (control.deleted)
+      return route.fulfill({
+        status: 410,
+        json: { error: "Monitoring was deleted" },
+      });
+    if (control.fail)
+      return route.fulfill({
+        status: 503,
+        json: { error: "Synthetic read unavailable" },
+      });
+    return route.fulfill({
+      contentType: "video/webm",
+      headers: { "content-length": String(bytes.length) },
+      body: bytes,
+    });
+  });
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/admin/media/"))
+      images.push(request.url());
+  });
+  await page
+    .getByRole("rowgroup", { name: "amy", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog"),
+    timeline = dialog.getByRole("slider", {
+      name: "Recording timeline",
+      exact: true,
+    });
+  const video = (source: string) =>
+    dialog.getByLabel(`${source} recording for amy`, { exact: true });
+  return { s, a, base, reads, images, control, dialog, timeline, video };
+}
+
+test("synchronized video review decodes real VP9 once per segment and seeks both views on original timestamps", async ({
+  page,
+}, info) => {
+  const f = await videoReview(page);
+  for (const source of ["Screen", "Webcam"])
+    await expect(f.video(source)).toHaveAttribute(
+      "data-frame-id",
+      `${source.toLowerCase()}-video-0`,
+    );
+  expect(f.reads).toHaveLength(2);
+  expect(f.images).toEqual([]);
+  const decoded = await f
+    .video("Screen")
+    .evaluate((element: HTMLVideoElement) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = element.videoWidth;
+      canvas.height = element.videoHeight;
+      const context = canvas.getContext("2d")!;
+      context.drawImage(element, 0, 0);
+      return {
+        width: element.videoWidth,
+        height: element.videoHeight,
+        nonzero: context
+          .getImageData(0, 0, canvas.width, canvas.height)
+          .data.some((value, index) => index % 4 !== 3 && value > 10),
+      };
+    });
+  expect(decoded).toEqual({ width: 320, height: 240, nonzero: true });
+  await f.timeline.fill(String(f.base + 5000));
+  for (const source of ["Screen", "Webcam"]) {
+    await expect(f.video(source)).toHaveAttribute(
+      "data-frame-id",
+      `${source.toLowerCase()}-video-1`,
+    );
+    expect(
+      await f
+        .video(source)
+        .evaluate((element: HTMLVideoElement) => element.currentTime),
+    ).toBeCloseTo(5.001, 2);
+  }
+  expect(f.reads).toHaveLength(2);
+  expect(f.images).toEqual([]);
+  await f.dialog.locator(".review-images").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: info.outputPath("synchronized-video-desktop.png"),
+    fullPage: true,
+  });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const overflow = await f.dialog.evaluate((root) => ({
+      width: root.clientWidth,
+      scroll: root.scrollWidth,
+      offenders: Array.from(root.querySelectorAll("*"))
+        .filter(
+          (element) =>
+            element.getBoundingClientRect().right >
+            root.getBoundingClientRect().right + 1,
+        )
+        .map((element) => ({
+          tag: element.tagName,
+          class: element.className,
+          text: element.textContent?.slice(0, 45),
+          width: element.getBoundingClientRect().width,
+        }))
+        .slice(0, 8),
+    }));
+    expect(
+      await f.dialog.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+      JSON.stringify(overflow),
+    ).toBe(true);
+    const speed = f.dialog.getByRole("combobox", {
+      name: "Playback speed",
+      exact: true,
+    });
+    await speed.scrollIntoViewIfNeeded();
+    expect(
+      await speed.locator("..").evaluate((label) => {
+        const text = Array.from(label.childNodes).find(
+          (node) =>
+            node.nodeType === Node.TEXT_NODE &&
+            node.textContent?.includes("Speed"),
+        )!;
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        return range.getClientRects().length;
+      }),
+    ).toBe(1);
+    await f.dialog.locator(".review-images").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath(`synchronized-video-${width}.png`),
+      fullPage: true,
+    });
+  }
+  await f.dialog
+    .getByRole("combobox", { name: "Playback speed", exact: true })
+    .selectOption("1");
+  await f.dialog
+    .getByRole("button", { name: "Play recordings", exact: true })
+    .click();
+  await expect
+    .poll(async () => Number(await f.timeline.inputValue()))
+    .toBeGreaterThan(f.base + 5000);
+  await f.dialog
+    .getByRole("button", { name: "Pause recordings", exact: true })
+    .click();
+  const paused = await f.timeline.inputValue();
+  await page.waitForTimeout(150);
+  expect(await f.timeline.inputValue()).toBe(paused);
+  await f.dialog
+    .getByRole("combobox", { name: "Playback speed", exact: true })
+    .selectOption("125");
+  await f.dialog
+    .getByRole("button", { name: "Play recordings", exact: true })
+    .click();
+  await expect(f.timeline).toHaveValue(String(f.base + 10000));
+  await expect(
+    f.dialog.getByRole("button", { name: "Play recordings", exact: true }),
+  ).toBeVisible();
+  for (const source of ["Screen", "Webcam"])
+    await expect(f.video(source)).toHaveAttribute(
+      "data-frame-id",
+      `${source.toLowerCase()}-video-2`,
+    );
+});
+
+test("synchronized video review mixes old JPEGs with video on the same timeline", async ({
+  page,
+}) => {
+  const f = await videoReview(page);
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-0",
   );
+  f.s.image = await sharp({
+    create: { width: 40, height: 30, channels: 3, background: "blue" },
+  })
+    .jpeg()
+    .toBuffer();
+  for (const frame of f.s.media.frames)
+    if (frame.source === "webcam") delete frame.video;
+  await f.dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(f.dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/webcam-video-0",
+  );
+  await f.timeline.fill(String(f.base + 5000));
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-1",
+  );
+  await expect(f.dialog.getByAltText("Webcam capture for amy")).toHaveAttribute(
+    "src",
+    "/api/admin/media/webcam-video-1",
+  );
+  await expect(f.video("Webcam")).toHaveCount(0);
+});
+
+test("synchronized video review ignores late downloads after close", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as any).reviewBlobCreates = 0;
+    const create = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (blob: Blob | MediaSource) => {
+      (window as any).reviewBlobCreates++;
+      return create(blob);
+    };
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const failures: string[] = [];
+  page.on("requestfailed", (request) => {
+    if (request.url().includes("/videos/")) failures.push(request.url());
+  });
+  const f = await videoReview(page, false, gate);
+  try {
+    await expect.poll(() => f.reads.length).toBe(2);
+    await f.dialog
+      .getByRole("button", { name: "Close review", exact: true })
+      .click();
+    await expect.poll(() => failures.length).toBe(2);
+    release();
+    await page.waitForTimeout(100);
+    expect(await page.evaluate(() => (window as any).reviewBlobCreates)).toBe(
+      0,
+    );
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  } finally {
+    release();
+  }
+});
+
+test("synchronized video review maps uneven timestamps and shows capture gaps rather than future or stale images", async ({
+  page,
+}) => {
+  const f = await videoReview(page, true);
+  await expect(
+    f.dialog.getByText("No webcam capture at this time.", { exact: true }),
+  ).toBeVisible();
+  await f.timeline.fill(String(f.base + 6000));
+  for (const source of ["Screen", "Webcam"])
+    await expect(f.video(source)).toHaveAttribute(
+      "data-frame-id",
+      `${source.toLowerCase()}-video-1`,
+    );
+  await expect(
+    f.dialog.getByLabel("Recording time", { exact: true }),
+  ).toHaveAttribute("datetime", new Date(f.base + 6000).toISOString());
+  await f.timeline.fill(String(f.base + 11000));
+  await expect(
+    f.dialog.getByText("No screen capture at this time.", { exact: true }),
+  ).toBeVisible();
+  await expect(f.video("Webcam")).toHaveAttribute(
+    "data-frame-id",
+    "webcam-video-2",
+  );
+  await f.timeline.fill(String(f.base + 20000));
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-2",
+  );
+  await expect(
+    f.dialog.getByText("No webcam capture at this time.", { exact: true }),
+  ).toBeVisible();
+  expect(f.images).toEqual([]);
+});
+
+test("synchronized video review releases private buffers on tab switch, deletion and close", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const active = new Set<string>(),
+      create = URL.createObjectURL.bind(URL),
+      revoke = URL.revokeObjectURL.bind(URL);
+    (window as any).reviewURLs = active;
+    URL.createObjectURL = (blob: Blob | MediaSource) => {
+      const url = create(blob);
+      active.add(url);
+      return url;
+    };
+    URL.revokeObjectURL = (url: string) => {
+      active.delete(url);
+      revoke(url);
+    };
+  });
+  const f = await videoReview(page);
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-0",
+  );
+  await expect
+    .poll(() => page.evaluate(() => (window as any).reviewURLs.size))
+    .toBe(2);
+  await f.timeline.fill(String(f.base + 5000));
+  await expect(f.video("Webcam")).toHaveAttribute(
+    "data-frame-id",
+    "webcam-video-1",
+  );
+  await f.dialog.getByRole("button", { name: /^Activity/ }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).reviewURLs.size))
+    .toBe(0);
+  await f.dialog
+    .getByRole("button", { name: "Recordings", exact: true })
+    .click();
+  await expect(f.video("Webcam")).toHaveAttribute(
+    "data-frame-id",
+    "webcam-video-1",
+  );
+  await expect
+    .poll(() => page.evaluate(() => (window as any).reviewURLs.size))
+    .toBe(2);
+  f.s.media.monitoringDeleted = true;
+  f.s.media.frames = [];
+  await f.dialog.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(
+    f.dialog.getByText("Recordings were deleted.", { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).reviewURLs.size))
+    .toBe(0);
+  await f.dialog
+    .getByRole("button", { name: "Close review", exact: true })
+    .click();
+  expect(await page.evaluate(() => (window as any).reviewURLs.size)).toBe(0);
+});
+
+test("synchronized video review retries unavailable clips without server image decoding", async ({
+  page,
+}) => {
+  const f = await videoReview(page);
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-0",
+  );
+  f.control.fail = true;
+  await f.dialog.getByRole("button", { name: /^Activity/ }).click();
+  await f.dialog
+    .getByRole("button", { name: "Recordings", exact: true })
+    .click();
+  await expect(
+    f.dialog.getByRole("button", { name: "Retry screen", exact: true }),
+  ).toBeVisible();
+  expect(f.images).toEqual([]);
+  f.control.fail = false;
+  await f.dialog
+    .getByRole("button", { name: "Retry screen", exact: true })
+    .click();
+  await expect(f.video("Screen")).toHaveAttribute(
+    "data-frame-id",
+    "screen-video-0",
+  );
+  f.control.deleted = true;
+  await f.dialog.getByRole("button", { name: /^Activity/ }).click();
+  await f.dialog
+    .getByRole("button", { name: "Recordings", exact: true })
+    .click();
+  await expect(
+    f.dialog.getByText("Recordings were deleted.", { exact: true }),
+  ).toBeVisible();
 });
 
 test("review shows preflight, finished duration, access failures, clock changes and omission reasons in plain language", async ({
@@ -2281,7 +2659,7 @@ test("review shows preflight, finished duration, access failures, clock changes 
   await dialog.getByText("Omitted entries", { exact: true }).click();
   await expect(dialog).toContainText(".#answer.c: symbolic link omitted");
   await expect(
-    dialog.getByRole("button", { name: "Live screen", exact: true }),
+    dialog.getByRole("button", { name: "Live recordings", exact: true }),
   ).toHaveCount(0);
   a.ended = null; // A historical end can be missing; never keep it ticking.
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));

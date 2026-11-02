@@ -59,8 +59,14 @@ import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { MonitoringChallengeError } from "./monitoring-readiness.js";
 import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
-import { MonitoringVideoJobs, monitoringVideoStatus } from "./monitoring-video-jobs.js";
-import { monitoringOptimize } from "../../../packages/protocol/monitoring-video.js";
+import {
+  MonitoringVideoJobs,
+  monitoringVideoStatus,
+} from "./monitoring-video-jobs.js";
+import {
+  monitoringOptimize,
+  monitoringPlaybackVideo,
+} from "../../../packages/protocol/monitoring-video.js";
 import {
   MonitoringPurgeJobs,
   monitoringPurgeStatus,
@@ -107,7 +113,10 @@ export async function createApp(
   } = {},
 ) {
   if (
-    (options.purgeWorkerEntry || options.purgeTimeoutMs !== undefined || options.videoWorkerEntry || options.videoTimeoutMs !== undefined) &&
+    (options.purgeWorkerEntry ||
+      options.purgeTimeoutMs !== undefined ||
+      options.videoWorkerEntry ||
+      options.videoTimeoutMs !== undefined) &&
     config.mode !== "development"
   )
     throw Error("Purge worker test overrides require development mode");
@@ -174,10 +183,11 @@ export async function createApp(
   const videos = new MonitoringVideoJobs(store, {
     entry: options.videoWorkerEntry,
     timeoutMs: options.videoTimeoutMs,
-    onFailure: (code) => app.log.warn(
-      {event:"monitoring-video-incomplete",code},
-      "Recording optimization unverified; original captures and exam authority remain unchanged",
-    ),
+    onFailure: (code) =>
+      app.log.warn(
+        { event: "monitoring-video-incomplete", code },
+        "Recording optimization unverified; original captures and exam authority remain unchanged",
+      ),
   });
   const purges = new MonitoringPurgeJobs(store, {
     entry: options.purgeWorkerEntry,
@@ -2934,10 +2944,37 @@ export async function createApp(
         ? []
         : store.db
             .prepare(
-              "SELECT * FROM frames WHERE attempt=? ORDER BY received DESC, id DESC LIMIT 10000",
+              `SELECT f.*,v.segment playback_segment,v.frame_index playback_index,
+                s.frame_count playback_count,s.attempt playback_attempt,s.source playback_source
+                FROM frames f LEFT JOIN monitoring_video_frames v ON v.frame=f.id
+                LEFT JOIN monitoring_video_segments s ON s.id=v.segment
+                WHERE f.attempt=? ORDER BY f.received DESC,f.id DESC LIMIT 10000`,
             )
             .all(req.params.id)
-            .reverse(),
+            .reverse()
+            .map((row: any) => {
+              const {
+                playback_segment,
+                playback_index,
+                playback_count,
+                playback_attempt,
+                playback_source,
+                ...frame
+              } = row;
+              if (playback_segment === null) return frame;
+              const video = monitoringPlaybackVideo.safeParse({
+                segment: playback_segment,
+                offset_ms: playback_index * 5000,
+                duration_ms: playback_count * 5000,
+              });
+              if (
+                !video.success ||
+                playback_attempt !== frame.attempt ||
+                playback_source !== frame.source
+              )
+                throw new MonitoringMediaError("storage", "video");
+              return { ...frame, video: video.data };
+            }),
       incidents: monitoringDeleted
         ? []
         : store.db
@@ -2982,13 +3019,16 @@ export async function createApp(
       s.username,
     );
   });
-  app.post("/api/admin/attempts/:id/monitoring/optimization", async (req:any) => {
-    const s = principal(req,"admin");
-    const body = monitoringOptimize.parse({...req.body,id:req.params.id});
-    const receipt = monitoringManagement.optimize(body,s.username);
-    void videos.kick();
-    return receipt;
-  });
+  app.post(
+    "/api/admin/attempts/:id/monitoring/optimization",
+    async (req: any) => {
+      const s = principal(req, "admin");
+      const body = monitoringOptimize.parse({ ...req.body, id: req.params.id });
+      const receipt = monitoringManagement.optimize(body, s.username);
+      void videos.kick();
+      return receipt;
+    },
+  );
   app.get("/api/admin/monitoring/purges/:id", async (req: any) => {
     const s = principal(req, "admin");
     return monitoringManagement.purge({ id: req.params.id }, s.username);
@@ -3043,6 +3083,24 @@ export async function createApp(
       );
     return result.text;
   });
+  app.get(
+    "/api/admin/attempts/:id/videos/:segment",
+    async (req: any, reply) => {
+      const s = principal(req, "admin");
+      z.object({}).strict().parse(req.query);
+      store.attempt(req.params.id);
+      const video = await media.clip(
+        req.params.id,
+        req.params.segment,
+        s.username,
+      );
+      media.assertRetained(video.attempt);
+      return reply
+        .header("Cache-Control", "no-store")
+        .type("video/webm")
+        .send(video.data);
+    },
+  );
   app.get("/api/admin/media/:id", async (req: any, reply) => {
     const s = principal(req, "admin");
     const query = z
@@ -3858,10 +3916,7 @@ export async function createApp(
         }
         if (m.type === "open") {
           const policy = executionPolicies.current(a.exam);
-          if (
-            conn.panes.size >= policy.terminals ||
-            conn.panes.has(m.pane)
-          )
+          if (conn.panes.size >= policy.terminals || conn.panes.has(m.pane))
             throw Error("Terminal limit exceeded");
           const practice = a.state === "PREPARING";
           // Native admission diagnostics are useful to operators, but are not

@@ -20,6 +20,17 @@ export type MonitoringFrameProvenance = z.infer<
   typeof monitoringFrameProvenance
 >;
 
+// Offsets describe stored samples, not an assertion of continuous capture.
+export const monitoringPlaybackVideo = z
+  .object({
+    segment: z.string().uuid(),
+    offset_ms: z.number().int().min(0).max(55000).multipleOf(5000),
+    duration_ms: z.number().int().min(5000).max(60000).multipleOf(5000),
+  })
+  .strict()
+  .refine((value) => value.offset_ms < value.duration_ms);
+export type MonitoringPlaybackVideo = z.infer<typeof monitoringPlaybackVideo>;
+
 export const monitoringOptimizationStatus = z.enum([
   "not-queued",
   "pending",

@@ -49,7 +49,7 @@ export class MonitoringMediaError extends Error {
       | "digest"
       | "cleanup"
       | "storage",
-    public readonly media: "image" | "recording" = "image",
+    public readonly media: "image" | "recording" | "video" = "image",
   ) {
     super(
       reason === "capacity"
@@ -72,6 +72,7 @@ const deleted = () =>
 // run in separate bounded workers, never this HTTP process.
 export class MonitoringMedia {
   private inflight = 0;
+  private clipReads = 0;
   private video: MonitoringVideoProcess;
   private decoding = 0;
   private closed = false;
@@ -140,7 +141,7 @@ export class MonitoringMedia {
     if (
       process.platform !== "linux" ||
       !/^[a-zA-Z0-9_-]{1,64}$/.test(attemptID) ||
-      !/^[a-fA-F0-9-]{36}(?:\.thumb)?\.(?:jpg|ndjson)$/.test(leaf)
+      !/^[a-fA-F0-9-]{36}(?:\.thumb)?\.(?:jpg|ndjson|webm)$/.test(leaf)
     )
       throw new MonitoringMediaError("unsafe-path");
     const directory = async (path: string) => {
@@ -180,6 +181,123 @@ export class MonitoringMedia {
       throw new MonitoringMediaError("storage");
     }
     if (tombstone) throw deleted();
+  }
+  // Serve the verified encoded bytes once per clip. Browser review never starts
+  // a codec worker, creates a derivative, or changes capture/deletion authority.
+  async clip(attempt: string, segment: string, actor: string) {
+    z.string().uuid().parse(segment);
+    this.assertRetained(attempt);
+    const projection = () => {
+      const row = this.store.db
+        .prepare(
+          `SELECT s.*,a.state,a.start,a.ended
+        FROM monitoring_video_segments s JOIN attempts a ON a.id=s.attempt
+        WHERE s.id=? AND s.attempt=?`,
+        )
+        .get(segment, attempt) as any;
+      if (!row)
+        throw Object.assign(
+          Error("Recording segment not found for this attempt"),
+          { statusCode: 404 },
+        );
+      const frames = this.store.db
+        .prepare(
+          `SELECT f.id,f.attempt,f.source,f.hash,f.captured,
+        v.frame_index,v.decoded_sha256 FROM monitoring_video_frames v
+        JOIN frames f ON f.id=v.frame WHERE v.segment=? ORDER BY v.frame_index`,
+        )
+        .all(segment) as any[];
+      if (
+        row.state !== "COMPLETED" ||
+        row.start === null ||
+        row.ended === null ||
+        !["screen", "webcam"].includes(row.source) ||
+        !/^[a-f0-9]{64}$/.test(row.sha256) ||
+        !Number.isSafeInteger(row.bytes) ||
+        row.bytes < 1 ||
+        row.bytes > 32 * 1024 * 1024 ||
+        !Number.isInteger(row.frame_count) ||
+        row.frame_count < 1 ||
+        row.frame_count > 12 ||
+        frames.length !== row.frame_count ||
+        frames.some(
+          (f, i) =>
+            f.attempt !== attempt ||
+            f.source !== row.source ||
+            f.frame_index !== i ||
+            !/^[a-f0-9]{64}$/.test(f.hash) ||
+            !/^[a-f0-9]{64}$/.test(f.decoded_sha256) ||
+            !Number.isSafeInteger(f.captured) ||
+            f.captured < 0,
+        )
+      )
+        throw new MonitoringMediaError("storage", "video");
+      return { row, frames };
+    };
+    const before = projection();
+    if (this.closed || this.clipReads >= 2 || this.inflight >= 16)
+      throw new MonitoringMediaError("capacity", "video");
+    this.clipReads++;
+    this.inflight++;
+    const handles: FileHandle[] = [];
+    try {
+      const file = await this.openPrivate(attempt, segment + ".webm", handles),
+        info = await file.stat();
+      if (!info.isFile())
+        throw new MonitoringMediaError("not-regular", "video");
+      if (info.nlink !== 1) throw new MonitoringMediaError("linked", "video");
+      if (info.uid !== process.geteuid?.() || info.mode & 0o077)
+        throw new MonitoringMediaError("storage", "video");
+      if (info.size !== before.row.bytes)
+        throw new MonitoringMediaError("size", "video");
+      const buffer = Buffer.alloc(info.size + 1);
+      let count = 0;
+      while (count < buffer.length) {
+        const part = await file.read(
+          buffer,
+          count,
+          Math.min(128 * 1024, buffer.length - count),
+          count,
+        );
+        if (!part.bytesRead) break;
+        count += part.bytesRead;
+      }
+      const after = await file.stat();
+      if (
+        count !== info.size ||
+        after.size !== info.size ||
+        after.mtimeMs !== info.mtimeMs ||
+        after.ctimeMs !== info.ctimeMs ||
+        after.nlink !== 1
+      )
+        throw new MonitoringMediaError("changed", "video");
+      const data = buffer.subarray(0, count);
+      if (hash(data) !== before.row.sha256)
+        throw new MonitoringMediaError("digest", "video");
+      this.assertRetained(attempt);
+      if (JSON.stringify(projection()) !== JSON.stringify(before))
+        throw new MonitoringMediaError("changed", "video");
+      this.store.audit(
+        actor,
+        "view-video",
+        attempt,
+        JSON.stringify({ segment }),
+      );
+      return { attempt, data };
+    } catch (error) {
+      if (
+        error instanceof MonitoringMediaError ||
+        [404, 410].includes((error as any).statusCode)
+      )
+        throw error;
+      throw new MonitoringMediaError("storage", "video");
+    } finally {
+      const closed = await Promise.allSettled(handles.map((fd) => fd.close()));
+      if (closed.some((result) => result.status === "rejected"))
+        throw new MonitoringMediaError("cleanup", "video");
+      this.clipReads--;
+      this.inflight--;
+    }
   }
   async read(
     id: string,

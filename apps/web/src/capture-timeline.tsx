@@ -1,126 +1,439 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { chicago } from "./api.js";
-import { formatDuration } from "../../../packages/protocol/time.js";
+import { monitoringPlaybackVideo } from "../../../packages/protocol/monitoring-video.js";
+import {
+  captureAt,
+  captureInterval,
+  orderedCaptures,
+  type PlaybackFrame,
+} from "./review-playback.js";
 
-type Frame = { id: string; source: string; captured: number; received: number };
-export function CaptureTimeline({
+function CaptureView({
+  attempt,
   source,
   frames,
+  time,
   username,
-  working,
-  clock,
+  enabled,
+  onReady,
+  onDeleted,
 }: {
+  attempt: string;
   source: string;
-  frames: Frame[];
+  frames: PlaybackFrame[];
+  time: number;
   username: string;
-  working: boolean;
-  clock: number;
+  enabled: boolean;
+  onReady: (source: string, id: string, ready: boolean) => void;
+  onDeleted: () => void;
 }) {
-  const label = source === "screen" ? "Screen" : "Webcam";
-  const ordered = frames
-    .filter((f) => f.source === source)
-    .sort(
-      (a, b) =>
-        a.captured - b.captured ||
-        a.received - b.received ||
-        a.id.localeCompare(b.id),
-    );
-  const latest = ordered.at(-1);
-  const [selection, setSelection] = useState(() =>
-    working ? "live" : latest?.id || "latest",
-  );
-  const [failed, setFailed] = useState("");
+  const frame = captureAt(frames, time),
+    label = source === "screen" ? "Screen" : "Webcam";
+  const clip = frame?.video;
+  const video = useRef<HTMLVideoElement>(null);
+  const [asset, setAsset] = useState<{
+    segment: string;
+    url?: string;
+    error?: string;
+  } | null>(null);
+  const [shown, setShown] = useState(""),
+    [imageError, setImageError] = useState("");
   const [retry, setRetry] = useState(0);
-  const live = working && selection === "live";
-  const index =
-    selection === "live" || selection === "latest"
-      ? ordered.length - 1
-      : ordered.findIndex((f) => f.id === selection);
-  const shown = ordered[index] || latest;
-  // A pause/finish freezes the selected capture. A later resume must not silently
-  // move an instructor out of history; they explicitly choose Live again.
+  const segment = clip?.segment;
   useEffect(() => {
-    if (selection === "live" && !working) setSelection(latest?.id || "latest");
-    else if (selection !== "live" && selection !== "latest" && index < 0)
-      setSelection(latest?.id || "latest");
-  }, [selection, working, latest?.id, index]);
+    setAsset(null);
+    if (!enabled || !segment) return;
+    const abort = new AbortController(),
+      owned = video.current;
+    let objectURL: string | undefined,
+      disposed = false;
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/admin/attempts/${encodeURIComponent(attempt)}/videos/${encodeURIComponent(segment)}`,
+          {
+            signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]),
+            cache: "no-store",
+          },
+        );
+        if (response.status === 410) {
+          if (!disposed) onDeleted();
+          return;
+        }
+        if (!response.ok)
+          throw Error(
+            response.status === 401
+              ? "Sign in again to view recordings."
+              : "Video unavailable. Retry this recording.",
+          );
+        if (!response.headers.get("content-type")?.startsWith("video/webm"))
+          throw Error("Recording format unavailable.");
+        const size = Number(response.headers.get("content-length"));
+        if (!Number.isSafeInteger(size) || size < 1 || size > 32 * 1024 * 1024)
+          throw Error("Recording size unavailable.");
+        const blob = await response.blob();
+        if (blob.size !== size)
+          throw Error("Recording download was interrupted.");
+        if (disposed) return;
+        objectURL = URL.createObjectURL(blob);
+        setAsset({ segment, url: objectURL });
+      } catch (error) {
+        if (!disposed) setAsset({ segment, error: (error as Error).message });
+      }
+    })();
+    return () => {
+      disposed = true;
+      abort.abort();
+      if (owned) {
+        owned.pause();
+        owned.removeAttribute("src");
+        owned.load();
+      }
+      if (objectURL) URL.revokeObjectURL(objectURL);
+    };
+  }, [attempt, segment, enabled, retry, onDeleted]);
+  const url = enabled && asset?.segment === segment ? asset?.url : undefined;
+  const seek = useCallback(() => {
+    const element = video.current;
+    if (!frame || !clip || !url || !element || element.readyState < 1) return;
+    if (!monitoringPlaybackVideo.safeParse(clip).success) {
+      setAsset({
+        segment: clip.segment,
+        error: "Recording timing unavailable.",
+      });
+      return;
+    }
+    const target = (clip.offset_ms + 1) / 1000;
+    if (Math.abs(element.currentTime - target) > 0.0005)
+      element.currentTime = target;
+  }, [frame?.id, clip?.offset_ms, url]);
+  const decoded = () => {
+    const element = video.current;
+    if (
+      !frame ||
+      !clip ||
+      !url ||
+      !element ||
+      element.readyState < 2 ||
+      element.seeking
+    )
+      return;
+    if (Math.abs(element.currentTime - (clip.offset_ms + 1) / 1000) < 0.02) {
+      setShown(frame.id);
+      onReady(source, frame.id, true);
+    }
+  };
+  useLayoutEffect(() => {
+    setShown("");
+    setImageError("");
+    if (frame) onReady(source, frame.id, false);
+    seek();
+  }, [frame?.id, url, enabled, seek, onReady, source]);
+  useEffect(() => {
+    if (!frame?.video || !url || shown === frame.id) return;
+    const timer = setTimeout(
+      () =>
+        setAsset((old) =>
+          old?.url === url
+            ? {
+                segment: frame.video!.segment,
+                error: "Video unavailable. Retry this recording.",
+              }
+            : old,
+        ),
+      10000,
+    );
+    return () => clearTimeout(timer);
+  }, [frame?.id, url, shown]);
+  const failure = frame?.video
+    ? asset?.segment === segment
+      ? asset?.error
+      : undefined
+    : imageError;
   return (
     <figure aria-label={`${label} captures`}>
       <figcaption>
         <strong>{label}</strong>
-        <span>
-          {live ? "Live · " : ""}
-          {shown
-            ? `${formatDuration((clock - shown.captured) / 1000)} ago`
-            : "No captures"}
-        </span>
+        {frame && (
+          <time
+            dateTime={new Date(frame.captured).toISOString()}
+            title={`Received ${chicago(frame.received)}`}
+          >
+            {chicago(frame.captured)}
+          </time>
+        )}
       </figcaption>
-      {shown ? (
+      {!frames.length ? (
+        <p className="monitoring-empty">No {source} images received.</p>
+      ) : !frame ? (
+        <p className="monitoring-empty">No {source} capture at this time.</p>
+      ) : !enabled ? null : frame.video ? (
         <>
-          <img
-            key={`${shown.id}:${retry}`}
-            alt={`${label} capture for ${username}`}
-            src={`/api/admin/media/${shown.id}`}
-            hidden={failed === shown.id}
-            onError={() => setFailed(shown.id)}
+          <video
+            ref={video}
+            muted
+            playsInline
+            preload="auto"
+            src={url}
+            aria-label={`${label} recording for ${username}`}
+            data-frame-id={shown === frame.id ? frame.id : undefined}
+            hidden={shown !== frame.id}
+            onLoadedMetadata={seek}
+            onLoadedData={decoded}
+            onSeeked={decoded}
+            onError={() => {
+              if (url)
+                setAsset({
+                  segment: segment!,
+                  error: "Video unavailable. Retry this recording.",
+                });
+            }}
           />
-          {failed === shown.id && (
-            <p className="monitoring-empty" role="alert">
-              Image unavailable.{" "}
-              <button
-                onClick={() => {
-                  setFailed("");
-                  setRetry((n) => n + 1);
-                }}
-              >
-                Retry image
-              </button>
-            </p>
+          {!failure && shown !== frame.id && (
+            <p className="monitoring-empty">Loading {source} recording…</p>
           )}
-          <div className="capture-controls">
-            <div className="capture-selected">
-              <time
-                dateTime={new Date(shown.captured).toISOString()}
-                title={`Received ${chicago(shown.received)}`}
-              >
-                {chicago(shown.captured)}
-              </time>
-              {working && (
-                <button
-                  className={live ? "live-selected" : ""}
-                  aria-label={`Live ${source}`}
-                  aria-pressed={live}
-                  title="Follow live images"
-                  onClick={() => setSelection("live")}
-                >
-                  Live
-                </button>
-              )}
-            </div>
-            <input
-              type="range"
-              aria-label={`${label} timeline`}
-              aria-valuetext={`${chicago(shown.captured)}${live ? ", live" : ""}`}
-              min={0}
-              max={Math.max(0, ordered.length - 1)}
-              value={Math.max(0, index)}
-              disabled={ordered.length < 2}
-              onChange={(event) => {
-                const f = ordered[Number(event.target.value)];
-                if (f) setSelection(f.id);
-              }}
-            />
-            <div className="capture-bounds">
-              <span>{chicago(ordered[0].captured)}</span>
-              <span>{chicago(latest!.captured)}</span>
-            </div>
-          </div>
         </>
       ) : (
-        <p className="monitoring-empty">
-          No {label.toLowerCase()} images received.
+        <img
+          key={`${frame.id}:${retry}`}
+          alt={`${label} capture for ${username}`}
+          src={`/api/admin/media/${frame.id}`}
+          hidden={!!imageError}
+          onLoad={() => {
+            setImageError("");
+            setShown(frame.id);
+            onReady(source, frame.id, true);
+          }}
+          onError={() =>
+            setImageError("Image unavailable. Retry this recording.")
+          }
+        />
+      )}
+      {failure && (
+        <p role="alert" className="monitoring-empty">
+          {failure}{" "}
+          <button onClick={() => setRetry((n) => n + 1)}>Retry {source}</button>
         </p>
       )}
     </figure>
+  );
+}
+
+export function CaptureTimeline({
+  attempt,
+  frames,
+  username,
+  working,
+  webcam,
+  active,
+  deleted,
+}: {
+  attempt: string;
+  frames: PlaybackFrame[];
+  username: string;
+  working: boolean;
+  webcam: boolean;
+  active: boolean;
+  deleted: boolean;
+}) {
+  const tracks = useMemo(
+    () => ({
+      screen: orderedCaptures(frames, "screen"),
+      webcam: orderedCaptures(frames, "webcam"),
+    }),
+    [frames],
+  );
+  const sources =
+    webcam || tracks.webcam.length ? ["screen", "webcam"] : ["screen"];
+  const all = useMemo(() => orderedCaptures(frames), [frames]),
+    start = all[0]?.captured ?? 0,
+    end = all.at(-1)?.captured ?? 0;
+  const [follow, setFollow] = useState(working),
+    [position, setPosition] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false),
+    [speed, setSpeed] = useState(60);
+  const [visible, setVisible] = useState(document.visibilityState !== "hidden");
+  const [removed, setRemoved] = useState(deleted);
+  const enabled = active && visible && !removed && !deleted;
+  const time =
+    follow && working ? end : Math.max(start, Math.min(end, position ?? start));
+  const current = useRef(time),
+    lastRendered = useRef(time);
+  current.current = time;
+  const [ready, setReady] = useState<
+    Record<string, { id: string; ready: boolean }>
+  >({});
+  const report = useCallback(
+    (source: string, id: string, value: boolean) =>
+      setReady((old) =>
+        old[source]?.id === id && old[source]?.ready === value
+          ? old
+          : { ...old, [source]: { id, ready: value } },
+      ),
+    [],
+  );
+  const remove = useCallback(() => {
+    setRemoved(true);
+    setPlaying(false);
+  }, []);
+  const loaded = sources.every((source) => {
+    const frame = captureAt(tracks[source as "screen" | "webcam"], time);
+    return !frame || (ready[source]?.id === frame.id && ready[source]?.ready);
+  });
+  useEffect(() => {
+    const update = () => setVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  useEffect(() => {
+    if (!enabled) setPlaying(false);
+  }, [enabled]);
+  useEffect(() => {
+    if (follow && !working) {
+      setPosition(lastRendered.current);
+      setFollow(false);
+    }
+    lastRendered.current = time;
+  }, [working, follow, time]);
+  useEffect(() => {
+    if (!playing || !enabled || !loaded) return;
+    let previous = performance.now();
+    const timer = setInterval(() => {
+      const now = performance.now(),
+        next = Math.min(
+          end,
+          current.current + Math.min(100, now - previous) * speed,
+        );
+      previous = now;
+      current.current = next;
+      setPosition(next);
+      if (next >= end) setPlaying(false);
+    }, 40);
+    return () => clearInterval(timer);
+  }, [playing, enabled, loaded, speed, end]);
+  const choose = (next: number) => {
+    setPlaying(false);
+    setFollow(false);
+    current.current = next;
+    setPosition(next);
+  };
+  if (removed || deleted)
+    return <p className="monitoring-empty">Recordings were deleted.</p>;
+  return (
+    <div className="synchronized-recordings">
+      {!!all.length && (
+        <div
+          className="capture-controls"
+          role="group"
+          aria-label="Recording playback"
+        >
+          <div className="recording-playback-bar">
+            <button
+              disabled={all.length < 2}
+              aria-label={playing ? "Pause recordings" : "Play recordings"}
+              onClick={() => {
+                if (playing) {
+                  setPlaying(false);
+                  return;
+                }
+                const next = time >= end ? start : time;
+                current.current = next;
+                setPosition(next);
+                setFollow(false);
+                setPlaying(true);
+              }}
+            >
+              {playing ? "Pause" : "Play"}
+            </button>
+            <label>
+              Speed{" "}
+              <select
+                aria-label="Playback speed"
+                value={speed}
+                onChange={(event) => setSpeed(Number(event.target.value))}
+              >
+                {[1, 5, 10, 30, 60, 125].map((value) => (
+                  <option key={value} value={value}>
+                    {value}×
+                  </option>
+                ))}
+              </select>
+            </label>
+            {working && (
+              <button
+                aria-label="Live recordings"
+                aria-pressed={follow}
+                onClick={() => {
+                  setPlaying(false);
+                  setFollow(true);
+                }}
+              >
+                Live
+              </button>
+            )}
+            <time
+              aria-label="Recording time"
+              dateTime={new Date(time).toISOString()}
+            >
+              {chicago(time)}
+            </time>
+          </div>
+          <input
+            type="range"
+            aria-label="Recording timeline"
+            aria-valuetext={chicago(time)}
+            min={start}
+            max={end}
+            step={1}
+            value={time}
+            disabled={start === end}
+            onChange={(event) => choose(Number(event.target.value))}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                event.preventDefault();
+                choose(
+                  Math.max(
+                    start,
+                    Math.min(
+                      end,
+                      time +
+                        (event.key === "ArrowLeft"
+                          ? -captureInterval
+                          : captureInterval),
+                    ),
+                  ),
+                );
+              }
+            }}
+          />
+          <div className="capture-bounds">
+            <span>{chicago(start)}</span>
+            <span>{chicago(end)}</span>
+          </div>
+        </div>
+      )}
+      <div className="review-images">
+        {sources.map((source) => (
+          <CaptureView
+            key={source}
+            attempt={attempt}
+            source={source}
+            frames={tracks[source as "screen" | "webcam"]}
+            time={time}
+            username={username}
+            enabled={enabled}
+            onReady={report}
+            onDeleted={remove}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

@@ -1,19 +1,50 @@
-# Screenshot-first review (local, not deployed)
+# Synchronized recording review
 
-Open an attempt's Review → Monitoring to inspect screen captures and any required
-webcam captures. Existing independent timeline sliders and live mode remain.
-Use **Open terminal replay**, then choose a terminal, only when investigating its
-recorded output. **Close terminal replay** stops recording reads. Activity and
-Submission tabs pause replay fetching; returning catches up incrementally without
-advancing a paused replay. Reopening preserves its selected pane and position.
+November2,2026. Implemented and tested locally.
+Not pushed or deployed. This supersedes the independent screenshot sliders.
 
-Live metadata/capture updates continue without resetting the selected review tab
-or capture/replay positions. This is a presentation/loading change only: terminal
-recording, protected submissions, monitoring permissions and 60-day monitoring
-retention remain unchanged. No new management operation was added.
+Review → Recordings has one Play/Pause button, speed selector and timeline for
+both screen and webcam. The shared clock uses original capture timestamps, not
+arrival order or encoded frame positions. Default speed is60×;1×,5×,10×,30×,
+60× and125× are available. Each panel identifies the actual sample it displays.
+Missing samples are explicit gaps: neither a future capture nor an image more
+than one capture interval old is substituted. Play waits while either selected
+sample is loading. Arrow keys seek five seconds; scrubbing pauses playback.
 
-Local evidence: typecheck/build and 52 Chromium tests pass, including active and
-completed review, zero recording reads before explicit opening, closing/tab
-switching, network recovery, live updates and actual synthetic browser SSH cleanup.
-No production browser or student account was used. Deploy only after a separately
-authorized drain with the other gateway changes; this component adds no migration.
+Completed converted captures use the existing VP9/WebM segments. Each browser
+view holds only its current segment and decodes/seeks it locally, with offsets
+mapped back to original timestamps. There is no per-frame server decoding on
+this path, concatenated movie, new conversion job or persistent thumbnail cache.
+The stored low-frame-rate captures are not continuous video. Live, old and partly
+converted recordings retain JPEG support on the same shared clock. Live follows
+the latest capture; pausing the attempt freezes the selected point, and resuming
+never forces a reviewer out of history. Terminal replay stays opt-in and separate.
+
+Changing review tabs, hiding the page, closing review or observing deletion stops
+playback, aborts downloads and releases object URLs. Late completions cannot
+repopulate a closed view. Retry is explicit when a clip is unavailable. Download
+and decoder waits are bounded. The authenticated clip endpoint checks attempt
+ownership, complete mapping, private descriptor paths, size, SHA256 and deletion
+again after reading and immediately before publishing. Only two clip reads may
+run concurrently, each at most32MiB; no codec runs in the HTTP process.
+
+Capture metadata, original digests, deadlines, attempts, protected submissions and
+retention authority remain unchanged. The existing CLI monitoring inventory/image/
+export workflows retain their exact timestamps and provenance; no management
+mutation or permission was added. No schema, native, credential or CLI migration.
+
+Verification: focused real authenticated HTTP checks and timestamp/gap units pass;
+36 affected media/conversion/export cases pass.63 Review/admin/theme/layout browser
+cases pass, including actual Chromium VP9 decoding, paired seek/play/pause/speed,
+uneven times, gaps, JPEG/video mixing, error retry, deletion, tab and close cleanup.
+The final CSS changes prevent Speed-label wrapping and fix narrow Review tabs.
+Seven targeted video/shared-live/mobile cases pass on fresh final assets, including
+320px; prior63-case evidence remains separate. Full types/build and final Vite pass.
+Evidence: var/collection-tests/synchronized-video-review.20261102a/.
+
+Deployment is separate: this is an additive backend read endpoint plus matching
+browser assets, not an unchanged-backend UI-only attestation. Freeze/qualify the
+matched web release and its guarded cutover before deployment. Schema37 and the
+native/CLI cohort remain unchanged. The previous reader remains compatible with
+CURRENT data; rollback must retain that data and normal admission/backup guards,
+never restore an older database. No production action is authorized by this file.
