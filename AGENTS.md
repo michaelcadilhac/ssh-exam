@@ -30,6 +30,49 @@
   ask the same settled question again. Continue independent in-scope work while
   awaiting an answer.
 
+## Deployment execution contract
+
+- Feature completion is not release readiness. Before calling a release ready,
+  freeze its artifacts and qualify the exact installation, migration, preservation,
+  recovery and reopening workflow. Exercise signed-poll expiry during startup and
+  actual proxy reload timing; fast mocks do not establish production timing.
+- Treat "push and deploy" as execution of that prepared release, not another
+  development milestone. Missing controllers, unqualified guards, unresolved
+  recovery or expensive cold preparation mean NOT READY. Report the specific
+  blocker promptly while the site is online; stop that deployment attempt before
+  maintenance. Do not silently write tooling or start a long preparation loop.
+- The instructor's routine deployment target is two minutes TOTAL from the
+  instruction, including push, transfer, preparation, checks and closeout. Track
+  maintenance time separately too. Never restart the clock or claim success by
+  excluding preparation. If the measured plan cannot fit, report that before
+  entering maintenance; a longer migration needs a separately agreed time budget.
+- Bound every command by the remaining budget and yield control within 30 seconds.
+  Before launching a side-effecting step, know its timeout/status/recovery path.
+  If termination would be unsafe, bound the wait/status call instead of killing
+  the underlying operation; report the overrun and preserve its state.
+  If an online preparation step stalls, safely cancel only its owned resumable
+  work, verify cleanup and report an incomplete deployment with the site online.
+  Never blindly kill a migration, exam process or service to satisfy the clock.
+- Check existing verified recovery coverage before starting a full copy or hash.
+  Reuse only a baseline whose identity, current coverage and restoration path are
+  proved. Missing or stale evidence blocks deployment; it never permits skipping
+  a backup. Finish measured data preparation before the cutover.
+- Execute only the frozen, rehearsed steps and required acceptance checks. Reuse
+  qualification for unchanged inputs. Do not rebuild, broaden tests, add features
+  or refactor during deployment. Routine authorized steps need no new approval.
+  Already-qualified bounded retries consume the same budget; they do not reset
+  the clock or begin a new debugging allowance.
+- If an unexpected failure occurs after fencing, immediately report whether the
+  site is online or fenced and preserve current state. Bound read-only diagnosis
+  to one 30-second pass; use only qualified, compatible recovery. Otherwise report
+  the blocker and safe held state, with no silent debug/retry loop or improvised
+  production patch. A deadline never permits bypassing a guard, discarding newer
+  records, unsafe reopening or an incompatible rollback.
+- Announce confirmed reopening immediately. Complete required acceptance and a
+  minimal accurate checkpoint, then close the deployment task. Queue optional
+  hardening, extra tests and detailed retrospective writing as separate work;
+  do not hide them in deployment time or delay the completion report for them.
+
 ## Deliver outcomes, not an expanding prerequisite tree
 
 - Read TODO.md, design.md and the operational documentation relevant to the
@@ -101,10 +144,6 @@
   already-implemented capabilities before adding work. Keep production-only gates
   separate from local completion. Do not inflate completed counts or retain an
   unrelated future requirement as a reason to reimplement a working workflow.
-- Call a release ready only after its matched migration/recovery controller is
-  rehearsed with realistic signed-poll expiry and nginx reload timing. Measure
-  media/index preparation before fencing and reuse a proven recovery baseline.
-  A two-minute target never weakens preservation, readiness or drain guards.
 - Work on one bounded end-to-end milestone at a time. Name its actual CLI/web/
   student entry point, intended outcome, required tests and stopping boundary
   before editing. Tests must exercise that entry point, not only private helpers.

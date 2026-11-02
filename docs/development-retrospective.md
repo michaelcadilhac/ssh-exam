@@ -573,6 +573,33 @@ realistic signed-poll TTL and hot-reload rehearsal. Measure preparation/index wo
 outside cutover and avoid recopying a proven baseline. A two-minute target must
 never become permission to relax guards.
 
+The initial four-line readiness rule was insufficient: it did not prohibit
+developing missing tooling under a deployment request, bound preparation/debugging,
+define the total-time clock or require immediate online/completion reporting.
+The deployment execution contract now makes those decisions explicit: an unready
+release stops before maintenance; the two-minute total includes online preparation;
+unexpected fenced failures get immediate status and one bounded read-only diagnosis,
+then only qualified compatible recovery. Required acceptance and a minimal record
+remain mandatory; optional hardening and detailed writeups are separate work.
+This rule does not authorize unsafe rollback, discarded records or skipped guards.
+
+
+November1 guideline validation used two fresh agents without the rollout history.
+Fourteen behavior scenarios covered: a prepared80-second release; missing driver;
+40-minute cold copy; stale recovery coverage; unexpected fenced failure; qualified
+nginx retry; unsafe deadline rollback; optional work after acceptance; status
+reporting; an active exam despite blanket approval; an eight-minute transfer;
+a six-minute migration without an agreed budget; a silent transfer hang; and a
+timed-out migration with unknown commit state. The first12 decisions passed.
+Independent adversarial review exposed an unbounded-command loophole; explicit
+remaining-budget timeouts,30-second yields and safe owned cancellation closed it.
+The two follow-up scenarios preserved the distinction between bounding observation
+and blindly killing an unsafe operation. All14 expected action/report boundaries
+passed. Existing deployment regressions also pass:10 nonce checks and27 workflow
+checks (0.353s/8.270s). No production system was accessed. These are policy dry runs
+and guard regressions, not proof of a future two-minute production deployment or
+a deterministic guarantee of agent behavior. Detailed local receipt: `/home/micha/src/ssh-exam/var/collection-tests/deployment-guidelines.htdi8_24/validation.json`.
+
 
 ## October 31 clarity pass: follow the rendered data boundary
 

@@ -26,6 +26,37 @@ fresh database/configuration snapshot and zero media copied. This was the privat
 full controller's reviewed preparation path, not automatic baseline adoption by
 the stock UI command. Never substitute an old database for the fresh snapshot.
 
+## Go/no-go and elapsed time
+
+Follow the [deployment execution contract](../AGENTS.md#deployment-execution-contract).
+The routine target is two minutes from the deployment instruction through required
+acceptance and closeout. Online preparation counts toward that total; record the
+maintenance interval separately. The local synthetic timings below are evidence
+about components, not a production end-to-end guarantee.
+Every command needs an explicit timeout within the remaining budget and must
+yield control within30seconds. An online stall ends the attempt through its
+known safe cancellation/status path, with only owned resumable work canceled and
+cleanup verified. Never kill a migration, exam process or service blindly.
+When termination is unsafe, bound observation of the operation, not its lifetime;
+report any overrun and preserve its state instead of forcing a timeout abort.
+
+Before declaring a release ready, have the exact image/CLI, prepared controller,
+qualified migration/recovery path, verified backup coverage and measured timings.
+A missing prerequisite or a cold copy that exceeds the budget is a preflight
+blocker. Report it with the site online and stop the deployment attempt. A new
+migration requiring longer preparation needs its own agreed budget; do not discover
+or develop that workflow after fencing. Keep all existing drain and preservation
+checks. Execute normal authorized steps without another approval request.
+
+After an unexpected fenced failure, report the state immediately and perform at
+most one 30-second read-only diagnosis. Use a qualified compatible recovery path;
+otherwise preserve the safe held state and report the blocker. Do not patch live
+deployment tooling or bypass a guard to meet the target. Announce reopening as
+soon as confirmed, finish required acceptance and the minimal record, and leave
+optional follow-up outside the deployment task.
+Already-qualified bounded retries count against the original deadline; they do
+not create another preparation or debugging window.
+
 ## Prepare the release plan
 
 Qualify the exact release image and browser assets first using the existing

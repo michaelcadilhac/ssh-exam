@@ -35,3 +35,12 @@ cleanmarcocheckout withoutservice restart;actualhealthready. Runtime remains5163
 schema37/CLIa6; conversioncontinuesnormally. No local/deployment action remains.
 Do not resume oldpendingguard/debug steps. Preserve10 originaldirtyscreenshots.
 No newdesignquestions. Original38-itemTODOcount/consolidationunchanged.
+
+
+Local guideline follow-up (November1): deployment execution contract now requires
+prepared release artifacts/recovery, total two-minute accounting, bounded commands,
+pre-maintenance refusal of missing/over-budget prerequisites, qualified recovery
+and immediate online reporting.14 blind behavior scenarios plus adversarial retest
+and37 existing operator regressions pass. A stalled-command loophole was found
+and closed; unsafe migration termination remains forbidden. Local documentation
+only, no new production action or push. Validation receipt: `/home/micha/src/ssh-exam/var/collection-tests/deployment-guidelines.htdi8_24/validation.json`.
