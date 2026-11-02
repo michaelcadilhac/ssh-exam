@@ -67,7 +67,7 @@ it("reviews explicit per-student saved sources atomically, preserves settings an
           settings.id,
           source.username,
           10001 + index,
-          JSON.stringify(settings),
+          JSON.stringify({ ...settings, webcam: !!index }),
           ended - 5400000,
           ended,
           ended,

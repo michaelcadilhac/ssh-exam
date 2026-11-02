@@ -31,15 +31,10 @@ export async function additionalDraft(
   minutes = "90",
   work = "empty",
 ) {
-  const dialog = await selectedAction(page, names, "Allow another attempt");
+  const dialog = await selectedAction(page, names, "Allow attempt");
   if (minutes)
     await dialog
-      .getByLabel(
-        names.length === 1
-          ? "New time limit (minutes, optional)"
-          : "Time limit (minutes)",
-        { exact: true },
-      )
+      .getByLabel("Time limit (minutes)", { exact: true })
       .fill(minutes);
   await dialog
     .getByRole("combobox", { name: "Start with", exact: true })
@@ -72,10 +67,13 @@ export async function manageStudent(page: Page, username: string) {
     })
     .click();
   await page
-    .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
+    .getByRole("menuitem", {
+      name: "Attempt settings and history…",
+      exact: true,
+    })
     .click();
   return page.getByRole("dialog", {
-    name: `Allowed attempts for ${username}`,
+    name: `Attempt settings for ${username}`,
     exact: true,
   });
 }

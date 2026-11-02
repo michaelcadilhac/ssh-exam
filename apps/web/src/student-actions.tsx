@@ -115,7 +115,9 @@ export function StudentActions({
                 <span>
                   Attempt {a.attempt_number || 1} ·{" "}
                   {remaining(a.deadline, clock)} remaining
-                  {op.kind === "reset" ? ` → ${timeLimit(a.allowance * 60)}` : ""}
+                  {op.kind === "reset"
+                    ? ` → ${timeLimit(a.allowance * 60)}`
+                    : ""}
                 </span>
               )}
             </li>
@@ -186,9 +188,8 @@ export function StudentActions({
         )}
         {op.kind === "reset" && (
           <p>
-            Reset each selected clock to the student’s time limit or the exam
-            default ({timeLimit(exam.duration)}). The countdown starts when you
-            apply the reset.
+            Reset the selected clocks to the amounts shown below. The countdown
+            starts when you apply the reset.
           </p>
         )}
         {op.kind === "extend" && (

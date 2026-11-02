@@ -15,7 +15,7 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
   const dialog = await selectedAction(
     page,
     ["legacy01", "legacy02"],
-    "Allow first attempt",
+    "Allow attempt",
   );
   await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Review", exact: true }).click();

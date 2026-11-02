@@ -1,5 +1,17 @@
 # Additional attempts and workspace sources
 
+November1 dashboard simplification (local development, not deployed): a new review
+copies time, webcam, terminal count and collection limits from the student's saved
+attempt configuration. Current unused settings take precedence; otherwise the
+latest issued grant remains the source even after cancellation. Legacy attempt
+history is used when no grant exists; enrollment accommodations/exam settings are
+only a fallback for students with neither. `--preserve-duration` selects that saved
+time limit; explicit duration/webcam overrides still win. Dates and starting files
+are explicitly reviewed, not silently reused. A concurrent change of the selected
+saved configuration invalidates confirmation and requires a new review. Existing
+attempt snapshots, clocks and history are not rewritten. Old roster-default
+commands remain compatible but do not override an existing saved configuration.
+
 November1 policy update (local candidate): confirming another attempt replaces
 earlier definitely-unused permission for the same student/exam, regardless of
 overlapping or disjoint dates. Students receive one assigned attempt and never

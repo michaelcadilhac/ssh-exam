@@ -10,7 +10,7 @@ import (
 func TestGrantCLIHelpAndSyntaxBeforeAuthority(t *testing.T) {
 	for _, args := range [][]string{{"help", "grants"}, {"web", "grants", "help"}, {"web", "grants", "revise", "--help"}, {"--config", "/missing", "web", "grants", "--help"}} {
 		output, code := cliProcess(t, args...)
-		for _, word := range []string{"Usage:", "enrollment", "--revision", "--request", "BEGIN_PENDING", "outbound HTTPS", "UID", "Exit status:"} {
+		for _, word := range []string{"Usage:", "enrollment", "--revision", "--request", "BEGIN_PENDING", "outbound HTTPS", "UID", "latest saved attempt", "cancelled unused attempt", "Exit status:"} {
 			if code != 0 || !strings.Contains(output, word) {
 				t.Fatalf("missing discovery %q: %d %s", word, code, output)
 			}

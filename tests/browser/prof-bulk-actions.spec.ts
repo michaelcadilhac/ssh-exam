@@ -64,6 +64,10 @@ async function fixture(
   const students = ["amy", "bob", "carol", "dave"].map((username) => ({
     username,
     enrollment: { duration: null, webcam: null },
+    latestSettings: settings,
+    unusedAttempt:
+      grants.find((g) => g.username === username && g.status === "AVAILABLE") ??
+      null,
     attempts:
       username === "amy"
         ? [
@@ -121,38 +125,67 @@ async function fixture(
         },
       });
     }
-    if (path.endsWith("/revoke")) {
+    if (path.endsWith("/grants/status")) {
+      const body = route.request().postDataJSON();
+      return route.fulfill({
+        json: {
+          rows: body.rows.map((ref: any) => {
+            const row = grants.find((g) => g.id === ref.id)!;
+            return {
+              id: row.id,
+              revision: ref.revision,
+              current_revision: row.revision,
+              grant_status: row.status,
+              status: "NOT_QUEUED",
+              tries: 0,
+              error: "",
+              grant: row,
+            };
+          }),
+        },
+      });
+    }
+    if (path.endsWith("/grants/change")) {
       const body = route.request().postDataJSON();
       calls.push({ path, body });
-      const row = grants.find((g) => path.includes(g.id))!;
-      if (replies.has(body.request))
-        return route.fulfill({ json: replies.get(body.request) });
-      if (row.status === "CONSUMED")
-        return route.fulfill({
-          status: 409,
-          json: { error: "This attempt has started. It cannot be cancelled." },
-        });
-      if (row.username === "bob") {
-        row.claims = [{ state: "PREPARING" }];
-        return route.fulfill({
-          status: 409,
-          json: {
-            error:
-              "Grant has an unresolved preparation/Begin; inspect original authority before another request.",
-          },
-        });
-      }
       if (!dropped && mode === "lost-before") {
         dropped = true;
         return route.abort("failed");
       }
-      row.status = "REVOKED";
-      replies.set(body.request, { ...row });
-      if (!dropped) {
-        dropped = true;
-        return route.abort("failed");
-      }
-      return route.fulfill({ json: { ...row } });
+      const results = body.rows.map((change: any) => {
+        const row = grants.find((g) => g.id === change.id)!;
+        const ref = { id: row.id, request: change.body.request };
+        if (replies.has(change.body.request))
+          return replies.get(change.body.request);
+        if (row.status === "CONSUMED")
+          return {
+            ...ref,
+            outcome: "refused",
+            error: "This attempt has started. It cannot be cancelled.",
+          };
+        if (row.username === "bob") {
+          row.claims = [{ state: "PREPARING" }];
+          return {
+            ...ref,
+            outcome: "refused",
+            error:
+              "The attempt has unresolved setup; inspect the original authority before another request.",
+          };
+        }
+        row.status = "REVOKED";
+        const result = { ...ref, outcome: "saved", grant: { ...row } };
+        replies.set(change.body.request, result);
+        if (!dropped) {
+          dropped = true;
+          return {
+            ...ref,
+            outcome: "unknown",
+            error: "Cancellation reply was lost.",
+          };
+        }
+        return result;
+      });
+      return route.fulfill({ json: { results } });
     }
     if (path.endsWith("/attempts/clocks")) {
       const body = route.request().postDataJSON();
@@ -175,56 +208,61 @@ async function openCancellation(page: Page) {
     .getByRole("button", { name: "Selected students", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Cancel extra attempts", exact: true })
+    .getByRole("menuitem", { name: "Cancel next attempts", exact: true })
     .click();
   const dialog = page.getByRole("dialog", {
-    name: "Cancel extra attempts",
+    name: "Change next attempts",
     exact: true,
   });
   await expect(
-    dialog.getByText("dave: Nothing to cancel.", { exact: true }),
+    dialog.getByRole("region", { name: "Review unused changes", exact: true }),
   ).toBeVisible();
   return dialog;
 }
 
-test("cancel selected extras in one dialog with named omissions, protected history and exact retry", async ({
-  page,
-}, info) => {
-  await page.setViewportSize({ width: 430, height: 1000 });
-  const s = await fixture(page);
+async function selectPage(page: Page) {
   await page
     .getByRole("checkbox", {
       name: "Select all students on this page",
       exact: true,
     })
     .check();
+}
+
+test("cancel next attempts in one dialog with named omissions, protected history and exact retry", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 430, height: 1000 });
+  const s = await fixture(page);
+  await selectPage(page);
   const dialog = await openCancellation(page);
   await expect(page.getByRole("dialog")).toHaveCount(1);
-  await expect(
-    dialog.getByText("carol: Nothing to cancel.", { exact: true }),
-  ).toBeVisible();
-  await expect(dialog.getByRole("checkbox")).toHaveCount(2);
+  await expect(dialog).toContainText("No next attempt for: carol.");
+  await expect(dialog.getByRole("checkbox")).toHaveCount(0);
   expect(s.queries).toEqual(["amy", "amy", "bob", "carol", "dave"]);
+  await expect(dialog).toContainText("3 attempts");
   await dialog
-    .getByRole("button", { name: "Cancel 2 extra attempts", exact: true })
+    .getByRole("button", { name: "Cancel selected attempts", exact: true })
     .click();
   await expect(
-    dialog.getByText("Result unknown — retry", { exact: true }),
+    dialog.getByText("Change unconfirmed", { exact: true }),
   ).toBeVisible();
-  await expect(
-    dialog.getByText("Not cancelled", { exact: true }),
-  ).toBeVisible();
-  await expect(dialog.getByText(/Grant has an unresolved/)).not.toBeVisible();
+  await expect(dialog.getByText("Not changed", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(1);
   await expect(page.getByRole("dialog")).toHaveCount(1);
-  await page.screenshot({ path: info.outputPath("cancel-partial-mobile.png") });
+  await page.screenshot({
+    path: info.outputPath("cancel-next-partial-mobile.png"),
+  });
   await dialog
-    .getByRole("button", { name: "Retry cancellation", exact: true })
+    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
     .click();
-  await expect(dialog.getByText("Cancelled", { exact: true })).toBeVisible();
-  expect(s.calls).toHaveLength(3);
-  expect(s.calls[0].body).toEqual(s.calls[2].body);
+  await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(2);
+  expect(s.calls).toHaveLength(2);
+  expect(s.calls[0].body.rows).toHaveLength(3);
+  expect(s.calls[1].body.rows).toEqual([s.calls[0].body.rows[0]]);
   expect(s.grants[2].status).toBe("CONSUMED");
-  expect(s.grants[3].status).toBe("AVAILABLE");
+  expect(s.grants[3].status).toBe("REVOKED");
+  expect(s.current.state).toBe("ACTIVE");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -236,29 +274,25 @@ test("closing and reopening keeps an unknown cancellation intent without another
   page,
 }) => {
   const s = await fixture(page, "lost-before");
-  await page
-    .getByRole("checkbox", {
-      name: "Select all students on this page",
-      exact: true,
-    })
-    .check();
+  await selectPage(page);
   let dialog = await openCancellation(page);
   await dialog
-    .getByRole("button", { name: "Cancel 2 extra attempts", exact: true })
+    .getByRole("button", { name: "Cancel selected attempts", exact: true })
     .click();
   await expect(
-    dialog.getByText("Result unknown — retry", { exact: true }),
-  ).toBeVisible();
+    dialog.getByText("Change unconfirmed", { exact: true }),
+  ).toHaveCount(3);
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   dialog = await openCancellation(page);
   await expect(
-    dialog.getByText("Previous result unknown — retry", { exact: true }),
-  ).toBeVisible();
+    dialog.getByText("Change unconfirmed", { exact: true }),
+  ).toHaveCount(3);
   await dialog
-    .getByRole("button", { name: "Retry cancellation", exact: true })
+    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
     .click();
-  await expect(dialog.getByText("Cancelled", { exact: true })).toBeVisible();
-  expect(s.calls[0].body).toEqual(s.calls[2].body);
+  await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(2);
+  expect(s.calls).toHaveLength(2);
+  expect(s.calls[0].body).toEqual(s.calls[1].body);
 });
 
 test("add time has one dialog and names selected students whose clocks will not change", async ({
@@ -281,9 +315,7 @@ test("add time has one dialog and names selected students whose clocks will not 
     "Time will not change for: bob, carol, dave.",
   );
   await dialog.getByLabel("Minutes to add", { exact: true }).fill("15");
-  await dialog
-    .getByRole("button", { name: "Add time", exact: true })
-    .click();
+  await dialog.getByRole("button", { name: "Add time", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(s.calls).toHaveLength(1);
   expect(s.calls[0].body).toMatchObject({
@@ -297,35 +329,30 @@ test("an uncertain cancellation that starts while closed stays visible and canno
   page,
 }) => {
   const s = await fixture(page, "lost-before");
-  await page
-    .getByRole("checkbox", {
-      name: "Select all students on this page",
-      exact: true,
-    })
-    .check();
+  await selectPage(page);
   let dialog = await openCancellation(page);
   await dialog
-    .getByRole("button", { name: "Cancel 2 extra attempts", exact: true })
+    .getByRole("button", { name: "Cancel selected attempts", exact: true })
     .click();
   await expect(
-    dialog.getByText("Result unknown — retry", { exact: true }),
-  ).toBeVisible();
+    dialog.getByText("Change unconfirmed", { exact: true }),
+  ).toHaveCount(3);
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   s.grants[0].status = "CONSUMED";
   s.grants[0].claims = [{ state: "CONSUMED" }];
   dialog = await openCancellation(page);
   await expect(
-    dialog.getByText("Previous result unknown — retry", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    dialog.getByText("amy: Nothing to cancel.", { exact: true }),
-  ).toHaveCount(0);
+    dialog.getByText("Change unconfirmed", { exact: true }),
+  ).toHaveCount(3);
+  await expect(dialog).not.toContainText("No next attempt for: amy");
   await dialog
-    .getByRole("button", { name: "Retry cancellation", exact: true })
+    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
     .click();
-  await expect(dialog.getByText("Not cancelled", { exact: true })).toHaveCount(
-    1,
-  );
+  await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(1);
+  await expect(
+    dialog.getByText("Change unconfirmed", { exact: true }),
+  ).toHaveCount(2);
+  await expect(dialog).toContainText("Current status: Started");
   expect(s.grants[0].status).toBe("CONSUMED");
-  expect(s.calls[0].body).toEqual(s.calls[2].body);
+  expect(s.calls[0].body).toEqual(s.calls[1].body);
 });

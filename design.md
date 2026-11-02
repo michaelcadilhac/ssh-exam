@@ -5,6 +5,18 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November1 admin revision, LOCAL ONLY: one **Next attempt** row shows saved dates,
+time, webcam and starting files and opens an inline editor. One **Allow attempt**
+workflow replaces first/extra distinctions; selected students' sole unused
+attempts are edited/cancelled without another selection. Independent future-default
+controls are removed. New time/webcam/terminal/collection settings copy the latest
+saved configuration (including a newer cancelled configuration), with legacy
+enrollment/exam fallback only where no saved attempt exists. Dates and starting
+files remain explicitly reviewed; source changes invalidate confirmation. Started
+attempts, protected history, deadlines, account holds, monitoring and explicit
+clock-reset policy remain unchanged. No deployment or schema migration performed.
+Scope, Prof review, evidence and matched-release boundaries: docs/admin-next-attempt.md.
+
 November1 storage follow-up DEPLOYED AND ONLINE: runtime5163b20/schema37,
 matchedCLI and maintenance responses. Admissions reopened19:26:40 Chicago;
 background conversion is processing. No clock/hold/history/retention exception

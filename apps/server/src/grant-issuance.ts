@@ -163,9 +163,20 @@ export class GrantIssuance {
           const enrollment = this.eligible(b.exam, username, additional);
           const source = sources.get(username);
           const override = overrides.get(username);
+          const inherited = additional
+            ? this.grants.latestSettingsFor(b.exam, username)
+            : null;
           const value = this.grants.snapshot(
             {
               ...definition.exam,
+              ...(inherited
+                ? {
+                    terminals: inherited.settings.terminals,
+                    collection_file_mib: inherited.settings.collection_file_mib,
+                    collection_total_mib:
+                      inherited.settings.collection_total_mib,
+                  }
+                : {}),
               earliest: b.earliest,
               latest: b.latest,
               duration: additional
@@ -173,7 +184,7 @@ export class GrantIssuance {
                   (b.preserve_duration
                     ? isSandbox(b.exam)
                       ? 300
-                      : (enrollment.duration ?? definition.exam.duration)
+                      : inherited!.settings.duration
                     : b.duration!))
                 : (enrollment.duration ?? definition.exam.duration),
               webcam: isSandbox(b.exam)
@@ -182,9 +193,11 @@ export class GrantIssuance {
                   ? override.webcam
                   : additional && b.webcam !== undefined
                     ? b.webcam
-                    : enrollment.webcam === null
-                      ? definition.exam.webcam
-                      : !!enrollment.webcam,
+                    : inherited
+                      ? inherited.settings.webcam
+                      : enrollment.webcam === null
+                        ? definition.exam.webcam
+                        : !!enrollment.webcam,
             },
             source ?? b.work,
             username,
@@ -195,6 +208,7 @@ export class GrantIssuance {
           return {
             username,
             enrollment: JSON.stringify(enrollment),
+            ...(inherited ? { settings_source: inherited.source } : {}),
             ...value,
             replaces,
             ...(additional
@@ -285,7 +299,13 @@ export class GrantIssuance {
         row.status === "REVIEW" && row.expires <= now()
           ? "EXPIRED"
           : row.status,
-      rows: saved.rows.map(({ enrollment: _enrollment, ...r }: any) => r),
+      rows: saved.rows.map(
+        ({
+          enrollment: _enrollment,
+          settings_source: _settingsSource,
+          ...r
+        }: any) => r,
+      ),
       issued: JSON.parse(row.issued),
     };
   }
@@ -358,6 +378,16 @@ export class GrantIssuance {
           )
             return refuse(
               `Enrollment or settings for ${r.username} changed after this review. Create a new review. This request allowed no attempts.`,
+            );
+          if (
+            saved.kind !== "NEW_LEGACY_INITIAL_GRANTS" &&
+            !isDeepStrictEqual(
+              this.grants.latestSettingsFor(saved.exam, r.username).source,
+              r.settings_source,
+            )
+          )
+            return refuse(
+              `The latest attempt settings for ${r.username} changed after this review. Create a new review. No attempt was allowed or replaced.`,
             );
           if (
             saved.kind !== "NEW_LEGACY_INITIAL_GRANTS" &&

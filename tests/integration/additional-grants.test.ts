@@ -42,7 +42,7 @@ it("authorizes separate full additional attempts outside expired defaults withou
         "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state) VALUES('protected-first','midterm','student',10001,'COMPLETED',?,?,?,?,1,?,'RELEASED')",
       )
       .run(
-        JSON.stringify(original),
+        JSON.stringify({ ...original, webcam: false }),
         start,
         start + 5400000,
         start + 5400000,

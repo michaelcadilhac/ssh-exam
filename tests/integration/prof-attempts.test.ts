@@ -254,10 +254,10 @@ async function fixture() {
     .run(
       source,
       exam,
-      JSON.stringify(settings),
+      JSON.stringify({ ...settings, duration: 95, webcam: false }),
       start,
-      start + 5400000,
-      start + 5400000,
+      start + 95000,
+      start + 95000,
       checksum,
     );
   const original = store.attempt(source),

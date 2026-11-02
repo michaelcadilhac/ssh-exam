@@ -1,5 +1,19 @@
 # Deferred work
 
+November1 ADMIN NEXT ATTEMPT — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
+The instructor requested one visible/editable Next attempt, one creation workflow,
+and latest saved configuration instead of independent student defaults. Main-page
+dates/time/webcam/files, inline editing and selected-student bulk edit/cancel now
+match the single-unused-attempt policy. First/extra controls and redundant attempt
+selection are removed. New reviews inherit saved time/webcam/terminal/collection
+settings and bind their source; dates/files remain explicitly selected. Existing
+attempts/history/deadlines/holds are unchanged. Prof accepted final desktop/mobile
+renders; focused and broad application/browser/CLI/image evidence is recorded in
+docs/admin-next-attempt.md. The initial full test failures are retained and their
+obsolete fixtures corrected with focused passing reruns. No production action.
+This supersedes earlier UI/default descriptions below without changing their
+historical implementation records or the original main-TODO count.
+
 November1 RECORDING STORAGE / RELEASE EFFICIENCY — DEPLOYED AND ONLINE:
 The instructor authorized immediate redundant-backup cleanup, smaller recordings,
 incremental backups, short UI deployments and a maintenance page. The newest full

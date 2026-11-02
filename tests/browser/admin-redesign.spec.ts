@@ -1,5 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 import sharp from "sharp";
+import {
+  localDateTime,
+  windowLabel,
+} from "../../apps/web/src/local-date-time.js";
 import { matchesDashboardView } from "../../packages/protocol/admin.js";
 import type { MonitoringOptimization } from "../../packages/protocol/monitoring-video.js";
 function makeAttempt(
@@ -38,6 +42,7 @@ async function fixture(
   large = false,
   provenance = false,
   retained = false,
+  next = false,
 ) {
   const amy = makeAttempt(1, "amy", "ACTIVE", {
       working: true,
@@ -99,6 +104,7 @@ async function fixture(
     dashboards: 0,
     failDashboard: false,
     failSettings: false,
+    nextGrant: null as any,
     failReview: false,
     failedClock: "",
     slow: 0,
@@ -168,6 +174,11 @@ async function fixture(
     claims: [],
     history: [],
   };
+  state.nextGrant = grant;
+  if (next || provenance) {
+    rows[0].unusedAttempt = grant;
+    rows[0].latestSettings = grant.settings;
+  }
   const source = makeAttempt(7, "amy", "COMPLETED", {
     exam: "beta",
     attempt_number: 1,
@@ -212,8 +223,29 @@ async function fixture(
     if (path === "/api/login-test") return json({ loginOnly: false });
     if (provenance && path === "/api/admin/exams/alpha/grants")
       return json({ grants: [], next: null }); // Exact historical selection may be outside the first page.
-    if (provenance && path === `/api/admin/grants/${grant.id}`)
+    if ((provenance || next) && path === `/api/admin/grants/${grant.id}`)
       return json(grant);
+    if (next && path === "/api/admin/exams/alpha/grants")
+      return json({
+        grants: url.searchParams.get("username") === "amy" ? [grant] : [],
+        next: null,
+      });
+    if (next && path.endsWith("/grants/status"))
+      return json({
+        rows: route
+          .request()
+          .postDataJSON()
+          .rows.map((ref: any) => ({
+            id: grant.id,
+            revision: ref.revision,
+            current_revision: grant.revision,
+            grant_status: grant.status,
+            status: "NOT_QUEUED",
+            tries: 0,
+            error: "",
+            grant,
+          })),
+      });
     if (path === "/api/admin/templates")
       return json({
         agent: "class",
@@ -440,6 +472,30 @@ async function fixture(
         }
         return json(result);
       }
+      if (next && path.endsWith("/grants/change")) {
+        if (state.failSettings)
+          return json({ error: "Settings could not be saved" }, 503);
+        return json({
+          results: body.rows.map((row: any) => {
+            if (row.id !== grant.id || row.body.revision !== grant.revision)
+              return {
+                id: row.id,
+                request: row.body.request,
+                outcome: "refused",
+                error: "Attempt changed after review",
+              };
+            grant.settings = { ...grant.settings, ...row.body.changes };
+            grant.revision++;
+            rows[0].latestSettings = grant.settings;
+            return {
+              id: row.id,
+              request: row.body.request,
+              outcome: "saved",
+              grant,
+            };
+          }),
+        });
+      }
       if (path.endsWith("/roster/settings")) {
         if (state.failSettings)
           return json({ error: "Settings could not be saved" }, 503);
@@ -517,10 +573,12 @@ for (const width of [1280, 430])
     await page.setViewportSize({ width, height: 900 });
     await fixture(page, false, true);
     const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
-    await expect(amy).toContainText("1 attempt ready");
-    await expect(amy).toContainText("1 preparing saved work");
-    await expect(amy).toContainText("1 available later");
-    await expect(amy).toContainText("1 start window closed");
+    await expect(
+      amy.getByRole("row", { name: "Next attempt for amy", exact: true }),
+    ).toHaveCount(1);
+    await expect(amy).not.toContainText(
+      /First attempt:|attempts ready|available later|More attempts in Details/,
+    );
     await amy
       .getByRole("button", {
         name: "View settings for amy attempt 2",
@@ -528,7 +586,7 @@ for (const width of [1280, 430])
       })
       .click({ timeout: 5000 });
     const grants = page.getByRole("dialog", {
-      name: "Allowed attempts for amy",
+      name: "Attempt settings for amy",
       exact: true,
     });
     const currentGrant = grants.locator("article.clock-batch-row").filter({
@@ -536,7 +594,9 @@ for (const width of [1280, 430])
     });
     await expect(currentGrant).toHaveCount(1);
     await expect(currentGrant).toBeInViewport();
-    await expect(grants.getByText(/^Editing:/)).toHaveCount(0);
+    await expect(
+      grants.getByRole("heading", { name: "Edit next attempt", exact: true }),
+    ).toHaveCount(0);
     await expect(
       grants.getByRole("spinbutton", {
         name: "Time limit (minutes)",
@@ -559,7 +619,10 @@ for (const width of [1280, 430])
     await currentGrant
       .getByRole("button", { name: "Edit settings", exact: true })
       .click();
-    const editingHelp = grants.getByText(/^Editing:/);
+    const editingHelp = grants.getByRole("heading", {
+      name: "Edit next attempt",
+      exact: true,
+    });
     await expect(editingHelp).toBeVisible();
     await expect(currentGrant).toHaveCount(0);
     const timeInput = grants.getByRole("spinbutton", {
@@ -895,7 +958,14 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
   await trigger.focus();
   await trigger.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Allowed attempts…", exact: true }),
+    page.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(
+    page.getByRole("menuitem", {
+      name: "Attempt settings and history…",
+      exact: true,
+    }),
   ).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(
@@ -903,7 +973,7 @@ test("row menus support keyboard navigation and restore focus after a cancelled 
   ).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Allowed attempts…", exact: true }),
+    page.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
@@ -946,7 +1016,7 @@ test("row menus ignore queued scroll at the same anchor but dismiss after actual
   await page.evaluate(() => dispatchEvent(new Event("scroll")));
   await expect(menu).toBeVisible();
   await expect(
-    menu.getByRole("menuitem", { name: "Allowed attempts…", exact: true }),
+    menu.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
   ).toBeFocused();
   const previous = await page.evaluate(() => scrollY);
   await page.evaluate(() => scrollBy(0, 100));
@@ -1202,12 +1272,13 @@ test("monitoring errors stay inside review and retry without an empty or wrong s
 test("slow dashboard responses complete, stale data blocks clock edits, and exam changes clear old rows", async ({
   page,
 }) => {
-  const s = await fixture(page);
+  const s = await fixture(page, false, false, false, true);
   s.slow = 6000;
-  s.rows[0].enrollment.duration = 7200;
+  s.nextGrant.settings.duration = 7200;
+  s.nextGrant.revision++;
   await expect(
-    page.getByRole("rowgroup", { name: "amy", exact: true }),
-  ).toContainText("Default: 120 min", { timeout: 15000 });
+    page.getByRole("row", { name: "Next attempt for amy", exact: true }),
+  ).toContainText("120 min", { timeout: 15000 });
   s.slow = 0;
   s.failDashboard = true;
   await expect(page.getByRole("alert")).toContainText("Updates paused", {
@@ -1786,168 +1857,222 @@ test("slow review polling does not overlap and closing cancels an outstanding re
 });
 
 for (const width of [1280, 430])
-  test(`table settings edit in place, preserve attempts and show start times at ${width}px`, async ({
+  test(`next attempt dates and settings edit inline without student defaults at ${width}px`, async ({
     page,
   }, info) => {
     await page.setViewportSize({ width, height: 1000 });
-    const s = await fixture(page);
+    const s = await fixture(page, false, false, false, true);
     const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
-    const duration = amy.getByRole("button", {
-      name: "Edit future time limit for amy",
+    const next = amy.getByRole("row", {
+      name: "Next attempt for amy",
       exact: true,
     });
-    await expect(duration).toHaveText("Default: 90 min");
-    await expect(
-      amy.getByRole("button", {
-        name: "Edit future webcam setting for amy",
-        exact: true,
-      }),
-    ).toHaveText("Webcam default: Optional");
-    const started = amy.locator(".attempt-row time").first();
+    const priorAttempts = JSON.stringify(s.rows[0].attempts);
+    await expect(next).toContainText("75 min");
+    await expect(next).toContainText("Optional");
+    await expect(next).toContainText(
+      windowLabel(s.nextGrant.settings.earliest, s.nextGrant.settings.latest),
+    );
+    await expect(next).toContainText("Empty folder");
+    await expect(next).toContainText("Waiting for current attempt");
+    await expect(next).not.toContainText("Ready");
+    for (const action of await next.getByRole("button").all()) {
+      await action.scrollIntoViewIfNeeded();
+      const placement = await action.evaluate((button) => {
+        const scroller = button.closest(".admin-roster-scroll")!;
+        const viewport = scroller.getBoundingClientRect();
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          box.x + box.width / 2,
+          box.y + box.height / 2,
+        );
+        return {
+          contained:
+            box.left >= Math.max(0, viewport.left + scroller.clientLeft) &&
+            box.right <=
+              Math.min(
+                innerWidth,
+                viewport.left + scroller.clientLeft + scroller.clientWidth,
+              ),
+          hit: hit === button || button.contains(hit),
+        };
+      });
+      expect(placement, await action.innerText()).toEqual({
+        contained: true,
+        hit: true,
+      });
+    }
+    await expect(page.getByRole("button", { name: /Edit future/ })).toHaveCount(
+      0,
+    );
+    await expect(amy).not.toContainText(
+      /First attempt:|Default:|Webcam default:/,
+    );
+    const started = amy
+      .locator(".attempt-row:not(.next-attempt-row) time")
+      .first();
     await expect(started).toHaveAttribute(
       "datetime",
       new Date(s.rows[0].attempts[0].start).toISOString(),
     );
     await expect(started).toContainText("Started");
-    await expect(started).toContainText(
-      String(new Date(s.rows[0].attempts[0].start).getUTCFullYear()),
+    await next
+      .getByRole("button", { name: "Edit settings", exact: true })
+      .click();
+    let editor = page.getByRole("region", {
+      name: "Edit next attempt for amy",
+      exact: true,
+    });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      editor.getByLabel("Time limit (minutes)", { exact: true }),
+    ).toHaveValue("75");
+    await expect(editor.getByLabel("Opens", { exact: true })).toHaveValue(
+      localDateTime(s.nextGrant.settings.earliest),
     );
-    await expect(started).toContainText(/C[DS]T/);
-    await expect(page.locator("main")).not.toContainText(/\bfuture\b/i);
-    await duration.focus();
-    await duration.press("Enter");
-    let editor = amy.getByRole("form", {
-      name: "Edit future time limit for amy",
+    await expect(editor.getByLabel("Closes", { exact: true })).toHaveValue(
+      localDateTime(s.nextGrant.settings.latest),
+    );
+    await editor
+      .getByLabel("Time limit (minutes)", { exact: true })
+      .fill("120");
+    await editor
+      .getByRole("button", { name: "Cancel editing", exact: true })
+      .click();
+    await expect(editor).toHaveCount(0);
+    expect(s.calls).toHaveLength(0);
+    await next
+      .getByRole("button", { name: "Edit settings", exact: true })
+      .click();
+    editor = page.getByRole("region", {
+      name: "Edit next attempt for amy",
       exact: true,
     });
     await expect(
-      editor.getByRole("checkbox", { name: /Exam default/ }),
-    ).toBeFocused();
-    await expect(editor).toContainText("older unused recovery attempts");
-    await expect(editor).toContainText("Changing exam defaults does not");
-    await editor.getByRole("checkbox", { name: /Exam default/ }).uncheck();
-    await editor.getByLabel("Minutes", { exact: true }).fill("123");
-    await page.keyboard.press("Escape");
-    await expect(duration).toBeFocused();
-    expect(s.calls).toHaveLength(0);
-    await duration.click();
-    editor = amy.getByRole("form", {
-      name: "Edit future time limit for amy",
-      exact: true,
-    });
-    await editor.getByRole("checkbox", { name: /Exam default/ }).uncheck();
-    await editor.getByLabel("Minutes", { exact: true }).fill("120");
-    await page.screenshot({
-      path: info.outputPath(`inline-editor-${width}.png`),
-      fullPage: true,
-    });
-    await editor.getByLabel("Minutes", { exact: true }).press("Enter");
-    await expect(duration).toHaveText("Default: 120 min");
-    expect(s.calls[0].body).toEqual({ usernames: ["amy"], duration: 7200 });
-    await amy
-      .getByRole("button", {
-        name: "Edit future webcam setting for amy",
-        exact: true,
-      })
-      .click();
-    let webcam = amy.getByRole("form", {
-      name: "Edit future webcam setting for amy",
-      exact: true,
-    });
-    await webcam
+      editor.getByLabel("Time limit (minutes)", { exact: true }),
+    ).toHaveValue("75");
+    const closes = localDateTime(Date.now() + 7200000);
+    await editor
+      .getByLabel("Time limit (minutes)", { exact: true })
+      .fill("120");
+    await editor
       .getByRole("combobox", { name: "Webcam", exact: true })
       .selectOption("true");
-    await webcam.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(
-      amy.getByRole("button", {
-        name: "Edit future webcam setting for amy",
-        exact: true,
-      }),
-    ).toHaveText("Webcam default: Required");
-    expect(s.calls[1].body).toEqual({ usernames: ["amy"], webcam: true });
-    await expect(
-      amy.locator('.attempt-row [data-label="Webcam"]').first(),
-    ).toHaveText("Optional");
-    expect(s.rows[0].attempts[0].settings).toBe(
-      JSON.stringify({ webcam: false }),
-    );
+    await editor.getByLabel("Closes", { exact: true }).fill(closes);
     expect(
-      s.calls.every((call) => call.path.endsWith("/roster/settings")),
-    ).toBe(true);
-    await duration.click();
-    editor = amy.getByRole("form", {
-      name: "Edit future time limit for amy",
-      exact: true,
-    });
-    await editor.getByRole("checkbox", { name: /Exam default/ }).check();
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(duration).toHaveText("Default: 90 min");
-    expect(s.calls[2].body).toEqual({ usernames: ["amy"], duration: null });
-    await amy
-      .getByRole("button", {
-        name: "Edit future webcam setting for amy",
-        exact: true,
-      })
-      .click();
-    webcam = amy.getByRole("form", {
-      name: "Edit future webcam setting for amy",
-      exact: true,
-    });
-    await webcam
-      .getByRole("combobox", { name: "Webcam", exact: true })
-      .selectOption("inherit");
-    await webcam.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(
-      amy.getByRole("button", {
-        name: "Edit future webcam setting for amy",
-        exact: true,
-      }),
-    ).toHaveText("Webcam default: Optional");
-    expect(s.calls[3].body).toEqual({ usernames: ["amy"], webcam: null });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
+      await editor.evaluate((root) => root.scrollWidth <= root.clientWidth + 1),
     ).toBe(true);
     await page.screenshot({
-      path: info.outputPath(`inline-settings-${width}.png`),
+      path: info.outputPath(`next-attempt-inline-${width}.png`),
       fullPage: true,
     });
+    await editor
+      .getByRole("button", { name: "Review changes", exact: true })
+      .click();
+    const review = page.getByRole("dialog", {
+      name: "Attempt settings for amy",
+      exact: true,
+    });
+    await expect(review).toContainText("Review changes");
+    expect(
+      s.calls.filter((call) => call.path.endsWith("/grants/change")),
+    ).toHaveLength(0);
+    await review
+      .getByRole("button", { name: "Apply changes", exact: true })
+      .click();
+    await expect(review).toContainText("Settings saved");
+    await review.getByRole("button", { name: "Done", exact: true }).click();
+    await expect(next).toContainText("120 min");
+    await expect(next).toContainText("Required");
+    expect(s.nextGrant.settings.latest).toBe(new Date(closes).getTime());
+    const changes = s.calls.filter((call) =>
+      call.path.endsWith("/grants/change"),
+    );
+    expect(changes).toHaveLength(1);
+    expect(changes[0].body.rows[0].body).toMatchObject({
+      revision: 2,
+      changes: {
+        duration: 7200,
+        webcam: true,
+        latest: new Date(closes).getTime(),
+      },
+    });
+    expect(s.calls.some((call) => call.path.endsWith("/roster/settings"))).toBe(
+      false,
+    );
+    expect(JSON.stringify(s.rows[0].attempts)).toBe(priorAttempts);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
   });
 
-test("inline setting failures preserve edits for retry and cancellation", async ({
+test("next attempt waits when the current attempt is hidden by the history filter", async ({
   page,
 }) => {
-  const s = await fixture(page);
+  const s = await fixture(page, false, false, false, true);
+  s.rows[0].hasCurrentAttempt = true;
+  await page
+    .getByRole("combobox", { name: "Filter attempts", exact: true })
+    .selectOption("COMPLETED");
   const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
-  const duration = amy.getByRole("button", {
-    name: "Edit future time limit for amy",
+  await expect(amy.locator(".attempt-row:not(.next-attempt-row)")).toHaveCount(
+    1,
+  );
+  const next = amy.getByRole("row", {
+    name: "Next attempt for amy",
     exact: true,
   });
-  await duration.click();
-  const editor = amy.getByRole("form", {
-    name: "Edit future time limit for amy",
+  await expect(next).toContainText("Waiting for current attempt");
+  await expect(next).not.toContainText("Ready");
+  expect(s.rows[0].attempts[0].state).toBe("ACTIVE");
+  expect(s.calls).toHaveLength(0);
+});
+
+test("inline next-attempt failures preserve the exact reviewed request for retry", async ({
+  page,
+}) => {
+  const s = await fixture(page, false, false, false, true);
+  const next = page.getByRole("row", {
+    name: "Next attempt for amy",
     exact: true,
   });
-  await editor.getByRole("checkbox", { name: /Exam default/ }).uncheck();
-  await editor.getByLabel("Minutes", { exact: true }).fill("125");
+  await next
+    .getByRole("button", { name: "Edit settings", exact: true })
+    .click();
+  const editor = page.getByRole("region", {
+    name: "Edit next attempt for amy",
+    exact: true,
+  });
+  await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("125");
+  await editor
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click();
+  const review = page.getByRole("dialog", {
+    name: "Attempt settings for amy",
+    exact: true,
+  });
   s.failSettings = true;
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(editor.getByRole("alert")).toContainText(
-    "Settings could not be saved",
-  );
-  await expect(editor.getByLabel("Minutes", { exact: true })).toHaveValue(
-    "125",
-  );
+  await review
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await expect(review).toContainText("Change unconfirmed");
+  const first = s.calls.filter((call) =>
+    call.path.endsWith("/grants/change"),
+  )[0].body;
   s.failSettings = false;
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(duration).toHaveText("Default: 125 min");
-  await duration.click();
-  await editor.getByLabel("Minutes", { exact: true }).fill("140");
-  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(duration).toHaveText("Default: 125 min");
-  await expect(duration).toBeFocused();
-  expect(s.calls).toHaveLength(2);
+  await review
+    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
+    .click();
+  await expect(review).toContainText("Settings saved");
+  const calls = s.calls.filter((call) => call.path.endsWith("/grants/change"));
+  expect(calls).toHaveLength(2);
+  expect(calls[1].body).toEqual(first);
+  expect(s.nextGrant.settings.duration).toBe(7500);
+  expect(s.calls.some((call) => call.path.endsWith("/roster/settings"))).toBe(
+    false,
+  );
 });
 
 for (const width of [1280, 430])

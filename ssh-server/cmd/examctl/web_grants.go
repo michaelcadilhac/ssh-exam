@@ -44,7 +44,8 @@ Inspect the replacement count/references before confirming. An existing setup or
 pending start must be positively cancelled first; uncertain start evidence refuses
 replacement. Started deadlines, history and account holds remain protected.
 Use issue-show/confirm/cancel for the reviewed result. Its finite window may lie
-outside exam defaults; current effective webcam is preserved unless overridden.
+outside exam defaults; the latest saved attempt's webcam setting is copied unless
+overridden. With no attempt history, legacy enrollment/exam settings are used.
 issue-list shows this authenticated actor's recent requests, with an exclusive
 cursor for earlier pages. Use --format table --fields id,status,created to inspect
 them without parsing JSON; issue-show retrieves the selected complete review.
@@ -114,8 +115,13 @@ Settings: --duration-minutes 1..360 OR --duration-seconds 60..21600,
 --earliest RFC3339, --latest RFC3339 (finite Begin window, not latest finish),
 --template NAME, --template-version HASH (exact attested source, never legacy),
 --collection-file-mib N, --collection-total-mib N (total >= file).
-additional-preview --preserve-duration saves each student's current effective
-time limit at preview; do not combine it with a shared --duration-minutes/seconds.
+additional-preview --preserve-duration copies each student's latest saved attempt
+time limit at preview, including a cancelled unused attempt's last settings.
+Current unused settings take precedence; otherwise the most recently issued grant
+is used, then legacy attempt history. With neither, enrollment/exam settings apply.
+Terminals and collection limits are copied too; dates and starting files remain
+explicitly reviewed. A changed source configuration requires a new review.
+Do not combine --preserve-duration with a shared --duration-minutes/seconds.
 Generic --input JSONL accepts different saved/template/empty starting files per
 student in ONE atomic review. Use --preserve-duration to retain effective limits,
 with explicit per-student settings where needed. Inspect every resolved row.

@@ -32,9 +32,12 @@ attempts/reauthentication needs before removing enrollment.
 
 Add defaults to inheritance; settings changes only named fields (1..1000 users).
 Duration is 1..360 whole MINUTES, or inherit; webcam is required/optional/inherit.
-These are future defaults, never current clock edits. Sandbox duration is five
-minutes or inheritance. UID stays unresolved (0) until the student's trusted SSH
-verifies identity; no UID override is accepted.
+These enrollment values supply new enrollment accommodations and the legacy
+fallback when no saved grant or attempt exists. Later attempts copy the latest
+saved attempt settings; changing enrollment values does not override that copy,
+revise unused attempts or edit current clocks. Use web grants revise for an unused
+attempt. Sandbox duration is five minutes or inheritance. UID stays unresolved (0)
+until the student's trusted SSH verifies identity; no UID override is accepted.
 
 NEW ordinary enrollment/CSV rows atomically issue an initial saved-settings grant.
 Configure an exact attested template version and finite Begin window FIRST; a

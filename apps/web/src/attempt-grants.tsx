@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import { RefreshButton } from "./refresh-button.js";
@@ -40,12 +40,7 @@ type ChangeRow = {
 const prefix = "exam-admin-unused:";
 const uuid =
   /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
-const title = (g: any) =>
-  ["ENROLLMENT", "REVIEWED_NEW"].includes(g.issuance)
-    ? "First attempt"
-    : g.issuance === "PRACTICE"
-      ? "Practice attempt"
-      : "Extra attempt";
+const title = (_g: any) => "Attempt";
 const sameWork = (a: any, b: any) =>
   a?.kind === b?.kind &&
   (a.kind === "empty" || a.kind === "saved"
@@ -144,6 +139,9 @@ export function AttemptGrantsDialog({
   students,
   actor,
   initialGrantId,
+  embedded = false,
+  autoEdit = false,
+  initialAction,
   onClose,
   onChanged,
 }: {
@@ -152,17 +150,22 @@ export function AttemptGrantsDialog({
   students?: string[];
   actor: string;
   initialGrantId?: string;
+  embedded?: boolean;
+  autoEdit?: boolean;
+  initialAction?: "edit" | "cancel";
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
   const names = [...new Set(students ?? (username ? [username] : []))].sort(),
     cacheKey = prefix + JSON.stringify([actor, exam, names]),
     formId = useId();
+  const initializedAction = useRef(false);
   const [catalog, setCatalog] = useState<any[]>([]),
     [selected, setSelected] = useState(new Set<string>()),
     [editingId, setEditingId] = useState<string | null>(null),
     [editingSnapshot, setEditingSnapshot] = useState<any>(null),
     [loaded, setLoaded] = useState(false),
+    [catalogReady, setCatalogReady] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [review, setReview] = useState<ChangeRow[] | null>(() =>
@@ -207,7 +210,21 @@ export function AttemptGrantsDialog({
       values.push(g);
     }
     if (signal?.aborted) return;
+    if (
+      names.some(
+        (name) =>
+          values.filter(
+            (g) =>
+              g.username === name &&
+              ["AVAILABLE", "PENDING_NATIVE"].includes(g.status),
+          ).length > 1,
+      )
+    )
+      throw Error(
+        "More than one next attempt was returned for a student. Refresh before making changes.",
+      );
     setCatalog(values);
+    setCatalogReady(true);
     setLoaded(true);
     const labels = values
       .filter(
@@ -228,6 +245,7 @@ export function AttemptGrantsDialog({
         current = new Set(
           [...old].filter((id) => eligible.some((g) => g.id === id)),
         );
+      if (!username) return new Set(eligible.map((g) => g.id));
       if (
         !loaded &&
         !review &&
@@ -471,6 +489,10 @@ export function AttemptGrantsDialog({
   }, [editingGrant?.id, !!review]);
   const cancelEditing = () => {
     if (busy) return;
+    if (embedded) {
+      onClose();
+      return;
+    }
     setEditingId(null);
     setError("");
     setWorkMode("keep");
@@ -801,25 +823,7 @@ export function AttemptGrantsDialog({
     );
     return (
       <article key={g.id} className="clock-batch-row">
-        {!username && grantUnused(g) ? (
-          <label>
-            <input
-              type="checkbox"
-              disabled={busy}
-              checked={selected.has(g.id)}
-              onChange={(e) =>
-                setSelected((old) => {
-                  const value = new Set(old);
-                  e.target.checked ? value.add(g.id) : value.delete(g.id);
-                  return value;
-                })
-              }
-            />
-            Select {heading}
-          </label>
-        ) : (
-          <p>{heading}</p>
-        )}
+        <p>{heading}</p>
         {username && grantUnused(g) && (
           <div className="actions">
             <button
@@ -1068,20 +1072,46 @@ export function AttemptGrantsDialog({
   const pendingRows =
       review?.filter((r) => ["review", "unknown"].includes(r.state)) ?? [],
     unknown = review?.some((r) => r.state === "unknown");
-  return (
-    <Modal
-      title={
-        username ? `Allowed attempts for ${username}` : "Change unused attempts"
-      }
-      wide
-      className="grant-dialog"
-      onClose={close}
-    >
+  useEffect(() => {
+    if (!catalogReady || initializedAction.current) return;
+    initializedAction.current = true;
+    if (review || (!autoEdit && !initialAction)) return;
+    if (!username && initialAction === "cancel") {
+      void makeReview("revoke", catalog.filter(grantUnused));
+      return;
+    }
+    if (!username || !initialGrantId) {
+      setError("Choose the student's current next attempt before editing.");
+      return;
+    }
+    const grant = catalog.find((g) => g.id === initialGrantId);
+    if (!grant || !grantUnused(grant)) {
+      setError(
+        "This attempt is no longer unused. Refresh the student before making changes.",
+      );
+      return;
+    }
+    if (initialAction === "cancel") void makeReview("revoke", [grant]);
+    else populateEditor(grant);
+  }, [
+    catalogReady,
+    catalog,
+    review,
+    autoEdit,
+    initialAction,
+    initialGrantId,
+    username,
+  ]);
+  const content = (
+    <>
       <div className="grant-dialog-content">
         {error && (
           <p role="alert" className="warn">
             {error}
           </p>
+        )}
+        {!!noUnused.length && (
+          <p>No next attempt for: {noUnused.join(", ")}.</p>
         )}
         {!review && (
           <form
@@ -1108,59 +1138,29 @@ export function AttemptGrantsDialog({
               void makeReview("revise");
             }}
           >
-            {!loaded && <p role="status">Loading allowed attempts…</p>}
+            {!loaded && <p role="status">Loading attempt settings…</p>}
             {!!catalog.length && (
               <p className="muted">Times in {deviceTimeZone()}.</p>
             )}
             {!username && (
               <>
-                <p>Select unused attempts to change or cancel.</p>
-                <div className="actions">
-                  <button
-                    type="button"
-                    disabled={
-                      busy ||
-                      !catalog.some(grantUnused) ||
-                      catalog.filter(grantUnused).length > 200
-                    }
-                    onClick={() =>
-                      setSelected(
-                        new Set(catalog.filter(grantUnused).map((g) => g.id)),
-                      )
-                    }
-                  >
-                    Select unused attempts
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setSelected(new Set())}
-                  >
-                    Clear selection
-                  </button>
-                </div>
                 <p>
-                  {selectedGrants.length}{" "}
-                  {selectedGrants.length === 1 ? "attempt" : "attempts"} for{" "}
-                  {selectedNames.length}{" "}
-                  {selectedNames.length === 1 ? "student" : "students"} selected
+                  Changing the next attempt for {selectedNames.length}{" "}
+                  {selectedNames.length === 1
+                    ? "selected student"
+                    : "selected students"}
+                  .
                 </p>
                 {selectedGrants.length > 200 && (
                   <p role="alert">Choose up to 200 unused attempts.</p>
                 )}
               </>
             )}
-            {!!noUnused.length && (
-              <p>No unused attempts for: {noUnused.join(", ")}.</p>
-            )}
             {username && !editingGrant && attemptGroups}
             {(!username || editingGrant) && (
               <>
                 {editingGrant && (
-                  <h3 id={`${formId}-editor`}>
-                    Editing: {title(editingGrant)} ·{" "}
-                    {shortDateTime(editingGrant.issued_at)}
-                  </h3>
+                  <h3 id={`${formId}-editor`}>Edit next attempt</h3>
                 )}
                 <fieldset
                   key={editingGrant?.id ?? "bulk-editor"}
@@ -1681,7 +1681,7 @@ export function AttemptGrantsDialog({
           ) && (
             <button disabled={busy} onClick={() => void editAgain()}>
               {username && review[0].operation === "revoke"
-                ? "Back to attempts"
+                ? "Back to settings"
                 : "Back to editing"}
             </button>
           )}
@@ -1712,6 +1712,27 @@ export function AttemptGrantsDialog({
           </button>
         )}
       </div>
+    </>
+  );
+  if (embedded && !review)
+    return (
+      <section
+        className="grant-dialog grant-inline-editor"
+        aria-label={`Edit next attempt for ${username}`}
+      >
+        {content}
+      </section>
+    );
+  return (
+    <Modal
+      title={
+        username ? `Attempt settings for ${username}` : "Change next attempts"
+      }
+      wide
+      className="grant-dialog"
+      onClose={close}
+    >
+      {content}
     </Modal>
   );
 }

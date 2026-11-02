@@ -1,4 +1,21 @@
-# Current checkpoint — favicon DEPLOYED AND ONLINE
+# Current checkpoint — admin next-attempt revision, LOCAL COMPLETE
+
+Current authorized work: simplify the admin dashboard to one Next attempt, inline
+editing, one Allow attempt workflow and latest saved configuration instead of
+independent student defaults. Local implementation and verification COMPLETE:
+30 editor browser cases, 81 dashboard/creation/bulk cases and the final 8 recent-
+request/retry cases pass; final HTTP6 and full CLI races pass. The full application
+run's 737 passes / 8 obsolete fixture failures / 3 existing opt-in skips are retained;
+all 8 corrected Begin cases pass on rerun. Prof accepted actual 1280/430px renders,
+including the clipped-action and waiting-status fixes. Full types, frontend build
+and exact-schema37 production-image/history/video checks pass.
+No push or deployment authorized; production remains the favicon release below.
+Scope, honest verification limits, evidence and rollout plan: docs/admin-next-attempt.md.
+Final candidate: `var/collection-tests/admin-next-attempt-image.gyl41pn1`, input
+manifest 21d205b46b1c…; Config e65741425bc5b2d2dd36dc0eb9077d9d7c1d3d117b534447066cc4253244a49a.
+Before separately authorized production installation: qualify matched same-schema
+web/CLI deployment. Backend semantics/CLI changed; stock UI-only unchanged-contract
+attestation does NOT apply. No new controller was added to this bounded milestone.
 
 LATEST: November1 at23:15:46 Chicago (November2 05:15:46UTC), the separately
 authorized favicon release is ONLINE. Source2e5c7c3 overlays only packaged index

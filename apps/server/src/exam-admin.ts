@@ -105,14 +105,51 @@ export function registerExamAdmin(
       .filter((s) => !view || s.attempts.length);
     const students = matches.slice(start, start + 100).map((s) => ({
       ...s,
+      hasCurrentAttempt: (grouped.get(s.username) ?? []).some((a) =>
+        ["PREPARING", "ACTIVATING", "ACTIVE", "LOCKED", "FINALIZING"].includes(
+          a.state,
+        ),
+      ),
       ...(() => {
         try {
+          const unused = grants.unusedFor(req.params.exam, s.username);
+          let sourceAttempt;
+          if (unused?.work.kind === "saved") {
+            const source = store.db
+              .prepare(
+                `SELECT a.id,a.exam,a.username,a.start,e.config,
+              (SELECT count(*) FROM attempts p WHERE p.exam=a.exam AND p.username=a.username AND p.rowid<=a.rowid) attempt_number
+              FROM attempts a JOIN exams e ON e.id=a.exam WHERE a.id=?`,
+              )
+              .get(unused.work.attempt) as any;
+            if (!source || source.username !== s.username)
+              throw Error("Saved files are unavailable for this student");
+            sourceAttempt = {
+              id: source.id,
+              exam: source.exam,
+              exam_name: JSON.parse(source.config).name,
+              attempt_number: source.attempt_number,
+              start: source.start,
+            };
+          }
           return {
             grant: grants.initialFor(req.params.exam, s.username),
             unusedGrants: grants.unusedSummary(req.params.exam, s.username),
+            unusedAttempt: unused
+              ? { ...unused, ...(sourceAttempt ? { sourceAttempt } : {}) }
+              : null,
+            latestSettings: grants.latestSettingsFor(
+              req.params.exam,
+              s.username,
+            ).settings,
           };
         } catch {
-          return { grant: null, grantError: true };
+          return {
+            grant: null,
+            unusedAttempt: null,
+            latestSettings: null,
+            grantError: true,
+          };
         }
       })(),
       enrollment:

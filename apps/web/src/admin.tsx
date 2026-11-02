@@ -6,7 +6,6 @@ import { CreateAdministrator } from "./create-administrator.js";
 import { ExamSettings } from "./exam-settings.js";
 import { ExamRetirement, type RetirementAction } from "./exam-retirement.js";
 import { StudentImport } from "./student-import.js";
-import { EnrollmentSetting } from "./enrollment-setting.js";
 import { AttemptGrantsDialog } from "./attempt-grants.js";
 import {
   AttemptProvenance,
@@ -23,12 +22,8 @@ import { InterruptionHistory } from "./interruption-history.js";
 import { AdminReview } from "./admin-review.js";
 import { AlertDelivery } from "./alert-delivery.js";
 import { TemplateCatalogView } from "./template-catalog.js";
-import {
-  CancelExtraAttempts,
-  type CancellationIntents,
-} from "./cancel-extra-attempts.js";
 import { grantStatus } from "./grant-options.js";
-import { timeLimit } from "./local-date-time.js";
+import { timeLimit, windowLabel } from "./local-date-time.js";
 import {
   attemptStatus,
   attemptElapsed,
@@ -94,11 +89,6 @@ export function Admin({
     [addingStudent, setAddingStudent] = useState(false),
     [alerts, setAlerts] = useState(false);
   const [selection, setSelection] = useState(new Set<string>());
-  const cancellationIntents = useRef<CancellationIntents>(new Map());
-  const [cancelExtras, setCancelExtras] = useState<{
-    exam: string;
-    students: string[];
-  } | null>(null);
   const [operation, setOperation] = useState<StudentAction | null>(null),
     [removing, setRemoving] = useState<string | null>(null),
     [removingBusy, setRemovingBusy] = useState(false),
@@ -110,10 +100,19 @@ export function Admin({
   const [alertsError, setAlertsError] = useState("");
   const [templateCatalog, setTemplateCatalog] = useState(false);
   const [grantsFor, setGrantsFor] = useState<string | null>(null);
-  const [unusedStudents, setUnusedStudents] = useState<string[] | null>(null);
+  const [unusedStudents, setUnusedStudents] = useState<{
+    students: string[];
+    action: "edit" | "cancel";
+  } | null>(null);
+  const [inlineAttempt, setInlineAttempt] = useState<{
+    username: string;
+    id: string;
+  } | null>(null);
+  const [grantAction, setGrantAction] = useState<
+    "edit" | "cancel" | undefined
+  >();
   const [grantFocus, setGrantFocus] = useState<string | null>(null);
   const [issuingGrants, setIssuingGrants] = useState<{
-    kind: "initial" | "additional";
     students: any[];
   } | null>(null);
   const [permission, setPermission] = useState(
@@ -255,8 +254,8 @@ export function Admin({
     clearView();
     setGrantsFor(null);
     setUnusedStudents(null);
+    setInlineAttempt(null);
     setIssuingGrants(null);
-    setCancelExtras(null);
     query.current = {
       ...query.current,
       exam: id,
@@ -294,7 +293,13 @@ export function Admin({
     setSelected(a);
     void refresh();
   };
-  const openGrants = (username: string, id?: string) => {
+  const openGrants = (
+    username: string,
+    id?: string,
+    action?: "edit" | "cancel",
+  ) => {
+    setInlineAttempt(null);
+    setGrantAction(action);
     setGrantFocus(id ?? null);
     setGrantsFor(username);
   };
@@ -666,33 +671,16 @@ export function Admin({
                   label="Selected students"
                   actions={[
                     {
-                      label: "Allow another attempt",
+                      label: "Allow attempt",
                       disabled:
                         stale ||
                         chosen.length > 200 ||
                         current?.lifecycle === "archived",
                       onSelect: () =>
                         setIssuingGrants({
-                          kind: "additional",
                           students: chosen.map((s: any) => ({ ...s })),
                         }),
                     },
-                    ...(exam === "sandbox"
-                      ? []
-                      : [
-                          {
-                            label: "Allow first attempt",
-                            disabled:
-                              stale ||
-                              chosen.length > 200 ||
-                              current?.lifecycle === "archived",
-                            onSelect: () =>
-                              setIssuingGrants({
-                                kind: "initial" as const,
-                                students: chosen.map((s: any) => ({ ...s })),
-                              }),
-                          },
-                        ]),
                     {
                       label: "Add time",
                       disabled:
@@ -734,29 +722,22 @@ export function Admin({
                         ),
                     },
                     {
-                      label: "Change unused attempts",
+                      label: "Edit next attempts",
                       disabled: stale,
                       onSelect: () =>
-                        setUnusedStudents(chosen.map((s: any) => s.username)),
-                    },
-                    {
-                      label: "Cancel extra attempts",
-                      disabled: stale,
-                      onSelect: () =>
-                        setCancelExtras({
-                          exam,
+                        setUnusedStudents({
                           students: chosen.map((s: any) => s.username),
+                          action: "edit",
                         }),
                     },
                     {
-                      label: "Future time limits",
+                      label: "Cancel next attempts",
                       disabled: stale,
-                      onSelect: () => openOperation("duration", chosen),
-                    },
-                    {
-                      label: "Future webcam settings",
-                      disabled: stale,
-                      onSelect: () => openOperation("webcam", chosen),
+                      onSelect: () =>
+                        setUnusedStudents({
+                          students: chosen.map((s: any) => s.username),
+                          action: "cancel",
+                        }),
                     },
                   ]}
                 >
@@ -847,82 +828,47 @@ export function Admin({
                                   />
                                 )}
                               </td>
-                              <td className="student-identity" role="cell">
+                              <td
+                                className="student-identity"
+                                role="cell"
+                                colSpan={4}
+                              >
                                 <strong title={s.username}>{s.username}</strong>
-                                {s.grant && (
-                                  <small>
-                                    First attempt:{" "}
-                                    {timeLimit(s.grant.settings.duration)} ·{" "}
-                                    {grantStatus(s.grant)}
-                                  </small>
-                                )}
+                                <small>
+                                  {s.attempts.length
+                                    ? `${s.attempts.length} ${s.attempts.length === 1 ? "attempt" : "attempts"}`
+                                    : "No previous attempts"}
+                                </small>
                                 {s.grantError && (
                                   <small className="warn">
                                     Attempt settings need review
                                   </small>
                                 )}
-                                {s.unusedGrants && (
-                                  <small
-                                    className={
-                                      s.unusedGrants.unavailable
-                                        ? "warn"
-                                        : "grant-availability"
-                                    }
-                                  >
-                                    {s.unusedGrants.unavailable
-                                      ? "Attempt settings need review"
-                                      : [
-                                          s.unusedGrants.available
-                                            ? `${s.unusedGrants.available} ${s.unusedGrants.available === 1 ? "attempt" : "attempts"} ready`
-                                            : "",
-                                          s.unusedGrants.future
-                                            ? `${s.unusedGrants.future} available later`
-                                            : "",
-                                          s.unusedGrants.pendingNative
-                                            ? `${s.unusedGrants.pendingNative} preparing saved work`
-                                            : "",
-                                          s.unusedGrants.closed
-                                            ? `${s.unusedGrants.closed} start ${s.unusedGrants.closed === 1 ? "window closed" : "windows closed"}`
-                                            : "",
-                                          s.unusedGrants.more
-                                            ? "More attempts in Details"
-                                            : "",
-                                        ]
-                                          .filter(Boolean)
-                                          .join(" · ")}
-                                  </small>
+                                {!s.unusedAttempt && !s.grantError && (
+                                  <small>No next attempt</small>
                                 )}
                                 {!s.enrollment && <small>Not enrolled</small>}
                               </td>
-                              <td role="cell" className="student-history-count">
-                                {s.attempts.length
-                                  ? `${s.attempts.length} ${s.attempts.length === 1 ? "attempt" : "attempts"}`
-                                  : "Not started"}
-                              </td>
-                              {(["webcam", "duration"] as const).map((kind) => (
-                                <td
-                                  key={kind}
-                                  role="cell"
-                                  className="enrollment-cell"
-                                >
-                                  {s.enrollment && (
-                                    <EnrollmentSetting
-                                      exam={current}
-                                      student={s}
-                                      kind={kind}
-                                      disabled={stale}
-                                      onSaved={refresh}
-                                    />
-                                  )}
-                                </td>
-                              ))}
                               <td role="cell" className="row-actions">
                                 {s.enrollment && (
                                   <AdminMenu
                                     label={`Actions for student ${s.username}`}
                                     actions={[
                                       {
-                                        label: "Allowed attempts…",
+                                        label: s.unusedAttempt
+                                          ? "Replace attempt…"
+                                          : "Allow attempt…",
+                                        disabled:
+                                          stale ||
+                                          current?.lifecycle === "archived" ||
+                                          !!s.grantError,
+                                        onSelect: () =>
+                                          setIssuingGrants({
+                                            students: [{ ...s }],
+                                          }),
+                                      },
+                                      {
+                                        label: "Attempt settings and history…",
                                         disabled: stale,
                                         onSelect: () => openGrants(s.username),
                                       },
@@ -940,6 +886,104 @@ export function Admin({
                                 )}
                               </td>
                             </tr>
+                            {s.unusedAttempt && (
+                              <tr
+                                className="attempt-row next-attempt-row"
+                                aria-label={`Next attempt for ${s.username}`}
+                              >
+                                <td className="selection-cell" />
+                                <td className="attempt-identity">
+                                  <strong>Next attempt</strong>
+                                  <small className="next-attempt-dates">
+                                    {windowLabel(
+                                      s.unusedAttempt.settings.earliest,
+                                      s.unusedAttempt.settings.latest,
+                                    )}
+                                  </small>
+                                  <small>
+                                    {s.unusedAttempt.work.kind === "template"
+                                      ? `Starter files: ${s.unusedAttempt.work.name}`
+                                      : s.unusedAttempt.work.kind === "empty"
+                                        ? "Empty folder"
+                                        : s.unusedAttempt.sourceAttempt
+                                          ? `Saved files: ${s.unusedAttempt.sourceAttempt.exam_name} · ${s.unusedAttempt.sourceAttempt.exam} · Attempt ${s.unusedAttempt.sourceAttempt.attempt_number} · ${attemptStarted(s.unusedAttempt.sourceAttempt.start)}`
+                                          : "Saved files · Source details unavailable"}
+                                  </small>
+                                </td>
+                                <td>
+                                  {grantStatus(s.unusedAttempt, clock) ===
+                                    "Ready" &&
+                                  (s.hasCurrentAttempt ??
+                                    s.attempts.some((a: any) =>
+                                      [
+                                        "PREPARING",
+                                        "ACTIVATING",
+                                        "ACTIVE",
+                                        "LOCKED",
+                                        "FINALIZING",
+                                      ].includes(a.state),
+                                    ))
+                                    ? "Waiting for current attempt"
+                                    : grantStatus(s.unusedAttempt, clock)}
+                                </td>
+                                <td data-label="Webcam">
+                                  {s.unusedAttempt.settings.webcam
+                                    ? "Required"
+                                    : "Optional"}
+                                </td>
+                                <td data-label="Time limit">
+                                  {timeLimit(s.unusedAttempt.settings.duration)}
+                                </td>
+                                <td className="row-actions">
+                                  <button
+                                    disabled={
+                                      stale ||
+                                      inlineAttempt?.id === s.unusedAttempt.id
+                                    }
+                                    onClick={() =>
+                                      setInlineAttempt({
+                                        username: s.username,
+                                        id: s.unusedAttempt.id,
+                                      })
+                                    }
+                                  >
+                                    {inlineAttempt?.id === s.unusedAttempt.id
+                                      ? "Editing settings"
+                                      : "Edit settings"}
+                                  </button>
+                                  <button
+                                    disabled={stale}
+                                    onClick={() =>
+                                      openGrants(
+                                        s.username,
+                                        s.unusedAttempt.id,
+                                        "cancel",
+                                      )
+                                    }
+                                  >
+                                    Cancel attempt
+                                  </button>
+                                </td>
+                              </tr>
+                            )}
+                            {inlineAttempt &&
+                              inlineAttempt.username === s.username && (
+                                <tr className="next-attempt-editor">
+                                  <td colSpan={6}>
+                                    <AttemptGrantsDialog
+                                      key={`${exam}:${inlineAttempt.id}`}
+                                      exam={exam}
+                                      actor={actor}
+                                      username={s.username}
+                                      initialGrantId={inlineAttempt.id}
+                                      embedded
+                                      autoEdit
+                                      onClose={() => setInlineAttempt(null)}
+                                      onChanged={refresh}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
                             {s.attempts.map((a: any) => {
                               const status = attemptStatus(a),
                                 editable = !stale && clockEditable(a, clock),
@@ -1198,29 +1242,26 @@ export function Admin({
           </section>
         </>
       )}
-      {cancelExtras && (
-        <CancelExtraAttempts
-          exam={cancelExtras.exam}
-          students={cancelExtras.students}
-          requests={cancellationIntents.current}
-          onClose={() => setCancelExtras(null)}
-          onChanged={refresh}
-        />
-      )}
       {issuingGrants && current && (
         <GrantIssuanceDialog
-          key={`${exam}:${issuingGrants.kind}`}
+          key={JSON.stringify([
+            exam,
+            issuingGrants.students.map((s) => s.username).sort(),
+          ])}
           initial={current}
           actor={actor}
           students={issuingGrants.students}
           onAdoptStudents={(names) => {
             setSelection(new Set(names));
             setIssuingGrants({
-              kind: issuingGrants.kind,
-              students: names.map((username) => ({ username })),
+              students: names.map((username) => ({
+                ...(students.find((s: any) => s.username === username) ?? {
+                  username,
+                }),
+              })),
             });
           }}
-          additional={issuingGrants.kind === "additional"}
+          additional
           onClose={() => setIssuingGrants(null)}
           onChanged={refresh}
         />
@@ -1231,7 +1272,8 @@ export function Admin({
           exam={exam}
           actor={actor}
           username={grantsFor ?? undefined}
-          students={unusedStudents ?? undefined}
+          students={unusedStudents?.students}
+          initialAction={unusedStudents?.action ?? grantAction}
           initialGrantId={grantFocus ?? undefined}
           onClose={() => {
             setGrantsFor(null);

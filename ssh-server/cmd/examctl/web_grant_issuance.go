@@ -31,7 +31,7 @@ func webGrantIssuanceMain(args []string) int {
 	after := f.String("after", "", "exclusive recent-review cursor")
 	minutes := f.Int64("duration-minutes", 0, "explicit additional allowance minutes")
 	seconds := f.Int64("duration-seconds", 0, "explicit additional allowance seconds")
-	preserve := f.Bool("preserve-duration", false, "save each student's current effective time limit")
+	preserve := f.Bool("preserve-duration", false, "copy each student's latest saved attempt time limit")
 	webcam := f.String("webcam", "", "explicit required/optional override; omitted preserves effective value")
 	workFlags := registerGrantWork(f)
 	savedSources := f.String("saved-sources", "", "CSV username,attempt,checksum selecting one protected source per student; additional-preview only")

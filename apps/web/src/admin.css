@@ -1296,7 +1296,54 @@
 .grant-availability {
   color: #91c4ff;
 }
+.admin-roster .next-attempt-row .attempt-identity {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-roster .next-attempt-dates {
+  color: #c9d8ec;
+  white-space: normal;
+}
+.admin-roster .next-attempt-row .row-actions {
+  white-space: normal;
+}
+.admin-roster .next-attempt-row .row-actions button {
+  display: block;
+  max-width: 100%;
+  margin: 4px 0 4px auto;
+  white-space: normal;
+}
+.admin-roster .next-attempt-editor > td {
+  padding: 1rem;
+}
+.next-attempt-editor .grant-dialog-content,
+.next-attempt-editor fieldset {
+  min-width: 0;
+}
 @media (max-width: 760px) {
+  .admin-roster .next-attempt-editor {
+    display: block;
+    padding: 12px;
+  }
+  .admin-roster .next-attempt-editor > td {
+    width: 100%;
+  }
+  .admin-roster .next-attempt-row td[data-label="Time limit"] {
+    grid-column: 3;
+    text-align: right;
+  }
+  .admin-roster .student-row .student-identity {
+    grid-column: 2;
+  }
+  .admin-roster .next-attempt-row .row-actions {
+    grid-column: 2 / -1;
+    grid-row: auto;
+    justify-content: flex-start;
+  }
+  .admin-roster .next-attempt-row .row-actions button {
+    display: inline-block;
+    margin: 0 0 0 5px;
+  }
   .attempt-grant-summary .grant-reason {
     max-width: 16rem;
   }

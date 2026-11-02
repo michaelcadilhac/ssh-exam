@@ -880,6 +880,86 @@ export class AttemptGrants {
       );
     return rows.length ? this.view(this.row(rows[0].id)) : null;
   }
+  // Dashboard inspection is not admission. A live setup is an attempt, not an
+  // editable unused permission; contradictory cancelled-start evidence refuses.
+  unusedFor(exam: string, username: string) {
+    const current = this.current(exam, username);
+    if (!current) return null;
+    if (
+      this.store.db
+        .prepare(
+          "SELECT 1 FROM grant_claims WHERE grant_id=? AND state<>'CANCELLED'",
+        )
+        .get(current.id)
+    )
+      return null;
+    return this.view(this.unused(current.id, current.revision));
+  }
+  // Runtime callers: dashboard and shared instructor/root issuance preview and
+  // confirmation. Issuance rowids are the grant model's durable ordering; do not
+  // compare independent table rowids or infer ordering from wall-clock times.
+  latestSettingsFor(exam: string, username: string) {
+    const current = this.current(exam, username);
+    const last =
+      current ??
+      (() => {
+        const row = this.store.db
+          .prepare(
+            "SELECT id FROM attempt_grants WHERE agent=? AND exam=? AND username=? ORDER BY rowid DESC LIMIT 1",
+          )
+          .get(this.agent, exam, username) as { id: string } | undefined;
+        return row ? this.view(this.row(row.id)) : null;
+      })();
+    if (last)
+      return {
+        settings: last.settings,
+        source: {
+          kind: "grant",
+          id: last.id,
+          revision: last.revision,
+          hash: last.hash,
+          status: last.status,
+        },
+      };
+    // Legacy attempts predate unified issuance. Once a grant exists its saved
+    // configuration owns its preparations, including cancelled unused setups.
+    const attempt = this.store.db
+      .prepare(
+        "SELECT id,settings FROM attempts WHERE exam=? AND username=? ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(exam, username) as { id: string; settings: string } | undefined;
+    if (attempt)
+      return {
+        settings: examSchema.parse(JSON.parse(attempt.settings)),
+        source: {
+          kind: "attempt",
+          id: attempt.id,
+          hash: hash(attempt.settings),
+        },
+      };
+    const definition = new ExamDefinitions(this.store, this.agent).show(exam);
+    const enrollment = this.store.db
+      .prepare(
+        "SELECT duration,webcam FROM enrollments WHERE exam=? AND username=?",
+      )
+      .get(exam, username) as
+      | { duration: number | null; webcam: number | null }
+      | undefined;
+    return {
+      settings: examSchema.parse({
+        ...definition.exam,
+        duration: enrollment?.duration ?? definition.exam.duration,
+        webcam:
+          enrollment?.webcam == null
+            ? definition.exam.webcam
+            : !!enrollment.webcam,
+      }),
+      source: {
+        kind: "enrollment",
+        hash: hash(JSON.stringify(enrollment ?? null)),
+      },
+    };
+  }
   revise(id: string, input: unknown, actor: string) {
     const b = grantRevision.parse(input);
     return this.request(actor, b.request, { id, ...b }, () => {

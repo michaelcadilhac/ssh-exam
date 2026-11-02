@@ -96,16 +96,17 @@ export function GrantIssuanceDialog({
         ? "NEW_ADDITIONAL_TEMPLATE_GRANTS"
         : "NEW_LEGACY_INITIAL_GRANTS",
     cacheKey = `${cachePrefix}${JSON.stringify([actor, initial.id, kind, names])}`;
-  const enrollment = students.length === 1 ? students[0].enrollment : null;
-  const singleSettings = enrollment
-    ? {
-        duration: enrollment.duration ?? initial.duration,
-        webcam: Boolean(enrollment.webcam ?? initial.webcam),
-      }
-    : null;
-  const issuanceReason = additional
-    ? "Allow another exam attempt"
-    : "Issue first attempt from selected current settings";
+  const singleSettings =
+    students.length === 1
+      ? (students[0].latestSettings ??
+        students[0].unusedAttempt?.settings ??
+        null)
+      : null;
+  const previousMinutes =
+    singleSettings?.duration % 60 === 0
+      ? String(singleSettings.duration / 60)
+      : "";
+  const issuanceReason = "Allow exam attempt";
   const [saved] = useState(() => readCache(cacheKey, initial.id, names));
   const formId = useId();
   const [review, setReview] = useState<any>(null),
@@ -114,12 +115,12 @@ export function GrantIssuanceDialog({
     [error, setError] = useState(""),
     [recovering, setRecovering] = useState(!!saved?.review),
     [earliest, setEarliest] = useState(
-      localDateTime(Math.max(Date.now(), initial.earliest)),
+      localDateTime(singleSettings?.earliest ?? initial.earliest),
     ),
     [latest, setLatest] = useState(
-      initial.latest > Date.now() ? localDateTime(initial.latest) : "",
+      localDateTime(singleSettings?.latest ?? initial.latest),
     ),
-    [duration, setDuration] = useState(""),
+    [duration, setDuration] = useState(previousMinutes),
     [webcam, setWebcam] = useState("effective"),
     [individual, setIndividual] = useState<
       Record<string, { duration: string; webcam: string }>
@@ -404,7 +405,8 @@ export function GrantIssuanceDialog({
               username,
               work: shared ?? sourceFor(username),
             }));
-            if (duration && !practice) body.duration = minutes(duration);
+            if (duration && duration !== previousMinutes && !practice)
+              body.duration = minutes(duration);
             else body.preserve_duration = true;
             if (webcam !== "effective" && !practice)
               body.webcam = webcam === "required";
@@ -578,12 +580,7 @@ export function GrantIssuanceDialog({
       : "Saved work · Source details unavailable";
   };
   return (
-    <Modal
-      title={additional ? "Allow another attempt" : "Allow first attempt"}
-      onClose={close}
-      wide
-      className="grant-dialog"
-    >
+    <Modal title="Allow attempt" onClose={close} wide className="grant-dialog">
       <div className="grant-dialog-content">
         <p>
           {initial.name} · {review ? review.rows.length : names.length}{" "}
@@ -634,7 +631,7 @@ export function GrantIssuanceDialog({
                 ? "Keep each student's time limit"
                 : pending.body.duration
                   ? timeLimit(pending.body.duration)
-                  : "Use current first-attempt settings"}
+                  : "Use displayed settings"}
             </p>
             <details>
               <summary>Technical details</summary>
@@ -666,14 +663,12 @@ export function GrantIssuanceDialog({
                     <>
                       {singleSettings && (
                         <p>
-                          Current time limit:{" "}
+                          Latest time limit:{" "}
                           {timeLimit(singleSettings.duration)}
                         </p>
                       )}
                       <label>
-                        {names.length === 1
-                          ? "New time limit (minutes, optional)"
-                          : "Time limit (minutes)"}
+                        Time limit (minutes)
                         <input
                           type="number"
                           min={1}
@@ -682,7 +677,7 @@ export function GrantIssuanceDialog({
                           value={duration}
                           placeholder={
                             names.length === 1
-                              ? "Keep current time limit"
+                              ? "Keep latest time limit"
                               : "Keep each student's time limit"
                           }
                           onChange={(e) => setDuration(e.target.value)}
@@ -696,9 +691,9 @@ export function GrantIssuanceDialog({
                         >
                           <option value="effective">
                             {singleSettings
-                              ? `${singleSettings.webcam ? "Required" : "Optional"} (current setting)`
+                              ? `${singleSettings.webcam ? "Required" : "Optional"} (latest setting)`
                               : names.length === 1
-                                ? "Keep current setting"
+                                ? "Keep latest setting"
                                 : "Keep each student's setting"}
                           </option>
                           <option value="required">

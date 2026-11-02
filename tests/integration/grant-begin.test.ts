@@ -417,14 +417,15 @@ it.each([
           )
           .run();
         const historyID = "99999999-1234-4234-8234-123456789abc",
-          start = Date.now() - 10800000;
+          start = Date.now() - 10800000,
+          historicalSettings = { ...definition, webcam: false };
         store.db
           .prepare(
             "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,protected,checksum,access_state) VALUES(?,'ordinary','student',10001,'COMPLETED',?,?,?,?,1,?,'RELEASED')",
           )
           .run(
             historyID,
-            JSON.stringify(definition),
+            JSON.stringify(historicalSettings),
             start,
             start + 5400000,
             start + 5400000,
@@ -437,7 +438,7 @@ it.each([
           username: "student",
           uid: 10001,
           state: "COMPLETED",
-          settings: definition,
+          settings: historicalSettings,
           start,
           deadline: start + 5400000,
           original_deadline: start + 5400000,

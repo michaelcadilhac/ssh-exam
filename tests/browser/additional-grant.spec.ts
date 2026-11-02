@@ -1,6 +1,6 @@
 import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
-import { simulatedMedia, ready } from "./transition-fixture.js";
+import { simulatedMedia } from "./transition-fixture.js";
 import {
   additionalDraft,
   previewAdditional,
@@ -72,6 +72,34 @@ test("an additional attempt replaces unused permission and starts automatically 
     (await (await page.request.get("/api/login-test")).json()).browserSSH,
   ).toBe(true);
   await simulatedMedia(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+      value: async () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 320;
+        canvas.height = 240;
+        const context = canvas.getContext("2d")!;
+        const draw = () => {
+          context.fillStyle = "#8ddab9";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.fillStyle = "#132033";
+          context.fillText("Synthetic webcam", 20, 40);
+        };
+        draw();
+        setInterval(draw, 100);
+        return canvas.captureStream(10);
+      },
+    });
+  });
+  let verifiedWebcamUploads = 0;
+  page.on("response", (response) => {
+    if (
+      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      response.status() === 200 &&
+      response.request().postDataJSON()?.source === "webcam"
+    )
+      verifiedWebcamUploads++;
+  });
   await admin(page);
   const dashboard = async () =>
     (
@@ -90,7 +118,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   let dialog = await additionalDraft(page, ["extra01"]);
   const { review } = await previewAdditional(page, dialog),
     reviewID = review.id;
-  await expect(dialog).toContainText("90 min · Webcam optional");
+  await expect(dialog).toContainText("90 min · Webcam required");
   await expect(dialog).toContainText("Empty folder");
   let lost = 0;
   await page.route(
@@ -110,7 +138,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   ).toBeEnabled();
   await page.reload();
   await page.getByLabel("Selected exam").selectOption("additional-template");
-  dialog = await selectedAction(page, ["extra01"], "Allow another attempt");
+  dialog = await selectedAction(page, ["extra01"], "Allow attempt");
   await expect(
     dialog.getByRole("heading", { name: "Attempt allowed", exact: true }),
   ).toBeVisible();
@@ -266,7 +294,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   });
   await expect(page.getByText(/start window/i)).toHaveCount(0);
   await expect(open).toBeEnabled();
-  await expect(page.locator("main")).toContainText("60 min · Webcam: Optional");
+  await expect(page.locator("main")).toContainText("60 min · Webcam: Required");
   const session = await (await page.request.get("/api/session")).json(),
     runtimeBefore = await (
       await page.request.get("/api/fixture/runtime")
@@ -320,7 +348,22 @@ test("an additional attempt replaces unused permission and starts automatically 
   });
   expect(revised.settings.template).toBe("sample-exam");
   expect(revised.settings.template_version).toBe("a".repeat(64));
-  await ready(page);
+  await page
+    .getByRole("button", { name: "1. Share entire screen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "2. Enable webcam", exact: true })
+    .click();
+  await expect(page.locator("#camera-preview")).toBeVisible();
+  await page
+    .getByRole("button", { name: "3. Enter fullscreen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "4. Lock keyboard", exact: true })
+    .click();
+  await expect
+    .poll(() => verifiedWebcamUploads, { timeout: 10000 })
+    .toBeGreaterThan(0);
   await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -486,7 +529,7 @@ test("bulk saved work requires each student's own source and preserves the exact
           exact: true,
         }),
       }),
-    ).toContainText(`90 min · Webcam ${i ? "required" : "optional"}`);
+    ).toContainText("90 min · Webcam required");
   }
   await page.screenshot({
     path: info.outputPath("bulk-saved-source-review-430.png"),
@@ -533,7 +576,7 @@ test("bulk saved work requires each student's own source and preserves the exact
         attempt: source.attempt,
         checksum: source.checksum,
       },
-      settings: { duration: 5400, webcam: !!i },
+      settings: { duration: 5400, webcam: true },
       claims: [],
     });
   }

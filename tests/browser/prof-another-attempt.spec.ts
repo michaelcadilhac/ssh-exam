@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { localDateTime } from "../../apps/web/src/local-date-time.js";
+import { selectedAction } from "./prof-workflow-fixture.js";
 test.use({ timezoneId: "America/Chicago" });
 
 async function fixture(
@@ -6,6 +8,10 @@ async function fixture(
   count = 3,
   pinned = true,
   displayName = "Midterm",
+  options: {
+    latestSettings?: Record<string, Record<string, any>>;
+    hiddenStudents?: string[];
+  } = {},
 ) {
   page.setDefaultTimeout(7000);
   const exam = "prof-another",
@@ -69,14 +75,23 @@ async function fixture(
       return route.fulfill({
         json: {
           serverNow: now,
-          students: usernames.map((username, i) => ({
-            username,
-            enrollment: {
-              duration: i === 0 ? 95 : null,
-              webcam: i === 0 ? 0 : null,
-            },
-            attempts: attempts.filter((a) => a.username === username),
-          })),
+          students: usernames
+            .map((username, i) => ({
+              username,
+              enrollment: {
+                duration: i === 0 ? 7200 : null,
+                webcam: i === 0 ? 1 : null,
+              },
+              latestSettings: {
+                ...settings,
+                duration: i === 0 ? 95 : 5400,
+                webcam: i !== 0,
+                ...options.latestSettings?.[username],
+              },
+              unusedAttempt: null,
+              attempts: attempts.filter((a) => a.username === username),
+            }))
+            .filter((row) => !options.hiddenStudents?.includes(row.username)),
           total: count,
           counts: { students: count },
           incidents: [],
@@ -102,10 +117,10 @@ async function fixture(
                   id,
                   kind: state.review.kind,
                   status: state.review.status,
-                  created: now,
-                  expires: now + 900000,
+                  created: state.review.created,
+                  expires: state.review.expires,
                   reason: state.review.reason,
-                  usernames,
+                  usernames: state.review.rows.map((row: any) => row.username),
                 },
               ]
             : [],
@@ -217,14 +232,14 @@ async function fixture(
       .getByRole("button", { name: "Selected students", exact: true })
       .click();
     await page
-      .getByRole("menuitem", { name: "Allow another attempt", exact: true })
+      .getByRole("menuitem", { name: "Allow attempt", exact: true })
       .click();
     return page.getByRole("dialog", {
-      name: "Allow another attempt",
+      name: "Allow attempt",
       exact: true,
     });
   };
-  return { state, open, usernames };
+  return { state, open, usernames, settings, id };
 }
 
 for (const width of [1280, 430])
@@ -235,10 +250,10 @@ for (const width of [1280, 430])
     const f = await fixture(page, 1),
       dialog = await f.open();
     await expect(
-      dialog.getByText("Current time limit: 1 min 35 sec", { exact: true }),
+      dialog.getByText("Latest time limit: 1 min 35 sec", { exact: true }),
     ).toBeVisible();
     await expect(
-      dialog.getByLabel("New time limit (minutes, optional)", { exact: true }),
+      dialog.getByLabel("Time limit (minutes)", { exact: true }),
     ).toHaveValue("");
     await expect(
       dialog.getByRole("combobox", { name: "Webcam", exact: true }),
@@ -247,13 +262,13 @@ for (const width of [1280, 430])
       dialog
         .getByRole("combobox", { name: "Webcam", exact: true })
         .locator("option:checked"),
-    ).toHaveText("Optional (current setting)");
+    ).toHaveText("Optional (latest setting)");
     await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
     await expect(
       dialog.getByText("Individual time and webcam settings", { exact: true }),
     ).toHaveCount(0);
     await dialog
-      .getByText("Current time limit: 1 min 35 sec", { exact: true })
+      .getByText("Latest time limit: 1 min 35 sec", { exact: true })
       .scrollIntoViewIfNeeded();
     await page.screenshot({
       path: info.outputPath(`single-student-exact-settings-${width}.png`),
@@ -289,7 +304,7 @@ for (const width of [1280, 430])
     expect(f.state.previews).toHaveLength(1);
     expect(f.state.previews[0]).toMatchObject({
       preserve_duration: true,
-      reason: "Allow another exam attempt",
+      reason: "Allow exam attempt",
     });
     expect(f.state.previews[0]).not.toHaveProperty("duration");
     expect(f.state.previews[0]).not.toHaveProperty("webcam");
@@ -333,9 +348,16 @@ test("another attempt uses two screens with fetched mixed sources and exact per-
   await expect(dialog.getByLabel("Starting files for student02")).toContainText(
     "Automatic: Starter files: sample-exam",
   );
-  await expect(dialog.getByLabel("Closes", { exact: true })).toHaveValue("");
+  const opens = await dialog.getByLabel("Opens", { exact: true }).inputValue();
+  await expect(dialog.getByLabel("Closes", { exact: true })).not.toHaveValue(
+    "",
+  );
+  await dialog
+    .getByLabel("Closes", { exact: true })
+    .fill(localDateTime(Date.now() - 2 * 86400000));
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   expect(f.state.previews).toHaveLength(0);
+  await expect(dialog.getByLabel("Opens", { exact: true })).toHaveValue(opens);
   await dialog.getByLabel("Closes", { exact: true }).fill("2026-11-06T23:42");
   await expect(
     dialog.getByLabel("Time limit (minutes)", { exact: true }),
@@ -494,3 +516,93 @@ test("a disabled review explains missing published exam files", async ({
   );
   expect(f.state.previews).toHaveLength(0);
 });
+
+for (const outsidePage of [false, true])
+  test(`adopting another student's expired review resets the draft ${outsidePage ? "without inventing missing settings" : "to that student's latest settings"}`, async ({
+    page,
+  }) => {
+    const latest = {
+      duration: 4500,
+      webcam: false,
+      earliest: Date.now() + 86400000,
+      latest: Date.now() + 172800000,
+    };
+    const f = await fixture(page, 2, true, "Midterm", {
+      latestSettings: { student02: latest },
+      hiddenStudents: outsidePage ? ["student02"] : [],
+    });
+    f.state.review = {
+      id: f.id,
+      exam: f.settings.id,
+      actor: "instructor",
+      kind: "NEW_ADDITIONAL_TEMPLATE_GRANTS",
+      status: "EXPIRED",
+      revision: "d".repeat(64),
+      created: Date.now() - 1800000,
+      expires: Date.now() - 900000,
+      reason: "Expired synthetic review for a different student",
+      issued: [],
+      rows: [
+        {
+          username: "student02",
+          settings: { ...f.settings, ...latest },
+          work: {
+            kind: "template",
+            name: f.settings.template,
+            hash: f.settings.template_version,
+          },
+          existing_grants: 0,
+          replaces: [],
+        },
+      ],
+    };
+    const dialog = await selectedAction(page, ["student01"], "Allow attempt"),
+      oldOpens = localDateTime(Date.now() + 4 * 86400000);
+    await expect(
+      dialog.getByText("Latest time limit: 1 min 35 sec", { exact: true }),
+    ).toBeVisible();
+    await dialog.getByLabel("Time limit (minutes)", { exact: true }).fill("42");
+    await dialog.getByLabel("Opens", { exact: true }).fill(oldOpens);
+    await dialog
+      .getByText("Your recent requests in this exam", { exact: true })
+      .click();
+    await dialog.getByRole("button", { name: /student02.*Expired/ }).click();
+    await expect(
+      dialog.getByRole("heading", { name: "Review expired", exact: true }),
+    ).toBeVisible();
+    await dialog
+      .getByRole("button", { name: "Edit and review again", exact: true })
+      .click();
+    await expect(
+      dialog.getByLabel("Time limit (minutes)", { exact: true }),
+    ).toHaveValue(outsidePage ? "" : "75");
+    await expect(dialog.getByLabel("Opens", { exact: true })).not.toHaveValue(
+      oldOpens,
+    );
+    if (outsidePage) {
+      await expect(dialog.getByText(/^Latest time limit:/)).toHaveCount(0);
+      await expect(
+        dialog
+          .getByRole("combobox", { name: "Webcam", exact: true })
+          .locator("option:checked"),
+      ).toHaveText("Keep latest setting");
+    } else {
+      await expect(
+        dialog.getByText("Latest time limit: 75 min", { exact: true }),
+      ).toBeVisible();
+      await expect(dialog.getByLabel("Opens", { exact: true })).toHaveValue(
+        localDateTime(latest.earliest),
+      );
+      await expect(dialog.getByLabel("Closes", { exact: true })).toHaveValue(
+        localDateTime(latest.latest),
+      );
+      await expect(
+        dialog
+          .getByRole("combobox", { name: "Webcam", exact: true })
+          .locator("option:checked"),
+      ).toHaveText("Optional (latest setting)");
+    }
+    expect(f.state.previews).toHaveLength(0);
+    expect(f.state.confirmations).toHaveLength(0);
+    await expect(page.getByRole("dialog")).toHaveCount(1);
+  });

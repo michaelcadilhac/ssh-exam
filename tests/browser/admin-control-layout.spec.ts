@@ -99,6 +99,8 @@ async function fixture(page: Page) {
             {
               username,
               enrollment: { duration: null, webcam: null },
+              latestSettings: settings,
+              unusedAttempt: grant,
               attempts: [],
             },
           ],
@@ -157,10 +159,13 @@ async function fixture(page: Page) {
       })
       .click({ timeout: 3000 });
     await page
-      .getByRole("menuitem", { name: "Allowed attempts…", exact: true })
+      .getByRole("menuitem", {
+        name: "Attempt settings and history…",
+        exact: true,
+      })
       .click({ timeout: 3000 });
     const dialog = page.getByRole("dialog", {
-      name: `Allowed attempts for ${username}`,
+      name: `Attempt settings for ${username}`,
       exact: true,
     });
     await dialog
@@ -282,7 +287,7 @@ test("narrow additional-attempt form controls fit without changing permissions",
     .getByRole("button", { name: "Selected students", exact: true })
     .click({ timeout: 3000 });
   await page
-    .getByRole("menuitem", { name: "Allow another attempt", exact: true })
+    .getByRole("menuitem", { name: "Allow attempt", exact: true })
     .click({ timeout: 3000 });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Opens", { exact: true })).toBeVisible();

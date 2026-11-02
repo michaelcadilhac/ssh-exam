@@ -269,7 +269,7 @@ async function saveUnknownConfirmation(page: Page, body: any) {
 async function reopenReview(page: Page) {
   await page.reload();
   await page.getByLabel("Selected exam").selectOption("single-unused");
-  return selectedAction(page, ["synthetic"], "Allow another attempt");
+  return selectedAction(page, ["synthetic"], "Allow attempt");
 }
 
 for (const width of [1280, 430]) {
