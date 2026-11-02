@@ -1,4 +1,4 @@
-# Current follow-up — synchronized video review COMPLETE LOCALLY
+# Current follow-up — synchronized video review DEPLOYED
 
 November2: actual stored VP9 clips play in the browser, with one original-time
 Play/Pause/speed/seek controller for screen and webcam. Irregular times and gaps
@@ -6,11 +6,13 @@ are preserved; live/legacy JPEGs share the clock. Private reads are authenticate
 bounded and deletion-fenced; tab/close abort/revoke media. No per-frame server
 codec work on the video path, new stored derivatives or authority/schema change.
 HTTP/unit/media/export, real-codec browser, mobile/layout, types/build checks pass;
-original dirty screenshots preserved. No production access/push/deployment.
-Evidence/constraints/future matched web-backend release and compatible CURRENT-
-data rollback: docs/review-on-demand.md and docs/todo-current-checkpoint.md.
+original dirty screenshots preserved. Pushed and deployed November2 at16:23:58
+Chicago with the direct-controls follow-up below. Exact-image startup, all41
+preservation contracts and public acceptance pass; no migration/native restart.
+Evidence, matched web-read scope and compatible CURRENT-data recovery:
+docs/review-on-demand.md and docs/synchronized-review-deployment.md.
 
-# Current follow-up — simpler attempt cells COMPLETE LOCALLY
+# Current follow-up — simpler attempt cells DEPLOYED
 
 November2: one-click Required/Off camera, matching history/next icon alignment,
 plain inline time field (Enter/blur save once; Escape cancels unsaved edit), and
@@ -19,8 +21,9 @@ saves; exact seconds, revision/claim checks and durable unknown-request retry ar
 preserved. Final30 focused browser cases and actual HTTP enrollment workflow pass;
 prior57 affected cases cover unchanged workflows. Types/build/Prof review and
 owned cleanup pass. No backend/native/schema/CLI policy change. Original dirty
-screenshots preserved. Local only: no push/deploy instruction for this follow-up.
-Evidence and future UI-only deployment/rollback scope:
+screenshots preserved. Deployed with synchronized review at16:23:58 Chicago,
+November2; the combined release includes the additive backend reader.
+Evidence and deployed scope:
 docs/inline-next-attempt-controls.md and docs/todo-current-checkpoint.md.
 
 # Current follow-up — DEPLOYED AND ONLINE

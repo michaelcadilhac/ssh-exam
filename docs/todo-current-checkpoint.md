@@ -1,4 +1,27 @@
-# Current checkpoint — synchronized video review COMPLETE LOCALLY, NOT DEPLOYED
+# Current checkpoint — direct controls and synchronized review DEPLOYED
+
+The instructor explicitly requested deployment. Source04fa394 (including9306fdf
+and6c4ff22) is pushed. The exact image passed schema37/video compatibility and
+real63-second signed-startup/purge/CURRENT-data recovery qualification;40 deployment
+interface tests pass. All229 final browser inputs are unchanged; packaged assets
+match, except the unchanged previously deployed Go-built SSH WASM.
+
+Online November2 at16:23:58 Chicago (22:23:58UTC), schema37, Configec4ebab4.
+Cutover62.55seconds; prepare9.07seconds. All41 preservation contracts pass;
+110 web/175 native histories, configuration, permissions and deadlines preserved.
+No native restart, CLI installation or migration. Recovery reuses970286469 media
+bytes and copies no new media; fresh89.7MB database plus291492 small-file bytes.
+Owned video pause released. Eight exact public assets/TLS and six desktop/mobile
+focus/layout views pass; anonymous video reads return401. No credentials submitted
+or student exam created. Original ten dirty documentation images remain unchanged.
+
+Marco private stage: /data/ssh-exam-review-20261102-04fa3947b3da; frozen controller
+under code/scripts/deploy-web-ui, state/snapshot retained. No operation is running.
+Evidence: var/collection-tests/synchronized-review-release.20261102a/. Compatible
+recovery always retains CURRENT data; never restore an older database. There is
+no remaining deployment blocker. Details: docs/synchronized-review-deployment.md.
+
+# Previous local checkpoint — synchronized video review COMPLETE LOCALLY
 
 Review now has real browser-decoded VP9 playback with one original-time clock,
 Play/Pause, speed1×–125× (default60×), shared seek and Live. Both views use the

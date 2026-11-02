@@ -1,7 +1,8 @@
 # Synchronized recording review
 
-November2,2026. Implemented and tested locally.
-Not pushed or deployed. This supersedes the independent screenshot sliders.
+November2,2026. Pushed and deployed at16:23:58 Chicago in source04fa394/schema37.
+This supersedes the independent screenshot sliders. Exact-image preservation and
+public checks pass; see docs/synchronized-review-deployment.md.
 
 Review → Recordings has one Play/Pause button, speed selector and timeline for
 both screen and webcam. The shared clock uses original capture timestamps, not
@@ -42,9 +43,9 @@ Seven targeted video/shared-live/mobile cases pass on fresh final assets, includ
 320px; prior63-case evidence remains separate. Full types/build and final Vite pass.
 Evidence: var/collection-tests/synchronized-video-review.20261102a/.
 
-Deployment is separate: this is an additive backend read endpoint plus matching
-browser assets, not an unchanged-backend UI-only attestation. Freeze/qualify the
-matched web release and its guarded cutover before deployment. Schema37 and the
+This release is an additive backend read endpoint plus matching browser assets,
+not an unchanged-backend UI-only attestation. Its exact matched image and guarded
+cutover were qualified before production maintenance. Schema37 and the
 native/CLI cohort remain unchanged. The previous reader remains compatible with
 CURRENT data; rollback must retain that data and normal admission/backup guards,
 never restore an older database. No production action is authorized by this file.

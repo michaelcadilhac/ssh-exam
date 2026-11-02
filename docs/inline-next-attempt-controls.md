@@ -1,6 +1,6 @@
 # Direct next-attempt editing
 
-November2 follow-up, IMPLEMENTED/TESTED LOCALLY, NOT PUSHED/DEPLOYED: the camera
+November2 follow-up, DEPLOYED at16:23:58 Chicago in source04fa394: the camera
 click directly toggles Required/Off; its confirmed state stays visible while a
 save is pending. The time value becomes a plain text field: enter whole minutes,
 press Enter or leave the field to save, or Escape to cancel. An untouched exact
@@ -25,9 +25,10 @@ fixture race; tests now fault precisely at the first post-click catalogue read,
 with a proven older displayed snapshot and zero writes. Original screenshots
 remain untouched. Evidence: var/collection-tests/simple-attempt-cells.20261102a/
 browser-summary.json. Backend/native/CLI are unchanged, so no new native race
-qualification is claimed or required. A future authorized release needs only the
-matched UI image, normal fresh guards/backups and CURRENT-data-compatible rollback;
-no migration or native restart. This follow-up is not pushed/deployed. The prior
+qualification is claimed or required. It shipped with the synchronized video's
+additive web reader, retaining schema37/native/CLI and CURRENT-data-compatible
+recovery. No migration or native restart. Exact-image qualification, preservation
+and public acceptance: docs/synchronized-review-deployment.md. The prior
 production release follows.
 
 November 2, 2026. DEPLOYED AND ONLINE at15:14:58 Chicago in matched source49d5e3b/

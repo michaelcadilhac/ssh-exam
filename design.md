@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-November2 synchronized video review, IMPLEMENTED/TESTED LOCALLY (not deployed): one
+November2 synchronized video review, DEPLOYED at16:23:58 Chicago: one
 original-time play/pause/speed/seek controller drives both screen and webcam.
 Verified stored VP9 segments are read through an authenticated, bounded private
 endpoint and decoded in the browser. Live/legacy JPEGs use the same clock; gaps
@@ -14,7 +14,7 @@ release downloads and private buffers. No monitoring enforcement, grant, clock,
 native, CLI or schema change. This supersedes independent capture sliders.
 Details and verification: docs/review-on-demand.md and current checkpoint.
 
-November2 subsequent UI follow-up, IMPLEMENTED/TESTED LOCALLY (not deployed):
+November2 subsequent UI follow-up, DEPLOYED at16:23:58 Chicago:
 next-attempt cameras toggle directly on one click and align with passive history
 icons. Time edits use a plain minutes field: Enter/blur save once, Escape discards
 an unsaved edit, unchanged exact seconds stay intact, and blur-save preserves the
