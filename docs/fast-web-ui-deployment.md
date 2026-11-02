@@ -51,33 +51,35 @@ the stock UI command. Never substitute an old database for the fresh snapshot.
 ## Go/no-go and elapsed time
 
 Follow the [deployment execution contract](../AGENTS.md#deployment-execution-contract).
-The routine target is two minutes from the deployment instruction through required
-acceptance and closeout. Online preparation counts toward that total; record the
-maintenance interval separately. The local synthetic timings below are evidence
-about components, not a production end-to-end guarantee.
-Every command needs an explicit timeout within the remaining budget and must
-yield control within30seconds. An online stall ends the attempt through its
+There is no overall deployment time cap, and elapsed time alone does not require
+an extension or stop an authorized deployment. Keep the workflow efficient and
+report delays promptly. Measure total time from the deployment instruction through
+required acceptance and closeout, including online preparation; record maintenance
+separately. The local synthetic timings below are component evidence, not a
+production end-to-end guarantee.
+Every command needs an appropriate timeout and must yield control within30seconds.
+An online stall ends the attempt through its
 known safe cancellation/status path, with only owned resumable work canceled and
 cleanup verified. Never kill a migration, exam process or service blindly.
 When termination is unsafe, bound observation of the operation, not its lifetime;
-report any overrun and preserve its state instead of forcing a timeout abort.
+report the delay and preserve its state instead of forcing a timeout abort.
 
 Before declaring a release ready, have the exact image/CLI, prepared controller,
 qualified migration/recovery path, verified backup coverage and measured timings.
-A missing prerequisite or a cold copy that exceeds the budget is a preflight
-blocker. Report it with the site online and stop the deployment attempt. A new
-migration requiring longer preparation needs its own agreed budget; do not discover
-or develop that workflow after fencing. Keep all existing drain and preservation
+A missing prerequisite or an unqualified cold copy is a preflight blocker.
+Report it with the site online and stop the deployment attempt. Qualify migration
+and preparation workflows before fencing; do not discover or develop them during
+cutover. Keep all existing drain and preservation
 checks. Execute normal authorized steps without another approval request.
 
 After an unexpected fenced failure, report the state immediately and perform at
 most one 30-second read-only diagnosis. Use a qualified compatible recovery path;
 otherwise preserve the safe held state and report the blocker. Do not patch live
-deployment tooling or bypass a guard to meet the target. Announce reopening as
+deployment tooling or bypass a guard to meet an estimate. Announce reopening as
 soon as confirmed, finish required acceptance and the minimal record, and leave
 optional follow-up outside the deployment task.
-Already-qualified bounded retries count against the original deadline; they do
-not create another preparation or debugging window.
+Include qualified bounded retries in elapsed-time reporting; they do not
+authorize an open-ended preparation or debugging loop.
 
 ## Prepare the release plan
 
@@ -289,8 +291,8 @@ sign-in errors without creating an exam.
 Root's separate69,120-file backup benchmark measures warmed stopped snapshots
 at6.609/9.311seconds with zero new objects/media bytes copied. That is local storage
 evidence, not a production or compression-ratio claim. Actual readiness, disk,
-SSH and connection-drain time remain part of any real cutover. A two-minute
-target never weakens a guard or interrupts a running exam.
+SSH and connection-drain time remain part of any real cutover. Elapsed time never
+weakens a guard or permits interrupting a running exam.
 
 Run the focused checks with:
 

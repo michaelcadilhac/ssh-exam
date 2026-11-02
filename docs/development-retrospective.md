@@ -624,3 +624,15 @@ formatting delta was verified by a nonzero-second public regression and three
 focused interfaces after full application/browser qualification. Record the
 exact delta and retain unchanged-source evidence instead of rerunning everything
 for an isolated formatting option. No production enforcement was relaxed.
+
+
+## November 2: remove the deployment time cap
+
+The two-minute cap caused a prepared deployment with passing idle guards to stop
+before staging and ask for another timing approval. The instructor removed that
+cap. AGENTS.md and the current deployment runbook now require continued execution
+of authorized, qualified steps regardless of elapsed time, with prompt delay
+reports and honest total/maintenance timing. Individual command bounds, safe
+observation of non-interruptible operations, readiness/idle/recovery guards and
+qualified recovery remain mandatory. Earlier timing targets and validation receipts
+above describe the former policy; they do not impose a current deployment deadline.

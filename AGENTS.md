@@ -41,18 +41,17 @@
   recovery or expensive cold preparation mean NOT READY. Report the specific
   blocker promptly while the site is online; stop that deployment attempt before
   maintenance. Do not silently write tooling or start a long preparation loop.
-- The instructor's routine deployment target is two minutes TOTAL from the
-  instruction, including push, transfer, preparation, checks and closeout. Track
-  maintenance time separately too. Never restart the clock or claim success by
-  excluding preparation. If the measured plan cannot fit, report that before
-  entering maintenance; a longer migration needs a separately agreed time budget.
-- Bound every command by the remaining budget and yield control within 30 seconds.
+- There is no overall deployment time cap. Do not stop an authorized deployment
+  or request an extension merely because elapsed time exceeds an estimate.
+  Keep deployments efficient, report delays promptly, and measure total elapsed
+  time from the instruction, including preparation, with maintenance separately.
+- Bound individual commands appropriately and yield control within 30 seconds.
   Before launching a side-effecting step, know its timeout/status/recovery path.
   If termination would be unsafe, bound the wait/status call instead of killing
-  the underlying operation; report the overrun and preserve its state.
+  the underlying operation; report the delay and preserve its state.
   If an online preparation step stalls, safely cancel only its owned resumable
   work, verify cleanup and report an incomplete deployment with the site online.
-  Never blindly kill a migration, exam process or service to satisfy the clock.
+  Never blindly kill a migration, exam process or service to meet an estimate.
 - Check existing verified recovery coverage before starting a full copy or hash.
   Reuse only a baseline whose identity, current coverage and restoration path are
   proved. Missing or stale evidence blocks deployment; it never permits skipping
@@ -60,8 +59,8 @@
 - Execute only the frozen, rehearsed steps and required acceptance checks. Reuse
   qualification for unchanged inputs. Do not rebuild, broaden tests, add features
   or refactor during deployment. Routine authorized steps need no new approval.
-  Already-qualified bounded retries consume the same budget; they do not reset
-  the clock or begin a new debugging allowance.
+  Include qualified bounded retries in elapsed-time reporting; they do not
+  authorize an open-ended debugging loop.
 - If an unexpected failure occurs after fencing, immediately report whether the
   site is online or fenced and preserve current state. Bound read-only diagnosis
   to one 30-second pass; use only qualified, compatible recovery. Otherwise report
