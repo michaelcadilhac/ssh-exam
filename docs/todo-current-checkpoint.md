@@ -1,31 +1,40 @@
-# Current checkpoint — DePaul matched deployment PREPARED, NOT CUT OVER
+# Current checkpoint — matched deployment BLOCKED, SITE IN MAINTENANCE
 
-Explicit current authorization: push/deploy all pending work to marco/csc-sys.
-Theme/runtime source49d5e3b is pushed. DePaul white/navy/blue theme and favicon,
-unified70-student catalog and live shared exam limits are included. The native
-upgrade requires all four executables and three loaded roles; relay stays intact.
+November2 at20:32:48UTC: web resume refused `Existing authority changed:
+monitoring_purges`. Current phase NATIVE_UPDATED; candidate web is running behind
+the owned maintenance fence. It is NOT ONLINE. No database restore, guard bypass,
+old-writer rollback or repeated resume was attempted. Background video pause is
+still owned. Preserve CURRENT database, release state and both recovery snapshots.
 
-All required qualification passes: theme5, packaged real-WASM12, exact schema37
-image/history/video/clock, web controller11+old37, bridge9, real62.566s signed-poll
-expiry/startup, native installer16 plus actual guarded file/service/SSH/collection/
-deadline rehearsal. Exact test guest cleanup and production preservation verified.
-Failures were corrected fixture producers; no readiness/hold/deadline weakening.
-See docs/depaul-matched-release.md for scope/evidence and retained limitations.
+User explicitly authorized push/deploy. Source49d5e3b and operators51dfc95 are
+pushed. The exact matched native binaries were installed; agent/watchdog/source
+worker are verified at PIDs1232120/1232116/1232118. Relay893011 and SSH were not
+restarted. Native history/configuration/CLI configuration match their before pins.
+Web entered maintenance only after a fresh zero-session/zero-exam drain. Incremental
+web backup reused970286469 monitoring bytes with zero new media copied. Native
+backup199925760bytes has SHA10dc636e2883e0c31b3b302b7d7ef91c7404a15b58cd39c72926a2ad8730d781.
+Final web preservation/public acceptance did NOT pass; do not mark this deployed.
 
-Live site is still ONLINE on old release. Instructor signed out; web/native fresh
-guards must be repeated at cutover. Verified root-private code-only stages:
-marco /data/ssh-exam-depaul-20261102-f6eb051343/{release,code};
+Cause: physical monitoring purge starts immediately and every second independently
+of the video-only deployment pause. Hourly rechecks update its durable job ledger.
+Preservation requires that ledger to be identical. Startup qualification seeded
+41 tables but omitted tombstone/purge rows and therefore missed this writer.
+There is no qualified retry that reverses those durable changes safely.
+
+Next: a separate, locally qualified forward repair must cover existing tombstones,
+purge rechecks, retention and every startup writer, plus recovery from this exact
+CURRENT-data state. Do not reset rows, rebaseline the snapshot or exclude a table
+to force a pass. Existing frozen deployment cannot reopen through resume as-is.
+See docs/depaul-matched-release.md. Original ten dirty documentation screenshots
+remain untouched.
+
+Recovery locations:
+marco /data/ssh-exam-depaul-20261102-f6eb051343/state;
 csc-sys /var/tmp/ssh-exam-depaul-native-20261102-38068e610401.
-Web state will be /data/ssh-exam-depaul-20261102-f6eb051343/state.
-Immutable releaseSHA933b54d5…, imageConfigaca6572b…, adapterc0ea072a….
+ReleaseSHA933b54d5…, Configaca6572b…, nonce38068e61-0401-463b-b881-026805dc85bc.
 
-Next: follow frozen var/collection-tests/depaul-matched-image.f6eb051343/
-matched-execution.md. Refresh before proof, prepare online with media reuse,
-apply→WAITING_NATIVE; fresh handoff before each native phase; nativeverify;
-refresh after proof throughout webresume→ONLINE. No old-writer reopening/data
-restore. Report unexpected fenced failure immediately; only qualified recovery.
-Preserve all ten original dirty documentation screenshots. No production record,
-configuration or service change has occurred yet; private staging only.
+The following local-completion checkpoints are historical and are superseded by
+this failed-cutover state; none establishes successful public reopening.
 
 # Current checkpoint — direct next-attempt editing COMPLETE LOCALLY, NOT DEPLOYED
 

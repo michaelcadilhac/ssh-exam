@@ -1,8 +1,10 @@
 # DePaul palette and matched release
 
 November 2, 2026. The instructor explicitly requested the DePaul color scheme and
-push/deployment of all pending work. The matched workflow is qualified; preparation is completing with the site online;
-no maintenance fence, production installation or service restart has occurred.
+push/deployment of all pending work. The cutover is **BLOCKED**, with the site in
+maintenance. Native installation and loaded-cohort verification succeeded; final
+web preservation refused and public reopening has not occurred. The prior startup
+qualification missed existing physical-purge jobs; it did not establish this state.
 
 The palette follows the [current homepage](https://www.depaul.edu/) and
 [official colors](https://resources.depaul.edu/brand/brand-guidelines/colors/Pages/default.aspx):
@@ -79,5 +81,31 @@ Detailed frozen plans and execution/recovery commands are in
 source/helper/plan hashes are in `matched-operator-freeze.json`. Native physical
 proof and independent cleanup are in
 `var/collection-tests/native-installer-qualified.20261102a/completion.json`.
-The production private stages contain verified code and plans only. They have not
-installed binaries, changed configuration or restarted production services.
+## Cutover failure and held recovery state
+
+At20:32:48UTC, web resume refused `Existing authority changed: monitoring_purges`
+and remained NATIVE_UPDATED. The candidate is running behind the owned nginx
+maintenance fence. Current data and both recovery snapshots remain preserved;
+there was no retry, old-writer rollback, database restore or guard bypass.
+
+The physical-purge worker starts immediately and every second independently of the
+video deployment pause. Its periodic absence rechecks update tries/timestamps and
+next scheduling. The verifier requires the entire ledger to remain identical.
+The actual startup test seeded41 tables but no tombstones/purge rows, missing this
+independent writer. This is a qualification gap, not evidence of student activity.
+No already-qualified resume can clear this refusal.
+
+Native installation and preservation passed: three new loaded role PIDs,
+all four candidate hashes, historical attempts and both configuration pins;
+relay893011 and SSH were left running. Fresh pre-fence guards proved no live exams
+or web sessions. The web snapshot reused970286469 monitoring bytes and copied no
+new media; the private native snapshot is199925760bytes. Final web preservation,
+public acceptance and reopening did not pass; this release is not marked deployed.
+
+Keep marco state `/data/ssh-exam-depaul-20261102-f6eb051343/state` and csc-sys stage
+`/var/tmp/ssh-exam-depaul-native-20261102-38068e610401`. The immutable transition
+receipt is SHA37474801bdb676182fb32cb94cea5ee5b0203b1572611c27bd24f595f1cfca75.
+The next separate milestone must qualify a compatible forward repair against
+synthetic existing tombstones/purge jobs, all startup/retention writers and this
+held CURRENT-data state. Do not reset production rows, replace the preservation
+baseline, or exempt changed authority to obtain a pass.

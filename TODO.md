@@ -1,3 +1,16 @@
+# Current follow-up — production cutover BLOCKED
+
+November2 DePaul/matched release: source49d5e3b and operators51dfc95 pushed;
+native cohort installed/verified, but web reopening refused20:32:48UTC because
+`monitoring_purges` changed during startup. Site remains on the maintenance page,
+phase NATIVE_UPDATED; CURRENT data, backups and owned video pause are preserved.
+The startup test omitted existing tombstone/purge rows. No qualified retry exists.
+Do not mark the theme or pending interface/policy work publicly deployed.
+Next is a separately qualified forward repair covering background purge/retention
+writers and exact held-state recovery. No guard bypass, stale restore or old-writer
+reopening. Recovery locations and evidence: docs/todo-current-checkpoint.md and
+docs/depaul-matched-release.md. Original dirty screenshots are untouched.
+
 # Current follow-up
 
 November2 DIRECT NEXT-ATTEMPT CONTROLS — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
